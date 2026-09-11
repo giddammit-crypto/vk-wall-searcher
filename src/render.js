@@ -87,7 +87,15 @@ export function truncateToSentences(text, maxSentences = 10) {
     };
 }
 
-export function formatHumanDate(dateObj) {
+export function formatHumanDate(dateInput) {
+    if (!dateInput) return '';
+    let dateObj = dateInput;
+    if (typeof dateInput === 'number') {
+        dateObj = new Date(dateInput < 1e11 ? dateInput * 1000 : dateInput);
+    } else if (typeof dateInput === 'string') {
+        dateObj = new Date(dateInput);
+    }
+    if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return '';
     const days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
     const dayStr = String(dateObj.getDate()).padStart(2, '0');
     const monthStr = String(dateObj.getMonth() + 1).padStart(2, '0');
