@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,17 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://api.vk.com; script-src 'self' https://cdnjs.cloudflare.com https://api.vk.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src * data: blob:; font-src 'self' https://fonts.gstatic.com data:;">
     <title>Статистика групп ВК (Разработка: Амброзиев О.А.)</title>
+
+    <!-- Theme Initialization: default light for first visit -->
+    <script>
+    (function() {
+        try {
+            var p = new URLSearchParams(window.location.search);
+            var t = p.get('theme') || p.get('preview_theme') || localStorage.getItem('aurora_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {}
+    })();
+    </script>
 
     <!-- Typography: Montserrat + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,7 +32,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.7.0">
+    <link rel="stylesheet" href="style.css?v=3.7.1">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -120,8 +131,8 @@
             </div>
             <div class="header-actions">
                 <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
-                    <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">dark_mode</span>
-                    <span id="theme-toggle-text">Тёмная</span>
+                    <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">light_mode</span>
+                    <span id="theme-toggle-text">Светлая</span>
                 </button>
                 <button type="button" id="promo-modal-btn" class="btn btn-tonal" title="Генератор фирменных QR-плакатов и закладок для филиалов">
                     <span class="material-symbols-outlined icon">qr_code_2</span>
@@ -551,11 +562,6 @@
                         <span>Отчёт с ссылками</span>
                         <span class="tab-badge" id="count-report">0</span>
                     </button>
-                    <button class="tab-btn" data-tab="events-tab">
-                        <span class="material-symbols-outlined icon">event</span>
-                        <span>Афиша событий</span>
-                        <span class="tab-badge" id="count-events">0</span>
-                    </button>
                     <button class="tab-btn" data-tab="analytics-tab">
                         <span class="material-symbols-outlined icon">leaderboard</span>
                         <span>Рейтинг активности</span>
@@ -728,19 +734,6 @@
 
                         <div class="report-body" id="report-tables-container">
                             <!-- Injected dynamically by JS (headers + tables for each group) -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: City Events Billboard (Умная Сводная Афиша Города) -->
-                <div id="events-tab" class="tab-content no-print">
-                    <div id="events-tab-content">
-                        <div class="events-empty-state">
-                            <span class="material-symbols-outlined events-empty-icon">event_busy</span>
-                            <h3 class="events-empty-title">Анонсы мероприятий пока не найдены</h3>
-                            <p class="events-empty-desc">
-                                Выполните поиск по сообществам библиотек, и алгоритм автоматически извлечёт все анонсы мастер-классов, лекций, выставок и праздников.
-                            </p>
                         </div>
                     </div>
                 </div>
@@ -1372,7 +1365,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.7.0"></script>
+    <script type="module" src="src/app.js?v=3.7.1"></script>
 
     <script>
     /* =============================================================
@@ -1391,7 +1384,7 @@
 
         function observeCards() {
             document.querySelectorAll(
-                '.post-card, .kpi-card, .source-showcase-card, .stat-box, .card, .report-group-section, .event-card, .radar-module-card'
+                '.post-card, .kpi-card, .source-showcase-card, .stat-box, .card, .report-group-section, .radar-module-card'
             ).forEach(el => {
                 if (!el.classList.contains('agy-visible')) {
                     el.classList.add('agy-will-animate');
@@ -1695,13 +1688,13 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const urlTheme = urlParams.get('theme') || urlParams.get('preview_theme');
-        const savedTheme = urlTheme || localStorage.getItem('aurora_theme') || 'dark';
+        const savedTheme = urlTheme || localStorage.getItem('aurora_theme') || 'light';
         applyTheme(savedTheme);
 
         if (themeBtn) {
             themeBtn.addEventListener('click', () => {
-                const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-                applyTheme(cur === 'dark' ? 'light' : 'dark');
+                const cur = document.documentElement.getAttribute('data-theme') || 'light';
+                applyTheme(cur === 'light' ? 'dark' : 'light');
             });
         }
 

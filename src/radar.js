@@ -11,8 +11,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.0';
-import { extractNum } from './analytics.js?v=3.7.0';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.1';
+import { extractNum } from './analytics.js?v=3.7.1';
 
 export const RADAR_AXES = [
     { id: 'regularity', label: 'Регулярность', desc: 'Частота и ритмичность постов' },
@@ -32,32 +32,43 @@ export function computeAllRadarScores(groupsStats, posts = []) {
     // Группировка постов по филиалам для анализа медиа и анонсов
     const postsByBranch = new Map();
     posts.forEach(p => {
-        const branchCode = p.canonicalBranch?.shortCode || p.sourceName;
-        if (!postsByBranch.has(branchCode)) {
-            postsByBranch.set(branchCode, []);
+        const tInfo = p.targetInfo || p.canonicalBranch || {};
+        const branchCode = tInfo.shortCode || p.canonicalBranch?.shortCode || p.sourceName || String(p.owner_id);
+        if (branchCode) {
+            if (!postsByBranch.has(branchCode)) {
+                postsByBranch.set(branchCode, []);
+            }
+            postsByBranch.get(branchCode).push(p);
         }
-        postsByBranch.get(branchCode).push(p);
     });
 
     const eventKeywords = /мастер-класс|выставка|концерт|спектакль|лекция|встреча|приглашаем|состоится|клуб|квиз|игротек|библионоч/i;
 
     const scoresMap = new Map();
 
-    groupsStats.forEach(stat => {
-        const code = stat.branch?.shortCode || stat.name;
-        const bPosts = postsByBranch.get(code) || [];
-        const totalPosts = stat.postsCount || bPosts.length || 1;
+    groupsStats.forEach((stat, idx) => {
+        // Извлекаем метаданные филиала устойчиво из stat.info, stat.targetInfo или stat
+        const targetInfo = stat.info || stat.targetInfo || stat;
+        const canonical = targetInfo.canonicalBranch || targetInfo.branch || targetInfo;
+        const code = canonical.shortCode || targetInfo.shortCode || targetInfo.id || stat.id || stat.name || `Ф-${idx + 1}`;
+        const name = canonical.canonicalName || targetInfo.canonicalName || targetInfo.name || stat.name || `Филиал ${code}`;
 
-        // 1. Регулярность (30+ постов за период = 100 баллов)
+        const bPosts = (stat.posts && Array.isArray(stat.posts) && stat.posts.length > 0)
+            ? stat.posts
+            : (postsByBranch.get(code) || postsByBranch.get(name) || postsByBranch.get(String(targetInfo.id)) || []);
+        
+        const totalPosts = stat.postsCount || bPosts.length || 0;
+
+        // 1. Регулярность (25+ постов за период = 100 баллов)
         const regularity = Math.min(100, Math.round((totalPosts / 25) * 100));
 
         // 2. Вовлечённость (ER 4% = 100 баллов, средний ER в библиотеках ~1.5–3.5%)
-        const erVal = parseFloat(stat.er) || 0;
+        const erVal = parseFloat(stat.erViews ?? stat.erPosts ?? stat.er ?? 0) || 0;
         const engagement = Math.min(100, Math.round((erVal / 4.0) * 100));
 
         // 3. Авторский контент (% постов без репостов)
-        const repostsCount = stat.repostsCount || bPosts.filter(p => p.copy_history && p.copy_history.length > 0).length;
-        const originalRatio = Math.max(0, 1 - (repostsCount / totalPosts));
+        const repostsCount = stat.repostsCount ?? bPosts.filter(p => p.copy_history && p.copy_history.length > 0).length;
+        const originalRatio = totalPosts > 0 ? Math.max(0, 1 - (repostsCount / totalPosts)) : 1;
         const originality = Math.min(100, Math.round(originalRatio * 100));
 
         // 4. Мультимедиа (доля постов с видео, фотоальбомами, опросами)
@@ -81,14 +92,17 @@ export function computeAllRadarScores(groupsStats, posts = []) {
         const eventsScore = Math.min(100, Math.round((eventsRatio / 0.35) * 100)); // 35%+ постов-анонсов = 100
 
         // 6. Охват аудитории (средние просмотры на пост к числу участников)
-        const avgViews = stat.avgViews || (stat.totalViews ? Math.round(stat.totalViews / totalPosts) : 250);
-        const members = stat.branch?.canonicalMembers || 1500;
-        const reachRatio = avgViews / members; // 0.3 (30% охвата) = 100 баллов
+        const totalViews = stat.views || stat.totalViews || 0;
+        const avgViews = stat.avgViews || (totalPosts > 0 ? Math.round(totalViews / totalPosts) : (totalViews || 250));
+        const members = canonical.canonicalMembers || targetInfo.canonicalMembers || 1500;
+        const reachRatio = members > 0 ? (avgViews / members) : 0.2;
         const reach = Math.min(100, Math.round((reachRatio / 0.35) * 100));
 
-        scoresMap.set(code, {
-            branch: stat.branch,
-            name: stat.name,
+        scoresMap.set(String(code), {
+            code: String(code),
+            name,
+            branch: canonical,
+            info: targetInfo,
             regularity: Math.max(20, regularity),
             engagement: Math.max(20, engagement),
             originality: Math.max(20, originality),
@@ -144,8 +158,19 @@ export function renderRadarSection(container, groupsStats, posts = []) {
 
     const branchList = [];
     scoresMap.forEach((v, k) => {
-        if (k !== 'AVG') branchList.push({ code: k, name: v.branch?.canonicalName || v.name });
+        if (k !== 'AVG' && v && v.name) {
+            branchList.push({ code: k, name: v.name });
+        }
     });
+
+    if (branchList.length === 0) {
+        container.innerHTML = `
+            <div class="radar-empty">
+                <p>Нет данных по филиалам для построения диаграммы. Выполните поиск по сообществам.</p>
+            </div>
+        `;
+        return;
+    }
 
     let primaryBranchCode = branchList[0]?.code || 'ЦГБ';
     let compareCode = 'AVG'; // 'AVG' или код другого филиала
@@ -208,7 +233,7 @@ export function renderRadarSection(container, groupsStats, posts = []) {
                 </div>
                 <div class="r-leg-item compare-leg">
                     <span class="leg-color-box leg-compare"></span>
-                    <span class="leg-text" id="leg-compare-name">Сравнение (ЦБС)</span>
+                    <span class="leg-text" id="leg-compare-name">Средний уровень по городу (ЦБС)</span>
                 </div>
             </div>
 
@@ -245,6 +270,9 @@ export function renderRadarSection(container, groupsStats, posts = []) {
     if (legPrim) {
         const b = branchList.find(x => x.code === primaryBranchCode);
         if (b) legPrim.textContent = b.name;
+    }
+    if (legComp) {
+        legComp.textContent = compareCode === 'AVG' ? 'Средний уровень по городу (ЦБС)' : (branchList.find(x => x.code === compareCode)?.name || compareCode);
     }
 
     redraw();

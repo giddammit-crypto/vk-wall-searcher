@@ -6663,6 +6663,27 @@ textarea:focus-visible,
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.promo-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.promo-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.promo-format-selector,
 .promo-format-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -6670,27 +6691,38 @@ textarea:focus-visible,
 }
 
 .promo-format-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.35rem;
     padding: 0.85rem 0.5rem;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
     color: var(--text-secondary);
     cursor: pointer;
     text-align: center;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
 }
 
-.promo-format-card > * {
+.promo-format-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+}
+
+.promo-format-card > *:not(input) {
     pointer-events: none;
 }
 
-.promo-format-card .material-symbols-outlined {
+.promo-format-card .material-symbols-outlined,
+.promo-format-card .format-ico {
     font-size: 24px;
     color: var(--text-tertiary);
+    transition: color 0.2s ease;
 }
 
 .promo-format-name {
@@ -6700,8 +6732,9 @@ textarea:focus-visible,
 }
 
 .promo-format-desc {
-    font-size: 0.7rem;
+    font-size: 0.6875rem;
     color: var(--text-muted, var(--text-tertiary));
+    line-height: 1.25;
 }
 
 .promo-format-card:hover {
@@ -6713,11 +6746,69 @@ textarea:focus-visible,
 .promo-format-card.active {
     border-color: var(--accent);
     background: var(--accent-soft);
-    box-shadow: 0 0 14px rgba(62, 230, 196, 0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
-.promo-format-card.active .material-symbols-outlined {
+.promo-format-card.active .material-symbols-outlined,
+.promo-format-card.active .format-ico {
     color: var(--accent);
+}
+
+.promo-branch-preview-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    font-size: 0.8rem;
+}
+
+.promo-branch-preview-info .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    line-height: 1.35;
+}
+
+.promo-branch-preview-info .meta-lbl {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.promo-branch-preview-info .meta-val {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-word;
+}
+
+.promo-branch-preview-info .meta-val.mono-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+}
+
+.promo-print-actions {
+    margin-top: 0.25rem;
+}
+
+.promo-print-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
 }
 
 .promo-preview-col {
@@ -6725,19 +6816,31 @@ textarea:focus-visible,
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px dashed var(--border);
+    background: #f1f5f9;
+    border: 1.5px dashed #cbd5e1;
     border-radius: 16px;
     padding: 1.5rem;
-    min-height: 440px;
+    min-height: 480px;
     overflow: auto;
+}
+
+[data-theme="dark"] .promo-preview-col {
+    background: #090e1a;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.promo-preview-viewport {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .poster-preview-sheet {
     background: #ffffff;
-    color: #0f172a;
-    border-radius: 10px;
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    color: #0a0f1d;
+    border-radius: 8px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
     overflow: hidden;
     transition: transform 0.2s ease;
 }
@@ -6824,7 +6927,20 @@ textarea:focus-visible,
     font-weight: 600;
     outline: none;
     cursor: pointer;
+    min-width: 220px;
+    max-width: 340px;
     transition: border-color 0.2s ease;
+}
+
+[data-theme="light"] .radar-select {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+[data-theme="light"] .radar-select option {
+    background: #ffffff;
+    color: #0f172a;
 }
 
 .radar-select:focus {
@@ -7160,207 +7276,579 @@ textarea:focus-visible,
     stroke: rgba(0, 0, 0, 0.14) !important;
 }
 
-/* Poster A4 / A5 Layouts */
-.sheet-a4, .sheet-a5 {
-    width: 100%;
-    max-width: 440px;
-    margin: 0 auto;
-    padding: 1.5rem;
+/* --------------------------------------------------------------------------
+   In-Library QR Promo Materials: Posters, Table-Tents & Bookmarks
+   Swiss Typographic Editorial System — Zero AI Slop
+   -------------------------------------------------------------------------- */
+
+.poster-sheet {
     background: #ffffff;
-    color: #0f172a;
-    border-radius: 12px;
+    color: #0a0f1d;
+    box-sizing: border-box;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    position: relative;
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
 }
 
-.poster-frame {
+.poster-sheet-inner {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.85rem;
+    justify-content: space-between;
+    box-sizing: border-box;
 }
 
-.poster-top-bar {
+/* ==========================================================================
+   FORMAT A: ПЛАКАТ А4 (Информационный стенд и входная группа — 210×297 мм)
+   ========================================================================== */
+.sheet-a4 {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 22px 20px;
+    text-align: center;
+}
+
+.poster-identity-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1.5px solid #0f172a;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
     width: 100%;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #e2e8f0;
-    font-size: 0.725rem;
-    font-weight: 700;
-    color: #64748b;
 }
 
-.poster-badge-branch {
+.poster-civic-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.poster-civic-badge .civic-dot {
+    width: 7px;
+    height: 7px;
     background: #0f172a;
-    color: #ffffff;
-    padding: 0.15rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
-.poster-branch-heading {
-    font-size: 1.25rem;
+.poster-civic-badge .civic-text {
+    font-size: 8.5px;
     font-weight: 800;
-    color: #0f172a;
-    margin: 0;
-    line-height: 1.3;
-}
-
-.poster-slogan-box {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    width: 100%;
-}
-
-.poster-slogan-text {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: #15803d;
-    margin: 0;
-}
-
-.poster-features-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    text-align: left;
-    width: 100%;
-    font-size: 0.78rem;
-    color: #334155;
-    background: #f8fafc;
-    padding: 0.65rem 0.85rem;
-    border-radius: 8px;
-}
-
-.p-feat-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.p-feat-item .material-symbols-outlined {
-    font-size: 16px;
-    color: #0284c7;
-}
-
-.poster-qr-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: #ffffff;
-    border: 2px solid #0f172a;
-    border-radius: 12px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-}
-
-.poster-qr-wrapper svg {
-    width: 140px;
-    height: 140px;
-}
-
-.poster-scan-cta {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     color: #0f172a;
 }
 
-.poster-scan-cta b {
-    letter-spacing: 0.03em;
-    font-size: 0.725rem;
-}
-
-.poster-scan-cta span {
-    font-size: 0.7rem;
-    color: #0284c7;
+.poster-institution-portal {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
     font-weight: 600;
+    color: #475569;
+    letter-spacing: 0.04em;
 }
 
-.poster-footer-contacts {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    font-size: 0.725rem;
+.poster-hero-section {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.poster-kicker {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     color: #64748b;
-    padding-top: 0.5rem;
+    margin-bottom: 6px;
+}
+
+.poster-branch-title {
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1.18;
+    color: #0a0f1d;
+    margin: 0 0 10px 0;
+    letter-spacing: -0.02em;
+}
+
+.poster-slogan-editorial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 14px;
+    background: #f8fafc;
+    border-left: 3px solid #1d4ed8;
+    border-right: 1px solid #e2e8f0;
     border-top: 1px solid #e2e8f0;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0 6px 6px 0;
+    max-width: 90%;
 }
 
-/* Bookmark 4-per-page Layout */
-.sheet-bookmark {
+.poster-slogan-editorial .quote-symbol {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1d4ed8;
+    line-height: 1;
+}
+
+.poster-slogan-editorial .slogan-content {
+    font-size: 11px;
+    font-weight: 600;
+    font-style: italic;
+    color: #1e293b;
+    line-height: 1.35;
+}
+
+/* 3 Curated Value Cards */
+.poster-cards-triptych {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: #ffffff;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
     width: 100%;
-    max-width: 580px;
-    margin: 0 auto;
-    border-radius: 12px;
 }
 
-.mini-bookmark {
-    border: 1px dashed #94a3b8;
-    border-radius: 8px;
-    padding: 0.65rem 0.4rem;
+.p-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 9px 8px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    background: #f8fafc;
+    text-align: left;
 }
 
-.mini-bookmark .bm-header {
+.p-card-header {
     display: flex;
     justify-content: space-between;
-    width: 100%;
-    font-size: 0.65rem;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.p-card-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.p-card-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+
+.p-card-title {
+    font-size: 9.5px;
     font-weight: 800;
-    color: #0284c7;
-    margin-bottom: 0.35rem;
-}
-
-.mini-bookmark .bm-title {
-    font-size: 0.7rem;
-    font-weight: 700;
     color: #0f172a;
-    margin-bottom: 0.25rem;
-    line-height: 1.2;
+    margin: 0 0 3px 0;
+    line-height: 1.25;
 }
 
-.mini-bookmark .bm-slogan {
-    font-size: 0.625rem;
+.p-card-desc {
+    font-size: 8px;
+    font-weight: 500;
     color: #475569;
-    margin-bottom: 0.5rem;
-    line-height: 1.3;
+    margin: 0;
+    line-height: 1.35;
 }
 
-.mini-bookmark .bm-qr svg {
-    width: 80px;
-    height: 80px;
+/* Architectural QR Focus Module */
+.poster-qr-architecture {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #f8fafc;
+    border: 1.5px solid #0f172a;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.mini-bookmark .bm-link {
-    font-size: 0.625rem;
+.qr-architectural-frame {
+    position: relative;
+    padding: 8px;
+    background: #ffffff;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.qr-architectural-frame .corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: var(--corner-color, #0f172a);
+    border-style: solid;
+    pointer-events: none;
+}
+
+.qr-architectural-frame .corner-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.qr-architectural-frame .corner-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.qr-architectural-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+.qr-architectural-frame .corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.qr-svg-holder svg {
+    display: block;
+    width: 110px;
+    height: 110px;
+}
+
+.qr-architecture-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 3px;
+    flex: 1;
+}
+
+.qr-prompt-tag {
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #1d4ed8;
+}
+
+.qr-prompt-heading {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0a0f1d;
+    line-height: 1.25;
+}
+
+.qr-prompt-sub {
+    font-size: 9px;
+    color: #475569;
+    margin: 0;
+    line-height: 1.35;
+}
+
+.qr-target-url {
+    display: inline-block;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
     font-weight: 700;
-    color: #0284c7;
-    margin-top: 0.35rem;
+    color: #1d4ed8;
     word-break: break-all;
 }
 
-.mini-bookmark .bm-footer {
-    font-size: 0.58rem;
-    color: #64748b;
-    margin-top: 0.25rem;
+/* Colophon / Footer */
+.poster-colophon {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 0.8fr;
+    gap: 8px;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    text-align: left;
+    width: 100%;
+}
+
+.colophon-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.col-label {
+    display: block;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+.col-value {
+    display: block;
+    font-size: 8.5px;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.25;
+}
+
+/* ==========================================================================
+   FORMAT B: ТЕЙБЛТЕНТ А5 (Стойка выдачи книг и абонемент — 210×148 мм альбомная)
+   ========================================================================== */
+.sheet-a5 {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 20px 22px 16px;
+}
+
+.a5-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.a5-identity {
+    margin-bottom: 12px;
+}
+
+.a5-core-columns {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 16px;
+    align-items: center;
+    margin: 6px 0 14px;
+}
+
+.a5-editorial-col {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 5px;
+}
+
+.a5-branch-title {
+    font-size: 15px;
+    font-weight: 800;
     line-height: 1.2;
+    color: #0a0f1d;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.a5-main-cta {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1d4ed8;
+    line-height: 1.3;
+    margin: 2px 0;
+}
+
+.a5-slogan-quote {
+    font-size: 9.5px;
+    font-style: italic;
+    color: #475569;
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
+.a5-feature-checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 8.5px;
+    color: #334155;
+}
+
+.a5-feature-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    line-height: 1.3;
+}
+
+.a5-check-icon {
+    color: #15803d;
+    font-weight: 800;
+    font-size: 9.5px;
+    flex-shrink: 0;
+}
+
+.a5-qr-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    background: #f8fafc;
+    border: 1.5px solid #0f172a;
+    border-radius: 8px;
+    padding: 10px 8px;
+}
+
+.a5-qr-frame svg {
+    width: 95px;
+    height: 95px;
+    display: block;
+}
+
+.a5-scan-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.a5-url-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 2px;
+    word-break: break-all;
+}
+
+.a5-colophon {
+    border-top: 1px solid #cbd5e1;
+    padding-top: 8px;
+}
+
+/* ==========================================================================
+   FORMAT C: КНИЖНЫЕ ЗАКЛАДКИ (4 шт. на 1 лист А4 с направляющими реза)
+   ========================================================================== */
+.sheet-bookmark {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 16px 10px;
+    background: #ffffff;
+}
+
+.bm-card {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 1.2px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 7px 8px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.bm-top-tag {
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    line-height: 1;
+}
+
+.bm-civic-seal {
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+    line-height: 1.2;
+}
+
+.bm-branch-name {
+    font-size: 9px;
+    font-weight: 800;
+    color: #0a0f1d;
+    line-height: 1.25;
+    margin-bottom: 6px;
+}
+
+.bm-quote-container {
+    font-size: 7.5px;
+    font-style: italic;
+    color: #334155;
+    line-height: 1.35;
+    padding: 4px 6px;
+    background: #f8fafc;
+    border-left-width: 2.5px;
+    border-left-style: solid;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.bm-qr-wrapper {
+    margin-bottom: 5px;
+}
+
+.bm-frame svg {
+    width: 78px;
+    height: 78px;
+    display: block;
+}
+
+.bm-scan-cue {
+    font-size: 6.5px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.bm-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    margin-bottom: auto;
+    word-break: break-all;
+}
+
+.bm-footer {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #e2e8f0;
+    width: 100%;
+    font-size: 6px;
+    color: #64748b;
+    line-height: 1.25;
+}
+
+.bm-foot-line {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bm-foot-portal {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 2px;
+}
+
+/* Cutting Guide */
+.bm-cutting-guide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 12px;
+    flex-shrink: 0;
+    color: #94a3b8;
+    user-select: none;
+    padding: 4px 0;
+}
+
+.bm-cut-icon {
+    font-size: 10px;
+    line-height: 1;
+    transform: rotate(90deg);
+}
+
+.bm-cut-line {
+    flex: 1;
+    width: 0;
+    border-left: 1.5px dashed #cbd5e1;
+    margin: 4px 0;
 }
 
 /* --------------------------------------------------------------------------

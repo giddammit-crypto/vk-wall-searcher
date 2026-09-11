@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.7.0';
+} from './api.js?v=3.7.1';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.7.0';
+} from './advice.js?v=3.7.1';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.7.0';
+} from './subscribers.js?v=3.7.1';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.7.0';
+} from './updater.js?v=3.7.1';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.7.0';
+} from './branches.js?v=3.7.1';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.7.0';
+} from './analytics.js?v=3.7.1';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.7.0';
+} from './render.js?v=3.7.1';
 
 import {
     exportToCsv,
@@ -79,26 +79,20 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.7.0';
+} from './export.js?v=3.7.1';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.0';
-import { CosmicUniverse } from './cosmic.js?v=3.7.0';
-
-import {
-    detectEvents,
-    renderEventsTab,
-    openPrintableBillboard
-} from './events.js?v=3.7.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.1';
+import { CosmicUniverse } from './cosmic.js?v=3.7.1';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.7.0';
+} from './promo.js?v=3.7.1';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.7.0';
+} from './radar.js?v=3.7.1';
 
 function initApp() {
 
@@ -221,7 +215,6 @@ function initApp() {
         tabContents: document.querySelectorAll('.tab-content'),
         countFeed: document.getElementById('count-visual') || document.getElementById('count-feed'),
         countPassport: document.getElementById('count-report') || document.getElementById('count-passport'),
-        countEvents: document.getElementById('count-events'),
         countAnalytics: document.getElementById('count-analytics'),
         countSummary: document.getElementById('count-summary'),
         promoModalBtn: document.getElementById('promo-modal-btn'),
@@ -1428,15 +1421,6 @@ function initApp() {
 
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
         updateAdviceAndSubscribers(stats);
-
-        // v3.7: вкладка «Афиша событий» (интеллектуальный детектор анонсов)
-        const detectedEvents = detectEvents(state.matchedPosts || []);
-        state.detectedEvents = detectedEvents;
-        if (elements.countEvents) elements.countEvents.textContent = detectedEvents.length;
-        const eventsContainer = document.getElementById('events-tab-content');
-        if (eventsContainer) {
-            renderEventsTab(eventsContainer, detectedEvents);
-        }
 
         // Resolve any remaining missing repost author names/avatars across all tabs and reports
         resolveMissingAuthors(state.matchedPosts, state.token).catch(() => {});
@@ -2902,15 +2886,14 @@ function initApp() {
 
         // Navigation hotkeys when NOT typing in inputs
         if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            // Quick tab switching 1, 2, 3, 4, 5, 6, 7
+            // Quick tab switching 1, 2, 3, 4, 5, 6
             const tabMap = {
                 '1': 'visual-tab',
                 '2': 'report-tab',
-                '3': 'events-tab',
-                '4': 'analytics-tab',
-                '5': 'summary-tab',
-                '6': 'advice-tab',
-                '7': 'subscribers-tab'
+                '3': 'analytics-tab',
+                '4': 'summary-tab',
+                '5': 'advice-tab',
+                '6': 'subscribers-tab'
             };
             if (tabMap[e.key]) {
                 const targetTabId = tabMap[e.key];
@@ -3474,15 +3457,6 @@ function initApp() {
             if (subsBtn) subsBtn.click();
         }, 150);
     }
-    if (_urlP.get('preview_tab') === 'events') {
-        if (elements.resultsContainer) {
-            elements.resultsContainer.classList.remove('hidden');
-        }
-        setTimeout(() => {
-            const evBtn = document.querySelector('.tab-btn[data-tab="events-tab"]');
-            if (evBtn) evBtn.click();
-        }, 150);
-    }
     if (_urlP.get('preview_promo') === '1') {
         setTimeout(() => {
             openPromoModal();
@@ -3513,8 +3487,6 @@ function initApp() {
         closeSearchModal,
         closePostModal,
         CosmicUniverse,
-        detectEvents,
-        renderEventsTab,
         openPromoModal,
         closePromoModal,
         renderRadarSection
