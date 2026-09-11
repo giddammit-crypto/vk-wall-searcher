@@ -386,4 +386,7 @@ export class SpaceWarpTransition {
 }
 
 export const SpaceWarp = new SpaceWarpTransition();
+if (typeof window !== 'undefined') {
+    window.SpaceWarp = SpaceWarp;
+}
 export default SpaceWarp;

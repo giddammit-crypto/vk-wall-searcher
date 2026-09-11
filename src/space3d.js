@@ -2028,4 +2028,7 @@ export class Space3DEngine {
 }
 
 export const Space3D = new Space3DEngine();
+if (typeof window !== 'undefined') {
+    window.Space3D = Space3D;
+}
 export default Space3D;
