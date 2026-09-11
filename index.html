@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Material Symbols Outlined (icons) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +21,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.5.3">
+    <link rel="stylesheet" href="style.css?v=3.5.4">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -42,15 +43,79 @@
         <!-- Top App Bar / Header -->
         <header class="app-header no-print">
             <div class="logo-container">
-                <div class="logo-icon-wrap">
-                    <span class="material-symbols-outlined logo-icon">analytics</span>
+                <div class="logo-icon-wrap" title="AURORA — Milky Way Galaxy" aria-label="Логотип AURORA: Млечный Путь">
+                    <svg class="galaxy-icon-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="aurora-mw-flow" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#3EE6C4" />
+                                <stop offset="50%" stop-color="#38BDF8" />
+                                <stop offset="100%" stop-color="#8A6CFF" />
+                            </linearGradient>
+                            <linearGradient id="aurora-mw-flow-rev" x1="100%" y1="100%" x2="0%" y2="0%">
+                                <stop offset="0%" stop-color="#8A6CFF" />
+                                <stop offset="50%" stop-color="#38BDF8" />
+                                <stop offset="100%" stop-color="#3EE6C4" />
+                            </linearGradient>
+                            <radialGradient id="aurora-core-glow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#FFFFFF" />
+                                <stop offset="25%" stop-color="#3EE6C4" stop-opacity="0.95" />
+                                <stop offset="60%" stop-color="#38BDF8" stop-opacity="0.45" />
+                                <stop offset="100%" stop-color="#8A6CFF" stop-opacity="0" />
+                            </radialGradient>
+                            <radialGradient id="aurora-halo-glow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#3EE6C4" stop-opacity="0.32" />
+                                <stop offset="60%" stop-color="#38BDF8" stop-opacity="0.12" />
+                                <stop offset="100%" stop-color="#8A6CFF" stop-opacity="0" />
+                            </radialGradient>
+                        </defs>
+
+                        <!-- Ambient diffuse nebula glow -->
+                        <circle cx="24" cy="24" r="23" fill="url(#aurora-halo-glow)" />
+
+                        <!-- Outer Orbital Celestial Rings (accretion disc boundary) -->
+                        <ellipse cx="24" cy="24" rx="22.5" ry="10" transform="rotate(-24 24 24)"
+                            stroke="url(#aurora-mw-flow)" stroke-width="0.85" stroke-linecap="round" stroke-dasharray="24 8 4 6 14 8" opacity="0.65" />
+                        <ellipse cx="24" cy="24" rx="16" ry="7" transform="rotate(35 24 24)"
+                            stroke="url(#aurora-mw-flow-rev)" stroke-width="0.65" stroke-linecap="round" stroke-dasharray="14 6 3 5" opacity="0.45" />
+
+                        <!-- Galactic Plane Spiral Arms (Tilted Perspective) -->
+                        <g transform="translate(24, 24) rotate(-22) scale(1, 0.78) translate(-24, -24)">
+                            <g class="galaxy-arms-group">
+                                <path class="mw-arm-primary-1" d="M 28.25 24.0 L 28.53 24.56 L 28.75 25.18 L 28.88 25.87 L 28.91 26.61 L 28.84 27.39 L 28.66 28.19 L 28.35 29.0 L 27.91 29.8 L 27.35 30.57 L 26.65 31.28 L 25.83 31.93 L 24.89 32.48 L 23.84 32.93 L 22.7 33.25 L 21.48 33.42 L 20.19 33.43 L 18.86 33.28 L 17.51 32.94 L 16.16 32.41 L 14.83 31.69 L 13.56 30.78 L 12.37 29.67 L 11.28 28.38 L 10.32 26.91 L 9.52 25.27 L 8.9 23.47 L 8.49 21.54 L 8.3 19.5 L 8.37 17.36 L 8.7 15.16 L 9.31 12.93 L 10.22 10.69 L 11.44 8.49 L 12.97 6.36 L 14.83 4.33 L 17.0 2.46 L 17.4 3.69 L 15.49 5.75 L 13.94 7.9 L 12.75 10.1 L 11.89 12.31 L 11.36 14.48 L 11.12 16.56 L 11.15 18.54 L 11.41 20.39 L 11.87 22.08 L 12.5 23.6 L 13.27 24.94 L 14.14 26.1 L 15.08 27.07 L 16.07 27.87 L 17.08 28.49 L 18.09 28.96 L 19.08 29.28 L 20.03 29.46 L 20.94 29.53 L 21.78 29.49 L 22.56 29.37 L 23.27 29.17 L 23.91 28.91 L 24.48 28.61 L 24.99 28.27 L 25.42 27.9 L 25.79 27.52 L 26.11 27.12 L 26.37 26.72 L 26.58 26.32 L 26.74 25.92 L 26.86 25.52 L 26.94 25.13 L 26.98 24.74 L 26.98 24.37 L 26.95 24.0 Z" fill="url(#aurora-mw-flow)" opacity="0.95" />
+                                <path class="mw-arm-primary-2" d="M 19.75 24.0 L 19.47 23.44 L 19.25 22.82 L 19.12 22.13 L 19.09 21.39 L 19.16 20.61 L 19.34 19.81 L 19.65 19.0 L 20.09 18.2 L 20.65 17.43 L 21.35 16.72 L 22.17 16.07 L 23.11 15.52 L 24.16 15.07 L 25.3 14.75 L 26.52 14.58 L 27.81 14.57 L 29.14 14.72 L 30.49 15.06 L 31.84 15.59 L 33.17 16.31 L 34.44 17.22 L 35.63 18.33 L 36.72 19.62 L 37.68 21.09 L 38.48 22.73 L 39.1 24.53 L 39.51 26.46 L 39.7 28.5 L 39.63 30.64 L 39.3 32.84 L 38.69 35.07 L 37.78 37.31 L 36.56 39.51 L 35.03 41.64 L 33.17 43.67 L 31.0 45.54 L 30.6 44.31 L 32.51 42.25 L 34.06 40.1 L 35.25 37.9 L 36.11 35.69 L 36.64 33.52 L 36.88 31.44 L 36.85 29.46 L 36.59 27.61 L 36.13 25.92 L 35.5 24.4 L 34.73 23.06 L 33.86 21.9 L 32.92 20.93 L 31.93 20.13 L 30.92 19.51 L 29.91 19.04 L 28.92 18.72 L 27.97 18.54 L 27.06 18.47 L 26.22 18.51 L 25.44 18.63 L 24.73 18.83 L 24.09 19.09 L 23.52 19.39 L 23.01 19.73 L 22.58 20.1 L 22.21 20.48 L 21.89 20.88 L 21.63 21.28 L 21.42 21.68 L 21.26 22.08 L 21.14 22.48 L 21.06 22.87 L 21.02 23.26 L 21.02 23.63 L 21.05 24.0 Z" fill="url(#aurora-mw-flow-rev)" opacity="0.95" />
+                                <path class="mw-arm-spur-1" d="M 24.0 28.4 L 23.56 28.61 L 23.07 28.78 L 22.55 28.91 L 21.99 28.98 L 21.4 28.99 L 20.79 28.94 L 20.17 28.82 L 19.53 28.63 L 18.9 28.36 L 18.27 28.01 L 17.66 27.58 L 17.08 27.08 L 16.54 26.5 L 16.04 25.84 L 15.59 25.11 L 15.21 24.31 L 14.9 23.44 L 14.67 22.52 L 14.53 21.55 L 14.49 20.54 L 14.54 19.49 L 14.71 18.42 L 14.99 17.33 L 15.39 16.25 L 15.91 15.17 L 16.55 14.11 L 17.31 13.08 L 18.2 12.1 L 19.21 11.18 L 20.34 10.33 L 21.58 9.56 L 22.94 8.89 L 24.41 8.33 L 25.98 7.9 L 27.64 7.6 L 29.38 7.45 L 29.13 8.21 L 27.43 8.52 L 25.85 8.96 L 24.38 9.54 L 23.04 10.23 L 21.83 11.01 L 20.75 11.87 L 19.81 12.79 L 19.0 13.74 L 18.32 14.73 L 17.76 15.73 L 17.33 16.72 L 17.01 17.71 L 16.8 18.67 L 16.69 19.61 L 16.66 20.5 L 16.72 21.35 L 16.85 22.15 L 17.04 22.9 L 17.29 23.59 L 17.58 24.22 L 17.92 24.8 L 18.28 25.32 L 18.67 25.78 L 19.08 26.19 L 19.5 26.55 L 19.93 26.85 L 20.37 27.1 L 20.8 27.31 L 21.24 27.48 L 21.66 27.6 L 22.08 27.68 L 22.49 27.73 L 22.89 27.74 L 23.28 27.73 L 23.65 27.68 L 24.0 27.6 Z" fill="url(#aurora-mw-flow)" opacity="0.65" />
+                                <path class="mw-arm-spur-2" d="M 24.0 19.6 L 24.44 19.39 L 24.93 19.22 L 25.45 19.09 L 26.01 19.02 L 26.6 19.01 L 27.21 19.06 L 27.83 19.18 L 28.47 19.37 L 29.1 19.64 L 29.73 19.99 L 30.34 20.42 L 30.92 20.92 L 31.46 21.5 L 31.96 22.16 L 32.41 22.89 L 32.79 23.69 L 33.1 24.56 L 33.33 25.48 L 33.47 26.45 L 33.51 27.46 L 33.46 28.51 L 33.29 29.58 L 33.01 30.67 L 32.61 31.75 L 32.09 32.83 L 31.45 33.89 L 30.69 34.92 L 29.8 35.9 L 28.79 36.82 L 27.66 37.67 L 26.42 38.44 L 25.06 39.11 L 23.59 39.67 L 22.02 40.1 L 20.36 40.4 L 18.62 40.55 L 18.87 39.79 L 20.57 39.48 L 22.15 39.04 L 23.62 38.46 L 24.96 37.77 L 26.17 36.99 L 27.25 36.13 L 28.19 35.21 L 29.0 34.26 L 29.68 33.27 L 30.24 32.27 L 30.67 31.28 L 30.99 30.29 L 31.2 29.33 L 31.31 28.39 L 31.34 27.5 L 31.28 26.65 L 31.15 25.85 L 30.96 25.1 L 30.71 24.41 L 30.42 23.78 L 30.08 23.2 L 29.72 22.68 L 29.33 22.22 L 28.92 21.81 L 28.5 21.45 L 28.07 21.15 L 27.63 20.9 L 27.2 20.69 L 26.76 20.52 L 26.34 20.4 L 25.92 20.32 L 25.51 20.27 L 25.11 20.26 L 24.72 20.27 L 24.35 20.32 L 24.0 20.4 Z" fill="url(#aurora-mw-flow-rev)" opacity="0.65" />
+                            </g>
+                        </g>
+
+                        <!-- Central Supermassive Stellar Nucleus (Sagittarius A* / Galactic Bulge) -->
+                        <ellipse cx="24" cy="24" rx="8" ry="6.2" transform="rotate(-22 24 24)" fill="url(#aurora-core-glow)" />
+                        <ellipse cx="24" cy="24" rx="4.2" ry="3.2" transform="rotate(-22 24 24)" fill="url(#aurora-mw-flow)" />
+                        <circle class="galaxy-core-center" cx="24" cy="24" r="1.9" fill="#FFFFFF" />
+
+                        <!-- Diamond Celestial Stars (Sparkles) -->
+                        <path class="galaxy-star-white" d="M 39 8 C 39 9.5 39.8 10.2 41.5 10.2 C 39.8 10.2 39 11 39 12.5 C 39 11 38.2 10.2 36.5 10.2 C 38.2 10.2 39 9.5 39 8 Z" fill="#FFFFFF" />
+                        <path class="galaxy-star-cyan" d="M 9 38 C 9 36.5 8.2 35.8 6.5 35.8 C 8.2 35.8 9 35 9 33.5 C 9 35 9.8 35.8 11.5 35.8 C 9.8 35.8 9 36.5 9 38 Z" fill="#3EE6C4" />
+
+                        <!-- Orbiting Stardust Nodes -->
+                        <circle cx="42.5" cy="22" r="1.2" fill="#38BDF8" />
+                        <circle cx="5.5" cy="26" r="1.2" fill="#8A6CFF" />
+                        <circle cx="32" cy="7" r="1" fill="#3EE6C4" />
+                        <circle cx="16" cy="41" r="1" fill="#FFFFFF" />
+                        <circle cx="36" cy="37" r="0.9" fill="#8A6CFF" />
+                    </svg>
                 </div>
                 <div class="logo-text">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <h1>Статистика групп ВК</h1>
-                        <span class="aurora-hero-badge">AURORA &bull; ALPHA</span>
+                    <div class="brand-title-row">
+                        <h1 class="brand-title">
+                            <span class="brand-aurora">AURORA</span>
+                        </h1>
+                        <span class="aurora-pill-badge" title="Система мониторинга и анализа сообществ ВКонтакте">
+                            <span class="badge-pulse-dot" aria-hidden="true"></span>
+                            <span class="badge-text">АНАЛИЗ ВК СООБЩЕСТВ</span>
+                        </span>
                     </div>
-                    <p class="logo-subtitle">Поиск и мониторинг записей &bull; Разработка: Амброзиев О.А.</p>
+                    <p class="logo-subtitle">Поиск и мониторинг записей 16 библиотек &bull; Разработка: Амброзиев О.А.</p>
                 </div>
             </div>
             <div class="header-actions">
@@ -489,7 +554,7 @@
                     </button>
                     <button class="tab-btn" data-tab="summary-tab">
                         <span class="material-symbols-outlined icon">article</span>
-                        <span>Пояснительная записка и хэштеги</span>
+                        <span>Пояснительная записка</span>
                     </button>
                     <button class="tab-btn" data-tab="advice-tab">
                         <span class="material-symbols-outlined icon">lightbulb</span>
@@ -1280,7 +1345,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.5.3"></script>
+    <script type="module" src="src/app.js?v=3.5.4"></script>
 
     <script>
     /* =============================================================
@@ -1601,7 +1666,9 @@
             }
         }
 
-        const savedTheme = localStorage.getItem('aurora_theme') || 'dark';
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTheme = urlParams.get('theme') || urlParams.get('preview_theme');
+        const savedTheme = urlTheme || localStorage.getItem('aurora_theme') || 'dark';
         applyTheme(savedTheme);
 
         if (themeBtn) {

@@ -85,35 +85,46 @@ $$L = \sqrt{(X_{\text{screen}} - X_{\text{prev}})^2 + (Y_{\text{screen}} - Y_{\t
 +-------------------------------------------------------------------+
 | LAYER 0: Deep Space Void Base (#050714)                          |
 +-------------------------------------------------------------------+
-| LAYER 1: Volumetric Procedural Galactic Nebulae (4 Clusters)      |
-|  - Aurora Teal Lagoon (cyan)                                      |
-|  - Orion Deep Violet Core (purple)                                |
-|  - Cygnus Electric Magenta Veil (pink)                            |
-|  - Abyssal Azure Drift (blue)                                     |
+| LAYER 1: Volumetric Background Nebulae (4 Organic Drift Clouds)   |
+|  - Aurora Teal Lagoon (cyan), Orion Deep Violet Core (purple)     |
+|  - Cygnus Electric Magenta Veil (pink), Abyssal Azure Drift (blue)|
 |  [Blending: ctx.globalCompositeOperation = 'screen']              |
 +-------------------------------------------------------------------+
-| LAYER 2: Distant Twinkling Micro-Stars (Stardust)                 |
-|  - Subtle sinusoidal sparkle, low parallax drift                  |
+| LAYER 2: Procedural Milky Way Galactic Spiral Dust & Core        |
+|  - Two major logarithmic arms (Perseus & Scutum-Centaurus)        |
+|  - Secondary Orion-Cygnus spur bridge lanes & HII star clusters   |
+|  - Incandescent Sagittarius A* starlight core (Gold & White)      |
+|  - Oblique 3D inclination foreshortening (cos 64°) & diagonal tilt|
 +-------------------------------------------------------------------+
-| LAYER 3: Medium Floating Stars with Soft Corona Halos             |
+| LAYER 3: Distant Twinkling Micro-Stars (Stardust)                 |
+|  - Sinusoidal sparkle, chromatic tinting (icy blue, lavender)     |
++-------------------------------------------------------------------+
+| LAYER 4: Medium Floating Stars with Soft Corona Halos             |
 |  - Corona halos: Cyan, White, Lavender, Amber Gold               |
 +-------------------------------------------------------------------+
-| LAYER 4: Fast Foreground Kinetic Stars with Hyperspace Streaks    |
-|  - High velocity, dynamic warp tails scaling with speed           |
+| LAYER 5: Fast Foreground Stars with Optical DoF & Warp Streaks    |
+|  - Realistic Depth-of-Field defocus bokeh disk when z < 260       |
+|  - Dynamic radial hyperspace light streaks scaling with velocity  |
 +-------------------------------------------------------------------+
-| LAYER 5: Center Radial Vignette Overlay                           |
-|  - Dims periphery, preserves search modal contrast                |
+| LAYER 6: Incandescent Shooting Stars & Bolides (Болиды)           |
+|  - Periodic swift meteors & blazing bolides with mid-flight flare |
+|  - Residual ionization starlight sparks drifting in wake          |
++-------------------------------------------------------------------+
+| LAYER 7: Cinematic Center Radial Vignette Overlay                 |
+|  - Dynamic parallax-tracking vignette, protects search modal text|
 +-------------------------------------------------------------------+
 ```
 
 ### Layer Specifications Table
 
-| Layer | Desktop Count | Tablet Count | Mobile Count | Z-Depth Range | Speed Multiplier | Special Effects |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Distant Micro-Stars** | 130 | 80 | 50 | $700 \dots 1400$ | $0.28 \times v$ | Twinkle $\sin(\omega t + \phi)$, $0.5 - 1.2\text{px}$ |
-| **2. Medium Corona Stars** | 180 | 110 | 65 | $250 \dots 1150$ | $0.65 \dots 0.90 \times v$ | Multi-color corona halo gradients |
-| **3. Foreground Streakers**| 130 | 70 | 45 | $100 \dots 1300$ | $1.10 \dots 1.50 \times v$ | Hyperspace streaks up to $200\text{px}$ |
-| **Total Particle Budget**  | **440** | **260** | **160** | &mdash; | &mdash; | **Smooth 60 FPS guaranteed** |
+| Component / Layer | Desktop Count | Tablet Count | Mobile Count | Depth / Velocity | Special Optical Effects |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Milky Way Dust Nodes** | 130 | 80 | 45 | $R \approx 0.65 \min(W, H)$ | Cached GPU blit, 3D inclination tilt, pulsating core |
+| **1. Distant Micro-Stars** | 130 | 80 | 50 | $z \in [700, 1400]$ | Twinkle $\sin(\omega t + \phi)$, $0.5 - 1.2\text{px}$ |
+| **2. Medium Corona Stars** | 180 | 110 | 65 | $z \in [250, 1150]$ | Multi-color corona halo radial gradients |
+| **3. Foreground Streakers**| 130 | 70 | 45 | $z \in [100, 1300]$ | Optical DoF bokeh blur ($z < 260$), streaks to $200\text{px}$ |
+| **Shooting Stars / Bolides**| 3 max | 2 max | 1 max | $1200 - 2400\text{px/s}$ | Incandescent heads, linear radiant tails, spark ionization |
+| **Total Particle Budget**  | **570** | **340** | **205** | &mdash; | **Smooth 60 FPS guaranteed via sprite caching** |
 
 ---
 

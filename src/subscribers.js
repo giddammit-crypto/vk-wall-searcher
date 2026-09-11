@@ -8,9 +8,9 @@
  * Разработка: Амброзиев О.А. (модуль 3.4)
  */
 
-import { callVkApi, resolveApiUrl } from './api.js?v=3.5.3';
-import { CANONICAL_BRANCHES, escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=3.5.3';
-import { makeTableSortable } from './tablesort.js?v=3.5.3';
+import { callVkApi, resolveApiUrl } from './api.js?v=3.5.4';
+import { CANONICAL_BRANCHES, escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=3.5.4';
+import { makeTableSortable } from './tablesort.js?v=3.5.4';
 
 const DATA_URL = resolveApiUrl('api/data.php');
 
@@ -34,7 +34,7 @@ export async function fetchHistory() {
 
     // Резервный источник: статический снимок реальных данных из data/subscribers.json
     try {
-        const staticRes = await fetch(resolveApiUrl('data/subscribers.json?v=3.5.3'));
+        const staticRes = await fetch(resolveApiUrl('data/subscribers.json?v=3.5.4'));
         if (staticRes && staticRes.ok) {
             const data = await staticRes.json();
             if (Array.isArray(data.snapshots) && data.snapshots.length > 0) {

@@ -10,12 +10,12 @@ import {
     resolveTarget,
     authorCache,
     resolveApiUrl
-} from './api.js?v=3.5.3';
+} from './api.js?v=3.5.4';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.5.3';
+} from './advice.js?v=3.5.4';
 
 import {
     fetchHistory,
@@ -25,7 +25,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.5.3';
+} from './subscribers.js?v=3.5.4';
 
 import {
     fetchUpdaterStatus,
@@ -34,7 +34,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.5.3';
+} from './updater.js?v=3.5.4';
 
 import {
     CANONICAL_BRANCHES,
@@ -45,7 +45,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.5.3';
+} from './branches.js?v=3.5.4';
 
 import {
     calculateKPIs,
@@ -54,7 +54,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.5.3';
+} from './analytics.js?v=3.5.4';
 
 import {
     createPostCard,
@@ -66,7 +66,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.5.3';
+} from './render.js?v=3.5.4';
 
 import {
     exportToCsv,
@@ -76,10 +76,10 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.5.3';
+} from './export.js?v=3.5.4';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.5.3';
-import { CosmicUniverse } from './cosmic.js?v=3.5.3';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.5.4';
+import { CosmicUniverse } from './cosmic.js?v=3.5.4';
 
 function initApp() {
 
@@ -2534,7 +2534,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.5.3'
+                appVersion: '3.5.4'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -3390,6 +3390,27 @@ function initApp() {
     initTableSorting();
     checkUrlForForceUpdate();
     CosmicUniverse.init({ canvasId: 'cosmic-universe-canvas', containerId: 'cosmic-search-backdrop' });
+
+    // Diagnostic / Preview helpers via URL params
+    const _urlP = new URLSearchParams(window.location.search);
+    if (_urlP.get('preview_tab') === 'subscribers') {
+        if (elements.resultsContainer) {
+            elements.resultsContainer.classList.remove('hidden');
+        }
+        setTimeout(() => {
+            const subsBtn = document.querySelector('.tab-btn[data-tab="subscribers-tab"]');
+            if (subsBtn) subsBtn.click();
+        }, 150);
+    }
+    if (_urlP.get('preview_cosmic') === '1') {
+        if (elements.searchModalOverlay) {
+            elements.searchModalOverlay.classList.remove('hidden');
+            elements.searchModalOverlay.offsetWidth;
+            elements.searchModalOverlay.classList.add('active');
+        }
+        CosmicUniverse.start();
+        CosmicUniverse.setWarp(true);
+    }
 
     // Expose for testing/debugging
     window.__VK_APP__ = {

@@ -1,10 +1,10 @@
 /**
  * ============================================================================
  * src/cosmic.js — Cosmic Universe Background Engine (AURORA Design System)
- * High-performance 60 FPS 3D Starfield & Procedural Volumetric Nebulae
+ * High-performance 60 FPS 3D Starfield & Procedural Milky Way Galaxy Simulation
  * 
  * Developed for VK Wall Searcher
- * Author: Cosmic Universe Visual Designer (AURORA Design System)
+ * Author: Lead Cosmic Motion Designer (AURORA Design System)
  * ============================================================================
  */
 
@@ -32,28 +32,40 @@ export const COSMIC_PALETTE = {
  */
 export const CONFIG = {
     desktop: {
-        starsLayer1: 130,   // Distant micro-stars (subtle twinkle stardust)
-        starsLayer2: 180,   // Medium floating stars with soft corona
-        starsLayer3: 130,   // Fast foreground streak stars
-        nebulaResolution: 1.0,
+        starsLayer1: 130,      // Distant micro-stars (subtle twinkle stardust)
+        starsLayer2: 180,      // Medium floating stars with soft corona
+        starsLayer3: 130,      // Fast foreground streak stars
+        galaxyDustNodes: 130,  // Milky Way spiral dust clumps & HII star clusters
+        maxMeteors: 3,         // Max concurrent shooting stars
+        maxSparks: 24,         // Max bolide ionization sparks
         maxStreakLength: 200,
-        streakMultiplier: 3.4
+        streakMultiplier: 3.4,
+        maxParallaxX: 38,      // Pointer micro-parallax horizontal travel (px)
+        maxParallaxY: 24       // Pointer micro-parallax vertical travel (px)
     },
     tablet: {
         starsLayer1: 80,
         starsLayer2: 110,
         starsLayer3: 70,
-        nebulaResolution: 0.85,
+        galaxyDustNodes: 80,
+        maxMeteors: 2,
+        maxSparks: 14,
         maxStreakLength: 140,
-        streakMultiplier: 2.8
+        streakMultiplier: 2.8,
+        maxParallaxX: 22,
+        maxParallaxY: 14
     },
     mobile: {
         starsLayer1: 50,
         starsLayer2: 65,
         starsLayer3: 45,
-        nebulaResolution: 0.7,
+        galaxyDustNodes: 45,
+        maxMeteors: 1,
+        maxSparks: 8,
         maxStreakLength: 90,
-        streakMultiplier: 2.2
+        streakMultiplier: 2.2,
+        maxParallaxX: 12,
+        maxParallaxY: 8
     },
     physics: {
         cruiseSpeed: 1.4,
@@ -64,9 +76,39 @@ export const CONFIG = {
         decelLerp: 0.065,
         focalLengthFactor: 0.65,
         maxZ: 1400,
-        minZ: 1.0
+        minZ: 1.0,
+        galaxyRotationSpeed: 0.00018,
+        galaxyTiltAngle: -0.48, // ~ -27.5 deg diagonal galactic sweep
+        galaxySquash: 0.44      // 3D inclination foreshortening (cos of 64 deg)
     }
 };
+
+/**
+ * Offscreen Canvas Sprite Generator for Zero-Allocation 60 FPS Glow Blitting
+ */
+function createGlowSprite(colorStops, size = 96) {
+    if (typeof document === 'undefined' || !document.createElement) {
+        return null;
+    }
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        const half = size / 2;
+        const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+        for (let i = 0; i < colorStops.length; i++) {
+            grad.addColorStop(colorStops[i][0], colorStops[i][1]);
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+        return canvas;
+    } catch {
+        return null;
+    }
+}
 
 export class CosmicUniverseEngine {
     constructor() {
@@ -78,13 +120,19 @@ export class CosmicUniverseEngine {
         this.isWarping = false;
         this.reducedMotion = false;
 
-        // Dimensions & Perspective
+        // Dimensions & Vantage Perspective
         this.width = 0;
         this.height = 0;
         this.cx = 0;
         this.cy = 0;
         this.dpr = 1;
         this.focalLength = 600;
+
+        // Interactive Micro-Parallax
+        this.targetParallaxX = 0;
+        this.targetParallaxY = 0;
+        this.currentParallaxX = 0;
+        this.currentParallaxY = 0;
 
         // Kinematics & Timing
         this.currentSpeed = CONFIG.physics.cruiseSpeed;
@@ -93,21 +141,42 @@ export class CosmicUniverseEngine {
         this.time = 0;
         this.lastTime = 0;
 
-        // Starfield Layers
+        // Procedural Milky Way Spiral Galaxy
+        this.galaxyAngle = 0;
+        this.galaxyDustNodes = [];
+
+        // Volumetric Background Nebulae
+        this.nebulae = [];
+
+        // Multi-tier 3D Starfield Layers
         this.starsL1 = [];
         this.starsL2 = [];
         this.starsL3 = [];
 
-        // Volumetric Nebulae
-        this.nebulae = [];
+        // Shooting Stars & Incandescent Bolides
+        this.meteors = [];
+        this.sparks = [];
+        this.nextMeteorTime = 2.5;
 
-        // Bound Handlers
+        // Pre-rendered Glow Sprites (GPU Hardware-Blit Cache)
+        this.sprites = {
+            cyan: null,
+            violet: null,
+            magenta: null,
+            blue: null,
+            gold: null,
+            white: null
+        };
+
+        // Bound Handlers for Clean Memory Management
         this._handleResize = this._handleResize.bind(this);
+        this._handlePointerMove = this._handlePointerMove.bind(this);
+        this._handlePointerLeave = this._handlePointerLeave.bind(this);
         this._loop = this._loop.bind(this);
     }
 
     /**
-     * Initialize the engine with DOM elements
+     * Initialize the engine with DOM elements and setup lifecycle listeners
      * @param {Object} options
      * @param {string} [options.canvasId='cosmic-universe-canvas']
      * @param {string} [options.containerId='cosmic-search-backdrop']
@@ -143,15 +212,79 @@ export class CosmicUniverseEngine {
             this.reducedMotion = mq.matches;
             mq.addEventListener('change', (e) => {
                 this.reducedMotion = e.matches;
+                if (this.reducedMotion) {
+                    this.meteors = [];
+                    this.sparks = [];
+                    this.targetParallaxX = 0;
+                    this.targetParallaxY = 0;
+                }
             });
         }
 
+        // Initialize Glow Sprites
+        this._initSprites();
+
+        // Register Global Event Listeners
         window.addEventListener('resize', this._handleResize, { passive: true });
+        window.addEventListener('mousemove', this._handlePointerMove, { passive: true });
+        window.addEventListener('touchmove', this._handlePointerMove, { passive: true });
+        window.addEventListener('mouseleave', this._handlePointerLeave, { passive: true });
+        window.addEventListener('touchend', this._handlePointerLeave, { passive: true });
+
+        // Resize and build procedural celestial structures
         this._handleResize();
         this._initNebulae();
+        this._initSpiralGalaxy();
         this._initStarfield();
 
         return true;
+    }
+
+    /**
+     * Build Pre-rendered Radial Glow Sprites for High-Speed GPU Blits
+     */
+    _initSprites() {
+        this.sprites.cyan = createGlowSprite([
+            [0.0, 'rgba(62, 230, 196, 0.65)'],
+            [0.35, 'rgba(62, 230, 196, 0.28)'],
+            [0.70, 'rgba(62, 230, 196, 0.08)'],
+            [1.0, 'rgba(62, 230, 196, 0.0)']
+        ]);
+
+        this.sprites.violet = createGlowSprite([
+            [0.0, 'rgba(138, 108, 255, 0.65)'],
+            [0.35, 'rgba(138, 108, 255, 0.28)'],
+            [0.70, 'rgba(138, 108, 255, 0.08)'],
+            [1.0, 'rgba(138, 108, 255, 0.0)']
+        ]);
+
+        this.sprites.magenta = createGlowSprite([
+            [0.0, 'rgba(244, 114, 182, 0.60)'],
+            [0.35, 'rgba(244, 114, 182, 0.24)'],
+            [0.70, 'rgba(244, 114, 182, 0.07)'],
+            [1.0, 'rgba(244, 114, 182, 0.0)']
+        ]);
+
+        this.sprites.blue = createGlowSprite([
+            [0.0, 'rgba(56, 189, 248, 0.60)'],
+            [0.35, 'rgba(56, 189, 248, 0.24)'],
+            [0.70, 'rgba(56, 189, 248, 0.07)'],
+            [1.0, 'rgba(56, 189, 248, 0.0)']
+        ]);
+
+        this.sprites.gold = createGlowSprite([
+            [0.0, 'rgba(251, 191, 36, 0.75)'],
+            [0.30, 'rgba(251, 191, 36, 0.32)'],
+            [0.65, 'rgba(251, 191, 36, 0.09)'],
+            [1.0, 'rgba(251, 191, 36, 0.0)']
+        ]);
+
+        this.sprites.white = createGlowSprite([
+            [0.0, 'rgba(255, 255, 255, 0.95)'],
+            [0.25, 'rgba(224, 242, 254, 0.65)'],
+            [0.60, 'rgba(224, 242, 254, 0.18)'],
+            [1.0, 'rgba(224, 242, 254, 0.0)']
+        ]);
     }
 
     /**
@@ -162,6 +295,42 @@ export class CosmicUniverseEngine {
         if (w < 768) return CONFIG.mobile;
         if (w <= 1024) return CONFIG.tablet;
         return CONFIG.desktop;
+    }
+
+    /**
+     * Handle pointer interaction for smooth micro-parallax vantage shift
+     */
+    _handlePointerMove(e) {
+        if (this.reducedMotion || !this.isActive) return;
+
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        if (typeof clientX !== 'number' || typeof clientY !== 'number') return;
+
+        const profile = this._getDeviceProfile();
+        const halfW = (this.width || window.innerWidth) / 2;
+        const halfH = (this.height || window.innerHeight) / 2;
+
+        const nx = Math.max(-1, Math.min(1, (clientX - halfW) / halfW));
+        const ny = Math.max(-1, Math.min(1, (clientY - halfH) / halfH));
+
+        this.targetParallaxX = nx * (profile.maxParallaxX || 38);
+        this.targetParallaxY = ny * (profile.maxParallaxY || 24);
+    }
+
+    /**
+     * Handle pointer leaving screen — glides camera vantage back to center
+     */
+    _handlePointerLeave() {
+        this.targetParallaxX = 0;
+        this.targetParallaxY = 0;
     }
 
     /**
@@ -192,10 +361,13 @@ export class CosmicUniverseEngine {
         if (this.starsL1.length > 0) {
             this._initStarfield();
         }
+        if (this.galaxyDustNodes.length > 0) {
+            this._initSpiralGalaxy();
+        }
     }
 
     /**
-     * Initialize 4 Volumetric Procedural Galactic Nebulae
+     * Initialize 4 Volumetric Procedural Galactic Background Nebulae
      */
     _initNebulae() {
         this.nebulae = [
@@ -251,11 +423,111 @@ export class CosmicUniverseEngine {
     }
 
     /**
+     * Procedurally generate Milky Way Spiral Arms and Galactic Core
+     * Uses logarithmic spiral geometry with natural Gaussian dispersion
+     */
+    _initSpiralGalaxy() {
+        const profile = this._getDeviceProfile();
+        const count = profile.galaxyDustNodes || 130;
+        this.galaxyDustNodes = [];
+
+        // 1. Central Core Bulge Nodes (Sagittarius A* starlight concentration)
+        const coreCount = Math.floor(count * 0.22);
+        for (let i = 0; i < coreCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const rNorm = Math.pow(Math.random(), 1.6) * 0.20 + 0.015;
+            const u = Math.cos(angle) * rNorm;
+            const v = Math.sin(angle) * rNorm;
+            const isCluster = Math.random() < 0.35;
+            const spriteType = Math.random() < 0.45 ? 'gold' : (Math.random() < 0.75 ? 'white' : 'cyan');
+
+            this.galaxyDustNodes.push({
+                u,
+                v,
+                radiusRatio: Math.random() * 0.045 + 0.035,
+                spriteType,
+                alpha: Math.random() * 0.35 + 0.35,
+                pulseSpeed: Math.random() * 0.0012 + 0.0006,
+                pulsePhase: Math.random() * Math.PI * 2,
+                isStarCluster: isCluster
+            });
+        }
+
+        // 2. Two Primary Symmetrical Spiral Arms (Perseus & Scutum-Centaurus)
+        const armCount = 2;
+        const armNodes = Math.floor((count - coreCount) * 0.72 / armCount);
+        for (let arm = 0; arm < armCount; arm++) {
+            const baseAngle = arm * Math.PI; // 180 degrees symmetrical separation
+            for (let i = 0; i < armNodes; i++) {
+                const t = (i + 1) / armNodes;
+                const rNorm = 0.14 + 0.86 * Math.pow(t, 0.82);
+                const theta = baseAngle + 3.10 * Math.pow(t, 0.76);
+
+                // Natural flaring Gaussian dispersion along outer spiral reach
+                const radialScatter = (Math.random() - 0.5) * 0.16 * (0.25 + 0.75 * t);
+                const angularScatter = (Math.random() - 0.5) * 0.32 * (0.25 + 0.75 * t);
+
+                const rFinal = Math.max(0.06, rNorm + radialScatter);
+                const thFinal = theta + angularScatter;
+
+                const u = rFinal * Math.cos(thFinal);
+                const v = rFinal * Math.sin(thFinal);
+
+                // Chromatic stellar evolution across radial arm zones
+                let spriteType;
+                if (t < 0.28) {
+                    spriteType = Math.random() < 0.60 ? 'cyan' : 'gold';
+                } else if (t < 0.68) {
+                    spriteType = Math.random() < 0.55 ? 'cyan' : 'blue';
+                } else {
+                    spriteType = Math.random() < 0.52 ? 'violet' : 'magenta';
+                }
+
+                const isCluster = Math.random() < 0.24;
+                this.galaxyDustNodes.push({
+                    u,
+                    v,
+                    radiusRatio: Math.random() * 0.05 + 0.035 + (0.03 * t),
+                    spriteType,
+                    alpha: Math.random() * 0.28 + 0.22,
+                    pulseSpeed: Math.random() * 0.0015 + 0.0007,
+                    pulsePhase: Math.random() * Math.PI * 2,
+                    isStarCluster: isCluster
+                });
+            }
+        }
+
+        // 3. Secondary Minor Spur Lanes (Orion-Cygnus spur bridge aesthetic)
+        const spurNodes = count - this.galaxyDustNodes.length;
+        for (let i = 0; i < spurNodes; i++) {
+            const spurArm = i % 2;
+            const baseAngle = (spurArm * Math.PI) + (Math.PI * 0.5); // 90 deg offset
+            const t = Math.random() * 0.5 + 0.25;
+            const rNorm = 0.22 + 0.58 * t;
+            const theta = baseAngle + 2.2 * Math.pow(t, 0.85) + (Math.random() - 0.5) * 0.35;
+            const u = rNorm * Math.cos(theta);
+            const v = rNorm * Math.sin(theta);
+            const spriteType = Math.random() < 0.4 ? 'blue' : (Math.random() < 0.7 ? 'violet' : 'cyan');
+
+            this.galaxyDustNodes.push({
+                u,
+                v,
+                radiusRatio: Math.random() * 0.04 + 0.03,
+                spriteType,
+                alpha: Math.random() * 0.20 + 0.12,
+                pulseSpeed: Math.random() * 0.001 + 0.0005,
+                pulsePhase: Math.random() * Math.PI * 2,
+                isStarCluster: Math.random() < 0.15
+            });
+        }
+    }
+
+    /**
      * Initialize Multi-tier 3D Starfield
      */
     _initStarfield() {
         const profile = this._getDeviceProfile();
-        const { maxZ, minZ } = CONFIG.physics;
+        const { maxZ } = CONFIG.physics;
         const spreadX = this.width * 1.3;
         const spreadY = this.height * 1.3;
 
@@ -294,7 +566,7 @@ export class CosmicUniverseEngine {
             });
         }
 
-        // Layer 3: Fast Foreground Kinetic Stars (Hyperdrive Streakers)
+        // Layer 3: Fast Foreground Kinetic Stars (Hyperdrive Streakers & DoF Particles)
         this.starsL3 = [];
         for (let i = 0; i < profile.starsLayer3; i++) {
             this.starsL3.push({
@@ -317,7 +589,12 @@ export class CosmicUniverseEngine {
         this.currentSpeed = CONFIG.physics.cruiseSpeed;
         this.targetSpeed = CONFIG.physics.cruiseSpeed;
         this.pulseSpeed = 0;
+        this.targetParallaxX = 0;
+        this.targetParallaxY = 0;
+        this.currentParallaxX = 0;
+        this.currentParallaxY = 0;
         this.lastTime = performance.now();
+        this.nextMeteorTime = this.time + 1.8 + Math.random() * 2.0;
 
         if (this.container) {
             this.container.classList.add('active');
@@ -351,11 +628,14 @@ export class CosmicUniverseEngine {
 
     /**
      * Trigger a Temporary Warp Pulse (e.g. When a batch of 1,000 posts is fetched)
+     * Also spawns an incandescent bolide crossing the screen as visual feedback
      * @param {number} [intensity=6.5] 
      */
     pulse(intensity = CONFIG.physics.pulseBoost) {
         if (this.reducedMotion) return;
         this.pulseSpeed = Math.min(this.pulseSpeed + intensity, 12);
+        // Spawn an incandescent shooting star (bolide) crossing the sky
+        this._spawnMeteor(true);
     }
 
     /**
@@ -365,6 +645,8 @@ export class CosmicUniverseEngine {
         if (!this.isActive) return;
         this.isWarping = false;
         this.targetSpeed = 0;
+        this.targetParallaxX = 0;
+        this.targetParallaxY = 0;
 
         if (this.container) {
             this.container.classList.remove('active');
@@ -382,19 +664,162 @@ export class CosmicUniverseEngine {
                 if (this.container) {
                     this.container.style.visibility = 'hidden';
                 }
+                this.meteors = [];
+                this.sparks = [];
             }
         }, 650);
     }
 
     /**
-     * Clean up resources and remove listeners
+     * Clean up resources, cancel loop, and remove listeners
      */
     destroy() {
         this.stop();
         window.removeEventListener('resize', this._handleResize);
+        window.removeEventListener('mousemove', this._handlePointerMove);
+        window.removeEventListener('touchmove', this._handlePointerMove);
+        window.removeEventListener('mouseleave', this._handlePointerLeave);
+        window.removeEventListener('touchend', this._handlePointerLeave);
+
         if (this.animId) {
             cancelAnimationFrame(this.animId);
             this.animId = null;
+        }
+        this.meteors = [];
+        this.sparks = [];
+        this.galaxyDustNodes = [];
+    }
+
+    /**
+     * Spawn an Incandescent Shooting Star / Meteor / Bolide
+     * @param {boolean} [forceBolide=false]
+     */
+    _spawnMeteor(forceBolide = false) {
+        if (this.reducedMotion) return;
+        const profile = this._getDeviceProfile();
+        const limit = (profile.maxMeteors || 3) + (forceBolide ? 1 : 0);
+        if (this.meteors.length >= limit) return;
+
+        const w = this.width;
+        const h = this.height;
+        if (w <= 0 || h <= 0) return;
+
+        const isBolide = forceBolide || (Math.random() < 0.28);
+        const fromLeft = Math.random() > 0.45;
+
+        // Start position near screen edge
+        let startX, startY;
+        if (fromLeft) {
+            startX = Math.random() * (w * 0.55) - 40;
+            startY = -30 - Math.random() * 60;
+        } else {
+            startX = w * 0.45 + Math.random() * (w * 0.6) + 20;
+            startY = -30 - Math.random() * 60;
+        }
+
+        // Angle: 28 to 52 deg down-right, or 128 to 152 deg down-left
+        const angleDeg = fromLeft 
+            ? (28 + Math.random() * 24) 
+            : (128 + Math.random() * 24);
+        const angleRad = angleDeg * (Math.PI / 180);
+
+        const speed = isBolide 
+            ? (1200 + Math.random() * 500) 
+            : (1600 + Math.random() * 700);
+
+        const duration = isBolide 
+            ? (0.85 + Math.random() * 0.35) 
+            : (0.55 + Math.random() * 0.30);
+
+        const trailLength = isBolide 
+            ? (240 + Math.random() * 80) 
+            : (150 + Math.random() * 60);
+
+        const headRadius = isBolide 
+            ? (3.8 + Math.random() * 1.4) 
+            : (2.0 + Math.random() * 0.8);
+
+        this.meteors.push({
+            x: startX,
+            y: startY,
+            startX,
+            startY,
+            vx: Math.cos(angleRad) * speed,
+            vy: Math.sin(angleRad) * speed,
+            angleRad,
+            speed,
+            duration,
+            age: 0,
+            trailLength,
+            headRadius,
+            isBolide,
+            flarePeak: 0.45 + Math.random() * 0.15
+        });
+    }
+
+    /**
+     * Update active shooting stars and residual ionization sparks
+     */
+    _updateMeteors(dt) {
+        if (this.reducedMotion) {
+            this.meteors = [];
+            this.sparks = [];
+            return;
+        }
+
+        const profile = this._getDeviceProfile();
+
+        // Check timer for automatic spawning
+        if (this.time >= this.nextMeteorTime && this.meteors.length < (profile.maxMeteors || 3)) {
+            this._spawnMeteor(false);
+            this.nextMeteorTime = this.time + (Math.random() * 2.8 + 2.2);
+        }
+
+        // Update active meteors
+        for (let i = this.meteors.length - 1; i >= 0; i--) {
+            const m = this.meteors[i];
+            m.age += dt;
+
+            if (m.age >= m.duration) {
+                this.meteors.splice(i, 1);
+                continue;
+            }
+
+            m.x += m.vx * dt;
+            m.y += m.vy * dt;
+
+            // Bolide mid-flight flare and spark emission
+            if (m.isBolide) {
+                const progress = m.age / m.duration;
+                const distToPeak = Math.abs(progress - m.flarePeak);
+                if (distToPeak < 0.18 && Math.random() < 0.45 && this.sparks.length < (profile.maxSparks || 24)) {
+                    // Emit residual ionization sparks
+                    const spreadAngle = m.angleRad + Math.PI + (Math.random() - 0.5) * 0.8;
+                    const sparkSpeed = Math.random() * 120 + 30;
+                    this.sparks.push({
+                        x: m.x + (Math.random() - 0.5) * 6,
+                        y: m.y + (Math.random() - 0.5) * 6,
+                        vx: Math.cos(spreadAngle) * sparkSpeed + m.vx * 0.08,
+                        vy: Math.sin(spreadAngle) * sparkSpeed + m.vy * 0.08,
+                        alpha: 0.95,
+                        decayRate: Math.random() * 1.6 + 1.2,
+                        size: Math.random() * 1.5 + 1.0,
+                        color: Math.random() < 0.65 ? COSMIC_PALETTE.starCyan : COSMIC_PALETTE.starGold
+                    });
+                }
+            }
+        }
+
+        // Update residual sparks
+        for (let i = this.sparks.length - 1; i >= 0; i--) {
+            const sp = this.sparks[i];
+            sp.x += sp.vx * dt;
+            sp.y += sp.vy * dt;
+            sp.alpha -= sp.decayRate * dt;
+
+            if (sp.alpha <= 0.02) {
+                this.sparks.splice(i, 1);
+            }
         }
     }
 
@@ -407,6 +832,12 @@ export class CosmicUniverseEngine {
         const dt = Math.min((now - this.lastTime) / 1000, 0.1);
         this.lastTime = now;
         this.time += dt;
+
+        // Interactive micro-parallax lerping
+        this.currentParallaxX += (this.targetParallaxX - this.currentParallaxX) * 0.055;
+        this.currentParallaxY += (this.targetParallaxY - this.currentParallaxY) * 0.055;
+        this.cx = (this.width / 2) + this.currentParallaxX;
+        this.cy = (this.height / 2) + this.currentParallaxY;
 
         // Speed physics with smooth exponential damping (lerp)
         const lerpRate = this.targetSpeed > this.currentSpeed 
@@ -423,6 +854,13 @@ export class CosmicUniverseEngine {
         const effectiveTarget = this.targetSpeed + this.pulseSpeed;
         this.currentSpeed += (effectiveTarget - this.currentSpeed) * lerpRate;
 
+        // Procedural Milky Way galactic revolution
+        const rotSpeed = CONFIG.physics.galaxyRotationSpeed + (this.currentSpeed / 20) * 0.0003;
+        this.galaxyAngle += rotSpeed * 60 * dt;
+
+        // Update shooting stars & ionization sparks
+        this._updateMeteors(dt);
+
         // Render Cosmic Universe Frame
         this._render(dt);
 
@@ -430,7 +868,7 @@ export class CosmicUniverseEngine {
     }
 
     /**
-     * Render Pipeline
+     * Multi-stage Render Pipeline
      */
     _render(dt) {
         const ctx = this.ctx;
@@ -444,16 +882,22 @@ export class CosmicUniverseEngine {
         ctx.fillStyle = COSMIC_PALETTE.void;
         ctx.fillRect(0, 0, w, h);
 
-        // Step 2: Render Volumetric Glowing Nebulae
+        // Step 2: Render Volumetric Background Nebulae
         this._renderNebulae(ctx, w, h);
 
-        // Step 3: Render 3D Starfield Layers with Warp Streaks
+        // Step 3: Render Procedural Milky Way Galactic Spiral Dust Arms & Core
+        this._renderSpiralGalaxy(ctx, w, h);
+
+        // Step 4: Render 3D Starfield Layers with Warp Streaks & Optical Depth-of-Field
         ctx.globalCompositeOperation = 'screen';
         this._renderLayer1(ctx, dt);
         this._renderLayer2(ctx, dt);
         this._renderLayer3(ctx, dt);
 
-        // Step 4: Cinematic Subtle Center Vignette (Ensures search text crispness)
+        // Step 5: Render Incandescent Shooting Stars & Bolide Ionization Sparks
+        this._renderMeteors(ctx);
+
+        // Step 6: Cinematic Center Vignette (Ensures search text crispness and contrast)
         this._renderCenterVignette(ctx, w, h);
     }
 
@@ -473,13 +917,13 @@ export class CosmicUniverseEngine {
             const ox = Math.cos(orbitAngle) * neb.orbitRadius;
             const oy = Math.sin(orbitAngle) * neb.orbitRadius;
 
-            // Center position
-            const cx = this.cx + neb.baseX * w + ox;
-            const cy = this.cy + neb.baseY * h + oy;
+            // Center position with subtle parallax offset
+            const cx = (w / 2) + neb.baseX * w + ox + this.currentParallaxX * 0.25;
+            const cy = (h / 2) + neb.baseY * h + oy + this.currentParallaxY * 0.25;
 
             // Breathing pulsation
             const pulse = Math.sin(this.time * neb.pulseSpeed * 1000) * 0.09;
-            const radius = minDim * neb.radiusRatio * (1 + pulse) * profile.nebulaResolution;
+            const radius = minDim * neb.radiusRatio * (1 + pulse) * (profile.nebulaResolution || 1.0);
 
             // Radial gradient nebula cloud
             const grad = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius);
@@ -492,6 +936,89 @@ export class CosmicUniverseEngine {
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
             ctx.fill();
         }
+    }
+
+    /**
+     * Render Procedural Milky Way Spiral Dust Arms and Supermassive Core
+     * Additive blit using pre-rendered glow sprites for 60 FPS performance
+     */
+    _renderSpiralGalaxy(ctx, w, h) {
+        if (!ctx || this.galaxyDustNodes.length === 0) return;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+
+        // Vanishing center with subtle micro-parallax shift
+        const gx = (w / 2) + this.currentParallaxX * 0.38;
+        const gy = (h / 2) + this.currentParallaxY * 0.38;
+        const galaxyRadius = Math.min(w, h) * 0.65;
+
+        ctx.translate(gx, gy);
+        ctx.rotate(CONFIG.physics.galaxyTiltAngle); // Majestic diagonal tilt (~ -27.5 deg)
+        ctx.scale(1.0, CONFIG.physics.galaxySquash); // 3D oblique inclination foreshortening
+        ctx.rotate(this.galaxyAngle); // Slow galactic revolution
+
+        // 1. Render all spiral arm dust nodes
+        const nodeCount = this.galaxyDustNodes.length;
+        for (let i = 0; i < nodeCount; i++) {
+            const node = this.galaxyDustNodes[i];
+            const px = node.u * galaxyRadius;
+            const py = node.v * galaxyRadius;
+
+            // Dynamic breathing pulsation
+            const pulse = 1 + Math.sin(this.time * node.pulseSpeed * 1000 + node.pulsePhase) * 0.14;
+            const size = node.radiusRatio * galaxyRadius * pulse;
+
+            const sprite = this.sprites[node.spriteType] || this.sprites.cyan;
+            if (sprite) {
+                ctx.globalAlpha = node.alpha;
+                ctx.drawImage(sprite, px - size, py - size, size * 2, size * 2);
+            }
+
+            // Incandescent stellar cluster node
+            if (node.isStarCluster) {
+                ctx.globalAlpha = Math.min(1.0, node.alpha * 1.8);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(px, py, Math.max(0.8, size * 0.08), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 2. Render Supermassive Galactic Core (Sagittarius A* starlight)
+        const corePulse = 1 + Math.sin(this.time * 2.2) * 0.07 + (this.pulseSpeed / 12) * 0.30;
+        
+        // Outer galactic core corona (Deep Blue / Violet)
+        const rCorona = galaxyRadius * 0.32 * corePulse;
+        if (this.sprites.blue) {
+            ctx.globalAlpha = 0.45;
+            ctx.drawImage(this.sprites.blue, -rCorona, -rCorona, rCorona * 2, rCorona * 2);
+        }
+        if (this.sprites.violet) {
+            ctx.globalAlpha = 0.40;
+            ctx.drawImage(this.sprites.violet, -rCorona * 0.85, -rCorona * 0.85, rCorona * 1.7, rCorona * 1.7);
+        }
+
+        // Mid galactic bulge (Aurora Cyan)
+        const rMid = galaxyRadius * 0.18 * corePulse;
+        if (this.sprites.cyan) {
+            ctx.globalAlpha = 0.60;
+            ctx.drawImage(this.sprites.cyan, -rMid, -rMid, rMid * 2, rMid * 2);
+        }
+
+        // Inner incandescent starlight core (Amber Gold & White starlight)
+        const rInner = galaxyRadius * 0.09 * corePulse;
+        if (this.sprites.gold) {
+            ctx.globalAlpha = 0.80;
+            ctx.drawImage(this.sprites.gold, -rInner, -rInner, rInner * 2, rInner * 2);
+        }
+        if (this.sprites.white) {
+            ctx.globalAlpha = 0.95;
+            const rWhite = rInner * 0.55;
+            ctx.drawImage(this.sprites.white, -rWhite, -rWhite, rWhite * 2, rWhite * 2);
+        }
+
+        ctx.restore();
     }
 
     /**
@@ -588,7 +1115,7 @@ export class CosmicUniverseEngine {
     }
 
     /**
-     * Layer 3: Fast Kinetic Foreground Stars with Hyperspace Streaks
+     * Layer 3: Fast Foreground Kinetic Stars with Hyperspace Streaks & Optical Depth-of-Field
      */
     _renderLayer3(ctx, dt) {
         const { maxZ, minZ } = CONFIG.physics;
@@ -621,6 +1148,22 @@ export class CosmicUniverseEngine {
 
             const depthRatio = 1 - (s.z / maxZ);
             const r = s.size * (0.8 + depthRatio * 1.2);
+
+            // Realistic Optical Depth-of-Field Defocusing for near particles (z < 260)
+            const isNearDoF = s.z < 260;
+            if (isNearDoF && !isStreaking) {
+                const dofFactor = (260 - s.z) / 260;
+                const bokehRadius = r * (1.0 + dofFactor * 2.8);
+                const bokehAlpha = Math.max(0.08, (1.0 - dofFactor * 0.60) * 0.75);
+
+                const sprite = s.streakHue === 'cyan' ? this.sprites.cyan : this.sprites.magenta;
+                if (sprite) {
+                    ctx.globalAlpha = bokehAlpha;
+                    ctx.drawImage(sprite, px - bokehRadius, py - bokehRadius, bokehRadius * 2, bokehRadius * 2);
+                    ctx.globalAlpha = 1.0;
+                }
+                continue;
+            }
 
             if (isStreaking) {
                 // Calculate projected streak tail
@@ -678,16 +1221,102 @@ export class CosmicUniverseEngine {
     }
 
     /**
-     * Step 4: Cinematic Radial Vignette
+     * Render Incandescent Shooting Stars / Meteors & Ionization Sparks
+     */
+    _renderMeteors(ctx) {
+        if (this.meteors.length === 0 && this.sparks.length === 0) return;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+
+        // 1. Render Residual Ionization Sparks
+        for (let i = 0; i < this.sparks.length; i++) {
+            const sp = this.sparks[i];
+            ctx.globalAlpha = Math.max(0, Math.min(1, sp.alpha));
+            ctx.fillStyle = sp.color;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 2. Render Active Meteors & Bolides
+        for (let i = 0; i < this.meteors.length; i++) {
+            const m = this.meteors[i];
+            const progress = m.age / m.duration;
+
+            // Tail length grows upon entry and shrinks at tail-end
+            const entryFactor = Math.min(1.0, m.age / 0.12);
+            const exitFactor = Math.min(1.0, (m.duration - m.age) / 0.15);
+            const effTailLen = m.trailLength * entryFactor * exitFactor;
+
+            // Tail coordinates
+            const dirX = Math.cos(m.angleRad);
+            const dirY = Math.sin(m.angleRad);
+            const tailX = m.x - dirX * effTailLen;
+            const tailY = m.y - dirY * effTailLen;
+
+            // Bolide flare intensity multiplier
+            let flareAlpha = 1.0;
+            let flareRadius = m.headRadius;
+            if (m.isBolide) {
+                const flareCurve = Math.sin(progress * Math.PI);
+                flareAlpha = 0.8 + flareCurve * 0.4;
+                flareRadius = m.headRadius * (1 + flareCurve * 0.7);
+            }
+
+            // Tapered radiant linear gradient trail
+            const trailGrad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+            if (m.isBolide) {
+                trailGrad.addColorStop(0.0, 'rgba(62, 230, 196, 0.0)');
+                trailGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.45 * flareAlpha})`);
+                trailGrad.addColorStop(0.70, `rgba(138, 108, 255, ${0.75 * flareAlpha})`);
+                trailGrad.addColorStop(0.90, `rgba(62, 230, 196, ${0.95 * flareAlpha})`);
+                trailGrad.addColorStop(1.0, '#FFFFFF');
+            } else {
+                trailGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.0)');
+                trailGrad.addColorStop(0.40, 'rgba(56, 189, 248, 0.40)');
+                trailGrad.addColorStop(0.80, 'rgba(62, 230, 196, 0.85)');
+                trailGrad.addColorStop(1.0, '#FFFFFF');
+            }
+
+            ctx.strokeStyle = trailGrad;
+            ctx.lineWidth = Math.min(flareRadius * 1.3, 5.5);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(tailX, tailY);
+            ctx.lineTo(m.x, m.y);
+            ctx.stroke();
+
+            // Incandescent Starlight Bloom Halo around Head
+            const haloRadius = flareRadius * 3.8;
+            const haloSprite = m.isBolide ? this.sprites.gold : this.sprites.cyan;
+            if (haloSprite) {
+                ctx.globalAlpha = 0.75 * flareAlpha;
+                ctx.drawImage(haloSprite, m.x - haloRadius, m.y - haloRadius, haloRadius * 2, haloRadius * 2);
+            }
+
+            // Ultra-brilliant White Core Head
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, flareRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    /**
+     * Cinematic Center Radial Vignette
      * Dims edges and brightens galactic depth behind modal
      */
     _renderCenterVignette(ctx, w, h) {
         ctx.globalCompositeOperation = 'multiply';
-        const radius = Math.max(w, h) * 0.75;
-        const vig = ctx.createRadialGradient(this.cx, this.cy, radius * 0.2, this.cx, this.cy, radius);
+        const radius = Math.max(w, h) * 0.78;
+        const vig = ctx.createRadialGradient(this.cx, this.cy, radius * 0.18, this.cx, this.cy, radius);
         vig.addColorStop(0.0, 'rgba(5, 7, 20, 0.0)');
-        vig.addColorStop(0.65, 'rgba(5, 7, 20, 0.3)');
-        vig.addColorStop(1.0, 'rgba(3, 5, 15, 0.85)');
+        vig.addColorStop(0.62, 'rgba(5, 7, 20, 0.28)');
+        vig.addColorStop(1.0, 'rgba(3, 5, 15, 0.88)');
 
         ctx.fillStyle = vig;
         ctx.fillRect(0, 0, w, h);
