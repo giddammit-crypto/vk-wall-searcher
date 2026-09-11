@@ -7114,3 +7114,251 @@ textarea:focus-visible,
         grid-template-columns: 1fr;
     }
 }
+
+/* --------------------------------------------------------------------------
+   Refinements for Radar SVG Labels & Poster Preview Layouts
+   -------------------------------------------------------------------------- */
+.radar-axis-label {
+    fill: var(--text-primary);
+    font-family: var(--font-body, 'Montserrat', sans-serif);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.radar-axis-score {
+    fill: var(--accent);
+    font-family: var(--font-mono, monospace);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+[data-theme="light"] .radar-axis-label {
+    fill: #0f172a;
+}
+
+[data-theme="light"] .radar-axis-score {
+    fill: #0284c7;
+}
+
+.radar-grid-poly {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.14) !important;
+    stroke-dasharray: 4 4;
+    stroke-width: 1.2;
+}
+
+.radar-axis-line {
+    stroke: rgba(255, 255, 255, 0.16) !important;
+    stroke-width: 1.2;
+}
+
+[data-theme="light"] .radar-grid-poly {
+    stroke: rgba(0, 0, 0, 0.14) !important;
+}
+
+[data-theme="light"] .radar-axis-line {
+    stroke: rgba(0, 0, 0, 0.14) !important;
+}
+
+/* Poster A4 / A5 Layouts */
+.sheet-a4, .sheet-a5 {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 12px;
+}
+
+.poster-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.85rem;
+}
+
+.poster-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.725rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.poster-badge-branch {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+}
+
+.poster-branch-heading {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.poster-slogan-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    width: 100%;
+}
+
+.poster-slogan-text {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #15803d;
+    margin: 0;
+}
+
+.poster-features-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    text-align: left;
+    width: 100%;
+    font-size: 0.78rem;
+    color: #334155;
+    background: #f8fafc;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+}
+
+.p-feat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.p-feat-item .material-symbols-outlined {
+    font-size: 16px;
+    color: #0284c7;
+}
+
+.poster-qr-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #ffffff;
+    border: 2px solid #0f172a;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.poster-qr-wrapper svg {
+    width: 140px;
+    height: 140px;
+}
+
+.poster-scan-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #0f172a;
+}
+
+.poster-scan-cta b {
+    letter-spacing: 0.03em;
+    font-size: 0.725rem;
+}
+
+.poster-scan-cta span {
+    font-size: 0.7rem;
+    color: #0284c7;
+    font-weight: 600;
+}
+
+.poster-footer-contacts {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    font-size: 0.725rem;
+    color: #64748b;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Bookmark 4-per-page Layout */
+.sheet-bookmark {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #ffffff;
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    border-radius: 12px;
+}
+
+.mini-bookmark {
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    padding: 0.65rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #f8fafc;
+}
+
+.mini-bookmark .bm-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #0284c7;
+    margin-bottom: 0.35rem;
+}
+
+.mini-bookmark .bm-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
+}
+
+.mini-bookmark .bm-slogan {
+    font-size: 0.625rem;
+    color: #475569;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.mini-bookmark .bm-qr svg {
+    width: 80px;
+    height: 80px;
+}
+
+.mini-bookmark .bm-link {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #0284c7;
+    margin-top: 0.35rem;
+    word-break: break-all;
+}
+
+.mini-bookmark .bm-footer {
+    font-size: 0.58rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+    line-height: 1.2;
+}

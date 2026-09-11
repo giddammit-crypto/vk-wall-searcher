@@ -254,16 +254,16 @@ export function renderRadarSection(container, groupsStats, posts = []) {
  * Генерирует векторный SVG паутины (Radar Chart)
  */
 function buildRadarSvg(primary, compare) {
-    const size = 440;
+    const size = 520;
     const center = size / 2;
-    const radius = 155;
+    const radius = 145;
     const numAxes = RADAR_AXES.length;
     const angleStep = (Math.PI * 2) / numAxes;
 
     // Вспомогательная функция координат точки
     function getPoint(axisIdx, valRatio, r = radius) {
         const angle = axisIdx * angleStep - Math.PI / 2;
-        const dist = r * Math.max(0.1, Math.min(1.0, valRatio));
+        const dist = r * Math.max(0.08, Math.min(1.0, valRatio));
         return {
             x: center + dist * Math.cos(angle),
             y: center + dist * Math.sin(angle)
@@ -289,12 +289,12 @@ function buildRadarSvg(primary, compare) {
         axesSvg += `<line x1="${center}" y1="${center}" x2="${pEdge.x.toFixed(1)}" y2="${pEdge.y.toFixed(1)}" class="radar-axis-line" />`;
 
         // Вынос подписи за пределы круга
-        const pLabel = getPoint(i, 1.26);
+        const pLabel = getPoint(i, 1.25);
         const val1 = primary ? (primary[axis.id] || 0) : 0;
         
         let textAnchor = 'middle';
-        if (pLabel.x < center - 15) textAnchor = 'end';
-        else if (pLabel.x > center + 15) textAnchor = 'start';
+        if (pLabel.x < center - 20) textAnchor = 'end';
+        else if (pLabel.x > center + 20) textAnchor = 'start';
 
         labelsSvg += `
             <text x="${pLabel.x.toFixed(1)}" y="${(pLabel.y - 4).toFixed(1)}" text-anchor="${textAnchor}" class="radar-axis-label">${escapeHtml(axis.label)}</text>
