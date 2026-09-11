@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.3';
-import { createQrSvg } from './qrcode.js?v=3.7.3';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.4';
+import { createQrSvg } from './qrcode.js?v=3.7.4';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',
@@ -266,7 +266,7 @@ export function initPromoModal() {
                                 <input type="radio" name="promo-format" value="bookmark">
                                 <span class="material-symbols-outlined format-ico">bookmark</span>
                                 <span class="promo-format-name">Закладки (4 шт/А4)</span>
-                                <span class="promo-format-desc">Линии отреза для книг</span>
+                                <span class="promo-format-desc">Альбомный лист А4 (линии реза)</span>
                             </label>
                         </div>
                     </div>
@@ -367,7 +367,7 @@ export function initPromoModal() {
 
         if (currentFormat === 'bookmark') {
             const slogans = getBookmarkSlogans(currentSlogan);
-            const qrSvgSmall = createQrSvg(currentBranch.vkLink, { size: 85, foreground: qrFg, background: qrBg, margin: 1 });
+            const qrSvgSmall = createQrSvg(currentBranch.vkLink, { size: 95, foreground: qrFg, background: qrBg, margin: 1 });
             const bThemes = currentTemplate.bookmarkThemes;
 
             viewport.innerHTML = `
@@ -406,6 +406,10 @@ export function initPromoModal() {
                             </div>
                             <div class="bm-scan-cue">НАВЕДИТЕ КАМЕРУ</div>
                             <div class="bm-url" style="color: ${theme.accent};">${escapeHtml(displayUrl)}</div>
+                            <div class="bm-chips">
+                                <span class="bm-chip">Продление онлайн</span>
+                                <span class="bm-chip">Афиша событий</span>
+                            </div>
                             <div class="bm-footer">
                                 <div class="bm-foot-line">${escapeHtml(currentBranch.address)}</div>
                                 <div class="bm-foot-line">тел. ${escapeHtml(currentBranch.phone)}</div>
@@ -775,140 +779,192 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         .print-theme-midnight .bm-item { background: #1e293b; border-color: #334155; }
         .print-theme-midnight .bm-quote { background: #0f172a; color: #cbd5e1; }
         .print-theme-midnight .bm-foot { border-top-color: #334155; color: #94a3b8; }
+
+        .print-theme-bauhaus .bm-item { border-radius: 0; }
+        .print-theme-gallery .bm-item { border-radius: 0; border: 0.45mm solid #09090b; }
+        .print-theme-scandi .bm-item { border-radius: 4mm; }
+        .print-theme-kids .bm-item { border-radius: 4.5mm; }
+        .print-theme-botanical .bm-item { border-radius: 3.5mm; }
+        .print-theme-craft .bm-item { border-radius: 2mm; background: #faf5ec; }
     `;
 
     if (format === 'bookmark') {
         const slogans = getBookmarkSlogans(slogan);
-        const qrSvg = createQrSvg(branch.vkLink, { size: 105, foreground: qrFg, background: qrBg, margin: 1 });
+        const qrSvg = createQrSvg(branch.vkLink, { size: 120, foreground: qrFg, background: qrBg, margin: 1 });
         const bThemes = template.bookmarkThemes;
 
         pageCss = `
-            @page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; }
+            @page { size: A4 landscape; margin: 9mm 12mm 9mm 12mm; }
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
             body { background: ${template.swatches[0]}; color: ${template.dark ? '#f8fafc' : '#0a0f1d'}; }
             .print-sheet-bookmarks {
                 display: flex;
                 align-items: stretch;
                 justify-content: space-between;
                 width: 100%;
-                height: 100%;
+                height: 190mm;
+                max-height: 190mm;
                 box-sizing: border-box;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .bm-item {
-                width: 44mm;
-                height: 195mm;
+                flex: 1;
+                min-width: 0;
+                max-width: 65mm;
+                height: 190mm;
+                max-height: 190mm;
                 border: 1px solid #cbd5e1;
                 border-radius: 3mm;
-                padding: 5mm 3.5mm 4mm;
+                padding: 6mm 5mm 5.5mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
                 box-sizing: border-box;
                 background: ${template.dark ? '#131d33' : '#ffffff'};
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .bm-tag {
-                font-size: 7pt;
+                font-size: 7.5pt;
                 font-weight: 800;
                 letter-spacing: 0.14em;
                 text-transform: uppercase;
-                padding: 1.5mm 3.5mm;
+                padding: 1.8mm 4.5mm;
                 border-radius: 3mm;
-                margin-bottom: 3mm;
+                margin-bottom: 2.8mm;
                 color: #ffffff;
+                line-height: 1;
+                flex-shrink: 0;
             }
             .bm-civic {
-                font-size: 6pt;
+                font-size: 6.5pt;
                 font-weight: 700;
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-bottom: 3mm;
+                margin-bottom: 2.8mm;
                 line-height: 1.2;
+                flex-shrink: 0;
             }
             .bm-title {
-                font-size: 8.5pt;
+                font-size: 10pt;
                 font-weight: 800;
                 color: ${template.dark ? '#ffffff' : '#0a0f1d'};
-                line-height: 1.22;
-                margin-bottom: 3mm;
+                line-height: 1.25;
+                margin-bottom: 3.5mm;
+                flex-shrink: 0;
             }
             .bm-quote {
-                font-size: 7pt;
+                font-size: 7.5pt;
                 font-style: italic;
                 color: ${template.dark ? '#e2e8f0' : '#334155'};
-                line-height: 1.35;
-                padding: 2mm 2.5mm;
+                line-height: 1.38;
+                padding: 2.5mm 3.2mm;
                 background: ${template.dark ? '#0b1120' : '#f8fafc'};
-                border-left-width: 1mm;
+                border-left-width: 1.2mm;
                 border-left-style: solid;
                 border-radius: 0 1.5mm 1.5mm 0;
                 margin-bottom: 4mm;
                 width: 100%;
                 box-sizing: border-box;
+                flex-shrink: 0;
             }
             .bm-qr-box {
-                margin: 2mm 0;
+                margin: 2mm 0 2mm;
+                flex-shrink: 0;
             }
             .bm-frame {
                 position: relative;
-                padding: 2mm;
+                padding: 2.5mm;
                 background: #ffffff;
                 display: inline-flex;
             }
             .bm-frame .corner {
                 position: absolute;
-                width: 3mm;
-                height: 3mm;
+                width: 3.5mm;
+                height: 3.5mm;
                 border-style: solid;
             }
-            .bm-frame .corner-tl { top: 0; left: 0; border-width: 0.5mm 0 0 0.5mm; }
-            .bm-frame .corner-tr { top: 0; right: 0; border-width: 0.5mm 0.5mm 0 0; }
-            .bm-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 0.5mm 0.5mm; }
-            .bm-frame .corner-br { bottom: 0; right: 0; border-width: 0 0.5mm 0.5mm 0; }
+            .bm-frame .corner-tl { top: 0; left: 0; border-width: 0.6mm 0 0 0.6mm; }
+            .bm-frame .corner-tr { top: 0; right: 0; border-width: 0.6mm 0.6mm 0 0; }
+            .bm-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 0.6mm 0.6mm; }
+            .bm-frame .corner-br { bottom: 0; right: 0; border-width: 0 0.6mm 0.6mm 0; }
             .bm-frame svg {
-                width: 28mm;
-                height: 28mm;
+                width: 38mm;
+                height: 38mm;
                 display: block;
             }
             .bm-scan-cue {
-                font-size: 6pt;
+                font-size: 6.5pt;
                 font-weight: 800;
                 letter-spacing: 0.12em;
                 text-transform: uppercase;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-top: 1mm;
-                margin-bottom: 1mm;
+                margin-top: 1.5mm;
+                margin-bottom: 1.2mm;
+                flex-shrink: 0;
             }
             .bm-link {
                 font-family: 'JetBrains Mono', monospace;
-                font-size: 7pt;
+                font-size: 8pt;
                 font-weight: 700;
-                margin-bottom: auto;
+                margin-bottom: 2mm;
                 word-break: break-all;
+                flex-shrink: 0;
+            }
+            .bm-chips {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 1.5mm;
+                margin-top: 1mm;
+                margin-bottom: auto;
+                width: 100%;
+                flex-shrink: 0;
+            }
+            .bm-chip {
+                font-size: 6pt;
+                font-weight: 700;
+                padding: 1mm 2.4mm;
+                border-radius: 2mm;
+                background: ${template.dark ? '#1e293b' : '#f1f5f9'};
+                color: ${template.dark ? '#cbd5e1' : '#475569'};
+                border: 0.25mm solid ${template.dark ? '#334155' : '#e2e8f0'};
+                letter-spacing: 0.02em;
+                line-height: 1.2;
             }
             .bm-foot {
-                font-size: 5.5pt;
+                font-size: 7pt;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-top: 3mm;
-                padding-top: 2.5mm;
-                border-top: 0.3mm solid #cbd5e1;
+                margin-top: auto;
+                padding-top: 3mm;
+                border-top: 0.35mm solid #cbd5e1;
                 width: 100%;
-                line-height: 1.25;
+                line-height: 1.35;
                 white-space: normal;
                 word-break: break-word;
                 text-align: center;
+                flex-shrink: 0;
             }
             .bm-foot-item {
                 white-space: normal;
                 word-break: break-word;
-                margin-bottom: 0.8mm;
+                margin-bottom: 1mm;
             }
             .bm-foot-portal {
                 font-family: 'JetBrains Mono', monospace;
-                font-weight: 600;
-                font-size: 5.5pt;
-                color: ${template.dark ? '#38bdf8' : '#334155'};
-                margin-top: 1mm;
+                font-weight: 700;
+                font-size: 7.2pt;
+                color: ${template.dark ? '#38bdf8' : '#1d4ed8'};
+                margin-top: 1.2mm;
                 white-space: normal;
                 word-break: break-all;
                 text-align: center;
@@ -918,21 +974,22 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex-direction: column;
                 align-items: center;
                 justify-content: space-between;
-                width: 5mm;
+                width: 6mm;
+                flex-shrink: 0;
                 color: #94a3b8;
                 user-select: none;
-                padding: 2mm 0;
+                padding: 3mm 0;
             }
             .cut-ico {
-                font-size: 9pt;
+                font-size: 10pt;
                 line-height: 1;
                 transform: rotate(90deg);
             }
             .cut-line {
                 flex: 1;
                 width: 0;
-                border-left: 0.3mm dashed #cbd5e1;
-                margin: 2mm 0;
+                border-left: 0.35mm dashed #cbd5e1;
+                margin: 3mm 0;
             }
             ${themePrintRules}
         `;
@@ -971,6 +1028,10 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                         </div>
                         <div class="bm-scan-cue">НАВЕДИТЕ КАМЕРУ</div>
                         <div class="bm-link" style="color: ${theme.accent};">${escapeHtml(displayUrl)}</div>
+                        <div class="bm-chips">
+                            <span class="bm-chip">Продление книг онлайн</span>
+                            <span class="bm-chip">Афиша событий</span>
+                        </div>
                         <div class="bm-foot">
                             <div class="bm-foot-item">${escapeHtml(branch.address)}</div>
                             <div class="bm-foot-item">тел. ${escapeHtml(branch.phone)}</div>

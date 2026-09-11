@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.7.3",
+    "version": "3.7.4",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T01:22:00+03:00",
-    "release_name": "AURORA 3.7.3 — Расширенное адаптивное модальное окно генератора промо-материалов и просторные карточки шаблонов"
+    "commit_date": "2026-09-12T01:30:00+03:00",
+    "release_name": "AURORA 3.7.4 — Альбомная печать закладок A4 landscape без пустого места снизу и пропорциональная верстка"
 }
