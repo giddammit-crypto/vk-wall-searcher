@@ -6754,6 +6754,98 @@ textarea:focus-visible,
     color: var(--accent);
 }
 
+/* --------------------------------------------------------------------------
+   Promo Template Picker (10 High-End Design Systems)
+   -------------------------------------------------------------------------- */
+.promo-templates-selector {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 2px 2px 4px;
+}
+
+.promo-templates-selector::-webkit-scrollbar {
+    width: 4px;
+}
+
+.promo-templates-selector::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.promo-tpl-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    position: relative;
+}
+
+.promo-tpl-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+}
+
+.promo-tpl-card.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1.5px var(--accent);
+}
+
+.promo-tpl-card .tpl-swatches {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+    flex-shrink: 0;
+}
+
+.promo-tpl-card .tpl-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: block;
+}
+
+.promo-tpl-card .tpl-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 1.5px;
+    text-align: left;
+}
+
+.promo-tpl-card .tpl-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.promo-tpl-card .tpl-badge {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
+.promo-tpl-card.active .tpl-name {
+    color: var(--accent);
+}
+
 .promo-branch-preview-info {
     display: flex;
     flex-direction: column;
@@ -7803,19 +7895,22 @@ textarea:focus-visible,
 }
 
 .bm-footer {
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 6px;
+    padding-top: 5px;
     border-top: 1px solid #e2e8f0;
     width: 100%;
-    font-size: 6px;
+    font-size: 6.5px;
     color: #64748b;
     line-height: 1.25;
+    text-align: center;
 }
 
 .bm-foot-line {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    text-align: center;
+    line-height: 1.25;
+    margin-bottom: 2px;
 }
 
 .bm-foot-portal {
@@ -7823,6 +7918,9 @@ textarea:focus-visible,
     font-weight: 600;
     color: #334155;
     margin-top: 2px;
+    white-space: normal;
+    word-break: break-all;
+    text-align: center;
 }
 
 /* Cutting Guide */
@@ -7850,6 +7948,522 @@ textarea:focus-visible,
     border-left: 1.5px dashed #cbd5e1;
     margin: 4px 0;
 }
+
+/* ==========================================================================
+   10 HIGH-END EDITORIAL DESIGN TEMPLATES FOR PROMO MATERIALS
+   Zero Neural Slop • Print & Museum Caliber • High-Contrast Systems
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. SWISS (Швейцарский модернизм — International Typographic Style)
+   -------------------------------------------------------------------------- */
+.sheet-theme-swiss {
+    background: #ffffff;
+    color: #0a0f1d;
+}
+.sheet-theme-swiss .poster-identity-bar { border-bottom: 1.5px solid #0f172a; }
+.sheet-theme-swiss .poster-civic-badge .civic-dot { background: #0f172a; border-radius: 50%; }
+.sheet-theme-swiss .poster-civic-badge .civic-text { color: #0f172a; }
+.sheet-theme-swiss .poster-kicker { color: #64748b; letter-spacing: 0.18em; }
+.sheet-theme-swiss .poster-branch-title,
+.sheet-theme-swiss .a5-branch-title,
+.sheet-theme-swiss .bm-branch-name { color: #0a0f1d; }
+.sheet-theme-swiss .poster-slogan-editorial {
+    background: #f8fafc;
+    border-left: 3.5px solid #1d4ed8;
+    border-right: 1px solid #e2e8f0;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0 6px 6px 0;
+}
+.sheet-theme-swiss .poster-slogan-editorial .quote-symbol { color: #1d4ed8; }
+.sheet-theme-swiss .poster-slogan-editorial .slogan-content { color: #1e293b; }
+.sheet-theme-swiss .p-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+}
+.sheet-theme-swiss .p-card-num { color: #1d4ed8; }
+.sheet-theme-swiss .p-card-title { color: #0f172a; }
+.sheet-theme-swiss .p-card-desc { color: #475569; }
+.sheet-theme-swiss .poster-qr-architecture,
+.sheet-theme-swiss .a5-qr-col {
+    background: #f8fafc;
+    border: 1.5px solid #0f172a;
+    border-radius: 8px;
+}
+.sheet-theme-swiss .qr-architectural-frame .corner { border-color: #1d4ed8; }
+.sheet-theme-swiss .qr-prompt-tag { color: #1d4ed8; }
+.sheet-theme-swiss .qr-prompt-heading { color: #0a0f1d; }
+.sheet-theme-swiss .qr-target-url,
+.sheet-theme-swiss .a5-main-cta { color: #1d4ed8; }
+
+/* --------------------------------------------------------------------------
+   2. BAUHAUS (Баухаус & Конструктивизм — Dessau Constructivist Geometry)
+   -------------------------------------------------------------------------- */
+.sheet-theme-bauhaus {
+    background: #faf8f5;
+    color: #111827;
+}
+.sheet-theme-bauhaus .poster-identity-bar { border-bottom: 3px solid #111827; }
+.sheet-theme-bauhaus .poster-civic-badge .civic-dot {
+    background: #c2410c;
+    border-radius: 0;
+    width: 8px;
+    height: 8px;
+}
+.sheet-theme-bauhaus .poster-civic-badge .civic-text { color: #111827; font-weight: 900; }
+.sheet-theme-bauhaus .poster-institution-portal { color: #c2410c; font-weight: 700; }
+.sheet-theme-bauhaus .poster-kicker { color: #c2410c; font-weight: 800; letter-spacing: 0.2em; }
+.sheet-theme-bauhaus .poster-branch-title,
+.sheet-theme-bauhaus .a5-branch-title,
+.sheet-theme-bauhaus .bm-branch-name {
+    color: #111827;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+}
+.sheet-theme-bauhaus .poster-slogan-editorial {
+    background: #fff7ed;
+    border-left: 4px solid #c2410c;
+    border-right: 1.5px solid #111827;
+    border-top: 1.5px solid #111827;
+    border-bottom: 1.5px solid #111827;
+    border-radius: 0;
+}
+.sheet-theme-bauhaus .poster-slogan-editorial .quote-symbol { color: #c2410c; }
+.sheet-theme-bauhaus .poster-slogan-editorial .slogan-content { color: #111827; font-weight: 700; }
+.sheet-theme-bauhaus .p-card {
+    background: #ffffff;
+    border: 1.5px solid #111827;
+    border-top: 4px solid #c2410c;
+    border-radius: 0;
+}
+.sheet-theme-bauhaus .p-card:nth-child(2) { border-top-color: #d97706; }
+.sheet-theme-bauhaus .p-card:nth-child(3) { border-top-color: #1e293b; }
+.sheet-theme-bauhaus .p-card-num { color: #c2410c; font-weight: 900; }
+.sheet-theme-bauhaus .p-card-title { color: #111827; font-weight: 800; }
+.sheet-theme-bauhaus .poster-qr-architecture,
+.sheet-theme-bauhaus .a5-qr-col {
+    background: #fff7ed;
+    border: 2px solid #111827;
+    border-radius: 0;
+}
+.sheet-theme-bauhaus .qr-architectural-frame { border-radius: 0; }
+.sheet-theme-bauhaus .qr-architectural-frame .corner { border-color: #c2410c; border-width: 3px 0 0 3px; }
+.sheet-theme-bauhaus .qr-prompt-tag { color: #c2410c; font-weight: 900; }
+.sheet-theme-bauhaus .qr-target-url,
+.sheet-theme-bauhaus .a5-main-cta { color: #c2410c; font-weight: 800; }
+.sheet-theme-bauhaus .bm-card { border-radius: 0; border-width: 1.5px; }
+
+/* --------------------------------------------------------------------------
+   3. SCANDI (Скандинавский минимализм — Oodi Helsinki Hygge)
+   -------------------------------------------------------------------------- */
+.sheet-theme-scandi {
+    background: #fcfbfa;
+    color: #1c1917;
+}
+.sheet-theme-scandi .poster-identity-bar { border-bottom: 1.5px solid #0f766e; }
+.sheet-theme-scandi .poster-civic-badge .civic-dot { background: #0f766e; border-radius: 50%; }
+.sheet-theme-scandi .poster-civic-badge .civic-text { color: #0f766e; }
+.sheet-theme-scandi .poster-kicker { color: #0f766e; letter-spacing: 0.16em; }
+.sheet-theme-scandi .poster-branch-title,
+.sheet-theme-scandi .a5-branch-title,
+.sheet-theme-scandi .bm-branch-name { color: #1c1917; }
+.sheet-theme-scandi .poster-slogan-editorial {
+    background: #f0fdfa;
+    border-left: 3px solid #0f766e;
+    border-right: 1px solid #ccfbf1;
+    border-top: 1px solid #ccfbf1;
+    border-bottom: 1px solid #ccfbf1;
+    border-radius: 10px;
+}
+.sheet-theme-scandi .poster-slogan-editorial .quote-symbol { color: #0f766e; }
+.sheet-theme-scandi .poster-slogan-editorial .slogan-content { color: #134e4a; }
+.sheet-theme-scandi .p-card {
+    background: #ffffff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 118, 110, 0.04);
+}
+.sheet-theme-scandi .p-card-num { color: #0f766e; font-weight: 700; }
+.sheet-theme-scandi .p-card-title { color: #1c1917; }
+.sheet-theme-scandi .p-card-desc { color: #57534e; }
+.sheet-theme-scandi .poster-qr-architecture,
+.sheet-theme-scandi .a5-qr-col {
+    background: #f0fdfa;
+    border: 1.5px solid #99f6e4;
+    border-radius: 12px;
+}
+.sheet-theme-scandi .qr-architectural-frame { border-radius: 8px; }
+.sheet-theme-scandi .qr-architectural-frame .corner { border-color: #0f766e; }
+.sheet-theme-scandi .qr-prompt-tag { color: #0f766e; }
+.sheet-theme-scandi .qr-target-url,
+.sheet-theme-scandi .a5-main-cta { color: #0f766e; }
+.sheet-theme-scandi .bm-card { border-radius: 10px; }
+
+/* --------------------------------------------------------------------------
+   4. EDITORIAL (Литературная классика — Belles-Lettres & Bodleian)
+   -------------------------------------------------------------------------- */
+.sheet-theme-editorial {
+    background: #fdfbf7;
+    color: #1c1917;
+}
+.sheet-theme-editorial .poster-identity-bar { border-bottom: 3px double #831843; }
+.sheet-theme-editorial .poster-civic-badge .civic-dot { background: #831843; border-radius: 50%; }
+.sheet-theme-editorial .poster-civic-badge .civic-text { color: #831843; letter-spacing: 0.18em; }
+.sheet-theme-editorial .poster-kicker {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    color: #831843;
+    letter-spacing: 0.2em;
+}
+.sheet-theme-editorial .poster-branch-title,
+.sheet-theme-editorial .a5-branch-title,
+.sheet-theme-editorial .bm-branch-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1c1917;
+    font-weight: 700;
+}
+.sheet-theme-editorial .poster-slogan-editorial {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #fdf2f8;
+    border-left: 3.5px solid #831843;
+    border-right: 1px solid #fbcfe8;
+    border-top: 1px solid #fbcfe8;
+    border-bottom: 1px solid #fbcfe8;
+    border-radius: 4px;
+}
+.sheet-theme-editorial .poster-slogan-editorial .quote-symbol { color: #831843; }
+.sheet-theme-editorial .poster-slogan-editorial .slogan-content { color: #500724; font-style: italic; }
+.sheet-theme-editorial .p-card {
+    background: #ffffff;
+    border: 1px solid #fbcfe8;
+    border-radius: 4px;
+}
+.sheet-theme-editorial .p-card-num { color: #831843; font-family: Georgia, serif; font-weight: 700; }
+.sheet-theme-editorial .p-card-title { color: #500724; font-family: Georgia, serif; }
+.sheet-theme-editorial .p-card-desc { color: #57534e; }
+.sheet-theme-editorial .poster-qr-architecture,
+.sheet-theme-editorial .a5-qr-col {
+    background: #fdf2f8;
+    border: 1.5px solid #831843;
+    border-radius: 6px;
+}
+.sheet-theme-editorial .qr-architectural-frame { border-radius: 4px; }
+.sheet-theme-editorial .qr-architectural-frame .corner { border-color: #831843; }
+.sheet-theme-editorial .qr-prompt-tag { color: #831843; }
+.sheet-theme-editorial .qr-target-url,
+.sheet-theme-editorial .a5-main-cta { color: #831843; }
+.sheet-theme-editorial .poster-colophon { border-top: 2px double #831843; }
+.sheet-theme-editorial .bm-card { border-radius: 4px; }
+
+/* --------------------------------------------------------------------------
+   5. BOTANICAL (Эко-библиотека & Природа — Biophilic Green)
+   -------------------------------------------------------------------------- */
+.sheet-theme-botanical {
+    background: #f6f8f5;
+    color: #142e1b;
+}
+.sheet-theme-botanical .poster-identity-bar { border-bottom: 1.5px solid #166534; }
+.sheet-theme-botanical .poster-civic-badge .civic-dot { background: #15803d; border-radius: 50%; }
+.sheet-theme-botanical .poster-civic-badge .civic-text { color: #166534; }
+.sheet-theme-botanical .poster-kicker { color: #15803d; letter-spacing: 0.18em; }
+.sheet-theme-botanical .poster-branch-title,
+.sheet-theme-botanical .a5-branch-title,
+.sheet-theme-botanical .bm-branch-name { color: #142e1b; }
+.sheet-theme-botanical .poster-slogan-editorial {
+    background: #f0fdf4;
+    border-left: 3.5px solid #15803d;
+    border-right: 1px solid #bbf7d0;
+    border-top: 1px solid #bbf7d0;
+    border-bottom: 1px solid #bbf7d0;
+    border-radius: 8px;
+}
+.sheet-theme-botanical .poster-slogan-editorial .quote-symbol { color: #15803d; }
+.sheet-theme-botanical .poster-slogan-editorial .slogan-content { color: #14532d; }
+.sheet-theme-botanical .p-card {
+    background: #ffffff;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+}
+.sheet-theme-botanical .p-card-num { color: #15803d; }
+.sheet-theme-botanical .p-card-title { color: #14532d; }
+.sheet-theme-botanical .p-card-desc { color: #374151; }
+.sheet-theme-botanical .poster-qr-architecture,
+.sheet-theme-botanical .a5-qr-col {
+    background: #f0fdf4;
+    border: 1.5px solid #166534;
+    border-radius: 10px;
+}
+.sheet-theme-botanical .qr-architectural-frame { border-radius: 6px; }
+.sheet-theme-botanical .qr-architectural-frame .corner { border-color: #15803d; }
+.sheet-theme-botanical .qr-prompt-tag { color: #15803d; }
+.sheet-theme-botanical .qr-target-url,
+.sheet-theme-botanical .a5-main-cta { color: #15803d; }
+.sheet-theme-botanical .bm-card { border-radius: 8px; }
+
+/* --------------------------------------------------------------------------
+   6. CRAFT (Винтажный архив — Kraft Texture & Wax Seal)
+   -------------------------------------------------------------------------- */
+.sheet-theme-craft {
+    background: #f6f0e6;
+    color: #292524;
+}
+.sheet-theme-craft .poster-identity-bar { border-bottom: 2px solid #574e44; }
+.sheet-theme-craft .poster-civic-badge .civic-dot { background: #991b1b; border-radius: 50%; }
+.sheet-theme-craft .poster-civic-badge .civic-text { color: #574e44; font-weight: 800; }
+.sheet-theme-craft .poster-kicker { color: #991b1b; letter-spacing: 0.18em; font-weight: 700; }
+.sheet-theme-craft .poster-branch-title,
+.sheet-theme-craft .a5-branch-title,
+.sheet-theme-craft .bm-branch-name { color: #292524; }
+.sheet-theme-craft .poster-slogan-editorial {
+    background: #ede4d4;
+    border-left: 3.5px solid #991b1b;
+    border-right: 1px solid #d6c7b2;
+    border-top: 1px solid #d6c7b2;
+    border-bottom: 1px solid #d6c7b2;
+    border-radius: 3px;
+}
+.sheet-theme-craft .poster-slogan-editorial .quote-symbol { color: #991b1b; }
+.sheet-theme-craft .poster-slogan-editorial .slogan-content { color: #292524; font-style: italic; }
+.sheet-theme-craft .p-card {
+    background: #faf5ec;
+    border: 1px dashed #a89a85;
+    border-radius: 4px;
+}
+.sheet-theme-craft .p-card-num { color: #991b1b; font-family: 'JetBrains Mono', monospace; }
+.sheet-theme-craft .p-card-title { color: #292524; }
+.sheet-theme-craft .p-card-desc { color: #574e44; }
+.sheet-theme-craft .poster-qr-architecture,
+.sheet-theme-craft .a5-qr-col {
+    background: #ede4d4;
+    border: 1.5px solid #574e44;
+    border-radius: 4px;
+}
+.sheet-theme-craft .qr-architectural-frame { border-radius: 3px; background: #faf6ee; }
+.sheet-theme-craft .qr-architectural-frame .corner { border-color: #991b1b; }
+.sheet-theme-craft .qr-prompt-tag { color: #991b1b; }
+.sheet-theme-craft .qr-target-url,
+.sheet-theme-craft .a5-main-cta { color: #991b1b; }
+.sheet-theme-craft .poster-colophon { border-top: 1px solid #a89a85; }
+.sheet-theme-craft .bm-card { border-radius: 4px; background: #faf5ec; }
+
+/* --------------------------------------------------------------------------
+   7. GALLERY (Современная галерея — White Cube Monochrome)
+   -------------------------------------------------------------------------- */
+.sheet-theme-gallery {
+    background: #ffffff;
+    color: #09090b;
+}
+.sheet-theme-gallery .poster-identity-bar { border-bottom: 2px solid #09090b; }
+.sheet-theme-gallery .poster-civic-badge .civic-dot { background: #09090b; border-radius: 0; width: 7px; height: 7px; }
+.sheet-theme-gallery .poster-civic-badge .civic-text { color: #09090b; font-weight: 900; }
+.sheet-theme-gallery .poster-kicker { color: #09090b; letter-spacing: 0.22em; font-weight: 800; }
+.sheet-theme-gallery .poster-branch-title,
+.sheet-theme-gallery .a5-branch-title,
+.sheet-theme-gallery .bm-branch-name { color: #09090b; font-weight: 900; }
+.sheet-theme-gallery .poster-slogan-editorial {
+    background: #f4f4f5;
+    border-left: 3.5px solid #09090b;
+    border-right: 1px solid #d4d4d8;
+    border-top: 1px solid #d4d4d8;
+    border-bottom: 1px solid #d4d4d8;
+    border-radius: 0;
+}
+.sheet-theme-gallery .poster-slogan-editorial .quote-symbol { color: #09090b; }
+.sheet-theme-gallery .poster-slogan-editorial .slogan-content { color: #09090b; }
+.sheet-theme-gallery .p-card {
+    background: #ffffff;
+    border: 1.5px solid #09090b;
+    border-radius: 0;
+}
+.sheet-theme-gallery .p-card-num { color: #09090b; font-weight: 900; }
+.sheet-theme-gallery .p-card-title { color: #09090b; font-weight: 800; }
+.sheet-theme-gallery .p-card-desc { color: #52525b; }
+.sheet-theme-gallery .poster-qr-architecture,
+.sheet-theme-gallery .a5-qr-col {
+    background: #f4f4f5;
+    border: 2px solid #09090b;
+    border-radius: 0;
+}
+.sheet-theme-gallery .qr-architectural-frame { border-radius: 0; }
+.sheet-theme-gallery .qr-architectural-frame .corner { border-color: #09090b; border-width: 2.5px 0 0 2.5px; }
+.sheet-theme-gallery .qr-prompt-tag { color: #09090b; font-weight: 900; }
+.sheet-theme-gallery .qr-target-url,
+.sheet-theme-gallery .a5-main-cta { color: #09090b; font-weight: 800; }
+.sheet-theme-gallery .poster-colophon { border-top: 2px solid #09090b; }
+.sheet-theme-gallery .bm-card { border-radius: 0; border: 1.5px solid #09090b; }
+
+/* --------------------------------------------------------------------------
+   8. KIDS (Детство & Семейное чтение — Sunshine & Cerulean)
+   -------------------------------------------------------------------------- */
+.sheet-theme-kids {
+    background: #fffbf5;
+    color: #1e293b;
+}
+.sheet-theme-kids .poster-identity-bar { border-bottom: 2px solid #ea580c; }
+.sheet-theme-kids .poster-civic-badge .civic-dot { background: #ea580c; border-radius: 50%; }
+.sheet-theme-kids .poster-civic-badge .civic-text { color: #ea580c; font-weight: 800; }
+.sheet-theme-kids .poster-kicker { color: #ea580c; letter-spacing: 0.16em; font-weight: 800; }
+.sheet-theme-kids .poster-branch-title,
+.sheet-theme-kids .a5-branch-title,
+.sheet-theme-kids .bm-branch-name { color: #1e293b; font-weight: 800; }
+.sheet-theme-kids .poster-slogan-editorial {
+    background: #fff7ed;
+    border-left: 4px solid #ea580c;
+    border-right: 1px solid #fed7aa;
+    border-top: 1px solid #fed7aa;
+    border-bottom: 1px solid #fed7aa;
+    border-radius: 12px;
+}
+.sheet-theme-kids .poster-slogan-editorial .quote-symbol { color: #ea580c; }
+.sheet-theme-kids .poster-slogan-editorial .slogan-content { color: #9a3412; }
+.sheet-theme-kids .p-card {
+    background: #fff7ed;
+    border: 1.2px solid #fed7aa;
+    border-radius: 12px;
+}
+.sheet-theme-kids .p-card:nth-child(2) { background: #f0f9ff; border-color: #bae6fd; }
+.sheet-theme-kids .p-card:nth-child(3) { background: #f0fdf4; border-color: #bbf7d0; }
+.sheet-theme-kids .p-card-num { color: #ea580c; font-weight: 800; }
+.sheet-theme-kids .p-card:nth-child(2) .p-card-num { color: #0284c7; }
+.sheet-theme-kids .p-card:nth-child(3) .p-card-num { color: #16a34a; }
+.sheet-theme-kids .p-card-title { color: #1e293b; font-weight: 800; }
+.sheet-theme-kids .p-card-desc { color: #475569; }
+.sheet-theme-kids .poster-qr-architecture,
+.sheet-theme-kids .a5-qr-col {
+    background: #fff7ed;
+    border: 2px solid #ea580c;
+    border-radius: 14px;
+}
+.sheet-theme-kids .qr-architectural-frame { border-radius: 10px; }
+.sheet-theme-kids .qr-architectural-frame .corner { border-color: #ea580c; }
+.sheet-theme-kids .qr-prompt-tag { color: #ea580c; font-weight: 800; }
+.sheet-theme-kids .qr-target-url,
+.sheet-theme-kids .a5-main-cta { color: #ea580c; font-weight: 800; }
+.sheet-theme-kids .bm-card { border-radius: 12px; }
+
+/* --------------------------------------------------------------------------
+   9. CYBER (Цифровой хаб & Медиалаб — Dark Electric Slate)
+   -------------------------------------------------------------------------- */
+.sheet-theme-cyber {
+    background: #0b1120;
+    color: #f8fafc;
+}
+.sheet-theme-cyber .poster-identity-bar { border-bottom: 1.5px solid #38bdf8; }
+.sheet-theme-cyber .poster-civic-badge .civic-dot {
+    background: #38bdf8;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #38bdf8;
+}
+.sheet-theme-cyber .poster-civic-badge .civic-text { color: #f8fafc; letter-spacing: 0.18em; }
+.sheet-theme-cyber .poster-institution-portal { color: #38bdf8; }
+.sheet-theme-cyber .poster-kicker { color: #38bdf8; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-cyber .poster-branch-title,
+.sheet-theme-cyber .a5-branch-title,
+.sheet-theme-cyber .bm-branch-name { color: #ffffff; font-weight: 900; }
+.sheet-theme-cyber .poster-slogan-editorial {
+    background: #131d33;
+    border-left: 3.5px solid #38bdf8;
+    border-right: 1px solid #1e3a5f;
+    border-top: 1px solid #1e3a5f;
+    border-bottom: 1px solid #1e3a5f;
+    border-radius: 6px;
+}
+.sheet-theme-cyber .poster-slogan-editorial .quote-symbol { color: #38bdf8; }
+.sheet-theme-cyber .poster-slogan-editorial .slogan-content { color: #e2e8f0; }
+.sheet-theme-cyber .p-card {
+    background: #131d33;
+    border: 1px solid #1e3a5f;
+    border-radius: 6px;
+}
+.sheet-theme-cyber .p-card-num { color: #38bdf8; font-family: 'JetBrains Mono', monospace; }
+.sheet-theme-cyber .p-card-title { color: #f8fafc; }
+.sheet-theme-cyber .p-card-desc { color: #94a3b8; }
+.sheet-theme-cyber .poster-qr-architecture,
+.sheet-theme-cyber .a5-qr-col {
+    background: #131d33;
+    border: 1.5px solid #38bdf8;
+    border-radius: 8px;
+}
+.sheet-theme-cyber .qr-architectural-frame { background: #ffffff; border-radius: 4px; }
+.sheet-theme-cyber .qr-architectural-frame .corner { border-color: #38bdf8; }
+.sheet-theme-cyber .qr-prompt-tag { color: #38bdf8; font-weight: 800; }
+.sheet-theme-cyber .qr-prompt-heading { color: #f8fafc; }
+.sheet-theme-cyber .qr-prompt-sub { color: #94a3b8; }
+.sheet-theme-cyber .qr-target-url,
+.sheet-theme-cyber .a5-main-cta { color: #38bdf8; }
+.sheet-theme-cyber .poster-colophon { border-top: 1px solid #1e293b; }
+.sheet-theme-cyber .col-value { color: #cbd5e1; }
+.sheet-theme-cyber .a5-feature-checklist { color: #cbd5e1; }
+.sheet-theme-cyber .a5-url-chip { color: #38bdf8; }
+.sheet-theme-cyber .bm-card { background: #131d33; border: 1px solid #1e3a5f; border-radius: 6px; }
+.sheet-theme-cyber .bm-civic-seal { color: #94a3b8; }
+.sheet-theme-cyber .bm-quote-container { background: #0b1120; color: #cbd5e1; }
+.sheet-theme-cyber .bm-footer { border-top-color: #1e3a5f; color: #94a3b8; }
+.sheet-theme-cyber .bm-foot-portal { color: #38bdf8; }
+.sheet-theme-cyber .bm-cut-line { border-left-color: #1e3a5f; }
+
+/* --------------------------------------------------------------------------
+   10. MIDNIGHT (Ночной лекторий — Velvety Anthracite & Warm Gold)
+   -------------------------------------------------------------------------- */
+.sheet-theme-midnight {
+    background: #0f172a;
+    color: #f8fafc;
+}
+.sheet-theme-midnight .poster-identity-bar { border-bottom: 1.5px solid #f59e0b; }
+.sheet-theme-midnight .poster-civic-badge .civic-dot {
+    background: #f59e0b;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #f59e0b;
+}
+.sheet-theme-midnight .poster-civic-badge .civic-text { color: #f8fafc; letter-spacing: 0.18em; }
+.sheet-theme-midnight .poster-institution-portal { color: #f59e0b; }
+.sheet-theme-midnight .poster-kicker { color: #f59e0b; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-midnight .poster-branch-title,
+.sheet-theme-midnight .a5-branch-title,
+.sheet-theme-midnight .bm-branch-name { color: #ffffff; font-weight: 900; }
+.sheet-theme-midnight .poster-slogan-editorial {
+    background: #1e293b;
+    border-left: 3.5px solid #f59e0b;
+    border-right: 1px solid #334155;
+    border-top: 1px solid #334155;
+    border-bottom: 1px solid #334155;
+    border-radius: 6px;
+}
+.sheet-theme-midnight .poster-slogan-editorial .quote-symbol { color: #f59e0b; }
+.sheet-theme-midnight .poster-slogan-editorial .slogan-content { color: #e2e8f0; }
+.sheet-theme-midnight .p-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+}
+.sheet-theme-midnight .p-card-num { color: #f59e0b; font-family: 'JetBrains Mono', monospace; }
+.sheet-theme-midnight .p-card-title { color: #f8fafc; }
+.sheet-theme-midnight .p-card-desc { color: #94a3b8; }
+.sheet-theme-midnight .poster-qr-architecture,
+.sheet-theme-midnight .a5-qr-col {
+    background: #1e293b;
+    border: 1.5px solid #f59e0b;
+    border-radius: 8px;
+}
+.sheet-theme-midnight .qr-architectural-frame { background: #ffffff; border-radius: 4px; }
+.sheet-theme-midnight .qr-architectural-frame .corner { border-color: #f59e0b; }
+.sheet-theme-midnight .qr-prompt-tag { color: #f59e0b; font-weight: 800; }
+.sheet-theme-midnight .qr-prompt-heading { color: #f8fafc; }
+.sheet-theme-midnight .qr-prompt-sub { color: #94a3b8; }
+.sheet-theme-midnight .qr-target-url,
+.sheet-theme-midnight .a5-main-cta { color: #f59e0b; }
+.sheet-theme-midnight .poster-colophon { border-top: 1px solid #334155; }
+.sheet-theme-midnight .col-value { color: #cbd5e1; }
+.sheet-theme-midnight .a5-feature-checklist { color: #cbd5e1; }
+.sheet-theme-midnight .a5-url-chip { color: #f59e0b; }
+.sheet-theme-midnight .bm-card { background: #1e293b; border: 1px solid #334155; border-radius: 6px; }
+.sheet-theme-midnight .bm-civic-seal { color: #94a3b8; }
+.sheet-theme-midnight .bm-quote-container { background: #0f172a; color: #cbd5e1; }
+.sheet-theme-midnight .bm-footer { border-top-color: #334155; color: #94a3b8; }
+.sheet-theme-midnight .bm-foot-portal { color: #f59e0b; }
+.sheet-theme-midnight .bm-cut-line { border-left-color: #334155; }
 
 /* --------------------------------------------------------------------------
    Events Tab Timeline Styles

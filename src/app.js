@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.7.1';
+} from './api.js?v=3.7.2';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.7.1';
+} from './advice.js?v=3.7.2';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.7.1';
+} from './subscribers.js?v=3.7.2';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.7.1';
+} from './updater.js?v=3.7.2';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.7.1';
+} from './branches.js?v=3.7.2';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.7.1';
+} from './analytics.js?v=3.7.2';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.7.1';
+} from './render.js?v=3.7.2';
 
 import {
     exportToCsv,
@@ -79,20 +79,20 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.7.1';
+} from './export.js?v=3.7.2';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.1';
-import { CosmicUniverse } from './cosmic.js?v=3.7.1';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.2';
+import { CosmicUniverse } from './cosmic.js?v=3.7.2';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.7.1';
+} from './promo.js?v=3.7.2';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.7.1';
+} from './radar.js?v=3.7.2';
 
 function initApp() {
 
@@ -2570,7 +2570,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.7.0'
+                appVersion: '3.7.2'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
