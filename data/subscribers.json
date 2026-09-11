@@ -1,0 +1,132 @@
+{
+    "snapshots": [
+        {
+            "group_id": 51714771,
+            "name": "Центральная городская библиотека",
+            "screen_name": "vladcgb",
+            "branch": "ЦГБ",
+            "members": 3863,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 168804106,
+            "name": "Центральная детская библиотека г. Владимира",
+            "screen_name": "cdbvladimir",
+            "branch": "ЦДБ",
+            "members": 3195,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 145883298,
+            "name": "Библиотека — филиал №1",
+            "screen_name": "club145883298",
+            "branch": "Ф-1",
+            "members": 183,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 53422825,
+            "name": "Библиотека — филиал №2",
+            "screen_name": "biblfil2",
+            "branch": "Ф-2",
+            "members": 1114,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 189953509,
+            "name": "Библиотека — филиал №3",
+            "screen_name": "club189953509",
+            "branch": "Ф-3",
+            "members": 243,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 474771380,
+            "name": "Библиотека — филиал №4",
+            "screen_name": "id474771380",
+            "branch": "Ф-4",
+            "members": 8038,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 145827789,
+            "name": "Библиотека — филиал №5",
+            "screen_name": "biblfil5",
+            "branch": "Ф-5",
+            "members": 795,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 197036990,
+            "name": "Библиотека — филиал №6",
+            "screen_name": "club197036990",
+            "branch": "Ф-6",
+            "members": 192,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 428880688,
+            "name": "Библиотека — филиал №7",
+            "screen_name": "id428880688",
+            "branch": "Ф-7",
+            "members": 3321,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 168966246,
+            "name": "Библиотека — филиал №8",
+            "screen_name": "filial8cgb",
+            "branch": "Ф-8",
+            "members": 755,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 184449519,
+            "name": "Библиотека — филиал №9",
+            "screen_name": "dobrolit",
+            "branch": "Ф-9",
+            "members": 596,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 193785811,
+            "name": "Библиотека — филиал №11",
+            "screen_name": "club193785811",
+            "branch": "Ф-11",
+            "members": 3068,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 198438621,
+            "name": "Библиотека — филиал №12",
+            "screen_name": "club198438621",
+            "branch": "Ф-12",
+            "members": 148,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 170634092,
+            "name": "Библиотека — филиал №13",
+            "screen_name": "knigoland33",
+            "branch": "Ф-13",
+            "members": 948,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 197329237,
+            "name": "Библиотека — филиал №15",
+            "screen_name": "filial15cgb",
+            "branch": "Ф-15",
+            "members": 175,
+            "ts": 1789144293
+        },
+        {
+            "group_id": 158118947,
+            "name": "Библиотека — филиал №16",
+            "screen_name": "club158118947",
+            "branch": "Ф-16",
+            "members": 1927,
+            "ts": 1789144293
+        }
+    ]
+}

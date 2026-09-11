@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.4.3">
+    <link rel="stylesheet" href="style.css?v=3.5.0">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -1137,6 +1137,39 @@
         </div>
     </div>
 
+    <!-- Forced Service Update Modal (?update) -->
+    <div id="force-update-overlay" class="app-settings-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="force-update-title">
+        <div class="app-settings-modal card" style="max-width: 480px; margin: auto;">
+            <div class="app-settings-head">
+                <div class="app-settings-title-wrap">
+                    <span class="material-symbols-outlined" style="color: var(--accent);">cloud_download</span>
+                    <h3 id="force-update-title">Принудительное обновление</h3>
+                </div>
+                <button id="force-update-close" class="icon-btn" title="Закрыть" aria-label="Закрыть">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form id="force-update-form" class="app-settings-body" style="gap: 16px; padding: 22px;">
+                <p class="app-settings-note" style="margin: 0; font-size: 0.88rem; line-height: 1.45;">
+                    Запрошено принудительное обновление сервиса с GitHub.
+                    Для загрузки и установки актуального релиза введите пароль администратора:
+                </p>
+                <div class="input-icon-wrap" style="position: relative;">
+                    <span class="material-symbols-outlined input-leading-icon">lock</span>
+                    <input type="password" id="force-update-input" class="form-input" placeholder="Пароль администратора" autocomplete="current-password" required style="width: 100%; padding-left: 42px; font-size: 0.95rem;">
+                </div>
+                <div id="force-update-status" class="hidden"></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+                    <button type="button" id="force-update-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+                    <button type="submit" id="force-update-submit" class="btn btn-primary btn-sm">
+                        <span class="material-symbols-outlined icon">download</span>
+                        <span id="force-update-btn-text">Скачать и установить</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- App Settings Modal (v3.4) -->
     <div id="app-settings-overlay" class="app-settings-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="app-settings-title">
         <div class="app-settings-modal card">
@@ -1217,7 +1250,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.4.3"></script>
+    <script type="module" src="src/app.js?v=3.5.0"></script>
 
     <script>
     /* =============================================================

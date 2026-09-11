@@ -9,12 +9,12 @@ import {
     getServerTokenStatus,
     resolveTarget,
     authorCache
-} from './api.js';
+} from './api.js?v=3.5.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js';
+} from './advice.js?v=3.5.0';
 
 import {
     fetchHistory,
@@ -24,7 +24,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js';
+} from './subscribers.js?v=3.5.0';
 
 import {
     fetchUpdaterStatus,
@@ -33,7 +33,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js';
+} from './updater.js?v=3.5.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -41,9 +41,10 @@ import {
     enrichTargetWithCanonical,
     renderBranchAvatarHtml,
     sortBranchesCanonically,
+    isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js';
+} from './branches.js?v=3.5.0';
 
 import {
     calculateKPIs,
@@ -52,7 +53,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js';
+} from './analytics.js?v=3.5.0';
 
 import {
     createPostCard,
@@ -64,7 +65,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js';
+} from './render.js?v=3.5.0';
 
 import {
     exportToCsv,
@@ -74,9 +75,9 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js';
+} from './export.js?v=3.5.0';
 
-import { initTableSorting } from './tablesort.js';
+import { initTableSorting } from './tablesort.js?v=3.5.0';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -291,6 +292,16 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsAuthForm: document.getElementById('settings-auth-form'),
         settingsAuthInput: document.getElementById('settings-auth-input'),
         settingsAuthError: document.getElementById('settings-auth-error'),
+
+        // Forced Update Modal (?update)
+        forceUpdateOverlay: document.getElementById('force-update-overlay'),
+        forceUpdateClose: document.getElementById('force-update-close'),
+        forceUpdateCancel: document.getElementById('force-update-cancel'),
+        forceUpdateForm: document.getElementById('force-update-form'),
+        forceUpdateInput: document.getElementById('force-update-input'),
+        forceUpdateStatus: document.getElementById('force-update-status'),
+        forceUpdateSubmit: document.getElementById('force-update-submit'),
+        forceUpdateBtnText: document.getElementById('force-update-btn-text'),
 
         // Floating Scroll-To-Top
         scrollToTopBtn: document.getElementById('scroll-to-top-btn'),
@@ -747,7 +758,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // 7. Core Search Execution (Batch Scanner via execute with min_time)
     // =========================================================================
-    function closeSearchModal() {
+    function triggerModalAttention() {
+        const modal = elements.searchModalOverlay?.querySelector('.search-motion-modal');
+        if (!modal) return;
+        modal.classList.remove('modal-locked-pulse');
+        void modal.offsetWidth;
+        modal.classList.add('modal-locked-pulse');
+        setTimeout(() => {
+            modal.classList.remove('modal-locked-pulse');
+        }, 400);
+    }
+
+    function closeSearchModal(force = false) {
+        // Во время активного сканирования окно НЕЛЬЗЯ закрыть или свернуть кликом по пустому месту/оверлею.
+        // Прервать поиск можно ТОЛЬКО кнопкой «Остановить поиск» (cancel-scan-btn).
+        if (state.isScanning && !force) {
+            triggerModalAttention();
+            return;
+        }
+
         if (state.isScanning) {
             state.shouldCancel = true;
             state.isScanning = false;
@@ -773,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleViewResults() {
-        closeSearchModal();
+        closeSearchModal(true);
         if (elements.resultsContainer) {
             elements.resultsContainer.classList.remove('hidden');
             elements.resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -786,8 +815,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.cancelSearchBtn) {
         elements.cancelSearchBtn.addEventListener('click', () => {
             state.shouldCancel = true;
+            if (elements.cancelSearchBtn) {
+                const textSpan = elements.cancelSearchBtn.querySelector('span:not(.material-symbols-outlined):not(.icon)') || elements.cancelSearchBtn;
+                textSpan.textContent = 'Останавливаем...';
+                elements.cancelSearchBtn.disabled = true;
+            }
             if (elements.progressStatusMsg) {
-                elements.progressStatusMsg.textContent = 'Отмена сканирования...';
+                elements.progressStatusMsg.textContent = 'Остановка сканирования...';
             }
         });
     }
@@ -795,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.viewResultsBtn.addEventListener('click', handleViewResults);
     }
     if (elements.modalSearchCloseBtn) {
-        elements.modalSearchCloseBtn.addEventListener('click', closeSearchModal);
+        elements.modalSearchCloseBtn.addEventListener('click', () => closeSearchModal(false));
     }
 
     async function handleSearchSubmit(e) {
@@ -877,8 +911,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.searchCompletedActions) {
             elements.searchCompletedActions.classList.add('hidden');
         }
+        if (elements.modalSearchCloseBtn) {
+            elements.modalSearchCloseBtn.style.display = 'none';
+        }
         if (elements.cancelSearchBtn) {
             elements.cancelSearchBtn.style.display = 'inline-flex';
+            elements.cancelSearchBtn.disabled = false;
+            const textSpan = elements.cancelSearchBtn.querySelector('span:not(.material-symbols-outlined):not(.icon)') || elements.cancelSearchBtn;
+            textSpan.textContent = 'Остановить поиск';
         }
         if (elements.progressBar) {
             elements.progressBar.style.width = '0%';
@@ -953,7 +993,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         id: canon.rawId,
                         name: canon.canonicalName,
                         canonicalName: canon.canonicalName,
-                        avatar: '',
+                        avatar: canon.avatar || '',
+                        members_count: typeof canon.canonicalMembers === 'number' ? canon.canonicalMembers : null,
                         link: canon.vkLink || t.link || '',
                         screen_name: canon.screenName || '',
                         type: canon.rawId < 0 ? 'group' : 'user',
@@ -982,13 +1023,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Не удалось разрешить ни один из указанных адресов.');
             }
 
-            // v3.4.1: живые данные сообществ одним батч-запросом —
+            // v3.5.0: живые данные сообществ и профилей одним батч-запросом —
             // аватары, короткие имена и число подписчиков (для вкладки «Подписчики»)
             try {
-                const liveIds = resolvedTargets.map(t => Math.abs(parseInt(t.id, 10))).filter(n => n > 0);
-                if (liveIds.length > 0) {
+                const groupIds = [];
+                const userIds = [];
+                resolvedTargets.forEach(t => {
+                    const numId = parseInt(t.id, 10);
+                    if (numId < 0 || t.type === 'group') {
+                        groupIds.push(Math.abs(numId));
+                    } else if (numId > 0) {
+                        userIds.push(numId);
+                    }
+                });
+
+                if (groupIds.length > 0) {
                     const liveRes = await callVkApi('groups.getById', {
-                        group_ids: liveIds.join(','),
+                        group_ids: groupIds.join(','),
                         fields: 'photo_100,screen_name,members_count'
                     }, state.token);
                     const liveList = Array.isArray(liveRes) ? liveRes : (liveRes && liveRes.groups ? liveRes.groups : []);
@@ -996,14 +1047,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     resolvedTargets.forEach(t => {
                         const g = liveById.get(Math.abs(t.id));
                         if (!g) return;
-                        t.avatar = g.photo_100 || g.photo_50 || t.avatar || '';
+                        const gPhoto = g.photo_100 || g.photo_50 || '';
+                        if (gPhoto && !isDogAvatarUrl(gPhoto)) {
+                            t.avatar = gPhoto;
+                        }
                         t.screen_name = g.screen_name || t.screen_name || '';
-                        t.members_count = typeof g.members_count === 'number' ? g.members_count : null;
-                        if (g.name) t.name = g.name;
+                        if (typeof g.members_count === 'number') {
+                            t.members_count = g.members_count;
+                        }
+                        if (g.name && g.name !== 'DELETED' && !g.deactivated) {
+                            t.name = g.name;
+                        }
                     });
                 }
+
+                if (userIds.length > 0) {
+                    const userRes = await callVkApi('users.get', {
+                        user_ids: userIds.join(','),
+                        fields: 'photo_100,screen_name,followers_count'
+                    }, state.token);
+                    const uList = Array.isArray(userRes) ? userRes : (userRes && userRes.users ? userRes.users : []);
+                    const uById = new Map(uList.map(u => [u.id, u]));
+                    resolvedTargets.forEach(t => {
+                        const u = uById.get(parseInt(t.id, 10));
+                        if (!u) return;
+                        const uPhoto = u.photo_100 || '';
+                        if (uPhoto && !isDogAvatarUrl(uPhoto)) {
+                            t.avatar = uPhoto;
+                        }
+                        t.screen_name = u.screen_name || t.screen_name || `id${u.id}`;
+                        if (typeof u.followers_count === 'number') {
+                            t.members_count = u.followers_count;
+                        }
+                    });
+                }
+
+                resolvedTargets.forEach(t => enrichTargetWithCanonical(t));
             } catch (liveErr) {
-                console.warn('Не удалось получить живые данные сообществ:', liveErr.message);
+                console.warn('Не удалось получить живые данные сообществ/пользователей:', liveErr.message);
             }
 
             // Canonical sort
@@ -1207,6 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.cancelSearchBtn.style.display = 'none';
             }
             if (elements.modalSearchCloseBtn) {
+                elements.modalSearchCloseBtn.style.display = '';
                 elements.modalSearchCloseBtn.classList.remove('hidden');
             }
             if (elements.searchCompletedActions) {
@@ -1659,8 +1741,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.kpiTotalBranches) elements.kpiTotalBranches.textContent = `/ ${stats.length} филиалов`;
         if (elements.kpiWarningCount) elements.kpiWarningCount.textContent = lowBranches.length;
         if (elements.kpiDangerCount) elements.kpiDangerCount.textContent = zeroBranches.length;
-        if (elements.kpiAvgEr) elements.kpiAvgEr.textContent = kpis.erViews;
-        if (elements.kpiAvgReactions) elements.kpiAvgReactions.textContent = `${kpis.avgInteractions} реакций/пост`;
+
+        // Fallback calculations if kpis object is missing or has missing fields
+        const totalPosts = stats.reduce((sum, s) => sum + (s.postsCount || 0), 0);
+        const totalViews = stats.reduce((sum, s) => sum + (s.views || 0), 0);
+        const totalReactions = stats.reduce((sum, s) => sum + (s.reactions || ((s.likes || 0) + (s.reposts || 0) + (s.comments || 0))), 0);
+        const fallbackEr = totalViews > 0 ? ((totalReactions / totalViews) * 100).toFixed(2) + '%' : '0.00%';
+        const fallbackAvgReactions = totalPosts > 0 ? (totalReactions / totalPosts).toFixed(1) : '0.0';
+
+        const erDisplay = (kpis && kpis.erViews != null) ? kpis.erViews : fallbackEr;
+        const reactionsVal = (kpis && (kpis.avgInteractions != null || kpis.avgReactionsPerPost != null || kpis.erPosts != null))
+            ? (kpis.avgInteractions ?? kpis.avgReactionsPerPost ?? kpis.erPosts)
+            : fallbackAvgReactions;
+
+        if (elements.kpiAvgEr) elements.kpiAvgEr.textContent = erDisplay;
+        if (elements.kpiAvgReactions) elements.kpiAvgReactions.textContent = `${reactionsVal} реакций/пост`;
 
         renderAnalyticsChart(stats);
         renderAnalyticsRatingTable(stats);
@@ -2567,11 +2662,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         // Search modal close cross
         if (e.target.closest('#modal-search-close') || e.target.closest('.modal-search-close-btn')) {
+            if (state.isScanning) {
+                triggerModalAttention();
+                return;
+            }
             closeSearchModal();
             return;
         }
         // Search modal backdrop click
         if (e.target === elements.searchModalOverlay) {
+            if (state.isScanning) {
+                // При поиске клик по пустому месту не должен сбрасывать поиск и закрывать окно!
+                triggerModalAttention();
+                return;
+            }
             closeSearchModal();
             return;
         }
@@ -2621,6 +2725,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Escape: Close all modals & overlays
         if (e.key === 'Escape') {
+            if (state.isScanning) {
+                triggerModalAttention();
+                return;
+            }
             if (elements.searchModalOverlay && !elements.searchModalOverlay.classList.contains('hidden')) {
                 closeSearchModal();
             }
@@ -3053,6 +3161,125 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================================
+    // 14.1. Forced Update Modal (?update / ?force_update / action=update)
+    // =========================================================================
+    function openForceUpdateModal() {
+        if (!elements.forceUpdateOverlay) return;
+        elements.forceUpdateOverlay.classList.remove('hidden');
+        if (elements.forceUpdateStatus) {
+            elements.forceUpdateStatus.className = 'hidden';
+            elements.forceUpdateStatus.innerHTML = '';
+        }
+        if (elements.forceUpdateInput) {
+            elements.forceUpdateInput.value = '';
+            setTimeout(() => elements.forceUpdateInput?.focus(), 120);
+        }
+        if (elements.forceUpdateSubmit) {
+            elements.forceUpdateSubmit.disabled = false;
+        }
+        if (elements.forceUpdateBtnText) {
+            elements.forceUpdateBtnText.textContent = 'Скачать и установить';
+        }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeForceUpdateModal() {
+        if (!elements.forceUpdateOverlay) return;
+        elements.forceUpdateOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        // Очищаем параметр ?update из адресной строки без перезагрузки страницы
+        try {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('update') || url.searchParams.has('force_update') || url.searchParams.get('action') === 'update') {
+                url.searchParams.delete('update');
+                url.searchParams.delete('force_update');
+                if (url.searchParams.get('action') === 'update') url.searchParams.delete('action');
+                const cleanUrl = url.pathname + (url.search ? url.search : '') + (url.hash === '#update' ? '' : url.hash);
+                window.history.replaceState(null, '', cleanUrl);
+            }
+        } catch (e) {}
+    }
+
+    function showForceUpdateStatus(message, type = 'info') {
+        if (!elements.forceUpdateStatus) return;
+        elements.forceUpdateStatus.className = `force-update-status-box ${type}`;
+        elements.forceUpdateStatus.innerHTML = `<span>${message}</span>`;
+    }
+
+    async function handleForceUpdateSubmit(e) {
+        if (e) e.preventDefault();
+        const pwd = elements.forceUpdateInput ? elements.forceUpdateInput.value.trim() : '';
+        if (!pwd) {
+            showForceUpdateStatus('Введите пароль администратора', 'error');
+            elements.forceUpdateInput?.focus();
+            return;
+        }
+
+        if (pwd !== SETTINGS_AUTH_PASSWORD) {
+            showForceUpdateStatus('Неверный пароль администратора. Попробуйте ещё раз.', 'error');
+            if (elements.forceUpdateInput) {
+                elements.forceUpdateInput.select();
+                elements.forceUpdateInput.focus();
+            }
+            return;
+        }
+
+        // Блокируем кнопку и выводим статус
+        if (elements.forceUpdateSubmit) elements.forceUpdateSubmit.disabled = true;
+        if (elements.forceUpdateBtnText) elements.forceUpdateBtnText.textContent = 'Обновление...';
+        showForceUpdateStatus('🔄 Подключение к GitHub и загрузка актуального релиза… Это займёт несколько секунд.', 'info');
+
+        try {
+            const res = await applyUpdate(pwd, true);
+            const shaStr = res.sha ? shortSha(res.sha) : '';
+            const msgStr = res.message ? `«${res.message}»` : 'актуальная версия';
+            showForceUpdateStatus(`✅ Свежее обновление успешно установлено! Коммит ${shaStr}: ${msgStr}. Перезагрузка страницы…`, 'success');
+            
+            saveUpdateToken(pwd);
+            try {
+                localStorage.setItem(SETTINGS_AUTH_STORAGE_KEY, 'true');
+            } catch (err) {}
+
+            // Очищаем ?update из URL перед перезагрузкой
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('update');
+                url.searchParams.delete('force_update');
+                if (url.searchParams.get('action') === 'update') url.searchParams.delete('action');
+                window.history.replaceState(null, '', url.pathname);
+            } catch (err) {}
+
+            setTimeout(() => {
+                window.location.href = window.location.pathname + '?v=' + Date.now();
+            }, 1800);
+        } catch (err) {
+            showForceUpdateStatus(`❌ Ошибка обновления: ${err.message || String(err)}`, 'error');
+            if (elements.forceUpdateSubmit) elements.forceUpdateSubmit.disabled = false;
+            if (elements.forceUpdateBtnText) elements.forceUpdateBtnText.textContent = 'Повторить попытку';
+        }
+    }
+
+    if (elements.forceUpdateClose) elements.forceUpdateClose.addEventListener('click', closeForceUpdateModal);
+    if (elements.forceUpdateCancel) elements.forceUpdateCancel.addEventListener('click', closeForceUpdateModal);
+    if (elements.forceUpdateOverlay) {
+        elements.forceUpdateOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.forceUpdateOverlay) closeForceUpdateModal();
+        });
+    }
+    if (elements.forceUpdateForm) {
+        elements.forceUpdateForm.addEventListener('submit', handleForceUpdateSubmit);
+    }
+
+    function checkUrlForForceUpdate() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('update') || params.has('force_update') || params.get('action') === 'update' || window.location.hash === '#update') {
+                setTimeout(() => openForceUpdateModal(), 150);
+            }
+        } catch (e) {}
+    }
+
+    // =========================================================================
     // 15. Run Initializers
     // =========================================================================
     initFormInputs();
@@ -3062,6 +3289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initScrollToTop();
     renderSearchHistory();
     initTableSorting();
+    checkUrlForForceUpdate();
 
     // Expose for testing/debugging
     window.__VK_APP__ = {

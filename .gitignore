@@ -36,3 +36,4 @@ api/config.local.php
 # Runtime data (subscriber history, updater state)
 data/*
 !data/.gitkeep
+!data/subscribers.json

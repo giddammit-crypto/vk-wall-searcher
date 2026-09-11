@@ -3,7 +3,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js';
+import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=3.5.0';
 
 export function extractNum(val) {
     if (!val) return 0;
@@ -53,6 +53,8 @@ export function calculateKPIs(posts) {
         totalInteractions,
         avgViews,
         avgLikes,
+        avgInteractions: erPosts,
+        avgReactionsPerPost: erPosts,
         erViews: `${erViews}%`,
         erPosts
     };
