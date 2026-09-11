@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.7.5",
+    "version": "3.7.6",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T01:40:00+03:00",
-    "release_name": "AURORA 3.7.5 — Синхронизация верстки закладок в печати и превью, устранение пустоты внизу карточек"
+    "commit_date": "2026-09-12T01:50:00+03:00",
+    "release_name": "AURORA 3.7.6 — Полный перевод всех тем промо-материалов на чистый белый фон, новые светлые темы Neo и Poetry, экономия краски при печати"
 }

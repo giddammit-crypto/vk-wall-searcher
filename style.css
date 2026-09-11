@@ -7826,7 +7826,34 @@ textarea:focus-visible,
     justify-content: space-between;
     gap: 6px;
     padding: 18px 14px;
-    background: #ffffff;
+    background: #ffffff !important;
+}
+
+.poster-sheet.sheet-bookmark,
+.sheet-theme-swiss.sheet-bookmark,
+.sheet-theme-bauhaus.sheet-bookmark,
+.sheet-theme-scandi.sheet-bookmark,
+.sheet-theme-editorial.sheet-bookmark,
+.sheet-theme-botanical.sheet-bookmark,
+.sheet-theme-craft.sheet-bookmark,
+.sheet-theme-gallery.sheet-bookmark,
+.sheet-theme-kids.sheet-bookmark,
+.sheet-theme-cyber.sheet-bookmark,
+.sheet-theme-midnight.sheet-bookmark {
+    background: #ffffff !important;
+    color: #0a0f1d;
+}
+
+.sheet-bookmark .bm-cutting-guide {
+    color: #64748b !important;
+}
+
+.sheet-bookmark .bm-cut-line {
+    border-left: 1.5px dashed #cbd5e1 !important;
+}
+
+.sheet-bookmark .bm-cut-icon {
+    color: #64748b !important;
 }
 
 .bm-card {
@@ -8046,7 +8073,7 @@ textarea:focus-visible,
    2. BAUHAUS (Баухаус & Конструктивизм — Dessau Constructivist Geometry)
    -------------------------------------------------------------------------- */
 .sheet-theme-bauhaus {
-    background: #faf8f5;
+    background: #ffffff;
     color: #111827;
 }
 .sheet-theme-bauhaus .poster-identity-bar { border-bottom: 3px solid #111827; }
@@ -8103,7 +8130,7 @@ textarea:focus-visible,
    3. SCANDI (Скандинавский минимализм — Oodi Helsinki Hygge)
    -------------------------------------------------------------------------- */
 .sheet-theme-scandi {
-    background: #fcfbfa;
+    background: #ffffff;
     color: #1c1917;
 }
 .sheet-theme-scandi .poster-identity-bar { border-bottom: 1.5px solid #0f766e; }
@@ -8149,7 +8176,7 @@ textarea:focus-visible,
    4. EDITORIAL (Литературная классика — Belles-Lettres & Bodleian)
    -------------------------------------------------------------------------- */
 .sheet-theme-editorial {
-    background: #fdfbf7;
+    background: #ffffff;
     color: #1c1917;
 }
 .sheet-theme-editorial .poster-identity-bar { border-bottom: 3px double #831843; }
@@ -8205,7 +8232,7 @@ textarea:focus-visible,
    5. BOTANICAL (Эко-библиотека & Природа — Biophilic Green)
    -------------------------------------------------------------------------- */
 .sheet-theme-botanical {
-    background: #f6f8f5;
+    background: #ffffff;
     color: #142e1b;
 }
 .sheet-theme-botanical .poster-identity-bar { border-bottom: 1.5px solid #166534; }
@@ -8250,7 +8277,7 @@ textarea:focus-visible,
    6. CRAFT (Винтажный архив — Kraft Texture & Wax Seal)
    -------------------------------------------------------------------------- */
 .sheet-theme-craft {
-    background: #f6f0e6;
+    background: #ffffff;
     color: #292524;
 }
 .sheet-theme-craft .poster-identity-bar { border-bottom: 2px solid #574e44; }
@@ -8342,7 +8369,7 @@ textarea:focus-visible,
    8. KIDS (Детство & Семейное чтение — Sunshine & Cerulean)
    -------------------------------------------------------------------------- */
 .sheet-theme-kids {
-    background: #fffbf5;
+    background: #ffffff;
     color: #1e293b;
 }
 .sheet-theme-kids .poster-identity-bar { border-bottom: 2px solid #ea580c; }
@@ -8388,126 +8415,196 @@ textarea:focus-visible,
 .sheet-theme-kids .bm-card { border-radius: 12px; }
 
 /* --------------------------------------------------------------------------
-   9. CYBER (Цифровой хаб & Медиалаб — Dark Electric Slate)
+   9. NEO / DIGITAL (Цифровая лаборатория & Медиахаб — Clean White & Electric Ultramarine)
    -------------------------------------------------------------------------- */
+.sheet-theme-neo,
 .sheet-theme-cyber {
-    background: #0b1120;
-    color: #f8fafc;
+    background: #ffffff;
+    color: #0f172a;
 }
-.sheet-theme-cyber .poster-identity-bar { border-bottom: 1.5px solid #38bdf8; }
+.sheet-theme-neo .poster-identity-bar,
+.sheet-theme-cyber .poster-identity-bar { border-bottom: 1.5px solid #2563eb; }
+.sheet-theme-neo .poster-civic-badge .civic-dot,
 .sheet-theme-cyber .poster-civic-badge .civic-dot {
-    background: #38bdf8;
+    background: #2563eb;
     border-radius: 50%;
-    box-shadow: 0 0 8px #38bdf8;
+    box-shadow: 0 0 6px #2563eb;
 }
-.sheet-theme-cyber .poster-civic-badge .civic-text { color: #f8fafc; letter-spacing: 0.18em; }
-.sheet-theme-cyber .poster-institution-portal { color: #38bdf8; }
-.sheet-theme-cyber .poster-kicker { color: #38bdf8; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-neo .poster-civic-badge .civic-text,
+.sheet-theme-cyber .poster-civic-badge .civic-text { color: #0f172a; letter-spacing: 0.18em; }
+.sheet-theme-neo .poster-institution-portal,
+.sheet-theme-cyber .poster-institution-portal { color: #2563eb; font-weight: 700; }
+.sheet-theme-neo .poster-kicker,
+.sheet-theme-cyber .poster-kicker { color: #0284c7; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-neo .poster-branch-title,
+.sheet-theme-neo .a5-branch-title,
+.sheet-theme-neo .bm-branch-name,
 .sheet-theme-cyber .poster-branch-title,
 .sheet-theme-cyber .a5-branch-title,
-.sheet-theme-cyber .bm-branch-name { color: #ffffff; font-weight: 900; }
+.sheet-theme-cyber .bm-branch-name { color: #0f172a; font-weight: 900; }
+.sheet-theme-neo .poster-slogan-editorial,
 .sheet-theme-cyber .poster-slogan-editorial {
-    background: #131d33;
-    border-left: 3.5px solid #38bdf8;
-    border-right: 1px solid #1e3a5f;
-    border-top: 1px solid #1e3a5f;
-    border-bottom: 1px solid #1e3a5f;
+    background: #f0f9ff;
+    border-left: 3.5px solid #2563eb;
+    border-right: 1px solid #bae6fd;
+    border-top: 1px solid #bae6fd;
+    border-bottom: 1px solid #bae6fd;
     border-radius: 6px;
 }
-.sheet-theme-cyber .poster-slogan-editorial .quote-symbol { color: #38bdf8; }
-.sheet-theme-cyber .poster-slogan-editorial .slogan-content { color: #e2e8f0; }
+.sheet-theme-neo .poster-slogan-editorial .quote-symbol,
+.sheet-theme-cyber .poster-slogan-editorial .quote-symbol { color: #2563eb; }
+.sheet-theme-neo .poster-slogan-editorial .slogan-content,
+.sheet-theme-cyber .poster-slogan-editorial .slogan-content { color: #0f172a; }
+.sheet-theme-neo .p-card,
 .sheet-theme-cyber .p-card {
-    background: #131d33;
-    border: 1px solid #1e3a5f;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 6px;
 }
-.sheet-theme-cyber .p-card-num { color: #38bdf8; font-family: 'JetBrains Mono', monospace; }
-.sheet-theme-cyber .p-card-title { color: #f8fafc; }
-.sheet-theme-cyber .p-card-desc { color: #94a3b8; }
+.sheet-theme-neo .p-card-num,
+.sheet-theme-cyber .p-card-num { color: #2563eb; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.sheet-theme-neo .p-card-title,
+.sheet-theme-cyber .p-card-title { color: #0f172a; font-weight: 800; }
+.sheet-theme-neo .p-card-desc,
+.sheet-theme-cyber .p-card-desc { color: #475569; }
+.sheet-theme-neo .poster-qr-architecture,
+.sheet-theme-neo .a5-qr-col,
 .sheet-theme-cyber .poster-qr-architecture,
 .sheet-theme-cyber .a5-qr-col {
-    background: #131d33;
-    border: 1.5px solid #38bdf8;
+    background: #f0f9ff;
+    border: 1.5px solid #2563eb;
     border-radius: 8px;
 }
+.sheet-theme-neo .qr-architectural-frame,
 .sheet-theme-cyber .qr-architectural-frame { background: #ffffff; border-radius: 4px; }
-.sheet-theme-cyber .qr-architectural-frame .corner { border-color: #38bdf8; }
-.sheet-theme-cyber .qr-prompt-tag { color: #38bdf8; font-weight: 800; }
-.sheet-theme-cyber .qr-prompt-heading { color: #f8fafc; }
-.sheet-theme-cyber .qr-prompt-sub { color: #94a3b8; }
+.sheet-theme-neo .qr-architectural-frame .corner,
+.sheet-theme-cyber .qr-architectural-frame .corner { border-color: #2563eb; }
+.sheet-theme-neo .qr-prompt-tag,
+.sheet-theme-cyber .qr-prompt-tag { color: #2563eb; font-weight: 800; }
+.sheet-theme-neo .qr-prompt-heading,
+.sheet-theme-cyber .qr-prompt-heading { color: #0f172a; }
+.sheet-theme-neo .qr-prompt-sub,
+.sheet-theme-cyber .qr-prompt-sub { color: #64748b; }
+.sheet-theme-neo .qr-target-url,
+.sheet-theme-neo .a5-main-cta,
 .sheet-theme-cyber .qr-target-url,
-.sheet-theme-cyber .a5-main-cta { color: #38bdf8; }
-.sheet-theme-cyber .poster-colophon { border-top: 1px solid #1e293b; }
-.sheet-theme-cyber .col-value { color: #cbd5e1; }
-.sheet-theme-cyber .a5-feature-checklist { color: #cbd5e1; }
-.sheet-theme-cyber .a5-url-chip { color: #38bdf8; }
-.sheet-theme-cyber .bm-card { background: #131d33; border: 1px solid #1e3a5f; border-radius: 6px; }
-.sheet-theme-cyber .bm-civic-seal { color: #94a3b8; }
-.sheet-theme-cyber .bm-quote-container { background: #0b1120; color: #cbd5e1; }
-.sheet-theme-cyber .bm-footer { border-top-color: #1e3a5f; color: #94a3b8; }
-.sheet-theme-cyber .bm-foot-portal { color: #38bdf8; }
-.sheet-theme-cyber .bm-cut-line { border-left-color: #1e3a5f; }
+.sheet-theme-cyber .a5-main-cta { color: #2563eb; font-weight: 800; }
+.sheet-theme-neo .poster-colophon,
+.sheet-theme-cyber .poster-colophon { border-top: 1px solid #e2e8f0; }
+.sheet-theme-neo .col-value,
+.sheet-theme-cyber .col-value { color: #334155; }
+.sheet-theme-neo .a5-feature-checklist,
+.sheet-theme-cyber .a5-feature-checklist { color: #334155; }
+.sheet-theme-neo .a5-url-chip,
+.sheet-theme-cyber .a5-url-chip { color: #2563eb; }
+.sheet-theme-neo .bm-card,
+.sheet-theme-cyber .bm-card { background: #ffffff; border: 1px solid #bfdbfe; border-radius: 6px; }
+.sheet-theme-neo .bm-civic-seal,
+.sheet-theme-cyber .bm-civic-seal { color: #64748b; }
+.sheet-theme-neo .bm-quote-container,
+.sheet-theme-cyber .bm-quote-container { background: #f0f9ff; color: #1e293b; }
+.sheet-theme-neo .bm-footer,
+.sheet-theme-cyber .bm-footer { border-top-color: #e2e8f0; color: #64748b; }
+.sheet-theme-neo .bm-foot-portal,
+.sheet-theme-cyber .bm-foot-portal { color: #2563eb; }
+.sheet-theme-neo .bm-cut-line,
+.sheet-theme-cyber .bm-cut-line { border-left-color: #cbd5e1; }
 
 /* --------------------------------------------------------------------------
-   10. MIDNIGHT (Ночной лекторий — Velvety Anthracite & Warm Gold)
+   10. POETRY / ART (Арт-резиденция & Креатив — Clean White & Artistic Magenta/Indigo)
    -------------------------------------------------------------------------- */
+.sheet-theme-poetry,
 .sheet-theme-midnight {
-    background: #0f172a;
-    color: #f8fafc;
+    background: #ffffff;
+    color: #1e1b4b;
 }
-.sheet-theme-midnight .poster-identity-bar { border-bottom: 1.5px solid #f59e0b; }
+.sheet-theme-poetry .poster-identity-bar,
+.sheet-theme-midnight .poster-identity-bar { border-bottom: 1.5px solid #be185d; }
+.sheet-theme-poetry .poster-civic-badge .civic-dot,
 .sheet-theme-midnight .poster-civic-badge .civic-dot {
-    background: #f59e0b;
+    background: #be185d;
     border-radius: 50%;
-    box-shadow: 0 0 8px #f59e0b;
+    box-shadow: 0 0 6px #be185d;
 }
-.sheet-theme-midnight .poster-civic-badge .civic-text { color: #f8fafc; letter-spacing: 0.18em; }
-.sheet-theme-midnight .poster-institution-portal { color: #f59e0b; }
-.sheet-theme-midnight .poster-kicker { color: #f59e0b; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-poetry .poster-civic-badge .civic-text,
+.sheet-theme-midnight .poster-civic-badge .civic-text { color: #1e1b4b; letter-spacing: 0.18em; }
+.sheet-theme-poetry .poster-institution-portal,
+.sheet-theme-midnight .poster-institution-portal { color: #be185d; font-weight: 700; }
+.sheet-theme-poetry .poster-kicker,
+.sheet-theme-midnight .poster-kicker { color: #be185d; letter-spacing: 0.2em; font-weight: 700; }
+.sheet-theme-poetry .poster-branch-title,
+.sheet-theme-poetry .a5-branch-title,
+.sheet-theme-poetry .bm-branch-name,
 .sheet-theme-midnight .poster-branch-title,
 .sheet-theme-midnight .a5-branch-title,
-.sheet-theme-midnight .bm-branch-name { color: #ffffff; font-weight: 900; }
+.sheet-theme-midnight .bm-branch-name { color: #1e1b4b; font-weight: 900; }
+.sheet-theme-poetry .poster-slogan-editorial,
 .sheet-theme-midnight .poster-slogan-editorial {
-    background: #1e293b;
-    border-left: 3.5px solid #f59e0b;
-    border-right: 1px solid #334155;
-    border-top: 1px solid #334155;
-    border-bottom: 1px solid #334155;
+    background: #fdf2f8;
+    border-left: 3.5px solid #be185d;
+    border-right: 1px solid #fbcfe8;
+    border-top: 1px solid #fbcfe8;
+    border-bottom: 1px solid #fbcfe8;
     border-radius: 6px;
 }
-.sheet-theme-midnight .poster-slogan-editorial .quote-symbol { color: #f59e0b; }
-.sheet-theme-midnight .poster-slogan-editorial .slogan-content { color: #e2e8f0; }
+.sheet-theme-poetry .poster-slogan-editorial .quote-symbol,
+.sheet-theme-midnight .poster-slogan-editorial .quote-symbol { color: #be185d; }
+.sheet-theme-poetry .poster-slogan-editorial .slogan-content,
+.sheet-theme-midnight .poster-slogan-editorial .slogan-content { color: #1e1b4b; }
+.sheet-theme-poetry .p-card,
 .sheet-theme-midnight .p-card {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: #fdf4ff;
+    border: 1px solid #f5d0fe;
     border-radius: 6px;
 }
-.sheet-theme-midnight .p-card-num { color: #f59e0b; font-family: 'JetBrains Mono', monospace; }
-.sheet-theme-midnight .p-card-title { color: #f8fafc; }
-.sheet-theme-midnight .p-card-desc { color: #94a3b8; }
+.sheet-theme-poetry .p-card-num,
+.sheet-theme-midnight .p-card-num { color: #be185d; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.sheet-theme-poetry .p-card-title,
+.sheet-theme-midnight .p-card-title { color: #1e1b4b; font-weight: 800; }
+.sheet-theme-poetry .p-card-desc,
+.sheet-theme-midnight .p-card-desc { color: #475569; }
+.sheet-theme-poetry .poster-qr-architecture,
+.sheet-theme-poetry .a5-qr-col,
 .sheet-theme-midnight .poster-qr-architecture,
 .sheet-theme-midnight .a5-qr-col {
-    background: #1e293b;
-    border: 1.5px solid #f59e0b;
+    background: #fdf2f8;
+    border: 1.5px solid #be185d;
     border-radius: 8px;
 }
+.sheet-theme-poetry .qr-architectural-frame,
 .sheet-theme-midnight .qr-architectural-frame { background: #ffffff; border-radius: 4px; }
-.sheet-theme-midnight .qr-architectural-frame .corner { border-color: #f59e0b; }
-.sheet-theme-midnight .qr-prompt-tag { color: #f59e0b; font-weight: 800; }
-.sheet-theme-midnight .qr-prompt-heading { color: #f8fafc; }
-.sheet-theme-midnight .qr-prompt-sub { color: #94a3b8; }
+.sheet-theme-poetry .qr-architectural-frame .corner,
+.sheet-theme-midnight .qr-architectural-frame .corner { border-color: #be185d; }
+.sheet-theme-poetry .qr-prompt-tag,
+.sheet-theme-midnight .qr-prompt-tag { color: #be185d; font-weight: 800; }
+.sheet-theme-poetry .qr-prompt-heading,
+.sheet-theme-midnight .qr-prompt-heading { color: #1e1b4b; }
+.sheet-theme-poetry .qr-prompt-sub,
+.sheet-theme-midnight .qr-prompt-sub { color: #64748b; }
+.sheet-theme-poetry .qr-target-url,
+.sheet-theme-poetry .a5-main-cta,
 .sheet-theme-midnight .qr-target-url,
-.sheet-theme-midnight .a5-main-cta { color: #f59e0b; }
-.sheet-theme-midnight .poster-colophon { border-top: 1px solid #334155; }
-.sheet-theme-midnight .col-value { color: #cbd5e1; }
-.sheet-theme-midnight .a5-feature-checklist { color: #cbd5e1; }
-.sheet-theme-midnight .a5-url-chip { color: #f59e0b; }
-.sheet-theme-midnight .bm-card { background: #1e293b; border: 1px solid #334155; border-radius: 6px; }
-.sheet-theme-midnight .bm-civic-seal { color: #94a3b8; }
-.sheet-theme-midnight .bm-quote-container { background: #0f172a; color: #cbd5e1; }
-.sheet-theme-midnight .bm-footer { border-top-color: #334155; color: #94a3b8; }
-.sheet-theme-midnight .bm-foot-portal { color: #f59e0b; }
-.sheet-theme-midnight .bm-cut-line { border-left-color: #334155; }
+.sheet-theme-midnight .a5-main-cta { color: #be185d; font-weight: 800; }
+.sheet-theme-poetry .poster-colophon,
+.sheet-theme-midnight .poster-colophon { border-top: 1px solid #fbcfe8; }
+.sheet-theme-poetry .col-value,
+.sheet-theme-midnight .col-value { color: #334155; }
+.sheet-theme-poetry .a5-feature-checklist,
+.sheet-theme-midnight .a5-feature-checklist { color: #334155; }
+.sheet-theme-poetry .a5-url-chip,
+.sheet-theme-midnight .a5-url-chip { color: #be185d; }
+.sheet-theme-poetry .bm-card,
+.sheet-theme-midnight .bm-card { background: #ffffff; border: 1px solid #fbcfe8; border-radius: 6px; }
+.sheet-theme-poetry .bm-civic-seal,
+.sheet-theme-midnight .bm-civic-seal { color: #64748b; }
+.sheet-theme-poetry .bm-quote-container,
+.sheet-theme-midnight .bm-quote-container { background: #fdf2f8; color: #1e1b4b; }
+.sheet-theme-poetry .bm-footer,
+.sheet-theme-midnight .bm-footer { border-top-color: #fbcfe8; color: #64748b; }
+.sheet-theme-poetry .bm-foot-portal,
+.sheet-theme-midnight .bm-foot-portal { color: #be185d; }
+.sheet-theme-poetry .bm-cut-line,
+.sheet-theme-midnight .bm-cut-line { border-left-color: #cbd5e1; }
 
 /* --------------------------------------------------------------------------
    Events Tab Timeline Styles

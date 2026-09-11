@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.5';
-import { createQrSvg } from './qrcode.js?v=3.7.5';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.6';
+import { createQrSvg } from './qrcode.js?v=3.7.6';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',
@@ -42,8 +42,8 @@ export const PROMO_TEMPLATES = [
         id: 'bauhaus',
         name: 'Баухаус & Авангард',
         category: 'Авангард',
-        description: 'Архитектурная геометрия Дессау, терракота, тёплая охра, тёмный сланец и плотная типографика',
-        swatches: ['#faf8f5', '#c2410c', '#1e293b'],
+        description: 'Архитектурная геометрия Дессау, чистый белый фон, терракота, тёплая охра и плотная типографика',
+        swatches: ['#ffffff', '#c2410c', '#1e293b'],
         dark: false,
         qrForeground: '#1e293b',
         qrBackground: '#ffffff',
@@ -58,8 +58,8 @@ export const PROMO_TEMPLATES = [
         id: 'scandi',
         name: 'Скандинавский минимализм',
         category: 'Минимализм',
-        description: 'Эстетика библиотеки Oodi в Хельсинки: мягкий фарфоровый белый, эвкалиптовый шалфей и тактильный покой',
-        swatches: ['#fcfbfa', '#0f766e', '#1c1917'],
+        description: 'Эстетика библиотеки Oodi в Хельсинки: чистый белый фон, эвкалиптовый шалфей и тактильный покой',
+        swatches: ['#ffffff', '#0f766e', '#1c1917'],
         dark: false,
         qrForeground: '#1c1917',
         qrBackground: '#ffffff',
@@ -74,8 +74,8 @@ export const PROMO_TEMPLATES = [
         id: 'editorial',
         name: 'Литературная классика',
         category: 'Классика',
-        description: 'Академическое книжное издательство: благородный бордо, оттенок слоновой кости и классическая рамка',
-        swatches: ['#fdfbf7', '#831843', '#1c1917'],
+        description: 'Академическое книжное издательство: чистый белый фон, благородный бордо и классическая рамка',
+        swatches: ['#ffffff', '#831843', '#1c1917'],
         dark: false,
         qrForeground: '#1c1917',
         qrBackground: '#ffffff',
@@ -90,8 +90,8 @@ export const PROMO_TEMPLATES = [
         id: 'botanical',
         name: 'Эко-библиотека & Природа',
         category: 'Экология',
-        description: 'Биофильный дизайн: хвоя, лесной мох, светлый небелёный лён и гармония природного чтения',
-        swatches: ['#f6f8f5', '#15803d', '#142e1b'],
+        description: 'Биофильный дизайн: чистый белый фон, хвоя, лесной мох и гармония природного чтения',
+        swatches: ['#ffffff', '#15803d', '#142e1b'],
         dark: false,
         qrForeground: '#142e1b',
         qrBackground: '#ffffff',
@@ -106,23 +106,23 @@ export const PROMO_TEMPLATES = [
         id: 'craft',
         name: 'Винтажный архив',
         category: 'Архив',
-        description: 'Бумажная текстура крафта, типографская кофейная сепия, сургучный красный и шарм экслибриса',
-        swatches: ['#f6f0e6', '#991b1b', '#292524'],
+        description: 'Чистый белый фон, типографская кофейная сепия, сургучный красный и шарм экслибриса',
+        swatches: ['#ffffff', '#991b1b', '#292524'],
         dark: false,
         qrForeground: '#292524',
-        qrBackground: '#faf6ee',
+        qrBackground: '#ffffff',
         bookmarkThemes: [
-            { name: 'crimson-wax', accent: '#991b1b', accentSoft: '#ede4d4', accentBorder: '#d6c7b2', tagBg: '#991b1b', tagColor: '#faf5ec' },
-            { name: 'sepia', accent: '#574e44', accentSoft: '#f2eae0', accentBorder: '#cbbba7', tagBg: '#3d362e', tagColor: '#faf5ec' },
-            { name: 'chestnut', accent: '#7c2d12', accentSoft: '#eedfd2', accentBorder: '#d9c2b0', tagBg: '#64240d', tagColor: '#faf5ec' },
-            { name: 'amber-wax', accent: '#b45309', accentSoft: '#f5eee3', accentBorder: '#decaba', tagBg: '#92400e', tagColor: '#faf5ec' }
+            { name: 'crimson-wax', accent: '#991b1b', accentSoft: '#ede4d4', accentBorder: '#d6c7b2', tagBg: '#991b1b', tagColor: '#ffffff' },
+            { name: 'sepia', accent: '#574e44', accentSoft: '#f2eae0', accentBorder: '#cbbba7', tagBg: '#3d362e', tagColor: '#ffffff' },
+            { name: 'chestnut', accent: '#7c2d12', accentSoft: '#eedfd2', accentBorder: '#d9c2b0', tagBg: '#64240d', tagColor: '#ffffff' },
+            { name: 'amber-wax', accent: '#b45309', accentSoft: '#f5eee3', accentBorder: '#decaba', tagBg: '#92400e', tagColor: '#ffffff' }
         ]
     },
     {
         id: 'gallery',
         name: 'Галерея современного искусства',
         category: 'Галерея',
-        description: 'Монохромный контраст White Cube, швейцарские типографские кресты (+) и масштабная верстка',
+        description: 'Монохромный контраст White Cube, чистый белый фон, швейцарские кресты (+) и масштабная верстка',
         swatches: ['#ffffff', '#18181b', '#71717a'],
         dark: false,
         qrForeground: '#09090b',
@@ -138,8 +138,8 @@ export const PROMO_TEMPLATES = [
         id: 'kids',
         name: 'Детство & Семейное чтение',
         category: 'Детство',
-        description: 'Солнечный мандариновый янтарь, лазурное небо, мягкие скруглённые формы и дружелюбный тон',
-        swatches: ['#fffbf5', '#ea580c', '#0284c7'],
+        description: 'Чистый белый фон, солнечный мандариновый янтарь, лазурное небо и мягкие формы',
+        swatches: ['#ffffff', '#ea580c', '#0284c7'],
         dark: false,
         qrForeground: '#1e293b',
         qrBackground: '#ffffff',
@@ -151,35 +151,35 @@ export const PROMO_TEMPLATES = [
         ]
     },
     {
-        id: 'cyber',
-        name: 'Цифровой хаб & Медиалаб',
+        id: 'neo',
+        name: 'Цифровая лаборатория & Медиахаб',
         category: 'Технологии',
-        description: 'Технологичный графит, светящийся электрический циан, моноширинные индексы и медиа-лаборатория',
-        swatches: ['#0b1120', '#38bdf8', '#0284c7'],
-        dark: true,
-        qrForeground: '#0b1120',
-        qrBackground: '#ffffff',
-        bookmarkThemes: [
-            { name: 'cyber-cyan', accent: '#38bdf8', accentSoft: '#0e2238', accentBorder: '#0284c7', tagBg: '#0284c7', tagColor: '#ffffff' },
-            { name: 'neon-blue', accent: '#60a5fa', accentSoft: '#111d38', accentBorder: '#2563eb', tagBg: '#1d4ed8', tagColor: '#ffffff' },
-            { name: 'laser-teal', accent: '#2dd4bf', accentSoft: '#0c2728', accentBorder: '#0d9488', tagBg: '#0f766e', tagColor: '#ffffff' },
-            { name: 'plasma-indigo', accent: '#818cf8', accentSoft: '#161938', accentBorder: '#4f46e5', tagBg: '#4338ca', tagColor: '#ffffff' }
-        ]
-    },
-    {
-        id: 'midnight',
-        name: 'Ночной лекторий',
-        category: 'Вечер',
-        description: 'Глубокий антрацит, золотистый свет вечерних ламп, интеллектуальный салон и вечерняя атмосфера',
-        swatches: ['#0f172a', '#f59e0b', '#f8fafc'],
-        dark: true,
+        description: 'Чистый белый фон, высокотехнологичный ультрамарин, лазурный циан, моноширинные теги [ LAB ] и технологичный драйв',
+        swatches: ['#ffffff', '#0284c7', '#2563eb'],
+        dark: false,
         qrForeground: '#0f172a',
         qrBackground: '#ffffff',
         bookmarkThemes: [
-            { name: 'amber-gold', accent: '#f59e0b', accentSoft: '#1e293b', accentBorder: '#d97706', tagBg: '#d97706', tagColor: '#ffffff' },
-            { name: 'warm-brass', accent: '#fbbf24', accentSoft: '#222533', accentBorder: '#b45309', tagBg: '#b45309', tagColor: '#ffffff' },
-            { name: 'silver-starlight', accent: '#e2e8f0', accentSoft: '#1a2234', accentBorder: '#64748b', tagBg: '#475569', tagColor: '#ffffff' },
-            { name: 'deep-copper', accent: '#f97316', accentSoft: '#26202c', accentBorder: '#c2410c', tagBg: '#ea580c', tagColor: '#ffffff' }
+            { name: 'neo-blue', accent: '#2563eb', accentSoft: '#eff6ff', accentBorder: '#bfdbfe', tagBg: '#2563eb', tagColor: '#ffffff' },
+            { name: 'neo-cyan', accent: '#0284c7', accentSoft: '#f0f9ff', accentBorder: '#bae6fd', tagBg: '#0284c7', tagColor: '#ffffff' },
+            { name: 'neo-teal', accent: '#0d9488', accentSoft: '#f0fdfa', accentBorder: '#99f6e4', tagBg: '#0f766e', tagColor: '#ffffff' },
+            { name: 'neo-indigo', accent: '#4f46e5', accentSoft: '#eef2ff', accentBorder: '#c7d2fe', tagBg: '#4338ca', tagColor: '#ffffff' }
+        ]
+    },
+    {
+        id: 'poetry',
+        name: 'Арт-резиденция & Креатив',
+        category: 'Искусство',
+        description: 'Чистый белый фон, смелая маджента, чернильный индиго, тёплый шафран, творческая свобода и экспрессивный литературный стиль',
+        swatches: ['#ffffff', '#be185d', '#1e1b4b'],
+        dark: false,
+        qrForeground: '#1e1b4b',
+        qrBackground: '#ffffff',
+        bookmarkThemes: [
+            { name: 'art-magenta', accent: '#be185d', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#be185d', tagColor: '#ffffff' },
+            { name: 'art-indigo', accent: '#3730a3', accentSoft: '#eef2ff', accentBorder: '#c7d2fe', tagBg: '#312e81', tagColor: '#ffffff' },
+            { name: 'art-saffron', accent: '#d97706', accentSoft: '#fefce8', accentBorder: '#fde047', tagBg: '#b45309', tagColor: '#ffffff' },
+            { name: 'art-emerald', accent: '#059669', accentSoft: '#ecfdf5', accentBorder: '#a7f3d0', tagBg: '#047857', tagColor: '#ffffff' }
         ]
     }
 ];
@@ -752,33 +752,57 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         .print-theme-kids .a4-card:nth-child(3) { background: #f0fdf4; border-color: #bbf7d0; }
         .print-theme-kids .a4-frame .corner, .print-theme-kids .a5-frame .corner { border-color: #ea580c; }
 
-        .print-theme-cyber { background: #0b1120; color: #f8fafc; }
-        .print-theme-cyber .a4-top, .print-theme-cyber .a5-top { border-bottom-color: #38bdf8; }
-        .print-theme-cyber .a4-name, .print-theme-cyber .a5-name, .print-theme-cyber .bm-title { color: #ffffff; }
-        .print-theme-cyber .a5-cta, .print-theme-cyber .a4-kicker, .print-theme-cyber .a4-qr-prompt, .print-theme-cyber .a4-qr-link, .print-theme-cyber .a4-card-num { color: #38bdf8; }
-        .print-theme-cyber .a4-slogan-box { border-left-color: #38bdf8; background: #131d33; color: #e2e8f0; }
-        .print-theme-cyber .a4-card, .print-theme-cyber .a5-right, .print-theme-cyber .a4-qr-block { border-color: #1e3a5f; background: #131d33; }
-        .print-theme-cyber .a4-card-title, .print-theme-cyber .a4-qr-heading { color: #f8fafc; }
-        .print-theme-cyber .a4-card-desc, .print-theme-cyber .a4-qr-sub { color: #94a3b8; }
-        .print-theme-cyber .a4-frame .corner, .print-theme-cyber .a5-frame .corner { border-color: #38bdf8; }
-        .print-theme-cyber .a4-foot-val, .print-theme-cyber .a5-foot-item, .print-theme-cyber .a5-list { color: #cbd5e1; }
-        .print-theme-cyber .bm-item { background: #131d33; border-color: #1e3a5f; }
-        .print-theme-cyber .bm-quote { background: #0b1120; color: #cbd5e1; }
-        .print-theme-cyber .bm-foot { border-top-color: #1e3a5f; color: #94a3b8; }
+        .print-theme-neo, .print-theme-cyber { background: #ffffff; color: #0f172a; }
+        .print-theme-neo .a4-top, .print-theme-neo .a5-top,
+        .print-theme-cyber .a4-top, .print-theme-cyber .a5-top { border-bottom-color: #2563eb; }
+        .print-theme-neo .a4-name, .print-theme-neo .a5-name, .print-theme-neo .bm-title,
+        .print-theme-cyber .a4-name, .print-theme-cyber .a5-name, .print-theme-cyber .bm-title { color: #0f172a; }
+        .print-theme-neo .a5-cta, .print-theme-neo .a4-kicker, .print-theme-neo .a4-qr-prompt, .print-theme-neo .a4-qr-link, .print-theme-neo .a4-card-num,
+        .print-theme-cyber .a5-cta, .print-theme-cyber .a4-kicker, .print-theme-cyber .a4-qr-prompt, .print-theme-cyber .a4-qr-link, .print-theme-cyber .a4-card-num { color: #2563eb; }
+        .print-theme-neo .a4-slogan-box,
+        .print-theme-cyber .a4-slogan-box { border-left-color: #2563eb; background: #f0f9ff; color: #0f172a; }
+        .print-theme-neo .a4-card, .print-theme-neo .a5-right, .print-theme-neo .a4-qr-block,
+        .print-theme-cyber .a4-card, .print-theme-cyber .a5-right, .print-theme-cyber .a4-qr-block { border-color: #bae6fd; background: #f8fafc; }
+        .print-theme-neo .a4-card-title, .print-theme-neo .a4-qr-heading,
+        .print-theme-cyber .a4-card-title, .print-theme-cyber .a4-qr-heading { color: #0f172a; }
+        .print-theme-neo .a4-card-desc, .print-theme-neo .a4-qr-sub,
+        .print-theme-cyber .a4-card-desc, .print-theme-cyber .a4-qr-sub { color: #475569; }
+        .print-theme-neo .a4-frame .corner, .print-theme-neo .a5-frame .corner,
+        .print-theme-cyber .a4-frame .corner, .print-theme-cyber .a5-frame .corner { border-color: #2563eb; }
+        .print-theme-neo .a4-foot-val, .print-theme-neo .a5-foot-item, .print-theme-neo .a5-list,
+        .print-theme-cyber .a4-foot-val, .print-theme-cyber .a5-foot-item, .print-theme-cyber .a5-list { color: #334155; }
+        .print-theme-neo .bm-item,
+        .print-theme-cyber .bm-item { background: #ffffff; border-color: #bfdbfe; }
+        .print-theme-neo .bm-quote,
+        .print-theme-cyber .bm-quote { background: #f0f9ff; color: #1e293b; border-left-color: #2563eb; }
+        .print-theme-neo .bm-foot,
+        .print-theme-cyber .bm-foot { border-top-color: #cbd5e1; color: #64748b; }
 
-        .print-theme-midnight { background: #0f172a; color: #f8fafc; }
-        .print-theme-midnight .a4-top, .print-theme-midnight .a5-top { border-bottom-color: #f59e0b; }
-        .print-theme-midnight .a4-name, .print-theme-midnight .a5-name, .print-theme-midnight .bm-title { color: #ffffff; }
-        .print-theme-midnight .a5-cta, .print-theme-midnight .a4-kicker, .print-theme-midnight .a4-qr-prompt, .print-theme-midnight .a4-qr-link, .print-theme-midnight .a4-card-num { color: #f59e0b; }
-        .print-theme-midnight .a4-slogan-box { border-left-color: #f59e0b; background: #1e293b; color: #e2e8f0; }
-        .print-theme-midnight .a4-card, .print-theme-midnight .a5-right, .print-theme-midnight .a4-qr-block { border-color: #334155; background: #1e293b; }
-        .print-theme-midnight .a4-card-title, .print-theme-midnight .a4-qr-heading { color: #f8fafc; }
-        .print-theme-midnight .a4-card-desc, .print-theme-midnight .a4-qr-sub { color: #94a3b8; }
-        .print-theme-midnight .a4-frame .corner, .print-theme-midnight .a5-frame .corner { border-color: #f59e0b; }
-        .print-theme-midnight .a4-foot-val, .print-theme-midnight .a5-foot-item, .print-theme-midnight .a5-list { color: #cbd5e1; }
-        .print-theme-midnight .bm-item { background: #1e293b; border-color: #334155; }
-        .print-theme-midnight .bm-quote { background: #0f172a; color: #cbd5e1; }
-        .print-theme-midnight .bm-foot { border-top-color: #334155; color: #94a3b8; }
+        .print-theme-poetry, .print-theme-midnight { background: #ffffff; color: #1e1b4b; }
+        .print-theme-poetry .a4-top, .print-theme-poetry .a5-top,
+        .print-theme-midnight .a4-top, .print-theme-midnight .a5-top { border-bottom-color: #be185d; }
+        .print-theme-poetry .a4-name, .print-theme-poetry .a5-name, .print-theme-poetry .bm-title,
+        .print-theme-midnight .a4-name, .print-theme-midnight .a5-name, .print-theme-midnight .bm-title { color: #1e1b4b; }
+        .print-theme-poetry .a5-cta, .print-theme-poetry .a4-kicker, .print-theme-poetry .a4-qr-prompt, .print-theme-poetry .a4-qr-link, .print-theme-poetry .a4-card-num,
+        .print-theme-midnight .a5-cta, .print-theme-midnight .a4-kicker, .print-theme-midnight .a4-qr-prompt, .print-theme-midnight .a4-qr-link, .print-theme-midnight .a4-card-num { color: #be185d; }
+        .print-theme-poetry .a4-slogan-box,
+        .print-theme-midnight .a4-slogan-box { border-left-color: #be185d; background: #fdf2f8; color: #1e1b4b; }
+        .print-theme-poetry .a4-card, .print-theme-poetry .a5-right, .print-theme-poetry .a4-qr-block,
+        .print-theme-midnight .a4-card, .print-theme-midnight .a5-right, .print-theme-midnight .a4-qr-block { border-color: #fbcfe8; background: #fdf4ff; }
+        .print-theme-poetry .a4-card-title, .print-theme-poetry .a4-qr-heading,
+        .print-theme-midnight .a4-card-title, .print-theme-midnight .a4-qr-heading { color: #1e1b4b; }
+        .print-theme-poetry .a4-card-desc, .print-theme-poetry .a4-qr-sub,
+        .print-theme-midnight .a4-card-desc, .print-theme-midnight .a4-qr-sub { color: #475569; }
+        .print-theme-poetry .a4-frame .corner, .print-theme-poetry .a5-frame .corner,
+        .print-theme-midnight .a4-frame .corner, .print-theme-midnight .a5-frame .corner { border-color: #be185d; }
+        .print-theme-poetry .a4-foot-val, .print-theme-poetry .a5-foot-item, .print-theme-poetry .a5-list,
+        .print-theme-midnight .a4-foot-val, .print-theme-midnight .a5-foot-item, .print-theme-midnight .a5-list { color: #334155; }
+        .print-theme-poetry .bm-item,
+        .print-theme-midnight .bm-item { background: #ffffff; border-color: #fbcfe8; }
+        .print-theme-poetry .bm-quote,
+        .print-theme-midnight .bm-quote { background: #fdf2f8; color: #1e1b4b; border-left-color: #be185d; }
+        .print-theme-poetry .bm-foot,
+        .print-theme-midnight .bm-foot { border-top-color: #cbd5e1; color: #64748b; }
 
         .print-theme-bauhaus .bm-item { border-radius: 0; }
         .print-theme-gallery .bm-item { border-radius: 0; border: 0.45mm solid #09090b; }
@@ -801,10 +825,13 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 margin: 0;
                 padding: 0;
                 overflow: hidden;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
             body {
-                background: ${template.swatches[0]};
-                color: ${template.dark ? '#f8fafc' : '#0a0f1d'};
+                background: #ffffff !important;
+                color: #0a0f1d;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -819,6 +846,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 box-sizing: border-box;
                 page-break-inside: avoid;
                 break-inside: avoid;
+                background: #ffffff !important;
             }
             .bm-item {
                 flex: 1;
@@ -832,7 +860,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 align-items: center;
                 text-align: center;
                 box-sizing: border-box;
-                background: ${template.dark ? '#131d33' : '#ffffff'};
+                background: #ffffff !important;
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
@@ -980,7 +1008,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 justify-content: space-between;
                 width: 6mm;
                 flex-shrink: 0;
-                color: #94a3b8;
+                color: #64748b !important;
+                background: #ffffff !important;
                 user-select: none;
                 padding: 3mm 0;
             }
@@ -988,11 +1017,12 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 font-size: 10pt;
                 line-height: 1;
                 transform: rotate(90deg);
+                color: #64748b !important;
             }
             .cut-line {
                 flex: 1;
                 width: 0;
-                border-left: 0.35mm dashed #cbd5e1;
+                border-left: 0.35mm dashed #cbd5e1 !important;
                 margin: 3mm 0;
             }
             ${themePrintRules}
@@ -1050,14 +1080,38 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
 
         pageCss = `
             @page { size: A5 landscape; margin: 9mm 12mm 9mm 12mm; }
-            body { background: ${template.swatches[0]}; color: ${template.dark ? '#f8fafc' : '#0a0f1d'}; }
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body {
+                background: #ffffff !important;
+                color: #0a0f1d;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
             .print-a5-container {
                 height: 100%;
+                max-height: 130mm;
+                width: 100%;
+                max-width: 186mm;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
                 box-sizing: border-box;
-                padding: 1mm 2mm;
+                padding: 3.5mm 4.5mm;
+                border: 0.4mm solid #cbd5e1;
+                border-radius: 3mm;
+                background: #ffffff !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .a5-top {
                 display: flex;
@@ -1235,14 +1289,37 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         const qrSvgA4 = createQrSvg(branch.vkLink, { size: 170, foreground: qrFg, background: qrBg, margin: 1 });
 
         pageCss = `
-            @page { size: A4 portrait; margin: 12mm 14mm 12mm 14mm; }
-            body { background: ${template.swatches[0]}; color: ${template.dark ? '#f8fafc' : '#0a0f1d'}; }
+            @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body {
+                background: #ffffff !important;
+                color: #0a0f1d;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
             .print-a4-container {
                 height: 100%;
+                width: 100%;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
                 box-sizing: border-box;
+                padding: 4.5mm 5.5mm;
+                border: 0.4mm solid #cbd5e1;
+                border-radius: 3mm;
+                background: #ffffff !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .a4-top {
                 display: flex;
