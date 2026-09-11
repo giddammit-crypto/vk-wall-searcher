@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.6.3';
+} from './api.js?v=3.7.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.6.3';
+} from './advice.js?v=3.7.0';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.6.3';
+} from './subscribers.js?v=3.7.0';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.6.3';
+} from './updater.js?v=3.7.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.6.3';
+} from './branches.js?v=3.7.0';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.6.3';
+} from './analytics.js?v=3.7.0';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.6.3';
+} from './render.js?v=3.7.0';
 
 import {
     exportToCsv,
@@ -79,10 +79,26 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.6.3';
+} from './export.js?v=3.7.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.6.3';
-import { CosmicUniverse } from './cosmic.js?v=3.6.3';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.0';
+import { CosmicUniverse } from './cosmic.js?v=3.7.0';
+
+import {
+    detectEvents,
+    renderEventsTab,
+    openPrintableBillboard
+} from './events.js?v=3.7.0';
+
+import {
+    initPromoModal,
+    openPromoModal,
+    closePromoModal
+} from './promo.js?v=3.7.0';
+
+import {
+    renderRadarSection
+} from './radar.js?v=3.7.0';
 
 function initApp() {
 
@@ -205,8 +221,10 @@ function initApp() {
         tabContents: document.querySelectorAll('.tab-content'),
         countFeed: document.getElementById('count-visual') || document.getElementById('count-feed'),
         countPassport: document.getElementById('count-report') || document.getElementById('count-passport'),
+        countEvents: document.getElementById('count-events'),
         countAnalytics: document.getElementById('count-analytics'),
         countSummary: document.getElementById('count-summary'),
+        promoModalBtn: document.getElementById('promo-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
         postsGrid: document.getElementById('posts-grid'),
@@ -1411,6 +1429,15 @@ function initApp() {
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
         updateAdviceAndSubscribers(stats);
 
+        // v3.7: вкладка «Афиша событий» (интеллектуальный детектор анонсов)
+        const detectedEvents = detectEvents(state.matchedPosts || []);
+        state.detectedEvents = detectedEvents;
+        if (elements.countEvents) elements.countEvents.textContent = detectedEvents.length;
+        const eventsContainer = document.getElementById('events-tab-content');
+        if (eventsContainer) {
+            renderEventsTab(eventsContainer, detectedEvents);
+        }
+
         // Resolve any remaining missing repost author names/avatars across all tabs and reports
         resolveMissingAuthors(state.matchedPosts, state.token).catch(() => {});
     }
@@ -1828,6 +1855,12 @@ function initApp() {
 
         renderAnalyticsChart(stats);
         renderAnalyticsRatingTable(stats);
+
+        // v3.7: Диаграмма компетенций филиалов («Радар методиста»)
+        const radarMount = document.getElementById('radar-chart-mount');
+        if (radarMount) {
+            renderRadarSection(radarMount, stats, state.matchedPosts || []);
+        }
     }
 
     function renderAnalyticsChart(stats) {
@@ -2553,7 +2586,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.6.3'
+                appVersion: '3.7.0'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -2869,8 +2902,16 @@ function initApp() {
 
         // Navigation hotkeys when NOT typing in inputs
         if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            // Quick tab switching 1, 2, 3, 4
-            const tabMap = { '1': 'visual-tab', '2': 'report-tab', '3': 'analytics-tab', '4': 'summary-tab' };
+            // Quick tab switching 1, 2, 3, 4, 5, 6, 7
+            const tabMap = {
+                '1': 'visual-tab',
+                '2': 'report-tab',
+                '3': 'events-tab',
+                '4': 'analytics-tab',
+                '5': 'summary-tab',
+                '6': 'advice-tab',
+                '7': 'subscribers-tab'
+            };
             if (tabMap[e.key]) {
                 const targetTabId = tabMap[e.key];
                 const targetBtn = document.querySelector(`.tab-btn[data-tab="${targetTabId}"]`);
@@ -3197,6 +3238,13 @@ function initApp() {
         });
     }
 
+    if (elements.promoModalBtn) {
+        elements.promoModalBtn.addEventListener('click', () => {
+            openPromoModal();
+        });
+    }
+    window.__openPromoModal = openPromoModal;
+
     if (elements.appSettingsBtn) {
         elements.appSettingsBtn.addEventListener('click', () => openSettingsWithAuth(openAppSettings));
     }
@@ -3426,6 +3474,20 @@ function initApp() {
             if (subsBtn) subsBtn.click();
         }, 150);
     }
+    if (_urlP.get('preview_tab') === 'events') {
+        if (elements.resultsContainer) {
+            elements.resultsContainer.classList.remove('hidden');
+        }
+        setTimeout(() => {
+            const evBtn = document.querySelector('.tab-btn[data-tab="events-tab"]');
+            if (evBtn) evBtn.click();
+        }, 150);
+    }
+    if (_urlP.get('preview_promo') === '1') {
+        setTimeout(() => {
+            openPromoModal();
+        }, 200);
+    }
     if (_urlP.get('preview_cosmic') === '1') {
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('hidden');
@@ -3450,7 +3512,12 @@ function initApp() {
         renderOfficialReport,
         closeSearchModal,
         closePostModal,
-        CosmicUniverse
+        CosmicUniverse,
+        detectEvents,
+        renderEventsTab,
+        openPromoModal,
+        closePromoModal,
+        renderRadarSection
     };
 }
 

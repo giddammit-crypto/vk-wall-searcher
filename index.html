@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.6.3">
+    <link rel="stylesheet" href="style.css?v=3.7.0">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -122,6 +122,10 @@
                 <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
                     <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">dark_mode</span>
                     <span id="theme-toggle-text">Тёмная</span>
+                </button>
+                <button type="button" id="promo-modal-btn" class="btn btn-tonal" title="Генератор фирменных QR-плакатов и закладок для филиалов">
+                    <span class="material-symbols-outlined icon">qr_code_2</span>
+                    <span class="settings-btn-text">QR-плакаты</span>
                 </button>
                 <button id="help-btn" class="btn btn-tonal" title="Справка по сервису">
                     <span class="material-symbols-outlined icon">help</span>
@@ -547,6 +551,11 @@
                         <span>Отчёт с ссылками</span>
                         <span class="tab-badge" id="count-report">0</span>
                     </button>
+                    <button class="tab-btn" data-tab="events-tab">
+                        <span class="material-symbols-outlined icon">event</span>
+                        <span>Афиша событий</span>
+                        <span class="tab-badge" id="count-events">0</span>
+                    </button>
                     <button class="tab-btn" data-tab="analytics-tab">
                         <span class="material-symbols-outlined icon">leaderboard</span>
                         <span>Рейтинг активности</span>
@@ -723,6 +732,19 @@
                     </div>
                 </div>
 
+                <!-- Tab: City Events Billboard (Умная Сводная Афиша Города) -->
+                <div id="events-tab" class="tab-content no-print">
+                    <div id="events-tab-content">
+                        <div class="events-empty-state">
+                            <span class="material-symbols-outlined events-empty-icon">event_busy</span>
+                            <h3 class="events-empty-title">Анонсы мероприятий пока не найдены</h3>
+                            <p class="events-empty-desc">
+                                Выполните поиск по сообществам библиотек, и алгоритм автоматически извлечёт все анонсы мастер-классов, лекций, выставок и праздников.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tab 3: Rating and Analytics (Methodologist Dashboard) -->
                 <div id="analytics-tab" class="tab-content no-print">
                     <!-- Methodologist KPI Cards -->
@@ -810,6 +832,11 @@
                         <div id="analytics-chart-container" class="analytics-chart-container">
                             <!-- Dynamic SVG / CSS Bars -->
                         </div>
+                    </div>
+
+                    <!-- Competence Radar Chart Card (Радар методиста) -->
+                    <div id="radar-chart-mount" class="radar-mount-container">
+                        <!-- Rendered by src/radar.js -->
                     </div>
 
                     <!-- Comparative Activity Rating Table Card -->
@@ -1345,7 +1372,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.6.3"></script>
+    <script type="module" src="src/app.js?v=3.7.0"></script>
 
     <script>
     /* =============================================================
@@ -1364,7 +1391,7 @@
 
         function observeCards() {
             document.querySelectorAll(
-                '.post-card, .kpi-card, .source-showcase-card, .stat-box, .card, .report-group-section'
+                '.post-card, .kpi-card, .source-showcase-card, .stat-box, .card, .report-group-section, .event-card, .radar-module-card'
             ).forEach(el => {
                 if (!el.classList.contains('agy-visible')) {
                     el.classList.add('agy-will-animate');
