@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.7.7">
+    <link rel="stylesheet" href="style.css?v=3.7.8">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -1349,6 +1349,9 @@
         </div>
     </div>
 
+    <!-- Cosmic Warp Screen-Fill Transition Canvas -->
+    <canvas id="space-warp-canvas" class="space-warp-canvas hidden"></canvas>
+
     <!-- 3D Cosmic Space Holodeck Viewport -->
     <div id="space-3d-viewport" class="space-3d-viewport hidden" aria-hidden="true">
         <!-- Deep Space 360 Canvas -->
@@ -1381,6 +1384,12 @@
                 <span class="tele-item"><span class="tele-lbl">ОБЪЕКТЫ:</span> <span id="tele-objs" class="tele-val">8</span></span>
             </div>
             <div class="space-hud-actions">
+                <button type="button" id="space-music-btn" class="space-hud-btn active" title="Амбиент-музыка космоса: ВКЛ/ВЫКЛ">
+                    <span class="material-symbols-outlined">music_note</span>
+                </button>
+                <button type="button" id="space-voice-btn" class="space-hud-btn active" title="Голосовой ассистент: ВКЛ/ВЫКЛ">
+                    <span class="material-symbols-outlined">record_voice_over</span>
+                </button>
                 <button type="button" id="space-help-btn" class="space-hud-btn" title="Подсказка по управлению">
                     <span class="material-symbols-outlined">help</span>
                 </button>
@@ -1460,7 +1469,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.7.7"></script>
+    <script type="module" src="src/app.js?v=3.7.8"></script>
 
     <script>
     /* =============================================================

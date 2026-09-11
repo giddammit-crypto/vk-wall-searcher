@@ -8766,7 +8766,7 @@ textarea:focus-visible,
 }
 
 /* ==========================================================================
-   3D COSMIC SPACE HOLODECK 360° (v3.7.7)
+   3D COSMIC SPACE HOLODECK 360° (v3.7.8)
    Designed by: Designer, Artist, Motion Designer, 3D Art Artist, Lead Engineer
    ========================================================================== */
 
@@ -8809,6 +8809,59 @@ textarea:focus-visible,
     box-shadow: 0 0 8px rgba(62, 230, 196, 0.8);
     display: inline-flex;
     align-items: center;
+    transition: all 0.2s ease;
+}
+
+#space-3d-btn > * {
+    pointer-events: none !important;
+}
+
+/* Triple-Click Interactive Feedback Steps */
+#space-3d-btn.click-step-1 {
+    border-color: #38bdf8 !important;
+    color: #38bdf8 !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.6) !important;
+}
+#space-3d-btn.click-step-1 .space-badge-pulse {
+    background: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.9);
+}
+
+#space-3d-btn.click-step-2 {
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+    box-shadow: 0 0 24px rgba(245, 158, 11, 0.8) !important;
+}
+#space-3d-btn.click-step-2 .space-badge-pulse {
+    background: #f59e0b;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 1);
+}
+
+#space-3d-btn.warp-arming {
+    border-color: #ec4899 !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #be185d 0%, #7c3aed 100%) !important;
+    box-shadow: 0 0 35px rgba(236, 72, 153, 0.9) !important;
+}
+#space-3d-btn.warp-arming .space-badge-pulse {
+    background: #ffffff;
+    color: #be185d;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 1);
+}
+
+/* Cosmic Warp Screen-Fill Transition Canvas */
+.space-warp-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99998;
+    pointer-events: none;
+    transition: opacity 0.35s ease-out;
+}
+
+.space-warp-canvas.hidden {
+    display: none !important;
 }
 
 /* Fullscreen 3D Viewport */
@@ -9228,6 +9281,19 @@ body.space-3d-active {
     background: rgba(255, 255, 255, 0.18);
     border-color: #ffffff;
     transform: translateY(-1px);
+}
+
+.space-hud-btn.active {
+    background: rgba(62, 230, 196, 0.18);
+    border-color: #3ee6c4;
+    color: #3ee6c4;
+    box-shadow: 0 0 10px rgba(62, 230, 196, 0.35);
+}
+
+.space-hud-btn.muted {
+    opacity: 0.45;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
 }
 
 .space-hud-btn-exit {

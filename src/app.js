@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.7.7';
+} from './api.js?v=3.7.8';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.7.7';
+} from './advice.js?v=3.7.8';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.7.7';
+} from './subscribers.js?v=3.7.8';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.7.7';
+} from './updater.js?v=3.7.8';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.7.7';
+} from './branches.js?v=3.7.8';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.7.7';
+} from './analytics.js?v=3.7.8';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.7.7';
+} from './render.js?v=3.7.8';
 
 import {
     exportToCsv,
@@ -79,22 +79,24 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.7.7';
+} from './export.js?v=3.7.8';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.7';
-import { CosmicUniverse } from './cosmic.js?v=3.7.7';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.8';
+import { CosmicUniverse } from './cosmic.js?v=3.7.8';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.7.7';
+} from './promo.js?v=3.7.8';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.7.7';
+} from './radar.js?v=3.7.8';
 
-import { Space3D } from './space3d.js?v=3.7.7';
+import { Space3D } from './space3d.js?v=3.7.8';
+import { SpaceWarp } from './space_warp.js?v=3.7.8';
+import { SpaceAudio } from './space_audio.js?v=3.7.8';
 
 function initApp() {
 
@@ -567,9 +569,65 @@ function initApp() {
         elements.settingsPanel?.classList.toggle('collapsed');
     }
 
+    // Строгий тройной клик для входа в 3D Космо-пространство (Только по 3 быстрым кликам подряд!)
+    let spaceClickCount = 0;
+    let spaceClickTimer = null;
+    const spaceBadge = elements.space3dBtn?.querySelector('.space-badge-pulse');
+
+    const resetSpaceClicks = () => {
+        spaceClickCount = 0;
+        if (spaceClickTimer) {
+            clearTimeout(spaceClickTimer);
+            spaceClickTimer = null;
+        }
+        if (elements.space3dBtn) {
+            elements.space3dBtn.classList.remove('click-step-1', 'click-step-2', 'warp-arming');
+        }
+        if (spaceBadge) {
+            spaceBadge.textContent = '3D';
+        }
+    };
+
     if (elements.space3dBtn) {
-        elements.space3dBtn.addEventListener('click', () => {
-            Space3D.toggle();
+        elements.space3dBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Если 3D уже открыто — закрываем его сразу
+            if (Space3D.isOpen) {
+                Space3D.close();
+                resetSpaceClicks();
+                return;
+            }
+
+            spaceClickCount++;
+            if (spaceClickTimer) clearTimeout(spaceClickTimer);
+
+            if (spaceClickCount === 1) {
+                elements.space3dBtn.classList.add('click-step-1');
+                elements.space3dBtn.classList.remove('click-step-2', 'warp-arming');
+                if (spaceBadge) spaceBadge.textContent = '1/3';
+                SpaceAudio.playVoice('click_1');
+                showToast('Требуется 3 быстрых клика подряд для запуска 3D (1/3)', 'touch_app');
+                spaceClickTimer = setTimeout(resetSpaceClicks, 950);
+            } else if (spaceClickCount === 2) {
+                elements.space3dBtn.classList.remove('click-step-1');
+                elements.space3dBtn.classList.add('click-step-2');
+                elements.space3dBtn.classList.remove('warp-arming');
+                if (spaceBadge) spaceBadge.textContent = '2/3';
+                SpaceAudio.playVoice('click_2');
+                showToast('Подтверждение 2/3... Еще один клик!', 'bolt');
+                spaceClickTimer = setTimeout(resetSpaceClicks, 950);
+            } else if (spaceClickCount >= 3) {
+                // 3-й быстрый клик подряд! Запуск моушен-варпа со средней скоростью и заполнение экрана
+                elements.space3dBtn.classList.remove('click-step-1', 'click-step-2');
+                elements.space3dBtn.classList.add('warp-arming');
+                if (spaceBadge) spaceBadge.textContent = 'WARP!';
+                showToast('Вход в гиперпространство!', 'rocket_launch');
+
+                SpaceWarp.start(() => {
+                    Space3D.open();
+                    resetSpaceClicks();
+                });
+            }
         });
     }
 
@@ -577,7 +635,15 @@ function initApp() {
     document.addEventListener('keydown', (e) => {
         if ((e.altKey && (e.key === 's' || e.key === 'ы' || e.key === 'S')) || e.key === 'F8') {
             e.preventDefault();
-            Space3D.toggle();
+            if (Space3D.isOpen) {
+                Space3D.close();
+                resetSpaceClicks();
+            } else {
+                SpaceWarp.start(() => {
+                    Space3D.open();
+                    resetSpaceClicks();
+                });
+            }
         }
     });
 
@@ -2587,7 +2653,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.7.7'
+                appVersion: '3.7.8'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');

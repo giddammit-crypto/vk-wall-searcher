@@ -3,7 +3,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=3.7.7';
+import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=3.7.8';
 
 export function extractNum(val) {
     if (!val) return 0;

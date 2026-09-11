@@ -14,7 +14,8 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.7';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.8';
+import { SpaceAudio } from './space_audio.js?v=3.7.8';
 
 export class Space3DEngine {
     constructor() {
@@ -309,6 +310,7 @@ export class Space3DEngine {
                     station.isPinned = !station.isPinned;
                     btn.classList.toggle('active', station.isPinned);
                     wrapper.classList.toggle('is-pinned', station.isPinned);
+                    SpaceAudio.playVoice(station.isPinned ? 'pin' : 'unpin');
                     this.showSpatialToast(station.isPinned ? `Станция «${station.title}» зафиксирована` : `Фиксация снята`);
                 } else if (action === 'reset') {
                     station.customOffset = { x: 0, y: 0, z: 0 };
@@ -726,12 +728,15 @@ export class Space3DEngine {
                 baseTransZ = -950;
             } else if (layout === 'grid') {
                 // Двухуровневая изогнутая сетка
-                const col = i % 4;
-                const row = Math.floor(i / 4);
-                const colAngle = -45 + col * 30;
+                const cols = 4;
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+
+                const colAngle = (col - (cols - 1) / 2) * 38;
                 baseRotY = colAngle;
-                baseTransY = (row === 0 ? -280 : 280);
-                baseTransZ = -960;
+                baseRotX = (row === 0) ? -12 : 12;
+                baseTransY = (row === 0) ? -230 : 230;
+                baseTransZ = -920;
             }
 
             station.baseTransform = {
@@ -744,6 +749,12 @@ export class Space3DEngine {
 
             this.updateObjectTransform(station, animated);
         });
+
+        if (animated) {
+            if (layout === 'orbit') SpaceAudio.playVoice('layout_orbit');
+            else if (layout === 'arc') SpaceAudio.playVoice('layout_arc');
+            else if (layout === 'grid') SpaceAudio.playVoice('layout_grid');
+        }
 
         this.updateHudTelemetry();
     }
@@ -781,6 +792,7 @@ export class Space3DEngine {
 
         wrapper.classList.add('is-dragging');
         this.updateObjectTransform(station, false);
+        SpaceAudio.playVoice('drag_start');
 
         const onObjPointerMove = (moveEv) => {
             if (this.activeDraggedObject !== station) return;
@@ -804,6 +816,7 @@ export class Space3DEngine {
             window.removeEventListener('pointerup', onObjPointerUp);
             window.removeEventListener('pointercancel', onObjPointerUp);
 
+            SpaceAudio.playVoice('drag_end');
             this.showSpatialToast(`Станция «${station.title}» зафиксирована в новой позиции`);
         };
 
@@ -825,6 +838,13 @@ export class Space3DEngine {
         this.targetYaw = station.baseTransform.rotY;
         this.targetPitch = -station.baseTransform.rotX;
         this.targetZoom = 1.15;
+
+        SpaceAudio.playVoice('focus');
+        if (station.id === 'search') {
+            setTimeout(() => SpaceAudio.playVoice('station_search'), 1400);
+        } else if (station.id === 'analytics') {
+            setTimeout(() => SpaceAudio.playVoice('station_analytics'), 1400);
+        }
 
         this.showSpatialToast(`Фокус: ${station.title}`);
     }
@@ -853,6 +873,8 @@ export class Space3DEngine {
         this.isDraggingWorld = true;
         this.dragStartX = e.clientX;
         this.dragStartY = e.clientY;
+        this.dragStartYaw = this.yaw;
+        this.dragStartPitch = this.pitch;
         this.lastPointerX = e.clientX;
         this.lastPointerY = e.clientY;
         this.viewport.classList.add('is-panning');
@@ -884,6 +906,12 @@ export class Space3DEngine {
     }
 
     onPointerUp() {
+        if (this.isDraggingWorld) {
+            const rotDist = Math.hypot(this.yaw - (this.dragStartYaw ?? this.yaw), this.pitch - (this.dragStartPitch ?? this.pitch));
+            if (rotDist > 25) {
+                SpaceAudio.playVoice('cam_rotate');
+            }
+        }
         this.isDraggingWorld = false;
         if (this.viewport) this.viewport.classList.remove('is-panning');
     }
@@ -900,6 +928,12 @@ export class Space3DEngine {
         const zoomDelta = e.deltaY * -0.0012;
         this.targetZoom = Math.max(0.45, Math.min(1.75, this.targetZoom + zoomDelta));
         this.updateHudTelemetry();
+
+        if (zoomDelta > 0.04) {
+            SpaceAudio.playVoice('zoom_in');
+        } else if (zoomDelta < -0.04) {
+            SpaceAudio.playVoice('zoom_out');
+        }
     }
 
     onKeyDown(e) {
@@ -927,6 +961,42 @@ export class Space3DEngine {
         // Кнопка закрытия
         const closeBtn = document.getElementById('space-close-btn');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+
+        // Аудио-контроллеры (Музыка и Голос)
+        const musicBtn = document.getElementById('space-music-btn');
+        if (musicBtn) {
+            musicBtn.addEventListener('click', () => {
+                const isMusicOn = SpaceAudio.toggleMusic();
+                musicBtn.classList.toggle('muted', !isMusicOn);
+                musicBtn.classList.toggle('active', isMusicOn);
+                musicBtn.title = isMusicOn ? 'Амбиент-музыка космоса: ВКЛ' : 'Амбиент-музыка космоса: ВЫКЛ';
+                this.showSpatialToast(isMusicOn ? 'Космическая музыка включена' : 'Музыка выключена');
+            });
+        }
+
+        const voiceBtn = document.getElementById('space-voice-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                const isVoiceOn = SpaceAudio.toggleVoice();
+                voiceBtn.classList.toggle('muted', !isVoiceOn);
+                voiceBtn.classList.toggle('active', isVoiceOn);
+                voiceBtn.title = isVoiceOn ? 'Голосовой ассистент: ВКЛ' : 'Голосовой ассистент: ВЫКЛ';
+                this.showSpatialToast(isVoiceOn ? 'Голосовой ассистент включен' : 'Голос выключен');
+                if (isVoiceOn) SpaceAudio.playVoice('welcome');
+            });
+        }
+
+        // Подсказка / Справка по управлению
+        const helpBtn = document.getElementById('space-help-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => {
+                const hint = document.getElementById('space-3d-hint');
+                if (hint) {
+                    const isHidden = hint.style.display === 'none';
+                    hint.style.display = isHidden ? 'block' : 'none';
+                }
+            });
+        }
 
         // Подсказка закрыть
         const hintClose = document.getElementById('space-hint-close');
@@ -987,6 +1057,7 @@ export class Space3DEngine {
                 }
             });
             this.applyLayout(this.currentLayout, true);
+            SpaceAudio.playVoice('reset_positions');
             this.showSpatialToast('Все объекты возвращены в исходный строй');
         });
 
@@ -1000,10 +1071,24 @@ export class Space3DEngine {
         });
     }
 
+    syncAudioButtons() {
+        const musicBtn = document.getElementById('space-music-btn');
+        if (musicBtn) {
+            musicBtn.classList.toggle('muted', !SpaceAudio.musicEnabled);
+            musicBtn.classList.toggle('active', SpaceAudio.musicEnabled);
+        }
+        const voiceBtn = document.getElementById('space-voice-btn');
+        if (voiceBtn) {
+            voiceBtn.classList.toggle('muted', !SpaceAudio.voiceEnabled);
+            voiceBtn.classList.toggle('active', SpaceAudio.voiceEnabled);
+        }
+    }
+
     toggleAutoTour() {
         this.isAutoTour = !this.isAutoTour;
         const btn = document.getElementById('space-dock-auto-tour');
         if (btn) btn.classList.toggle('active', this.isAutoTour);
+        SpaceAudio.playVoice(this.isAutoTour ? 'tour_start' : 'tour_stop');
         this.showSpatialToast(this.isAutoTour ? 'Авто-тур 360° запущен' : 'Авто-тур остановлен');
     }
 
@@ -1011,6 +1096,7 @@ export class Space3DEngine {
         this.targetYaw = 0;
         this.targetPitch = 0;
         this.targetZoom = 1.0;
+        SpaceAudio.playVoice('cam_reset');
         this.showSpatialToast('Камера центрирована');
     }
 
@@ -1233,6 +1319,10 @@ export class Space3DEngine {
         cancelAnimationFrame(this.animId);
         this.animId = requestAnimationFrame(this.renderLoop);
 
+        this.syncAudioButtons();
+        SpaceAudio.startAmbientMusic();
+        SpaceAudio.playVoice('welcome');
+
         this.showSpatialToast('Добро пожаловать в Космо-пространство 360°!');
     }
 
@@ -1242,6 +1332,9 @@ export class Space3DEngine {
     close() {
         if (!this.isOpen) return;
         this.isOpen = false;
+
+        SpaceAudio.stopAmbientMusic();
+        SpaceAudio.playVoice('exit_2d');
 
         cancelAnimationFrame(this.animId);
 
