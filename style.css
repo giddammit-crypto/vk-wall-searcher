@@ -7362,3 +7362,165 @@ textarea:focus-visible,
     margin-top: 0.25rem;
     line-height: 1.2;
 }
+
+/* --------------------------------------------------------------------------
+   Events Tab Timeline Styles
+   -------------------------------------------------------------------------- */
+.events-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+.events-timeline::before {
+    content: '';
+    position: absolute;
+    top: 1rem;
+    bottom: 1rem;
+    left: 140px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--border), rgba(62, 230, 196, 0.2));
+}
+
+.timeline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.timeline-row:hover {
+    transform: translateX(4px);
+}
+
+.timeline-date-col {
+    width: 120px;
+    flex-shrink: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.timeline-day {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.timeline-time {
+    font-size: 0.775rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: var(--font-mono, monospace);
+}
+
+.timeline-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    position: relative;
+    z-index: 2;
+    margin-top: 2px;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-page);
+    box-shadow: 0 0 10px var(--accent);
+    transition: transform 0.2s ease;
+}
+
+.timeline-row:hover .timeline-dot {
+    transform: scale(1.35);
+}
+
+.timeline-content-col {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 12px);
+    padding: 1.15rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.timeline-row:hover .timeline-content-col {
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-branch-lbl {
+    font-size: 0.775rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.timeline-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.timeline-snippet {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.timeline-actions {
+    margin-top: 0.4rem;
+}
+
+.timeline-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+}
+
+.timeline-link:hover {
+    text-decoration: underline;
+    gap: 0.6rem;
+}
+
+.timeline-link .material-symbols-outlined {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    .events-timeline::before {
+        left: 20px;
+    }
+    .timeline-row {
+        flex-direction: column;
+        padding-left: 36px;
+        gap: 0.5rem;
+    }
+    .timeline-date-col {
+        width: auto;
+        text-align: left;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: 12px;
+        top: 4px;
+    }
+}

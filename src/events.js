@@ -418,7 +418,7 @@ function renderTimelineView(container, events) {
                     <div class="timeline-dot"></div>
                 </div>
                 <div class="timeline-content-col">
-                    <div class="timeline-branch-lbl">${escapeHtml(branchName)} (${escapeHtml(branchAddr)})</div>
+                    <div class="timeline-branch-lbl">${escapeHtml(branchName)}${branchAddr ? ` &bull; ${escapeHtml(branchAddr)}` : ''}</div>
                     <div class="timeline-title">${escapeHtml(e.title)}</div>
                     <div class="timeline-snippet">${escapeHtml(e.fullText.slice(0, 180))}...</div>
                     <div class="timeline-actions">
