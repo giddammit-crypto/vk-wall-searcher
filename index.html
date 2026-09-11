@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Инструмент для поиска и анализа публикаций ВКонтакте по датам, месяцам, годам и ключевым словам.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://api.vk.com; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src * data: blob:; font-src 'self' https://fonts.gstatic.com data:;">
+    <title>Статистика групп ВК (Разработка: Амброзиев О.А.)</title>
+
+    <!-- Typography: Montserrat + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Material Symbols Outlined (icons) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <link rel="stylesheet" href="style.css?v=3.2.5">
+
+    <!-- JSZip library for creating zip files in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+    <!-- Aurora Volumetric Ambient Backdrop -->
+    <div class="aurora-backdrop" aria-hidden="true">
+        <canvas id="aurora-particles"></canvas>
+        <div class="aurora-waves">
+            <div class="aurora-blob blob-cyan"></div>
+            <div class="aurora-blob blob-purple"></div>
+            <div class="aurora-blob blob-pink"></div>
+            <div class="aurora-blob blob-blue"></div>
+        </div>
+        <div class="aurora-mesh-grid"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Top App Bar / Header -->
+        <header class="app-header no-print">
+            <div class="logo-container">
+                <div class="logo-icon-wrap">
+                    <span class="material-symbols-outlined logo-icon">analytics</span>
+                </div>
+                <div class="logo-text">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <h1>Статистика групп ВК</h1>
+                        <span class="aurora-hero-badge">AURORA &bull; ALPHA</span>
+                    </div>
+                    <p class="logo-subtitle">Поиск и мониторинг записей &bull; Разработка: Амброзиев О.А.</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
+                    <span id="theme-toggle-icon" class="theme-icon">🌙</span>
+                    <span id="theme-toggle-text">Тёмная</span>
+                </button>
+                <button id="help-btn" class="btn btn-tonal" title="Справка по сервису">
+                    <span class="material-symbols-outlined icon">help</span>
+                    <span class="settings-btn-text">Справка</span>
+                </button>
+                <button id="toggle-settings-btn" class="btn btn-secondary" title="Настройки API ВКонтакте">
+                    <span class="material-symbols-outlined icon">settings</span>
+                    <span class="settings-btn-text">Настройки API</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- API Settings Panel (Expandable Drawer / Card) -->
+        <section id="settings-panel" class="settings-panel collapsed no-print">
+            <div class="panel-header">
+                <div class="panel-header-title">
+                    <span class="material-symbols-outlined panel-header-icon">vpn_key</span>
+                    <h3>Подключение к VK API</h3>
+                </div>
+                <button id="close-settings-btn" class="icon-btn" title="Закрыть настройки">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="panel-body">
+                <p class="settings-hint">
+                    Для работы с API ВКонтакте требуется сервисный ключ или персональный токен доступа. Токен хранится исключительно в локальном хранилище вашего браузера (LocalStorage).
+                </p>
+                <div class="form-group">
+                    <label for="vk-token-input">Сервисный ключ доступа (access_token)</label>
+                    <div class="input-with-action">
+                        <div class="input-icon-wrap">
+                            <span class="material-symbols-outlined input-leading-icon">key</span>
+                            <input type="password" id="vk-token-input" placeholder="Вставьте VK access_token..." autocomplete="off">
+                        </div>
+                        <button id="test-token-btn" class="btn btn-primary">
+                            <span class="material-symbols-outlined icon">verified</span>
+                            <span>Проверить</span>
+                        </button>
+                    </div>
+                    <span id="token-status-indicator" class="status-indicator">Токен не установлен</span>
+                </div>
+                <div class="token-guide">
+                    <h4>
+                        <span class="material-symbols-outlined guide-icon">help</span>
+                        Как получить токен?
+                    </h4>
+                    <ol>
+                        <li>Перейдите в раздел <a href="https://vk.com/apps?act=manage" target="_blank" rel="noopener noreferrer">Управление приложениями VK</a>.</li>
+                        <li>Нажмите <strong>Создать</strong>, выберите тип <strong>Standalone-приложение</strong> и задайте любое название.</li>
+                        <li>В разделе <strong>Настройки</strong> вашего нового приложения скопируйте <strong>Сервисный ключ доступа</strong> (Service token).</li>
+                        <li>Вставьте его в поле выше и нажмите <strong>Проверить</strong>.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace -->
+        <main class="app-content">
+            <!-- Search & Filters Section -->
+            <section class="search-section card no-print">
+                <div class="card-header-clean">
+                    <div class="card-title-group">
+                        <span class="material-symbols-outlined card-title-icon">tune</span>
+                        <h2>Параметры поиска и фильтрации</h2>
+                    </div>
+                </div>
+
+                <form id="search-form">
+                    <!-- Branch Libraries Selector -->
+                    <div class="form-row">
+                        <div class="form-group col-12">
+                            <label for="branch-select" class="section-sublabel">
+                                <span class="material-symbols-outlined sublabel-icon">local_library</span>
+                                Быстрый выбор библиотеки (16 филиалов Владимира)
+                            </label>
+                            <div class="select-wrap">
+                                <select id="branch-select">
+                                    <option value="">— Выберите филиал библиотеки (или введите ниже ссылку вручную) —</option>
+                                    <option value="all">⚡ Все 16 филиалов одновременно (пакетный поиск)</option>
+                                </select>
+                                <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Input -->
+                    <div class="form-row">
+                        <div class="form-group col-12">
+                            <label for="target-input" class="section-sublabel">
+                                <span class="material-symbols-outlined sublabel-icon">link</span>
+                                Ссылка или ID сообщества / пользователя VK
+                            </label>
+                            <div class="input-icon-wrap">
+                                <span class="material-symbols-outlined input-leading-icon">group</span>
+                                <input type="text" id="target-input" placeholder="Например: https://vk.com/vladcgb, vk.com/public1, club123">
+                            </div>
+                            <span class="input-desc">Поддерживаются прямые ссылки, короткие имена (screen names), а также числовые ID (id123, club456)</span>
+                            
+                            <!-- Branch Libraries toggle -->
+                            <div class="branches-toggle-container">
+                                <label class="switch-container">
+                                    <input type="checkbox" id="branches-toggle" checked>
+                                    <span class="switch-slider"></span>
+                                    <span class="switch-label">Искать по всем 16 филиалам</span>
+                                </label>
+                                <span id="branches-count-badge" class="badge">16 филиалов</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search History -->
+                    <div id="search-history-bar" class="search-history-bar hidden">
+                        <div class="sh-label"><span class="material-symbols-outlined">history</span>История поисков</div>
+                        <div class="sh-list" id="sh-list"></div>
+                        <button type="button" id="sh-clear-btn" class="btn btn-sm btn-ghost">
+                            <span class="material-symbols-outlined icon">delete_sweep</span>Очистить
+                        </button>
+                    </div>
+
+                    <!-- Date Filters Grid -->
+                    <div class="form-row date-filters-row">
+                        <!-- Months selector -->
+                        <div class="form-group col-6">
+                            <div class="months-header-group">
+                                <label class="section-sublabel">
+                                    <span class="material-symbols-outlined sublabel-icon">date_range</span>
+                                    Месяцы поиска
+                                </label>
+                                <div class="period-presets-bar" id="period-presets-bar">
+                                    <span class="preset-label">Период:</span>
+                                    <button type="button" class="preset-pill" data-preset="current-month">Текущий месяц</button>
+                                    <button type="button" class="preset-pill" data-preset="prev-month">Прошлый месяц</button>
+                                    <button type="button" class="preset-pill" data-preset="q1">I кв.</button>
+                                    <button type="button" class="preset-pill" data-preset="q2">II кв.</button>
+                                    <button type="button" class="preset-pill" data-preset="q3">III кв.</button>
+                                    <button type="button" class="preset-pill" data-preset="q4">IV кв.</button>
+                                    <button type="button" class="preset-pill" data-preset="h1">I полугодие</button>
+                                    <button type="button" class="preset-pill" data-preset="h2">II полугодие</button>
+                                    <button type="button" class="preset-pill" data-preset="year">Весь год</button>
+                                </div>
+                            </div>
+                            <div class="months-grid" id="months-container">
+                                <!-- Generated dynamically by JS -->
+                            </div>
+                            <div class="months-actions">
+                                <button type="button" id="select-all-months" class="btn btn-tonal btn-sm">
+                                    <span class="material-symbols-outlined icon">select_all</span>
+                                    <span>Выбрать все</span>
+                                </button>
+                                <button type="button" id="clear-months" class="btn btn-tonal btn-sm">
+                                    <span class="material-symbols-outlined icon">deselect</span>
+                                    <span>Снять все</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Days Selector -->
+                        <div class="form-group col-3">
+                            <label for="day-select" class="section-sublabel">
+                                <span class="material-symbols-outlined sublabel-icon">today</span>
+                                Число месяца
+                            </label>
+                            <div class="select-wrap">
+                                <select id="day-select">
+                                    <option value="all">Все числа (весь месяц)</option>
+                                    <!-- 1..31 generated by JS -->
+                                </select>
+                                <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
+                            </div>
+                        </div>
+
+                        <!-- Year Range -->
+                        <div class="form-group col-3">
+                            <label class="section-sublabel">
+                                <span class="material-symbols-outlined sublabel-icon">calendar_month</span>
+                                Диапазон лет
+                            </label>
+                            <div class="years-range">
+                                <input type="number" id="year-start" min="2004" max="2099" placeholder="С">
+                                <span class="range-divider">—</span>
+                                <input type="number" id="year-end" min="2004" max="2099" placeholder="По">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Search Filters -->
+                    <div class="form-row">
+                        <div class="form-group col-12">
+                            <label class="section-sublabel">
+                                <span class="material-symbols-outlined sublabel-icon">manage_search</span>
+                                Расширенный поиск по содержимому записей
+                            </label>
+                            <div class="adv-search-grid">
+                                <!-- Keywords -->
+                                <div class="adv-search-field">
+                                    <div class="adv-field-label">Ключевые слова</div>
+                                    <div class="input-icon-wrap adv-kw-wrap">
+                                        <span class="material-symbols-outlined input-leading-icon">search</span>
+                                        <input type="text" id="keyword-input" placeholder="слово1, слово2, фраза...">
+                                        <div class="and-or-toggle" id="and-or-toggle">
+                                            <button type="button" class="and-or-btn active" data-mode="or">OR</button>
+                                            <button type="button" class="and-or-btn" data-mode="and">AND</button>
+                                        </div>
+                                    </div>
+                                    <div class="adv-field-hint">Через запятую. OR — любое, AND — все слова</div>
+                                </div>
+                                <!-- Exclude -->
+                                <div class="adv-search-field">
+                                    <div class="adv-field-label">Исключить слова</div>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined input-leading-icon">block</span>
+                                        <input type="text" id="exclude-input" placeholder="слово1, слово2...">
+                                    </div>
+                                    <div class="adv-field-hint">Посты с этими словами будут скрыты</div>
+                                </div>
+                                <!-- Hashtag -->
+                                <div class="adv-search-field">
+                                    <div class="adv-field-label">Хэштег</div>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined input-leading-icon">tag</span>
+                                        <input type="text" id="hashtag-input" placeholder="библиотека">
+                                    </div>
+                                    <div class="adv-field-hint">Без # — добавится автоматически</div>
+                                </div>
+                            </div>
+
+                            <!-- Content & Media Filters Section -->
+                            <div class="adv-content-filters-section">
+                                <div class="adv-filters-title">
+                                    <span class="material-symbols-outlined">tune</span>
+                                    <span>Фильтры по типу контента и вложений</span>
+                                </div>
+                                <div class="adv-content-filters-grid">
+                                    <!-- Только с фото -->
+                                    <label class="adv-filter-card" for="only-photos-check">
+                                        <input type="checkbox" id="only-photos-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">photo_library</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Только с фото</strong>
+                                            <small>Записи с изображениями</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Только с видео -->
+                                    <label class="adv-filter-card" for="only-videos-check">
+                                        <input type="checkbox" id="only-videos-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">smart_display</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Только с видео</strong>
+                                            <small>Видеозаписи и клипы</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Без репостов -->
+                                    <label class="adv-filter-card" for="exclude-reposts-check">
+                                        <input type="checkbox" id="exclude-reposts-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">edit_document</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Без репостов</strong>
+                                            <small>Только авторские записи</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Только репосты -->
+                                    <label class="adv-filter-card" for="only-reposts-check">
+                                        <input type="checkbox" id="only-reposts-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">repeat</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Только репосты</strong>
+                                            <small>Партнёрские публикации</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Только с опросами -->
+                                    <label class="adv-filter-card" for="only-polls-check">
+                                        <input type="checkbox" id="only-polls-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">how_to_vote</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Только с опросами</strong>
+                                            <small>Интерактивные голосования</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Только с ссылками -->
+                                    <label class="adv-filter-card" for="only-links-check">
+                                        <input type="checkbox" id="only-links-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">link</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Только с ссылками</strong>
+                                            <small>Внешние URL и сниппеты</small>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Action -->
+                    <div class="form-actions">
+                        <button type="submit" id="submit-search-btn" class="btn btn-primary btn-large">
+                            <span class="material-symbols-outlined icon">travel_explore</span>
+                            <span class="btn-text">Начать поиск по записям</span>
+                            <kbd class="btn-kbd">Ctrl+↵</kbd>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section hidden">
+                <!-- Sources Showcase Section (Creative 3x3 / Responsive Grid) -->
+                <div id="sources-showcase-section" class="sources-showcase-section card no-print">
+                    <div class="showcase-header">
+                        <div class="showcase-title-wrap">
+                            <div class="showcase-icon-badge">
+                                <span class="material-symbols-outlined">account_balance</span>
+                            </div>
+                            <div>
+                                <h3 class="showcase-title">Источники мониторинга</h3>
+                                <p class="showcase-subtitle">Сводка по филиалам библиотек и страницам ВК</p>
+                            </div>
+                        </div>
+                        <div class="showcase-filters-bar">
+                            <div class="filter-pills-group">
+                                <button class="showcase-filter-btn active" data-filter="all">
+                                    <span>Все источники</span>
+                                    <span class="filter-pill-badge" id="showcase-count-all">0</span>
+                                </button>
+                                <button class="showcase-filter-btn" data-filter="with-posts">
+                                    <span>С публикациями</span>
+                                    <span class="filter-pill-badge" id="showcase-count-with-posts">0</span>
+                                </button>
+                            </div>
+                            <div class="sort-select-wrap">
+                                <span class="material-symbols-outlined sort-icon">sort</span>
+                                <select id="showcase-sort-select" class="showcase-sort-select" aria-label="Сортировка источников">
+                                    <option value="canonical">По порядку филиалов (1–16)</option>
+                                    <option value="posts-desc">По числу постов (убывание)</option>
+                                    <option value="likes-desc">По числу лайков (убывание)</option>
+                                    <option value="name-asc">По названию (А–Я)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active branch filter banner (shows when filtering feed to 1 branch) -->
+                    <div id="active-branch-banner" class="active-branch-banner hidden">
+                        <div class="banner-left">
+                            <span class="material-symbols-outlined banner-icon">filter_alt</span>
+                            <span>Показаны публикации: <strong id="active-branch-name">—</strong> (<span id="active-branch-count">0</span>)</span>
+                        </div>
+                        <button id="reset-branch-filter-btn" class="btn btn-sm btn-outlined">
+                            <span class="material-symbols-outlined icon">close</span>
+                            <span>Показать все</span>
+                        </button>
+                    </div>
+
+                    <!-- 3x3 / Responsive Showcase Grid -->
+                    <div id="sources-showcase-grid" class="sources-showcase-grid">
+                        <!-- Dynamically filled by app.js -->
+                    </div>
+                </div>
+
+                <!-- Result Navigation Tabs -->
+                <div class="tabs-container no-print">
+                    <button class="tab-btn active" data-tab="visual-tab">
+                        <span class="material-symbols-outlined icon">grid_view</span>
+                        <span>Карточки записей</span>
+                        <span class="tab-badge" id="count-visual">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="report-tab">
+                        <span class="material-symbols-outlined icon">table_chart</span>
+                        <span>Отчёт с ссылками</span>
+                        <span class="tab-badge" id="count-report">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="analytics-tab">
+                        <span class="material-symbols-outlined icon">leaderboard</span>
+                        <span>Рейтинг активности</span>
+                        <span class="tab-badge" id="count-analytics">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="summary-tab">
+                        <span class="material-symbols-outlined icon">article</span>
+                        <span>Пояснительная записка и хэштеги</span>
+                    </button>
+                </div>
+
+                <!-- Tab 1: Visual Cards Grid -->
+                <div id="visual-tab" class="tab-content active-content no-print">
+                    <!-- Results Toolbar -->
+                    <div class="results-toolbar no-print" id="results-toolbar">
+                        <div class="rt-left">
+                            <span class="material-symbols-outlined rt-icon">sort</span>
+                            <select id="cards-sort-select" class="rt-select">
+                                <option value="date-desc">По дате (новые)</option>
+                                <option value="date-asc">По дате (старые)</option>
+                                <option value="likes-desc">По лайкам</option>
+                                <option value="views-desc">По просмотрам</option>
+                                <option value="comments-desc">По комментариям</option>
+                                <option value="er-desc">По ER</option>
+                            </select>
+                        </div>
+                        <div class="rt-right">
+                            <button id="download-photos-btn" class="btn btn-secondary btn-sm">
+                                <span class="material-symbols-outlined icon">photo_library</span>
+                                <span>Скачать фото</span>
+                            </button>
+                            <button id="export-csv-btn" class="btn btn-secondary btn-sm">
+                                <span class="material-symbols-outlined icon">table_view</span>
+                                <span>CSV</span>
+                            </button>
+                            <button id="share-link-btn" class="btn btn-secondary btn-sm">
+                                <span class="material-symbols-outlined icon">share</span>
+                                <span>Поделиться</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="results-grid" id="posts-grid"></div>
+                    <div id="scroll-sentinel" class="scroll-sentinel"></div>
+                </div>
+
+                <!-- Tab 2: Print & Copy Report -->
+                <div id="report-tab" class="tab-content">
+                    <div class="report-controls no-print">
+                        <button id="toggle-all-report-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">unfold_more</span>
+                            <span>Развернуть все</span>
+                        </button>
+                        <button id="copy-report-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">content_copy</span>
+                            <span>Скопировать отчёт</span>
+                        </button>
+                        <button id="download-csv-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">table_view</span>
+                            <span>Экспорт CSV</span>
+                        </button>
+                        <button id="download-json-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">data_object</span>
+                            <span>Экспорт JSON</span>
+                        </button>
+                        <button id="download-doc-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">description</span>
+                            <span>Экспорт Word (DOCX)</span>
+                        </button>
+                        <button id="download-html-btn" class="btn btn-secondary">
+                            <span class="material-symbols-outlined icon">code</span>
+                            <span>Экспорт HTML</span>
+                        </button>
+                        <button id="print-report-btn" class="btn btn-primary">
+                            <span class="material-symbols-outlined icon">print</span>
+                            <span>Печать</span>
+                        </button>
+                    </div>
+
+                    <!-- The Printable/Copyable Report Document -->
+                    <div class="report-document card" id="report-document">
+                        <div class="mobile-table-hint no-print">
+                            <span class="material-symbols-outlined hint-icon">swipe</span>
+                            <span>Таблицы можно листать вправо для просмотра всех колонок</span>
+                        </div>
+                        <div class="report-header">
+                            <div class="report-official-badge">
+                                <span class="material-symbols-outlined badge-icon">account_balance</span>
+                                <span>МУНИЦИПАЛЬНОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ КУЛЬТУРЫ «ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА»</span>
+                            </div>
+                            <h2 class="report-title">Официальный отчёт об анализе и мониторинге публикаций VK</h2>
+                            
+                            <div class="report-passport">
+                                <div class="passport-grid">
+                                    <div class="passport-cell passport-full">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon">push_pin</span>
+                                            ИСТОЧНИКИ МОНИТОРИНГА (ФИЛИАЛЫ И СООБЩЕСТВА):
+                                        </span>
+                                        <div class="passport-value" id="report-source-name">Неизвестно</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon">calendar_today</span>
+                                            ПЕРИОД И ФИЛЬТР ДАТ:
+                                        </span>
+                                        <div class="passport-value" id="report-dates-filter">—</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon">search</span>
+                                            ПОИСКОВЫЙ ЗАПРОС:
+                                        </span>
+                                        <div class="passport-value" id="report-search-query">—</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon">schedule</span>
+                                            ДАТА И ВРЕМЯ ФОРМИРОВАНИЯ:
+                                        </span>
+                                        <div class="passport-value" id="report-generation-time">—</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon">bar_chart</span>
+                                            ВСЕГО ЗАПИСЕЙ ЗА ПЕРИОД:
+                                        </span>
+                                        <div class="passport-value highlight" id="report-total-matches">0</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon text-danger">favorite</span>
+                                            ВСЕГО ЛАЙКОВ ЗА ПЕРИОД:
+                                        </span>
+                                        <div class="passport-value highlight" id="report-total-likes">0</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon text-warning">share</span>
+                                            ВСЕГО РЕПОСТОВ ЗА ПЕРИОД:
+                                        </span>
+                                        <div class="passport-value highlight" id="report-total-reposts">0</div>
+                                    </div>
+                                    <div class="passport-cell">
+                                        <span class="passport-label">
+                                            <span class="material-symbols-outlined pass-icon text-success">visibility</span>
+                                            ВСЕГО ПРОСМОТРОВ ЗА ПЕРИОД:
+                                        </span>
+                                        <div class="passport-value highlight" id="report-total-views">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="report-body" id="report-tables-container">
+                            <!-- Injected dynamically by JS (headers + tables for each group) -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Rating and Analytics (Methodologist Dashboard) -->
+                <div id="analytics-tab" class="tab-content no-print">
+                    <!-- Methodologist KPI Cards -->
+                    <div class="analytics-kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-icon-wrap bg-green-light">
+                                <span class="material-symbols-outlined text-success">check_circle</span>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Норма выполнена (≥10 постов)</span>
+                                <div class="kpi-value-row">
+                                    <span class="kpi-value text-success" id="kpi-norm-count">0</span>
+                                    <span class="kpi-total" id="kpi-total-branches">/ 0 филиалов</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon-wrap bg-amber-light">
+                                <span class="material-symbols-outlined text-warning">warning</span>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Малоактивные (1–9 постов)</span>
+                                <div class="kpi-value-row">
+                                    <span class="kpi-value text-warning" id="kpi-warning-count">0</span>
+                                    <span class="kpi-subtext">требуют напоминания о плане</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon-wrap bg-red-light">
+                                <span class="material-symbols-outlined text-danger">cancel</span>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Нулевая активность (0 постов)</span>
+                                <div class="kpi-value-row">
+                                    <span class="kpi-value text-danger" id="kpi-danger-count">0</span>
+                                    <span class="kpi-subtext">нет публикаций за период</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon-wrap bg-blue-light">
+                                <span class="material-symbols-outlined text-primary">monitoring</span>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Средний ER вовлеченности</span>
+                                <div class="kpi-value-row">
+                                    <span class="kpi-value text-primary" id="kpi-avg-er">0.00%</span>
+                                    <span class="kpi-subtext" id="kpi-avg-reactions">0.0 реакций/пост</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Activity Chart Card -->
+                    <div class="card analytics-card">
+                        <div class="analytics-card-header">
+                            <div class="analytics-card-title-wrap">
+                                <div class="showcase-icon-badge">
+                                    <span class="material-symbols-outlined">bar_chart</span>
+                                </div>
+                                <div>
+                                    <h3 class="analytics-card-title">Сводная диаграмма активности филиалов</h3>
+                                    <p class="analytics-card-subtitle">Сравнение объемов публикаций, читательского охвата и вовлеченности</p>
+                                </div>
+                            </div>
+                            <div class="chart-metric-controls">
+                                <span class="metric-switch-label">Метрика:</span>
+                                <div class="segmented-control" id="chart-metric-selector">
+                                    <button type="button" class="segment-btn active" data-metric="posts">
+                                        <span class="material-symbols-outlined segment-icon">bar_chart</span>
+                                        Публикации
+                                    </button>
+                                    <button type="button" class="segment-btn" data-metric="views">
+                                        <span class="material-symbols-outlined segment-icon">visibility</span>
+                                        Охват
+                                    </button>
+                                    <button type="button" class="segment-btn" data-metric="er">
+                                        <span class="material-symbols-outlined segment-icon">trending_up</span>
+                                        ER (%)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="analytics-chart-container" class="analytics-chart-container">
+                            <!-- Dynamic SVG / CSS Bars -->
+                        </div>
+                    </div>
+
+                    <!-- Comparative Activity Rating Table Card -->
+                    <div class="card analytics-card">
+                        <div class="analytics-card-header">
+                            <div class="analytics-card-title-wrap">
+                                <div class="showcase-icon-badge">
+                                    <span class="material-symbols-outlined">format_list_numbered</span>
+                                </div>
+                                <div>
+                                    <h3 class="analytics-card-title">Сравнительный рейтинг активности филиалов</h3>
+                                    <p class="analytics-card-subtitle">Сводные показатели за период, читательский охват и коэффициент ER</p>
+                                </div>
+                            </div>
+                            <div class="analytics-table-actions">
+                                <button type="button" id="export-rating-csv-btn" class="btn btn-secondary btn-sm">
+                                    <span class="material-symbols-outlined icon">download</span>
+                                    <span>Экспорт рейтинга CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="report-table analytics-table" id="analytics-rating-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 44px; text-align: center;">№</th>
+                                        <th>Филиал библиотеки</th>
+                                        <th style="text-align: right;">Постов</th>
+                                        <th style="text-align: right;">Просмотры</th>
+                                        <th style="text-align: right;">Лайки</th>
+                                        <th style="text-align: right;">Репосты</th>
+                                        <th style="text-align: right;">Коммент.</th>
+                                        <th style="text-align: right;">Реакций/пост</th>
+                                        <th style="text-align: right;">ER (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-rating-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Cross-Posting & Duplicate Announcements Analysis Card -->
+                    <div class="card analytics-card crossposting-analytics-card">
+                        <div class="analytics-card-header">
+                            <div class="analytics-card-title-wrap">
+                                <div class="showcase-icon-badge" style="background: linear-gradient(135deg, rgba(62, 230, 196, 0.15) 0%, rgba(138, 108, 255, 0.2) 100%);">
+                                    <span class="material-symbols-outlined" style="color: var(--accent);">compare_arrows</span>
+                                </div>
+                                <div>
+                                    <h3 class="analytics-card-title">Анализ кросс-постинга и повторов анонсов</h3>
+                                    <p class="analytics-card-subtitle">Выявление сетевых дубликатов публикаций между филиалами, фиксация первоисточника и лидера по читательским реакциям</p>
+                                </div>
+                            </div>
+                            <div class="analytics-table-actions">
+                                <span class="crosspost-stats-chip" id="crosspost-stats-chip">0 повторов</span>
+                            </div>
+                        </div>
+                        <div id="crossposting-clusters-container" class="crossposting-clusters-container">
+                            <div class="crosspost-empty-state">
+                                <span class="material-symbols-outlined crosspost-empty-icon">compare_arrows</span>
+                                <h4>Запустите поиск для анализа повторов</h4>
+                                <p>После сканирования филиалов здесь отобразятся сгруппированные кросс-посты и общие анонсы.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Explanatory Note & Hashtags / Links -->
+                <div id="summary-tab" class="tab-content no-print">
+                    <!-- Explanatory Note Section -->
+                    <div class="card summary-note-card">
+                        <div class="summary-note-header">
+                            <div class="summary-note-title-wrap">
+                                <div class="showcase-icon-badge">
+                                    <span class="material-symbols-outlined">text_snippet</span>
+                                </div>
+                                <div>
+                                    <h3 class="summary-note-title">Пояснительная записка методиста (Текстовое резюме)</h3>
+                                    <p class="summary-note-subtitle">Готовый структурированный текст справки для включения в отчет управления культуры</p>
+                                </div>
+                            </div>
+                            <div class="summary-note-actions">
+                                <button type="button" id="copy-memo-btn" class="btn btn-primary">
+                                    <span class="material-symbols-outlined icon">content_copy</span>
+                                    <span id="copy-memo-text">Скопировать текст записки</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="summary-note-body">
+                            <textarea id="methodist-memo-textarea" class="memo-textarea" rows="18" readonly spellcheck="false"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 2-Column Grid: Hashtags and External Links -->
+                    <div class="summary-meta-grid">
+                        <!-- Hashtags Analysis Card -->
+                        <div class="card meta-card">
+                            <div class="meta-card-header">
+                                <div class="meta-card-title-wrap">
+                                    <span class="material-symbols-outlined meta-icon text-primary">tag</span>
+                                    <div>
+                                        <h4 class="meta-title">Анализ хэштегов</h4>
+                                        <span class="meta-count" id="hashtags-total-count">0 тегов</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="meta-card-body">
+                                <div class="hashtag-cloud" id="hashtag-cloud-container">
+                                    <!-- Tag pills -->
+                                </div>
+                                <div class="table-responsive meta-table-wrap">
+                                    <table class="report-table meta-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">№</th>
+                                                <th>Хэштег</th>
+                                                <th style="text-align: right;">Повторений</th>
+                                                <th style="text-align: right;">Доля</th>
+                                                <th style="text-align: center;">Действие</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hashtags-tbody">
+                                            <!-- Dynamic rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- External Links Registry Card -->
+                        <div class="card meta-card">
+                            <div class="meta-card-header">
+                                <div class="meta-card-title-wrap">
+                                    <span class="material-symbols-outlined meta-icon text-success">link</span>
+                                    <div>
+                                        <h4 class="meta-title">Реестр внешних ссылок и ресурсов</h4>
+                                        <span class="meta-count" id="links-total-count">0 ссылок</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="meta-card-body">
+                                <div class="links-desc-hint">Ссылки на регистрацию, опросы, культура.рф и онлайн-мероприятия:</div>
+                                <div class="table-responsive meta-table-wrap">
+                                    <table class="report-table meta-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Ресурс / Домен</th>
+                                                <th style="text-align: center; width: 110px;">Ссылка</th>
+                                                <th style="text-align: right; width: 100px;">Упоминаний</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="links-tbody">
+                                            <!-- Dynamic rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="app-footer no-print">
+            <p>Статистика групп ВК &bull; Разработка: Амброзиев О.А. &copy; 2026</p>
+        </footer>
+    </div>
+
+    <!-- Fullscreen Dimmed Search Motion Modal Overlay -->
+    <div id="search-modal-overlay" class="search-modal-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="progress-title">
+        <div class="search-motion-modal card">
+            <button id="modal-search-close" class="modal-search-close-btn" title="Закрыть окно" aria-label="Закрыть">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            
+            <div class="search-motion-stage">
+                <!-- Ambient luminous background glows -->
+                <div class="motion-glow-orb motion-glow-cyan"></div>
+                <div class="motion-glow-orb motion-glow-purple"></div>
+
+                <!-- 3D Motion Scene: Magnifier inspecting Folder & Flying Files -->
+                <div class="motion-scene">
+                    <!-- Flying files escaping from the folder -->
+                    <div class="flying-file flying-file-1" title="Текстовый документ">
+                        <div class="file-card">
+                            <span class="material-symbols-outlined file-card-icon text-cyan">description</span>
+                            <div class="file-card-skeleton">
+                                <span class="sk-line sk-w-80"></span>
+                                <span class="sk-line sk-w-50"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flying-file flying-file-2" title="Фотоальбом">
+                        <div class="file-card">
+                            <span class="material-symbols-outlined file-card-icon text-purple">photo_library</span>
+                            <div class="file-card-skeleton">
+                                <span class="sk-line sk-w-70"></span>
+                                <span class="sk-line sk-w-40"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flying-file flying-file-3" title="Видеозапись">
+                        <div class="file-card">
+                            <span class="material-symbols-outlined file-card-icon text-accent">movie</span>
+                            <div class="file-card-skeleton">
+                                <span class="sk-line sk-w-85"></span>
+                                <span class="sk-line sk-w-60"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flying-file flying-file-4" title="Публикация ВК">
+                        <div class="file-card">
+                            <span class="material-symbols-outlined file-card-icon text-success">feed</span>
+                            <div class="file-card-skeleton">
+                                <span class="sk-line sk-w-60"></span>
+                                <span class="sk-line sk-w-35"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Central Glassmorphic Folder -->
+                    <div class="motion-folder-container">
+                        <div class="motion-folder">
+                            <div class="folder-tab"></div>
+                            <div class="folder-back"></div>
+                            <div class="folder-papers">
+                                <div class="paper-sheet sheet-1"></div>
+                                <div class="paper-sheet sheet-2"></div>
+                                <div class="paper-sheet sheet-3"></div>
+                            </div>
+                            <div class="folder-front">
+                                <span class="material-symbols-outlined folder-front-icon">folder_open</span>
+                                <div class="folder-glow-strip"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Animated Cyber-Optic Holographic Scanner with HUD Radar and Scanning Laser Beam -->
+                    <div class="motion-magnifier-container">
+                        <div class="motion-magnifier">
+                            <svg class="magnifier-svg" viewBox="0 0 120 120" width="120" height="120">
+                                <defs>
+                                    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#3EE6C4" />
+                                        <stop offset="50%" stop-color="#20BCA0" />
+                                        <stop offset="100%" stop-color="#8A6CFF" />
+                                    </linearGradient>
+                                    <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#8A6CFF" />
+                                        <stop offset="100%" stop-color="#3EE6C4" />
+                                    </linearGradient>
+                                    <radialGradient id="beamSpot" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="rgba(62, 230, 196, 0.75)" />
+                                        <stop offset="40%" stop-color="rgba(62, 230, 196, 0.25)" />
+                                        <stop offset="100%" stop-color="rgba(62, 230, 196, 0)" />
+                                    </radialGradient>
+                                    <radialGradient id="glassAura" cx="45%" cy="45%" r="55%">
+                                        <stop offset="0%" stop-color="rgba(62, 230, 196, 0.35)" />
+                                        <stop offset="70%" stop-color="rgba(138, 108, 255, 0.15)" />
+                                        <stop offset="100%" stop-color="rgba(6, 11, 25, 0.65)" />
+                                    </radialGradient>
+                                    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+                                        <feGaussianBlur stdDeviation="3.2" result="blur" />
+                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                    </filter>
+                                </defs>
+                                <!-- Volumetric scanning spotlight cone cast over the folder -->
+                                <polygon points="46,46 8,112 92,112" fill="url(#beamSpot)" class="scanner-cone" />
+                                <!-- Holographic Glass Core with Deep Tint -->
+                                <circle cx="46" cy="46" r="30" fill="url(#glassAura)" />
+                                <!-- Lens Outer Ring with Neon Gradient Glow -->
+                                <circle cx="46" cy="46" r="30" fill="none" stroke="url(#lensGrad)" stroke-width="3.5" filter="url(#neonGlow)" />
+                                <!-- Rotating Cyber HUD Radar Dial -->
+                                <g class="hud-dial" transform-origin="46 46">
+                                    <circle cx="46" cy="46" r="23" fill="none" stroke="rgba(62, 230, 196, 0.5)" stroke-width="1.2" stroke-dasharray="4 6" />
+                                    <circle cx="46" cy="46" r="16" fill="none" stroke="rgba(138, 108, 255, 0.6)" stroke-width="1.2" stroke-dasharray="2 5" />
+                                </g>
+                                <!-- Tactical Crosshairs & Center Target Reticle -->
+                                <line x1="46" y1="23" x2="46" y2="33" stroke="#3EE6C4" stroke-width="2" stroke-linecap="round" />
+                                <line x1="46" y1="59" x2="46" y2="69" stroke="#3EE6C4" stroke-width="2" stroke-linecap="round" />
+                                <line x1="23" y1="46" x2="33" y2="46" stroke="#3EE6C4" stroke-width="2" stroke-linecap="round" />
+                                <line x1="59" y1="46" x2="69" y2="46" stroke="#3EE6C4" stroke-width="2" stroke-linecap="round" />
+                                <circle cx="46" cy="46" r="3" fill="#3EE6C4" />
+                                <!-- Glass Specular Reflection Curve -->
+                                <path d="M26,38 A24,24 0 0,1 42,22" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="2.5" stroke-linecap="round" />
+                                <!-- Cyber Handle with Glowing Core -->
+                                <path d="M68,68 L104,104" stroke="url(#handleGrad)" stroke-width="9" stroke-linecap="round" filter="url(#neonGlow)" />
+                                <path d="M68,68 L104,104" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.75" />
+                                <circle cx="103" cy="103" r="4.5" fill="#3EE6C4" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Luminous Sparkles / Particles -->
+                    <div class="motion-sparkles">
+                        <span class="m-dot dot-1"></span>
+                        <span class="m-dot dot-2"></span>
+                        <span class="m-dot dot-3"></span>
+                        <span class="m-dot dot-4"></span>
+                        <span class="m-dot dot-5"></span>
+                    </div>
+                </div>
+
+                <!-- Progress Header & Title -->
+                <div class="motion-header">
+                    <div class="motion-title-wrap">
+                        <h3 id="progress-title" class="motion-title">Сканирование сообществ...</h3>
+                    </div>
+                    <button id="cancel-scan-btn" class="btn btn-danger btn-sm" title="Прервать сканирование">
+                        <span class="material-symbols-outlined icon">stop_circle</span>
+                        <span>Остановить поиск</span>
+                    </button>
+                </div>
+
+                <div id="progress-status-msg" class="motion-status-msg">
+                    Пакетная выгрузка через execute (порциями по 1000)...
+                </div>
+
+                <!-- Progress Bar with Percentage -->
+                <div class="motion-progress-row">
+                    <div class="progress-bar-container">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <span id="progress-percent" class="motion-progress-percent">0%</span>
+                </div>
+
+                <!-- Live Stats Counters (3 Core Metrics) -->
+                <div class="progress-stats motion-stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-groups">0 / 0</span>
+                        <span class="stat-lbl">Группы</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-scanned">0</span>
+                        <span class="stat-lbl">Просканировано</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val text-primary" id="stat-matched">0</span>
+                        <span class="stat-lbl">Найдено записей</span>
+                    </div>
+                </div>
+
+                <!-- Search Completed Action Button: "Посмотреть результаты" -->
+                <div id="search-completed-actions" class="search-completed-actions hidden">
+                    <button type="button" id="view-results-btn" class="btn btn-primary btn-large btn-view-results">
+                        <span class="material-symbols-outlined icon">visibility</span>
+                        <span class="btn-text">Посмотреть результаты (<span id="modal-matched-badge">0</span>)</span>
+                        <span class="material-symbols-outlined icon">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Post Detail Modal Window -->
+    <div id="post-modal" class="pm-overlay hidden no-print" role="dialog" aria-modal="true">
+        <div id="post-modal-content" style="display: contents;"></div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox-overlay" aria-modal="true" role="dialog" aria-label="Просмотр фото">
+        <button class="lightbox-close" id="lightbox-close" aria-label="Закрыть">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Назад">
+            <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <div class="lightbox-content">
+            <img id="lightbox-img" src="" alt="Фото" class="lightbox-image">
+            <div class="lightbox-counter" id="lightbox-counter"></div>
+        </div>
+        <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Вперёд">
+            <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+    </div>
+
+    <script type="module" src="src/app.js?v=3.2.5"></script>
+
+    <script>
+    /* =============================================================
+       Motion: Intersection Observer — animate cards on scroll
+    ============================================================= */
+    (function() {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((e, i) => {
+                if (e.isIntersecting) {
+                    e.target.style.animationDelay = (i * 0.04) + 's';
+                    e.target.classList.add('agy-visible');
+                    io.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.08 });
+
+        function observeCards() {
+            document.querySelectorAll(
+                '.post-card, .kpi-card, .source-showcase-card, .stat-box, .card, .report-group-section'
+            ).forEach(el => {
+                if (!el.classList.contains('agy-visible')) {
+                    el.classList.add('agy-will-animate');
+                    io.observe(el);
+                }
+            });
+        }
+
+        /* Run on load + after dynamic content is added */
+        document.addEventListener('DOMContentLoaded', observeCards);
+        /* MutationObserver for dynamically added cards */
+        const mo = new MutationObserver(() => observeCards());
+        document.addEventListener('DOMContentLoaded', () => {
+            mo.observe(document.body, { childList: true, subtree: true });
+        });
+    })();
+
+    /* =============================================================
+       Lightbox
+    ============================================================= */
+    (function() {
+        const overlay   = document.getElementById('lightbox');
+        const imgEl     = document.getElementById('lightbox-img');
+        const counter   = document.getElementById('lightbox-counter');
+        const btnClose  = document.getElementById('lightbox-close');
+        const btnPrev   = document.getElementById('lightbox-prev');
+        const btnNext   = document.getElementById('lightbox-next');
+
+        let images = [];
+        let current = 0;
+
+        function show(idx) {
+            current = (idx + images.length) % images.length;
+            imgEl.src = '';
+            imgEl.classList.add('lightbox-loading');
+            const tmp = new Image();
+            tmp.onload = () => {
+                imgEl.src = tmp.src;
+                imgEl.classList.remove('lightbox-loading');
+            };
+            tmp.src = images[current];
+            counter.textContent = images.length > 1 ? (current + 1) + ' / ' + images.length : '';
+            btnPrev.style.display = images.length > 1 ? '' : 'none';
+            btnNext.style.display = images.length > 1 ? '' : 'none';
+        }
+
+        function open(imgs, idx) {
+            images = imgs;
+            show(idx);
+            overlay.classList.add('lightbox-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function close() {
+            overlay.classList.remove('lightbox-open');
+            document.body.style.overflow = '';
+            setTimeout(() => { imgEl.src = ''; }, 300);
+        }
+
+        btnClose.addEventListener('click', close);
+        btnPrev.addEventListener('click', () => show(current - 1));
+        btnNext.addEventListener('click', () => show(current + 1));
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!overlay.classList.contains('lightbox-open')) return;
+            if (e.key === 'Escape')      close();
+            if (e.key === 'ArrowLeft')  show(current - 1);
+            if (e.key === 'ArrowRight') show(current + 1);
+        });
+
+        /* Touch swipe */
+        let touchX = 0;
+        overlay.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+        overlay.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - touchX;
+            if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+        }, { passive: true });
+
+        /* Delegate: capture clicks on attachment images */
+        document.addEventListener('click', (e) => {
+            const img = e.target.closest('.attachment-img');
+            if (!img) return;
+            e.preventDefault();
+            e.stopPropagation();
+            /* Collect all images from the same card */
+            const card = img.closest('.post-card') || img.closest('.post-attachments');
+            const allImgs = card
+                ? Array.from(card.querySelectorAll('.attachment-img')).map(i => i.src || i.dataset.src)
+                : [img.src || img.dataset.src];
+            const idx = allImgs.indexOf(img.src || img.dataset.src);
+            open(allImgs, idx >= 0 ? idx : 0);
+        });
+    })();
+    </script>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="help-overlay hidden" role="dialog" aria-modal="true" aria-label="Справка">
+        <div class="help-card">
+            <div class="help-topbar">
+                <div class="help-title-wrap">
+                    <span class="material-symbols-outlined help-title-icon">menu_book</span>
+                    <div>
+                        <h2 class="help-title">Справка по сервису</h2>
+                        <p class="help-subtitle">Руководство пользователя</p>
+                    </div>
+                </div>
+                <button class="pm-close-btn" id="help-close-btn" aria-label="Закрыть">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="help-body">
+
+                <!-- Section: About -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="material-symbols-outlined help-sec-icon" style="color:#3552d4">info</span>
+                        <h3>О сервисе</h3>
+                    </div>
+                    <p>Сервис предназначен для поиска, мониторинга и анализа публикаций в группах ВКонтакте. Позволяет в один клик получить полную статистику по нескольким источникам одновременно: посты, охваты, вовлечённость аудитории, хэштеги и внешние ссылки.</p>
+                </div>
+
+                <!-- Section: How to use -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="material-symbols-outlined help-sec-icon" style="color:#3552d4">play_circle</span>
+                        <h3>Как пользоваться</h3>
+                    </div>
+                    <ol class="help-list">
+                        <li>
+                            <span class="help-step">1</span>
+                            <div><strong>Настройте API</strong> — нажмите «Настройки API» и введите токен доступа ВКонтакте. Токен можно получить на <a href="https://vkhost.github.io/" target="_blank" rel="noopener">vkhost.github.io</a>.</div>
+                        </li>
+                        <li>
+                            <span class="help-step">2</span>
+                            <div><strong>Выберите ветки</strong> — укажите группы ВКонтакте для анализа. Можно добавить несколько источников через запятую.</div>
+                        </li>
+                        <li>
+                            <span class="help-step">3</span>
+                            <div><strong>Выберите период</strong> — отметьте нужные месяцы или используйте быстрые пресеты (последние 3 мес., год и т.д.).</div>
+                        </li>
+                        <li>
+                            <span class="help-step">4</span>
+                            <div><strong>Укажите ключевые слова</strong> (необязательно) — система отфильтрует только посты, содержащие нужные фразы.</div>
+                        </li>
+                        <li>
+                            <span class="help-step">5</span>
+                            <div><strong>Нажмите «Найти»</strong> — начнётся сканирование стен. Прогресс отображается в реальном времени.</div>
+                        </li>
+                        <li>
+                            <span class="help-step">6</span>
+                            <div><strong>Изучите результаты</strong> — переключайтесь между вкладками: Записи, Отчёт, Аналитика, Итоги.</div>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Section: Tabs -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="material-symbols-outlined help-sec-icon" style="color:#3552d4">tab</span>
+                        <h3>Вкладки результатов</h3>
+                    </div>
+                    <div class="help-tabs-grid">
+                        <div class="help-tab-card">
+                            <span class="material-symbols-outlined" style="color:#3552d4">article</span>
+                            <strong>Записи</strong>
+                            <p>Карточки найденных постов с фото, текстом, статистикой. Нажмите на карточку для просмотра полного поста.</p>
+                        </div>
+                        <div class="help-tab-card">
+                            <span class="material-symbols-outlined" style="color:#1a7f37">description</span>
+                            <strong>Отчёт</strong>
+                            <p>Официальный документ с таблицами по каждой группе. Можно распечатать или скопировать в буфер обмена.</p>
+                        </div>
+                        <div class="help-tab-card">
+                            <span class="material-symbols-outlined" style="color:#9a6700">bar_chart</span>
+                            <strong>Аналитика</strong>
+                            <p>KPI-карточки, рейтинговая таблица с показателями охвата, ER и активности по каждой группе.</p>
+                        </div>
+                        <div class="help-tab-card">
+                            <span class="material-symbols-outlined" style="color:#6639ba">summarize</span>
+                            <strong>Итоги</strong>
+                            <p>Хэштеги, внешние ссылки, методическая справка и поле для заметок. Можно сохранить как ZIP.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: ER -->
+                <div class="help-section help-section-accent">
+                    <div class="help-section-header">
+                        <span class="material-symbols-outlined help-sec-icon" style="color:#3552d4">trending_up</span>
+                        <h3>Что такое ER (Engagement Rate)?</h3>
+                    </div>
+                    <p><strong>ER (Engagement Rate)</strong> — коэффициент вовлечённости аудитории. Показывает, насколько активно подписчики реагируют на публикации группы по отношению к её охвату.</p>
+
+                    <div class="help-formula-block">
+                        <div class="help-formula-label">Формула расчёта</div>
+                        <div class="help-formula">
+                            ER = (Лайки + Репосты + Комментарии) ÷ Просмотры × 100%
+                        </div>
+                        <div class="help-formula-note">Считается как среднее по всем постам группы за выбранный период</div>
+                    </div>
+
+                    <div class="help-er-scale">
+                        <div class="help-er-item help-er-danger">
+                            <span class="help-er-badge">0 – 1%</span>
+                            <div>
+                                <strong>Низкий ER</strong>
+                                <p>Аудитория практически не реагирует. Контент не вызывает интереса или группа накручивает просмотры. Требуется пересмотр контент-стратегии.</p>
+                            </div>
+                        </div>
+                        <div class="help-er-item help-er-warning">
+                            <span class="help-er-badge">1 – 3%</span>
+                            <div>
+                                <strong>Средний ER</strong>
+                                <p>Нормальный показатель для крупных групп (10 000+ подписчиков). Аудитория есть, но вовлечённость можно улучшить интерактивным контентом.</p>
+                            </div>
+                        </div>
+                        <div class="help-er-item help-er-norm">
+                            <span class="help-er-badge">3 – 6%</span>
+                            <div>
+                                <strong>Хороший ER</strong>
+                                <p>Отличный результат. Аудитория лояльна и активна. Контент вызывает реакции, алгоритмы VK продвигают такие посты органически.</p>
+                            </div>
+                        </div>
+                        <div class="help-er-item help-er-excellent">
+                            <span class="help-er-badge">6%+</span>
+                            <div>
+                                <strong>Отличный ER</strong>
+                                <p>Высокая вовлечённость — характерна для небольших сообществ или вирусного контента. Аудитория максимально активна.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Tips -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="material-symbols-outlined help-sec-icon" style="color:#3552d4">lightbulb</span>
+                        <h3>Советы по улучшению ER</h3>
+                    </div>
+                    <ul class="help-tips">
+                        <li><span class="material-symbols-outlined">check_circle</span> Публикуйте интерактивный контент — опросы, викторины, вопросы к аудитории</li>
+                        <li><span class="material-symbols-outlined">check_circle</span> Используйте хэштеги для расширения охвата</li>
+                        <li><span class="material-symbols-outlined">check_circle</span> Публикуйте в оптимальное время — утро (8–10) и вечер (19–21)</li>
+                        <li><span class="material-symbols-outlined">check_circle</span> Соблюдайте регулярность — не менее 8–10 постов в месяц</li>
+                        <li><span class="material-symbols-outlined">check_circle</span> Добавляйте качественные фото и видео — они получают больше реакций</li>
+                        <li><span class="material-symbols-outlined">check_circle</span> Отвечайте на комментарии — это повышает счётчик и лояльность аудитории</li>
+                    </ul>
+                </div>
+
+            </div><!-- /.help-body -->
+        </div><!-- /.help-card -->
+    </div><!-- /#help-modal -->
+
+    <script>
+    /* Help Modal */
+    (function() {
+        const modal    = document.getElementById('help-modal');
+        const openBtn  = document.getElementById('help-btn');
+        const closeBtn = document.getElementById('help-close-btn');
+
+        function openHelp() {
+            modal.classList.remove('hidden');
+            modal.classList.add('help-open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeHelp() {
+            modal.classList.remove('help-open');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        openBtn.addEventListener('click', openHelp);
+        closeBtn.addEventListener('click', closeHelp);
+        modal.addEventListener('click', e => { if (e.target === modal) closeHelp(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && modal.classList.contains('help-open')) closeHelp();
+        });
+    })();
+    </script>
+
+    <!-- AURORA — Theme Switcher & Celestial Particle Ambient Canvas -->
+    <script>
+    (function() {
+        const themeBtn = document.getElementById('theme-toggle-btn');
+        const themeIcon = document.getElementById('theme-toggle-icon');
+        const themeText = document.getElementById('theme-toggle-text');
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('aurora_theme', theme);
+            if (themeText && themeIcon) {
+                themeText.textContent = theme === 'dark' ? 'Тёмная' : 'Светлая';
+                themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+            }
+        }
+
+        const savedTheme = localStorage.getItem('aurora_theme') || 'dark';
+        applyTheme(savedTheme);
+
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+                applyTheme(cur === 'dark' ? 'light' : 'dark');
+            });
+        }
+
+        const canvas = document.getElementById('aurora-particles');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                let w = (canvas.width = window.innerWidth);
+                let h = (canvas.height = window.innerHeight);
+
+                window.addEventListener('resize', () => {
+                    w = canvas.width = window.innerWidth;
+                    h = canvas.height = window.innerHeight;
+                });
+
+                const count = Math.min(Math.floor(w / 24), 55);
+                const particles = [];
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: Math.random() * w,
+                        y: Math.random() * h,
+                        r: Math.random() * 1.6 + 0.6,
+                        vy: -(Math.random() * 0.3 + 0.08),
+                        vx: (Math.random() - 0.5) * 0.2,
+                        opacity: Math.random() * 0.6 + 0.2,
+                        pulseAngle: Math.random() * Math.PI * 2,
+                        color: Math.random() > 0.5 ? 'rgba(62, 230, 196, ' : 'rgba(138, 108, 255, '
+                    });
+                }
+
+                function draw() {
+                    ctx.clearRect(0, 0, w, h);
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        p.y += p.vy;
+                        p.x += p.vx;
+                        p.pulseAngle += 0.015;
+                        if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+                        if (p.x < -10) p.x = w + 10;
+                        if (p.x > w + 10) p.x = -10;
+                        const op = Math.max(0.1, Math.min(1, p.opacity + Math.sin(p.pulseAngle) * 0.2));
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color + op + ')';
+                        ctx.shadowBlur = 6;
+                        ctx.shadowColor = p.color + '0.4)';
+                        ctx.fill();
+                    }
+                    requestAnimationFrame(draw);
+                }
+                draw();
+            }
+        }
+    })();
+    </script>
+
+    <!-- AURORA — Floating Scroll-To-Top Button with Circular Progress Ring -->
+    <button id="scroll-to-top-btn" class="scroll-to-top-btn" aria-label="Вернуться наверх" title="Вернуться к поиску и фильтрам">
+        <svg class="progress-ring" width="48" height="48" viewBox="0 0 48 48">
+            <circle class="progress-ring-circle-bg" cx="24" cy="24" r="20" fill="none" stroke-width="3" />
+            <circle id="scroll-progress-circle" class="progress-ring-circle" cx="24" cy="24" r="20" fill="none" stroke="var(--accent, #3ee6c4)" stroke-width="3" stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round" />
+        </svg>
+        <span class="material-symbols-outlined scroll-icon">arrow_upward</span>
+    </button>
+</body>
+</html>

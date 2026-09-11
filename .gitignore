@@ -1,0 +1,29 @@
+# Video & Audio binaries
+*.mp4
+*.m4a
+*.wav
+*.aac
+video_production/raw_video/
+video_production/frames/
+video_production/new_voiceover/
+video_production/*.mp3
+video_production/final_previews/
+video_production/promo_previews/
+
+# Python cache & temp
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local logs
+*.log

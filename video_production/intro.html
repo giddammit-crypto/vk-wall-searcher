@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e8ecf1;
+    position: relative;
+  }
+  
+  .bg-layer {
+    position: absolute;
+    inset: -30px;
+    background: url('file:///tmp/user_video_frames/frame_001.jpg') center/cover no-repeat;
+    filter: blur(32px) saturate(140%) brightness(1.08);
+    transform: scale(1.08);
+  }
+  
+  .bg-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(241, 244, 248, 0.82) 0%, rgba(225, 230, 237, 0.94) 100%);
+  }
+  
+  .intro-card {
+    position: relative;
+    z-index: 10;
+    width: 860px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    border-radius: 32px;
+    padding: 44px 56px 40px;
+    box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(148, 163, 184, 0.15);
+    backdrop-filter: blur(24px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 119, 255, 0.08);
+    border: 1px solid rgba(0, 119, 255, 0.22);
+    color: #0066e6;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 18px;
+    border-radius: 9999px;
+    margin-bottom: 22px;
+  }
+  
+  .badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0077ff;
+    box-shadow: 0 0 10px #0077ff;
+  }
+
+  .logo-wrap {
+    margin-bottom: 20px;
+    position: relative;
+  }
+  
+  .logo-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 26px;
+    background: linear-gradient(135deg, #0077ff 0%, #0055d4 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 14px 32px -4px rgba(0, 119, 255, 0.45);
+  }
+  
+  .logo-circle svg {
+    width: 58px;
+    height: 58px;
+    fill: #ffffff;
+  }
+  
+  .title {
+    font-size: 42px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+    line-height: 1.15;
+  }
+  
+  .subtitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #475569;
+    max-width: 660px;
+    line-height: 1.5;
+    margin-bottom: 28px;
+  }
+  
+  .pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .pill {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 12px;
+  }
+</style>
+</head>
+<body>
+  <div class="bg-layer"></div>
+  <div class="bg-overlay"></div>
+  
+  <div class="intro-card">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Официальный сервис мониторинга · 2026
+    </div>
+    
+    <div class="logo-wrap">
+      <div class="logo-circle">
+        <!-- VK Logo SVG -->
+        <svg viewBox="0 0 24 24">
+          <path d="M13.162 18.994c.609 0 .858-.406.851-.915-.072-1.921.868-2.613 1.83-1.636 1.139 1.151 1.782 2.551 3.535 2.551h2.519c1.558 0 2.27-.798 1.821-2.28-.77-2.548-3.056-5.183-4.239-6.388-.934-.951-.665-1.378 0-2.454.041-.065 2.56-3.655 2.825-4.887.142-.656-.258-1.045-.989-1.045h-2.518c-.767 0-1.077.408-1.318.96-.549 1.259-1.656 3.731-2.463 4.888-.707 1.015-1.002.853-1.233.155-.544-1.642-.437-3.645.195-5.267.31-.796-.135-1.218-.847-1.218h-3.957c-.551 0-.912.302-1.168.67-.321.464-.176.994.425 1.572.82.791.737 2.088.362 3.864-.287 1.359-1.014 2.195-1.745 2.195-.494 0-.825-.371-1.258-1.291-.84-1.788-1.701-4.01-2.57-5.836-.264-.555-.658-.857-1.396-.857H1.833C.967 4.935.6 5.378.6 6.04c0 1.092 1.397 5.753 4.298 9.923 2.766 3.974 6.643 6.031 8.264 6.031z"/>
+        </svg>
+      </div>
+    </div>
+    
+    <h1 class="title">Статистика групп ВК</h1>
+    <p class="subtitle">Центральная библиотечная система города Владимира<br>Автоматизированный сбор данных, аналитика и отчёты</p>
+    
+    <div class="pills-row">
+      <div class="pill">🏛️ Все 16 филиалов</div>
+      <div class="pill">⚡ Пакетный сбор execute</div>
+      <div class="pill">📑 Отчёты Word и Excel</div>
+      <div class="pill">📈 Аналитика охвата и ER</div>
+    </div>
+  </div>
+</body>
+</html>

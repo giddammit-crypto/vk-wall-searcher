@@ -1,0 +1,26 @@
+# ==============================================================================
+# Apache / LiteSpeed Configuration for VK Wall Searcher
+# ==============================================================================
+
+# Default charset
+AddDefaultCharset UTF-8
+
+# Directory index
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Route /api/vk-proxy to api/vk-proxy.php
+    RewriteRule ^api/vk-proxy/?$ api/vk-proxy.php [L,QSA]
+</IfModule>
+
+# Security & Cache Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Enable Gzip compression if mod_deflate is available
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
