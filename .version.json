@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.6.2",
+    "version": "3.6.3",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-11T23:35:00+03:00",
-    "release_name": "AURORA 3.6.2 — Фикс кликов по кнопкам (pointer-events), устранение сбоя кэша ES-модулей, адаптивный контраст кнопок и синхронизация версий"
+    "commit_date": "2026-09-11T23:55:00+03:00",
+    "release_name": "AURORA 3.6.3 — Повышение яркости, контрастности и читаемости шрифтов (WCAG AAA), обновление дизайн-токенов светлой и тёмной темы"
 }
