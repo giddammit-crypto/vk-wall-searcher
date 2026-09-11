@@ -164,10 +164,10 @@
     --color-purple-bg: rgba(138, 108, 255, 0.13);
 
     /* Gradients & Specular Highlights */
-    --btn-primary-bg: linear-gradient(135deg, #3EE6C4 0%, #38BDF8 50%, #8A6CFF 100%);
-    --btn-primary-text: #0b111e;
-    --btn-primary-shadow: 0 8px 24px rgba(62, 230, 196, 0.35), 0 2px 4px rgba(0, 0, 0, 0.20);
-    --btn-primary-hover-shadow: 0 12px 28px rgba(62, 230, 196, 0.45), 0 0 24px rgba(138, 108, 255, 0.35);
+    --btn-primary-bg: linear-gradient(135deg, #0d9488 0%, #2563eb 50%, #7c3aed 100%);
+    --btn-primary-text: #ffffff;
+    --btn-primary-shadow: 0 6px 20px rgba(37, 99, 235, 0.35), 0 2px 4px rgba(0, 0, 0, 0.20);
+    --btn-primary-hover-shadow: 0 10px 28px rgba(37, 99, 235, 0.50), 0 0 24px rgba(124, 58, 237, 0.40);
     --card-border-top: linear-gradient(90deg, rgba(62, 230, 196, 0.40) 0%, rgba(56, 189, 248, 0.20) 50%, rgba(138, 108, 255, 0.40) 100%);
     --aurora-card-border-top: linear-gradient(90deg, rgba(62, 230, 196, 0.40) 0%, rgba(56, 189, 248, 0.20) 50%, rgba(138, 108, 255, 0.40) 100%);
     --switch-active-bg: linear-gradient(135deg, #3EE6C4, #8A6CFF);
@@ -730,7 +730,8 @@ body {
     font-family: var(--font-body);
     font-size: 0.9375rem;
     font-weight: 700;
-    color: var(--btn-primary-text) !important;
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     background: var(--btn-primary-bg);
     background-size: 200% 200%;
     background-position: 0% 50%;
@@ -744,16 +745,28 @@ body {
     overflow: hidden;
     transition: transform var(--duration) var(--ease),
                 box-shadow var(--duration) var(--ease),
-                background-position var(--duration-md) var(--ease);
+                background-position var(--duration-md) var(--ease),
+                filter var(--duration) var(--ease);
+}
+.btn-primary .icon,
+.btn-primary .btn-text {
+    color: #ffffff !important;
+}
+.btn-primary .btn-kbd {
+    color: #ffffff !important;
+    background: rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 .btn-primary:hover {
     background-position: 100% 50%;
     box-shadow: var(--btn-primary-hover-shadow);
     transform: translateY(-2px);
+    filter: brightness(1.1);
 }
 .btn-primary:active {
-    transform: translateY(1px) scale(0.98);
-    box-shadow: 0 4px 14px rgba(62, 230, 196, 0.30);
+    transform: translateY(1px);
+    box-shadow: 0 3px 12px rgba(37, 99, 235, 0.40);
+    filter: brightness(0.95);
 }
 .btn-primary:focus-visible {
     outline: none;
@@ -924,7 +937,8 @@ body {
     color: var(--muted); cursor: pointer;
     transition: all var(--duration) var(--ease);
 }
-.icon-btn:hover { background: rgba(26,29,36,0.06); color: var(--text-primary); transform: rotate(90deg); }
+.icon-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary); transform: rotate(90deg); }
+.icon-btn:active { background: rgba(255, 255, 255, 0.14); transform: rotate(90deg) translateY(1px); }
 
 /* ==========================================================================
    Settings Panel
@@ -1993,15 +2007,23 @@ textarea::placeholder {
     transform: translateY(-1px);
 }
 .tab-btn:active {
-    transform: scale(0.97);
+    transform: translateY(1px);
 }
 .tab-btn.active {
     color: var(--accent);
-    background: var(--surface);
+    background: rgba(62, 230, 196, 0.12);
     font-weight: 600;
-    border-color: var(--hairline);
-    box-shadow: var(--elevation-1);
+    border-color: rgba(62, 230, 196, 0.4);
+    box-shadow: 0 0 16px rgba(62, 230, 196, 0.25), inset 0 0 8px rgba(62, 230, 196, 0.1);
     transform: translateY(-1px);
+}
+.tab-btn.active .icon {
+    color: var(--accent);
+}
+.tab-btn.active .tab-badge {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
 }
 .tab-btn:focus-visible {
     outline: none;
@@ -3050,7 +3072,7 @@ textarea::placeholder {
     transform: translateY(-1px);
 }
 .segment-btn:active {
-    transform: scale(0.97);
+    transform: translateY(1px);
 }
 .segment-btn.active {
     background: var(--accent);
@@ -4547,7 +4569,7 @@ select:focus {
     transform: translateY(-2px) scale(1.05);
 }
 .scroll-to-top-btn:active {
-    transform: translateY(0) scale(0.95);
+    transform: translateY(1px);
 }
 .progress-ring {
     position: absolute;
@@ -5709,10 +5731,54 @@ textarea:focus-visible,
 /* ==========================================================================
    Daybreak Light Theme Polish & Contrast Guarantees (WCAG AA)
    ========================================================================== */
-[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .btn-tonal,
+[data-theme="light"] .btn-secondary {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid rgba(148, 163, 184, 0.45) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .btn-tonal:hover,
+[data-theme="light"] .btn-secondary:hover {
+    background: rgba(23, 87, 166, 0.08) !important;
+    border-color: #1757a6 !important;
+    color: #1757a6 !important;
+    box-shadow: 0 4px 14px rgba(23, 87, 166, 0.16) !important;
+}
+[data-theme="light"] .btn-tonal:active,
+[data-theme="light"] .btn-secondary:active {
+    background: rgba(23, 87, 166, 0.16) !important;
+    transform: translateY(1px) !important;
+}
+
+[data-theme="light"] .btn-outlined {
+    background: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid rgba(148, 163, 184, 0.5) !important;
+}
 [data-theme="light"] .btn-outlined:hover {
-    background: rgba(15, 23, 42, 0.06);
-    color: var(--text-primary);
+    background: rgba(23, 87, 166, 0.06) !important;
+    border-color: #1757a6 !important;
+    color: #1757a6 !important;
+    transform: translateY(-1px);
+}
+[data-theme="light"] .btn-outlined:active {
+    background: rgba(23, 87, 166, 0.14) !important;
+    transform: translateY(1px) !important;
+}
+
+[data-theme="light"] .btn-ghost {
+    background: transparent;
+    color: #334155 !important;
+}
+[data-theme="light"] .btn-ghost:hover {
+    background: rgba(23, 87, 166, 0.08) !important;
+    color: #1757a6 !important;
+    transform: translateY(-1px);
+}
+[data-theme="light"] .btn-ghost:active {
+    background: rgba(23, 87, 166, 0.16) !important;
+    transform: translateY(1px) !important;
 }
 
 [data-theme="light"] .tab-btn {
@@ -5745,13 +5811,81 @@ textarea:focus-visible,
     color: #ffffff !important;
 }
 
+[data-theme="light"] .preset-pill {
+    background: #ffffff;
+    color: var(--text-secondary);
+    border: 1.5px solid rgba(148, 163, 184, 0.4);
+}
+[data-theme="light"] .preset-pill:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+}
 [data-theme="light"] .preset-pill.active {
     background: var(--accent-soft) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    font-weight: 700 !important;
     box-shadow: 0 2px 10px rgba(23, 87, 166, 0.25), inset 0 0 8px rgba(23, 87, 166, 0.12) !important;
+    transform: translateY(-1px);
 }
 
-[data-theme="light"] .month-badge:hover {
+[data-theme="light"] .showcase-filter-btn {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .showcase-filter-btn:hover:not(.active) {
+    color: var(--text-primary);
+    background: rgba(23, 87, 166, 0.08);
+    transform: translateY(-1px);
+}
+[data-theme="light"] .showcase-filter-btn.active {
+    background: #ffffff !important;
+    color: var(--accent) !important;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1) !important;
+}
+[data-theme="light"] .showcase-filter-btn.active .filter-pill-badge {
+    background: rgba(23, 87, 166, 0.1) !important;
+    color: var(--accent) !important;
+}
+
+[data-theme="light"] .and-or-btn {
+    background: #ffffff;
+    color: var(--text-secondary);
+    border: 1.5px solid rgba(148, 163, 184, 0.4);
+}
+[data-theme="light"] .and-or-btn:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+[data-theme="light"] .and-or-btn.active {
+    background: var(--accent-soft) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 2px 8px rgba(23, 87, 166, 0.2) !important;
+}
+
+[data-theme="light"] .month-badge {
+    background: #ffffff;
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+[data-theme="light"] .month-badge:hover:not(.selected) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
     box-shadow: 0 0 10px var(--accent-soft);
+    transform: translateY(-2px);
+}
+[data-theme="light"] .month-badge.selected {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 14px rgba(23, 87, 166, 0.3) !important;
+    transform: scale(1.03);
 }
 
 [data-theme="light"] .segment-btn.active {
@@ -5762,6 +5896,19 @@ textarea:focus-visible,
 
 [data-theme="light"] .segment-btn.active .segment-icon {
     color: #ffffff !important;
+}
+
+[data-theme="light"] .icon-btn {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .icon-btn:hover {
+    background: rgba(23, 87, 166, 0.08);
+    color: var(--accent);
+    transform: rotate(90deg);
+}
+[data-theme="light"] .icon-btn:active {
+    background: rgba(23, 87, 166, 0.16) !important;
+    transform: rotate(90deg) translateY(1px) !important;
 }
 
 /* Daybreak Light Theme Chart Bars */
@@ -5783,17 +5930,23 @@ textarea:focus-visible,
     box-shadow: 0 2px 10px rgba(124, 58, 237, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
-/* Guaranteed contrast for selected months in light mode */
-[data-theme="light"] .month-badge.selected {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
-    border-color: transparent !important;
-}
-
 /* ==========================================================================
    Lightweight GPU-Accelerated Micro-Animations & Tactile Feedback
    ========================================================================== */
+/* Guaranteed Mouse Click Integrity: Prevent dropped clicks from child element target shifts */
+.btn > *,
+.tab-btn > *,
+.segment-btn > *,
+.preset-pill > *,
+.showcase-filter-btn > *,
+.and-or-btn > *,
+.icon-btn > *,
+.month-badge > *,
+.scroll-to-top-btn > * {
+    pointer-events: none;
+}
+
+/* Safe, natural micro-interaction without bounding-box shrink distortion */
 .btn:active,
 .tab-btn:active,
 .segment-btn:active,
@@ -5801,8 +5954,9 @@ textarea:focus-visible,
 .showcase-filter-btn:active,
 .and-or-btn:active,
 .month-badge:active,
-.icon-btn:active {
-    transform: scale(0.97) !important;
+.icon-btn:active,
+.scroll-to-top-btn:active {
+    transform: translateY(1px) !important;
     transition: transform 70ms ease !important;
 }
 

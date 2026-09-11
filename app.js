@@ -632,7 +632,157 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Global cache for resolved VK authors (communities & profiles)
+    const CACHE_STORAGE_KEY = 'vkws_author_cache_v1';
     const authorCache = new Map();
+
+    (function initAuthorCache() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach(([k, v]) => authorCache.set(k, v));
+                    }
+                }
+            }
+        } catch (e) {}
+    })();
+
+    function persistAuthorCache() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const entries = Array.from(authorCache.entries()).slice(-400);
+                localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(entries));
+            }
+        } catch (e) {}
+    }
+
+    function cacheAuthor(id, data) {
+        if (!id || !data) return;
+        const numId = Number(id);
+        authorCache.set(id, data);
+        authorCache.set(String(id), data);
+        if (!isNaN(numId)) {
+            authorCache.set(numId, data);
+            authorCache.set(-Math.abs(numId), data);
+            authorCache.set(Math.abs(numId), data);
+            authorCache.set(String(-Math.abs(numId)), data);
+            authorCache.set(String(Math.abs(numId)), data);
+        }
+        if (data.screen_name) {
+            authorCache.set(data.screen_name.toLowerCase(), data);
+        }
+        persistAuthorCache();
+    }
+
+    function getAuthorFromCache(id) {
+        if (!id) return null;
+        if (authorCache.has(id)) return authorCache.get(id);
+        const numId = Number(id);
+        if (!isNaN(numId)) {
+            if (authorCache.has(numId)) return authorCache.get(numId);
+            if (authorCache.has(-Math.abs(numId))) return authorCache.get(-Math.abs(numId));
+            if (authorCache.has(Math.abs(numId))) return authorCache.get(Math.abs(numId));
+            if (authorCache.has(String(numId))) return authorCache.get(String(numId));
+            if (authorCache.has(String(-Math.abs(numId)))) return authorCache.get(String(-Math.abs(numId)));
+            if (authorCache.has(String(Math.abs(numId)))) return authorCache.get(String(Math.abs(numId)));
+        }
+        const strId = String(id).toLowerCase();
+        if (authorCache.has(strId)) return authorCache.get(strId);
+        return null;
+    }
+
+    async function resolveMissingAuthors(posts, token = '') {
+        if (!posts || !Array.isArray(posts) || posts.length === 0) return;
+
+        const missingGroupIds = new Set();
+        const missingUserIds = new Set();
+
+        posts.forEach(p => {
+            if (p && p.copy_history && Array.isArray(p.copy_history) && p.copy_history.length > 0) {
+                const rep = p.copy_history[0];
+                const repOwnerId = rep.owner_id || rep.from_id;
+                if (repOwnerId) {
+                    const cached = getAuthorFromCache(repOwnerId);
+                    if (!cached) {
+                        const n = Number(repOwnerId);
+                        if (!isNaN(n)) {
+                            if (n < 0) missingGroupIds.add(Math.abs(n));
+                            else missingUserIds.add(n);
+                        }
+                    }
+                }
+            }
+        });
+
+        if (missingGroupIds.size === 0 && missingUserIds.size === 0) return;
+
+        // Resolve groups in batches of up to 100
+        const gIds = Array.from(missingGroupIds);
+        for (let i = 0; i < gIds.length; i += 100) {
+            const chunk = gIds.slice(i, i + 100);
+            try {
+                const res = await callVkApi('groups.getById', { group_ids: chunk.join(','), fields: 'photo_100,photo_50,screen_name' }, token);
+                const groupsList = Array.isArray(res) ? res : (res?.groups || []);
+                groupsList.forEach(g => {
+                    const gObj = {
+                        id: -Math.abs(g.id),
+                        name: g.name,
+                        screen_name: g.screen_name || '',
+                        photo_100: g.photo_100 || g.photo_50 || '',
+                        photo_50: g.photo_50 || '',
+                        type: 'group'
+                    };
+                    cacheAuthor(gObj.id, gObj);
+                });
+            } catch (err) {
+                console.warn('Failed to resolve missing groups:', chunk, err);
+            }
+        }
+
+        // Resolve users in batches of up to 100
+        const uIds = Array.from(missingUserIds);
+        for (let i = 0; i < uIds.length; i += 100) {
+            const chunk = uIds.slice(i, i + 100);
+            try {
+                const res = await callVkApi('users.get', { user_ids: chunk.join(','), fields: 'photo_100,photo_50,screen_name' }, token);
+                const userList = Array.isArray(res) ? res : (res?.users || []);
+                userList.forEach(u => {
+                    const uObj = {
+                        id: u.id,
+                        name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Пользователь ВКонтакте',
+                        screen_name: u.screen_name || '',
+                        photo_100: u.photo_100 || u.photo_50 || '',
+                        photo_50: u.photo_50 || '',
+                        type: 'user'
+                    };
+                    cacheAuthor(uObj.id, uObj);
+                });
+            } catch (err) {
+                console.warn('Failed to resolve missing users:', chunk, err);
+            }
+        }
+
+        // Live-update all rendered elements waiting for resolved author names
+        if (typeof document !== 'undefined') {
+            document.querySelectorAll('[data-repost-owner-id]').forEach(el => {
+                const oid = el.getAttribute('data-repost-owner-id');
+                const author = getAuthorFromCache(oid);
+                if (author && author.name) {
+                    const nameEl = el.querySelector('.repost-name-text') || el;
+                    if (nameEl) nameEl.textContent = author.name;
+                    const container = el.closest('.post-repost-box, .report-repost-meta, .pm-repost-box');
+                    if (container) {
+                        const avatarImg = container.querySelector('.repost-author-avatar');
+                        if (avatarImg && author.photo_100 && avatarImg.tagName === 'IMG') {
+                            avatarImg.src = author.photo_100;
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     // Video & Repost Helpers
     function bestVideoThumb(video) {
@@ -678,41 +828,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resolveRepostAuthor(repost) {
-        if (!repost) return { name: 'Запись ВКонтакте', avatar: '', url: 'https://vk.com', postUrl: 'https://vk.com' };
+        if (!repost) return { name: 'ВКонтакте', avatar: '', url: 'https://vk.com', postUrl: '', isBranch: false, rawOwnerId: 0 };
         const ownerId = repost.owner_id || repost.from_id;
-        const postUrl = ownerId && repost.id ? `https://vk.com/wall${ownerId}_${repost.id}` : 'https://vk.com';
-        
-        // 1. Check in authorCache
-        if (ownerId && authorCache.has(ownerId)) {
-            const a = authorCache.get(ownerId);
-            const name = a.name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Сообщество';
-            const avatar = a.photo_100 || a.photo_50 || '';
-            const screen = a.screen_name ? `https://vk.com/${a.screen_name}` : (ownerId < 0 ? `https://vk.com/club${Math.abs(ownerId)}` : `https://vk.com/id${ownerId}`);
-            return { name, avatar, url: screen, postUrl };
+        const postId = repost.id;
+        const postUrl = ownerId && postId ? `https://vk.com/wall${ownerId}_${postId}` : '';
+
+        // 1. Check if the repost author is one of the 18 library branches
+        let branch = findCanonicalBranch({ id: ownerId });
+        if (!branch) {
+            const cached = getAuthorFromCache(ownerId);
+            if (cached) {
+                branch = findCanonicalBranch({
+                    id: ownerId,
+                    name: cached.name,
+                    link: cached.screen_name ? `https://vk.com/${cached.screen_name}` : ''
+                });
+            }
         }
 
-        // 2. Check canonical branches
-        if (ownerId) {
-            const canonical = findCanonicalBranch({ id: ownerId });
-            if (canonical) {
+        if (branch) {
+            const fallbackUrl = Number(ownerId) < 0 ? `https://vk.com/club${Math.abs(Number(ownerId))}` : `https://vk.com/id${ownerId}`;
+            return {
+                name: branch.canonicalName,
+                avatar: branch.avatar || '',
+                url: branch.vkLink || fallbackUrl,
+                postUrl: postUrl || branch.vkLink || fallbackUrl,
+                isBranch: true,
+                branch: branch,
+                rawOwnerId: ownerId
+            };
+        }
+
+        // 2. Check authorCache for VK profiles / groups
+        const cached = getAuthorFromCache(ownerId);
+        if (cached) {
+            const isGroup = Number(ownerId) < 0 || cached.type === 'group';
+            if (isGroup) {
                 return {
-                    name: canonical.canonicalName || canonical.name,
-                    avatar: '',
-                    url: canonical.vkLink || postUrl,
-                    postUrl,
-                    canonical
+                    name: cached.name || 'Сообщество ВКонтакте',
+                    avatar: cached.photo_100 || cached.photo_50 || '',
+                    url: `https://vk.com/${cached.screen_name || ('club' + Math.abs(Number(ownerId)))}`,
+                    postUrl: postUrl || `https://vk.com/${cached.screen_name || ('club' + Math.abs(Number(ownerId)))}`,
+                    isBranch: false,
+                    rawOwnerId: ownerId
+                };
+            } else {
+                return {
+                    name: `${cached.first_name || ''} ${cached.last_name || ''}`.trim() || cached.name || 'Пользователь ВКонтакте',
+                    avatar: cached.photo_100 || cached.photo_50 || '',
+                    url: `https://vk.com/${cached.screen_name || ('id' + ownerId)}`,
+                    postUrl: postUrl || `https://vk.com/${cached.screen_name || ('id' + ownerId)}`,
+                    isBranch: false,
+                    rawOwnerId: ownerId
                 };
             }
         }
 
         // 3. Fallback
-        const isGroup = ownerId && ownerId < 0;
-        const authorUrl = ownerId ? (isGroup ? `https://vk.com/club${Math.abs(ownerId)}` : `https://vk.com/id${ownerId}`) : postUrl;
+        const isGroup = Number(ownerId) < 0;
+        const defaultName = isGroup ? 'Сообщество ВКонтакте' : 'Пользователь ВКонтакте';
+        const authorUrl = ownerId ? (isGroup ? `https://vk.com/club${Math.abs(Number(ownerId))}` : `https://vk.com/id${ownerId}`) : (postUrl || 'https://vk.com');
+
         return {
-            name: isGroup ? `Сообщество (ID: ${Math.abs(ownerId)})` : (ownerId ? `Пользователь (ID: ${ownerId})` : 'Запись ВКонтакте'),
+            name: defaultName,
             avatar: '',
             url: authorUrl,
-            postUrl
+            postUrl: postUrl || authorUrl,
+            isBranch: false,
+            rawOwnerId: ownerId
         };
     }
 
@@ -1781,13 +1964,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Populate author cache from extended response (for reposts)
                     if (res.groups && Array.isArray(res.groups)) {
                         res.groups.forEach(g => {
-                            const gid = -Math.abs(g.id);
-                            authorCache.set(gid, g);
+                            cacheAuthor(-Math.abs(g.id), g);
                         });
                     }
                     if (res.profiles && Array.isArray(res.profiles)) {
                         res.profiles.forEach(u => {
-                            authorCache.set(u.id, u);
+                            cacheAuthor(u.id, u);
                         });
                     }
 
@@ -1797,6 +1979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     const posts = res.items;
+                    resolveMissingAuthors(posts, state.token).catch(() => {});
 
                     for (let post of posts) {
                         if (state.shouldCancel) break;
@@ -2633,6 +2816,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 6. Render Explanatory Note & Hashtags / Links Registry
         renderSummaryTab(groupsList, state.matchedPosts);
+
+        // 7. Resolve missing authors for reposts
+        resolveMissingAuthors(state.matchedPosts, state.token).catch(() => {});
     }
 
     // -------------------------------------------------------------
@@ -3299,8 +3485,8 @@ ${dangerList}
                         <span class="material-symbols-outlined repost-icon-indicator" title="Репост">repeat</span>
                         ${rAuthor.avatar ? `<img class="repost-author-avatar" src="${escapeHtml(rAuthor.avatar)}" alt="${escapeHtml(rAuthor.name)}" loading="lazy">` : `<div class="repost-author-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface);"><span class="material-symbols-outlined" style="font-size:16px;color:var(--accent);">group</span></div>`}
                         <div class="repost-author-info">
-                            <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name" onclick="event.stopPropagation();">
-                                ${escapeHtml(rAuthor.name)}
+                            <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name" data-repost-owner-id="${rAuthor.rawOwnerId}" onclick="event.stopPropagation();">
+                                <span class="repost-name-text">${escapeHtml(rAuthor.name)}</span>
                             </a>
                             ${rDate ? `<span class="repost-date">${escapeHtml(rDate)}</span>` : ''}
                         </div>
@@ -3563,8 +3749,8 @@ ${dangerList}
                             <span class="material-symbols-outlined repost-icon-indicator" title="Репост">repeat</span>
                             ${rAuthor.avatar ? `<img class="repost-author-avatar" src="${escapeHtml(rAuthor.avatar)}" alt="${escapeHtml(rAuthor.name)}" loading="lazy">` : `<div class="repost-author-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface);"><span class="material-symbols-outlined" style="font-size:18px;color:var(--accent);">group</span></div>`}
                             <div class="repost-author-info">
-                                <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name">
-                                    ${escapeHtml(rAuthor.name)}
+                                <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name" data-repost-owner-id="${rAuthor.rawOwnerId}">
+                                    <span class="repost-name-text">${escapeHtml(rAuthor.name)}</span>
                                 </a>
                                 ${rDate ? `<span class="repost-date">${escapeHtml(rDate)}</span>` : ''}
                             </div>
