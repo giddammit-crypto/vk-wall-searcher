@@ -5,7 +5,7 @@
 
 import { enrichTargetWithCanonical, renderBranchAvatarHtml, escapeHtml, findCanonicalBranch } from './branches.js';
 import { extractNum, formatViews } from './analytics.js';
-import { authorCache } from './api.js';
+import { authorCache, getAuthorFromCache } from './api.js';
 
 export function linkifyText(text) {
     if (!text) return '';
@@ -131,63 +131,71 @@ export function extractVideoUrls(video) {
 }
 
 export function resolveRepostAuthor(repost) {
-    if (!repost) return { name: 'ВКонтакте', avatar: '', url: 'https://vk.com', postUrl: '', isBranch: false };
+    if (!repost) return { name: 'ВКонтакте', avatar: '', url: 'https://vk.com', postUrl: '', isBranch: false, rawOwnerId: 0 };
     const ownerId = repost.owner_id || repost.from_id;
     const postId = repost.id;
     const postUrl = ownerId && postId ? `https://vk.com/wall${ownerId}_${postId}` : '';
 
     // 1. Check if the repost author is one of the 18 library branches
     let branch = findCanonicalBranch({ id: ownerId });
-    if (!branch && authorCache.has(ownerId)) {
-        const cached = authorCache.get(ownerId);
-        branch = findCanonicalBranch({
-            id: ownerId,
-            name: cached.name,
-            link: cached.screen_name ? `https://vk.com/${cached.screen_name}` : ''
-        });
+    if (!branch) {
+        const cached = getAuthorFromCache(ownerId);
+        if (cached) {
+            branch = findCanonicalBranch({
+                id: ownerId,
+                name: cached.name,
+                link: cached.screen_name ? `https://vk.com/${cached.screen_name}` : ''
+            });
+        }
     }
 
     if (branch) {
-        const fallbackUrl = ownerId < 0 ? `https://vk.com/club${Math.abs(ownerId)}` : `https://vk.com/id${ownerId}`;
+        const fallbackUrl = Number(ownerId) < 0 ? `https://vk.com/club${Math.abs(Number(ownerId))}` : `https://vk.com/id${ownerId}`;
         return {
             name: branch.canonicalName,
             avatar: branch.avatar || '',
             url: branch.vkLink || fallbackUrl,
             postUrl: postUrl || branch.vkLink || fallbackUrl,
             isBranch: true,
-            branch: branch
+            branch: branch,
+            rawOwnerId: ownerId
         };
     }
 
     // 2. Check authorCache for VK profiles / groups
-    if (authorCache.has(ownerId)) {
-        const cached = authorCache.get(ownerId);
-        if (ownerId < 0) {
+    const cached = getAuthorFromCache(ownerId);
+    if (cached) {
+        const isGroup = Number(ownerId) < 0 || cached.type === 'group';
+        if (isGroup) {
             return {
-                name: cached.name || 'Сообщество',
+                name: cached.name || 'Сообщество ВКонтакте',
                 avatar: cached.photo_100 || cached.photo_50 || '',
-                url: `https://vk.com/${cached.screen_name || ('club' + Math.abs(ownerId))}`,
-                postUrl: postUrl || `https://vk.com/${cached.screen_name || ('club' + Math.abs(ownerId))}`,
-                isBranch: false
+                url: `https://vk.com/${cached.screen_name || ('club' + Math.abs(Number(ownerId)))}`,
+                postUrl: postUrl || `https://vk.com/${cached.screen_name || ('club' + Math.abs(Number(ownerId)))}`,
+                isBranch: false,
+                rawOwnerId: ownerId
             };
         } else {
             return {
-                name: `${cached.first_name || ''} ${cached.last_name || ''}`.trim() || 'Пользователь',
+                name: `${cached.first_name || ''} ${cached.last_name || ''}`.trim() || cached.name || 'Пользователь ВКонтакте',
                 avatar: cached.photo_100 || cached.photo_50 || '',
                 url: `https://vk.com/${cached.screen_name || ('id' + ownerId)}`,
                 postUrl: postUrl || `https://vk.com/${cached.screen_name || ('id' + ownerId)}`,
-                isBranch: false
+                isBranch: false,
+                rawOwnerId: ownerId
             };
         }
     }
 
-    // 3. Generic fallback
+    // 3. Clean fallback (never display raw ID, async resolver will hydrate real name)
+    const isGroup = Number(ownerId) < 0;
     return {
-        name: ownerId < 0 ? `Сообщество [${Math.abs(ownerId)}]` : `Пользователь [${ownerId}]`,
+        name: isGroup ? 'Сообщество ВКонтакте' : 'Пользователь ВКонтакте',
         avatar: '',
-        url: ownerId < 0 ? `https://vk.com/club${Math.abs(ownerId)}` : `https://vk.com/id${ownerId}`,
-        postUrl: postUrl || (ownerId < 0 ? `https://vk.com/club${Math.abs(ownerId)}` : `https://vk.com/id${ownerId}`),
-        isBranch: false
+        url: isGroup ? `https://vk.com/club${Math.abs(Number(ownerId))}` : `https://vk.com/id${ownerId}`,
+        postUrl: postUrl || (isGroup ? `https://vk.com/club${Math.abs(Number(ownerId))}` : `https://vk.com/id${ownerId}`),
+        isBranch: false,
+        rawOwnerId: ownerId
     };
 }
 
@@ -388,8 +396,8 @@ export function createPostCard(post) {
                     <span class="material-symbols-outlined repost-icon-indicator" title="Репост">repeat</span>
                     ${rAuthor.avatar ? `<img class="repost-author-avatar" src="${escapeHtml(rAuthor.avatar)}" alt="${escapeHtml(rAuthor.name)}" loading="lazy">` : `<div class="repost-author-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface);"><span class="material-symbols-outlined" style="font-size:16px;color:var(--accent);">group</span></div>`}
                     <div class="repost-author-info">
-                        <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name" onclick="event.stopPropagation();">
-                            ${escapeHtml(rAuthor.name)}
+                        <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="repost-author-name" data-repost-owner-id="${rAuthor.rawOwnerId}" onclick="event.stopPropagation();">
+                            <span class="repost-name-text">${escapeHtml(rAuthor.name)}</span>
                         </a>
                         ${rDate ? `<span class="repost-date">${escapeHtml(rDate)}</span>` : ''}
                     </div>
@@ -642,8 +650,8 @@ export function openPostModal(post) {
                     <span class="material-symbols-outlined pm-repost-icon" title="Репост">repeat</span>
                     ${rAuthor.avatar ? `<img class="pm-repost-avatar" src="${escapeHtml(rAuthor.avatar)}" alt="${escapeHtml(rAuthor.name)}" loading="lazy">` : `<div class="pm-repost-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface);"><span class="material-symbols-outlined" style="font-size:18px;color:var(--accent);">group</span></div>`}
                     <div class="pm-repost-meta">
-                        <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="pm-repost-author-name">
-                            ${escapeHtml(rAuthor.name)}
+                        <a href="${escapeHtml(authorLink)}" target="_blank" rel="noopener noreferrer" class="pm-repost-author-name" data-repost-owner-id="${rAuthor.rawOwnerId}">
+                            <span class="repost-name-text">${escapeHtml(rAuthor.name)}</span>
                         </a>
                         ${rDate ? `<span class="pm-repost-date">${escapeHtml(rDate)}</span>` : ''}
                     </div>

@@ -6,6 +6,7 @@
 import { extractNum, formatViews } from './analytics.js';
 import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js';
 import { resolveApiUrl } from './api.js';
+import { resolveRepostAuthor } from './render.js';
 
 /** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */
 function fmtDocDelta(v) {
@@ -62,10 +63,8 @@ export function exportToCsv(posts) {
         let textExport = (p.text || '').trim();
         if (!textExport && p.copy_history && p.copy_history[0]) {
             const rep = p.copy_history[0];
-            const repOwnerId = rep.owner_id || rep.from_id;
-            const branch = findCanonicalBranch({ id: repOwnerId });
-            const srcName = branch ? branch.canonicalName : (repOwnerId < 0 ? `club${Math.abs(repOwnerId)}` : `id${repOwnerId}`);
-            textExport = `[Репост: ${srcName}] ${(rep.text || '').trim()}`;
+            const repAuthor = resolveRepostAuthor(rep);
+            textExport = `[Репост: ${repAuthor.name}] ${(rep.text || '').trim()}`;
         }
 
         return [
@@ -321,9 +320,8 @@ export function exportToDocx(posts, stats = [], meta = {}) {
                     const directText = (p.text || '').trim();
                     if (p.copy_history && p.copy_history.length > 0) {
                         const rep = p.copy_history[0];
-                        const repOwnerId = rep.owner_id || rep.from_id;
-                        const branch = findCanonicalBranch({ id: repOwnerId });
-                        const repSource = branch ? branch.canonicalName : (repOwnerId < 0 ? `Сообщество [club${Math.abs(repOwnerId)}]` : `Пользователь [id${repOwnerId}]`);
+                        const repAuthor = resolveRepostAuthor(rep);
+                        const repSource = repAuthor.name;
                         const repText = (rep.text || '').trim();
                         const header = `[Репост из: ${repSource}]`;
                         if (directText && repText) {

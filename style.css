@@ -1951,46 +1951,49 @@ textarea::placeholder {
     background: var(--bg-card);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    padding: 6px 8px;
-    border-radius: var(--radius-pill);
+    padding: 6px 10px;
+    border-radius: var(--radius-xl);
     margin-bottom: 1.5rem;
-    gap: 6px;
+    gap: 5px;
     border: 1px solid var(--hairline);
     position: sticky;
     top: 10px;
     z-index: 60;
     box-shadow: var(--elevation-1);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-.tabs-container::-webkit-scrollbar {
-    display: none;
+    overflow: visible;
+    width: 100%;
+    box-sizing: border-box;
 }
 .tab-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     height: 40px;
-    padding: 8px 16px;
+    padding: 8px 13px;
     font-family: var(--font-body);
-    font-size: 0.84375rem;
+    font-size: 0.835rem;
     font-weight: 500;
-    color: var(--muted);
+    color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--radius-pill);
     cursor: pointer;
     white-space: nowrap;
-    flex-shrink: 0;
     user-select: none;
-    transition: all var(--duration) var(--ease);
+    transition: transform var(--duration) var(--ease),
+                color var(--duration) var(--ease),
+                background var(--duration) var(--ease),
+                box-shadow var(--duration) var(--ease);
 }
 .tab-btn .icon { font-size: 19px; }
 .tab-btn:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+}
+.tab-btn:active {
+    transform: scale(0.97);
 }
 .tab-btn.active {
     color: var(--accent);
@@ -1998,31 +2001,43 @@ textarea::placeholder {
     font-weight: 600;
     border-color: var(--hairline);
     box-shadow: var(--elevation-1);
+    transform: translateY(-1px);
 }
 .tab-btn:focus-visible {
     outline: none;
     box-shadow: var(--elevation-focus);
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1380px) {
     .tabs-container {
         flex-wrap: wrap;
-        padding: 5px 6px;
-        gap: 4px;
+        border-radius: var(--radius-lg);
+        padding: 6px;
+        gap: 5px;
     }
     .tab-btn {
         padding: 8px 12px;
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         gap: 5px;
         flex: 1 1 auto;
+        min-width: 120px;
         justify-content: center;
     }
 }
 @media (max-width: 860px) {
     .tab-btn {
         flex: 1 1 calc(33.333% - 4px);
-        min-width: 110px;
-        padding: 8px 8px;
+        min-width: 105px;
+        padding: 8px 6px;
+        font-size: 0.77rem;
+    }
+}
+@media (max-width: 600px) {
+    .tab-btn {
+        flex: 1 1 calc(50% - 4px);
+        min-height: 44px;
+        padding: 8px 6px;
+        font-size: 0.77rem;
     }
 }
 
@@ -3065,11 +3080,49 @@ textarea::placeholder {
 .chart-row:hover { border-color: var(--accent-medium); background: var(--accent-soft); transform: translateX(3px); box-shadow: 0 2px 12px var(--accent-soft); }
 .chart-rank { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500; color: var(--text-tertiary); text-align: center; }
 .chart-branch-name { font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chart-bar-track { height: 20px; background: var(--surface); border-radius: 10px; overflow: hidden; width: 100%; }
-.chart-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s var(--ease); }
-.chart-bar-fill.bar-posts { background: var(--accent); }
-.chart-bar-fill.bar-views { background: var(--color-success); }
-.chart-bar-fill.bar-er { background: var(--color-purple); }
+.chart-bar-track {
+    height: 22px;
+    background: var(--surface);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+    border: 1px solid var(--hairline);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.chart-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    width: 0%;
+    position: relative;
+    transition: width 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--bar-index, 0) * 35ms);
+    will-change: width;
+    overflow: hidden;
+}
+.chart-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.45) 80%, rgba(255, 255, 255, 0.8) 100%);
+    border-radius: var(--radius-pill);
+    pointer-events: none;
+}
+.chart-bar-fill.bar-posts {
+    background: linear-gradient(90deg, #1d4ed8 0%, #0284c7 40%, #38bdf8 75%, #3ee6c4 100%);
+    box-shadow: 0 0 14px rgba(62, 230, 196, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+.chart-bar-fill.bar-views {
+    background: linear-gradient(90deg, #047857 0%, #059669 40%, #10b981 75%, #34d399 100%);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+.chart-bar-fill.bar-er {
+    background: linear-gradient(90deg, #6d28d9 0%, #8a6cff 40%, #c084fc 75%, #f472b6 100%);
+    box-shadow: 0 0 14px rgba(244, 114, 182, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
 .chart-val { font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
 
 .badge-status-norm { background: var(--color-success-bg); color: var(--color-success); font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500; padding: 4px 10px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 4px; }
@@ -5662,8 +5715,13 @@ textarea:focus-visible,
     color: var(--text-primary);
 }
 
+[data-theme="light"] .tab-btn {
+    color: var(--text-secondary);
+}
+
 [data-theme="light"] .tab-btn:hover {
-    background: rgba(15, 23, 42, 0.05);
+    background: rgba(15, 23, 42, 0.06);
+    color: var(--text-primary);
 }
 
 [data-theme="light"] .tab-badge {
@@ -5672,7 +5730,19 @@ textarea:focus-visible,
 }
 
 [data-theme="light"] .tab-btn.active {
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
+    box-shadow: 0 4px 14px rgba(23, 87, 166, 0.28) !important;
+    border-color: transparent !important;
+}
+
+[data-theme="light"] .tab-btn.active .icon {
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .tab-btn.active .tab-badge {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
 }
 
 [data-theme="light"] .preset-pill.active {
@@ -5685,7 +5755,32 @@ textarea:focus-visible,
 }
 
 [data-theme="light"] .segment-btn.active {
-    box-shadow: 0 3px 12px var(--accent-soft), 0 1px 4px rgba(15, 23, 42, 0.15);
+    background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 12px rgba(23, 87, 166, 0.3), 0 1px 4px rgba(15, 23, 42, 0.15) !important;
+}
+
+[data-theme="light"] .segment-btn.active .segment-icon {
+    color: #ffffff !important;
+}
+
+/* Daybreak Light Theme Chart Bars */
+[data-theme="light"] .chart-bar-track {
+    background: #e2e8f0;
+    box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.12);
+    border-color: rgba(148, 163, 184, 0.45);
+}
+[data-theme="light"] .chart-bar-fill.bar-posts {
+    background: linear-gradient(90deg, #1757a6 0%, #2563eb 50%, #38bdf8 100%);
+    box-shadow: 0 2px 10px rgba(23, 87, 166, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+[data-theme="light"] .chart-bar-fill.bar-views {
+    background: linear-gradient(90deg, #065f46 0%, #059669 50%, #10b981 100%);
+    box-shadow: 0 2px 10px rgba(5, 150, 105, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+[data-theme="light"] .chart-bar-fill.bar-er {
+    background: linear-gradient(90deg, #5b21b6 0%, #7c3aed 50%, #d946ef 100%);
+    box-shadow: 0 2px 10px rgba(124, 58, 237, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
 /* Guaranteed contrast for selected months in light mode */
@@ -5694,6 +5789,74 @@ textarea:focus-visible,
     font-weight: 700 !important;
     background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
     border-color: transparent !important;
+}
+
+/* ==========================================================================
+   Lightweight GPU-Accelerated Micro-Animations & Tactile Feedback
+   ========================================================================== */
+.btn:active,
+.tab-btn:active,
+.segment-btn:active,
+.preset-pill:active,
+.showcase-filter-btn:active,
+.and-or-btn:active,
+.month-badge:active,
+.icon-btn:active {
+    transform: scale(0.97) !important;
+    transition: transform 70ms ease !important;
+}
+
+/* Post Cards Staggered Soft Entrance */
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.post-card {
+    animation: cardEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tab Content Smooth Cross-Fade */
+@keyframes tabContentFade {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.tab-content.active-content {
+    animation: tabContentFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* KPI Card Hover Glow & Lift */
+.subs-kpi,
+.analytics-kpi-card {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.subs-kpi:hover,
+.analytics-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.35), 0 0 16px var(--accent-soft);
+    border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .post-card,
+    .tab-content.active-content,
+    .chart-bar-fill {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 
 /* First snapshot base point note banner */

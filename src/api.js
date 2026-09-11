@@ -25,6 +25,168 @@ export let currentProxyUrl = resolveApiUrl('api/vk-proxy.php');
 export let isServerProxyAvailable = true;
 export const authorCache = new Map();
 
+const CACHE_STORAGE_KEY = 'aurora_author_cache_v1';
+
+// Restore authorCache from localStorage on initialization
+try {
+    if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                parsed.forEach(([k, v]) => authorCache.set(k, v));
+            }
+        }
+    }
+} catch (e) {
+    // Ignore localStorage restore errors
+}
+
+function persistAuthorCache() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const entries = Array.from(authorCache.entries()).slice(-400);
+            localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(entries));
+        }
+    } catch (e) {}
+}
+
+/**
+ * Cache author (group or user) under numeric, string, positive, negative and screen_name keys
+ */
+export function cacheAuthor(id, data) {
+    if (!id || !data) return;
+    const numId = Number(id);
+    authorCache.set(id, data);
+    authorCache.set(String(id), data);
+    if (!isNaN(numId)) {
+        authorCache.set(numId, data);
+        authorCache.set(-Math.abs(numId), data);
+        authorCache.set(Math.abs(numId), data);
+        authorCache.set(String(-Math.abs(numId)), data);
+        authorCache.set(String(Math.abs(numId)), data);
+    }
+    if (data.screen_name) {
+        authorCache.set(data.screen_name.toLowerCase(), data);
+    }
+    persistAuthorCache();
+}
+
+/**
+ * Lookup author in authorCache across all possible key variations
+ */
+export function getAuthorFromCache(id) {
+    if (!id) return null;
+    if (authorCache.has(id)) return authorCache.get(id);
+    const numId = Number(id);
+    if (!isNaN(numId)) {
+        if (authorCache.has(numId)) return authorCache.get(numId);
+        if (authorCache.has(-Math.abs(numId))) return authorCache.get(-Math.abs(numId));
+        if (authorCache.has(Math.abs(numId))) return authorCache.get(Math.abs(numId));
+        if (authorCache.has(String(numId))) return authorCache.get(String(numId));
+        if (authorCache.has(String(-Math.abs(numId)))) return authorCache.get(String(-Math.abs(numId)));
+        if (authorCache.has(String(Math.abs(numId)))) return authorCache.get(String(Math.abs(numId)));
+    }
+    const strId = String(id).toLowerCase();
+    if (authorCache.has(strId)) return authorCache.get(strId);
+    return null;
+}
+
+/**
+ * Scan a list of posts for repost authors that are missing in cache,
+ * batch-resolve them via VK API (groups.getById / users.get) and hydrate DOM live.
+ */
+export async function resolveMissingAuthors(posts, token = '') {
+    if (!posts || !Array.isArray(posts) || posts.length === 0) return;
+
+    const missingGroupIds = new Set();
+    const missingUserIds = new Set();
+
+    posts.forEach(p => {
+        if (p && p.copy_history && Array.isArray(p.copy_history) && p.copy_history.length > 0) {
+            const rep = p.copy_history[0];
+            const repOwnerId = rep.owner_id || rep.from_id;
+            if (repOwnerId) {
+                const cached = getAuthorFromCache(repOwnerId);
+                if (!cached) {
+                    const n = Number(repOwnerId);
+                    if (!isNaN(n)) {
+                        if (n < 0) missingGroupIds.add(Math.abs(n));
+                        else missingUserIds.add(n);
+                    }
+                }
+            }
+        }
+    });
+
+    if (missingGroupIds.size === 0 && missingUserIds.size === 0) return;
+
+    // Resolve groups in batches of up to 100
+    const gIds = Array.from(missingGroupIds);
+    for (let i = 0; i < gIds.length; i += 100) {
+        const chunk = gIds.slice(i, i + 100);
+        try {
+            const res = await callVkApi('groups.getById', { group_ids: chunk.join(','), fields: 'photo_100,photo_50,screen_name' }, token);
+            const groupsList = Array.isArray(res) ? res : (res?.groups || []);
+            groupsList.forEach(g => {
+                const gObj = {
+                    id: -Math.abs(g.id),
+                    name: g.name,
+                    screen_name: g.screen_name || '',
+                    photo_100: g.photo_100 || g.photo_50 || '',
+                    photo_50: g.photo_50 || '',
+                    type: 'group'
+                };
+                cacheAuthor(gObj.id, gObj);
+            });
+        } catch (err) {
+            console.warn('Failed to resolve missing groups:', chunk, err);
+        }
+    }
+
+    // Resolve users in batches of up to 100
+    const uIds = Array.from(missingUserIds);
+    for (let i = 0; i < uIds.length; i += 100) {
+        const chunk = uIds.slice(i, i + 100);
+        try {
+            const res = await callVkApi('users.get', { user_ids: chunk.join(','), fields: 'photo_100,photo_50,screen_name' }, token);
+            const userList = Array.isArray(res) ? res : (res?.users || []);
+            userList.forEach(u => {
+                const uObj = {
+                    id: u.id,
+                    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Пользователь ВКонтакте',
+                    screen_name: u.screen_name || '',
+                    photo_100: u.photo_100 || u.photo_50 || '',
+                    photo_50: u.photo_50 || '',
+                    type: 'user'
+                };
+                cacheAuthor(uObj.id, uObj);
+            });
+        } catch (err) {
+            console.warn('Failed to resolve missing users:', chunk, err);
+        }
+    }
+
+    // Live-update all rendered elements waiting for resolved author names
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('[data-repost-owner-id]').forEach(el => {
+            const oid = el.getAttribute('data-repost-owner-id');
+            const author = getAuthorFromCache(oid);
+            if (author && author.name) {
+                const nameEl = el.querySelector('.repost-name-text') || el;
+                if (nameEl) nameEl.textContent = author.name;
+                const container = el.closest('.post-repost-box, .report-repost-meta');
+                if (container) {
+                    const avatarImg = container.querySelector('.repost-author-avatar');
+                    if (avatarImg && author.photo_100 && avatarImg.tagName === 'IMG') {
+                        avatarImg.src = author.photo_100;
+                    }
+                }
+            }
+        });
+    }
+}
+
 // Проверенный публичный сервисный ключ для прямого автономного режима (статический хостинг)
 export const DEFAULT_STANDALONE_TOKEN = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
 

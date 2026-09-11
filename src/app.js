@@ -9,13 +9,16 @@ import {
     getServerTokenStatus,
     resolveTarget,
     authorCache,
+    cacheAuthor,
+    getAuthorFromCache,
+    resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.6.0';
+} from './api.js?v=3.6.1';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.6.0';
+} from './advice.js?v=3.6.1';
 
 import {
     fetchHistory,
@@ -25,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.6.0';
+} from './subscribers.js?v=3.6.1';
 
 import {
     fetchUpdaterStatus,
@@ -34,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.6.0';
+} from './updater.js?v=3.6.1';
 
 import {
     CANONICAL_BRANCHES,
@@ -45,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.6.0';
+} from './branches.js?v=3.6.1';
 
 import {
     calculateKPIs,
@@ -54,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.6.0';
+} from './analytics.js?v=3.6.1';
 
 import {
     createPostCard,
@@ -66,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.6.0';
+} from './render.js?v=3.6.1';
 
 import {
     exportToCsv,
@@ -76,10 +79,10 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.6.0';
+} from './export.js?v=3.6.1';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.6.0';
-import { CosmicUniverse } from './cosmic.js?v=3.6.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.6.1';
+import { CosmicUniverse } from './cosmic.js?v=3.6.1';
 
 function initApp() {
 
@@ -1187,10 +1190,10 @@ function initApp() {
 
                     // Populate author cache from extended response (for reposts)
                     if (res.groups && Array.isArray(res.groups)) {
-                        res.groups.forEach(g => authorCache.set(-Math.abs(g.id), g));
+                        res.groups.forEach(g => cacheAuthor(-Math.abs(g.id), g));
                     }
                     if (res.profiles && Array.isArray(res.profiles)) {
-                        res.profiles.forEach(u => authorCache.set(u.id, u));
+                        res.profiles.forEach(u => cacheAuthor(u.id, u));
                     }
 
                     if (offset === 0) {
@@ -1199,6 +1202,7 @@ function initApp() {
                     }
 
                     const posts = res.items;
+                    resolveMissingAuthors(posts, state.token).catch(() => {});
 
                     for (let post of posts) {
                         if (state.shouldCancel) break;
@@ -1406,6 +1410,9 @@ function initApp() {
 
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
         updateAdviceAndSubscribers(stats);
+
+        // Resolve any remaining missing repost author names/avatars across all tabs and reports
+        resolveMissingAuthors(state.matchedPosts, state.token).catch(() => {});
     }
 
     // =========================================================================
@@ -1865,11 +1872,23 @@ function initApp() {
                 <div class="chart-avatar-wrap">${renderBranchAvatarHtml(item.info, 'sm')}</div>
                 <div class="chart-branch-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</div>
                 <div class="chart-bar-track">
-                    <div class="chart-bar-fill ${barClass}" style="width: ${pct}%;"></div>
+                    <div class="chart-bar-fill ${barClass}" style="width: 0%;" data-target-width="${pct}%"></div>
                 </div>
                 <div class="chart-val">${displayVal}</div>
             `;
             elements.analyticsChartContainer.appendChild(row);
+        });
+
+        // Trigger staggered CSS spring animation across all 18 branch bars
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (!elements.analyticsChartContainer) return;
+                const fills = elements.analyticsChartContainer.querySelectorAll('.chart-bar-fill');
+                fills.forEach((fill, i) => {
+                    fill.style.setProperty('--bar-index', i);
+                    fill.style.width = fill.dataset.targetWidth || '0%';
+                });
+            });
         });
     }
 
@@ -1981,8 +2000,8 @@ function initApp() {
                 <div class="report-repost-meta">
                     ${badgeHtml}
                     <span class="report-repost-from">из</span>
-                    <a href="${escapeHtml(repAuthor.url)}" target="_blank" rel="noopener noreferrer" class="report-repost-branch-link" title="Перейти на страницу ${repAuthor.isBranch ? 'филиала' : 'сообщества'} ВКонтакте">
-                        ${escapeHtml(repAuthor.name)}
+                    <a href="${escapeHtml(repAuthor.url)}" target="_blank" rel="noopener noreferrer" class="report-repost-branch-link" data-repost-owner-id="${repAuthor.rawOwnerId}" title="Перейти на страницу ${repAuthor.isBranch ? 'филиала' : 'сообщества'} ВКонтакте">
+                        <span class="repost-name-text">${escapeHtml(repAuthor.name)}</span>
                     </a>
                     <a href="${escapeHtml(originalPostUrl)}" target="_blank" rel="noopener noreferrer" class="report-repost-post-link" title="Открыть оригинальную запись ВКонтакте">
                         <span>Запись репоста</span>
@@ -2534,7 +2553,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.6.0'
+                appVersion: '3.6.1'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -2583,6 +2602,11 @@ function initApp() {
                 if (targetContent) {
                     targetContent.classList.add('active');
                     targetContent.classList.add('active-content');
+                }
+
+                // При переключении на вкладку «Рейтинг активности» перезапускаем плавную анимацию графиков
+                if (targetTabId === 'analytics-tab' && state.lastGroupsStats && state.lastGroupsStats.length > 0) {
+                    renderAnalyticsChart(state.lastGroupsStats);
                 }
 
                 // v3.4: при открытии вкладки «Подписчики» тянем свежую историю с сервера

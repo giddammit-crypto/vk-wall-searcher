@@ -2775,12 +2775,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="chart-avatar-wrap">${avatarHtml}</div>
                 <div class="chart-branch-name" title="${displayName}">${displayName}</div>
                 <div class="chart-bar-track">
-                    <div class="chart-bar-fill ${barClass}" style="width: ${pct}%;"></div>
+                    <div class="chart-bar-fill ${barClass}" style="width: 0%;" data-target-width="${pct}%"></div>
                 </div>
                 <div class="chart-val">${displayVal}</div>
                 <div class="chart-status-col">${badgeHtml}</div>
             `;
             elements.analyticsChartContainer.appendChild(row);
+        });
+
+        // Trigger staggered CSS spring animation across all 18 branch bars
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (!elements.analyticsChartContainer) return;
+                const fills = elements.analyticsChartContainer.querySelectorAll('.chart-bar-fill');
+                fills.forEach((fill, i) => {
+                    fill.style.setProperty('--bar-index', i);
+                    fill.style.width = fill.dataset.targetWidth || '0%';
+                });
+            });
         });
     }
 
