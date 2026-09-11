@@ -8,7 +8,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { escapeHtml, renderBranchAvatarHtml } from './branches.js';
+import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js';
 
 const LEVEL_META = {
     success: { icon: 'check_circle', label: 'Отлично', cls: 'adv-success' },
@@ -380,8 +380,15 @@ export function renderAdviceTab(container, adviceData, opts = {}) {
     const avgScore = Math.round(adviceData.reduce((s, b) => s + b.score, 0) / adviceData.length);
 
     const cardsHtml = adviceData.map(branch => {
-        const info = branch.info;
-        const name = escapeHtml(info.canonicalBranch || info.name || 'Сообщество');
+        const info = branch.info || {};
+        let branchTitle = info.canonicalBranch || info.canonicalName || '';
+        if (!branchTitle || branchTitle === 'DELETED') {
+            const canon = findCanonicalBranch(info);
+            if (canon) branchTitle = canon.canonicalName;
+            else if (info.name && info.name !== 'DELETED') branchTitle = info.name;
+            else branchTitle = 'Филиал библиотеки';
+        }
+        const name = escapeHtml(branchTitle);
         const scoreCls = branch.score >= 70 ? 'score-good' : (branch.score >= 40 ? 'score-mid' : 'score-bad');
 
         const itemsHtml = branch.items.map(item => {

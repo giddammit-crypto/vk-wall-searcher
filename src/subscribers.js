@@ -9,7 +9,7 @@
  */
 
 import { callVkApi, resolveApiUrl } from './api.js';
-import { escapeHtml, renderBranchAvatarHtml } from './branches.js';
+import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js';
 
 const DATA_URL = resolveApiUrl('api/data.php');
 
@@ -119,6 +119,7 @@ export function computeTrends(seriesMap) {
     seriesMap.forEach((series, gid) => {
         const last = series[series.length - 1];
         trends.set(gid, {
+            gid,
             current: last.members,
             day: deltaAt(series, 1),
             week: deltaAt(series, 7),
@@ -356,10 +357,22 @@ export function renderSubscribersTab(container, ctx = {}) {
     const trends = computeTrends(seriesMap);
     const totalByDay = buildTotalByDay(seriesMap);
 
-    const rows = Array.from(trends.values()).sort((a, b) => {
-        const an = a.branch || a.name || '';
-        const bn = b.branch || b.name || '';
-        return an.localeCompare(bn, 'ru', { numeric: true });
+    function resolveRowTitle(r) {
+        let bName = r.branch || '';
+        if (!bName || bName === 'DELETED') {
+            const canon = findCanonicalBranch({ id: r.gid, screen_name: r.screen_name, link: r.screen_name ? `https://vk.com/${r.screen_name}` : '' });
+            if (canon) bName = canon.canonicalName;
+            else if (r.name && r.name !== 'DELETED') bName = r.name;
+            else bName = 'Филиал библиотеки';
+        }
+        return bName;
+    }
+
+    const rows = Array.from(trends.values()).map(r => ({
+        ...r,
+        resolvedBranch: resolveRowTitle(r)
+    })).sort((a, b) => {
+        return (a.resolvedBranch || '').localeCompare(b.resolvedBranch || '', 'ru', { numeric: true });
     });
 
     const totalMembers = rows.reduce((s, r) => s + r.current, 0);
@@ -372,7 +385,7 @@ export function renderSubscribersTab(container, ctx = {}) {
     const tableRows = rows.map(r => `
         <tr>
             <td class="subs-branch-cell">
-                ${r.screen_name ? `<a href="https://vk.com/${escapeHtml(r.screen_name)}" target="_blank" rel="noopener">${escapeHtml(r.branch || r.name)}</a>` : escapeHtml(r.branch || r.name)}
+                ${r.screen_name ? `<a href="https://vk.com/${escapeHtml(r.screen_name)}" target="_blank" rel="noopener">${escapeHtml(r.resolvedBranch)}</a>` : escapeHtml(r.resolvedBranch)}
             </td>
             <td class="num">${r.current.toLocaleString('ru-RU')}</td>
             <td class="num">${fmtDelta(r.day)}</td>

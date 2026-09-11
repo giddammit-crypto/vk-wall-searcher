@@ -260,6 +260,7 @@ export function findCanonicalBranch(target) {
     const link = (target.link || '').toLowerCase().replace(/\/+$/, '');
     const name = (target.name || '').toLowerCase();
     const url = (target.url || target.branch_url || '').toLowerCase().replace(/\/+$/, '');
+    const screenName = (target.screen_name || target.screenName || '').toLowerCase();
     const id = target.id !== undefined && target.id !== null ? target.id : null;
 
     for (let b of CANONICAL_BRANCHES) {
@@ -269,6 +270,9 @@ export function findCanonicalBranch(target) {
             if (link && (link === bLink || link.endsWith('/' + b.screenName.toLowerCase()))) {
                 return b;
             }
+        }
+        if (screenName && b.screenName && screenName === b.screenName.toLowerCase()) {
+            return b;
         }
         // Match by raw VK ID
         if (id !== null && b.rawId !== undefined && Math.abs(id) === Math.abs(b.rawId)) {
@@ -294,11 +298,27 @@ export function findCanonicalBranch(target) {
     return null;
 }
 
+export function formatBranchBadge(branchNum) {
+    if (!branchNum) return '';
+    const s = String(branchNum).trim();
+    if (s === 'ЦГБ' || s === 'ЦДБ') return s;
+    if (/^Ф\s*[-–—]?\s*\d+$/i.test(s)) {
+        const m = /\d+/.exec(s);
+        return m ? `Ф-${m[0]}` : s;
+    }
+    if (/^\d+$/.test(s)) return `Ф-${s}`;
+    return s;
+}
+
 export function enrichTargetWithCanonical(target) {
     if (!target) return target;
     const b = findCanonicalBranch(target);
+    const isDeletedName = !target.name || target.name === 'DELETED' || target.name.trim() === '' || target.name === 'DELETED DELETED';
     if (b) {
         target.canonicalName = b.canonicalName;
+        if (isDeletedName) {
+            target.name = b.canonicalName;
+        }
         target.shortCode = b.shortCode;
         target.branchNum = b.branchNum;
         target.address = b.address;
@@ -307,7 +327,10 @@ export function enrichTargetWithCanonical(target) {
         target.sortOrder = b.sortOrder;
         if (!target.branch_url) target.branch_url = b.branch_url;
     } else {
-        target.canonicalName = target.name || 'Источник';
+        target.canonicalName = (!isDeletedName && target.name) ? target.name : 'Источник';
+        if (isDeletedName) {
+            target.name = 'Филиал библиотеки';
+        }
         const letters = (target.name || 'ВК').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'ВК';
         target.shortCode = letters.slice(0, 3);
         target.branchNum = 'VK';
@@ -315,6 +338,17 @@ export function enrichTargetWithCanonical(target) {
         target.gradient = 'linear-gradient(135deg, #334155 0%, #64748b 100%)';
         target.sortOrder = 999;
     }
+
+    if (target.avatar && (
+        target.avatar.includes('community_100.png') ||
+        target.avatar.includes('camera_100.png') ||
+        target.avatar.includes('deactivated_') ||
+        target.avatar.includes('community_50.png') ||
+        isDeletedName
+    )) {
+        target.avatar = '';
+    }
+
     return target;
 }
 
@@ -323,9 +357,13 @@ export function renderBranchAvatarHtml(targetInfo, size = 'md', extraClass = '',
     enrichTargetWithCanonical(targetInfo);
     
     const avatarUrl = targetInfo.avatar && targetInfo.avatar.trim() ? targetInfo.avatar.trim() : '';
-    const hasAvatar = avatarUrl.length > 0 && !avatarUrl.includes('community_100.png') && !avatarUrl.includes('camera_100.png');
+    const isDeadAvatar = avatarUrl.includes('community_100.png') ||
+        avatarUrl.includes('camera_100.png') ||
+        avatarUrl.includes('deactivated_') ||
+        avatarUrl.includes('community_50.png');
+    const hasAvatar = avatarUrl.length > 0 && !isDeadAvatar && targetInfo.name !== 'DELETED';
     const shortCode = escapeHtml(targetInfo.shortCode || 'ВК');
-    const branchNum = escapeHtml(targetInfo.branchNum || '');
+    const branchBadge = formatBranchBadge(targetInfo.branchNum || targetInfo.shortCode || '');
     const gradient = targetInfo.gradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
     const name = escapeHtml(targetInfo.canonicalName || targetInfo.name || '');
 
@@ -343,7 +381,7 @@ export function renderBranchAvatarHtml(targetInfo, size = 'md', extraClass = '',
                 <span class="monogram-text">${shortCode}</span>
                 <span class="material-symbols-outlined monogram-icon">local_library</span>
             </div>
-            ${showBadge && branchNum ? `<span class="avatar-num-badge">${branchNum}</span>` : ''}
+            ${showBadge && branchBadge ? `<span class="avatar-num-badge">${escapeHtml(branchBadge)}</span>` : ''}
         </div>
     `;
 }
@@ -351,3 +389,4 @@ export function renderBranchAvatarHtml(targetInfo, size = 'md', extraClass = '',
 export function sortBranchesCanonically(branches) {
     return [...branches].sort((a, b) => (a.sortOrder || 999) - (b.sortOrder || 999));
 }
+

@@ -76,6 +76,8 @@ import {
     openPrintReport
 } from './export.js';
 
+import { initTableSorting } from './tablesort.js';
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // =========================================================================
@@ -281,6 +283,14 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsResetSubsBtn: document.getElementById('settings-reset-subs-btn'),
         settingsFootVersion: document.getElementById('settings-foot-version'),
         updateDot: document.getElementById('update-dot'),
+
+        // Settings Auth Modal (1Radio14881!)
+        settingsAuthOverlay: document.getElementById('settings-auth-overlay'),
+        settingsAuthClose: document.getElementById('settings-auth-close'),
+        settingsAuthCancel: document.getElementById('settings-auth-cancel'),
+        settingsAuthForm: document.getElementById('settings-auth-form'),
+        settingsAuthInput: document.getElementById('settings-auth-input'),
+        settingsAuthError: document.getElementById('settings-auth-error'),
 
         // Floating Scroll-To-Top
         scrollToTopBtn: document.getElementById('scroll-to-top-btn'),
@@ -525,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.settingsPanel?.classList.toggle('collapsed');
     }
 
-    if (elements.toggleSettingsBtn) elements.toggleSettingsBtn.addEventListener('click', toggleSettings);
+    if (elements.toggleSettingsBtn) elements.toggleSettingsBtn.addEventListener('click', () => openSettingsWithAuth(toggleSettings));
     if (elements.closeSettingsBtn) elements.closeSettingsBtn.addEventListener('click', toggleSettings);
 
     if (elements.saveTokenBtn) {
@@ -2879,8 +2889,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // =========================================================================
+    // Settings Password Protection (1Radio14881!)
+    // При обновлении страницы пароль повторно не запрашивается (сохраняется в localStorage)
+    // =========================================================================
+    const SETTINGS_AUTH_PASSWORD = '1Radio14881!';
+    const SETTINGS_AUTH_STORAGE_KEY = 'aurora_settings_unlocked_v1';
+
+    function isSettingsUnlocked() {
+        try {
+            return localStorage.getItem(SETTINGS_AUTH_STORAGE_KEY) === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    let pendingSettingsAction = null;
+
+    function openSettingsWithAuth(actionCallback) {
+        if (isSettingsUnlocked()) {
+            if (typeof actionCallback === 'function') actionCallback();
+            return;
+        }
+        pendingSettingsAction = actionCallback;
+        if (elements.settingsAuthOverlay) {
+            elements.settingsAuthOverlay.classList.remove('hidden');
+            if (elements.settingsAuthError) elements.settingsAuthError.classList.add('hidden');
+            if (elements.settingsAuthInput) {
+                elements.settingsAuthInput.value = '';
+                setTimeout(() => elements.settingsAuthInput?.focus(), 80);
+            }
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeSettingsAuth() {
+        if (elements.settingsAuthOverlay) {
+            elements.settingsAuthOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        pendingSettingsAction = null;
+    }
+
+    if (elements.settingsAuthClose) elements.settingsAuthClose.addEventListener('click', closeSettingsAuth);
+    if (elements.settingsAuthCancel) elements.settingsAuthCancel.addEventListener('click', closeSettingsAuth);
+    if (elements.settingsAuthOverlay) {
+        elements.settingsAuthOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.settingsAuthOverlay) closeSettingsAuth();
+        });
+    }
+
+    if (elements.settingsAuthForm) {
+        elements.settingsAuthForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = elements.settingsAuthInput ? elements.settingsAuthInput.value.trim() : '';
+            if (val === SETTINGS_AUTH_PASSWORD) {
+                try {
+                    localStorage.setItem(SETTINGS_AUTH_STORAGE_KEY, 'true');
+                } catch (err) {}
+                if (elements.settingsAuthError) elements.settingsAuthError.classList.add('hidden');
+                closeSettingsAuth();
+                showToast('Доступ к настройкам предоставлен', 'lock_open');
+                if (typeof pendingSettingsAction === 'function') {
+                    const cb = pendingSettingsAction;
+                    pendingSettingsAction = null;
+                    cb();
+                }
+            } else {
+                if (elements.settingsAuthError) elements.settingsAuthError.classList.remove('hidden');
+                if (elements.settingsAuthInput) {
+                    elements.settingsAuthInput.select();
+                    elements.settingsAuthInput.focus();
+                }
+                showToast('Неверный пароль', 'error');
+            }
+        });
+    }
+
     if (elements.appSettingsBtn) {
-        elements.appSettingsBtn.addEventListener('click', openAppSettings);
+        elements.appSettingsBtn.addEventListener('click', () => openSettingsWithAuth(openAppSettings));
     }
     if (elements.appSettingsClose) {
         elements.appSettingsClose.addEventListener('click', closeAppSettings);
@@ -2965,26 +3052,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (elements.settingsResetSubsBtn) {
-        elements.settingsResetSubsBtn.addEventListener('click', async () => {
-            if (!window.confirm('Удалить всю историю подписчиков с сервера? Действие необратимо.')) return;
-            const res = await resetHistory();
-            if (res && res.ok) {
-                state.subsHistory = [];
-                renderSubscribersTab(elements.subscribersTabContent, {
-                    history: [],
-                    branches: state.libraryBranchesList || [],
-                    token: state.token,
-                    onToast: showToast,
-                    onCollectDone: h => { state.subsHistory = h; }
-                });
-                showToast('История подписчиков очищена', 'delete_forever');
-            } else {
-                showToast('Не удалось очистить историю', 'error');
-            }
-        });
-    }
-
     // =========================================================================
     // 15. Run Initializers
     // =========================================================================
@@ -2994,6 +3061,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadLibraryBranches();
     initScrollToTop();
     renderSearchHistory();
+    initTableSorting();
 
     // Expose for testing/debugging
     window.__VK_APP__ = {

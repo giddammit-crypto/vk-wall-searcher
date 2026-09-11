@@ -1104,6 +1104,39 @@
         <div id="post-modal-content" style="display: contents;"></div>
     </div>
 
+    <!-- Settings Password Auth Modal (1Radio14881!) -->
+    <div id="settings-auth-overlay" class="app-settings-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="settings-auth-title">
+        <div class="app-settings-modal card" style="max-width: 440px; margin: auto;">
+            <div class="app-settings-head">
+                <div class="app-settings-title-wrap">
+                    <span class="material-symbols-outlined" style="color: var(--accent);">lock</span>
+                    <h3 id="settings-auth-title">Вход в настройки</h3>
+                </div>
+                <button id="settings-auth-close" class="icon-btn" title="Закрыть" aria-label="Закрыть">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form id="settings-auth-form" class="app-settings-body" style="gap: 16px; padding: 22px;">
+                <p class="app-settings-note" style="margin: 0; font-size: 0.88rem;">Для доступа к настройкам введите пароль администратора:</p>
+                <div class="input-icon-wrap" style="position: relative;">
+                    <span class="material-symbols-outlined input-leading-icon">key</span>
+                    <input type="password" id="settings-auth-input" class="form-input" placeholder="Пароль администратора" autocomplete="current-password" required style="width: 100%; padding-left: 42px; font-size: 0.95rem;">
+                </div>
+                <div id="settings-auth-error" class="hidden" style="color: #f87171; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">error</span>
+                    <span>Неверный пароль. Попробуйте ещё раз.</span>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+                    <button type="button" id="settings-auth-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+                    <button type="submit" id="settings-auth-submit" class="btn btn-primary btn-sm">
+                        <span class="material-symbols-outlined icon">login</span>
+                        <span>Войти</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- App Settings Modal (v3.4) -->
     <div id="app-settings-overlay" class="app-settings-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="app-settings-title">
         <div class="app-settings-modal card">
@@ -1159,17 +1192,6 @@
                     <p class="app-settings-note">Обновление скачивается с ветки репозитория и применяется сразу: файлы заменяются на сервере, секреты (ключи) и накопленная история подписчиков сохраняются.</p>
                 </section>
 
-                <!-- Data -->
-                <section class="app-settings-section">
-                    <h4><span class="material-symbols-outlined">database</span> Данные подписчиков</h4>
-                    <div class="app-settings-row">
-                        <span class="app-settings-note" style="margin:0">История снимков хранится на сервере в <code>data/subscribers.json</code>.</span>
-                        <button id="settings-reset-subs-btn" class="btn btn-danger btn-sm">
-                            <span class="material-symbols-outlined icon">delete_forever</span>
-                            <span>Очистить историю</span>
-                        </button>
-                    </div>
-                </section>
             </div>
 
             <div class="app-settings-foot">

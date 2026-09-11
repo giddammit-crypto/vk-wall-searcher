@@ -432,11 +432,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
+    function isDogAvatarUrl(url) {
+        if (!url || typeof url !== 'string') return true;
+        const u = url.trim().toLowerCase();
+        if (!u) return true;
+        return u.includes('camera_') ||
+            u.includes('community_') ||
+            u.includes('deactivated') ||
+            u.includes('placeholder') ||
+            u.includes('no_photo') ||
+            u.includes('question_');
+    }
+
+    function formatBranchBadge(branchNum) {
+        if (!branchNum) return '';
+        const s = String(branchNum).trim();
+        if (s === 'ЦГБ' || s === 'ЦДБ') return s;
+        if (/^Ф\s*[-–—]?\s*\d+$/i.test(s)) {
+            const m = /\d+/.exec(s);
+            return m ? `Ф-${m[0]}` : s;
+        }
+        if (/^\d+$/.test(s)) return `Ф-${s}`;
+        return s;
+    }
+
     function findCanonicalBranch(target) {
         if (!target) return null;
         const link = (target.link || '').toLowerCase().replace(/\/+$/, '');
         const name = (target.name || '').toLowerCase();
         const url = (target.url || target.branch_url || '').toLowerCase().replace(/\/+$/, '');
+        const screenName = (target.screen_name || target.screenName || '').toLowerCase();
         const id = target.id !== undefined && target.id !== null ? target.id : null;
 
         for (let b of CANONICAL_BRANCHES) {
@@ -446,6 +471,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (link && (link === bLink || link.endsWith('/' + b.screenName.toLowerCase()))) {
                     return b;
                 }
+            }
+            if (screenName && b.screenName && screenName === b.screenName.toLowerCase()) {
+                return b;
             }
             // Match by raw VK ID
             if (id !== null && b.rawId !== undefined && Math.abs(id) === Math.abs(b.rawId)) {
@@ -474,8 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function enrichTargetWithCanonical(target) {
         if (!target) return target;
         const b = findCanonicalBranch(target);
+        const isDeletedName = !target.name || target.name === 'DELETED' || target.name.trim() === '' || target.name === 'DELETED DELETED';
         if (b) {
             target.canonicalName = b.canonicalName;
+            if (isDeletedName) {
+                target.name = b.canonicalName;
+            }
             target.shortCode = b.shortCode;
             target.branchNum = b.branchNum;
             target.address = b.address;
@@ -483,7 +515,10 @@ document.addEventListener('DOMContentLoaded', () => {
             target.sortOrder = b.sortOrder;
             if (!target.branch_url) target.branch_url = b.branch_url;
         } else {
-            target.canonicalName = target.name || 'Источник';
+            target.canonicalName = (!isDeletedName && target.name) ? target.name : 'Источник';
+            if (isDeletedName) {
+                target.name = 'Филиал библиотеки';
+            }
             const letters = (target.name || 'ВК').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'ВК';
             target.shortCode = letters.slice(0, 3);
             target.branchNum = 'VK';
@@ -491,6 +526,11 @@ document.addEventListener('DOMContentLoaded', () => {
             target.gradient = 'linear-gradient(135deg, #334155 0%, #64748b 100%)';
             target.sortOrder = 999;
         }
+
+        if (target.avatar && (isDogAvatarUrl(target.avatar) || isDeletedName)) {
+            target.avatar = '';
+        }
+
         return target;
     }
 
@@ -500,9 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
         enrichTargetWithCanonical(targetInfo);
         
         const avatarUrl = targetInfo.avatar && targetInfo.avatar.trim() ? targetInfo.avatar.trim() : '';
-        const hasAvatar = avatarUrl.length > 0 && !avatarUrl.includes('community_100.png') && !avatarUrl.includes('camera_100.png');
+        const hasAvatar = avatarUrl.length > 0 && !isDogAvatarUrl(avatarUrl) && targetInfo.name !== 'DELETED';
         const shortCode = escapeHtml(targetInfo.shortCode || 'ВК');
-        const branchNum = escapeHtml(targetInfo.branchNum || '');
+        const branchBadge = formatBranchBadge(targetInfo.branchNum || targetInfo.shortCode || '');
         const gradient = targetInfo.gradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
         const name = escapeHtml(targetInfo.canonicalName || targetInfo.name || '');
 
@@ -520,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="monogram-text">${shortCode}</span>
                     <span class="material-symbols-outlined monogram-icon">local_library</span>
                 </div>
-                ${showBadge && branchNum ? `<span class="avatar-num-badge">${branchNum}</span>` : ''}
+                ${showBadge && branchBadge ? `<span class="avatar-num-badge">${escapeHtml(branchBadge)}</span>` : ''}
             </div>
         `;
     }
@@ -751,8 +791,92 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Event Listeners
-    elements.toggleSettingsBtn.addEventListener('click', toggleSettings);
-    elements.closeSettingsBtn.addEventListener('click', toggleSettings);
+    const SETTINGS_AUTH_PASSWORD = '1Radio14881!';
+    const SETTINGS_AUTH_STORAGE_KEY = 'aurora_settings_unlocked_v1';
+
+    function isSettingsUnlocked() {
+        try {
+            return localStorage.getItem(SETTINGS_AUTH_STORAGE_KEY) === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    let pendingSettingsAction = null;
+
+    function openSettingsWithAuth(actionCallback) {
+        if (isSettingsUnlocked()) {
+            if (typeof actionCallback === 'function') actionCallback();
+            return;
+        }
+        pendingSettingsAction = actionCallback;
+        const authOverlay = document.getElementById('settings-auth-overlay');
+        const authInput = document.getElementById('settings-auth-input');
+        const authError = document.getElementById('settings-auth-error');
+        if (authOverlay) {
+            authOverlay.classList.remove('hidden');
+            if (authError) authError.classList.add('hidden');
+            if (authInput) {
+                authInput.value = '';
+                setTimeout(() => authInput.focus(), 80);
+            }
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeSettingsAuth() {
+        const authOverlay = document.getElementById('settings-auth-overlay');
+        if (authOverlay) {
+            authOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        pendingSettingsAction = null;
+    }
+
+    const authClose = document.getElementById('settings-auth-close');
+    const authCancel = document.getElementById('settings-auth-cancel');
+    const authOverlay = document.getElementById('settings-auth-overlay');
+    const authForm = document.getElementById('settings-auth-form');
+    const authInput = document.getElementById('settings-auth-input');
+    const authError = document.getElementById('settings-auth-error');
+
+    if (authClose) authClose.addEventListener('click', closeSettingsAuth);
+    if (authCancel) authCancel.addEventListener('click', closeSettingsAuth);
+    if (authOverlay) {
+        authOverlay.addEventListener('click', (e) => {
+            if (e.target === authOverlay) closeSettingsAuth();
+        });
+    }
+
+    if (authForm) {
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = authInput ? authInput.value.trim() : '';
+            if (val === SETTINGS_AUTH_PASSWORD) {
+                try {
+                    localStorage.setItem(SETTINGS_AUTH_STORAGE_KEY, 'true');
+                } catch (err) {}
+                if (authError) authError.classList.add('hidden');
+                closeSettingsAuth();
+                showToast('Доступ к настройкам предоставлен', 'lock_open');
+                if (typeof pendingSettingsAction === 'function') {
+                    const cb = pendingSettingsAction;
+                    pendingSettingsAction = null;
+                    cb();
+                }
+            } else {
+                if (authError) authError.classList.remove('hidden');
+                if (authInput) {
+                    authInput.select();
+                    authInput.focus();
+                }
+                showToast('Неверный пароль', 'error');
+            }
+        });
+    }
+
+    if (elements.toggleSettingsBtn) elements.toggleSettingsBtn.addEventListener('click', () => openSettingsWithAuth(toggleSettings));
+    if (elements.closeSettingsBtn) elements.closeSettingsBtn.addEventListener('click', toggleSettings);
     
     elements.testTokenBtn.addEventListener('click', async () => {
         const token = elements.tokenInput.value.trim();
@@ -1249,12 +1373,14 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error(`Пользователь с ID ${userId} не найден.`);
         }
         const u = userList[0];
+        const isDeleted = u.first_name === 'DELETED' || u.deactivated === 'deleted' || u.deactivated === 'banned';
         const userObj = {
             id: u.id, // User ID is positive
-            name: `${u.first_name} ${u.last_name}`,
-            avatar: u.photo_100 || '',
+            name: isDeleted ? '' : `${u.first_name} ${u.last_name}`.trim(),
+            avatar: isDeleted ? '' : (u.photo_100 || ''),
             link: `https://vk.com/${u.screen_name || ('id' + u.id)}`,
-            type: 'user'
+            type: 'user',
+            deactivated: u.deactivated || (isDeleted ? 'deleted' : null)
         };
         return enrichTargetWithCanonical(userObj);
     }
@@ -4802,6 +4928,107 @@ ${dangerList}
             }
             showToast('Параметры поиска восстановлены из ссылки', 'link');
         } catch(e) {}
+    })();
+
+    // Universal Interactive Table Sorter
+    (function initTableSorting() {
+        const RU_MONTHS = {
+            'янв': 0, 'фев': 1, 'мар': 2, 'апр': 3, 'май': 4, 'мая': 4,
+            'июн': 5, 'июл': 6, 'авг': 7, 'сен': 8, 'сент': 8, 'окт': 9, 'ноя': 10, 'дек': 11
+        };
+
+        function parseCellVal(cell) {
+            if (!cell) return { type: 'empty', val: 0 };
+            const raw = (cell.dataset && cell.dataset.sortValue !== undefined ? cell.dataset.sortValue : (cell.textContent || '')).trim();
+            if (!raw || raw === '—' || raw === '-' || raw === 'база') return { type: 'empty', val: 0 };
+            if (/^[+-]?\d+(?:[.,]\d+)?\s*%$/.test(raw)) {
+                const num = parseFloat(raw.replace(/\s+/g, '').replace(',', '.').replace('%', ''));
+                return { type: 'num', val: isNaN(num) ? 0 : num };
+            }
+            const cleanedNum = raw.replace(/[\s\u00A0\u202F]+/g, '').replace(/−/g, '-').replace(/±0/, '0').replace(',', '.');
+            if (/^[+-]?\d+(?:\.\d+)?$/.test(cleanedNum)) {
+                const num = parseFloat(cleanedNum);
+                return { type: 'num', val: isNaN(num) ? 0 : num };
+            }
+            const ruDateMatch = /^(\d{1,2})\s+([а-яё]+)[.,]?\s+(\d{4})/i.exec(raw);
+            if (ruDateMatch) {
+                const d = parseInt(ruDateMatch[1], 10);
+                const mKey = ruDateMatch[2].slice(0, 3).toLowerCase();
+                const m = RU_MONTHS[mKey] !== undefined ? RU_MONTHS[mKey] : 0;
+                const y = parseInt(ruDateMatch[3], 10);
+                return { type: 'date', val: new Date(y, m, d).getTime() };
+            }
+            const dotDateMatch = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(raw);
+            if (dotDateMatch) {
+                const d = parseInt(dotDateMatch[1], 10);
+                const m = parseInt(dotDateMatch[2], 10) - 1;
+                const y = parseInt(dotDateMatch[3], 10);
+                return { type: 'date', val: new Date(y, m, d).getTime() };
+            }
+            return { type: 'str', val: raw.toLowerCase() };
+        }
+
+        document.addEventListener('click', (e) => {
+            const th = e.target.closest('th');
+            if (!th) return;
+            const table = th.closest('table');
+            if (!table) return;
+            if (th.dataset.noSort !== undefined || th.classList.contains('no-sort')) return;
+            const title = th.textContent.trim();
+            if (title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
+
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            if (rows.length <= 1) return;
+
+            const tr = th.parentElement;
+            const colIndex = Array.from(tr.children).indexOf(th);
+            if (colIndex < 0) return;
+
+            let dir = th.classList.contains('th-sort-asc') ? 'desc' : (th.classList.contains('th-sort-desc') ? 'asc' : null);
+            if (!dir) {
+                const sampleVal = parseCellVal(rows[0].children[colIndex]);
+                dir = (sampleVal.type === 'num' || sampleVal.type === 'date') ? 'desc' : 'asc';
+            }
+
+            Array.from(tr.children).forEach(otherTh => {
+                otherTh.classList.remove('th-sort-asc', 'th-sort-desc');
+                const ind = otherTh.querySelector('.sort-indicator');
+                if (ind) ind.remove();
+            });
+
+            th.classList.add(dir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.innerHTML = dir === 'asc' ? '&#9650;' : '&#9660;';
+            th.appendChild(indicator);
+
+            const factor = dir === 'asc' ? 1 : -1;
+            rows.sort((rowA, rowB) => {
+                const a = parseCellVal(rowA.children[colIndex]);
+                const b = parseCellVal(rowB.children[colIndex]);
+                if (a.type === 'empty' && b.type === 'empty') return 0;
+                if (a.type === 'empty') return 1;
+                if (b.type === 'empty') return -1;
+                if ((a.type === 'num' || a.type === 'date') && (b.type === 'num' || b.type === 'date')) {
+                    return (a.val - b.val) * factor;
+                }
+                return String(a.val).localeCompare(String(b.val), 'ru', { numeric: true, sensitivity: 'base' }) * factor;
+            });
+
+            const fragment = document.createDocumentFragment();
+            rows.forEach(r => fragment.appendChild(r));
+            tbody.appendChild(fragment);
+
+            const th0 = tr.children[0];
+            if (th0 && (th0.textContent.trim() === '№' || th0.textContent.trim() === '#') && colIndex !== 0) {
+                rows.forEach((r, idx) => {
+                    const c0 = r.children[0];
+                    if (c0 && /^\d+$/.test(c0.textContent.trim())) c0.textContent = String(idx + 1);
+                });
+            }
+        });
     })();
 
     // Expose for testing and verification

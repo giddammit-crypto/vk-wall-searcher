@@ -409,12 +409,15 @@ export async function fetchUserInfo(userId, token) {
         throw new Error(`Пользователь с ID ${userId} не найден.`);
     }
     const u = userList[0];
+    const isDeleted = u.first_name === 'DELETED' || u.deactivated === 'deleted' || u.deactivated === 'banned';
     return {
         id: u.id,
-        name: `${u.first_name} ${u.last_name}`.trim(),
-        avatar: u.photo_100 || '',
+        name: isDeleted ? '' : `${u.first_name} ${u.last_name}`.trim(),
+        avatar: isDeleted ? '' : (u.photo_100 || ''),
         link: `https://vk.com/${u.screen_name || ('id' + u.id)}`,
         screen_name: u.screen_name || '',
-        type: 'user'
+        type: 'user',
+        deactivated: u.deactivated || (isDeleted ? 'deleted' : null)
     };
 }
+
