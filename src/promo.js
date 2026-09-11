@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.6';
-import { createQrSvg } from './qrcode.js?v=3.7.6';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.7';
+import { createQrSvg } from './qrcode.js?v=3.7.7';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',
@@ -428,7 +428,6 @@ export function initPromoModal() {
                         <!-- Top Identity Bar -->
                         <header class="poster-identity-bar a5-identity">
                             <div class="poster-civic-badge">
-                                <span class="civic-dot"></span>
                                 <span class="civic-text">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
                             </div>
                             <div class="poster-institution-portal">https://biblioteka33.ru</div>
@@ -495,7 +494,6 @@ export function initPromoModal() {
                         <!-- Top Identity Bar -->
                         <header class="poster-identity-bar">
                             <div class="poster-civic-badge">
-                                <span class="civic-dot"></span>
                                 <span class="civic-text">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
                             </div>
                             <div class="poster-institution-portal">https://biblioteka33.ru</div>

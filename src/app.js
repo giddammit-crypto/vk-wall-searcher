@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.7.6';
+} from './api.js?v=3.7.7';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.7.6';
+} from './advice.js?v=3.7.7';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.7.6';
+} from './subscribers.js?v=3.7.7';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.7.6';
+} from './updater.js?v=3.7.7';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.7.6';
+} from './branches.js?v=3.7.7';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.7.6';
+} from './analytics.js?v=3.7.7';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.7.6';
+} from './render.js?v=3.7.7';
 
 import {
     exportToCsv,
@@ -79,20 +79,22 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.7.6';
+} from './export.js?v=3.7.7';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.6';
-import { CosmicUniverse } from './cosmic.js?v=3.7.6';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.7.7';
+import { CosmicUniverse } from './cosmic.js?v=3.7.7';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.7.6';
+} from './promo.js?v=3.7.7';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.7.6';
+} from './radar.js?v=3.7.7';
+
+import { Space3D } from './space3d.js?v=3.7.7';
 
 function initApp() {
 
@@ -152,6 +154,7 @@ function initApp() {
         customTokenInput: document.getElementById('custom-token-input'),
         saveTokenBtn: document.getElementById('save-token-btn'),
         clearTokenBtn: document.getElementById('clear-token-btn'),
+        space3dBtn: document.getElementById('space-3d-btn'),
         toggleSettingsBtn: document.getElementById('toggle-settings-btn'),
         closeSettingsBtn: document.getElementById('close-settings-btn'),
         settingsPanel: document.getElementById('settings-panel'),
@@ -563,6 +566,20 @@ function initApp() {
     function toggleSettings() {
         elements.settingsPanel?.classList.toggle('collapsed');
     }
+
+    if (elements.space3dBtn) {
+        elements.space3dBtn.addEventListener('click', () => {
+            Space3D.toggle();
+        });
+    }
+
+    // Горячая клавиша Alt+S или F8 для входа в 3D Космо-пространство
+    document.addEventListener('keydown', (e) => {
+        if ((e.altKey && (e.key === 's' || e.key === 'ы' || e.key === 'S')) || e.key === 'F8') {
+            e.preventDefault();
+            Space3D.toggle();
+        }
+    });
 
     if (elements.toggleSettingsBtn) elements.toggleSettingsBtn.addEventListener('click', () => openSettingsWithAuth(toggleSettings));
     if (elements.closeSettingsBtn) elements.closeSettingsBtn.addEventListener('click', toggleSettings);
@@ -2570,7 +2587,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.7.6'
+                appVersion: '3.7.7'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -3472,6 +3489,13 @@ function initApp() {
         CosmicUniverse.setWarp(true);
     }
 
+    // Initialize 3D Space Engine
+    try {
+        Space3D.init();
+    } catch (err) {
+        console.warn('[Space3D] Deferred init error:', err);
+    }
+
     // Expose for testing/debugging
     window.__VK_APP__ = {
         state,
@@ -3489,7 +3513,11 @@ function initApp() {
         CosmicUniverse,
         openPromoModal,
         closePromoModal,
-        renderRadarSection
+        renderRadarSection,
+        Space3D,
+        openSpace3D: () => Space3D.open(),
+        closeSpace3D: () => Space3D.close(),
+        toggleSpace3D: () => Space3D.toggle()
     };
 }
 
