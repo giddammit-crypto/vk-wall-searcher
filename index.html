@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.7.8">
+    <link rel="stylesheet" href="style.css?v=3.7.9">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -1384,6 +1384,10 @@
                 <span class="tele-item"><span class="tele-lbl">ОБЪЕКТЫ:</span> <span id="tele-objs" class="tele-val">8</span></span>
             </div>
             <div class="space-hud-actions">
+                <button type="button" id="space-360-toggle-btn" class="space-hud-btn space-hud-btn-360 active" title="Режим 360°: Сферический обзор / Фронтальная консоль (3)">
+                    <span class="material-symbols-outlined">360</span>
+                    <span class="hud-360-badge" id="hud-360-badge">360° ВКЛ</span>
+                </button>
                 <button type="button" id="space-music-btn" class="space-hud-btn active" title="Амбиент-музыка космоса: ВКЛ/ВЫКЛ">
                     <span class="material-symbols-outlined">music_note</span>
                 </button>
@@ -1437,6 +1441,10 @@
             <div class="space-dock-divider"></div>
 
             <div class="space-dock-group">
+                <button type="button" id="space-dock-supernova" class="space-dock-btn space-dock-btn-special" title="Вызвать вспышку Сверхновой звезды на фоне космоса (X)">
+                    <span class="material-symbols-outlined">flare</span>
+                    <span>Сверхновая</span>
+                </button>
                 <button type="button" id="space-dock-drag-all" class="space-dock-btn active" title="Режим свободного перемещения любых объектов">
                     <span class="material-symbols-outlined">drag_indicator</span>
                     <span>Перемещение: ВКЛ</span>
@@ -1469,7 +1477,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.7.8"></script>
+    <script type="module" src="src/app.js?v=3.7.9"></script>
 
     <script>
     /* =============================================================

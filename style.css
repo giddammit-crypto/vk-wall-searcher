@@ -10002,3 +10002,127 @@ body.space-3d-active {
         top: -230px;
     }
 }
+
+/* =========================================================================
+   3D Space Polish: Expanded Windows, 360 Toggle, Supernova, Warp Overlay
+   ========================================================================= */
+
+/* Fullscreen Expanded Station in 3D Space */
+.space-object-wrapper.is-expanded {
+    position: fixed !important;
+    top: 60px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: min(960px, 94vw) !important;
+    height: calc(100vh - 140px) !important;
+    z-index: 1000 !important;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.space-object-wrapper.is-expanded .space-station-card {
+    border-color: var(--station-accent, #3ee6c4) !important;
+    box-shadow: 
+        0 25px 80px rgba(0, 0, 0, 0.92),
+        0 0 50px rgba(62, 230, 196, 0.35),
+        inset 0 1px 2px rgba(255, 255, 255, 0.3) !important;
+}
+
+.space-object-wrapper.is-expanded .space-card-body {
+    padding: 18px 24px !important;
+}
+
+/* 360 Degree Mode HUD Toggle Button */
+.space-hud-btn-360 {
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    border-color: rgba(62, 230, 196, 0.4);
+    background: rgba(62, 230, 196, 0.12);
+}
+
+.space-hud-btn-360.active {
+    background: linear-gradient(135deg, rgba(62, 230, 196, 0.28) 0%, rgba(56, 189, 248, 0.28) 100%) !important;
+    border-color: #3ee6c4 !important;
+    color: #3ee6c4 !important;
+    box-shadow: 0 0 15px rgba(62, 230, 196, 0.45) !important;
+}
+
+.space-hud-btn-360.off {
+    background: rgba(148, 163, 184, 0.12) !important;
+    border-color: rgba(148, 163, 184, 0.3) !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+}
+
+/* Supernova Trigger Button in Dock */
+.space-dock-btn-special {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(236, 72, 153, 0.22) 100%) !important;
+    border-color: rgba(245, 158, 11, 0.5) !important;
+    color: #fcd34d !important;
+}
+
+.space-dock-btn-special:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.35) 0%, rgba(236, 72, 153, 0.45) 100%) !important;
+    border-color: #f59e0b !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.6) !important;
+    transform: translateY(-2px);
+}
+
+.space-dock-btn-special .material-symbols-outlined {
+    color: #fcd34d;
+    animation: pulseFlare 2s infinite ease-in-out;
+}
+
+@keyframes pulseFlare {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #f59e0b); }
+    50% { transform: scale(1.18); filter: drop-shadow(0 0 10px #f59e0b); }
+}
+
+/* Cosmic Warp Overlay & Skip Button */
+.space-warp-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99998;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+}
+
+.space-warp-canvas.hidden {
+    display: none !important;
+}
+
+.space-warp-skip-btn {
+    position: fixed;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(62, 230, 196, 0.5);
+    color: #3ee6c4;
+    padding: 11px 24px;
+    border-radius: 9999px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(62, 230, 196, 0.3);
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.space-warp-skip-btn:hover {
+    background: rgba(62, 230, 196, 0.28);
+    border-color: #3ee6c4;
+    color: #ffffff;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 35px rgba(62, 230, 196, 0.6);
+    transform: translateX(-50%) translateY(-2px);
+}

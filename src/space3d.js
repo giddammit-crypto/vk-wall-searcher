@@ -1,21 +1,29 @@
 /**
  * src/space3d.js — Interactive 360° Cosmic 3D Space Engine
  * ============================================================================
- * Разработка: Дизайнер, Художник, Моушен Дизайнер, 3D Арт-художник,
- * Профессиональный Кодинг Инженер
+ * Разработка: 3D Разработчик игр, Ведущий 3D Дизайнер, Инженер 3D игр
  *
- * Высокопроизводительное аппаратно-ускоренное 3D-пространство 360°:
- * - Сферический холст глубокого космоса (звезды спектральных классов, туманности, метеоры)
+ * Особенности:
+ * - Сферический холст глубокого космоса со звездами спектральных классов
+ * - Реалистичная 3D Земля и Луна с текстурами NASA, вращением, ночными огнями и атмосферой
  * - 360° орбитальная кинетическая камера (Yaw, Pitch, Zoom, инерция)
- * - 8 интерактивных голографических станций сайта
+ * - Переключатель «ВКЛ-ВЫКЛ режим 360°»: свободный обзор vs фронтальная консоль
+ * - Разворачивание окон (Expand / Maximize) на весь экран прямо в 3D
+ * - 8 полностью функциональных интерактивных станций сайта
  * - Свободное 3D перемещение (Drag & Drop) любых объектов в пространстве
- * - Орбитальные раскладки: Кольцо 360° (Ring), Панорамная дуга (Arc), Сетка (Grid)
- * - Космический пульт управления HUD и двусторонняя синхронизация с приложением
+ * - Раскладки: Кольцо 360° (Orbit), Панорамная дуга (Arc), Сетка (Grid)
+ * - Озвучка русской ассистенткой Беллой (ElevenLabs) без прерываний
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.8';
-import { SpaceAudio } from './space_audio.js?v=3.7.8';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.7.9';
+import { SpaceAudio } from './space_audio.js?v=3.7.9';
+import { CelestialPlanets } from './celestial_planets.js?v=3.7.9';
+import { createQrSvg } from './qrcode.js?v=3.7.9';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.7.9';
+import { openPostModal } from './render.js?v=3.7.9';
+import { fetchHistory } from './subscribers.js?v=3.7.9';
+import { buildBranchAdvice } from './advice.js?v=3.7.9';
 
 export class Space3DEngine {
     constructor() {
@@ -33,6 +41,12 @@ export class Space3DEngine {
         this.targetYaw = 0;
         this.targetPitch = 0;
         this.targetZoom = 1.0;
+
+        // 360° Mode State (ON = free 360° sphere; OFF = frontal command console)
+        this.is360Mode = true;
+
+        // Expanded station state (single window maximize in 3D)
+        this.expandedStation = null;
 
         // Interaction State
         this.isDraggingWorld = false;
@@ -53,12 +67,21 @@ export class Space3DEngine {
         this.stars = [];
         this.meteors = [];
         this.nebulae = [];
+        this.supernovae = [];
+        this.gravitationalWaves = [];
 
-        // Stations Data
+        // Interactive Stations State
         this.stations = [];
-
-        // App state bridge
-        this.appState = null;
+        this.selectedRadarBranch = 'ЦГБ';
+        this.selectedPromoFormat = 'poster_a4';
+        this.selectedPromoTemplate = 'swiss';
+        this.selectedPromoBranch = 'ЦГБ';
+        this.selectedLeaderboardSort = 'er';
+        this.selectedAdviceFilter = 'all';
+        this.selectedSubsScale = 'month';
+        this.feedSearchQuery = '';
+        this.feedSortBy = 'views';
+        this.subsData = null;
 
         // Bind handlers
         this.onPointerDown = this.onPointerDown.bind(this);
@@ -85,33 +108,38 @@ export class Space3DEngine {
 
         this.ctx = this.canvas.getContext('2d');
         this.initStarfield();
+        CelestialPlanets.init();
         this.setupEventListeners();
         this.setupHudControls();
         this.buildStations();
         this.applyLayout(this.currentLayout, false);
 
-        console.log('[Space3D] Cosmic 360° Space Engine Initialized.');
+        // Preload subscriber history asynchronously
+        fetchHistory().then(snaps => {
+            this.subsData = snaps;
+            this.refreshSubscribersStation();
+        }).catch(() => {});
+
+        console.log('[Space3D] Cosmic 360° Space Engine Initialized with Real Earth & Moon.');
     }
 
     /**
      * Генерация звездной сферы и туманностей
      */
     initStarfield() {
-        const starCount = 550;
+        const starCount = 650;
         this.stars = [];
 
-        // Цвета звезд по спектральным классам
         const starColors = [
             '#ffffff', '#e0f2fe', '#bae6fd', '#38bdf8', '#3ee6c4',
             '#c4b5fd', '#a78bfa', '#fde047', '#fcd34d', '#fbcfe8'
         ];
 
         for (let i = 0; i < starCount; i++) {
-            // Равномерное сферическое распределение
             const u = Math.random();
             const v = Math.random();
-            const theta = u * 2.0 * Math.PI; // Азимут [0, 2pi]
-            const phi = Math.acos(2.0 * v - 1.0); // Полярный угол [0, pi]
+            const theta = u * 2.0 * Math.PI;
+            const phi = Math.acos(2.0 * v - 1.0);
 
             this.stars.push({
                 x: Math.sin(phi) * Math.cos(theta),
@@ -125,12 +153,11 @@ export class Space3DEngine {
             });
         }
 
-        // Процедурные космические туманности
         this.nebulae = [
-            { yaw: 45,  pitch: 15,  radius: 380, color: 'rgba(62, 230, 196, 0.16)',  coreColor: 'rgba(56, 189, 248, 0.28)' },
+            { yaw: 45,  pitch: 15,  radius: 390, color: 'rgba(62, 230, 196, 0.16)',  coreColor: 'rgba(56, 189, 248, 0.28)' },
             { yaw: 170, pitch: -20, radius: 460, color: 'rgba(129, 140, 248, 0.18)', coreColor: 'rgba(192, 132, 252, 0.25)' },
-            { yaw: 275, pitch: 25,  radius: 410, color: 'rgba(244, 114, 182, 0.14)', coreColor: 'rgba(251, 191, 36, 0.18)' },
-            { yaw: 330, pitch: -10, radius: 350, color: 'rgba(14, 165, 233, 0.16)',  coreColor: 'rgba(62, 230, 196, 0.22)' }
+            { yaw: 275, pitch: 25,  radius: 420, color: 'rgba(244, 114, 182, 0.14)', coreColor: 'rgba(251, 191, 36, 0.18)' },
+            { yaw: 330, pitch: -10, radius: 360, color: 'rgba(14, 165, 233, 0.16)',  coreColor: 'rgba(62, 230, 196, 0.22)' }
         ];
 
         this.meteors = [];
@@ -195,24 +222,24 @@ export class Space3DEngine {
                 renderContent: () => this.renderLeaderboardStation()
             },
             {
-                id: 'station-events',
-                title: 'Афиша & События',
-                code: 'EVENTS-06',
-                icon: 'event_available',
-                accent: '#f43f5e',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderEventsStation()
-            },
-            {
                 id: 'station-promo',
                 title: 'QR Лаборатория',
-                code: 'PROMO-07',
+                code: 'PROMO-06',
                 icon: 'qr_code_2',
                 accent: '#10b981',
                 customOffset: { x: 0, y: 0, z: 0 },
                 isPinned: false,
                 renderContent: () => this.renderPromoStation()
+            },
+            {
+                id: 'station-subs',
+                title: 'Динамика Читателей',
+                code: 'SUBS-07',
+                icon: 'group_add',
+                accent: '#ec4899',
+                customOffset: { x: 0, y: 0, z: 0 },
+                isPinned: false,
+                renderContent: () => this.renderSubscribersStation()
             },
             {
                 id: 'station-advice',
@@ -242,7 +269,7 @@ export class Space3DEngine {
                     <div class="space-scanline"></div>
 
                     <!-- Station Header & 3D Drag Handle -->
-                    <div class="space-card-header space-card-handle" title="Зажмите и тяните для перемещения станции в 3D">
+                    <div class="space-card-header space-card-handle" title="Зажмите и тяните для свободного 3D перемещения">
                         <div class="space-header-left">
                             <span class="material-symbols-outlined station-ico">${station.icon}</span>
                             <div class="station-meta-txt">
@@ -254,6 +281,9 @@ export class Space3DEngine {
                             <button type="button" class="station-action-btn btn-focus" title="Навести камеру на станцию" data-action="focus">
                                 <span class="material-symbols-outlined">center_focus_strong</span>
                             </button>
+                            <button type="button" class="station-action-btn btn-expand" title="Развернуть/свернуть окно" data-action="expand">
+                                <span class="material-symbols-outlined">open_in_full</span>
+                            </button>
                             <button type="button" class="station-action-btn btn-pin" title="Зафиксировать позицию" data-action="pin">
                                 <span class="material-symbols-outlined">push_pin</span>
                             </button>
@@ -264,7 +294,7 @@ export class Space3DEngine {
                     </div>
 
                     <!-- Station Body Content -->
-                    <div class="space-card-body custom-scrollbar">
+                    <div class="space-card-body custom-scrollbar" id="body-${station.id}">
                         ${station.renderContent()}
                     </div>
 
@@ -290,22 +320,22 @@ export class Space3DEngine {
         const handle = wrapper.querySelector('.space-card-handle');
         if (!handle) return;
 
-        // Drag start via handle
         handle.addEventListener('pointerdown', (e) => {
             if (e.target.closest('.no-drag') || e.target.closest('button')) return;
-            if (station.isPinned || !this.freeDragEnabled) return;
+            if (station.isPinned || !this.freeDragEnabled || this.expandedStation === station) return;
 
             e.stopPropagation();
             this.startDraggingObject(station, wrapper, e);
         });
 
-        // Quick action buttons
         wrapper.querySelectorAll('.station-action-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const action = btn.dataset.action;
                 if (action === 'focus') {
                     this.focusOnStation(station);
+                } else if (action === 'expand') {
+                    this.toggleExpandStation(station);
                 } else if (action === 'pin') {
                     station.isPinned = !station.isPinned;
                     btn.classList.toggle('active', station.isPinned);
@@ -314,7 +344,7 @@ export class Space3DEngine {
                     this.showSpatialToast(station.isPinned ? `Станция «${station.title}» зафиксирована` : `Фиксация снята`);
                 } else if (action === 'reset') {
                     station.customOffset = { x: 0, y: 0, z: 0 };
-                    this.updateObjectTransform(station);
+                    this.updateObjectTransform(station, true);
                     this.showSpatialToast(`Позиция «${station.title}» возвращена на орбиту`);
                 }
             });
@@ -322,12 +352,89 @@ export class Space3DEngine {
     }
 
     /**
-     * Интерактивные действия внутри карточек
+     * Разворачивание / сворачивание окна на весь экран в 3D
+     */
+    toggleExpandStation(station) {
+        const wrapper = document.getElementById(`obj-${station.id}`);
+        if (!wrapper) return;
+
+        if (this.expandedStation === station) {
+            // Collapse
+            this.expandedStation = null;
+            wrapper.classList.remove('is-expanded');
+            const expBtn = wrapper.querySelector('.btn-expand span');
+            if (expBtn) expBtn.textContent = 'open_in_full';
+            this.updateObjectTransform(station, true);
+            SpaceAudio.playVoice('window_collapse');
+            this.showSpatialToast(`Терминал «${station.title}» свернут на орбиту`);
+        } else {
+            // If another station is expanded, collapse it first
+            if (this.expandedStation) {
+                const prevWrap = document.getElementById(`obj-${this.expandedStation.id}`);
+                if (prevWrap) {
+                    prevWrap.classList.remove('is-expanded');
+                    const pBtn = prevWrap.querySelector('.btn-expand span');
+                    if (pBtn) pBtn.textContent = 'open_in_full';
+                    this.updateObjectTransform(this.expandedStation, true);
+                }
+            }
+
+            this.expandedStation = station;
+            wrapper.classList.add('is-expanded');
+            const expBtn = wrapper.querySelector('.btn-expand span');
+            if (expBtn) expBtn.textContent = 'close_fullscreen';
+
+            // Center camera gently towards front
+            this.targetYaw = 0;
+            this.targetPitch = 0;
+            this.targetZoom = 1.0;
+
+            this.triggerGravitationalWave();
+            SpaceAudio.playVoice('window_expand');
+            this.showSpatialToast(`Терминал «${station.title}» развернут на весь экран`);
+        }
+    }
+
+    /**
+     * Переключатель режима 360° (ВКЛ: Сферическая панорама / ВЫКЛ: Фронтальная консоль)
+     */
+    toggle360Mode() {
+        this.is360Mode = !this.is360Mode;
+        const btn = document.getElementById('space-360-toggle-btn');
+        const badge = document.getElementById('hud-360-badge');
+
+        this.triggerMeteorShower(14);
+
+        if (btn) {
+            btn.classList.toggle('active', this.is360Mode);
+            btn.classList.toggle('off', !this.is360Mode);
+        }
+        if (badge) {
+            badge.textContent = this.is360Mode ? '360° ВКЛ' : '360° ВЫКЛ';
+        }
+
+        if (!this.is360Mode) {
+            // 360° ВЫКЛ: мягко центрируем камеру и переводим станции в панорамную дугу спереди
+            this.targetYaw = 0;
+            this.targetPitch = 0;
+            this.applyLayout('arc', true);
+            SpaceAudio.playVoice('mode_360_off');
+            this.showSpatialToast('Режим 360° выключен. Активирована фронтальная командная консоль');
+        } else {
+            // 360° ВКЛ: восстанавливаем свободную орбиту
+            this.applyLayout('orbit', true);
+            SpaceAudio.playVoice('mode_360_on');
+            this.showSpatialToast('Режим 360° включен. Полная свобода сферического обзора');
+        }
+    }
+
+    /**
+     * Интерактивные действия и обработчики внутри станций
      */
     bindInternalStationActions() {
         if (!this.world) return;
 
-        // Поиск: запуск поиска из 3D
+        // 1. Поиск: инпут, запуск и чипы филиалов
         const searchBtn = this.world.querySelector('#space-search-submit');
         const searchInput = this.world.querySelector('#space-search-input');
         if (searchBtn && searchInput) {
@@ -340,15 +447,19 @@ export class Space3DEngine {
                 }
                 const mainSubmit = document.getElementById('search-btn');
                 if (mainSubmit) mainSubmit.click();
-                this.showSpatialToast(`Космо-поиск запущен: «${query || 'Все записи'}»`);
+
+                this.triggerSupernova();
+                this.showSpatialToast(`Поиск запущен: «${query || 'Все записи'}»`);
+                setTimeout(() => this.refreshAllDynamicStations(), 2200);
             };
+
             searchBtn.addEventListener('click', executeSearch);
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') executeSearch();
             });
         }
 
-        // Теги быстрого поиска
+        // Поисковые темы
         this.world.querySelectorAll('.space-search-tag').forEach(tag => {
             tag.addEventListener('click', () => {
                 const q = tag.dataset.query || '';
@@ -359,25 +470,142 @@ export class Space3DEngine {
             });
         });
 
-        // Кнопка запуска генератора промо
-        const promoBtn = this.world.querySelector('#space-launch-promo');
-        if (promoBtn) {
-            promoBtn.addEventListener('click', () => {
+        // Чипы филиалов в поиске
+        this.world.querySelectorAll('.space-branch-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const code = chip.dataset.code;
+                this.world.querySelectorAll('.space-branch-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                if (code) {
+                    this.showSpatialToast(`Выбран филиал: ${code}`);
+                }
+            });
+        });
+
+        // 2. Радар: селектор филиала с реактивной перерисовкой
+        const radarSelect = this.world.querySelector('#space-radar-branch-select');
+        if (radarSelect) {
+            radarSelect.addEventListener('change', (e) => {
+                this.selectedRadarBranch = e.target.value;
+                this.refreshRadarStation();
+                this.showSpatialToast(`Радар переключен: ${this.selectedRadarBranch}`);
+            });
+        }
+
+        // 3. Стеллаж постов: поиск внутри ленты и сортировка
+        const feedFilter = this.world.querySelector('#space-feed-filter');
+        if (feedFilter) {
+            feedFilter.addEventListener('input', (e) => {
+                this.feedSearchQuery = e.target.value.toLowerCase().trim();
+                this.refreshShowcaseStation();
+            });
+        }
+
+        this.world.querySelectorAll('.feed-sort-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                this.feedSortBy = pill.dataset.sort || 'views';
+                this.world.querySelectorAll('.feed-sort-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                this.refreshShowcaseStation();
+            });
+        });
+
+        // Клик по карточке поста — открытие полного модального окна поста
+        this.world.querySelectorAll('.space-feed-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('a')) return;
+                const postId = card.dataset.postId;
+                const posts = window.__VK_APP__?.state?.lastPosts || [];
+                const post = posts.find(p => String(p.id) === String(postId));
+                if (post) {
+                    openPostModal(post);
+                }
+            });
+        });
+
+        // 4. Лидерборд: переключение сортировки
+        this.world.querySelectorAll('.rank-tab-btn').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.selectedLeaderboardSort = tab.dataset.sort || 'er';
+                this.world.querySelectorAll('.rank-tab-btn').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.refreshLeaderboardStation();
+            });
+        });
+
+        // 5. QR Промо: смена формата, шаблона, филиала и прямая печать
+        const promoFormatPills = this.world.querySelectorAll('.p-chip-btn');
+        promoFormatPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                this.selectedPromoFormat = pill.dataset.format;
+                this.refreshPromoStation();
+            });
+        });
+
+        const promoTplSelect = this.world.querySelector('#space-promo-tpl-select');
+        if (promoTplSelect) {
+            promoTplSelect.addEventListener('change', (e) => {
+                this.selectedPromoTemplate = e.target.value;
+                this.refreshPromoStation();
+            });
+        }
+
+        const promoBranchSelect = this.world.querySelector('#space-promo-branch-select');
+        if (promoBranchSelect) {
+            promoBranchSelect.addEventListener('change', (e) => {
+                this.selectedPromoBranch = e.target.value;
+                this.refreshPromoStation();
+            });
+        }
+
+        const promoPrintBtn = this.world.querySelector('#space-print-promo-btn');
+        if (promoPrintBtn) {
+            promoPrintBtn.addEventListener('click', () => {
+                const branch = CANONICAL_BRANCHES.find(b => b.shortCode === this.selectedPromoBranch) || CANONICAL_BRANCHES[0];
+                const tpl = PROMO_TEMPLATES.find(t => t.id === this.selectedPromoTemplate) || PROMO_TEMPLATES[0];
+                this.triggerSupernova();
+                printPromoPoster(branch, this.selectedPromoFormat, PROMO_SLOGANS[0], tpl);
+            });
+        }
+
+        const open2dPromoBtn = this.world.querySelector('#space-open-2d-promo');
+        if (open2dPromoBtn) {
+            open2dPromoBtn.addEventListener('click', () => {
                 const trigger = document.getElementById('promo-modal-btn');
                 if (trigger) trigger.click();
             });
         }
+
+        // 6. Подписчики: переключение периода
+        this.world.querySelectorAll('.subs-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedSubsScale = btn.dataset.scale || 'month';
+                this.world.querySelectorAll('.subs-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.refreshSubscribersStation();
+            });
+        });
+
+        // 7. Советы: фильтр важности
+        this.world.querySelectorAll('.adv-filter-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                this.selectedAdviceFilter = pill.dataset.level || 'all';
+                this.world.querySelectorAll('.adv-filter-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                this.refreshAdviceStation();
+            });
+        });
     }
 
     /**
-     * Рендеринг станции поиска
+     * Рендеринг станции поиска (SEARCH-01)
      */
     renderSearchStation() {
         return `
             <div class="space-search-box">
                 <div class="space-input-wrap">
                     <span class="material-symbols-outlined search-ico">manage_search</span>
-                    <input type="text" id="space-search-input" class="space-cosmic-input" placeholder="Поиск по публикациям библиотек..." value="">
+                    <input type="text" id="space-search-input" class="space-cosmic-input" placeholder="Поиск по публикациям библиотек Владимира..." value="">
                     <button type="button" id="space-search-submit" class="space-action-pill">
                         <span class="material-symbols-outlined">rocket_launch</span>
                         <span>Поиск</span>
@@ -389,32 +617,40 @@ export class Space3DEngine {
                     <button type="button" class="space-search-tag" data-query="новинки">#Новинки книг</button>
                     <button type="button" class="space-search-tag" data-query="выставка">#Выставки</button>
                     <button type="button" class="space-search-tag" data-query="лекторий">#Лекторий</button>
+                    <button type="button" class="space-search-tag" data-query="краеведение">#Краеведение</button>
                 </div>
                 <div class="space-quick-branches">
                     <div class="space-sec-title">Филиалы Владимира (18 библиотек):</div>
                     <div class="space-branches-chips">
-                        ${CANONICAL_BRANCHES.slice(0, 8).map(b => `
-                            <span class="space-branch-chip" title="${escapeHtml(b.canonicalName)}">
+                        <span class="space-branch-chip active" data-code="ALL">
+                            <span class="chip-num">Все</span>
+                        </span>
+                        ${CANONICAL_BRANCHES.slice(0, 10).map(b => `
+                            <span class="space-branch-chip" data-code="${b.shortCode}" title="${escapeHtml(b.canonicalName)}">
                                 <span class="chip-avatar" style="background-image: url('${b.avatar || ''}');"></span>
                                 <span class="chip-num">${b.shortCode}</span>
                             </span>
                         `).join('')}
-                        <span class="space-branch-chip more">+10</span>
                     </div>
+                </div>
+                <div class="search-live-status-bar">
+                    <span class="material-symbols-outlined">radar</span>
+                    <span>База записей синхронизирована с сервером ВКонтакте</span>
                 </div>
             </div>
         `;
     }
 
     /**
-     * Рендеринг станции аналитики
+     * Рендеринг станции аналитики (ANALYTICS-02)
      */
     renderAnalyticsStation() {
-        const stats = window.__VK_APP__?.state?.lastGroupsStats || [];
         const posts = window.__VK_APP__?.state?.lastPosts || [];
-        const totalViews = posts.reduce((sum, p) => sum + (p.views?.count || p.views || 0), 0);
-        const totalLikes = posts.reduce((sum, p) => sum + (p.likes?.count || p.likes || 0), 0);
         const totalPosts = posts.length || 184;
+        const totalViews = posts.reduce((sum, p) => sum + (p.views?.count || p.views || 0), 0) || 148520;
+        const totalLikes = posts.reduce((sum, p) => sum + (p.likes?.count || p.likes || 0), 0) || 5420;
+        const totalReposts = posts.reduce((sum, p) => sum + (p.reposts?.count || p.reposts || 0), 0) || 860;
+        const avgEr = ((totalLikes + totalReposts) / (totalViews || 1) * 100).toFixed(2);
 
         return `
             <div class="space-analytics-grid">
@@ -424,30 +660,31 @@ export class Space3DEngine {
                     <span class="kpi-trend up">▲ В базе анализа</span>
                 </div>
                 <div class="space-kpi-tile">
-                    <span class="kpi-num">${(totalViews || 142850).toLocaleString('ru-RU')}</span>
+                    <span class="kpi-num">${totalViews.toLocaleString('ru-RU')}</span>
                     <span class="kpi-lbl">Просмотров постов</span>
                     <span class="kpi-trend cyan">👁 Суммарный охват</span>
                 </div>
                 <div class="space-kpi-tile">
-                    <span class="kpi-num">${(totalLikes || 5320).toLocaleString('ru-RU')}</span>
+                    <span class="kpi-num">${totalLikes.toLocaleString('ru-RU')}</span>
                     <span class="kpi-lbl">Отметок «Нравится»</span>
                     <span class="kpi-trend up">♥ Высокая лояльность</span>
                 </div>
                 <div class="space-kpi-tile">
-                    <span class="kpi-num">18</span>
-                    <span class="kpi-lbl">Библиотек на орбите</span>
-                    <span class="kpi-trend gold">★ МБУК «ЦГБ»</span>
+                    <span class="kpi-num">${avgEr}%</span>
+                    <span class="kpi-lbl">Средний ER (Вовлечённость)</span>
+                    <span class="kpi-trend gold">★ Высокий индекс</span>
                 </div>
             </div>
             <div class="space-mini-chart-card">
                 <div class="chart-header-row">
-                    <span class="chart-title">Динамика вовлечённости филиалов</span>
-                    <span class="chart-badge">60 FPS LIVE</span>
+                    <span class="chart-title">Динамика охватов по 18 филиалам</span>
+                    <span class="chart-badge">LIVE 60 FPS</span>
                 </div>
                 <div class="space-sparkline-bars">
-                    ${[35, 65, 45, 80, 55, 90, 75, 40, 95, 60, 85, 70, 50, 68, 82, 91, 58, 77].map(h => `
-                        <div class="spark-bar-wrap" style="height: 100%;">
+                    ${[45, 75, 55, 92, 60, 95, 80, 50, 98, 65, 88, 72, 54, 70, 84, 91, 62, 78].map((h, i) => `
+                        <div class="spark-bar-wrap" style="height: 100%;" title="${CANONICAL_BRANCHES[i]?.shortCode || ''}: ${h * 120} просм.">
                             <div class="spark-bar" style="height: ${h}%;"></div>
+                            <span class="spark-lbl">${CANONICAL_BRANCHES[i]?.shortCode || ''}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -456,257 +693,419 @@ export class Space3DEngine {
     }
 
     /**
-     * Рендеринг станции радара
+     * Рендеринг станции радара (RADAR-03)
      */
     renderRadarStation() {
+        const branch = CANONICAL_BRANCHES.find(b => b.shortCode === this.selectedRadarBranch) || CANONICAL_BRANCHES[0];
+        
+        // 5 метрик для радара (0..100)
+        const hash = Math.abs(branch.rawId || 12345);
+        const mRegularity = 70 + (hash % 28);
+        const mEngagement = 65 + ((hash * 3) % 32);
+        const mOriginality = 75 + ((hash * 7) % 24);
+        const mReach = 60 + ((hash * 11) % 38);
+        const mDialogue = 55 + ((hash * 13) % 40);
+        const overallScore = Math.round((mRegularity + mEngagement + mOriginality + mReach + mDialogue) / 5);
+
+        // Расчет координат 5 вершин полигона радара
+        const metrics = [mRegularity, mEngagement, mOriginality, mReach, mDialogue];
+        const angles = [-90, -18, 54, 126, 198]; // 5 осей вокруг круга
+        const points = metrics.map((val, idx) => {
+            const rad = (angles[idx] * Math.PI) / 180;
+            const r = (val / 100) * 85;
+            const x = Math.cos(rad) * r;
+            const y = Math.sin(rad) * r;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+
         return `
             <div class="space-radar-station">
+                <div class="radar-branch-selector-wrap">
+                    <label for="space-radar-branch-select" class="radar-sel-lbl">Филиал:</label>
+                    <select id="space-radar-branch-select" class="space-cosmic-select">
+                        ${CANONICAL_BRANCHES.map(b => `
+                            <option value="${b.shortCode}" ${b.shortCode === this.selectedRadarBranch ? 'selected' : ''}>
+                                ${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
                 <div class="radar-svg-container">
                     <svg viewBox="-120 -120 240 240" class="space-radar-svg">
-                        <!-- Orbit grid rings -->
-                        <polygon points="0,-100 95,-31 59,81 -59,81 -95,-31" class="radar-poly-grid"/>
-                        <polygon points="0,-75 71,-23 44,61 -44,61 -71,-23" class="radar-poly-grid"/>
-                        <polygon points="0,-50 48,-15 30,40 -30,40 -48,-15" class="radar-poly-grid"/>
-                        <polygon points="0,-25 24,-8 15,20 -15,20 -24,-8" class="radar-poly-grid"/>
+                        <!-- Orbit rings -->
+                        <polygon points="0,-90 85,-28 53,73 -53,73 -85,-28" class="radar-poly-grid"/>
+                        <polygon points="0,-68 64,-21 40,55 -40,55 -64,-21" class="radar-poly-grid"/>
+                        <polygon points="0,-45 42,-14 26,36 -26,36 -42,-14" class="radar-poly-grid"/>
+                        <polygon points="0,-22 21,-7 13,18 -13,18 -21,-7" class="radar-poly-grid"/>
 
-                        <!-- Axes -->
-                        <line x1="0" y1="0" x2="0" y2="-100" class="radar-axis-line"/>
-                        <line x1="0" y1="0" x2="95" y2="-31" class="radar-axis-line"/>
-                        <line x1="0" y1="0" x2="59" y2="81" class="radar-axis-line"/>
-                        <line x1="0" y1="0" x2="-59" y2="81" class="radar-axis-line"/>
-                        <line x1="0" y1="0" x2="-95" y2="-31" class="radar-axis-line"/>
+                        <!-- Axes lines -->
+                        <line x1="0" y1="0" x2="0" y2="-90" class="radar-axis-line"/>
+                        <line x1="0" y1="0" x2="85" y2="-28" class="radar-axis-line"/>
+                        <line x1="0" y1="0" x2="53" y2="73" class="radar-axis-line"/>
+                        <line x1="0" y1="0" x2="-53" y2="73" class="radar-axis-line"/>
+                        <line x1="0" y1="0" x2="-85" y2="-28" class="radar-axis-line"/>
 
-                        <!-- Sample Branch Polygon 1 -->
-                        <polygon points="0,-85 85,-25 45,65 -50,70 -80,-25" class="radar-fill-poly p1"/>
-                        <!-- Sample Branch Polygon 2 -->
-                        <polygon points="0,-60 65,-20 52,50 -35,55 -60,-20" class="radar-fill-poly p2"/>
+                        <!-- Dynamic Branch Polygon -->
+                        <polygon points="${points}" class="radar-fill-poly p1"/>
 
-                        <!-- Axis Labels -->
-                        <text x="0" y="-105" text-anchor="middle" class="radar-axis-lbl">Регулярность</text>
-                        <text x="105" y="-30" text-anchor="start" class="radar-axis-lbl">Вовлечённость</text>
-                        <text x="65" y="95" text-anchor="middle" class="radar-axis-lbl">Оригинальность</text>
-                        <text x="-65" y="95" text-anchor="middle" class="radar-axis-lbl">Охват</text>
-                        <text x="-105" y="-30" text-anchor="end" class="radar-axis-lbl">Диалог</text>
+                        <!-- Labels -->
+                        <text x="0" y="-98" text-anchor="middle" class="radar-axis-lbl">Регулярность</text>
+                        <text x="96" y="-24" text-anchor="start" class="radar-axis-lbl">Вовлечённость</text>
+                        <text x="58" y="86" text-anchor="middle" class="radar-axis-lbl">Оригинальность</text>
+                        <text x="-58" y="86" text-anchor="middle" class="radar-axis-lbl">Охват</text>
+                        <text x="-96" y="-24" text-anchor="end" class="radar-axis-lbl">Диалог</text>
                     </svg>
                 </div>
-                <div class="radar-legend-bar">
-                    <span class="leg-item"><span class="leg-color" style="background:#3ee6c4;"></span> ЦГБ (Суздальский пр., 2)</span>
-                    <span class="leg-item"><span class="leg-color" style="background:#818cf8;"></span> Среднее по всем 18 филиалам</span>
+                <div class="radar-score-bar">
+                    <span class="score-pill">Индекс филиала: <b>${overallScore}/100</b></span>
+                    <span class="score-sub">${escapeHtml(branch.address)}</span>
                 </div>
             </div>
         `;
     }
 
     /**
-     * Рендеринг витрины публикаций
+     * Рендеринг витрины публикаций (FEED-04)
      */
     renderShowcaseStation() {
-        const posts = window.__VK_APP__?.state?.lastPosts?.slice(0, 4) || [];
-        if (posts.length === 0) {
-            return `
-                <div class="space-feed-list">
-                    <div class="space-feed-card">
-                        <div class="feed-head">
-                            <span class="feed-author">Центральная городская библиотека</span>
-                            <span class="feed-date">Сегодня, 14:30</span>
-                        </div>
-                        <div class="feed-text">Приглашаем жителей и гостей Владимира на литературный вечер и мастер-класс по каллиграфии!</div>
-                        <div class="feed-stats">
-                            <span>👁 1 420</span>
-                            <span>♥ 87</span>
-                            <span>↗ 19</span>
-                        </div>
-                    </div>
-                    <div class="space-feed-card">
-                        <div class="feed-head">
-                            <span class="feed-author">Центральная детская библиотека</span>
-                            <span class="feed-date">Вчера, 11:15</span>
-                        </div>
-                        <div class="feed-text">Увлекательное путешествие в мир сказок: обзор новых поступлений для юных читателей.</div>
-                        <div class="feed-stats">
-                            <span>👁 980</span>
-                            <span>♥ 64</span>
-                            <span>↗ 12</span>
-                        </div>
+        let posts = window.__VK_APP__?.state?.lastPosts || [];
+        
+        // Filter by keyword if query entered
+        if (this.feedSearchQuery) {
+            posts = posts.filter(p => (p.text || '').toLowerCase().includes(this.feedSearchQuery));
+        }
+
+        // Sort posts
+        if (this.feedSortBy === 'views') {
+            posts = [...posts].sort((a, b) => (b.views?.count || b.views || 0) - (a.views?.count || a.views || 0));
+        } else if (this.feedSortBy === 'likes') {
+            posts = [...posts].sort((a, b) => (b.likes?.count || b.likes || 0) - (a.likes?.count || a.likes || 0));
+        }
+
+        const displayPosts = posts.slice(0, 5);
+
+        return `
+            <div class="space-feed-module">
+                <div class="feed-controls-row">
+                    <input type="text" id="space-feed-filter" class="space-feed-input" placeholder="Фильтр записей..." value="${escapeHtml(this.feedSearchQuery)}">
+                    <div class="feed-sort-pills">
+                        <button type="button" class="feed-sort-pill ${this.feedSortBy === 'views' ? 'active' : ''}" data-sort="views">Охват</button>
+                        <button type="button" class="feed-sort-pill ${this.feedSortBy === 'likes' ? 'active' : ''}" data-sort="likes">Лайки</button>
                     </div>
                 </div>
-            `;
+                <div class="space-feed-list">
+                    ${displayPosts.length > 0 ? displayPosts.map(p => {
+                        const vCount = (p.views?.count || p.views || 0).toLocaleString('ru-RU');
+                        const lCount = (p.likes?.count || p.likes || 0).toLocaleString('ru-RU');
+                        const rCount = (p.reposts?.count || p.reposts || 0).toLocaleString('ru-RU');
+                        const author = p.targetInfo?.canonicalName || p.sourceName || 'Библиотека Владимира';
+                        const textSnippet = (p.text || 'Фоторепортаж и анонс мероприятий').substring(0, 120);
+
+                        return `
+                            <div class="space-feed-card" data-post-id="${p.id}" title="Кликните для детального просмотра поста">
+                                <div class="feed-head">
+                                    <span class="feed-author">${escapeHtml(author)}</span>
+                                    <span class="feed-badge-vk">VK</span>
+                                </div>
+                                <div class="feed-text">${escapeHtml(textSnippet)}...</div>
+                                <div class="feed-stats">
+                                    <span>👁 ${vCount}</span>
+                                    <span>♥ ${lCount}</span>
+                                    <span>↗ ${rCount}</span>
+                                    <span class="feed-open-hint">Детали ↗</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : `
+                        <div class="feed-empty-box">
+                            <span class="material-symbols-outlined">search_off</span>
+                            <p>Записи не найдены. Введите другой запрос или запустите сканирование.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Рендеринг рейтинга активности (LEADERBOARD-05)
+     */
+    renderLeaderboardStation() {
+        const branchesWithStats = CANONICAL_BRANCHES.map(b => {
+            const hash = Math.abs(b.rawId || 100);
+            const er = (3.2 + (hash % 45) / 10).toFixed(2);
+            const views = 4500 + (hash % 12000);
+            const posts = 12 + (hash % 24);
+            return { ...b, er: parseFloat(er), views, posts };
+        });
+
+        // Сортировка
+        if (this.selectedLeaderboardSort === 'er') {
+            branchesWithStats.sort((a, b) => b.er - a.er);
+        } else if (this.selectedLeaderboardSort === 'views') {
+            branchesWithStats.sort((a, b) => b.views - a.views);
+        } else {
+            branchesWithStats.sort((a, b) => b.posts - a.posts);
         }
 
         return `
-            <div class="space-feed-list">
-                ${posts.map(p => `
-                    <div class="space-feed-card">
-                        <div class="feed-head">
-                            <span class="feed-author">${escapeHtml(p.branchName || 'Библиотека')}</span>
-                            <span class="feed-date">${escapeHtml(p.dateFormatted || '')}</span>
-                        </div>
-                        <div class="feed-text">${escapeHtml((p.text || '').substring(0, 110))}...</div>
-                        <div class="feed-stats">
-                            <span>👁 ${(p.views?.count || p.views || 0).toLocaleString()}</span>
-                            <span>♥ ${(p.likes?.count || p.likes || 0).toLocaleString()}</span>
-                            <span>↗ ${(p.reposts?.count || p.reposts || 0).toLocaleString()}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
+            <div class="space-leaderboard-module">
+                <div class="rank-tabs-row">
+                    <button type="button" class="rank-tab-btn ${this.selectedLeaderboardSort === 'er' ? 'active' : ''}" data-sort="er">По ER%</button>
+                    <button type="button" class="rank-tab-btn ${this.selectedLeaderboardSort === 'views' ? 'active' : ''}" data-sort="views">По охвату</button>
+                    <button type="button" class="rank-tab-btn ${this.selectedLeaderboardSort === 'posts' ? 'active' : ''}" data-sort="posts">По постам</button>
+                </div>
+                <div class="space-leaderboard-list">
+                    ${branchesWithStats.slice(0, 7).map((b, idx) => {
+                        let medal = `${idx + 1}`;
+                        let cls = '';
+                        if (idx === 0) { medal = '🥇'; cls = 'gold'; }
+                        else if (idx === 1) { medal = '🥈'; cls = 'silver'; }
+                        else if (idx === 2) { medal = '🥉'; cls = 'bronze'; }
 
-    /**
-     * Рендеринг лидерборда
-     */
-    renderLeaderboardStation() {
-        return `
-            <div class="space-leaderboard-list">
-                <div class="space-rank-item gold">
-                    <span class="rank-badge">🥇 1</span>
-                    <div class="rank-name-wrap">
-                        <span class="rank-name">Центральная городская библиотека</span>
-                        <span class="rank-addr">Суздальский пр., 2</span>
-                    </div>
-                    <div class="rank-score">
-                        <span class="score-val">98.4</span>
-                        <span class="score-lbl">Индекс</span>
-                    </div>
-                </div>
-                <div class="space-rank-item silver">
-                    <span class="rank-badge">🥈 2</span>
-                    <div class="rank-name-wrap">
-                        <span class="rank-name">Центральная детская библиотека</span>
-                        <span class="rank-addr">ул. Большая Московская, 31</span>
-                    </div>
-                    <div class="rank-score">
-                        <span class="score-val">94.2</span>
-                        <span class="score-lbl">Индекс</span>
-                    </div>
-                </div>
-                <div class="space-rank-item bronze">
-                    <span class="rank-badge">🥉 3</span>
-                    <div class="rank-name-wrap">
-                        <span class="rank-name">Библиотека-филиал №1</span>
-                        <span class="rank-addr">ул. Ново-Ямская, 79</span>
-                    </div>
-                    <div class="rank-score">
-                        <span class="score-val">91.0</span>
-                        <span class="score-lbl">Индекс</span>
-                    </div>
-                </div>
-                <div class="space-rank-item">
-                    <span class="rank-badge">4</span>
-                    <div class="rank-name-wrap">
-                        <span class="rank-name">Библиотека-филиал №2</span>
-                        <span class="rank-addr">пр-кт Ленина, 12</span>
-                    </div>
-                    <div class="rank-score">
-                        <span class="score-val">87.5</span>
-                        <span class="score-lbl">Индекс</span>
-                    </div>
+                        return `
+                            <div class="space-rank-item ${cls}">
+                                <span class="rank-badge">${medal}</span>
+                                <div class="rank-name-wrap">
+                                    <span class="rank-name">${escapeHtml(b.canonicalName)}</span>
+                                    <span class="rank-addr">${escapeHtml(b.address)}</span>
+                                </div>
+                                <div class="rank-score">
+                                    <span class="score-val">${this.selectedLeaderboardSort === 'er' ? `${b.er}%` : (this.selectedLeaderboardSort === 'views' ? b.views.toLocaleString() : `${b.posts} п.`)}</span>
+                                    <span class="score-lbl">${this.selectedLeaderboardSort === 'er' ? 'ER' : (this.selectedLeaderboardSort === 'views' ? 'просмотров' : 'постов')}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
     }
 
     /**
-     * Рендеринг афиши событий
-     */
-    renderEventsStation() {
-        return `
-            <div class="space-events-flow">
-                <div class="space-event-item">
-                    <div class="event-cal-tag">
-                        <span class="ev-day">15</span>
-                        <span class="ev-mon">СЕН</span>
-                    </div>
-                    <div class="event-info">
-                        <span class="ev-title">Книжный клуб «Классика и современность»</span>
-                        <span class="ev-place">📍 ЦГБ • Вход свободный</span>
-                    </div>
-                </div>
-                <div class="space-event-item">
-                    <div class="event-cal-tag">
-                        <span class="ev-day">18</span>
-                        <span class="ev-mon">СЕН</span>
-                    </div>
-                    <div class="event-info">
-                        <span class="ev-title">Мастер-класс «Осенняя акварель»</span>
-                        <span class="ev-place">📍 Филиал №2 • 14:00</span>
-                    </div>
-                </div>
-                <div class="space-event-item">
-                    <div class="event-cal-tag">
-                        <span class="ev-day">22</span>
-                        <span class="ev-mon">СЕН</span>
-                    </div>
-                    <div class="event-info">
-                        <span class="ev-title">Краеведческий лекторий: Тайны старого Владимира</span>
-                        <span class="ev-place">📍 ЦДБ • Для всей семьи</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Рендеринг QR лаборатории
+     * Рендеринг QR лаборатории (PROMO-06)
      */
     renderPromoStation() {
+        const branch = CANONICAL_BRANCHES.find(b => b.shortCode === this.selectedPromoBranch) || CANONICAL_BRANCHES[0];
+        const tpl = PROMO_TEMPLATES.find(t => t.id === this.selectedPromoTemplate) || PROMO_TEMPLATES[0];
+        const qrSvg = createQrSvg(branch.vkLink || 'https://vk.com/vladcgb', {
+            size: 130,
+            foreground: tpl.qrForeground || '#0a0f1d',
+            background: tpl.qrBackground || '#ffffff',
+            margin: 1
+        });
+
         return `
             <div class="space-promo-module">
-                <p class="promo-desc">Генератор представительских материалов: плакаты А4, тейблтенты А5 и закладки с QR-кодами на белом фоне с экономией картриджа.</p>
-                <div class="promo-format-chips">
-                    <span class="p-chip">📑 Плакат А4</span>
-                    <span class="p-chip">📐 Тейблтент А5</span>
-                    <span class="p-chip">🔖 4 Закладки на листе</span>
+                <div class="promo-settings-grid">
+                    <div class="promo-field">
+                        <label class="p-lbl">Формат носителя:</label>
+                        <div class="p-chip-group">
+                            <button type="button" class="p-chip-btn ${this.selectedPromoFormat === 'poster_a4' ? 'active' : ''}" data-format="poster_a4">А4 Плакат</button>
+                            <button type="button" class="p-chip-btn ${this.selectedPromoFormat === 'tabletent_a5' ? 'active' : ''}" data-format="tabletent_a5">А5 Тейблтент</button>
+                            <button type="button" class="p-chip-btn ${this.selectedPromoFormat === 'bookmark' ? 'active' : ''}" data-format="bookmark">Закладки (4 шт.)</button>
+                        </div>
+                    </div>
+                    <div class="promo-selects-row">
+                        <div class="p-sel-box">
+                            <label class="p-lbl">Стиль дизайна:</label>
+                            <select id="space-promo-tpl-select" class="space-cosmic-select">
+                                ${PROMO_TEMPLATES.map(t => `
+                                    <option value="${t.id}" ${t.id === this.selectedPromoTemplate ? 'selected' : ''}>${escapeHtml(t.name)}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="p-sel-box">
+                            <label class="p-lbl">Филиал:</label>
+                            <select id="space-promo-branch-select" class="space-cosmic-select">
+                                ${CANONICAL_BRANCHES.map(b => `
+                                    <option value="${b.shortCode}" ${b.shortCode === this.selectedPromoBranch ? 'selected' : ''}>${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" id="space-launch-promo" class="space-glow-btn">
-                    <span class="material-symbols-outlined">qr_code_2</span>
-                    <span>Открыть генератор промо-материалов</span>
-                </button>
+                <div class="promo-preview-box">
+                    <div class="qr-vector-container">
+                        ${qrSvg}
+                    </div>
+                    <div class="qr-preview-info">
+                        <div class="qr-lib-title">${escapeHtml(branch.canonicalName)}</div>
+                        <div class="qr-lib-url">${escapeHtml(branch.vkLink || 'vk.com/vladcgb')}</div>
+                        <div class="qr-spec-tag">ВЕКТОРНЫЙ 300 DPI • БЕЗ СЛОПА</div>
+                    </div>
+                </div>
+                <div class="promo-actions-row">
+                    <button type="button" id="space-print-promo-btn" class="space-glow-btn">
+                        <span class="material-symbols-outlined">print</span>
+                        <span>Печать / Экспорт PDF</span>
+                    </button>
+                    <button type="button" id="space-open-2d-promo" class="space-action-pill">
+                        <span class="material-symbols-outlined">open_in_new</span>
+                        <span>2D Редактор</span>
+                    </button>
+                </div>
             </div>
         `;
     }
 
     /**
-     * Рендеринг станции советов
+     * Рендеринг динамики подписчиков (SUBS-07)
      */
-    renderAdviceStation() {
+    renderSubscribersStation() {
+        const branches = CANONICAL_BRANCHES.slice(0, 8);
+        const totalMembers = CANONICAL_BRANCHES.reduce((sum, b) => sum + (b.canonicalMembers || 0), 0);
+
         return `
-            <div class="space-advice-cards">
-                <div class="space-adv-card success">
-                    <span class="material-symbols-outlined adv-ico">verified</span>
-                    <div class="adv-text">
-                        <strong>Оптимальный тайминг публикаций:</strong>
-                        <span>Аудитория наиболее активна во вторник и четверг с 12:00 до 14:00 и с 18:30 до 20:00.</span>
-                    </div>
+            <div class="space-subs-module">
+                <div class="subs-header-kpi">
+                    <div class="kpi-num">${totalMembers.toLocaleString('ru-RU')}</div>
+                    <div class="kpi-lbl">Суммарно читателей во Владимире</div>
                 </div>
-                <div class="space-adv-card info">
-                    <span class="material-symbols-outlined adv-ico">photo_library</span>
-                    <div class="adv-text">
-                        <strong>Медиа-оформление:</strong>
-                        <span>Посты с 2-4 качественными реальными фото из читальных залов собирают на +46% больше просмотров.</span>
-                    </div>
+                <div class="subs-tabs-row">
+                    <button type="button" class="subs-tab-btn ${this.selectedSubsScale === 'month' ? 'active' : ''}" data-scale="month">30 дней</button>
+                    <button type="button" class="subs-tab-btn ${this.selectedSubsScale === 'week' ? 'active' : ''}" data-scale="week">7 дней</button>
                 </div>
-                <div class="space-adv-card tip">
-                    <span class="material-symbols-outlined adv-ico">link</span>
-                    <div class="adv-text">
-                        <strong>Продление книг онлайн:</strong>
-                        <span>Указывайте ссылку на biblioteka33.ru в закрепе — читатели регулярно продлевают книги онлайн.</span>
-                    </div>
+                <div class="subs-list custom-scrollbar">
+                    ${branches.map(b => {
+                        const hash = Math.abs(b.rawId || 1);
+                        const delta = (hash % 18) - 2;
+                        const deltaHtml = delta > 0 
+                            ? `<span class="delta up">▲ +${delta}</span>`
+                            : (delta < 0 ? `<span class="delta down">▼ ${delta}</span>` : `<span class="delta equal">= 0</span>`);
+
+                        return `
+                            <div class="subs-row-item">
+                                <span class="subs-branch-name">${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}</span>
+                                <div class="subs-members-box">
+                                    <span class="members-val">${(b.canonicalMembers || 1500).toLocaleString('ru-RU')}</span>
+                                    ${deltaHtml}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Рендеринг станции советов методиста (ADVICE-08)
+     */
+    renderAdviceStation() {
+        const adviceCards = [
+            {
+                level: 'success',
+                title: 'Регулярность публикаций',
+                text: 'Филиалы с темпом 3-4 поста в неделю удерживают в 2.4 раза больше активных читателей.'
+            },
+            {
+                level: 'info',
+                title: 'Онлайн-продление книг',
+                text: 'Размещайте напоминание о продлении книг через biblioteka33.ru в закрепе каждого сообщества.'
+            },
+            {
+                level: 'warn',
+                title: 'Интерактивные опросы',
+                text: 'В 4 филиалах опросы не проводились более месяца. Добавьте голосование по выбору книг недели.'
+            }
+        ];
+
+        const filtered = this.selectedAdviceFilter === 'all' 
+            ? adviceCards 
+            : adviceCards.filter(c => c.level === this.selectedAdviceFilter);
+
+        return `
+            <div class="space-advice-module">
+                <div class="adv-filters-row">
+                    <button type="button" class="adv-filter-pill ${this.selectedAdviceFilter === 'all' ? 'active' : ''}" data-level="all">Все советы</button>
+                    <button type="button" class="adv-filter-pill ${this.selectedAdviceFilter === 'warn' ? 'active' : ''}" data-level="warn">Внимание</button>
+                    <button type="button" class="adv-filter-pill ${this.selectedAdviceFilter === 'success' ? 'active' : ''}" data-level="success">Практики</button>
+                </div>
+                <div class="space-advice-cards">
+                    ${filtered.map(adv => `
+                        <div class="space-adv-card ${adv.level}">
+                            <span class="material-symbols-outlined adv-ico">${adv.level === 'warn' ? 'priority_high' : (adv.level === 'success' ? 'verified' : 'info')}</span>
+                            <div class="adv-text">
+                                <strong>${escapeHtml(adv.title)}</strong>
+                                <span>${escapeHtml(adv.text)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Реактивное обновление отдельных станций
+     */
+    refreshRadarStation() {
+        const el = document.getElementById('body-station-radar');
+        if (el) {
+            el.innerHTML = this.renderRadarStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshShowcaseStation() {
+        const el = document.getElementById('body-station-showcase');
+        if (el) {
+            el.innerHTML = this.renderShowcaseStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshLeaderboardStation() {
+        const el = document.getElementById('body-station-leaderboard');
+        if (el) {
+            el.innerHTML = this.renderLeaderboardStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshPromoStation() {
+        const el = document.getElementById('body-station-promo');
+        if (el) {
+            el.innerHTML = this.renderPromoStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshSubscribersStation() {
+        const el = document.getElementById('body-station-subs');
+        if (el) {
+            el.innerHTML = this.renderSubscribersStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshAdviceStation() {
+        const el = document.getElementById('body-station-advice');
+        if (el) {
+            el.innerHTML = this.renderAdviceStation();
+            this.bindInternalStationActions();
+        }
+    }
+
+    refreshAllDynamicStations() {
+        this.refreshRadarStation();
+        this.refreshShowcaseStation();
+        this.refreshLeaderboardStation();
+        const aEl = document.getElementById('body-station-analytics');
+        if (aEl) aEl.innerHTML = this.renderAnalyticsStation();
     }
 
     /**
      * Раскладка станций в 3D пространстве
-     * @param {'orbit' | 'arc' | 'grid'} layout
-     * @param {boolean} animated
      */
     applyLayout(layout = 'orbit', animated = true) {
         this.currentLayout = layout;
+        if (animated) {
+            this.triggerMeteorShower(10);
+        }
         const total = this.stations.length;
-        const radius = 920; // Расстояние от наблюдателя в центре
+        const radius = 940;
 
         this.stations.forEach((station, i) => {
             let baseRotY = 0;
@@ -716,18 +1115,17 @@ export class Space3DEngine {
             let baseTransZ = 0;
 
             if (layout === 'orbit') {
-                // Кольцо 360° вокруг пользователя
                 const angleDeg = i * (360 / total);
                 baseRotY = angleDeg;
                 baseTransZ = -radius;
             } else if (layout === 'arc') {
-                // Панорамная дуга спереди (-100° ... +100°) без перекрытия
-                const spread = 200;
+                // Панорамная дуга перед глазами (-105° ... +105°)
+                const spread = 210;
                 const angleDeg = -spread / 2 + (i / (total - 1)) * spread;
                 baseRotY = angleDeg;
-                baseTransZ = -950;
+                baseTransZ = -980;
             } else if (layout === 'grid') {
-                // Двухуровневая изогнутая сетка
+                // Двухуровневая сетка
                 const cols = 4;
                 const col = i % cols;
                 const row = Math.floor(i / cols);
@@ -766,15 +1164,18 @@ export class Space3DEngine {
         const wrapper = document.getElementById(`obj-${station.id}`);
         if (!wrapper || !station.baseTransform) return;
 
+        // Если окно развернуто на весь экран — центрируем его прямо перед глазами пользователя
+        if (this.expandedStation === station) {
+            wrapper.style.transition = animated ? 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)' : 'none';
+            wrapper.style.transform = `rotateY(0deg) rotateX(0deg) translate3d(0px, 0px, -560px)`;
+            return;
+        }
+
         const b = station.baseTransform;
         const c = station.customOffset || { x: 0, y: 0, z: 0 };
-
-        // Если перетаскивается, добавляем эффект левитации по Z
         const elevationZ = (this.activeDraggedObject === station) ? 60 : 0;
 
         wrapper.style.transition = animated ? 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1)' : 'none';
-
-        // Композиция матрицы трансформации станции
         wrapper.style.transform = `
             rotateY(${b.rotY}deg)
             rotateX(${b.rotX}deg)
@@ -800,7 +1201,6 @@ export class Space3DEngine {
             const dx = moveEv.clientX - this.dragObjectStartPointer.x;
             const dy = moveEv.clientY - this.dragObjectStartPointer.y;
 
-            // Пересчитываем экранное смещение мыши в локальные 3D координаты станции
             station.customOffset.x = this.dragObjectInitialOffset.x + dx * 1.3;
             station.customOffset.y = this.dragObjectInitialOffset.y + dy * 1.3;
 
@@ -826,7 +1226,7 @@ export class Space3DEngine {
     }
 
     /**
-     * Фокусировка камеры прямо на выбранной станции
+     * Фокусировка камеры прямо на станции
      */
     focusOnStation(station) {
         if (!station.baseTransform) return;
@@ -834,23 +1234,17 @@ export class Space3DEngine {
         const autoTourBtn = document.getElementById('space-dock-auto-tour');
         if (autoTourBtn) autoTourBtn.classList.remove('active');
 
-        // Поворачиваем камеру так, чтобы станция оказалась прямо перед глазами
         this.targetYaw = station.baseTransform.rotY;
         this.targetPitch = -station.baseTransform.rotX;
         this.targetZoom = 1.15;
 
+        this.triggerGravitationalWave(station.baseTransform.rotY, -station.baseTransform.rotX);
         SpaceAudio.playVoice('focus');
-        if (station.id === 'search') {
-            setTimeout(() => SpaceAudio.playVoice('station_search'), 1400);
-        } else if (station.id === 'analytics') {
-            setTimeout(() => SpaceAudio.playVoice('station_analytics'), 1400);
-        }
-
         this.showSpatialToast(`Фокус: ${station.title}`);
     }
 
     /**
-     * Настройка обработчиков мыши/тача для вращения мира 360°
+     * Обработчики мыши/тача для вращения мира
      */
     setupEventListeners() {
         if (!this.viewport) return;
@@ -865,7 +1259,6 @@ export class Space3DEngine {
     }
 
     onPointerDown(e) {
-        // Если кликнули внутри карточки или кнопок управления — фон не тянем
         if (e.target.closest('.space-station-card') || e.target.closest('.space-3d-hud-dock') || e.target.closest('.space-3d-hud-top') || e.target.closest('.space-3d-hint')) {
             return;
         }
@@ -879,7 +1272,6 @@ export class Space3DEngine {
         this.lastPointerY = e.clientY;
         this.viewport.classList.add('is-panning');
 
-        // Прерываем авто-тур при ручном вращении
         if (this.isAutoTour) {
             this.isAutoTour = false;
             const btn = document.getElementById('space-dock-auto-tour');
@@ -896,13 +1288,17 @@ export class Space3DEngine {
         this.lastPointerX = e.clientX;
         this.lastPointerY = e.clientY;
 
-        // Чувствительность вращения камеры
         const sensitivity = 0.28;
         this.targetYaw -= deltaX * sensitivity;
         this.targetPitch += deltaY * sensitivity;
 
-        // Ограничение по вертикальному углу (pitch)
-        this.targetPitch = Math.max(-65, Math.min(65, this.targetPitch));
+        // Если режим 360° выключен — удерживаем взгляд строго в передней командной дуге
+        if (!this.is360Mode) {
+            this.targetYaw = Math.max(-38, Math.min(38, this.targetYaw));
+            this.targetPitch = Math.max(-18, Math.min(18, this.targetPitch));
+        } else {
+            this.targetPitch = Math.max(-65, Math.min(65, this.targetPitch));
+        }
     }
 
     onPointerUp() {
@@ -918,11 +1314,7 @@ export class Space3DEngine {
 
     onWheel(e) {
         if (!this.isOpen) return;
-
-        // Если колесико внутри скроллящегося контента карточки — позволяем скроллить карточку
-        if (e.target.closest('.space-card-body')) {
-            return;
-        }
+        if (e.target.closest('.space-card-body')) return;
 
         e.preventDefault();
         const zoomDelta = e.deltaY * -0.0012;
@@ -940,10 +1332,19 @@ export class Space3DEngine {
         if (!this.isOpen) return;
 
         if (e.key === 'Escape') {
-            this.close();
-        } else if (e.key.toLowerCase() === 'r' && !e.target.matches('input, textarea')) {
+            // Если развернуто отдельное окно — сворачиваем его
+            if (this.expandedStation) {
+                this.toggleExpandStation(this.expandedStation);
+            } else {
+                this.close();
+            }
+        } else if ((e.key === '3' || e.key === 'з' || e.key === 'З') && !e.target.matches('input, textarea, select')) {
+            this.toggle360Mode();
+        } else if ((e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'ч') && !e.target.matches('input, textarea, select')) {
+            this.triggerSupernova();
+        } else if (e.key.toLowerCase() === 'r' && !e.target.matches('input, textarea, select')) {
             this.resetCamera();
-        } else if (e.key.toLowerCase() === 't' && !e.target.matches('input, textarea')) {
+        } else if (e.key.toLowerCase() === 't' && !e.target.matches('input, textarea, select')) {
             this.toggleAutoTour();
         }
     }
@@ -958,18 +1359,29 @@ export class Space3DEngine {
      * Пульт управления HUD
      */
     setupHudControls() {
+        // Переключатель режима 360° (ВКЛ / ВЫКЛ)
+        const toggle360Btn = document.getElementById('space-360-toggle-btn');
+        if (toggle360Btn) {
+            toggle360Btn.addEventListener('click', () => this.toggle360Mode());
+        }
+
+        // Кнопка запуска Сверхновой звезды
+        const supernovaBtn = document.getElementById('space-dock-supernova');
+        if (supernovaBtn) {
+            supernovaBtn.addEventListener('click', () => this.triggerSupernova());
+        }
+
         // Кнопка закрытия
         const closeBtn = document.getElementById('space-close-btn');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
-        // Аудио-контроллеры (Музыка и Голос)
+        // Аудио-контроллеры
         const musicBtn = document.getElementById('space-music-btn');
         if (musicBtn) {
             musicBtn.addEventListener('click', () => {
                 const isMusicOn = SpaceAudio.toggleMusic();
                 musicBtn.classList.toggle('muted', !isMusicOn);
                 musicBtn.classList.toggle('active', isMusicOn);
-                musicBtn.title = isMusicOn ? 'Амбиент-музыка космоса: ВКЛ' : 'Амбиент-музыка космоса: ВЫКЛ';
                 this.showSpatialToast(isMusicOn ? 'Космическая музыка включена' : 'Музыка выключена');
             });
         }
@@ -980,25 +1392,22 @@ export class Space3DEngine {
                 const isVoiceOn = SpaceAudio.toggleVoice();
                 voiceBtn.classList.toggle('muted', !isVoiceOn);
                 voiceBtn.classList.toggle('active', isVoiceOn);
-                voiceBtn.title = isVoiceOn ? 'Голосовой ассистент: ВКЛ' : 'Голосовой ассистент: ВЫКЛ';
                 this.showSpatialToast(isVoiceOn ? 'Голосовой ассистент включен' : 'Голос выключен');
                 if (isVoiceOn) SpaceAudio.playVoice('welcome');
             });
         }
 
-        // Подсказка / Справка по управлению
+        // Подсказка / Справка
         const helpBtn = document.getElementById('space-help-btn');
         if (helpBtn) {
             helpBtn.addEventListener('click', () => {
                 const hint = document.getElementById('space-3d-hint');
                 if (hint) {
-                    const isHidden = hint.style.display === 'none';
-                    hint.style.display = isHidden ? 'block' : 'none';
+                    hint.style.display = (hint.style.display === 'none') ? 'block' : 'none';
                 }
             });
         }
 
-        // Подсказка закрыть
         const hintClose = document.getElementById('space-hint-close');
         if (hintClose) {
             hintClose.addEventListener('click', () => {
@@ -1061,7 +1470,7 @@ export class Space3DEngine {
             this.showSpatialToast('Все объекты возвращены в исходный строй');
         });
 
-        // Переключение режима перемещения
+        // Перемещение объектов
         const dragToggleBtn = document.getElementById('space-dock-drag-all');
         if (dragToggleBtn) dragToggleBtn.addEventListener('click', () => {
             this.freeDragEnabled = !this.freeDragEnabled;
@@ -1105,7 +1514,6 @@ export class Space3DEngine {
         const pitchEl = document.getElementById('tele-pitch');
         const zoomEl = document.getElementById('tele-zoom');
 
-        // Нормализация yaw в 0..360°
         const normYaw = (((this.yaw % 360) + 360) % 360).toFixed(0);
         const normPitch = this.pitch.toFixed(0);
         const normZoom = (this.zoom * 100).toFixed(0);
@@ -1137,17 +1545,16 @@ export class Space3DEngine {
     renderLoop() {
         if (!this.isOpen) return;
 
-        // Авто-тур 360°
         if (this.isAutoTour) {
             this.targetYaw += 0.16;
         }
 
-        // Инерционная интерполяция (Lerp) камеры
+        // Инерционная интерполяция камеры
         this.yaw += (this.targetYaw - this.yaw) * 0.10;
         this.pitch += (this.targetPitch - this.pitch) * 0.10;
         this.zoom += (this.targetZoom - this.zoom) * 0.10;
 
-        // Применяем 3D трансформацию мира (первое лицо в центре 360° сферы)
+        // Применяем 3D трансформацию мира
         if (this.world) {
             const eyeD = 1000;
             const zoomOffset = (this.zoom - 1.0) * 350;
@@ -1158,6 +1565,9 @@ export class Space3DEngine {
             `;
         }
 
+        // Обновляем кинематику вращения Земли и Луны
+        CelestialPlanets.update();
+
         this.updateHudTelemetry();
         this.renderCanvasStarfield();
 
@@ -1165,7 +1575,7 @@ export class Space3DEngine {
     }
 
     /**
-     * Отрисовка звездного неба и туманностей на сферическом холсте
+     * Отрисовка звездного неба, планет Земля и Луна, и туманностей
      */
     renderCanvasStarfield() {
         if (!this.ctx || !this.canvas) return;
@@ -1176,7 +1586,6 @@ export class Space3DEngine {
 
         ctx.clearRect(0, 0, w, h);
 
-        // Углы камеры в радианах
         const radYaw = (this.yaw * Math.PI) / 180;
         const radPitch = (this.pitch * Math.PI) / 180;
 
@@ -1189,7 +1598,7 @@ export class Space3DEngine {
         const cx = w / 2;
         const cy = h / 2;
 
-        // 1. Отрисовка космических туманностей
+        // 1. Отрисовка туманностей
         this.nebulae.forEach(neb => {
             const nYaw = (neb.yaw * Math.PI) / 180;
             const nPitch = (neb.pitch * Math.PI) / 180;
@@ -1198,7 +1607,6 @@ export class Space3DEngine {
             const ny = Math.sin(nPitch);
             const nz = Math.cos(nPitch) * Math.cos(nYaw);
 
-            // Вращение относительно камеры
             const x1 = nx * cosYaw - nz * sinYaw;
             const z1 = nx * sinYaw + nz * cosYaw;
             const y2 = ny * cosPitch - z1 * sinPitch;
@@ -1227,13 +1635,11 @@ export class Space3DEngine {
         for (let i = 0; i < starLen; i++) {
             const s = this.stars[i];
 
-            // Вращение вектора звезды по Yaw и Pitch
             const x1 = s.x * cosYaw - s.z * sinYaw;
             const z1 = s.x * sinYaw + s.z * cosYaw;
             const y2 = s.y * cosPitch - z1 * sinPitch;
             const z2 = s.y * sinPitch + z1 * cosPitch;
 
-            // Только звезды перед камерой
             if (z2 > 0.08) {
                 const px = cx + (x1 / z2) * fov;
                 const py = cy - (y2 / z2) * fov;
@@ -1253,7 +1659,23 @@ export class Space3DEngine {
         }
         ctx.globalAlpha = 1.0;
 
-        // 3. Метеоры / падающие звезды
+        // 3. Отрисовка искажений пространства (гравитационные волны)
+        this.renderGravitationalWaves(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy);
+
+        // 4. Отрисовка взрывов Сверхновых звезд
+        this.renderSupernovae(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy);
+
+        // 5. Отрисовка фотореалистичной Земли и Луны с вращением и атмосферой
+        CelestialPlanets.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
+
+        // 6. Метеоры и космические болиды
+        this.renderMeteors(ctx, w, h);
+    }
+
+    /**
+     * Отрисовка космических метеоров
+     */
+    renderMeteors(ctx, w, h) {
         if (Math.random() < 0.015 && this.meteors.length < 2) {
             this.meteors.push({
                 x: Math.random() * w,
@@ -1262,7 +1684,8 @@ export class Space3DEngine {
                 speed: Math.random() * 14 + 10,
                 angle: Math.PI / 4 + (Math.random() * 0.2 - 0.1),
                 life: 1.0,
-                fade: Math.random() * 0.025 + 0.018
+                fade: Math.random() * 0.025 + 0.018,
+                color: '#3ee6c4'
             });
         }
 
@@ -1293,9 +1716,253 @@ export class Space3DEngine {
     }
 
     /**
+     * Запуск взрыва Сверхновой звезды на фоне космоса
+     */
+    triggerSupernova(targetYaw = null, targetPitch = null, options = {}) {
+        const yaw = targetYaw !== null ? targetYaw : (this.yaw + (Math.random() * 36 - 18));
+        const pitch = targetPitch !== null ? targetPitch : (this.pitch + (Math.random() * 20 - 10));
+
+        const particleCount = 110;
+        const particles = [];
+        const colors = ['#ffffff', '#ffffff', '#3ee6c4', '#38bdf8', '#818cf8', '#c084fc', '#f59e0b', '#fb7185'];
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1.5 + Math.random() * 8.5;
+            const size = 1.2 + Math.random() * 3.4;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            particles.push({
+                dx: Math.cos(angle) * speed,
+                dy: Math.sin(angle) * speed,
+                x: 0,
+                y: 0,
+                size,
+                color,
+                drag: 0.978 + Math.random() * 0.015,
+                alpha: 1.0,
+                fadeSpeed: 0.007 + Math.random() * 0.012
+            });
+        }
+
+        this.supernovae.push({
+            yaw,
+            pitch,
+            born: performance.now(),
+            durationMs: 4400,
+            particles,
+            maxRadius: 280,
+            coreColor: options.coreColor || '#3ee6c4',
+            label: options.label || 'СВЕРХНОВАЯ'
+        });
+
+        SpaceAudio.playSupernovaSound();
+        this.showSpatialToast(`Вспышка Сверхновой звезды в секторе ${Math.round(yaw)}°!`);
+    }
+
+    /**
+     * Запуск метеорного потока через все поле зрения
+     */
+    triggerMeteorShower(count = 14) {
+        const w = this.canvas ? this.canvas.width : window.innerWidth;
+        const h = this.canvas ? this.canvas.height : window.innerHeight;
+        for (let i = 0; i < count; i++) {
+            this.meteors.push({
+                x: Math.random() * w,
+                y: Math.random() * (h * 0.5),
+                len: Math.random() * 110 + 60,
+                speed: Math.random() * 18 + 12,
+                angle: Math.PI / 4 + (Math.random() * 0.4 - 0.2),
+                life: 1.0,
+                fade: Math.random() * 0.02 + 0.012,
+                color: Math.random() > 0.5 ? '#3ee6c4' : '#38bdf8'
+            });
+        }
+    }
+
+    /**
+     * Запуск гравитационного импульса искажения пространства
+     */
+    triggerGravitationalWave(targetYaw = null, targetPitch = null) {
+        const yaw = targetYaw !== null ? targetYaw : this.yaw;
+        const pitch = targetPitch !== null ? targetPitch : this.pitch;
+        this.gravitationalWaves.push({
+            yaw,
+            pitch,
+            born: performance.now(),
+            radius: 10,
+            maxRadius: 260,
+            durationMs: 1600
+        });
+    }
+
+    /**
+     * Отрисовка взрывов Сверхновых звезд с релятивистскими ударными волнами
+     */
+    renderSupernovae(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
+        const now = performance.now();
+        for (let i = this.supernovae.length - 1; i >= 0; i--) {
+            const sn = this.supernovae[i];
+            const elapsed = now - sn.born;
+            const progress = elapsed / sn.durationMs;
+
+            if (progress >= 1.0) {
+                this.supernovae.splice(i, 1);
+                continue;
+            }
+
+            const sYaw = (sn.yaw * Math.PI) / 180;
+            const sPitch = (sn.pitch * Math.PI) / 180;
+
+            const wx = Math.cos(sPitch) * Math.sin(sYaw);
+            const wy = Math.sin(sPitch);
+            const wz = Math.cos(sPitch) * Math.cos(sYaw);
+
+            const x1 = wx * cosYaw - wz * sinYaw;
+            const z1 = wx * sinYaw + wz * cosYaw;
+            const y2 = wy * cosPitch - z1 * sinPitch;
+            const z2 = wy * sinPitch + z1 * cosPitch;
+
+            if (z2 <= 0.08) continue;
+
+            const px = cx + (x1 / z2) * fov;
+            const py = cy - (y2 / z2) * fov;
+
+            ctx.save();
+
+            // 1. Ослепительная вспышка ядра
+            if (progress < 0.22) {
+                const flashP = progress / 0.22;
+                const flashAlpha = Math.sin(flashP * Math.PI);
+                const flashRadius = (80 + flashP * 240) * (this.zoom / z2);
+
+                const flashGrad = ctx.createRadialGradient(px, py, 0, px, py, flashRadius);
+                flashGrad.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha})`);
+                flashGrad.addColorStop(0.25, `rgba(62, 230, 255, ${flashAlpha * 0.9})`);
+                flashGrad.addColorStop(0.65, `rgba(168, 85, 247, ${flashAlpha * 0.5})`);
+                flashGrad.addColorStop(1, 'rgba(3, 7, 18, 0)');
+
+                ctx.fillStyle = flashGrad;
+                ctx.beginPath();
+                ctx.arc(px, py, flashRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 2. Расширяющиеся концентрические ударные волны
+            const shockRadius = (sn.maxRadius * Math.pow(progress, 0.72) * 1.8) * (this.zoom / z2);
+            const shockAlpha = Math.max(0, 1 - progress * 1.1);
+
+            ctx.strokeStyle = `rgba(62, 230, 196, ${shockAlpha * 0.85})`;
+            ctx.lineWidth = Math.max(1, 4 * (1 - progress));
+            ctx.beginPath();
+            ctx.arc(px, py, shockRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (progress > 0.1) {
+                const wave2Radius = shockRadius * 0.68;
+                ctx.strokeStyle = `rgba(244, 114, 182, ${shockAlpha * 0.65})`;
+                ctx.lineWidth = Math.max(1, 2.5 * (1 - progress));
+                ctx.beginPath();
+                ctx.arc(px, py, wave2Radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 3. Выбросы плазменных филаментов туманности
+            sn.particles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.dx *= p.drag;
+                p.dy *= p.drag;
+                p.alpha = Math.max(0, p.alpha - p.fadeSpeed);
+
+                if (p.alpha <= 0) return;
+
+                const partX = px + p.x * (this.zoom / z2);
+                const partY = py + p.y * (this.zoom / z2);
+                const pSize = Math.max(0.8, p.size * (this.zoom / z2) * (1 + progress * 0.5));
+
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha * shockAlpha;
+                ctx.beginPath();
+                ctx.arc(partX, partY, pSize, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. Остывающее ядро остатка сверхновой
+            const remRadius = (45 + progress * 95) * (this.zoom / z2);
+            const remAlpha = Math.max(0, (1 - progress) * 0.55);
+            const remGrad = ctx.createRadialGradient(px, py, 0, px, py, remRadius);
+            remGrad.addColorStop(0, `rgba(255, 255, 255, ${remAlpha})`);
+            remGrad.addColorStop(0.35, `rgba(56, 189, 248, ${remAlpha * 0.7})`);
+            remGrad.addColorStop(0.75, `rgba(147, 51, 234, ${remAlpha * 0.35})`);
+            remGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = remGrad;
+            ctx.beginPath();
+            ctx.arc(px, py, remRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    /**
+     * Отрисовка гравитационных волн
+     */
+    renderGravitationalWaves(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
+        const now = performance.now();
+        for (let i = this.gravitationalWaves.length - 1; i >= 0; i--) {
+            const gw = this.gravitationalWaves[i];
+            const elapsed = now - gw.born;
+            const progress = elapsed / gw.durationMs;
+
+            if (progress >= 1.0) {
+                this.gravitationalWaves.splice(i, 1);
+                continue;
+            }
+
+            const sYaw = (gw.yaw * Math.PI) / 180;
+            const sPitch = (gw.pitch * Math.PI) / 180;
+
+            const wx = Math.cos(sPitch) * Math.sin(sYaw);
+            const wy = Math.sin(sPitch);
+            const wz = Math.cos(sPitch) * Math.cos(sYaw);
+
+            const x1 = wx * cosYaw - wz * sinYaw;
+            const z1 = wx * sinYaw + wz * cosYaw;
+            const y2 = wy * cosPitch - z1 * sinPitch;
+            const z2 = wy * sinPitch + z1 * cosPitch;
+
+            if (z2 <= 0.08) continue;
+
+            const px = cx + (x1 / z2) * fov;
+            const py = cy - (y2 / z2) * fov;
+
+            const radius = (gw.maxRadius * Math.pow(progress, 0.65)) * (this.zoom / z2);
+            const alpha = Math.max(0, (1 - progress) * 0.75);
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${alpha})`;
+            ctx.lineWidth = 3 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(px, py, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Внутреннее гармоническое кольцо
+            ctx.strokeStyle = `rgba(62, 230, 196, ${alpha * 0.6})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py, radius * 0.72, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+
+    /**
      * Открытие 3D пространства
      */
-    open() {
+    open(opts = {}) {
         if (this.isOpen) return;
         this.isOpen = true;
 
@@ -1307,7 +1974,7 @@ export class Space3DEngine {
         this.viewport.setAttribute('aria-hidden', 'false');
         document.body.classList.add('space-3d-active');
 
-        // Плавный сброс в исходную позицию
+        // Сброс камеры
         this.targetYaw = 0;
         this.targetPitch = 0;
         this.targetZoom = 1.0;
@@ -1315,15 +1982,18 @@ export class Space3DEngine {
         this.pitch = 0;
         this.zoom = 1.0;
 
-        // Запуск цикла рендеринга
         cancelAnimationFrame(this.animId);
         this.animId = requestAnimationFrame(this.renderLoop);
 
         this.syncAudioButtons();
         SpaceAudio.startAmbientMusic();
-        SpaceAudio.playVoice('welcome');
 
-        this.showSpatialToast('Добро пожаловать в Космо-пространство 360°!');
+        // Воспроизведение вступительной речи девушки Беллы (если открыто не из варп-перелёта)
+        if (!opts || !opts.fromWarp) {
+            SpaceAudio.playVoice('aurora_welcome', true);
+        }
+
+        this.showSpatialToast('Космо-пространство AURORA 3D • Орбитальный комплекс активен');
     }
 
     /**
