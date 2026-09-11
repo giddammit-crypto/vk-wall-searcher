@@ -266,17 +266,20 @@ export function createPostCard(post) {
     const div = document.createElement('div');
     div.className = 'post-card';
     
-    enrichTargetWithCanonical(post.targetInfo);
-    const displayName = post.targetInfo.canonicalName || post.targetInfo.name;
-    const postLink = `https://vk.com/wall${post.targetInfo.id}_${post.id}`;
+    const target = post.targetInfo || post.canonicalBranch || { name: post.sourceName || 'Библиотека', id: Math.abs(post.owner_id || 0) };
+    enrichTargetWithCanonical(target);
+    post.targetInfo = target;
+    const displayName = target.canonicalName || target.name || 'Библиотека';
+    const postLink = `https://vk.com/wall${target.id || Math.abs(post.owner_id || 0)}_${post.id}`;
+    const dateStr = post.humanDate || (post.date ? formatHumanDate(post.date) : '');
     
     // Header
     const headerHtml = `
         <div class="post-card-header">
-            ${renderBranchAvatarHtml(post.targetInfo, 'md', 'author-avatar-wrap')}
+            ${renderBranchAvatarHtml(target, 'md', 'author-avatar-wrap')}
             <div class="author-info">
                 <span class="author-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
-                <span class="post-date">${post.humanDate}</span>
+                <span class="post-date">${dateStr}</span>
             </div>
         </div>
     `;
@@ -502,9 +505,11 @@ export function openPostModal(post) {
     const content = document.getElementById('post-modal-content');
     if (!modal || !content) return;
 
-    enrichTargetWithCanonical(post.targetInfo);
-    const displayName = post.targetInfo.canonicalName || post.targetInfo.name;
-    const postLink = `https://vk.com/wall${post.targetInfo.id}_${post.id}`;
+    const target = post.targetInfo || post.canonicalBranch || { name: post.sourceName || 'Библиотека', id: Math.abs(post.owner_id || 0) };
+    enrichTargetWithCanonical(target);
+    post.targetInfo = target;
+    const displayName = target.canonicalName || target.name;
+    const postLink = `https://vk.com/wall${target.id || Math.abs(post.owner_id || 0)}_${post.id}`;
 
     const SIZE_PRIORITY = ['w', 'z', 'y', 'x', 'm', 's'];
     function bestPhotoUrl(photoObj) {
