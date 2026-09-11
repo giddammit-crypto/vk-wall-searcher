@@ -10,12 +10,12 @@ import {
     resolveTarget,
     authorCache,
     resolveApiUrl
-} from './api.js?v=3.5.1';
+} from './api.js?v=3.5.2';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.5.1';
+} from './advice.js?v=3.5.2';
 
 import {
     fetchHistory,
@@ -25,7 +25,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.5.1';
+} from './subscribers.js?v=3.5.2';
 
 import {
     fetchUpdaterStatus,
@@ -34,7 +34,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.5.1';
+} from './updater.js?v=3.5.2';
 
 import {
     CANONICAL_BRANCHES,
@@ -45,7 +45,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.5.1';
+} from './branches.js?v=3.5.2';
 
 import {
     calculateKPIs,
@@ -54,7 +54,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.5.1';
+} from './analytics.js?v=3.5.2';
 
 import {
     createPostCard,
@@ -66,7 +66,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.5.1';
+} from './render.js?v=3.5.2';
 
 import {
     exportToCsv,
@@ -76,9 +76,9 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.5.1';
+} from './export.js?v=3.5.2';
 
-import { initTableSorting } from './tablesort.js?v=3.5.1';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.5.2';
 
 function initApp() {
 
@@ -237,6 +237,11 @@ function initApp() {
         downloadDocBtn: document.getElementById('download-doc-btn'),
         downloadHtmlBtn: document.getElementById('download-html-btn'),
         printReportBtn: document.getElementById('print-report-btn'),
+        quickDocBtn: document.getElementById('quick-doc-btn'),
+        quickPrintBtn: document.getElementById('quick-print-btn'),
+        tabPrintBtn: document.getElementById('tab-print-btn'),
+        tabDocBtn: document.getElementById('tab-doc-btn'),
+        tabCsvBtn: document.getElementById('tab-csv-btn'),
 
         // Tab 3: Analytics & Cross-Posting
         exportRatingCsvBtn: document.getElementById('export-rating-csv-btn'),
@@ -2127,23 +2132,35 @@ function initApp() {
             return `
                 <div class="report-group-section" id="report-group-${idx}">
                     <div class="report-group-title">
-                        <span class="material-symbols-outlined group-toggle-arrow">expand_more</span>
-                        ${renderBranchAvatarHtml(s.info, 'sm')}
-                        <h4 class="report-group-heading">${escapeHtml(s.info.canonicalName || s.info.name)}</h4>
-                        <span class="report-group-badge">${s.postsCount} ${declOfNum(s.postsCount, ['запись', 'записи', 'записей'])}</span>
+                        <div class="report-group-title-left">
+                            <span class="material-symbols-outlined group-toggle-arrow">expand_more</span>
+                            ${renderBranchAvatarHtml(s.info, 'sm')}
+                            <h4 class="report-group-heading">${escapeHtml(s.info.canonicalName || s.info.name)}</h4>
+                            <span class="report-group-badge">${s.postsCount} ${declOfNum(s.postsCount, ['запись', 'записи', 'записей'])}</span>
+                        </div>
+                        <div class="report-group-title-right no-print">
+                            <button type="button" class="btn btn-ghost btn-xs report-branch-print-btn" title="Распечатать официальный отчёт">
+                                <span class="material-symbols-outlined icon">print</span>
+                                <span>Печать</span>
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs report-branch-doc-btn" title="Экспорт в Word">
+                                <span class="material-symbols-outlined icon">description</span>
+                                <span>Word</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="report-group-body">
                         <div class="table-responsive">
                             <table class="report-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:40px; text-align:center;">№</th>
+                                        <th style="width:40px; text-align:center;" class="no-sort" data-no-sort>№</th>
                                         <th style="width:130px;">Дата</th>
                                         <th>Текст публикации</th>
                                         <th style="width:70px; text-align:right;">Лайки</th>
                                         <th style="width:70px; text-align:right;">Репосты</th>
                                         <th style="width:85px; text-align:right;">Просмотры</th>
-                                        <th style="width:110px; text-align:center;">Ссылка</th>
+                                        <th style="width:110px; text-align:center;" class="no-sort" data-no-sort>Ссылка</th>
                                     </tr>
                                 </thead>
                                 <tbody>${rows}</tbody>
@@ -2154,14 +2171,34 @@ function initApp() {
             `;
         }).join('');
 
+        // Make all report tables sortable
+        elements.reportTablesContainer.querySelectorAll('table.report-table').forEach(tbl => {
+            makeTableSortable(tbl);
+        });
+
         // Wire accordion toggle on section title
         elements.reportTablesContainer.querySelectorAll('.report-group-section').forEach(section => {
             const titleEl = section.querySelector('.report-group-title');
             if (titleEl) {
-                titleEl.addEventListener('click', () => {
+                titleEl.addEventListener('click', (e) => {
+                    if (e.target.closest('.report-branch-print-btn') || e.target.closest('.report-branch-doc-btn')) return;
                     section.classList.toggle('expanded');
                 });
             }
+        });
+
+        // Wire branch print and doc buttons
+        elements.reportTablesContainer.querySelectorAll('.report-branch-print-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handlePrint();
+            });
+        });
+        elements.reportTablesContainer.querySelectorAll('.report-branch-doc-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleExportDocx();
+            });
         });
 
         // Wire expand/collapse for shortened post texts in report
@@ -2433,9 +2470,72 @@ function initApp() {
         });
     }
 
-    if (elements.printReportBtn) {
-        elements.printReportBtn.addEventListener('click', openPrintReport);
+    function handleExportCsv() {
+        const posts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
+        if (posts.length === 0) {
+            showToast('Нет данных для экспорта', 'warning');
+            return;
+        }
+        try {
+            exportToCsv(posts);
+            showToast(`Экспортировано ${posts.length} записей в CSV`, 'table_view');
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
     }
+
+    function handleExportDocx() {
+        const posts = state.matchedPosts;
+        if (posts.length === 0) {
+            showToast('Нет данных для экспорта в Word', 'warning');
+            return;
+        }
+        try {
+            // Подписочные тренды для раздела «Динамика подписчиков» в DOC
+            let subsRows = [];
+            try {
+                const series = buildGroupSeries(state.subsHistory || []);
+                const trends = computeTrends(series);
+                subsRows = Array.from(trends.values()).sort((a, b) =>
+                    String(a.branch || a.name || '').localeCompare(String(b.branch || b.name || ''), 'ru', { numeric: true }));
+            } catch (e) { /* раздел подписчиков опционален */ }
+            const meta = {
+                datesFilter: elements.reportDatesFilter?.textContent || '',
+                searchQuery: elements.reportSearchQuery?.textContent || '',
+                generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
+                subscribers: subsRows,
+                appVersion: '3.5.2'
+            };
+            exportToDocx(posts, state.lastGroupsStats || [], meta);
+            showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function handlePrint() {
+        if (state.matchedPosts.length === 0) {
+            showToast('Нет данных для печати отчёта', 'warning');
+            return;
+        }
+        // Switch to report tab if not active so DOM is visible
+        const reportTabBtn = document.querySelector('.tab-btn[data-tab="report-tab"]');
+        if (reportTabBtn && !reportTabBtn.classList.contains('active')) {
+            reportTabBtn.click();
+        }
+        // Expand all sections so all rows print
+        if (elements.reportTablesContainer) {
+            elements.reportTablesContainer.querySelectorAll('.report-group-section').forEach(s => s.classList.add('expanded'));
+        }
+        setTimeout(() => {
+            openPrintReport();
+        }, 150);
+    }
+
+    // Print buttons
+    if (elements.printReportBtn) elements.printReportBtn.addEventListener('click', handlePrint);
+    if (elements.quickPrintBtn) elements.quickPrintBtn.addEventListener('click', handlePrint);
+    if (elements.tabPrintBtn) elements.tabPrintBtn.addEventListener('click', handlePrint);
 
     // =========================================================================
     // 12. Tabs Navigation
@@ -2476,38 +2576,15 @@ function initApp() {
     // =========================================================================
     // 13. Export & Share Handlers
     // =========================================================================
-    if (elements.exportCsvBtn) {
-        elements.exportCsvBtn.addEventListener('click', () => {
-            const posts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
-            if (posts.length === 0) {
-                showToast('Нет данных для экспорта', 'warning');
-                return;
-            }
-            try {
-                exportToCsv(posts);
-                showToast(`Экспортировано ${posts.length} записей в CSV`, 'table_view');
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        });
-    }
+    // CSV Export buttons
+    if (elements.exportCsvBtn) elements.exportCsvBtn.addEventListener('click', handleExportCsv);
+    if (elements.downloadCsvBtn) elements.downloadCsvBtn.addEventListener('click', handleExportCsv);
+    if (elements.tabCsvBtn) elements.tabCsvBtn.addEventListener('click', handleExportCsv);
 
-    // Report Tab: Export CSV
-    if (elements.downloadCsvBtn) {
-        elements.downloadCsvBtn.addEventListener('click', () => {
-            const posts = state.matchedPosts;
-            if (posts.length === 0) {
-                showToast('Нет данных для экспорта', 'warning');
-                return;
-            }
-            try {
-                exportToCsv(posts);
-                showToast(`Экспортировано ${posts.length} записей в CSV`, 'table_view');
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        });
-    }
+    // Word (DOCX) Export buttons
+    if (elements.downloadDocBtn) elements.downloadDocBtn.addEventListener('click', handleExportDocx);
+    if (elements.quickDocBtn) elements.quickDocBtn.addEventListener('click', handleExportDocx);
+    if (elements.tabDocBtn) elements.tabDocBtn.addEventListener('click', handleExportDocx);
 
     // Report Tab: Export JSON
     if (elements.downloadJsonBtn) {
@@ -2520,38 +2597,6 @@ function initApp() {
             try {
                 exportToJson(posts, state.lastGroupsStats || []);
                 showToast(`Экспортировано в JSON (${posts.length} записей)`, 'data_object');
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        });
-    }
-
-    // Report Tab: Export Word DOC
-    if (elements.downloadDocBtn) {
-        elements.downloadDocBtn.addEventListener('click', () => {
-            const posts = state.matchedPosts;
-            if (posts.length === 0) {
-                showToast('Нет данных для экспорта в Word', 'warning');
-                return;
-            }
-            try {
-                // Подписочные тренды для раздела «Динамика подписчиков» в DOC
-                let subsRows = [];
-                try {
-                    const series = buildGroupSeries(state.subsHistory || []);
-                    const trends = computeTrends(series);
-                    subsRows = Array.from(trends.values()).sort((a, b) =>
-                        String(a.branch || a.name || '').localeCompare(String(b.branch || b.name || ''), 'ru', { numeric: true }));
-                } catch (e) { /* раздел подписчиков опционален */ }
-                const meta = {
-                    datesFilter: elements.reportDatesFilter?.textContent || '',
-                    searchQuery: elements.reportSearchQuery?.textContent || '',
-                    generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
-                    subscribers: subsRows,
-                    appVersion: '3.4.2'
-                };
-                exportToDocx(posts, state.lastGroupsStats || [], meta);
-                showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
             } catch (err) {
                 showToast(err.message, 'error');
             }

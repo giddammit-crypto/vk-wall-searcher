@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.5.1",
+    "version": "3.5.2",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-11T20:08:00+03:00",
-    "release_name": "AURORA 3.5.1 — Экспорт makeTableSortable, восстановление списка филиалов и работоспособности кнопок"
+    "commit_date": "2026-09-11T20:35:00+03:00",
+    "release_name": "AURORA 3.5.2 — Исправление закрепления заголовков таблиц, удаление глича подсказок, постоянные кнопки экспорта и печати"
 }

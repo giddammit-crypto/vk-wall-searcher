@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.5.1">
+    <link rel="stylesheet" href="style.css?v=3.5.2">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -472,34 +472,50 @@
 
                 <!-- Result Navigation Tabs -->
                 <div class="tabs-container no-print">
-                    <button class="tab-btn active" data-tab="visual-tab">
-                        <span class="material-symbols-outlined icon">grid_view</span>
-                        <span>Карточки записей</span>
-                        <span class="tab-badge" id="count-visual">0</span>
-                    </button>
-                    <button class="tab-btn" data-tab="report-tab">
-                        <span class="material-symbols-outlined icon">table_chart</span>
-                        <span>Отчёт с ссылками</span>
-                        <span class="tab-badge" id="count-report">0</span>
-                    </button>
-                    <button class="tab-btn" data-tab="analytics-tab">
-                        <span class="material-symbols-outlined icon">leaderboard</span>
-                        <span>Рейтинг активности</span>
-                        <span class="tab-badge" id="count-analytics">0</span>
-                    </button>
-                    <button class="tab-btn" data-tab="summary-tab">
-                        <span class="material-symbols-outlined icon">article</span>
-                        <span>Пояснительная записка и хэштеги</span>
-                    </button>
-                    <button class="tab-btn" data-tab="advice-tab">
-                        <span class="material-symbols-outlined icon">lightbulb</span>
-                        <span>Советы филиалам</span>
-                        <span class="tab-badge" id="count-advice">0</span>
-                    </button>
-                    <button class="tab-btn" data-tab="subscribers-tab">
-                        <span class="material-symbols-outlined icon">trending_up</span>
-                        <span>Подписчики</span>
-                    </button>
+                    <div class="tabs-nav-scroll">
+                        <button class="tab-btn active" data-tab="visual-tab">
+                            <span class="material-symbols-outlined icon">grid_view</span>
+                            <span>Карточки записей</span>
+                            <span class="tab-badge" id="count-visual">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="report-tab">
+                            <span class="material-symbols-outlined icon">table_chart</span>
+                            <span>Отчёт с ссылками</span>
+                            <span class="tab-badge" id="count-report">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="analytics-tab">
+                            <span class="material-symbols-outlined icon">leaderboard</span>
+                            <span>Рейтинг активности</span>
+                            <span class="tab-badge" id="count-analytics">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="summary-tab">
+                            <span class="material-symbols-outlined icon">article</span>
+                            <span>Пояснительная записка и хэштеги</span>
+                        </button>
+                        <button class="tab-btn" data-tab="advice-tab">
+                            <span class="material-symbols-outlined icon">lightbulb</span>
+                            <span>Советы филиалам</span>
+                            <span class="tab-badge" id="count-advice">0</span>
+                        </button>
+                        <button class="tab-btn" data-tab="subscribers-tab">
+                            <span class="material-symbols-outlined icon">trending_up</span>
+                            <span>Подписчики</span>
+                        </button>
+                    </div>
+                    <div class="tabs-actions-right">
+                        <button id="tab-print-btn" class="btn btn-primary btn-sm" title="Распечатать официальный отчёт">
+                            <span class="material-symbols-outlined icon">print</span>
+                            <span>Печать</span>
+                        </button>
+                        <button id="tab-doc-btn" class="btn btn-secondary btn-sm" title="Экспорт отчёта в Microsoft Word (.docx)">
+                            <span class="material-symbols-outlined icon">description</span>
+                            <span>Word</span>
+                        </button>
+                        <button id="tab-csv-btn" class="btn btn-secondary btn-sm" title="Экспорт таблицы в CSV">
+                            <span class="material-symbols-outlined icon">table_view</span>
+                            <span>CSV</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Tab 1: Visual Cards Grid -->
@@ -525,6 +541,14 @@
                             <button id="export-csv-btn" class="btn btn-secondary btn-sm">
                                 <span class="material-symbols-outlined icon">table_view</span>
                                 <span>CSV</span>
+                            </button>
+                            <button id="quick-doc-btn" class="btn btn-secondary btn-sm" title="Экспорт отчёта в Microsoft Word">
+                                <span class="material-symbols-outlined icon">description</span>
+                                <span>Word</span>
+                            </button>
+                            <button id="quick-print-btn" class="btn btn-primary btn-sm" title="Распечатать отчёт">
+                                <span class="material-symbols-outlined icon">print</span>
+                                <span>Печать</span>
                             </button>
                             <button id="share-link-btn" class="btn btn-secondary btn-sm">
                                 <span class="material-symbols-outlined icon">share</span>
@@ -1268,7 +1292,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.5.1"></script>
+    <script type="module" src="src/app.js?v=3.5.2"></script>
 
     <script>
     /* =============================================================

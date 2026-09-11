@@ -166,6 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
         downloadDocBtn: document.getElementById('download-doc-btn'),
         downloadHtmlBtn: document.getElementById('download-html-btn'),
         printReportBtn: document.getElementById('print-report-btn'),
+        quickDocBtn: document.getElementById('quick-doc-btn'),
+        quickPrintBtn: document.getElementById('quick-print-btn'),
+        tabPrintBtn: document.getElementById('tab-print-btn'),
+        tabDocBtn: document.getElementById('tab-doc-btn'),
+        tabCsvBtn: document.getElementById('tab-csv-btn'),
         completionModal: document.getElementById('completion-modal'),
         modalCloseBtn: document.getElementById('modal-close-btn'),
         modalStatScanned: document.getElementById('modal-stat-scanned'),
@@ -1145,12 +1150,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 `<span class="icon">📁</span> Свернуть все`;
         });
     }
-    elements.copyReportBtn.addEventListener('click', copyReportToClipboard);
-    elements.downloadCsvBtn.addEventListener('click', downloadCSV);
-    elements.downloadJsonBtn.addEventListener('click', downloadJSON);
-    elements.downloadDocBtn.addEventListener('click', downloadDOC);
-    elements.downloadHtmlBtn.addEventListener('click', downloadHTML);
-    elements.printReportBtn.addEventListener('click', () => window.print());
+    const triggerPrint = () => {
+        const reportTabBtn = document.querySelector('.tab-btn[data-tab="report-tab"]');
+        if (reportTabBtn && !reportTabBtn.classList.contains('active')) {
+            reportTabBtn.click();
+        }
+        document.querySelectorAll('.report-group-section').forEach(s => s.classList.add('expanded'));
+        setTimeout(() => window.print(), 150);
+    };
+
+    if (elements.copyReportBtn) elements.copyReportBtn.addEventListener('click', copyReportToClipboard);
+    if (elements.downloadCsvBtn) elements.downloadCsvBtn.addEventListener('click', downloadCSV);
+    if (elements.tabCsvBtn) elements.tabCsvBtn.addEventListener('click', downloadCSV);
+    if (elements.downloadJsonBtn) elements.downloadJsonBtn.addEventListener('click', downloadJSON);
+    if (elements.downloadDocBtn) elements.downloadDocBtn.addEventListener('click', downloadDOC);
+    if (elements.quickDocBtn) elements.quickDocBtn.addEventListener('click', downloadDOC);
+    if (elements.tabDocBtn) elements.tabDocBtn.addEventListener('click', downloadDOC);
+    if (elements.downloadHtmlBtn) elements.downloadHtmlBtn.addEventListener('click', downloadHTML);
+    if (elements.printReportBtn) elements.printReportBtn.addEventListener('click', triggerPrint);
+    if (elements.quickPrintBtn) elements.quickPrintBtn.addEventListener('click', triggerPrint);
+    if (elements.tabPrintBtn) elements.tabPrintBtn.addEventListener('click', triggerPrint);
     elements.modalCloseBtn.addEventListener('click', () => {
         elements.completionModal.classList.add('hidden');
     });
@@ -5187,7 +5206,7 @@ ${dangerList}
             if (!table) return;
             if (th.dataset.noSort !== undefined || th.classList.contains('no-sort')) return;
             const title = th.textContent.trim();
-            if (title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
+            if (title === '№' || title === '#' || title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
 
             const tbody = table.querySelector('tbody');
             if (!tbody) return;

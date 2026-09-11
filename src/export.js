@@ -557,6 +557,13 @@ export async function exportPhotosZip(posts, onProgress) {
  * Trigger Print Report
  */
 export function openPrintReport() {
-    window.print();
+    const reportTabBtn = document.querySelector('.tab-btn[data-tab="report-tab"]');
+    if (reportTabBtn && !reportTabBtn.classList.contains('active')) {
+        reportTabBtn.click();
+    }
+    document.querySelectorAll('.report-group-section').forEach(s => s.classList.add('expanded'));
+    setTimeout(() => {
+        window.print();
+    }, 120);
 }
 

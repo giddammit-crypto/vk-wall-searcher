@@ -1390,12 +1390,43 @@ input::placeholder { color: var(--text-tertiary); }
    Tabs — Glassmorphism Pills
    ========================================================================== */
 .tabs-container {
-    display: flex; background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    padding: 5px;
-    border-radius: var(--radius); margin-bottom: 1.5rem; gap: 6px;
+    padding: 5px 8px;
+    border-radius: var(--radius); margin-bottom: 1.5rem; gap: 10px;
     border: 1px solid var(--hairline);
+    position: sticky;
+    top: 6px;
+    z-index: 60;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+.tabs-nav-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.tabs-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+.tabs-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.tabs-actions-right .btn {
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+    font-weight: 600;
 }
 .tab-btn {
     background: transparent; border: none; padding: 11px 22px;
@@ -1558,7 +1589,8 @@ input::placeholder { color: var(--text-tertiary); }
     .analytics-card .table-responsive { overflow: visible; }
 }
 .report-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.875rem; background: transparent; }
-.report-table th {
+.report-table th,
+.report-table th.th-sortable {
     background: var(--surface);
     color: var(--muted);
     font-family: var(--font-mono);
@@ -1570,9 +1602,9 @@ input::placeholder { color: var(--text-tertiary); }
     border-bottom: 2px solid var(--border-color);
     border-right: 1px solid var(--divider-color);
     /* ── Sticky header: pins cleanly below the sticky group title ── */
-    position: sticky;
-    top: 50px;
-    z-index: 25;
+    position: sticky !important;
+    top: 104px;
+    z-index: 30;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.12);
@@ -1599,9 +1631,10 @@ input::placeholder { color: var(--text-tertiary); }
 }
 .report-group-title {
     background: var(--surface);
-    padding: 12px 18px;
+    padding: 10px 16px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
     cursor: pointer;
     font-weight: 600;
@@ -1609,10 +1642,10 @@ input::placeholder { color: var(--text-tertiary); }
     transition: background var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
     border-bottom: 1px solid transparent;
     border-radius: var(--radius-md);
-    /* ── Sticky group title at top of screen ── */
+    /* ── Sticky group title below sticky tabs ── */
     position: sticky;
-    top: 0;
-    z-index: 30;
+    top: 58px;
+    z-index: 40;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 }
@@ -1622,10 +1655,28 @@ input::placeholder { color: var(--text-tertiary); }
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
 }
+.report-group-title-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.report-group-title-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.report-group-title-right .btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
 .group-toggle-arrow { color: var(--muted); transition: transform var(--duration-md) var(--ease); font-size: 22px; flex-shrink: 0; }
 .report-group-section.expanded .group-toggle-arrow { transform: rotate(180deg); color: var(--accent); }
 .report-group-heading { font-size: 0.9375rem; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; }
-.report-group-badge { font-size: 0.8125rem; color: var(--accent); font-family: var(--font-mono); font-weight: 600; padding: 2px 10px; background: var(--accent-soft); border: 1px solid var(--accent-medium); border-radius: var(--radius-pill); }
+.report-group-badge { font-size: 0.8125rem; color: var(--accent); font-family: var(--font-mono); font-weight: 600; padding: 2px 10px; background: var(--accent-soft); border: 1px solid var(--accent-medium); border-radius: var(--radius-pill); white-space: nowrap; }
 .report-group-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--hairline); }
 .report-group-body {
     display: none;
@@ -2457,11 +2508,16 @@ input::placeholder { color: var(--text-tertiary); }
 @media print {
     body { background: #fff !important; color: #000 !important; padding: 0 !important; }
     .no-print { display: none !important; }
-    .report-document { box-shadow: none !important; border: none !important; padding: 0 !important; }
+    .tab-content { display: none !important; }
+    #report-tab { display: block !important; }
+    .report-document { box-shadow: none !important; border: none !important; padding: 0 !important; display: block !important; }
     .passport-cell { background: #f4f3ef !important; border: 1px solid #ccc !important; }
-    .report-table th { background: #f4f3ef !important; color: #000 !important; border: 1px solid #ccc !important; }
+    .report-table th { background: #f4f3ef !important; color: #000 !important; border: 1px solid #ccc !important; position: static !important; }
     .report-table td { border: 1px solid #ccc !important; color: #000 !important; }
+    .report-group-section { break-inside: avoid; border: none !important; margin-bottom: 20px !important; }
+    .report-group-title { position: static !important; background: #e5e7eb !important; color: #000 !important; }
     .report-group-body { display: block !important; }
+    .report-table { display: table !important; width: 100% !important; }
 }
 
 /* ==========================================================================
@@ -4340,7 +4396,6 @@ select:focus {
 table th.th-sortable {
     cursor: pointer !important;
     user-select: none !important;
-    position: relative;
     transition: background-color var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 table th.th-sortable:hover {
@@ -4573,7 +4628,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    не считаются layout'ом, пока не появятся рядом с viewport */
 .post-card,
 .advice-branch-card,
-.report-group-section,
 .tab-content:not(.active-content) {
     content-visibility: auto;
     contain-intrinsic-size: auto 480px;
@@ -4587,7 +4641,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 @media (max-width: 768px) {
-    .tabs-container { top: 4px; }
+    .tabs-container {
+        top: 4px;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 8px;
+    }
+    .tabs-actions-right {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .tabs-actions-right .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    .report-group-title {
+        top: 90px;
+    }
+    .report-table th,
+    .report-table th.th-sortable {
+        top: 134px;
+    }
 }
 
 /* Узкие экраны: сетка советов не должна выходить за контейнер */

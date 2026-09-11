@@ -148,25 +148,27 @@ export function initTableSorting() {
         const table = th.closest('table');
         if (!table) return;
 
-        // Не сортируем по колонкам действий или колонкам с data-no-sort
+        // Не сортируем по колонкам действий, номеров или колонкам с data-no-sort
         if (th.dataset.noSort !== undefined || th.classList.contains('no-sort')) return;
         const title = th.textContent.trim();
-        if (title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
+        if (title === '№' || title === '#' || title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
 
         sortTableByColumn(table, th);
     });
 
-    // Добавляем класс th-sortable ко всем заголовкам при наведении
+    // Добавляем класс th-sortable ко всем сортируемым заголовкам при наведении
     document.addEventListener('mouseover', (e) => {
         const th = e.target.closest('th');
         if (!th) return;
         if (th.dataset.noSort !== undefined || th.classList.contains('no-sort')) return;
         const title = th.textContent.trim();
-        if (title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
+        if (title === '№' || title === '#' || title === 'Действие' || title === 'Действия' || title === 'Ссылка' || title === 'Пост') return;
 
         if (!th.classList.contains('th-sortable')) {
             th.classList.add('th-sortable');
-            if (!th.title) th.title = 'Нажмите для сортировки';
+        }
+        if (th.title === 'Нажмите для сортировки') {
+            th.removeAttribute('title');
         }
     });
 }
@@ -180,10 +182,12 @@ export function makeTableSortable(tableEl) {
     tableEl.querySelectorAll('th').forEach(th => {
         if (th.dataset.noSort === undefined && !th.classList.contains('no-sort')) {
             const title = th.textContent.trim();
-            if (title !== 'Действие' && title !== 'Действия' && title !== 'Ссылка' && title !== 'Пост') {
+            if (title !== '№' && title !== '#' && title !== 'Действие' && title !== 'Действия' && title !== 'Ссылка' && title !== 'Пост') {
                 th.classList.add('th-sortable');
-                if (!th.title) th.title = 'Нажмите для сортировки';
             }
+        }
+        if (th.title === 'Нажмите для сортировки') {
+            th.removeAttribute('title');
         }
     });
 }
