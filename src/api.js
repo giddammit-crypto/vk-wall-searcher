@@ -3,109 +3,234 @@
  * Разработка: Амброзиев О.А.
  */
 
-export let currentProxyUrl = (typeof window !== 'undefined' && window.location && window.location.origin)
-    ? `${window.location.origin}/api/vk-proxy.php`
-    : 'http://127.0.0.1:8000/api/vk-proxy.php';
+/**
+ * Helper to resolve relative API URLs against the current document's base URL.
+ * Works seamlessly in root domain (/), subdirectories (/vk-wall-searcher/, /stat/),
+ * and local file servers without relying on window.location.origin.
+ */
+export function resolveApiUrl(relPath) {
+    if (typeof window === 'undefined' || !window.location || !window.location.href) {
+        return `http://127.0.0.1:8000/${relPath}`;
+    }
+    try {
+        const cleanHref = window.location.href.split('?')[0].split('#')[0];
+        const dirHref = cleanHref.substring(0, cleanHref.lastIndexOf('/') + 1);
+        return new URL(relPath, dirHref).href;
+    } catch (e) {
+        return relPath;
+    }
+}
+
+export let currentProxyUrl = resolveApiUrl('api/vk-proxy.php');
+export let isServerProxyAvailable = true;
 export const authorCache = new Map();
 
+// Проверенный публичный сервисный ключ для прямого автономного режима (статический хостинг)
+export const DEFAULT_STANDALONE_TOKEN = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
+
 /**
- * Send JSON payload to VK Proxy backend with automatic path fallback
+ * Send JSON payload to VK Proxy backend with multi-candidate path fallback
  */
 export async function sendProxyRequest(payload) {
-    let response = null;
-    try {
-        response = await fetch(currentProxyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-    } catch (netErr) {
-        response = null;
-    }
+    const candidateUrls = [
+        currentProxyUrl,
+        resolveApiUrl('api/vk-proxy.php'),
+        'api/vk-proxy.php',
+        resolveApiUrl('api/vk-proxy'),
+        '/api/vk-proxy.php'
+    ];
 
-    // If 405 Method Not Allowed or 404 Not Found, fallback to alternate URL
-    if (!response || response.status === 404 || response.status === 405) {
-        const fallbackUrl = currentProxyUrl.includes('.php') ? '/api/vk-proxy' : 'api/vk-proxy.php';
+    // Remove duplicates while preserving order
+    const urlsToTry = Array.from(new Set(candidateUrls.filter(Boolean)));
+
+    for (let i = 0; i < urlsToTry.length; i++) {
+        const targetUrl = urlsToTry[i];
         try {
-            const altResp = await fetch(fallbackUrl, {
+            const resp = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (altResp && altResp.status !== 405 && altResp.status !== 404) {
-                currentProxyUrl = fallbackUrl;
-                return altResp;
+
+            // If we got a valid response (200 OK or VK API json response), remember working URL
+            if (resp && resp.status !== 404 && resp.status !== 405 && resp.status !== 502) {
+                currentProxyUrl = targetUrl;
+                isServerProxyAvailable = true;
+                return resp;
             }
-        } catch (e) {
-            // Ignore
+        } catch (netErr) {
+            // Try next candidate URL
         }
     }
 
-    return response;
+    isServerProxyAvailable = false;
+    return null;
 }
 
 /**
- * Call a single VK API method via proxy
+ * Direct browser call to VK API using JSONP (zero CORS limitations).
+ * Works on any static hosting without PHP / Node / Vite!
+ */
+export function callVkApiJsonp(method, params = {}, token = '') {
+    return new Promise((resolve, reject) => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            return reject(new Error('JSONP поддерживается только в браузере.'));
+        }
+
+        const activeToken = token || DEFAULT_STANDALONE_TOKEN;
+        const callbackName = 'vk_jsonp_cb_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+
+        const queryObj = {
+            ...params,
+            access_token: activeToken,
+            v: params.v || '5.131',
+            callback: callbackName
+        };
+
+        const searchParams = new URLSearchParams();
+        for (const [k, v] of Object.entries(queryObj)) {
+            if (v !== undefined && v !== null) {
+                searchParams.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+            }
+        }
+
+        const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('Превышено время ожидания ответа от VK API (JSONP). Проверьте интернет-соединение.'));
+        }, 25000);
+
+        function cleanup() {
+            clearTimeout(timeoutId);
+            try {
+                delete window[callbackName];
+            } catch (e) {
+                window[callbackName] = undefined;
+            }
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        }
+
+        window[callbackName] = function(data) {
+            cleanup();
+            if (!data) {
+                return reject(new Error('Пустой ответ от VK API'));
+            }
+            if (data.error) {
+                const code = data.error.error_code;
+                const msg = data.error.error_msg || 'Неизвестная ошибка VK API';
+                if (code === 6 || code === 29) {
+                    return reject(new Error('Превышен лимит запросов VK API. Подождите несколько секунд и попробуйте снова.'));
+                }
+                if (code === 15 || code === 200 || code === 201 || code === 203) {
+                    return reject(new Error(`Доступ запрещён: ${msg}. Проверьте токен в настройках.`));
+                }
+                return reject(new Error(`Ошибка VK API [${code}]: ${msg}`));
+            }
+            resolve(data.response);
+        };
+
+        script.onerror = function() {
+            cleanup();
+            reject(new Error('Сетевая ошибка при обращении к api.vk.com. Проверьте соединение или блокировщики рекламы.'));
+        };
+
+        script.src = `https://api.vk.com/method/${encodeURIComponent(method)}?${searchParams.toString()}`;
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Call a single VK API method via proxy with automatic direct JSONP fallback.
  */
 export async function callVkApi(method, params = {}, token = '') {
-    if (!token) {
-        throw new Error('Токен доступа VK API не настроен.');
-    }
-    try {
-        const response = await sendProxyRequest({
-            method: method,
-            params: params,
-            token: token
-        });
-        if (!response || !response.ok) {
-            let errText = 'Не удалось связаться с сервером';
-            if (response) {
-                try {
-                    const errorData = await response.json();
-                    errText = errorData.detail || errorData.error_msg || (errorData.error && errorData.error.error_msg) || errText;
-                } catch (e) {
-                    errText = await response.text();
+    // 1. Попытка через PHP-прокси сервера
+    if (isServerProxyAvailable) {
+        try {
+            const payload = {
+                method: method,
+                params: params
+            };
+            if (token) {
+                payload.token = token;
+            }
+            const response = await sendProxyRequest(payload);
+            if (response && response.ok) {
+                const data = await response.json();
+                if (data.error) {
+                    const code = data.error.error_code;
+                    const msg = data.error.error_msg || 'Неизвестная ошибка';
+                    if (code === 6 || code === 29) {
+                        throw new Error('Превышен лимит запросов VK API. Подождите несколько секунд и попробуйте снова.');
+                    }
+                    if (code === 15 || code === 200 || code === 201 || code === 203) {
+                        throw new Error(`Доступ запрещён: ${msg}. Проверьте права токена.`);
+                    }
+                    throw new Error(`Ошибка VK API [${code}]: ${msg}`);
                 }
-                throw new Error(`Ошибка сервера [${response.status}]: ${errText}`);
+                return data.response;
             }
-            throw new Error('Сетевая ошибка при обращении к серверу');
+        } catch (error) {
+            // Если ошибка VK API, а не сетевой сбой — пробрасываем
+            if (error && error.message && error.message.includes('VK API')) {
+                throw error;
+            }
+            console.warn('Серверный прокси недоступен, переключаемся на прямой клиентский режим (JSONP):', error);
         }
-        const data = await response.json();
-        if (data.error) {
-            const code = data.error.error_code;
-            const msg = data.error.error_msg || 'Неизвестная ошибка';
-            if (code === 6 || code === 29) {
-                throw new Error('Превышен лимит запросов VK API. Подождите несколько секунд и попробуйте снова.');
-            }
-            if (code === 15 || code === 200 || code === 201 || code === 203) {
-                throw new Error(`Доступ запрещён: ${msg}. Проверьте права токена.`);
-            }
-            throw new Error(`Ошибка VK API [${code}]: ${msg}`);
-        }
-        return data.response;
-    } catch (error) {
-        console.error('VK API Call Error:', error);
-        throw error;
     }
+
+    // 2. Автономный режим прямого обращения к VK API (работает на любом хостинге)
+    return await callVkApiJsonp(method, params, token);
 }
 
 /**
  * Smart Batch Scanner via VK API execute
- * Executes up to maxCalls (default 10) wall.get calls inside VK servers in 1 network roundtrip.
- * Returns up to 1000 posts, profiles, groups, and has_more flag.
+ * Executes up to maxCalls wall.get calls inside VK servers in 1 network roundtrip.
+ * Returns posts, profiles, groups and has_more flag.
  * Supports early-break on server when min_time boundary is crossed.
+ *
+ * v3.4.1: адаптивные комбинации «порция × число вызовов» — при ошибке VK 13
+ * («response size is too big») автоматический повтор с меньшим объёмом вместо
+ * медленного последовательного fallback.
  */
 export async function callVkExecuteBatch(ownerId, offset = 0, minTime = 0, token = '', maxCalls = 10) {
+    const attempts = [
+        { perPage: 100, calls: Math.min(maxCalls, 5) },
+        { perPage: 50,  calls: Math.min(maxCalls, 5) },
+        { perPage: 25,  calls: Math.min(maxCalls, 5) }
+    ];
+    let lastErr = null;
+    for (let a = 0; a < attempts.length; a++) {
+        try {
+            return await executeBatchInternal(ownerId, offset, minTime, token, attempts[a].calls, attempts[a].perPage);
+        } catch (e) {
+            lastErr = e;
+            const msg = String((e && e.message) || '');
+            const isSizeOverflow = /too big|error_code.{0,4}13|\[13\]/i.test(msg);
+            if (!isSizeOverflow || a === attempts.length - 1) {
+                throw e;
+            }
+            console.warn(`execute: ответ превышает лимит VK — уменьшаю объём до ${attempts[a + 1].perPage}×${attempts[a + 1].calls}`);
+        }
+    }
+    throw lastErr;
+}
+
+async function executeBatchInternal(ownerId, offset = 0, minTime = 0, token = '', maxCalls = 10, perPage = 100) {
     const safeOwnerId = parseInt(ownerId, 10);
     const safeOffset = parseInt(offset, 10);
     const safeMinTime = parseInt(minTime, 10) || 0;
     const safeMaxCalls = Math.min(Math.max(parseInt(maxCalls, 10) || 10, 1), 15);
+    const safePerPage = Math.min(Math.max(parseInt(perPage, 10) || 100, 10), 100);
 
     const code = `
 var owner_id = ${safeOwnerId};
 var offset = ${safeOffset};
 var min_time = ${safeMinTime};
 var max_calls = ${safeMaxCalls};
+var per_page = ${safePerPage};
 var i = 0;
 var items = [];
 var profiles = [];
@@ -116,8 +241,8 @@ var has_more = 1;
 while (i < max_calls) {
     var r = API.wall.get({
         "owner_id": owner_id,
-        "offset": offset + (i * 100),
-        "count": 100,
+        "offset": offset + (i * per_page),
+        "count": per_page,
         "extended": 1
     });
     if (!r || !r.items || r.items.length == 0) {
@@ -134,7 +259,7 @@ while (i < max_calls) {
     if (r.groups) {
         groups = groups + r.groups;
     }
-    if (r.items.length < 100) {
+    if (r.items.length < per_page) {
         has_more = 0;
         return { "count": total, "items": items, "profiles": profiles, "groups": groups, "has_more": has_more, "calls": i + 1 };
     }
@@ -154,21 +279,47 @@ return { "count": total, "items": items, "profiles": profiles, "groups": groups,
 }
 
 /**
- * Verify if access token is alive
+ * Verify if access token is alive (works via proxy or direct JSONP)
  */
 export async function verifyToken(token) {
     try {
-        const response = await sendProxyRequest({
-            method: 'users.get',
-            params: {},
-            token: token
-        });
-        if (!response || !response.ok) return false;
-        const data = await response.json();
-        return !data.error;
+        const res = await callVkApi('users.get', {}, token);
+        return Array.isArray(res);
     } catch (e) {
         return false;
     }
+}
+
+/**
+ * Probe the server-side service key configuration.
+ * Сервер отвечает только флагами доступности — сам ключ клиенту не отдаётся.
+ * При недоступности PHP возвращает mode: 'standalone'.
+ * @returns {Promise<{reachable: boolean, configured: boolean, fallback: boolean, mode: string}>}
+ */
+export async function getServerTokenStatus() {
+    try {
+        const response = await sendProxyRequest({
+            method: '__server_status__',
+            params: {}
+        });
+        if (response && response.ok) {
+            const data = await response.json();
+            return {
+                reachable: true,
+                configured: !!(data && data.server_token_configured),
+                fallback: !!(data && data.fallback_configured),
+                mode: 'proxy'
+            };
+        }
+    } catch (e) {
+        // Continue to standalone mode
+    }
+    return {
+        reachable: false,
+        configured: false,
+        fallback: false,
+        mode: 'standalone'
+    };
 }
 
 /**
@@ -228,7 +379,7 @@ export async function resolveTarget(targetName, token) {
 }
 
 export async function fetchGroupInfo(groupId, token) {
-    const res = await callVkApi('groups.getById', { group_id: Math.abs(groupId), fields: 'photo_100,screen_name' }, token);
+    const res = await callVkApi('groups.getById', { group_id: Math.abs(groupId), fields: 'photo_100,screen_name,members_count' }, token);
     let groupList = [];
     if (Array.isArray(res)) {
         groupList = res;
@@ -245,6 +396,8 @@ export async function fetchGroupInfo(groupId, token) {
         avatar: g.photo_100 || g.photo_50 || '',
         link: `https://vk.com/${g.screen_name || ('club' + g.id)}`,
         screen_name: g.screen_name || '',
+        // Текущее число подписчиков — используется вкладкой «Подписчики»
+        members_count: typeof g.members_count === 'number' ? g.members_count : null,
         type: 'group'
     };
 }

@@ -6,10 +6,34 @@
 import {
     callVkApi,
     callVkExecuteBatch,
-    verifyToken,
+    getServerTokenStatus,
     resolveTarget,
     authorCache
 } from './api.js';
+
+import {
+    buildBranchAdvice,
+    renderAdviceTab
+} from './advice.js';
+
+import {
+    fetchHistory,
+    saveSnapshots,
+    resetHistory,
+    buildGroupSeries,
+    computeTrends,
+    snapshotsFromScan,
+    renderSubscribersTab
+} from './subscribers.js';
+
+import {
+    fetchUpdaterStatus,
+    checkForUpdates,
+    applyUpdate,
+    getSavedUpdateToken,
+    saveUpdateToken,
+    shortSha
+} from './updater.js';
 
 import {
     CANONICAL_BRANCHES,
@@ -58,7 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Application State
     // =========================================================================
     const state = {
-        token: localStorage.getItem('vk_search_token') || '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a',
+        // Сервисный ключ хранится на сервере (api/config.php), либо задаётся локально в браузере
+        token: (function() {
+            try { return localStorage.getItem('vkws_custom_token') || ''; } catch (e) { return ''; }
+        })(),
         isScanning: false,
         shouldCancel: false,
         targetInfo: null,
@@ -91,18 +118,22 @@ document.addEventListener('DOMContentLoaded', () => {
         lastDayFilter: 'all',
         lastYearStart: null,
         lastYearEnd: null,
-        lastSelectedMonths: null
+        lastSelectedMonths: null,
+        // v3.4: подписчики, советы и обновления
+        subsHistory: [],
+        updateAvailable: false,
+        updaterStatus: null
     };
 
     // =========================================================================
     // 2. DOM Elements Lookup
     // =========================================================================
     const elements = {
-        // Settings & Token
-        tokenInput: document.getElementById('vk-token-input'),
-        testTokenBtn: document.getElementById('test-token-btn'),
+        // Settings & Server Key Status
         tokenStatus: document.getElementById('token-status'),
+        customTokenInput: document.getElementById('custom-token-input'),
         saveTokenBtn: document.getElementById('save-token-btn'),
+        clearTokenBtn: document.getElementById('clear-token-btn'),
         toggleSettingsBtn: document.getElementById('toggle-settings-btn'),
         closeSettingsBtn: document.getElementById('close-settings-btn'),
         settingsPanel: document.getElementById('settings-panel'),
@@ -229,6 +260,28 @@ document.addEventListener('DOMContentLoaded', () => {
         linksTbody: document.getElementById('links-tbody'),
         linksTotalCount: document.getElementById('links-total-count'),
 
+        // Tab 5 & 6: Советы филиалам и Подписчики (v3.4)
+        adviceTabContent: document.getElementById('advice-tab-content'),
+        subscribersTabContent: document.getElementById('subscribers-tab-content'),
+        countAdvice: document.getElementById('count-advice'),
+
+        // Настройки приложения и самообновление (v3.4)
+        appSettingsBtn: document.getElementById('app-settings-btn'),
+        appSettingsOverlay: document.getElementById('app-settings-overlay'),
+        appSettingsClose: document.getElementById('app-settings-close'),
+        settingsKeyStatus: document.getElementById('settings-key-status'),
+        settingsOpenKeyPanel: document.getElementById('settings-open-key-panel'),
+        settingsVersionBadge: document.getElementById('settings-version-badge'),
+        settingsCommitBadge: document.getElementById('settings-commit-badge'),
+        settingsRepoLink: document.getElementById('settings-repo-link'),
+        settingsUpdateStatus: document.getElementById('settings-update-status'),
+        settingsCheckUpdateBtn: document.getElementById('settings-check-update-btn'),
+        settingsApplyUpdateBtn: document.getElementById('settings-apply-update-btn'),
+        settingsUpdateToken: document.getElementById('settings-update-token'),
+        settingsResetSubsBtn: document.getElementById('settings-reset-subs-btn'),
+        settingsFootVersion: document.getElementById('settings-foot-version'),
+        updateDot: document.getElementById('update-dot'),
+
         // Floating Scroll-To-Top
         scrollToTopBtn: document.getElementById('scroll-to-top-btn'),
         scrollProgressCircle: document.getElementById('scroll-progress-circle'),
@@ -249,7 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     function initFormInputs() {
         const currentYear = new Date().getFullYear();
-        if (elements.yearStartInput) elements.yearStartInput.value = 2010;
+        // v3.4.1: по умолчанию сканируем последние 2 года — это в разы быстрее;
+        // глубокий архив доступен через явное расширение диапазона лет.
+        if (elements.yearStartInput) elements.yearStartInput.value = currentYear - 1;
         if (elements.yearEndInput) elements.yearEndInput.value = currentYear;
 
         // Day select options
@@ -426,15 +481,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================================
-    // 4. Token & Settings UI
+    // 4. Server Service Key Status UI
+    //    Ключ хранится на сервере — здесь только индикатор его доступности.
     // =========================================================================
-    function updateTokenUI() {
-        if (state.token && elements.tokenInput) {
-            elements.tokenInput.value = state.token;
-            showTokenStatus('Токен установлен', 'success');
+    async function updateServerKeyUI() {
+        showTokenStatus('Проверка подключения к VK API…', 'loading');
+        const status = await getServerTokenStatus();
+
+        if (elements.customTokenInput) {
+            elements.customTokenInput.value = state.token;
+        }
+
+        if (status.reachable && status.configured) {
+            const note = status.fallback ? ' (включая резервный)' : '';
+            if (state.token) {
+                showTokenStatus(`Серверный PHP-прокси активен${note}. Задан пользовательский ключ.`, 'success');
+            } else {
+                showTokenStatus(`Серверный PHP-прокси активен${note} — сервисный ключ настроен`, 'success');
+            }
+        } else if (status.reachable) {
+            if (state.token) {
+                showTokenStatus('Серверный PHP-прокси активен (пользовательский ключ)', 'success');
+            } else {
+                showTokenStatus('Серверный PHP-прокси активен (встроенный проверенный ключ)', 'success');
+            }
         } else {
-            showTokenStatus('Токен не настроен', 'error');
-            elements.settingsPanel?.classList.remove('collapsed');
+            // Standalone mode / static hosting (without PHP)
+            if (state.token) {
+                showTokenStatus('Автономный режим (прямой VK API): пользовательский ключ активен', 'success');
+            } else {
+                showTokenStatus('Автономный режим (прямой VK API): встроенный сервисный ключ активен', 'success');
+            }
         }
     }
 
@@ -451,26 +528,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.toggleSettingsBtn) elements.toggleSettingsBtn.addEventListener('click', toggleSettings);
     if (elements.closeSettingsBtn) elements.closeSettingsBtn.addEventListener('click', toggleSettings);
 
-    if (elements.testTokenBtn) {
-        elements.testTokenBtn.addEventListener('click', async () => {
-            const val = elements.tokenInput.value.trim();
-            if (!val) {
-                showTokenStatus('Введите токен', 'error');
-                return;
-            }
-            showTokenStatus('Проверка токена...', 'loading');
-            elements.testTokenBtn.disabled = true;
-            const valid = await verifyToken(val);
-            elements.testTokenBtn.disabled = false;
-            if (valid) {
-                state.token = val;
-                localStorage.setItem('vk_search_token', val);
-                showTokenStatus('Токен активен и сохранён', 'success');
-                showToast('VK Access Token успешно сохранён!', 'check_circle');
-            } else {
-                showTokenStatus('Неверный токен или нет прав', 'error');
-                showToast('Ошибка проверки токена. Проверьте правильность строки.', 'error');
-            }
+    if (elements.saveTokenBtn) {
+        elements.saveTokenBtn.addEventListener('click', async () => {
+            const val = elements.customTokenInput ? elements.customTokenInput.value.trim() : '';
+            state.token = val;
+            try {
+                if (val) {
+                    localStorage.setItem('vkws_custom_token', val);
+                    showToast('Ключ сохранён в браузере', 'verified_user');
+                } else {
+                    localStorage.removeItem('vkws_custom_token');
+                    showToast('Ключ сброшен (используется серверный)', 'restart_alt');
+                }
+            } catch (e) {}
+            await updateServerKeyUI();
+        });
+    }
+
+    if (elements.clearTokenBtn) {
+        elements.clearTokenBtn.addEventListener('click', async () => {
+            if (elements.customTokenInput) elements.customTokenInput.value = '';
+            state.token = '';
+            try {
+                localStorage.removeItem('vkws_custom_token');
+                showToast('Сброшено на ключ по умолчанию', 'restart_alt');
+            } catch (e) {}
+            await updateServerKeyUI();
         });
     }
 
@@ -707,11 +790,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleSearchSubmit(e) {
         e.preventDefault();
-        if (!state.token) {
-            alert('Пожалуйста, укажите VK access_token в настройках!');
-            elements.settingsPanel?.classList.remove('collapsed');
-            return;
-        }
+        // Сервисный ключ подставляется сервером из api/config.php —
+        // предварительная проверка токена пользователем больше не требуется.
 
         if (elements.branchesToggle?.checked) {
             state.useBranches = true;
@@ -890,6 +970,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (resolvedTargets.length === 0) {
                 throw new Error('Не удалось разрешить ни один из указанных адресов.');
+            }
+
+            // v3.4.1: живые данные сообществ одним батч-запросом —
+            // аватары, короткие имена и число подписчиков (для вкладки «Подписчики»)
+            try {
+                const liveIds = resolvedTargets.map(t => Math.abs(parseInt(t.id, 10))).filter(n => n > 0);
+                if (liveIds.length > 0) {
+                    const liveRes = await callVkApi('groups.getById', {
+                        group_ids: liveIds.join(','),
+                        fields: 'photo_100,screen_name,members_count'
+                    }, state.token);
+                    const liveList = Array.isArray(liveRes) ? liveRes : (liveRes && liveRes.groups ? liveRes.groups : []);
+                    const liveById = new Map(liveList.map(g => [Math.abs(g.id), g]));
+                    resolvedTargets.forEach(t => {
+                        const g = liveById.get(Math.abs(t.id));
+                        if (!g) return;
+                        t.avatar = g.photo_100 || g.photo_50 || t.avatar || '';
+                        t.screen_name = g.screen_name || t.screen_name || '';
+                        t.members_count = typeof g.members_count === 'number' ? g.members_count : null;
+                        if (g.name) t.name = g.name;
+                    });
+                }
+            } catch (liveErr) {
+                console.warn('Не удалось получить живые данные сообществ:', liveErr.message);
             }
 
             // Canonical sort
@@ -1161,6 +1265,94 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOfficialReport(stats);
         renderMethodistMemo(kpis, stats);
         renderHashtagsAndLinks(state.matchedPosts);
+
+        // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
+        updateAdviceAndSubscribers(stats);
+    }
+
+    // =========================================================================
+    // 8.1. v3.4 — Советы филиалам и статистика подписчиков
+    // =========================================================================
+
+    /** Период сканирования в неделях + человекочитаемая подпись */
+    function computeScanPeriod() {
+        let weeks = 4;
+        let label = '';
+        if (state.selectedMonths && state.selectedMonths.size > 0) {
+            const names = state.months.filter(m => state.selectedMonths.has(m.id)).map(m => m.name);
+            label = names.join(', ');
+            weeks = state.selectedMonths.size * 4.35;
+        } else {
+            const dates = state.matchedPosts.map(p => p.date).filter(Boolean);
+            if (dates.length >= 2) {
+                weeks = Math.max((Math.max(...dates) - Math.min(...dates)) / (7 * 86400), 1);
+            }
+        }
+        return { weeks: Math.max(weeks, 0.25), label };
+    }
+
+    /** Сопоставляет цель сканирования подписи филиала из каталога */
+    function makeBranchResolver() {
+        const map = new Map();
+        (state.libraryBranchesList || []).forEach(b => {
+            const label = `${b.branch_num ? b.branch_num + ' — ' : ''}${b.branch_name || ''}`.trim();
+            (b.vk_links || []).forEach(l => {
+                const key = String(l).toLowerCase()
+                    .replace(/^https?:\/\/(www\.)?vk\.com\//, '')
+                    .replace(/[/?#].*$/, '');
+                if (key) map.set(key, label);
+            });
+        });
+        return (t) => {
+            const slug = String(t.link || '').toLowerCase()
+                .replace(/^https?:\/\/(www\.)?vk\.com\//, '')
+                .replace(/[/?#].*$/, '');
+            return map.get(slug) || t.canonicalBranch || '';
+        };
+    }
+
+    /**
+     * После каждого сканирования: сохраняет подписочные снимки на сервере,
+     * пересчитывает тренды и рендерит вкладки «Советы» и «Подписчики».
+     */
+    async function updateAdviceAndSubscribers(stats) {
+        const period = computeScanPeriod();
+
+        // 1) Снимки подписчиков (сервер хранит не более одного в день на группу)
+        try {
+            const snaps = snapshotsFromScan(state.targetsInfo || [], makeBranchResolver());
+            if (snaps.length > 0) {
+                await saveSnapshots(snaps);
+            }
+        } catch (e) { /* телеметрия не должна ломать выдачу результатов */ }
+
+        // 2) История и тренды
+        state.subsHistory = await fetchHistory();
+        const series = buildGroupSeries(state.subsHistory);
+        const trends = computeTrends(series);
+        // ID целей отрицательные — даём доступ по обоим вариантам
+        const trendsByGroup = new Map();
+        trends.forEach((v, k) => {
+            trendsByGroup.set(k, v);
+            trendsByGroup.set(-k, v);
+        });
+
+        // 3) Вкладка советов
+        const adviceData = buildBranchAdvice(stats, {
+            periodWeeks: period.weeks,
+            trendsByGroup
+        });
+        renderAdviceTab(elements.adviceTabContent, adviceData, { periodLabel: period.label });
+        if (elements.countAdvice) elements.countAdvice.textContent = stats.length;
+
+        // 4) Вкладка подписчиков
+        renderSubscribersTab(elements.subscribersTabContent, {
+            history: state.subsHistory,
+            branches: state.libraryBranchesList || [],
+            token: state.token,
+            onToast: showToast,
+            onCollectDone: h => { state.subsHistory = h; }
+        });
     }
 
     function postMatchesBranch(post, branchFilter) {
@@ -2131,6 +2323,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetContent.classList.add('active');
                     targetContent.classList.add('active-content');
                 }
+
+                // v3.4: при открытии вкладки «Подписчики» тянем свежую историю с сервера
+                if (targetTabId === 'subscribers-tab' && elements.subscribersTabContent) {
+                    fetchHistory().then(h => {
+                        state.subsHistory = h;
+                        renderSubscribersTab(elements.subscribersTabContent, {
+                            history: h,
+                            branches: state.libraryBranchesList || [],
+                            token: state.token,
+                            onToast: showToast,
+                            onCollectDone: fresh => { state.subsHistory = fresh; }
+                        });
+                    });
+                }
             });
         });
     }
@@ -2197,10 +2403,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             try {
+                // Подписочные тренды для раздела «Динамика подписчиков» в DOC
+                let subsRows = [];
+                try {
+                    const series = buildGroupSeries(state.subsHistory || []);
+                    const trends = computeTrends(series);
+                    subsRows = Array.from(trends.values()).sort((a, b) =>
+                        String(a.branch || a.name || '').localeCompare(String(b.branch || b.name || ''), 'ru', { numeric: true }));
+                } catch (e) { /* раздел подписчиков опционален */ }
                 const meta = {
                     datesFilter: elements.reportDatesFilter?.textContent || '',
                     searchQuery: elements.reportSearchQuery?.textContent || '',
-                    generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU')
+                    generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
+                    subscribers: subsRows,
+                    appVersion: '3.4.2'
                 };
                 exportToDocx(posts, state.lastGroupsStats || [], meta);
                 showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -2548,10 +2764,233 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // =========================================================================
+    // 14.5. v3.4 — Настройки приложения: обновления с GitHub, данные
+    // =========================================================================
+    function fmtUpdaterTs(ts) {
+        if (!ts) return '—';
+        return new Date(ts * 1000).toLocaleString('ru-RU', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    function applyUpdaterStatusToUI(status) {
+        state.updaterStatus = status;
+        if (!status || !status.ok) return;
+
+        const local = status.local || {};
+        if (elements.settingsVersionBadge) {
+            elements.settingsVersionBadge.textContent = 'v' + (local.version || 'unknown');
+        }
+        if (elements.settingsCommitBadge) {
+            elements.settingsCommitBadge.textContent = local.commit ? 'коммит ' + shortSha(local.commit) : '';
+        }
+        if (elements.settingsRepoLink && status.repo) {
+            elements.settingsRepoLink.href = `https://github.com/${status.repo}`;
+        }
+        if (elements.settingsFootVersion) {
+            elements.settingsFootVersion.textContent =
+                `Статистика групп ВК • v${local.version || '?'} (${shortSha(local.commit) || '—'}) • ${status.repo || ''}`;
+        }
+
+        let extra = '';
+        if (status.last_check && status.last_check.ok) {
+            extra = ` Последняя проверка: ${fmtUpdaterTs(status.last_check.ts)}.`;
+        }
+        if (status.last_update) {
+            extra += ` Последнее обновление: ${fmtUpdaterTs(status.last_update.ts)} → ${shortSha(status.last_update.to)}.`;
+        }
+        if (elements.settingsUpdateStatus && !state.updateAvailable) {
+            elements.settingsUpdateStatus.innerHTML = '';
+            elements.settingsUpdateStatus.textContent =
+                (status.last_check && status.last_check.ok && !status.last_check.update_available
+                    ? 'Установлена актуальная версия.'
+                    : 'Нажмите «Проверить обновления».') + extra;
+        }
+    }
+
+    /** Тихая проверка при запуске (кэш 6 ч на сервере) + точка на кнопке */
+    async function initUpdater() {
+        const status = await fetchUpdaterStatus();
+        applyUpdaterStatusToUI(status);
+        try {
+            const chk = await checkForUpdates(false);
+            markUpdateAvailable(chk);
+        } catch (e) { /* нет сети/лимиты — молча */ }
+    }
+
+    function markUpdateAvailable(chk) {
+        if (!chk || !chk.update_available) {
+            state.updateAvailable = false;
+            if (elements.updateDot) elements.updateDot.classList.add('hidden');
+            if (elements.settingsApplyUpdateBtn) elements.settingsApplyUpdateBtn.classList.add('hidden');
+            return;
+        }
+        state.updateAvailable = true;
+        if (elements.updateDot) elements.updateDot.classList.remove('hidden');
+        if (elements.settingsApplyUpdateBtn) elements.settingsApplyUpdateBtn.classList.remove('hidden');
+        if (elements.settingsUpdateStatus) {
+            const r = chk.remote || {};
+            elements.settingsUpdateStatus.innerHTML =
+                `<span class="update-available-label">Доступна новая версия!</span> ` +
+                `Коммит ${shortSha(r.sha)} от ${r.date ? new Date(r.date).toLocaleDateString('ru-RU') : '—'}: «${r.message || ''}»`;
+        }
+    }
+
+    async function refreshSettingsKeyStatus() {
+        if (!elements.settingsKeyStatus) return;
+        elements.settingsKeyStatus.textContent = 'Проверка…';
+        elements.settingsKeyStatus.className = 'status-indicator loading';
+        const st = await getServerTokenStatus();
+        if (st.reachable && st.configured) {
+            elements.settingsKeyStatus.textContent = 'Серверный PHP-прокси активен';
+            elements.settingsKeyStatus.className = 'status-indicator success';
+        } else if (st.reachable) {
+            elements.settingsKeyStatus.textContent = 'Серверный PHP-прокси активен (встроенный ключ)';
+            elements.settingsKeyStatus.className = 'status-indicator success';
+        } else {
+            elements.settingsKeyStatus.textContent = state.token
+                ? 'Автономный режим (пользовательский ключ)'
+                : 'Автономный режим (встроенный ключ)';
+            elements.settingsKeyStatus.className = 'status-indicator success';
+        }
+    }
+
+    function openAppSettings() {
+        if (!elements.appSettingsOverlay) return;
+        elements.appSettingsOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        refreshSettingsKeyStatus();
+        if (elements.settingsUpdateToken && !elements.settingsUpdateToken.value) {
+            elements.settingsUpdateToken.value = getSavedUpdateToken();
+        }
+        if (state.updaterStatus) {
+            applyUpdaterStatusToUI(state.updaterStatus);
+        } else {
+            fetchUpdaterStatus().then(applyUpdaterStatusToUI);
+        }
+    }
+
+    function closeAppSettings() {
+        if (!elements.appSettingsOverlay) return;
+        elements.appSettingsOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (elements.settingsUpdateToken) {
+            saveUpdateToken(elements.settingsUpdateToken.value.trim());
+        }
+    }
+
+    if (elements.appSettingsBtn) {
+        elements.appSettingsBtn.addEventListener('click', openAppSettings);
+    }
+    if (elements.appSettingsClose) {
+        elements.appSettingsClose.addEventListener('click', closeAppSettings);
+    }
+    if (elements.appSettingsOverlay) {
+        elements.appSettingsOverlay.addEventListener('click', (e) => {
+            if (e.target === elements.appSettingsOverlay) closeAppSettings();
+        });
+    }
+    if (elements.settingsOpenKeyPanel) {
+        elements.settingsOpenKeyPanel.addEventListener('click', () => {
+            closeAppSettings();
+            elements.settingsPanel?.classList.remove('collapsed');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    if (elements.settingsCheckUpdateBtn) {
+        elements.settingsCheckUpdateBtn.addEventListener('click', async () => {
+            const btn = elements.settingsCheckUpdateBtn;
+            btn.disabled = true;
+            if (elements.settingsUpdateStatus) elements.settingsUpdateStatus.textContent = 'Проверяем репозиторий на GitHub…';
+            try {
+                const chk = await checkForUpdates(true);
+                if (chk.update_available) {
+                    markUpdateAvailable(chk);
+                    showToast('Доступна новая версия — нажмите «Установить обновление»', 'system_update');
+                } else {
+                    markUpdateAvailable(null);
+                    if (elements.settingsUpdateStatus) {
+                        elements.settingsUpdateStatus.textContent =
+                            `Установлена актуальная версия (коммит ${shortSha(chk.remote ? chk.remote.sha : '')}).`;
+                    }
+                    showToast('Обновлений нет — установлена актуальная версия', 'task_alt');
+                }
+            } catch (e) {
+                if (elements.settingsUpdateStatus) {
+                    elements.settingsUpdateStatus.textContent = 'Ошибка проверки: ' + e.message;
+                }
+                showToast('Не удалось проверить обновления', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    if (elements.settingsApplyUpdateBtn) {
+        elements.settingsApplyUpdateBtn.addEventListener('click', async () => {
+            const btn = elements.settingsApplyUpdateBtn;
+            const token = (elements.settingsUpdateToken ? elements.settingsUpdateToken.value.trim() : '') || getSavedUpdateToken();
+            if (!token) {
+                if (elements.settingsUpdateStatus) {
+                    elements.settingsUpdateStatus.textContent = 'Введите пароль обновления — он указан в файле api/config.php (параметр update_token).';
+                }
+                if (elements.settingsUpdateToken) elements.settingsUpdateToken.focus();
+                return;
+            }
+            saveUpdateToken(token);
+            btn.disabled = true;
+            if (elements.settingsUpdateStatus) {
+                elements.settingsUpdateStatus.textContent = 'Скачиваем релиз с GitHub и применяем… Это может занять до минуты.';
+            }
+            try {
+                const res = await applyUpdate(token);
+                if (res.skipped) {
+                    if (elements.settingsUpdateStatus) elements.settingsUpdateStatus.textContent = 'Уже установлена актуальная версия.';
+                    showToast('Обновление не требуется', 'task_alt');
+                } else {
+                    if (elements.settingsUpdateStatus) elements.settingsUpdateStatus.textContent = 'Новая версия применена! Перезагружаем страницу…';
+                    showToast('Обновление установлено! Перезагрузка…', 'system_update');
+                    setTimeout(() => window.location.reload(), 1200);
+                    return;
+                }
+            } catch (e) {
+                if (elements.settingsUpdateStatus) {
+                    elements.settingsUpdateStatus.textContent = 'Ошибка обновления: ' + e.message;
+                }
+                showToast('Не удалось установить обновление', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    if (elements.settingsResetSubsBtn) {
+        elements.settingsResetSubsBtn.addEventListener('click', async () => {
+            if (!window.confirm('Удалить всю историю подписчиков с сервера? Действие необратимо.')) return;
+            const res = await resetHistory();
+            if (res && res.ok) {
+                state.subsHistory = [];
+                renderSubscribersTab(elements.subscribersTabContent, {
+                    history: [],
+                    branches: state.libraryBranchesList || [],
+                    token: state.token,
+                    onToast: showToast,
+                    onCollectDone: h => { state.subsHistory = h; }
+                });
+                showToast('История подписчиков очищена', 'delete_forever');
+            } else {
+                showToast('Не удалось очистить историю', 'error');
+            }
+        });
+    }
+
+    // =========================================================================
     // 15. Run Initializers
     // =========================================================================
     initFormInputs();
-    updateTokenUI();
+    updateServerKeyUI();
+    initUpdater();
     loadLibraryBranches();
     initScrollToTop();
     renderSearchHistory();

@@ -6,7 +6,7 @@
     <meta name="description" content="Инструмент для поиска и анализа публикаций ВКонтакте по датам, месяцам, годам и ключевым словам.">
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://api.vk.com; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src * data: blob:; font-src 'self' https://fonts.gstatic.com data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://api.vk.com; script-src 'self' https://cdnjs.cloudflare.com https://api.vk.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src * data: blob:; font-src 'self' https://fonts.gstatic.com data:;">
     <title>Статистика групп ВК (Разработка: Амброзиев О.А.)</title>
 
     <!-- Typography: Montserrat + JetBrains Mono -->
@@ -15,9 +15,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <!-- Material Symbols Outlined (icons) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=3.2.5">
+    <link rel="stylesheet" href="style.css?v=3.4.3">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -52,7 +55,7 @@
             </div>
             <div class="header-actions">
                 <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
-                    <span id="theme-toggle-icon" class="theme-icon">🌙</span>
+                    <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">dark_mode</span>
                     <span id="theme-toggle-text">Тёмная</span>
                 </button>
                 <button id="help-btn" class="btn btn-tonal" title="Справка по сервису">
@@ -60,8 +63,13 @@
                     <span class="settings-btn-text">Справка</span>
                 </button>
                 <button id="toggle-settings-btn" class="btn btn-secondary" title="Настройки API ВКонтакте">
+                    <span class="material-symbols-outlined icon">vpn_key</span>
+                    <span class="settings-btn-text">Ключ VK</span>
+                </button>
+                <button id="app-settings-btn" class="btn btn-secondary" title="Настройки приложения: обновления, данные">
                     <span class="material-symbols-outlined icon">settings</span>
-                    <span class="settings-btn-text">Настройки API</span>
+                    <span class="settings-btn-text">Настройки</span>
+                    <span id="update-dot" class="update-dot hidden" title="Доступно обновление"></span>
                 </button>
             </div>
         </header>
@@ -79,32 +87,46 @@
             </div>
             <div class="panel-body">
                 <p class="settings-hint">
-                    Для работы с API ВКонтакте требуется сервисный ключ или персональный токен доступа. Токен хранится исключительно в локальном хранилище вашего браузера (LocalStorage).
+                    Приложение работает на <strong>любом веб-хостинге</strong>. На серверах с PHP запросы безопасно проксируются через <code>api/vk-proxy.php</code> с серверным ключом. На статических хостингах (без PHP) доступен прямой автономный режим (JSONP). Никаких скриптов (.bat/.sh) или Node/Vite на хостинге запускать не требуется.
                 </p>
                 <div class="form-group">
-                    <label for="vk-token-input">Сервисный ключ доступа (access_token)</label>
+                    <label>Статус подключения к VK API</label>
                     <div class="input-with-action">
-                        <div class="input-icon-wrap">
-                            <span class="material-symbols-outlined input-leading-icon">key</span>
-                            <input type="password" id="vk-token-input" placeholder="Вставьте VK access_token..." autocomplete="off">
+                        <div class="input-icon-wrap server-key-badge">
+                            <span class="material-symbols-outlined input-leading-icon">verified_user</span>
+                            <span id="token-status" class="status-indicator loading">Проверка соединения…</span>
                         </div>
-                        <button id="test-token-btn" class="btn btn-primary">
-                            <span class="material-symbols-outlined icon">verified</span>
-                            <span>Проверить</span>
+                    </div>
+                </div>
+
+                <div class="form-group" id="custom-token-group" style="margin-top: 1rem;">
+                    <label for="custom-token-input">Пользовательский ключ VK (для статического хостинга или переопределения)</label>
+                    <div class="input-with-action" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div class="input-icon-wrap" style="flex: 1; min-width: 260px;">
+                            <span class="material-symbols-outlined input-leading-icon">key</span>
+                            <input type="password" id="custom-token-input" placeholder="По умолчанию используется встроенный ключ (можно указать свой)" autocomplete="off">
+                        </div>
+                        <button id="save-token-btn" class="btn btn-tonal" type="button" style="white-space: nowrap;">
+                            <span class="material-symbols-outlined icon">save</span>
+                            <span>Сохранить</span>
+                        </button>
+                        <button id="clear-token-btn" class="btn btn-secondary" type="button" title="Очистить и использовать серверный ключ" style="white-space: nowrap;">
+                            <span class="material-symbols-outlined icon">restart_alt</span>
+                            <span>Сброс</span>
                         </button>
                     </div>
-                    <span id="token-status-indicator" class="status-indicator">Токен не установлен</span>
+                    <span class="input-desc">Необязательно. Если поле пустое, автоматически используется серверный или встроенный проверенный ключ.</span>
                 </div>
+
                 <div class="token-guide">
                     <h4>
-                        <span class="material-symbols-outlined guide-icon">help</span>
-                        Как получить токен?
+                        <span class="material-symbols-outlined guide-icon">shield_person</span>
+                        Как это устроено?
                     </h4>
                     <ol>
-                        <li>Перейдите в раздел <a href="https://vk.com/apps?act=manage" target="_blank" rel="noopener noreferrer">Управление приложениями VK</a>.</li>
-                        <li>Нажмите <strong>Создать</strong>, выберите тип <strong>Standalone-приложение</strong> и задайте любое название.</li>
-                        <li>В разделе <strong>Настройки</strong> вашего нового приложения скопируйте <strong>Сервисный ключ доступа</strong> (Service token).</li>
-                        <li>Вставьте его в поле выше и нажмите <strong>Проверить</strong>.</li>
+                        <li><strong>На стандартном PHP-хостинге (cPanel, Beget, Timeweb и др.):</strong> запросы к VK API идут через серверный прокси <code>api/vk-proxy.php</code>, ключ хранится на сервере.</li>
+                        <li><strong>На статическом хостинге (GitHub Pages и др.):</strong> приложение автоматически переключается в автономный режим через JSONP.</li>
+                        <li><strong>Резервирование:</strong> если один ключ исчерпает лимит или устареет, система автоматически переключается на резервный.</li>
                     </ol>
                 </div>
             </div>
@@ -210,31 +232,32 @@
                             </div>
                         </div>
 
-                        <!-- Days Selector -->
-                        <div class="form-group col-3">
-                            <label for="day-select" class="section-sublabel">
-                                <span class="material-symbols-outlined sublabel-icon">today</span>
-                                Число месяца
-                            </label>
-                            <div class="select-wrap">
-                                <select id="day-select">
-                                    <option value="all">Все числа (весь месяц)</option>
-                                    <!-- 1..31 generated by JS -->
-                                </select>
-                                <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
+                        <!-- Days + Years: компактная правая колонка -->
+                        <div class="form-group col-6 date-side-col">
+                            <div class="form-group">
+                                <label for="day-select" class="section-sublabel">
+                                    <span class="material-symbols-outlined sublabel-icon">today</span>
+                                    Число месяца
+                                </label>
+                                <div class="select-wrap">
+                                    <select id="day-select">
+                                        <option value="all">Все числа (весь месяц)</option>
+                                        <!-- 1..31 generated by JS -->
+                                    </select>
+                                    <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Year Range -->
-                        <div class="form-group col-3">
-                            <label class="section-sublabel">
-                                <span class="material-symbols-outlined sublabel-icon">calendar_month</span>
-                                Диапазон лет
-                            </label>
-                            <div class="years-range">
-                                <input type="number" id="year-start" min="2004" max="2099" placeholder="С">
-                                <span class="range-divider">—</span>
-                                <input type="number" id="year-end" min="2004" max="2099" placeholder="По">
+                            <div class="form-group">
+                                <label class="section-sublabel">
+                                    <span class="material-symbols-outlined sublabel-icon">calendar_month</span>
+                                    Диапазон лет
+                                </label>
+                                <div class="years-range">
+                                    <input type="number" id="year-start" min="2004" max="2099" placeholder="С">
+                                    <span class="range-divider">—</span>
+                                    <input type="number" id="year-end" min="2004" max="2099" placeholder="По">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -449,6 +472,15 @@
                     <button class="tab-btn" data-tab="summary-tab">
                         <span class="material-symbols-outlined icon">article</span>
                         <span>Пояснительная записка и хэштеги</span>
+                    </button>
+                    <button class="tab-btn" data-tab="advice-tab">
+                        <span class="material-symbols-outlined icon">lightbulb</span>
+                        <span>Советы филиалам</span>
+                        <span class="tab-badge" id="count-advice">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="subscribers-tab">
+                        <span class="material-symbols-outlined icon">trending_up</span>
+                        <span>Подписчики</span>
                     </button>
                 </div>
 
@@ -849,6 +881,27 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab 5: Советы филиалам (автоматические рекомендации) -->
+                <div id="advice-tab" class="tab-content no-print">
+                    <div id="advice-tab-content" class="advice-wrap">
+                        <div class="advice-empty">
+                            <span class="material-symbols-outlined">lightbulb</span>
+                            <h3>Советы пока недоступны</h3>
+                            <p>Выполните поиск по записям филиалов — рекомендации будут построены по результатам сканирования.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 6: Подписчики (динамика по дням / неделям / месяцам) -->
+                <div id="subscribers-tab" class="tab-content no-print">
+                    <div id="subscribers-tab-content" class="subs-wrap">
+                        <div class="subs-chart-empty">
+                            <span class="material-symbols-outlined">hourglass_empty</span>
+                            <p>Загрузка истории подписчиков…</p>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
         
@@ -1051,6 +1104,80 @@
         <div id="post-modal-content" style="display: contents;"></div>
     </div>
 
+    <!-- App Settings Modal (v3.4) -->
+    <div id="app-settings-overlay" class="app-settings-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="app-settings-title">
+        <div class="app-settings-modal card">
+            <div class="app-settings-head">
+                <div class="app-settings-title-wrap">
+                    <span class="material-symbols-outlined">settings</span>
+                    <h3 id="app-settings-title">Настройки приложения</h3>
+                </div>
+                <button id="app-settings-close" class="icon-btn" title="Закрыть" aria-label="Закрыть">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="app-settings-body">
+                <!-- VK API -->
+                <section class="app-settings-section">
+                    <h4><span class="material-symbols-outlined">vpn_key</span> Ключ VK API</h4>
+                    <div class="app-settings-row">
+                        <span id="settings-key-status" class="status-indicator loading">Проверка…</span>
+                        <button id="settings-open-key-panel" class="btn btn-tonal btn-sm">Панель подключения</button>
+                    </div>
+                </section>
+
+                <!-- Updates -->
+                <section class="app-settings-section">
+                    <h4><span class="material-symbols-outlined">system_update</span> Обновления с GitHub</h4>
+                    <div class="app-settings-row version-row">
+                        <div class="version-info">
+                            <span class="version-badge" id="settings-version-badge">v…</span>
+                            <span class="version-commit" id="settings-commit-badge"></span>
+                        </div>
+                        <a id="settings-repo-link" class="repo-link" href="https://github.com/giddammit-crypto/vk-wall-searcher" target="_blank" rel="noopener">
+                            <span class="material-symbols-outlined">open_in_new</span> репозиторий
+                        </a>
+                    </div>
+                    <div id="settings-update-status" class="update-status">Нажмите «Проверить обновления».</div>
+                    <div class="app-settings-row">
+                        <button id="settings-check-update-btn" class="btn btn-secondary btn-sm">
+                            <span class="material-symbols-outlined icon">cloud_sync</span>
+                            <span>Проверить обновления</span>
+                        </button>
+                        <button id="settings-apply-update-btn" class="btn btn-primary btn-sm hidden">
+                            <span class="material-symbols-outlined icon">download</span>
+                            <span>Установить обновление</span>
+                        </button>
+                    </div>
+                    <div class="app-settings-row update-token-row">
+                        <div class="input-icon-wrap">
+                            <span class="material-symbols-outlined input-leading-icon">lock</span>
+                            <input type="password" id="settings-update-token" placeholder="Пароль обновления (см. api/config.php → update_token)" autocomplete="off">
+                        </div>
+                    </div>
+                    <p class="app-settings-note">Обновление скачивается с ветки репозитория и применяется сразу: файлы заменяются на сервере, секреты (ключи) и накопленная история подписчиков сохраняются.</p>
+                </section>
+
+                <!-- Data -->
+                <section class="app-settings-section">
+                    <h4><span class="material-symbols-outlined">database</span> Данные подписчиков</h4>
+                    <div class="app-settings-row">
+                        <span class="app-settings-note" style="margin:0">История снимков хранится на сервере в <code>data/subscribers.json</code>.</span>
+                        <button id="settings-reset-subs-btn" class="btn btn-danger btn-sm">
+                            <span class="material-symbols-outlined icon">delete_forever</span>
+                            <span>Очистить историю</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="app-settings-foot">
+                <span id="settings-foot-version">Статистика групп ВК</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Lightbox -->
     <div id="lightbox" class="lightbox-overlay" aria-modal="true" role="dialog" aria-label="Просмотр фото">
         <button class="lightbox-close" id="lightbox-close" aria-label="Закрыть">
@@ -1068,7 +1195,7 @@
         </button>
     </div>
 
-    <script type="module" src="src/app.js?v=3.2.5"></script>
+    <script type="module" src="src/app.js?v=3.4.3"></script>
 
     <script>
     /* =============================================================
@@ -1223,27 +1350,27 @@
                     <ol class="help-list">
                         <li>
                             <span class="help-step">1</span>
-                            <div><strong>Настройте API</strong> — нажмите «Настройки API» и введите токен доступа ВКонтакте. Токен можно получить на <a href="https://vkhost.github.io/" target="_blank" rel="noopener">vkhost.github.io</a>.</div>
+                            <div><strong>Выберите ветки</strong> — укажите группы ВКонтакте для анализа или включите пакетное сканирование всех филиалов. Сервисный ключ VK уже настроен на сервере — вводить ничего не нужно.</div>
                         </li>
                         <li>
                             <span class="help-step">2</span>
-                            <div><strong>Выберите ветки</strong> — укажите группы ВКонтакте для анализа. Можно добавить несколько источников через запятую.</div>
+                            <div><strong>Выберите период</strong> — отметьте нужные месяцы или используйте быстрые пресеты (текущий месяц, квартал, год и т.д.).</div>
                         </li>
                         <li>
                             <span class="help-step">3</span>
-                            <div><strong>Выберите период</strong> — отметьте нужные месяцы или используйте быстрые пресеты (последние 3 мес., год и т.д.).</div>
-                        </li>
-                        <li>
-                            <span class="help-step">4</span>
                             <div><strong>Укажите ключевые слова</strong> (необязательно) — система отфильтрует только посты, содержащие нужные фразы.</div>
                         </li>
                         <li>
+                            <span class="help-step">4</span>
+                            <div><strong>Нажмите «Начать поиск»</strong> — начнётся сканирование стен. Прогресс отображается в реальном времени.</div>
+                        </li>
+                        <li>
                             <span class="help-step">5</span>
-                            <div><strong>Нажмите «Найти»</strong> — начнётся сканирование стен. Прогресс отображается в реальном времени.</div>
+                            <div><strong>Изучите результаты</strong> — переключайтесь между вкладками: Карточки записей, Отчёт с ссылками, Рейтинг активности, Пояснительная записка, Советы филиалам и Подписчики.</div>
                         </li>
                         <li>
                             <span class="help-step">6</span>
-                            <div><strong>Изучите результаты</strong> — переключайтесь между вкладками: Записи, Отчёт, Аналитика, Итоги.</div>
+                            <div><strong>Экспортируйте отчёт</strong> — кнопки CSV, Word (DOC), HTML и печать подготовят документ для руководства. Динамика подписчиков накапливается автоматически после каждого сканирования.</div>
                         </li>
                     </ol>
                 </div>
@@ -1385,7 +1512,7 @@
             localStorage.setItem('aurora_theme', theme);
             if (themeText && themeIcon) {
                 themeText.textContent = theme === 'dark' ? 'Тёмная' : 'Светлая';
-                themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+                themeIcon.textContent = theme === 'dark' ? 'dark_mode' : 'light_mode';
             }
         }
 

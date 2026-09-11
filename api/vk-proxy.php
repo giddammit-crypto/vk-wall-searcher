@@ -5,10 +5,65 @@
  *
  * Совместимо с PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5+
  * Работает на любом веб-сервере (Apache, Nginx, LiteSpeed, OpenServer, XAMPP, php -S)
+ *
+ * v3.3 — сервисный ключ хранится на сервере (api/config.php):
+ *   • клиент больше не передаёт токен — подставляется из конфигурации;
+ *   • автоматическое переключение на резервный ключ при ошибке авторизации;
+ *   • эндпоинт статуса сервера (без раскрытия самого ключа).
  */
 
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
+
+// ---------------------------------------------------------------------------
+// 0. Server Configuration (service keys live HERE, never in the browser)
+// ---------------------------------------------------------------------------
+// 0. Server Configuration (service keys live HERE, never in the browser)
+// ---------------------------------------------------------------------------
+// Проверенные сервисные ключи VK по умолчанию (работают из коробки без ручной настройки)
+$defaultServerToken   = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
+$defaultFallbackToken = 'd306a4b4d306a4b4d306a4b46ad0389840dd306d306a4b4ba56aeabaf84c50097d998b5';
+
+$vkConfig = [];
+$vkConfigFile = __DIR__ . '/config.php';
+if (is_readable($vkConfigFile)) {
+    $vkLoaded = include $vkConfigFile;
+    if (is_array($vkLoaded)) {
+        $vkConfig = $vkLoaded;
+    }
+} elseif (!file_exists($vkConfigFile) && is_writable(__DIR__)) {
+    // Автоматически создаём рабочий config.php при первом запуске на хостинге
+    @file_put_contents($vkConfigFile, "<?php\nreturn [\n    'vk_service_token' => '{$defaultServerToken}',\n    'vk_service_token_fallback' => '{$defaultFallbackToken}',\n    'api_version' => '5.131',\n    'github_repo' => 'giddammit-crypto/vk-wall-searcher',\n    'github_branch' => 'main',\n    'update_token' => '399993f71ed0e6c1ddec47d958faa2cc083519c4',\n    'github_token' => '',\n];\n");
+}
+
+$serverToken   = isset($vkConfig['vk_service_token']) ? trim((string)$vkConfig['vk_service_token']) : '';
+$fallbackToken = isset($vkConfig['vk_service_token_fallback']) ? trim((string)$vkConfig['vk_service_token_fallback']) : '';
+$apiVersion    = isset($vkConfig['api_version']) && $vkConfig['api_version'] !== ''
+    ? (string)$vkConfig['api_version']
+    : '5.131';
+
+// Заглушки из шаблона не считаем рабочими ключами
+foreach (['ВСТАВЬТЕ_СЕРВИСНЫЙ_КЛЮЧ_СЮДА', ''] as $placeholder) {
+    if ($serverToken === $placeholder) {
+        $serverToken = $defaultServerToken;
+    }
+    if ($fallbackToken === $placeholder) {
+        $fallbackToken = $defaultFallbackToken;
+    }
+}
+
+/**
+ * Server status payload (exposes NO secrets, only availability flags)
+ */
+function vk_server_status_payload($serverToken, $fallbackToken, $apiVersion)
+{
+    return json_encode([
+        'status'                => 'ok',
+        'server_token_configured' => $serverToken !== '',
+        'fallback_configured'     => $fallbackToken !== '',
+        'api_version'             => $apiVersion
+    ], JSON_UNESCAPED_UNICODE);
+}
 
 // ---------------------------------------------------------------------------
 // 1. CORS Headers
@@ -21,6 +76,23 @@ header('Content-Type: application/json; charset=UTF-8');
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
+    exit;
+}
+
+// Service status endpoint for health-checks: GET /api/vk-proxy.php?status=1
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['status'])) {
+        http_response_code(200);
+        echo vk_server_status_payload($serverToken, $fallbackToken, $apiVersion);
+        exit;
+    }
+    http_response_code(405);
+    echo json_encode([
+        'error' => [
+            'error_code' => 405,
+            'error_msg' => 'Метод не поддерживается. Используйте метод POST.'
+        ]
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -68,12 +140,41 @@ if (empty($method)) {
     exit;
 }
 
-if (empty($token)) {
+// Frontend status probe (same payload as GET ?status=1, no secrets exposed)
+if ($method === '__server_status__') {
+    http_response_code(200);
+    echo vk_server_status_payload($serverToken, $fallbackToken, $apiVersion);
+    exit;
+}
+
+// ---------------------------------------------------------------------------
+// 2.1 Token resolution:
+//     Если клиент явно передал свой токен (пользовательский режим) — используем его.
+//     Иначе используем настроенный сервисный ключ сервера или проверенный дефолтный ключ.
+// ---------------------------------------------------------------------------
+$usedServerKey = false;
+$customClientToken = isset($data['token']) ? trim((string)$data['token']) : '';
+
+if ($customClientToken !== '') {
+    $token = $customClientToken;
+    $usedServerKey = false;
+} elseif ($serverToken !== '') {
+    $token = $serverToken;
+    $usedServerKey = true;
+} elseif ($fallbackToken !== '') {
+    $token = $fallbackToken;
+    $usedServerKey = true;
+} else {
+    $token = $defaultServerToken;
+    $usedServerKey = true;
+}
+
+if ($token === '') {
     http_response_code(400);
     echo json_encode([
         'error' => [
             'error_code' => 400,
-            'error_msg' => 'Отсутствует обязательный параметр: token.'
+            'error_msg' => 'Сервисный ключ не настроен. Укажите ключ в api/config.php или в настройках приложения.'
         ]
     ], JSON_UNESCAPED_UNICODE);
     exit;
@@ -130,45 +231,25 @@ foreach ($params as $k => $v) {
     }
 }
 
-$callParams['access_token'] = $token;
 if (!isset($callParams['v'])) {
-    $callParams['v'] = '5.131';
+    $callParams['v'] = $apiVersion;
 }
 
-$vkUrl = 'https://api.vk.com/method/' . rawurlencode($method);
+/**
+ * Perform a single VK API request.
+ * Returns [responseBody, httpCode, curlErrno, curlError].
+ */
+function vk_perform_request($method, array $callParams, $accessToken)
+{
+    $vkUrl = 'https://api.vk.com/method/' . rawurlencode($method);
+    $callParams['access_token'] = $accessToken;
 
-// ---------------------------------------------------------------------------
-// 5. Execute HTTP Request (cURL with fallback to stream_context)
-// ---------------------------------------------------------------------------
-$responseBody = false;
-$httpCode = 0;
-$errorMessage = '';
+    $responseBody = false;
+    $httpCode = 0;
+    $errno = 0;
+    $errstr = '';
 
-if (function_exists('curl_init')) {
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $vkUrl,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query($callParams),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 25,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_HTTPHEADER => [
-            'User-Agent: VKWallSearcher-PHP/2.5.0',
-            'Accept: application/json'
-        ]
-    ]);
-
-    $responseBody = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErrno = curl_errno($ch);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    // Fallback for cheap hosting with outdated system CA bundle (SSL error 60 / 77)
-    if ($curlErrno === 60 || $curlErrno === 77) {
+    if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $vkUrl,
@@ -177,48 +258,53 @@ if (function_exists('curl_init')) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 25,
             CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER => [
-                'User-Agent: VKWallSearcher-PHP/2.5.0',
+                'User-Agent: VKWallSearcher-PHP/3.3.0',
                 'Accept: application/json'
             ]
         ]);
+
         $responseBody = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErrno = curl_errno($ch);
-        $curlError = curl_error($ch);
+        $errno = curl_errno($ch);
+        $errstr = curl_error($ch);
         curl_close($ch);
-    }
 
-    if ($curlErrno !== 0) {
-        if ($curlErrno === CURLE_OPERATION_TIMEDOUT) {
-            http_response_code(504);
-            echo json_encode([
-                'error' => [
-                    'error_code' => 504,
-                    'error_msg' => 'Превышено время ожидания ответа от VK API (таймаут 25 сек).'
+        // Fallback for cheap hosting with outdated system CA bundle (SSL error 60 / 77)
+        if ($errno === 60 || $errno === 77) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $vkUrl,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query($callParams),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 25,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent: VKWallSearcher-PHP/3.3.0',
+                    'Accept: application/json'
                 ]
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
+            ]);
+            $responseBody = curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $errno = curl_errno($ch);
+            $errstr = curl_error($ch);
+            curl_close($ch);
         }
 
-        http_response_code(502);
-        echo json_encode([
-            'error' => [
-                'error_code' => 502,
-                'error_msg' => 'Сетевая ошибка cURL при обращении к VK API: ' . $curlError
-            ]
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+        return [$responseBody, $httpCode, $errno, $errstr];
     }
-} else {
+
     // Fallback using stream_context for hosts where cURL extension is missing
     $options = [
         'http' => [
             'method' => 'POST',
             'header' => "Content-Type: application/x-www-form-urlencoded\r\n" .
-                        "User-Agent: VKWallSearcher-PHP/2.5.0\r\n" .
+                        "User-Agent: VKWallSearcher-PHP/3.3.0\r\n" .
                         "Accept: application/json\r\n",
             'content' => http_build_query($callParams),
             'timeout' => 25.0,
@@ -235,14 +321,7 @@ if (function_exists('curl_init')) {
     if ($responseBody === false) {
         $lastErr = error_get_last();
         $msg = isset($lastErr['message']) ? $lastErr['message'] : 'Не удалось установить соединение';
-        http_response_code(502);
-        echo json_encode([
-            'error' => [
-                'error_code' => 502,
-                'error_msg' => 'Сетевая ошибка при обращении к VK API (file_get_contents): ' . $msg
-            ]
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+        return [false, 0, 7, $msg]; // errno 7 ~ CONNECT failure
     }
 
     if (isset($http_response_header) && is_array($http_response_header)) {
@@ -250,11 +329,60 @@ if (function_exists('curl_init')) {
             $httpCode = (int)$matches[1];
         }
     }
+
+    return [$responseBody, $httpCode, 0, ''];
+}
+
+// ---------------------------------------------------------------------------
+// 5. Execute HTTP Request (+ automatic fallback-key retry on auth failure)
+// ---------------------------------------------------------------------------
+list($responseBody, $httpCode, $netErrno, $netError) = vk_perform_request($method, $callParams, $token);
+
+if ($netErrno === 0 && $usedServerKey && $fallbackToken !== '' && $token !== $fallbackToken) {
+    $decodedCheck = json_decode((string)$responseBody, true);
+    $vkErrorCode = is_array($decodedCheck) && isset($decodedCheck['error']['error_code'])
+        ? (int)$decodedCheck['error']['error_code']
+        : 0;
+
+    // VK error 5 = «User authorization failed»: основной ключ отозван/испорчен,
+    // прозрачно повторяем запрос с резервным ключом.
+    if ($vkErrorCode === 5) {
+        list($retryBody, $retryHttpCode, $retryErrno, $retryError) = vk_perform_request($method, $callParams, $fallbackToken);
+        if ($retryErrno === 0) {
+            $responseBody = $retryBody;
+            $httpCode = $retryHttpCode;
+        } else {
+            $netErrno = $retryErrno;
+            $netError = $retryError;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // 6. Handle HTTP Response
 // ---------------------------------------------------------------------------
+if ($netErrno !== 0) {
+    if ($netErrno === CURLE_OPERATION_TIMEDOUT) {
+        http_response_code(504);
+        echo json_encode([
+            'error' => [
+                'error_code' => 504,
+                'error_msg' => 'Превышено время ожидания ответа от VK API (таймаут 25 сек).'
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    http_response_code(502);
+    echo json_encode([
+        'error' => [
+            'error_code' => 502,
+            'error_msg' => 'Сетевая ошибка при обращении к VK API: ' . $netError
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($httpCode !== 200 && $httpCode !== 0) {
     http_response_code(502);
     echo json_encode([

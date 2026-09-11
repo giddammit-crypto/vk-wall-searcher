@@ -599,6 +599,13 @@ body {
 .status-indicator { display: inline-block; font-family: var(--font-mono); font-size: 0.6875rem; margin-top: 6px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
 .status-indicator.success { color: var(--color-success); }
 .status-indicator.error { color: var(--color-danger); }
+/* v3.3: индикатор серверного сервисного ключа */
+.status-indicator.loading { color: var(--accent); animation: serverKeyPulse 1.4s ease-in-out infinite; }
+@keyframes serverKeyPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.server-key-badge { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
+.server-key-badge .input-leading-icon { color: var(--accent); font-size: 20px; }
+.server-key-badge .status-indicator { margin-top: 0; }
+.settings-hint code, .token-guide code { font-family: var(--font-mono); font-size: 0.85em; padding: 1px 6px; border-radius: 6px; background: rgba(220, 230, 255, 0.10); border: 1px solid var(--hairline); white-space: nowrap; }
 
 /* ==========================================================================
    Forms — Bento Quiet: large, rounded, warm surface
@@ -1860,8 +1867,11 @@ input::placeholder { color: var(--text-tertiary); }
     .app-container { width: 100%; max-width: 100%; overflow-x: clip; }
     input[type="text"], input[type="password"], input[type="number"], select { font-size: 16px !important; min-height: 46px; padding: 12px 14px; }
 
-    .app-header { padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; flex-wrap: nowrap; gap: 8px; border-radius: var(--radius-md); }
-    .logo-container { gap: 8px; min-width: 0; flex: 1; }
+    .app-header { padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 8px; border-radius: var(--radius-md); }
+    .logo-container { gap: 8px; min-width: 0; flex: 1 1 100%; }
+    .header-actions { width: 100%; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
+    .header-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; padding: 9px 8px; }
+    .header-actions .settings-btn-text, #theme-toggle-text { display: none; }
     .logo-icon-wrap { width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--radius-sm); }
     .logo-icon-wrap .logo-icon { font-size: 22px; }
     .logo-text { min-width: 0; flex: 1; }
@@ -4192,3 +4202,329 @@ select:focus {
     font-size: 16px;
 }
 
+
+/* ==========================================================================
+   v3.4 — Вкладка «Советы филиалам»
+   ========================================================================== */
+.advice-wrap { display: flex; flex-direction: column; gap: 18px; }
+.advice-empty {
+    text-align: center; padding: 60px 24px; color: var(--muted);
+    background: var(--bg-card); border: 1px solid var(--hairline); border-radius: 18px;
+}
+.advice-empty .material-symbols-outlined { font-size: 44px; color: var(--accent); display: block; margin: 0 auto 12px; }
+.advice-empty h3 { margin: 0 0 8px; color: var(--text-primary); }
+.advice-empty p { margin: 0; font-size: 0.9rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+.advice-summary {
+    display: flex; align-items: center; gap: 18px; padding: 18px 22px;
+}
+.advice-summary-icon {
+    width: 52px; height: 52px; border-radius: 16px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); color: var(--accent);
+}
+.advice-summary-icon .material-symbols-outlined { font-size: 30px; }
+.advice-summary-text h3 { margin: 0 0 4px; font-size: 1rem; }
+.advice-summary-text p { margin: 0; font-size: 0.85rem; color: var(--muted); }
+
+.advice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 18px; }
+
+.advice-branch-card { padding: 0; overflow: hidden; }
+.advice-branch-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 18px; border-bottom: 1px solid var(--divider-color);
+    background: var(--surface);
+}
+.advice-branch-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.advice-branch-id > div { min-width: 0; flex: 1; }
+.advice-avatar { flex: 0 0 auto; }
+.advice-branch-name { margin: 0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.advice-branch-meta { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+
+.advice-score {
+    flex: 0 0 auto; width: 58px; height: 58px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 2px solid currentColor;
+}
+.advice-score-num { font-size: 1.15rem; font-weight: 700; line-height: 1; }
+.advice-score-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
+.score-good { color: var(--color-success, #34d399); background: rgba(52, 211, 153, 0.08); }
+.score-mid  { color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+.score-bad  { color: var(--color-danger, #f87171); background: rgba(248, 113, 113, 0.08); }
+
+.advice-items { display: flex; flex-direction: column; padding: 10px 12px 14px; gap: 4px; }
+.advice-item {
+    display: flex; gap: 12px; padding: 10px 10px; border-radius: 12px; align-items: flex-start;
+}
+.advice-item-icon { font-size: 20px; margin-top: 1px; flex: 0 0 auto; }
+.advice-item-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 3px; }
+.advice-item-text { font-size: 0.8rem; color: var(--muted); line-height: 1.45; }
+.adv-success { background: rgba(52, 211, 153, 0.07); }
+.adv-success .advice-item-icon, .adv-success .advice-item-title { color: var(--color-success, #34d399); }
+.adv-info { background: var(--accent-soft); }
+.adv-info .advice-item-icon, .adv-info .advice-item-title { color: var(--accent); }
+.adv-warn { background: rgba(251, 191, 36, 0.08); }
+.adv-warn .advice-item-icon, .adv-warn .advice-item-title { color: #fbbf24; }
+.adv-danger { background: rgba(248, 113, 113, 0.09); }
+.adv-danger .advice-item-icon, .adv-danger .advice-item-title { color: var(--color-danger, #f87171); }
+
+/* ==========================================================================
+   v3.4 — Вкладка «Подписчики»
+   ========================================================================== */
+.subs-wrap { display: flex; flex-direction: column; gap: 18px; }
+
+.subs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; flex-wrap: wrap; }
+.subs-toolbar-left { display: flex; align-items: center; gap: 12px; }
+.subs-toolbar-left > .material-symbols-outlined { color: var(--accent); font-size: 28px; }
+.subs-toolbar-hint { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 2px; max-width: 560px; }
+
+.subs-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.subs-kpi { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.subs-kpi-icon { color: var(--accent); font-size: 22px; }
+.subs-kpi-value { font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); }
+.subs-kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.delta { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.delta.up { color: var(--color-success, #34d399); }
+.delta.down { color: var(--color-danger, #f87171); }
+.delta.zero { color: var(--muted); }
+.delta.na { color: var(--muted); font-weight: 400; font-style: italic; font-size: 0.8em; }
+
+.subs-chart-card, .subs-table-card { padding: 18px 20px; }
+.subs-chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.subs-chart-head h3 {
+    margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;
+}
+.subs-chart-head h3 .material-symbols-outlined { color: var(--accent); font-size: 20px; }
+
+.subs-chart { width: 100%; height: 240px; }
+.subs-grid-line { stroke: var(--hairline); stroke-width: 1; stroke-dasharray: 3 5; }
+.subs-grid-label { fill: var(--muted); font-size: 10px; font-family: var(--font-mono); }
+.subs-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.subs-dot { fill: var(--accent); stroke: var(--bg-page); stroke-width: 1.5; }
+
+.subs-chart-empty {
+    text-align: center; padding: 46px 20px; color: var(--muted);
+    border: 1px dashed var(--hairline); border-radius: 14px;
+}
+.subs-chart-empty .material-symbols-outlined { font-size: 38px; color: var(--accent); display: block; margin: 0 auto 10px; }
+.subs-chart-empty p { margin: 0; font-size: 0.85rem; line-height: 1.55; }
+
+.subs-table td.num, .subs-table th { text-align: center; }
+.subs-table td.subs-branch-cell { text-align: left; font-weight: 600; }
+.subs-table td.muted { color: var(--muted); font-size: 0.8rem; }
+.subs-branch-cell a { color: var(--accent); text-decoration: none; }
+.subs-branch-cell a:hover { text-decoration: underline; }
+
+.btn-loading .icon { animation: subsSpin 1.1s linear infinite; }
+@keyframes subsSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   v3.4 — Модальное окно «Настройки» и индикатор обновления
+   ========================================================================== */
+.update-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--color-aurora-pink, #F472B6);
+    box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.7);
+    animation: updateDotPulse 1.6s ease-out infinite;
+    position: absolute; top: 7px; right: 8px;
+}
+#app-settings-btn { position: relative; }
+@keyframes updateDotPulse {
+    0% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(244, 114, 182, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0); }
+}
+
+.app-settings-overlay {
+    position: fixed; inset: 0; z-index: 950;
+    background: rgba(6, 9, 24, 0.62);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.app-settings-overlay.hidden { display: none !important; }
+.app-settings-modal {
+    width: 620px; max-width: 100%; max-height: 86vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+.app-settings-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--divider-color);
+}
+.app-settings-title-wrap { display: flex; align-items: center; gap: 10px; }
+.app-settings-title-wrap .material-symbols-outlined { color: var(--accent); }
+.app-settings-title-wrap h3 { margin: 0; font-size: 1.05rem; }
+
+.app-settings-body { padding: 8px 20px 16px; overflow-y: auto; }
+.app-settings-section { padding: 14px 0; border-bottom: 1px solid var(--divider-color); }
+.app-settings-section:last-child { border-bottom: none; }
+.app-settings-section h4 {
+    margin: 0 0 12px; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--muted); display: flex; align-items: center; gap: 8px;
+}
+.app-settings-section h4 .material-symbols-outlined { font-size: 18px; color: var(--accent); }
+.app-settings-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.app-settings-row:last-child { margin-bottom: 0; }
+.app-settings-note { font-size: 0.75rem; color: var(--muted); line-height: 1.5; margin: 6px 0 0; }
+.app-settings-note code {
+    font-family: var(--font-mono); font-size: 0.9em; padding: 1px 5px; border-radius: 5px;
+    background: rgba(220, 230, 255, 0.1); border: 1px solid var(--hairline);
+}
+
+.version-row { align-items: center; }
+.version-info { display: flex; align-items: baseline; gap: 10px; }
+.version-badge {
+    font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--accent-medium); border-radius: 8px; padding: 3px 10px;
+}
+.version-commit { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+.repo-link {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem;
+    color: var(--accent); text-decoration: none;
+}
+.repo-link:hover { text-decoration: underline; }
+.repo-link .material-symbols-outlined { font-size: 15px; }
+
+.update-status {
+    font-size: 0.8rem; color: var(--muted); line-height: 1.5;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+}
+.update-available-label { color: var(--color-aurora-pink, #F472B6); font-weight: 700; }
+.update-token-row .input-icon-wrap { flex: 1 1 100%; }
+
+.app-settings-foot {
+    padding: 12px 20px; border-top: 1px solid var(--divider-color);
+    font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono);
+}
+
+@media (max-width: 720px) {
+    .advice-grid { grid-template-columns: 1fr; }
+    .advice-branch-name { max-width: 200px; }
+    .app-settings-modal { max-height: 92vh; }
+}
+
+/* ==========================================================================
+   v3.4.1 — Аудит: производительность, доступность, адаптивность
+   ========================================================================== */
+
+/* Плавный скролл по якорям (с уважением к reduced-motion ниже) */
+html { scroll-behavior: smooth; }
+
+/* Видимый фокус для клавиатурной навигации */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Отключаем тяжёлую анимацию для пользователей, предпочитающих покой */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Отложенная отрисовка тяжёлых блоков: карточки и невидимые вкладки
+   не считаются layout'ом, пока не появятся рядом с viewport */
+.post-card,
+.advice-branch-card,
+.report-group-section,
+.tab-content:not(.active-content) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
+}
+
+/* Липкая панель вкладок при длинной ленте результатов */
+.tabs-container {
+    position: sticky;
+    top: 6px;
+    z-index: 60;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+@media (max-width: 768px) {
+    .tabs-container { top: 4px; }
+}
+
+/* Узкие экраны: сетка советов не должна выходить за контейнер */
+@media (max-width: 460px) {
+    .advice-grid { grid-template-columns: 1fr; }
+    .advice-branch-head { flex-wrap: wrap; }
+    .advice-score { order: -1; }
+    .subs-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .subs-kpi-value { font-size: 1.15rem; }
+    .subs-toolbar { flex-direction: column; align-items: stretch; }
+    .subs-toolbar-right .btn { width: 100%; justify-content: center; }
+    .app-settings-overlay { padding: 10px; }
+    .app-settings-body { padding: 4px 14px 12px; }
+    .version-info { flex-wrap: wrap; }
+}
+
+/* Сенсорные цели не меньше 44px на телефонах */
+@media (max-width: 600px) {
+    .header-actions .btn { min-height: 44px; }
+    .tab-btn { min-height: 44px; }
+    .month-badge { min-height: 44px; }
+    .advice-item { min-height: 44px; }
+}
+
+/* Шапка на самых узких экранах — кнопки гарантированно в один ряд */
+@media (max-width: 400px) {
+    .header-actions .btn .material-symbols-outlined.icon { font-size: 20px; }
+    .logo-text h1 { font-size: 1rem; }
+}
+
+/* Иконка темы теперь Material Symbols — выравниваем */
+#theme-toggle-icon.theme-icon { font-size: 20px; line-height: 1; vertical-align: middle; }
+
+/* Баланс сетки параметров поиска: правая колонка дат */
+@media (min-width: 769px) {
+    .date-side-col { display: flex; flex-direction: column; justify-content: space-between; gap: 1.4rem; }
+    .date-side-col .form-group { margin-bottom: 0; }
+}
+
+/* v3.4.1 — доводка шапки на средних экранах (600–900px) */
+@media (max-width: 900px) and (min-width: 601px) {
+    .header-actions .btn { padding: 9px 12px; }
+    .app-header { padding: 0.9rem 1.1rem; }
+}
+
+/* v3.4.2 — светлая тема: адаптивные ховеры, бейджи, пилюли (контраст текста и фона) */
+[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .btn-outlined:hover { background: rgba(15, 23, 42, 0.06); color: var(--text-primary); }
+[data-theme="light"] .tab-btn:hover { background: rgba(15, 23, 42, 0.05); }
+[data-theme="light"] .tab-badge { background: rgba(15, 23, 42, 0.08); color: var(--text-secondary); }
+[data-theme="light"] .tab-btn.active { box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .preset-pill.active {
+    background: var(--accent-soft) !important;
+    box-shadow: 0 2px 10px rgba(23, 87, 166, 0.25), inset 0 0 8px rgba(23, 87, 166, 0.12) !important;
+}
+[data-theme="light"] .month-badge:hover { box-shadow: 0 0 10px var(--accent-soft); }
+[data-theme="light"] .segment-btn.active { box-shadow: 0 3px 12px var(--accent-soft), 0 1px 4px rgba(15, 23, 42, 0.15); }
+
+/* Баннер «первый снимок = базовая точка» на вкладке подписчиков */
+.subs-first-note {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 18px; margin-bottom: 1.25rem;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+}
+.subs-first-note .material-symbols-outlined { color: var(--accent); font-size: 22px; margin-top: 2px; }
+.subs-first-note b { display: block; margin-bottom: 2px; color: var(--text-primary); }
+.subs-first-note span:not(.material-symbols-outlined) { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.5; }
+
+/* v3.4.2 — гарантия контраста выбранных месяцев в светлой теме */
+[data-theme="light"] .month-badge.selected {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #1757a6 0%, #124484 50%, #4f46e5 100%) !important;
+    border-color: transparent !important;
+}

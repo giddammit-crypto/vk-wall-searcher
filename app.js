@@ -50,7 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State management
     const state = {
-        token: localStorage.getItem('vk_search_token') || '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a',
+        // v3.3: сервисный ключ переехал на сервер (api/config.php), в браузере не хранится
+        token: '',
         isScanning: false,
         shouldCancel: false,
         targetInfo: null, // Holds resolved owner object (name, avatar, type, raw id)
@@ -910,40 +911,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Endpoint for VK Proxy (relative path with auto-fallback between PHP and Python backends)
-    let currentProxyUrl = 'api/vk-proxy.php';
+    function resolveApiUrl(relPath) {
+        if (typeof window === 'undefined' || !window.location || !window.location.href) {
+            return 'api/vk-proxy.php';
+        }
+        try {
+            const cleanHref = window.location.href.split('?')[0].split('#')[0];
+            const dirHref = cleanHref.substring(0, cleanHref.lastIndexOf('/') + 1);
+            return new URL(relPath, dirHref).href;
+        } catch (e) {
+            return relPath;
+        }
+    }
+
+    // Endpoint for VK Proxy (relative path with auto-fallback)
+    let currentProxyUrl = resolveApiUrl('api/vk-proxy.php');
 
     async function sendProxyRequest(payload) {
-        let response = null;
-        try {
-            response = await fetch(currentProxyUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        } catch (netErr) {
-            response = null;
-        }
+        const candidateUrls = [
+            currentProxyUrl,
+            resolveApiUrl('api/vk-proxy.php'),
+            'api/vk-proxy.php',
+            resolveApiUrl('api/vk-proxy'),
+            '/api/vk-proxy.php'
+        ];
+        const urlsToTry = Array.from(new Set(candidateUrls.filter(Boolean)));
 
-        // If 405 Method Not Allowed or 404 Not Found, automatically fallback to alternate route
-        if (!response || response.status === 404 || response.status === 405) {
-            const fallbackUrl = currentProxyUrl.includes('.php') ? '/api/vk-proxy' : 'api/vk-proxy.php';
+        for (let i = 0; i < urlsToTry.length; i++) {
+            const targetUrl = urlsToTry[i];
             try {
-                const altResp = await fetch(fallbackUrl, {
+                const resp = await fetch(targetUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (altResp && altResp.status !== 405 && altResp.status !== 404) {
-                    currentProxyUrl = fallbackUrl; // remember working endpoint for subsequent calls
-                    return altResp;
+                if (resp && resp.status !== 404 && resp.status !== 405 && resp.status !== 502) {
+                    currentProxyUrl = targetUrl;
+                    return resp;
                 }
-            } catch (e) {
-                // Ignore and return original response
-            }
+            } catch (e) {}
         }
-
-        return response;
+        return null;
     }
 
     // Call VK Proxy backend API

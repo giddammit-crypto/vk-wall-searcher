@@ -6,6 +6,14 @@
 import { extractNum, formatViews } from './analytics.js';
 import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js';
 
+/** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */
+function fmtDocDelta(v) {
+    if (v === null || v === undefined) return '<i>база</i>';
+    if (v > 0) return `<b>+${v.toLocaleString('ru-RU')}</b>`;
+    if (v < 0) return `<b>−${Math.abs(v).toLocaleString('ru-RU')}</b>`;
+    return '±0';
+}
+
 /**
  * Trigger file download from a Blob
  */
@@ -132,6 +140,72 @@ export function exportToDocx(posts, stats = [], meta = {}) {
         throw new Error('Нет данных для экспорта в Word');
     }
 
+    // Итоговые показатели считаем из самих записей (надёжнее meta)
+    let totViews = 0, totLikes = 0, totReposts = 0, totComments = 0;
+    posts.forEach(p => {
+        totViews += extractNum(p.views);
+        totLikes += extractNum(p.likes);
+        totReposts += extractNum(p.reposts);
+        totComments += extractNum(p.comments);
+    });
+    const totInteractions = totLikes + totReposts + totComments;
+
+    // Сводная таблица по всем филиалам (включая нулевые)
+    const summaryRows = (stats || []).map((s, i) => {
+        const views = s.views || 0;
+        const inter = s.totalInteractions || 0;
+        const er = views > 0 ? (inter / views * 100).toFixed(2) : '0.00';
+        return `
+        <tr>
+            <td class="text-center">${i + 1}</td>
+            <td>${escapeHtml(s.info?.canonicalBranch || s.info?.canonicalName || s.info?.name || '')}</td>
+            <td class="text-right">${s.postsCount || 0}</td>
+            <td class="text-right">${(s.likes || 0).toLocaleString('ru-RU')}</td>
+            <td class="text-right">${(s.reposts || 0).toLocaleString('ru-RU')}</td>
+            <td class="text-right">${(s.comments || 0).toLocaleString('ru-RU')}</td>
+            <td class="text-right">${formatViews(views)}</td>
+            <td class="text-right">${er}%</td>
+        </tr>`;
+    }).join('');
+
+    // Динамика подписчиков (если передана)
+    const subs = meta.subscribers || [];
+    const subsSection = subs.length ? `
+    <h2 class="section-h">2. Динамика подписчиков сообществ</h2>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th style="width: 30px;" class="text-center">№</th>
+                <th>Филиал</th>
+                <th style="width: 80px;" class="text-right">Подписчики</th>
+                <th style="width: 70px;" class="text-right">За 7 дней</th>
+                <th style="width: 75px;" class="text-right">За 30 дней</th>
+                <th style="width: 90px;">Обновлено</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${subs.map((r, i) => `
+            <tr>
+                <td class="text-center">${i + 1}</td>
+                <td>${escapeHtml(r.branch || r.name || '')}</td>
+                <td class="text-right">${(r.current || 0).toLocaleString('ru-RU')}</td>
+                <td class="text-right">${fmtDocDelta(r.week)}</td>
+                <td class="text-right">${fmtDocDelta(r.month)}</td>
+                <td>${r.lastTs ? new Date(r.lastTs * 1000).toLocaleDateString('ru-RU') : ''}</td>
+            </tr>`).join('')}
+            <tr>
+                <td></td>
+                <td><b>Итого суммарная аудитория</b></td>
+                <td class="text-right"><b>${subs.reduce((s2, r) => s2 + (r.current || 0), 0).toLocaleString('ru-RU')}</b></td>
+                <td class="text-right"><b>${fmtDocDelta(subs.reduce((s2, r) => s2 + (typeof r.week === 'number' ? r.week : 0), 0))}</b></td>
+                <td class="text-right"><b>${fmtDocDelta(subs.reduce((s2, r) => s2 + (typeof r.month === 'number' ? r.month : 0), 0))}</b></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+    <p class="note">Первый снимок подписчиков принимается за базовую точку; сравнение выполняется со следующего сканирования.</p>
+    ` : '';
+
     const docContent = `
 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -147,8 +221,16 @@ export function exportToDocx(posts, stats = [], meta = {}) {
 </xml>
 <![endif]-->
 <style>
-    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; color: #1f2937; line-height: 1.4; margin: 20mm; }
+    @page { size: A4; margin: 18mm 14mm 20mm 18mm; }
+    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; color: #1f2937; line-height: 1.4; margin: 0; }
     h1 { font-size: 16pt; color: #1e3a8a; text-align: center; margin-bottom: 6px; }
+    .section-h { font-size: 13pt; color: #1e40af; margin-top: 22px; margin-bottom: 8px; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; }
+    .note { font-size: 9pt; color: #6b7280; margin-top: -12px; margin-bottom: 16px; }
+    .sign-block { margin-top: 28px; font-size: 11pt; }
+    .sign-block table { width: 100%; border-collapse: collapse; }
+    .sign-block td { padding: 14px 6px; vertical-align: bottom; }
+    .sign-line { border-bottom: 1px solid #1f2937; display: inline-block; width: 160px; }
+    .sign-caption { font-size: 8.5pt; color: #6b7280; }
     .org-title { font-size: 9pt; text-align: center; text-transform: uppercase; color: #4b5563; margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #9ca3af; padding-bottom: 6px; }
     .passport-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
     .passport-table td { padding: 6px 10px; border: 1px solid #d1d5db; }
@@ -183,13 +265,38 @@ export function exportToDocx(posts, stats = [], meta = {}) {
         </tr>
         <tr>
             <td class="passport-label">Суммарный охват (просмотры):</td>
-            <td><b>${formatViews(meta.totalViews || 0)}</b></td>
+            <td><b>${totViews.toLocaleString('ru-RU')}</b></td>
         </tr>
         <tr>
-            <td class="passport-label">Суммарно реакций (лайки + репосты):</td>
-            <td><b>${(meta.totalLikes || 0) + (meta.totalReposts || 0)}</b></td>
+            <td class="passport-label">Суммарно реакций (лайки, репосты, комментарии):</td>
+            <td><b>${totInteractions.toLocaleString('ru-RU')}</b></td>
+        </tr>
+        <tr>
+            <td class="passport-label">Филиалов в отчёте:</td>
+            <td><b>${(stats || []).length}</b>, из них с публикациями: <b>${(stats || []).filter(s => s.postsCount > 0).length}</b></td>
         </tr>
     </table>
+
+    <h2 class="section-h">1. Сводные показатели по филиалам</h2>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th style="width: 30px;" class="text-center">№</th>
+                <th>Филиал</th>
+                <th style="width: 55px;" class="text-right">Записей</th>
+                <th style="width: 60px;" class="text-right">Лайки</th>
+                <th style="width: 65px;" class="text-right">Репосты</th>
+                <th style="width: 75px;" class="text-right">Коммент.</th>
+                <th style="width: 70px;" class="text-right">Просмотры</th>
+                <th style="width: 55px;" class="text-right">ER</th>
+            </tr>
+        </thead>
+        <tbody>${summaryRows || '<tr><td colspan="8" class="text-center"><i>Нет данных по филиалам</i></td></tr>'}</tbody>
+    </table>
+
+    ${subsSection}
+
+    <h2 class="section-h">${subs.length ? '3' : '2'}. Детальные записи по филиалам</h2>
 
     ${stats.filter(s => s.postsCount > 0).map((s, idx) => `
         <div class="group-header">
@@ -246,6 +353,20 @@ export function exportToDocx(posts, stats = [], meta = {}) {
             </tbody>
         </table>
     `).join('')}
+
+    <div class="sign-block">
+        <p>Отчёт сформирован автоматически сервисом «Статистика групп ВК» (версия ${meta.appVersion || '3.4.2'}) на основе данных VK API.</p>
+        <table>
+            <tr>
+                <td style="width: 40%;">Отчёт составил: <span class="sign-line"></span></td>
+                <td style="width: 30%;">Подпись: <span class="sign-line"></span></td>
+                <td style="width: 30%;">Дата: <span class="sign-line"></span></td>
+            </tr>
+            <tr>
+                <td class="sign-caption" colspan="3">(должность, фамилия и инициалы сотрудника, подготовившего отчёт)</td>
+            </tr>
+        </table>
+    </div>
 </body>
 </html>
     `;

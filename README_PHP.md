@@ -10,15 +10,19 @@
 
 ### 1. На обычном веб-хостинге (Beget, Timeweb, Reg.ru, cPanel, ISPmanager и др.)
 
-1. Загрузите файлы проекта в директорию вашего сайта (обычно это `public_html`, `www` или `httpdocs`):
-   - `index.php` (или `index.html`)
-   - `app.js`
+1. Загрузите файлы проекта в директорию вашего сайта (в корень или любую подпапку, например `public_html/` или `public_html/vk-wall-searcher/`):
+   - `index.php` и `index.html`
+   - папку `src/` (ядро приложения и модули)
+   - папку `api/` (`vk-proxy.php`, `config.php` и др.)
+   - папку `data/` (хранилище подписчиков и кэш)
    - `style.css`
    - `branches_cache.json`
    - `.htaccess`
-   - папку `api/` с файлом `api/vk-proxy.php`
-2. **Готово!** Откройте ваш сайт в браузере: `https://vash-sait.ru/`.
-3. *(Опционально)* Проект отлично работает и в любой подпапке, например `https://vash-sait.ru/vk/` или `https://vash-sait.ru/tools/searcher/`. Никаких правок кода не требуется.
+   - `app.js` (монолитный бандл)
+
+2. **Готово!** Никаких Node.js, Vite, npm или запуска файлов `.bat` / `.sh` на хостинге выполнять **НЕ НУЖНО**.
+3. Откройте ваш сайт в браузере: `https://vash-sait.ru/` (или `https://vash-sait.ru/vk-wall-searcher/`). Всё работает сразу из коробки!
+4. **Статический хостинг (без PHP / GitHub Pages):** проект автоматически переходит в автономный режим (JSONP) прямо в браузере.
 
 ---
 

@@ -27,3 +27,12 @@ Thumbs.db
 
 # Local logs
 *.log
+
+# Server-side secrets (VK service keys)
+# api/config.php содержит базовые проверенные ключи; локальные переопределения можно хранить в api/config.local.php
+api/config.local.php
+.vk_wall_searcher_rate.lock
+
+# Runtime data (subscriber history, updater state)
+data/*
+!data/.gitkeep
