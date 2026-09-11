@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.4';
-import { createQrSvg } from './qrcode.js?v=3.7.4';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=3.7.5';
+import { createQrSvg } from './qrcode.js?v=3.7.5';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',
@@ -802,14 +802,20 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 padding: 0;
                 overflow: hidden;
             }
-            body { background: ${template.swatches[0]}; color: ${template.dark ? '#f8fafc' : '#0a0f1d'}; }
+            body {
+                background: ${template.swatches[0]};
+                color: ${template.dark ? '#f8fafc' : '#0a0f1d'};
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
             .print-sheet-bookmarks {
                 display: flex;
                 align-items: stretch;
                 justify-content: space-between;
                 width: 100%;
-                height: 190mm;
-                max-height: 190mm;
+                max-width: 273mm;
                 box-sizing: border-box;
                 page-break-inside: avoid;
                 break-inside: avoid;
@@ -818,11 +824,9 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex: 1;
                 min-width: 0;
                 max-width: 65mm;
-                height: 190mm;
-                max-height: 190mm;
                 border: 1px solid #cbd5e1;
                 border-radius: 3mm;
-                padding: 6mm 5mm 5.5mm;
+                padding: 5.5mm 4.5mm 4.5mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -837,9 +841,9 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 font-weight: 800;
                 letter-spacing: 0.14em;
                 text-transform: uppercase;
-                padding: 1.8mm 4.5mm;
+                padding: 1.6mm 4mm;
                 border-radius: 3mm;
-                margin-bottom: 2.8mm;
+                margin-bottom: 2.2mm;
                 color: #ffffff;
                 line-height: 1;
                 flex-shrink: 0;
@@ -850,47 +854,47 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-bottom: 2.8mm;
+                margin-bottom: 2.2mm;
                 line-height: 1.2;
                 flex-shrink: 0;
             }
             .bm-title {
-                font-size: 10pt;
+                font-size: 9.5pt;
                 font-weight: 800;
                 color: ${template.dark ? '#ffffff' : '#0a0f1d'};
                 line-height: 1.25;
-                margin-bottom: 3.5mm;
+                margin-bottom: 2.5mm;
                 flex-shrink: 0;
             }
             .bm-quote {
                 font-size: 7.5pt;
                 font-style: italic;
                 color: ${template.dark ? '#e2e8f0' : '#334155'};
-                line-height: 1.38;
-                padding: 2.5mm 3.2mm;
+                line-height: 1.35;
+                padding: 2.2mm 2.8mm;
                 background: ${template.dark ? '#0b1120' : '#f8fafc'};
                 border-left-width: 1.2mm;
                 border-left-style: solid;
                 border-radius: 0 1.5mm 1.5mm 0;
-                margin-bottom: 4mm;
+                margin-bottom: 2.5mm;
                 width: 100%;
                 box-sizing: border-box;
                 flex-shrink: 0;
             }
             .bm-qr-box {
-                margin: 2mm 0 2mm;
+                margin: 1.5mm 0 1.8mm;
                 flex-shrink: 0;
             }
             .bm-frame {
                 position: relative;
-                padding: 2.5mm;
+                padding: 2mm;
                 background: #ffffff;
                 display: inline-flex;
             }
             .bm-frame .corner {
                 position: absolute;
-                width: 3.5mm;
-                height: 3.5mm;
+                width: 3mm;
+                height: 3mm;
                 border-style: solid;
             }
             .bm-frame .corner-tl { top: 0; left: 0; border-width: 0.6mm 0 0 0.6mm; }
@@ -898,25 +902,25 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
             .bm-frame .corner-bl { bottom: 0; left: 0; border-width: 0 0 0.6mm 0.6mm; }
             .bm-frame .corner-br { bottom: 0; right: 0; border-width: 0 0.6mm 0.6mm 0; }
             .bm-frame svg {
-                width: 38mm;
-                height: 38mm;
+                width: 34mm;
+                height: 34mm;
                 display: block;
             }
             .bm-scan-cue {
-                font-size: 6.5pt;
+                font-size: 6.2pt;
                 font-weight: 800;
                 letter-spacing: 0.12em;
                 text-transform: uppercase;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-top: 1.5mm;
-                margin-bottom: 1.2mm;
+                margin-top: 1mm;
+                margin-bottom: 1mm;
                 flex-shrink: 0;
             }
             .bm-link {
                 font-family: 'JetBrains Mono', monospace;
-                font-size: 8pt;
+                font-size: 7.5pt;
                 font-weight: 700;
-                margin-bottom: 2mm;
+                margin-bottom: 1.5mm;
                 word-break: break-all;
                 flex-shrink: 0;
             }
@@ -924,16 +928,16 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: center;
-                gap: 1.5mm;
-                margin-top: 1mm;
-                margin-bottom: auto;
+                gap: 1.2mm;
+                margin-top: 0.8mm;
+                margin-bottom: 2mm;
                 width: 100%;
                 flex-shrink: 0;
             }
             .bm-chip {
-                font-size: 6pt;
+                font-size: 5.6pt;
                 font-weight: 700;
-                padding: 1mm 2.4mm;
+                padding: 0.8mm 2mm;
                 border-radius: 2mm;
                 background: ${template.dark ? '#1e293b' : '#f1f5f9'};
                 color: ${template.dark ? '#cbd5e1' : '#475569'};
@@ -942,13 +946,13 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 line-height: 1.2;
             }
             .bm-foot {
-                font-size: 7pt;
+                font-size: 6.5pt;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-top: auto;
-                padding-top: 3mm;
+                margin-top: 1mm;
+                padding-top: 2.2mm;
                 border-top: 0.35mm solid #cbd5e1;
                 width: 100%;
-                line-height: 1.35;
+                line-height: 1.3;
                 white-space: normal;
                 word-break: break-word;
                 text-align: center;
@@ -957,14 +961,14 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
             .bm-foot-item {
                 white-space: normal;
                 word-break: break-word;
-                margin-bottom: 1mm;
+                margin-bottom: 0.8mm;
             }
             .bm-foot-portal {
                 font-family: 'JetBrains Mono', monospace;
                 font-weight: 700;
-                font-size: 7.2pt;
+                font-size: 6.8pt;
                 color: ${template.dark ? '#38bdf8' : '#1d4ed8'};
-                margin-top: 1.2mm;
+                margin-top: 1mm;
                 white-space: normal;
                 word-break: break-all;
                 text-align: center;

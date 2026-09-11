@@ -7921,7 +7921,7 @@ textarea:focus-visible,
     justify-content: center;
     gap: 3px;
     margin-top: 2px;
-    margin-bottom: auto;
+    margin-bottom: 4px;
     width: 100%;
 }
 
@@ -7938,7 +7938,7 @@ textarea:focus-visible,
 }
 
 .bm-footer {
-    margin-top: auto;
+    margin-top: 2px;
     padding-top: 7px;
     border-top: 1px solid #e2e8f0;
     width: 100%;

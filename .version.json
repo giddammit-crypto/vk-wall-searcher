@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.7.4",
+    "version": "3.7.5",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T01:30:00+03:00",
-    "release_name": "AURORA 3.7.4 — Альбомная печать закладок A4 landscape без пустого места снизу и пропорциональная верстка"
+    "commit_date": "2026-09-12T01:40:00+03:00",
+    "release_name": "AURORA 3.7.5 — Синхронизация верстки закладок в печати и превью, устранение пустоты внизу карточек"
 }
