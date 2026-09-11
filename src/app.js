@@ -8,13 +8,14 @@ import {
     callVkExecuteBatch,
     getServerTokenStatus,
     resolveTarget,
-    authorCache
-} from './api.js?v=3.5.0';
+    authorCache,
+    resolveApiUrl
+} from './api.js?v=3.5.1';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.5.0';
+} from './advice.js?v=3.5.1';
 
 import {
     fetchHistory,
@@ -24,7 +25,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.5.0';
+} from './subscribers.js?v=3.5.1';
 
 import {
     fetchUpdaterStatus,
@@ -33,7 +34,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.5.0';
+} from './updater.js?v=3.5.1';
 
 import {
     CANONICAL_BRANCHES,
@@ -44,7 +45,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.5.0';
+} from './branches.js?v=3.5.1';
 
 import {
     calculateKPIs,
@@ -53,7 +54,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.5.0';
+} from './analytics.js?v=3.5.1';
 
 import {
     createPostCard,
@@ -65,7 +66,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.5.0';
+} from './render.js?v=3.5.1';
 
 import {
     exportToCsv,
@@ -75,11 +76,11 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.5.0';
+} from './export.js?v=3.5.1';
 
-import { initTableSorting } from './tablesort.js?v=3.5.0';
+import { initTableSorting } from './tablesort.js?v=3.5.1';
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
 
     // =========================================================================
     // 1. Application State
@@ -581,9 +582,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // 5. Branch Catalog Loading
     // =========================================================================
+    function populateBranchSelectOptions(branchesList) {
+        if (!elements.branchSelect) return;
+        const currentVal = elements.branchSelect.value;
+        elements.branchSelect.innerHTML = `
+            <option value="">— Выберите филиал библиотеки (или введите ниже ссылку вручную) —</option>
+            <option value="all">⚡ Все 16 филиалов одновременно (пакетный поиск)</option>
+        `;
+        const group = document.createElement('optgroup');
+        group.label = 'Филиалы библиотек г. Владимира (16 источников)';
+        branchesList.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.link;
+            opt.textContent = `${b.canonicalName || b.name}${b.address ? ` (${b.address})` : ''}`;
+            group.appendChild(opt);
+        });
+        elements.branchSelect.appendChild(group);
+        if (currentVal) {
+            elements.branchSelect.value = currentVal;
+        }
+    }
+
     async function loadLibraryBranches() {
         try {
-            const res = await fetch('branches_cache.json');
+            const res = await fetch(resolveApiUrl('branches_cache.json'));
             if (!res.ok) throw new Error('Branches cache fetch failed');
             const data = await res.json();
             const branchesMap = new Map();
@@ -610,21 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.libraryBranches = branchesList.map(b => b.link);
             state.libraryBranchesList = branchesList;
 
-            if (elements.branchSelect) {
-                elements.branchSelect.innerHTML = `
-                    <option value="">— Выберите филиал библиотеки (или введите ниже ссылку вручную) —</option>
-                    <option value="all">⚡ Все 16 филиалов одновременно (пакетное сканирование execute)</option>
-                `;
-                const group = document.createElement('optgroup');
-                group.label = 'Филиалы библиотек г. Владимира (16 источников)';
-                branchesList.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.link;
-                    opt.textContent = `${b.canonicalName || b.name}${b.address ? ` (${b.address})` : ''}`;
-                    group.appendChild(opt);
-                });
-                elements.branchSelect.appendChild(group);
-            }
+            populateBranchSelectOptions(branchesList);
 
             if (elements.branchesCountBadge && state.libraryBranches.length > 0) {
                 elements.branchesCountBadge.textContent = `${state.libraryBranches.length} филиалов`;
@@ -646,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.error('Error loading branch catalog:', err);
             if (CANONICAL_BRANCHES && CANONICAL_BRANCHES.length > 0) {
-                const fallbackList = CANONICAL_BRANCHES.map(b => ({
+                const fallbackList = CANONICAL_BRANCHES.filter(b => b.vkLink || b.screenName).map(b => ({
                     name: b.canonicalName,
                     canonicalName: b.canonicalName,
                     shortCode: b.shortCode,
@@ -656,6 +664,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }));
                 state.libraryBranchesList = fallbackList;
                 state.libraryBranches = fallbackList.map(b => b.link);
+
+                populateBranchSelectOptions(fallbackList);
+
+                if (elements.branchesCountBadge && state.libraryBranches.length > 0) {
+                    elements.branchesCountBadge.textContent = `${state.libraryBranches.length} филиалов`;
+                    elements.branchesCountBadge.style.display = 'inline-block';
+                }
+
+                if (state.useBranches || elements.branchesToggle?.checked) {
+                    state.useBranches = true;
+                    if (elements.branchesToggle) elements.branchesToggle.checked = true;
+                    if (elements.branchSelect) elements.branchSelect.value = 'all';
+                    if (elements.targetInput) {
+                        elements.targetInput.disabled = true;
+                        elements.targetInput.required = false;
+                        elements.targetInput.value = '[Поиск по всем 16 филиалам библиотек Владимира]';
+                        elements.targetInput.style.opacity = '0.6';
+                    }
+                }
             }
         }
     }
@@ -3306,4 +3333,10 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSearchModal,
         closePostModal
     };
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

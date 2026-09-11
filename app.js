@@ -775,8 +775,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Error loading library branches:', err);
-            elements.branchesCountBadge.textContent = 'ошибка загрузки';
-            elements.branchesCountBadge.style.display = 'inline-block';
+            if (CANONICAL_BRANCHES && CANONICAL_BRANCHES.length > 0) {
+                const fallbackList = CANONICAL_BRANCHES.filter(b => b.vkLink || b.screenName).map(b => ({
+                    name: b.canonicalName,
+                    canonicalName: b.canonicalName,
+                    shortCode: b.shortCode,
+                    rawId: b.rawId,
+                    link: b.vkLink || ('https://vk.com/' + b.screenName),
+                    address: b.address
+                }));
+                state.libraryBranchesList = fallbackList;
+                state.libraryBranches = fallbackList.map(b => b.link);
+
+                if (elements.branchSelect) {
+                    elements.branchSelect.innerHTML = `
+                        <option value="">— Выберите филиал библиотеки (или введите ниже ссылку вручную) —</option>
+                        <option value="all">⚡ Все 16 филиалов одновременно (пакетный поиск)</option>
+                    `;
+                    const optGroup = document.createElement('optgroup');
+                    optGroup.label = 'Филиалы библиотек г. Владимира (16 источников)';
+                    fallbackList.forEach((branch) => {
+                        const opt = document.createElement('option');
+                        opt.value = branch.link;
+                        const displayName = branch.canonicalName || branch.name;
+                        const addressInfo = branch.address ? ` (${branch.address})` : '';
+                        opt.textContent = `${displayName}${addressInfo}`;
+                        optGroup.appendChild(opt);
+                    });
+                    elements.branchSelect.appendChild(optGroup);
+                }
+
+                if (state.libraryBranches.length > 0) {
+                    elements.branchesCountBadge.textContent = `${state.libraryBranches.length} филиалов`;
+                    elements.branchesCountBadge.style.display = 'inline-block';
+                }
+            } else {
+                elements.branchesCountBadge.textContent = 'ошибка загрузки';
+                elements.branchesCountBadge.style.display = 'inline-block';
+            }
         }
     }
 

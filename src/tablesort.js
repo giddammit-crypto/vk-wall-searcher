@@ -170,3 +170,20 @@ export function initTableSorting() {
         }
     });
 }
+
+/**
+ * Ручная инициализация для конкретной таблицы (например, динамически отрисованной).
+ */
+export function makeTableSortable(tableEl) {
+    if (!tableEl) return;
+    initTableSorting();
+    tableEl.querySelectorAll('th').forEach(th => {
+        if (th.dataset.noSort === undefined && !th.classList.contains('no-sort')) {
+            const title = th.textContent.trim();
+            if (title !== 'Действие' && title !== 'Действия' && title !== 'Ссылка' && title !== 'Пост') {
+                th.classList.add('th-sortable');
+                if (!th.title) th.title = 'Нажмите для сортировки';
+            }
+        }
+    });
+}
