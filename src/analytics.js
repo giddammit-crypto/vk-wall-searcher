@@ -3,7 +3,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=3.5.2';
+import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=3.5.3';
 
 export function extractNum(val) {
     if (!val) return 0;
@@ -69,7 +69,9 @@ export function calculateGroupStats(posts, targets = []) {
     // Initialize all scanned targets so 0-post branches are included
     targets.forEach(t => {
         const targetObj = enrichTargetWithCanonical({ ...t });
-        map.set(targetObj.id, {
+        const key = targetObj.id || targetObj.rawId || targetObj.canonicalName || targetObj.name;
+        if (!key) return;
+        map.set(key, {
             info: targetObj,
             postsCount: 0,
             likes: 0,
@@ -81,10 +83,11 @@ export function calculateGroupStats(posts, targets = []) {
     });
 
     posts.forEach(p => {
-        const t = p.targetInfo || { id: p.owner_id, name: p._targetName || 'Источник' };
+        const t = p.targetInfo || { id: p.owner_id, rawId: p.owner_id, name: p._targetName || 'Источник' };
         enrichTargetWithCanonical(t);
-        if (!map.has(t.id)) {
-            map.set(t.id, {
+        const key = t.id || t.rawId || t.canonicalName || t.name;
+        if (!map.has(key)) {
+            map.set(key, {
                 info: t,
                 postsCount: 0,
                 likes: 0,
@@ -94,7 +97,7 @@ export function calculateGroupStats(posts, targets = []) {
                 posts: []
             });
         }
-        const s = map.get(t.id);
+        const s = map.get(key);
         s.postsCount++;
         s.likes += extractNum(p.likes);
         s.reposts += extractNum(p.reposts);

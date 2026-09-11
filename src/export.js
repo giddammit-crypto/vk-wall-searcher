@@ -5,6 +5,7 @@
 
 import { extractNum, formatViews } from './analytics.js';
 import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js';
+import { resolveApiUrl } from './api.js';
 
 /** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */
 function fmtDocDelta(v) {
@@ -535,10 +536,41 @@ export async function exportPhotosZip(posts, onProgress) {
 
     for (const ph of photos) {
         try {
-            const resp = await fetch(ph.url);
-            if (resp.ok) {
-                const blob = await resp.blob();
+            let blob = null;
+
+            // 1. Try direct CORS fetch first
+            try {
+                const resp = await fetch(ph.url, { mode: 'cors' });
+                if (resp.ok) {
+                    const b = await resp.blob();
+                    if (b && b.size > 0) {
+                        blob = b;
+                    }
+                }
+            } catch (corsErr) {
+                // Direct CORS fetch failed or blocked, will fallback to proxy
+            }
+
+            // 2. Fallback to server image proxy if direct fetch failed
+            if (!blob) {
+                try {
+                    const proxyUrl = resolveApiUrl('api/vk-proxy.php?action=fetch_image&url=' + encodeURIComponent(ph.url));
+                    const pResp = await fetch(proxyUrl);
+                    if (pResp.ok) {
+                        const b = await pResp.blob();
+                        if (b && b.size > 0) {
+                            blob = b;
+                        }
+                    }
+                } catch (proxyErr) {
+                    console.warn(`Proxy fetch failed for ${ph.url}:`, proxyErr);
+                }
+            }
+
+            if (blob && blob.size > 0) {
                 zip.file(ph.name, blob);
+            } else {
+                console.warn(`Не удалось получить данные фото: ${ph.url}`);
             }
         } catch (e) {
             console.warn(`Не удалось загрузить фото ${ph.url}:`, e);
@@ -547,6 +579,10 @@ export async function exportPhotosZip(posts, onProgress) {
         if (onProgress) {
             onProgress(downloaded, photos.length);
         }
+    }
+
+    if (Object.keys(zip.files).length === 0) {
+        throw new Error('Не удалось загрузить фотографии (ошибка доступа к CDN).');
     }
 
     const content = await zip.generateAsync({ type: 'blob' });

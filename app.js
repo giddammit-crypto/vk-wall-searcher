@@ -168,9 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
         printReportBtn: document.getElementById('print-report-btn'),
         quickDocBtn: document.getElementById('quick-doc-btn'),
         quickPrintBtn: document.getElementById('quick-print-btn'),
-        tabPrintBtn: document.getElementById('tab-print-btn'),
-        tabDocBtn: document.getElementById('tab-doc-btn'),
-        tabCsvBtn: document.getElementById('tab-csv-btn'),
         completionModal: document.getElementById('completion-modal'),
         modalCloseBtn: document.getElementById('modal-close-btn'),
         modalStatScanned: document.getElementById('modal-stat-scanned'),
@@ -559,7 +556,12 @@ document.addEventListener('DOMContentLoaded', () => {
             target.gradient = b.gradient;
             target.sortOrder = b.sortOrder;
             if (!target.branch_url) target.branch_url = b.branch_url;
-            if (b.rawId && !target.rawId) target.rawId = b.rawId;
+            if (b.rawId) {
+                target.rawId = b.rawId;
+                if (target.id === undefined || target.id === null) {
+                    target.id = b.rawId;
+                }
+            }
 
             // Fallback to authentic canonical avatar if missing or dog placeholder
             if (!target.avatar || isDogAvatarUrl(target.avatar)) {
@@ -1161,15 +1163,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (elements.copyReportBtn) elements.copyReportBtn.addEventListener('click', copyReportToClipboard);
     if (elements.downloadCsvBtn) elements.downloadCsvBtn.addEventListener('click', downloadCSV);
-    if (elements.tabCsvBtn) elements.tabCsvBtn.addEventListener('click', downloadCSV);
     if (elements.downloadJsonBtn) elements.downloadJsonBtn.addEventListener('click', downloadJSON);
     if (elements.downloadDocBtn) elements.downloadDocBtn.addEventListener('click', downloadDOC);
     if (elements.quickDocBtn) elements.quickDocBtn.addEventListener('click', downloadDOC);
-    if (elements.tabDocBtn) elements.tabDocBtn.addEventListener('click', downloadDOC);
     if (elements.downloadHtmlBtn) elements.downloadHtmlBtn.addEventListener('click', downloadHTML);
     if (elements.printReportBtn) elements.printReportBtn.addEventListener('click', triggerPrint);
     if (elements.quickPrintBtn) elements.quickPrintBtn.addEventListener('click', triggerPrint);
-    if (elements.tabPrintBtn) elements.tabPrintBtn.addEventListener('click', triggerPrint);
     elements.modalCloseBtn.addEventListener('click', () => {
         elements.completionModal.classList.add('hidden');
     });
@@ -2007,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     reposts += extractNum(p.reposts);
                     views += extractNum(p.views);
                 });
-                const isSelected = String(state.activeBranchFilter) === String(target.id);
+                const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: target, owner_id: target.id }, state.activeBranchFilter);
                 const displayName = target.canonicalName || target.name;
 
                 return `
@@ -2051,9 +2050,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Attach card click handlers
             elements.sourcesShowcaseGrid.querySelectorAll('.source-showcase-card').forEach(card => {
-                card.addEventListener('click', () => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('a')) return;
                     const targetId = card.dataset.targetId;
-                    toggleBranchFilter(targetId);
+                    const targetData = list.find(g => String(g.info.id) === String(targetId) || String(g.info.rawId) === String(targetId));
+                    toggleBranchFilter(targetId, targetData?.info);
                 });
             });
         }
@@ -2062,14 +2063,73 @@ document.addEventListener('DOMContentLoaded', () => {
         buildShowcaseCards();
     }
 
-    function toggleBranchFilter(targetId) {
-        state.activeHashtagFilter = null;
-        if (String(state.activeBranchFilter) === String(targetId)) {
-            state.activeBranchFilter = null;
+    function postMatchesBranch(post, branchFilter) {
+        if (!branchFilter) return true;
+        if (!post) return false;
+
+        // 1. Resolve canonical branch of branchFilter
+        let filterCanon = null;
+        if (typeof branchFilter === 'object' && branchFilter !== null) {
+            filterCanon = findCanonicalBranch(branchFilter);
         } else {
-            state.activeBranchFilter = targetId;
+            filterCanon = findCanonicalBranch({ id: branchFilter, rawId: branchFilter, name: String(branchFilter), link: String(branchFilter) });
+        }
+
+        // 2. Resolve canonical branch of post
+        const postTarget = post.targetInfo || { id: post.owner_id, rawId: post.owner_id, name: post._targetName };
+        const postCanon = findCanonicalBranch(postTarget);
+
+        if (filterCanon && postCanon) {
+            return filterCanon.sortOrder === postCanon.sortOrder ||
+                   filterCanon.canonicalName === postCanon.canonicalName ||
+                   Math.abs(filterCanon.rawId) === Math.abs(postCanon.rawId);
+        }
+
+        // 3. Numeric ID matching
+        const filterNum = parseInt(branchFilter, 10);
+        const filterAbs = !isNaN(filterNum) ? Math.abs(filterNum) : null;
+        if (filterAbs !== null) {
+            const pOwnerAbs = post.owner_id ? Math.abs(parseInt(post.owner_id, 10)) : null;
+            if (pOwnerAbs === filterAbs) return true;
+            const pTargetIdAbs = post.targetInfo?.id ? Math.abs(parseInt(post.targetInfo.id, 10)) : null;
+            if (pTargetIdAbs === filterAbs) return true;
+            const pTargetRawAbs = post.targetInfo?.rawId ? Math.abs(parseInt(post.targetInfo.rawId, 10)) : null;
+            if (pTargetRawAbs === filterAbs) return true;
+        }
+
+        // 4. Name / Shortcode matching
+        const filterStr = String(branchFilter).trim().toLowerCase();
+        const pName = (post.targetInfo?.canonicalName || post.targetInfo?.name || post._targetName || '').toLowerCase();
+        if (pName && (pName === filterStr || pName.includes(filterStr))) return true;
+
+        const pCode = (post.targetInfo?.shortCode || post.targetInfo?.branchNum || '').toLowerCase();
+        if (pCode && pCode === filterStr) return true;
+
+        return false;
+    }
+
+    function toggleBranchFilter(targetId, targetObj) {
+        state.activeHashtagFilter = null;
+        const targetIdentifier = targetId || (targetObj && (targetObj.id || targetObj.rawId || targetObj.canonicalName));
+        const isCurrentActive = state.activeBranchFilter && postMatchesBranch({ targetInfo: targetObj || { id: targetId, rawId: targetId }, owner_id: targetId }, state.activeBranchFilter);
+
+        if (isCurrentActive || String(state.activeBranchFilter) === String(targetIdentifier)) {
+            state.activeBranchFilter = null;
+            showToast('Фильтр по филиалу сброшен', 'info');
+        } else {
+            state.activeBranchFilter = targetIdentifier;
+            const name = targetObj ? (targetObj.canonicalName || targetObj.name) : 'выбранному филиалу';
+            showToast(`Показаны записи: ${name}`, 'filter_alt');
+            const visualTabBtn = document.querySelector('.tab-btn[data-tab="visual-tab"]');
+            if (visualTabBtn) {
+                visualTabBtn.click();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         updateFilteredVisualFeed();
+        if (elements.sourcesShowcaseSection && elements.sourcesShowcaseSection._buildShowcaseCards) {
+            elements.sourcesShowcaseSection._buildShowcaseCards();
+        }
     }
 
     function sortPosts(posts, sortBy) {
@@ -2107,7 +2167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let filteredPosts = state.matchedPosts;
         if (state.activeBranchFilter !== null) {
-            filteredPosts = state.matchedPosts.filter(p => String(p.targetInfo.id) === String(state.activeBranchFilter));
+            filteredPosts = state.matchedPosts.filter(p => postMatchesBranch(p, state.activeBranchFilter));
             
             const activeTarget = state.targetsInfo ? state.targetsInfo.find(t => String(t.id) === String(state.activeBranchFilter)) : null;
             const targetName = activeTarget ? (activeTarget.canonicalName || activeTarget.name) : 'Филиал';
@@ -5076,10 +5136,43 @@ ${dangerList}
             let done = 0;
             showToast(`Собираю фото 0 / ${photos.length}…`, 'download', 60000);
             for (const ph of photos) {
-                try { const resp = await fetch(ph.url); if (resp.ok) zip.file(ph.name, await resp.blob()); } catch(e) {}
+                try {
+                    let blob = null;
+                    // 1. Try direct CORS fetch
+                    try {
+                        const resp = await fetch(ph.url, { mode: 'cors' });
+                        if (resp.ok) {
+                            const b = await resp.blob();
+                            if (b && b.size > 0) blob = b;
+                        }
+                    } catch(directErr) {}
+
+                    // 2. Fallback to server image proxy if direct fetch failed
+                    if (!blob) {
+                        try {
+                            const proxyUrl = resolveApiUrl('api/vk-proxy.php?action=fetch_image&url=' + encodeURIComponent(ph.url));
+                            const pResp = await fetch(proxyUrl);
+                            if (pResp.ok) {
+                                const b = await pResp.blob();
+                                if (b && b.size > 0) blob = b;
+                            }
+                        } catch(proxyErr) {}
+                    }
+
+                    if (blob && blob.size > 0) {
+                        zip.file(ph.name, blob);
+                    }
+                } catch(e) {}
                 done++;
-                if (done % 5 === 0) showToast(`Собираю фото ${done} / ${photos.length}…`, 'download', 60000);
+                if (done % 5 === 0 || done === photos.length) showToast(`Собираю фото ${done} / ${photos.length}…`, 'download', 60000);
             }
+
+            if (Object.keys(zip.files).length === 0) {
+                elements.downloadPhotosBtn.disabled = false;
+                showToast('Не удалось загрузить фотографии (ошибка доступа к CDN)', 'error');
+                return;
+            }
+
             const blob = await zip.generateAsync({ type: 'blob' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -5087,7 +5180,7 @@ ${dangerList}
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 2000);
             elements.downloadPhotosBtn.disabled = false;
-            showToast(`Скачано ${done} фото в ZIP`, 'check_circle');
+            showToast(`Скачано ${Object.keys(zip.files).length} фото в ZIP`, 'check_circle');
         });
     }
 

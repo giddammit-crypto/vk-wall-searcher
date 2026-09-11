@@ -65,13 +65,127 @@ function vk_server_status_payload($serverToken, $fallbackToken, $apiVersion)
     ], JSON_UNESCAPED_UNICODE);
 }
 
+/**
+ * Secure Image Proxy for VK CDN resources
+ * Bypasses browser CORS restrictions when exporting photos to ZIP
+ */
+function vk_proxy_fetch_image($url)
+{
+    $url = trim((string)$url);
+    if ($url === '') {
+        http_response_code(400);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['error' => ['error_code' => 400, 'error_msg' => 'Параметр url отсутствует.']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $parsed = parse_url($url);
+    if (!$parsed || empty($parsed['host']) || !in_array(strtolower($parsed['scheme'] ?? ''), ['http', 'https'], true)) {
+        http_response_code(400);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['error' => ['error_code' => 400, 'error_msg' => 'Некорректный URL изображения.']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $host = strtolower($parsed['host']);
+    $allowedDomains = [
+        'userapi.com',
+        'vk.com',
+        'vk-cdn.net',
+        'vkuservideo.net'
+    ];
+
+    $isAllowed = false;
+    foreach ($allowedDomains as $domain) {
+        if ($host === $domain || substr($host, -strlen('.' . $domain)) === '.' . $domain) {
+            $isAllowed = true;
+            break;
+        }
+    }
+
+    if (!$isAllowed) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['error' => ['error_code' => 403, 'error_msg' => 'Домен не разрешён для проксирования изображений.']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $body = false;
+    $contentType = 'image/jpeg';
+    $httpCode = 0;
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 25,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ]);
+        $body = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $fetchedMime = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        if ($fetchedMime && stripos($fetchedMime, 'image/') !== false) {
+            $contentType = trim(explode(';', $fetchedMime)[0]);
+        }
+        curl_close($ch);
+    }
+
+    if (($body === false || $body === null || $httpCode >= 400) && ini_get('allow_url_fopen')) {
+        $ctx = stream_context_create([
+            'http' => [
+                'timeout' => 25,
+                'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'follow_location' => 1,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ]
+        ]);
+        $body = @file_get_contents($url, false, $ctx);
+        if ($body !== false) {
+            $httpCode = 200;
+            if (isset($http_response_header) && is_array($http_response_header)) {
+                foreach ($http_response_header as $hdr) {
+                    if (stripos($hdr, 'Content-Type:') === 0) {
+                        $mime = trim(substr($hdr, 13));
+                        if (stripos($mime, 'image/') !== false) {
+                            $contentType = trim(explode(';', $mime)[0]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if ($body === false || $body === null || strlen($body) === 0 || ($httpCode >= 400 && $httpCode !== 0)) {
+        http_response_code(502);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['error' => ['error_code' => 502, 'error_msg' => 'Не удалось загрузить изображение с удалённого сервера VK CDN.']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+    header('Content-Type: ' . $contentType);
+    header('Content-Length: ' . strlen($body));
+    header('Cache-Control: public, max-age=86400');
+    echo $body;
+    exit;
+}
+
 // ---------------------------------------------------------------------------
 // 1. CORS Headers
 // ---------------------------------------------------------------------------
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-header('Content-Type: application/json; charset=UTF-8');
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -79,8 +193,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Check for image fetch request via GET or POST
+$reqAction = $_GET['action'] ?? ($_POST['action'] ?? '');
+if ($reqAction === 'fetch_image') {
+    $targetUrl = $_GET['url'] ?? ($_POST['url'] ?? '');
+    vk_proxy_fetch_image($targetUrl);
+}
+
 // Service status endpoint for health-checks: GET /api/vk-proxy.php?status=1
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    header('Content-Type: application/json; charset=UTF-8');
     if (isset($_GET['status'])) {
         http_response_code(200);
         echo vk_server_status_payload($serverToken, $fallbackToken, $apiVersion);
@@ -96,8 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     exit;
 }
 
-// Only POST requests are permitted
+// Only POST requests are permitted beyond this point
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Content-Type: application/json; charset=UTF-8');
     http_response_code(405);
     echo json_encode([
         'error' => [
@@ -107,6 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+header('Content-Type: application/json; charset=UTF-8');
 
 // ---------------------------------------------------------------------------
 // 2. Read and Parse JSON Request Body
@@ -123,6 +248,10 @@ if (!is_array($data)) {
         ]
     ], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+if (isset($data['action']) && $data['action'] === 'fetch_image') {
+    vk_proxy_fetch_image($data['url'] ?? '');
 }
 
 $method = isset($data['method']) ? trim((string)$data['method']) : '';

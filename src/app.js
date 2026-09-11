@@ -10,12 +10,12 @@ import {
     resolveTarget,
     authorCache,
     resolveApiUrl
-} from './api.js?v=3.5.2';
+} from './api.js?v=3.5.3';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.5.2';
+} from './advice.js?v=3.5.3';
 
 import {
     fetchHistory,
@@ -25,7 +25,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.5.2';
+} from './subscribers.js?v=3.5.3';
 
 import {
     fetchUpdaterStatus,
@@ -34,7 +34,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.5.2';
+} from './updater.js?v=3.5.3';
 
 import {
     CANONICAL_BRANCHES,
@@ -45,7 +45,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.5.2';
+} from './branches.js?v=3.5.3';
 
 import {
     calculateKPIs,
@@ -54,7 +54,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.5.2';
+} from './analytics.js?v=3.5.3';
 
 import {
     createPostCard,
@@ -66,7 +66,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.5.2';
+} from './render.js?v=3.5.3';
 
 import {
     exportToCsv,
@@ -76,9 +76,10 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.5.2';
+} from './export.js?v=3.5.3';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.5.2';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.5.3';
+import { CosmicUniverse } from './cosmic.js?v=3.5.3';
 
 function initApp() {
 
@@ -239,9 +240,6 @@ function initApp() {
         printReportBtn: document.getElementById('print-report-btn'),
         quickDocBtn: document.getElementById('quick-doc-btn'),
         quickPrintBtn: document.getElementById('quick-print-btn'),
-        tabPrintBtn: document.getElementById('tab-print-btn'),
-        tabDocBtn: document.getElementById('tab-doc-btn'),
-        tabCsvBtn: document.getElementById('tab-csv-btn'),
 
         // Tab 3: Analytics & Cross-Posting
         exportRatingCsvBtn: document.getElementById('export-rating-csv-btn'),
@@ -812,10 +810,14 @@ function initApp() {
         if (state.isScanning) {
             state.shouldCancel = true;
             state.isScanning = false;
+            CosmicUniverse.setWarp(false);
+            CosmicUniverse.stop();
             if (elements.progressStatusMsg) {
                 elements.progressStatusMsg.textContent = 'Сканирование остановлено';
             }
         }
+        CosmicUniverse.setWarp(false);
+        CosmicUniverse.stop();
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('active');
             setTimeout(() => {
@@ -847,6 +849,7 @@ function initApp() {
     if (elements.cancelSearchBtn) {
         elements.cancelSearchBtn.addEventListener('click', () => {
             state.shouldCancel = true;
+            CosmicUniverse.setWarp(false);
             if (elements.cancelSearchBtn) {
                 const textSpan = elements.cancelSearchBtn.querySelector('span:not(.material-symbols-outlined):not(.icon)') || elements.cancelSearchBtn;
                 textSpan.textContent = 'Останавливаем...';
@@ -940,6 +943,8 @@ function initApp() {
             elements.searchModalOverlay.offsetWidth;
             elements.searchModalOverlay.classList.add('active');
         }
+        CosmicUniverse.start();
+        CosmicUniverse.setWarp(true);
         if (elements.searchCompletedActions) {
             elements.searchCompletedActions.classList.add('hidden');
         }
@@ -1178,6 +1183,8 @@ function initApp() {
                         break;
                     }
 
+                    CosmicUniverse.pulse(6.5);
+
                     // Populate author cache from extended response (for reposts)
                     if (res.groups && Array.isArray(res.groups)) {
                         res.groups.forEach(g => authorCache.set(-Math.abs(g.id), g));
@@ -1305,6 +1312,9 @@ function initApp() {
             if (elements.statMatched) elements.statMatched.textContent = state.matchedCount.toLocaleString('ru-RU');
             if (elements.statGroups) elements.statGroups.textContent = `${resolvedTargets.length} / ${resolvedTargets.length}`;
 
+            CosmicUniverse.setWarp(false);
+            CosmicUniverse.stop();
+
             if (state.shouldCancel) {
                 if (elements.progressTitle) elements.progressTitle.textContent = 'Поиск остановлен';
                 if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `Поиск прерван пользователем. Найдено записей: ${state.matchedCount}`;
@@ -1342,12 +1352,16 @@ function initApp() {
             saveSearchHistory(rawTargetInput || '16 филиалов', keywords.join(' '));
 
         } catch (err) {
+            CosmicUniverse.setWarp(false);
+            CosmicUniverse.stop();
             console.error('Search error:', err);
             alert(`Ошибка при выполнении поиска: ${err.message}`);
             if (elements.progressTitle) elements.progressTitle.textContent = 'Ошибка поиска';
             if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = err.message;
             if (elements.modalSearchCloseBtn) elements.modalSearchCloseBtn.classList.remove('hidden');
         } finally {
+            CosmicUniverse.setWarp(false);
+            CosmicUniverse.stop();
             state.isScanning = false;
             if (elements.submitBtn) {
                 elements.submitBtn.disabled = false;
@@ -1482,34 +1496,44 @@ function initApp() {
     function postMatchesBranch(post, branchFilter) {
         if (!branchFilter) return true;
         if (!post) return false;
-        const filterStr = String(branchFilter).trim().toLowerCase();
+
+        // 1. Resolve canonical branch of branchFilter
+        let filterCanon = null;
+        if (typeof branchFilter === 'object' && branchFilter !== null) {
+            filterCanon = findCanonicalBranch(branchFilter);
+        } else {
+            filterCanon = findCanonicalBranch({ id: branchFilter, rawId: branchFilter, name: String(branchFilter), link: String(branchFilter) });
+        }
+
+        // 2. Resolve canonical branch of post
+        const postTarget = post.targetInfo || { id: post.owner_id, rawId: post.owner_id, name: post._targetName };
+        const postCanon = findCanonicalBranch(postTarget);
+
+        if (filterCanon && postCanon) {
+            return filterCanon.sortOrder === postCanon.sortOrder ||
+                   filterCanon.canonicalName === postCanon.canonicalName ||
+                   Math.abs(filterCanon.rawId) === Math.abs(postCanon.rawId);
+        }
+
+        // 3. Numeric ID matching
         const filterNum = parseInt(branchFilter, 10);
         const filterAbs = !isNaN(filterNum) ? Math.abs(filterNum) : null;
-
-        // Check targetInfo id
-        const targetId = post.targetInfo?.id;
-        const targetIdNum = targetId !== undefined && targetId !== null ? parseInt(targetId, 10) : null;
-        if (filterAbs !== null && targetIdNum !== null && Math.abs(targetIdNum) === filterAbs) {
-            return true;
+        if (filterAbs !== null) {
+            const pOwnerAbs = post.owner_id ? Math.abs(parseInt(post.owner_id, 10)) : null;
+            if (pOwnerAbs === filterAbs) return true;
+            const pTargetIdAbs = post.targetInfo?.id ? Math.abs(parseInt(post.targetInfo.id, 10)) : null;
+            if (pTargetIdAbs === filterAbs) return true;
+            const pTargetRawAbs = post.targetInfo?.rawId ? Math.abs(parseInt(post.targetInfo.rawId, 10)) : null;
+            if (pTargetRawAbs === filterAbs) return true;
         }
 
-        // Check owner_id
-        const ownerIdNum = post.owner_id !== undefined && post.owner_id !== null ? parseInt(post.owner_id, 10) : null;
-        if (filterAbs !== null && ownerIdNum !== null && Math.abs(ownerIdNum) === filterAbs) {
-            return true;
-        }
+        // 4. Name / Shortcode matching
+        const filterStr = String(branchFilter).trim().toLowerCase();
+        const pName = (post.targetInfo?.canonicalName || post.targetInfo?.name || post._targetName || '').toLowerCase();
+        if (pName && (pName === filterStr || pName.includes(filterStr))) return true;
 
-        // Check canonicalName / name
-        const canonName = (post.targetInfo?.canonicalName || post.targetInfo?.name || '').trim().toLowerCase();
-        if (canonName && (canonName === filterStr || canonName.includes(filterStr))) {
-            return true;
-        }
-
-        // Check shortCode
-        const shortCode = (post.targetInfo?.shortCode || '').trim().toLowerCase();
-        if (shortCode && shortCode === filterStr) {
-            return true;
-        }
+        const pCode = (post.targetInfo?.shortCode || post.targetInfo?.branchNum || '').toLowerCase();
+        if (pCode && pCode === filterStr) return true;
 
         return false;
     }
@@ -1710,16 +1734,22 @@ function initApp() {
                 </div>
             `;
 
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('a')) return;
+
                 if (state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter)) {
                     state.activeBranchFilter = null;
+                    showToast('Фильтр по филиалу сброшен', 'info');
                 } else {
-                    state.activeBranchFilter = t.id || t.canonicalName;
+                    state.activeBranchFilter = t.id || t.rawId || t.canonicalName;
+                    state.activeHashtagFilter = null;
+                    showToast(`Показаны записи: ${t.canonicalName || t.name}`, 'filter_alt');
                     // Switch to visual feed tab when filtering to a branch
                     const visualTabBtn = document.querySelector('.tab-btn[data-tab="visual-tab"]');
-                    if (visualTabBtn && !visualTabBtn.classList.contains('active')) {
+                    if (visualTabBtn) {
                         visualTabBtn.click();
                     }
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
                 applySortAndFilterFeed();
                 renderSourcesShowcase(state.lastGroupsStats);
@@ -2504,7 +2534,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.5.2'
+                appVersion: '3.5.3'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
@@ -2535,7 +2565,6 @@ function initApp() {
     // Print buttons
     if (elements.printReportBtn) elements.printReportBtn.addEventListener('click', handlePrint);
     if (elements.quickPrintBtn) elements.quickPrintBtn.addEventListener('click', handlePrint);
-    if (elements.tabPrintBtn) elements.tabPrintBtn.addEventListener('click', handlePrint);
 
     // =========================================================================
     // 12. Tabs Navigation
@@ -2579,12 +2608,10 @@ function initApp() {
     // CSV Export buttons
     if (elements.exportCsvBtn) elements.exportCsvBtn.addEventListener('click', handleExportCsv);
     if (elements.downloadCsvBtn) elements.downloadCsvBtn.addEventListener('click', handleExportCsv);
-    if (elements.tabCsvBtn) elements.tabCsvBtn.addEventListener('click', handleExportCsv);
 
     // Word (DOCX) Export buttons
     if (elements.downloadDocBtn) elements.downloadDocBtn.addEventListener('click', handleExportDocx);
     if (elements.quickDocBtn) elements.quickDocBtn.addEventListener('click', handleExportDocx);
-    if (elements.tabDocBtn) elements.tabDocBtn.addEventListener('click', handleExportDocx);
 
     // Report Tab: Export JSON
     if (elements.downloadJsonBtn) {
@@ -3362,6 +3389,7 @@ function initApp() {
     renderSearchHistory();
     initTableSorting();
     checkUrlForForceUpdate();
+    CosmicUniverse.init({ canvasId: 'cosmic-universe-canvas', containerId: 'cosmic-search-backdrop' });
 
     // Expose for testing/debugging
     window.__VK_APP__ = {
@@ -3376,7 +3404,8 @@ function initApp() {
         renderAnalyticsTab,
         renderOfficialReport,
         closeSearchModal,
-        closePostModal
+        closePostModal,
+        CosmicUniverse
     };
 }
 

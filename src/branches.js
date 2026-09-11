@@ -372,7 +372,12 @@ export function enrichTargetWithCanonical(target) {
         target.gradient = b.gradient;
         target.sortOrder = b.sortOrder;
         if (!target.branch_url) target.branch_url = b.branch_url;
-        if (b.rawId && !target.rawId) target.rawId = b.rawId;
+        if (b.rawId) {
+            target.rawId = b.rawId;
+            if (target.id === undefined || target.id === null) {
+                target.id = b.rawId;
+            }
+        }
 
         // Fallback to authentic canonical avatar if missing or dog placeholder
         if (!target.avatar || isDogAvatarUrl(target.avatar)) {
