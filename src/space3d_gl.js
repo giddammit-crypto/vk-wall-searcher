@@ -1348,7 +1348,7 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -12, 3068, this._earthCenter);
+        const earthCenter = this._dirFromYawPitch(0, -12, 2454, this._earthCenter);
         const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
         const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
@@ -1484,7 +1484,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -12, 3068));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -12, 2454));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);

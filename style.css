@@ -9228,6 +9228,13 @@ body.space-3d-active {
     color: #ffffff;
 }
 
+.space-hud-title .brand-aurora {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: none !important;
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 0 28px rgba(62, 230, 196, 0.55);
+}
+
 .space-hud-sub {
     font-size: 8.5px;
     letter-spacing: 0.12em;

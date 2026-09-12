@@ -49,9 +49,8 @@ export class CelestialPlanetsEngine {
         this.moonLut = null;
         this.moonNormals = null;
 
-        // Celestial coordinates in space (degrees & distance)
-        // Earth is situated just below the horizon of the player (yaw: 0°, pitch: -12°)
-        this.earthCoords = { yaw: 0, pitch: -12, dist: 3068 };
+        // Earth is situated just below the horizon of the player (yaw: 0°, pitch: -12°, brought 0.8x closer)
+        this.earthCoords = { yaw: 0, pitch: -12, dist: 2454 };
         // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
         this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
 
