@@ -384,11 +384,14 @@ export class Space3DEngine {
             const expBtn = wrapper.querySelector('.btn-expand span');
             if (expBtn) expBtn.textContent = 'close_fullscreen';
 
-            // Center camera gently towards front
-            this.targetYaw = 0;
-            this.targetPitch = 0;
-            this.targetZoom = 1.0;
+            // Rotate camera towards this station
+            if (station.baseTransform) {
+                this.targetYaw = -station.baseTransform.rotY;
+                this.targetPitch = -station.baseTransform.rotX;
+                this.targetZoom = 1.0;
+            }
 
+            this.updateObjectTransform(station, true);
             this.triggerGravitationalWave();
             SpaceAudio.playVoice('window_expand');
             this.showSpatialToast(`Терминал «${station.title}» развернут на весь экран`);
@@ -1164,10 +1167,15 @@ export class Space3DEngine {
         const wrapper = document.getElementById(`obj-${station.id}`);
         if (!wrapper || !station.baseTransform) return;
 
-        // Если окно развернуто на весь экран — центрируем его прямо перед глазами пользователя
+        // Если окно развернуто на весь экран — выдвигаем его вперед к пользователю
         if (this.expandedStation === station) {
+            const b = station.baseTransform;
             wrapper.style.transition = animated ? 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)' : 'none';
-            wrapper.style.transform = `rotateY(0deg) rotateX(0deg) translate3d(0px, 0px, -560px)`;
+            wrapper.style.transform = `
+                rotateY(${b.rotY}deg)
+                rotateX(${b.rotX}deg)
+                translate3d(${b.transX}px, ${b.transY}px, ${b.transZ + 380}px)
+            `;
             return;
         }
 

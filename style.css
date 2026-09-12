@@ -10009,14 +10009,12 @@ body.space-3d-active {
 
 /* Fullscreen Expanded Station in 3D Space */
 .space-object-wrapper.is-expanded {
-    position: fixed !important;
-    top: 60px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: min(960px, 94vw) !important;
-    height: calc(100vh - 140px) !important;
-    z-index: 1000 !important;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: min(960px, 92vw) !important;
+    height: min(720px, calc(100vh - 160px)) !important;
+    margin-left: calc(-1 * min(960px, 92vw) / 2 + 220px) !important;
+    margin-top: calc(-1 * min(720px, calc(100vh - 160px)) / 2 + 260px) !important;
+    z-index: 9999 !important;
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1), margin 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .space-object-wrapper.is-expanded .space-station-card {
