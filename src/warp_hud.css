@@ -1,0 +1,693 @@
+/* ==========================================================================
+   AURORA AAA HYPERDRIVE — Кинематографический HUD варп-прыжка
+   Роль: UI/UX Lead • Motion Designer • 3D Art Director
+   Палитра: deep space / aurora cyan #3ee6c4 · sky #38bdf8 · violet #8a6cff
+   ========================================================================== */
+
+/* Холст варпа — поверх 3D-пространства: прибытие идёт кроссфейдом,
+   а не «жёсткой склейкой» (AAA-практика непрерывной сцены). */
+.space-warp-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 100000 !important;
+    pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
+    transform: translateZ(0);
+}
+
+.space-warp-canvas.hidden {
+    display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Корневой слой HUD
+   -------------------------------------------------------------------------- */
+.warp-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 100002;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+    font-family: 'Montserrat', system-ui, sans-serif;
+    color: #e2f4ff;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8);
+    -webkit-font-smoothing: antialiased;
+    contain: layout style paint;
+}
+
+.warp-hud.is-visible { opacity: 1; }
+.warp-hud.hidden { display: none !important; }
+
+/* Кинематографические полосы */
+.warp-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 5.2vh;
+    background: linear-gradient(180deg, #000 0%, #01030a 100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+    transform-origin: top;
+    animation: warpBarIn 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.warp-bar-top { top: 0; }
+.warp-bar-bottom {
+    bottom: 0;
+    transform-origin: bottom;
+    background: linear-gradient(0deg, #000 0%, #01030a 100%);
+}
+
+@keyframes warpBarIn {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+/* Тонкая технологическая сетка + виньетка */
+.warp-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(62, 230, 196, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(62, 230, 196, 0.045) 1px, transparent 1px);
+    background-size: 90px 90px, 90px 90px;
+    mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 28%, #000 82%);
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 28%, #000 82%);
+    opacity: 0.75;
+}
+
+.warp-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Рамка-видоискатель */
+.warp-frame { position: absolute; inset: 6.2vh 3.2vw; }
+
+.wf-corner {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    border: 2px solid rgba(62, 230, 196, 0.75);
+    filter: drop-shadow(0 0 10px rgba(62, 230, 196, 0.55));
+    animation: wfFade 1.4s ease 0.4s both;
+}
+.wf-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.wf-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.wf-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+.wf-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.wf-edge {
+    position: absolute;
+    top: 12%;
+    bottom: 12%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.35), transparent);
+    animation: wfFade 1.6s ease 0.6s both;
+}
+.wf-left { left: -16px; }
+.wf-right { right: -16px; }
+
+@keyframes wfFade {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   Миссионный патч (слева вверху)
+   -------------------------------------------------------------------------- */
+.warp-patch {
+    position: absolute;
+    top: 7.6vh;
+    left: 4vw;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px 10px 12px;
+    background: linear-gradient(135deg, rgba(6, 12, 28, 0.72), rgba(10, 22, 42, 0.42));
+    border: 1px solid rgba(62, 230, 196, 0.28);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    animation: warpSlideLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+.patch-badge {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: radial-gradient(circle at 30% 25%, rgba(62, 230, 196, 0.45), rgba(56, 189, 248, 0.12));
+    border: 1px solid rgba(62, 230, 196, 0.45);
+    box-shadow: 0 0 22px rgba(62, 230, 196, 0.35);
+    flex-shrink: 0;
+}
+.patch-badge .material-symbols-outlined { font-size: 22px; color: #d7fff7; }
+
+.patch-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
+.patch-title {
+    font-family: 'Orbitron', 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    color: #ffffff;
+}
+.patch-sub {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: #7ee8ff;
+}
+.patch-ver {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: rgba(186, 230, 253, 0.62);
+}
+
+/* --------------------------------------------------------------------------
+   Телеметрия (справа вверху)
+   -------------------------------------------------------------------------- */
+.warp-telemetry {
+    position: absolute;
+    top: 7.6vh;
+    right: 4vw;
+    width: 238px;
+    padding: 12px 14px;
+    background: linear-gradient(160deg, rgba(6, 12, 28, 0.72), rgba(10, 22, 42, 0.38));
+    border: 1px solid rgba(56, 189, 248, 0.26);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    font-family: 'JetBrains Mono', monospace;
+    animation: warpSlideRight 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+.tele-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    padding: 3px 0;
+}
+.tele-key { color: rgba(148, 197, 253, 0.7); font-weight: 600; }
+.tele-num { color: #eafcff; font-weight: 700; font-size: 12px; }
+.tele-ok { color: #6ee7b7; }
+
+.tele-bar {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(148, 197, 253, 0.14);
+    overflow: hidden;
+    margin: 2px 0 8px;
+}
+.tele-bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ee6c4, #38bdf8, #8a6cff);
+    box-shadow: 0 0 12px rgba(62, 230, 196, 0.75);
+    transition: width 0.25s linear;
+}
+.tele-row-sys { border-top: 1px solid rgba(148, 197, 253, 0.12); margin-top: 4px; padding-top: 7px; }
+
+/* --------------------------------------------------------------------------
+   Центральный титульный блок AURORA
+   -------------------------------------------------------------------------- */
+.warp-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: min(880px, 92vw);
+    animation: titleRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both;
+}
+
+.title-letters {
+    display: flex;
+    justify-content: center;
+    gap: clamp(6px, 1.6vw, 20px);
+    font-family: 'Orbitron', 'Montserrat', sans-serif;
+    font-weight: 900;
+    font-size: clamp(52px, 11vw, 132px);
+    line-height: 1;
+    letter-spacing: 0.02em;
+}
+
+.title-letters span {
+    background: linear-gradient(180deg, #ffffff 0%, #b9f5ff 42%, #3ee6c4 78%, #38bdf8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 26px rgba(62, 230, 196, 0.55)) drop-shadow(0 0 60px rgba(56, 189, 248, 0.35));
+    animation: letterIn 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.title-letters span:nth-child(1) { animation-delay: 0.78s; }
+.title-letters span:nth-child(2) { animation-delay: 0.88s; }
+.title-letters span:nth-child(3) { animation-delay: 0.98s; }
+.title-letters span:nth-child(4) { animation-delay: 1.08s; }
+.title-letters span:nth-child(5) { animation-delay: 1.18s; }
+.title-letters span:nth-child(6) { animation-delay: 1.28s; }
+
+@keyframes letterIn {
+    0% { opacity: 0; transform: translateY(34px) scale(1.35); filter: blur(16px) drop-shadow(0 0 40px rgba(62, 230, 196, 0.9)); }
+    60% { opacity: 1; }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0) drop-shadow(0 0 26px rgba(62, 230, 196, 0.55)); }
+}
+
+@keyframes titleRise {
+    from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.title-sub {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(8.5px, 1.15vw, 12px);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    color: rgba(213, 240, 255, 0.92);
+}
+
+.title-divider {
+    position: relative;
+    height: 1px;
+    margin: 16px auto;
+    width: min(420px, 62vw);
+    background: linear-gradient(90deg, transparent, rgba(62, 230, 196, 0.75), transparent);
+    overflow: hidden;
+}
+.title-divider i {
+    position: absolute;
+    top: -1px;
+    left: -30%;
+    width: 30%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #ffffff, transparent);
+    animation: dividerScan 3.4s linear 1.4s infinite;
+    filter: blur(0.5px);
+}
+@keyframes dividerScan {
+    0% { left: -32%; }
+    100% { left: 108%; }
+}
+
+.title-dedication {
+    font-size: clamp(9px, 1.35vw, 14px);
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: #fde047;
+    text-shadow: 0 0 22px rgba(253, 224, 71, 0.45);
+}
+
+.title-org {
+    margin-top: 7px;
+    font-size: clamp(8px, 1.05vw, 11.5px);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(186, 230, 253, 0.78);
+}
+
+/* --------------------------------------------------------------------------
+   Брифинг Беллы (слева внизу)
+   -------------------------------------------------------------------------- */
+.warp-briefing {
+    position: absolute;
+    left: 4vw;
+    bottom: 8.4vh;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    width: min(430px, 52vw);
+    padding: 12px 14px;
+    background: linear-gradient(150deg, rgba(6, 12, 28, 0.74), rgba(12, 24, 46, 0.42));
+    border: 1px solid rgba(62, 230, 196, 0.24);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    animation: warpSlideLeft 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+}
+
+.briefing-avatar {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(62, 230, 196, 0.55), rgba(56, 189, 248, 0.14) 62%, rgba(138, 108, 255, 0.1));
+    border: 1px solid rgba(62, 230, 196, 0.5);
+    box-shadow: 0 0 26px rgba(62, 230, 196, 0.35), inset 0 0 18px rgba(62, 230, 196, 0.22);
+}
+.briefing-avatar .material-symbols-outlined { font-size: 25px; color: #eafffb; }
+
+.briefing-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 1px solid rgba(62, 230, 196, 0.45);
+    animation: briefPulse 2.6s ease-out infinite;
+}
+.briefing-ring.ring-2 { animation-delay: 1.3s; }
+
+@keyframes briefPulse {
+    0% { transform: scale(0.86); opacity: 0.85; }
+    70% { transform: scale(1.28); opacity: 0; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+
+.briefing-body { flex: 1; min-width: 0; }
+
+.briefing-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: #bdf6ec;
+}
+.briefing-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #3ee6c4;
+    box-shadow: 0 0 10px #3ee6c4;
+    animation: briefDot 1.4s ease-in-out infinite;
+}
+@keyframes briefDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.7); }
+}
+.briefing-live {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: #ff7a9c;
+    letter-spacing: 0.14em;
+}
+
+.briefing-wave {
+    display: block;
+    width: 100%;
+    height: 44px;
+    margin: 6px 0 5px;
+    opacity: 0.95;
+}
+
+.briefing-log {
+    display: flex;
+    gap: 7px;
+    align-items: baseline;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: rgba(226, 244, 255, 0.9);
+}
+.briefing-log-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #7ee8ff;
+    white-space: nowrap;
+    padding-top: 2px;
+}
+.briefing-log-text.log-in { animation: logIn 0.5s ease both; }
+@keyframes logIn {
+    from { opacity: 0; transform: translateY(5px); filter: blur(3px); }
+    to { opacity: 1; transform: none; filter: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Фазовый трекер (справа внизу)
+   -------------------------------------------------------------------------- */
+.warp-phase {
+    position: absolute;
+    right: 4vw;
+    bottom: 8.4vh;
+    width: min(392px, 46vw);
+    padding: 12px 14px;
+    background: linear-gradient(150deg, rgba(6, 12, 28, 0.72), rgba(12, 24, 46, 0.4));
+    border: 1px solid rgba(138, 108, 255, 0.26);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    animation: warpSlideRight 1s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+}
+
+.phase-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 9px;
+    letter-spacing: 0.13em;
+}
+.phase-label { color: rgba(196, 181, 253, 0.72); font-weight: 700; }
+.phase-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #f0f9ff;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.phase-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #3ee6c4;
+    border: 1px solid rgba(62, 230, 196, 0.4);
+    border-radius: 5px;
+    padding: 1px 5px;
+}
+
+.phase-track {
+    position: relative;
+    height: 6px;
+    margin: 10px 0 7px;
+    border-radius: 999px;
+    background: rgba(148, 197, 253, 0.13);
+    overflow: hidden;
+}
+.phase-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ee6c4, #38bdf8 55%, #8a6cff);
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
+    transition: width 0.3s linear;
+}
+.phase-marker {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: #fff;
+    box-shadow: 0 0 10px #fff;
+    animation: markerTravel 2.4s linear infinite;
+    opacity: 0.75;
+}
+@keyframes markerTravel {
+    0% { left: 0%; opacity: 0; }
+    12% { opacity: 0.9; }
+    100% { left: 100%; opacity: 0; }
+}
+
+.phase-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.2px;
+    letter-spacing: 0.06em;
+    color: rgba(148, 197, 253, 0.55);
+}
+
+/* --------------------------------------------------------------------------
+   Кнопка досрочного прибытия
+   -------------------------------------------------------------------------- */
+.warp-skip-btn {
+    position: absolute;
+    left: 50%;
+    bottom: 2.1vh;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    pointer-events: auto;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #d9fff8;
+    background: linear-gradient(135deg, rgba(10, 22, 42, 0.9), rgba(6, 14, 30, 0.75));
+    border: 1px solid rgba(62, 230, 196, 0.45);
+    border-radius: 999px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.7), 0 0 26px rgba(62, 230, 196, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    animation: skipIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both;
+}
+.warp-skip-btn .material-symbols-outlined { font-size: 18px; }
+.warp-skip-btn:hover {
+    transform: translateX(-50%) translateY(-3px);
+    border-color: rgba(62, 230, 196, 0.9);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75), 0 0 42px rgba(62, 230, 196, 0.55), inset 0 0 18px rgba(62, 230, 196, 0.22);
+    background: linear-gradient(135deg, rgba(16, 42, 60, 0.95), rgba(8, 20, 38, 0.8));
+}
+.warp-skip-btn:active { transform: translateX(-50%) translateY(-1px) scale(0.985); }
+
+.skip-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid rgba(148, 197, 253, 0.35);
+    color: rgba(226, 244, 255, 0.75);
+}
+
+@keyframes skipIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.warp-controls-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 6.4vh;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    color: rgba(148, 197, 253, 0.6);
+    animation: skipIn 1s ease 2s both;
+    white-space: nowrap;
+}
+.warp-controls-hint b { color: #bdf6ec; }
+.hint-sep { opacity: 0.5; }
+
+/* --------------------------------------------------------------------------
+   Фазовые акценты интерфейса
+   -------------------------------------------------------------------------- */
+.warp-hud.phase-cruise .warp-title { animation: titleFloat 7s ease-in-out infinite; }
+@keyframes titleFloat {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -51.4%) scale(1.012); }
+}
+
+.warp-hud.phase-decel .title-letters span,
+.warp-hud.phase-arrived .title-letters span {
+    filter: drop-shadow(0 0 34px rgba(56, 189, 248, 0.85));
+}
+.warp-hud.phase-decel .warp-title { animation: titleArrive 1.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes titleArrive {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -58%) scale(1.08); filter: blur(10px); }
+}
+
+.warp-hud.phase-arrived .warp-briefing,
+.warp-hud.phase-arrived .warp-patch,
+.warp-hud.phase-arrived .warp-telemetry,
+.warp-hud.phase-arrived .warp-phase {
+    animation: hudOut 0.7s ease both;
+}
+@keyframes hudOut {
+    to { opacity: 0; transform: translateY(12px); }
+}
+
+/* --------------------------------------------------------------------------
+   Адаптивность: планшеты и телефоны
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+    .warp-telemetry { width: 208px; }
+    .warp-briefing { width: min(380px, 56vw); }
+    .warp-phase { width: min(340px, 46vw); }
+}
+
+@media (max-width: 900px) {
+    .warp-bar { height: 4.2vh; }
+    .warp-frame { inset: 5.4vh 4vw; }
+    .warp-patch { top: 6.2vh; left: 4vw; padding: 8px 12px 8px 10px; }
+    .patch-ver { display: none; }
+    .warp-telemetry { display: none; }
+
+    .warp-briefing {
+        left: 4vw;
+        right: 4vw;
+        width: auto;
+        bottom: 9.6vh;
+        padding: 10px 12px;
+    }
+    .briefing-wave { height: 36px; }
+
+    .warp-phase {
+        right: 4vw;
+        left: 4vw;
+        width: auto;
+        bottom: 2.6vh;
+        padding: 9px 12px;
+    }
+    .phase-ticks { display: none; }
+
+    .warp-skip-btn { bottom: auto; top: 6.4vh; font-size: 10px; padding: 9px 15px; }
+    .warp-controls-hint { display: none; }
+    .title-letters { font-size: clamp(44px, 15vw, 84px); }
+    .title-sub { font-size: 8.5px; letter-spacing: 0.22em; }
+}
+
+@media (max-width: 560px) {
+    .warp-patch { padding: 7px 10px; gap: 9px; }
+    .patch-badge { width: 32px; height: 32px; }
+    .patch-title { font-size: 12.5px; }
+    .patch-sub { font-size: 7.5px; }
+    .briefing-avatar { width: 44px; height: 44px; }
+    .briefing-log { font-size: 9.5px; }
+    .briefing-log-tag { display: none; }
+    .phase-name { font-size: 9px; }
+    .warp-skip-btn .skip-hint { display: none; }
+}
+
+@media (max-height: 620px) {
+    .warp-telemetry, .warp-controls-hint { display: none; }
+    .warp-briefing { bottom: 8.6vh; }
+    .title-letters { font-size: clamp(38px, 9vh, 78px); }
+}
+
+/* Доступность: уважаем системные настройки уменьшенной анимации */
+@media (prefers-reduced-motion: reduce) {
+    .warp-hud *,
+    .warp-hud *::before,
+    .warp-hud *::after {
+        animation-duration: 0.001s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.12s !important;
+    }
+    .warp-bar { height: 0; }
+}
+
+/* Печать не должна включать гиперпрыжок */
+@media print {
+    .warp-hud, .space-warp-canvas { display: none !important; }
+}

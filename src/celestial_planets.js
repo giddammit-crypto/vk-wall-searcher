@@ -507,8 +507,16 @@ export class CelestialPlanetsEngine {
     /**
      * Обновление кинематики планет (60 FPS)
      */
+    /**
+     * Перевод в GPU-режим: тяжёлый CPU-рейкастинг отключается, планеты
+     * рисуются шейдерами WebGL2 (src/space3d_gl.js). CPU остаётся как фолбэк.
+     */
+    setGpuMode(enabled) {
+        this.gpuMode = !!enabled;
+    }
+
     update() {
-        if (!this.isLoaded) return;
+        if (!this.isLoaded || this.gpuMode) return;
 
         this.tick = (this.tick || 0) + 1;
 
@@ -531,7 +539,7 @@ export class CelestialPlanetsEngine {
      * Отрисовка Земли и Луны на главном звездном холсте 360°
      */
     render(ctx, w, h, camYaw, camPitch, zoom) {
-        if (!this.isLoaded) return;
+        if (!this.isLoaded || this.gpuMode) return;
 
         const cx = w / 2;
         const cy = h / 2;

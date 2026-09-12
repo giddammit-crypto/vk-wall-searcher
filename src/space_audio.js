@@ -222,6 +222,8 @@ export class SpaceAudioEngine {
 
         this.voiceAudio = new Audio(src);
         this.voiceAudio.volume = this.voiceVolume;
+        // Живой анализ голоса для реакции графики варп-перехода
+        this._attachAnalyser(this.voiceAudio);
 
         // Дакинг амбиент-музыки: плавно приглушаем фон, пока говорит Белла
         let restoreVolume = null;
@@ -247,6 +249,96 @@ export class SpaceAudioEngine {
                 console.warn(`[SpaceAudio] Voice playback error for "${phraseKey}":`, err);
             }
         });
+    }
+
+    /* =====================================================================
+     * ЖИВОЙ АНАЛИЗ ГОЛОСА БЕЛЛЫ (WebAudio AnalyserNode)
+     * Используется графикой гиперпрыжка: громкость и тембр речи управляют
+     * яркостью ядра, bloom, тряской камеры и всплесками турбулентности.
+     * =================================================================== */
+
+    /**
+     * Включение анализатора голоса (безопасно: звук никогда не теряется —
+     * маршрут WebAudio подключается ТОЛЬКО при гарантированно работающем
+     * AudioContext, иначе используется синтетическая огибающая).
+     */
+    enableVoiceAnalyser() {
+        if (!this._audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return false;
+            try {
+                this._audioCtx = new AC();
+                this._analyser = this._audioCtx.createAnalyser();
+                this._analyser.fftSize = 512;
+                this._analyser.smoothingTimeConstant = 0.74;
+                this._spectrum = new Uint8Array(this._analyser.frequencyBinCount);
+                this._waveform = new Uint8Array(this._analyser.fftSize);
+            } catch (e) {
+                console.warn('[SpaceAudio] Анализатор голоса недоступен:', e);
+                this._audioCtx = null;
+                return false;
+            }
+        }
+
+        const finish = () => {
+            this._analyserReady = this._audioCtx && this._audioCtx.state === 'running';
+            if (this._analyserReady) this._attachAnalyser(this.voiceAudio);
+        };
+
+        if (this._audioCtx.state === 'running') {
+            finish();
+            return true;
+        }
+        this._audioCtx.resume().then(finish).catch(() => { this._analyserReady = false; });
+        return false;
+    }
+
+    /**
+     * Подключение анализатора к медиа-элементу (однократно на элемент)
+     */
+    _attachAnalyser(el) {
+        if (!el || !this._analyserReady || !this._audioCtx || el.__auroraAnalysed) return;
+        try {
+            const source = this._audioCtx.createMediaElementSource(el);
+            source.connect(this._analyser);
+            this._analyser.connect(this._audioCtx.destination);
+            el.__auroraAnalysed = true;
+        } catch (e) {
+            // Элемент уже занят другим маршрутом — просто продолжаем без анализа
+            el.__auroraAnalysed = true;
+        }
+    }
+
+    /**
+     * Энергия голоса 0..1 (RMS) — для реактивной графики
+     */
+    getVoiceEnergy() {
+        if (!this._analyserReady || !this._analyser || !this._spectrum) return 0;
+        const voice = this.voiceAudio;
+        if (!voice || voice.paused || voice.ended) return 0;
+        try {
+            this._analyser.getByteFrequencyData(this._spectrum);
+        } catch (e) {
+            return 0;
+        }
+        let sum = 0;
+        const n = this._spectrum.length;
+        for (let i = 0; i < n; i++) sum += this._spectrum[i];
+        const avg = sum / (n * 255);
+        return Math.min(1.15, Math.pow(avg * 2.35, 0.85));
+    }
+
+    /**
+     * Спектр голоса (Uint8Array) — для осциллографа HUD
+     */
+    getVoiceSpectrum() {
+        if (!this._analyserReady || !this._analyser || !this._spectrum) return null;
+        const voice = this.voiceAudio;
+        if (!voice || (voice.paused && !voice.ended)) return null;
+        if (!voice.paused) {
+            try { this._analyser.getByteFrequencyData(this._spectrum); } catch (e) { return null; }
+        }
+        return this._spectrum;
     }
 
     /**

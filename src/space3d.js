@@ -16,16 +16,17 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.8.6';
-import { SpaceAudio } from './space_audio.js?v=3.8.6';
-import { CelestialPlanets } from './celestial_planets.js?v=3.8.6';
-import { IssStation } from './iss_station.js?v=3.8.6';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.8.6';
-import { createQrSvg } from './qrcode.js?v=3.8.6';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.8.6';
-import { openPostModal } from './render.js?v=3.8.6';
-import { fetchHistory } from './subscribers.js?v=3.8.6';
-import { buildBranchAdvice } from './advice.js?v=3.8.6';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.0';
+import { SpaceAudio } from './space_audio.js?v=3.9.0';
+import { CelestialPlanets } from './celestial_planets.js?v=3.9.0';
+import { IssStation } from './iss_station.js?v=3.9.0';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.0';
+import { createQrSvg } from './qrcode.js?v=3.9.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.0';
+import { openPostModal } from './render.js?v=3.9.0';
+import { fetchHistory } from './subscribers.js?v=3.9.0';
+import { buildBranchAdvice } from './advice.js?v=3.9.0';
+import { Space3DGL } from './space3d_gl.js?v=3.9.0';
 
 export class Space3DEngine {
     constructor() {
@@ -117,6 +118,20 @@ export class Space3DEngine {
 
         this.ctx = this.canvas.getContext('2d');
         this.initStarfield();
+
+        // GPU-ядро глубокого космоса (WebGL2): скайдом, планеты, звёздные спрайты
+        this.glEnabled = false;
+        try {
+            if (Space3DGL.isSupported() && Space3DGL.init(this)) {
+                Space3DGL.setNebulae(this.buildNebulaUniforms());
+                this.glEnabled = true;
+                CelestialPlanets.setGpuMode(true);
+            }
+        } catch (e) {
+            console.warn('[Space3D] GPU-ядро недоступно, используется CPU-рендер:', e);
+            this.glEnabled = false;
+        }
+
         CelestialPlanets.init();
         IssStation.init(this);
         CosmonautsTerminal.init(this);
@@ -281,6 +296,28 @@ export class Space3DEngine {
         ];
 
         this.meteors = [];
+    }
+
+    /**
+     * Преобразование туманностей движка в uniform-данные GPU-скайдома
+     */
+    buildNebulaUniforms() {
+        const palette = [
+            { color: [1.0, 0.72, 0.42], intensity: 0.30, radiusDeg: 30 },  // Ядро Галактики
+            { color: [0.42, 0.55, 1.0], intensity: 0.26, radiusDeg: 26 },  // Киль / Орион
+            { color: [0.25, 1.0, 0.92], intensity: 0.22, radiusDeg: 25 },  // Вуаль Лебедя
+            { color: [0.85, 0.42, 0.95], intensity: 0.20, radiusDeg: 23 }  // Змееносец
+        ];
+        return (this.nebulae || []).map((neb, i) => {
+            const p = palette[i % palette.length];
+            return {
+                yaw: neb.yaw,
+                pitch: neb.pitch,
+                radiusDeg: p.radiusDeg,
+                intensity: p.intensity,
+                color: p.color
+            };
+        });
     }
 
     /**
@@ -1362,7 +1399,9 @@ export class Space3DEngine {
         const autoTourBtn = document.getElementById('space-dock-auto-tour');
         if (autoTourBtn) autoTourBtn.classList.remove('active');
 
-        this.targetYaw = station.baseTransform.rotY;
+        // Конвенция DOM: rotateX(pitch) rotateY(yaw) → для центрирования
+        // объекта с собственной ориентацией нужны обратные углы.
+        this.targetYaw = -station.baseTransform.rotY;
         this.targetPitch = -station.baseTransform.rotX;
         this.targetZoom = 1.15;
 
@@ -1481,6 +1520,11 @@ export class Space3DEngine {
         if (!this.canvas) return;
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
+        if (this.glEnabled) {
+            try {
+                Space3DGL.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+            } catch (e) { /* noop */ }
+        }
     }
 
     /**
@@ -1680,8 +1724,13 @@ export class Space3DEngine {
     /**
      * Главный цикл рендеринга 60 FPS
      */
-    renderLoop() {
+    renderLoop(now) {
         if (!this.isOpen) return;
+
+        // Дельта времени кадра (для физики неба и планет на GPU)
+        const t = typeof now === 'number' ? now : performance.now();
+        this.lastDt = Math.min(0.05, Math.max(0.001, (t - (this.prevFrameTime || t)) / 1000));
+        this.prevFrameTime = t;
 
         if (this.isAutoTour) {
             this.targetYaw += 0.16;
@@ -1705,12 +1754,13 @@ export class Space3DEngine {
             const zoomOffset = (this.zoom - 1.0) * 350;
             this.world.style.transform = `
                 translateZ(${eyeD + zoomOffset}px)
-                rotateX(${-this.pitch}deg)
-                rotateY(${-this.yaw}deg)
+                rotateX(${this.pitch}deg)
+                rotateY(${this.yaw}deg)
             `;
         }
 
         // Обновляем кинематику вращения Земли и Луны
+        if (this.glEnabled) Space3DGL.render(this.yaw, this.pitch, this.zoom, this.lastDt || 0.016);
         CelestialPlanets.update();
         IssStation.update();
 
@@ -1747,8 +1797,10 @@ export class Space3DEngine {
         const cx = w / 2;
         const cy = h / 2;
 
-        // 1. Отрисовка туманностей
-        this.nebulae.forEach(neb => {
+        const gpu = this.glEnabled && Space3DGL.ok;
+
+        // 1. Отрисовка туманностей (только CPU-фолбэк)
+        if (!gpu) this.nebulae.forEach(neb => {
             const nYaw = (neb.yaw * Math.PI) / 180;
             const nPitch = (neb.pitch * Math.PI) / 180;
 
@@ -1780,7 +1832,7 @@ export class Space3DEngine {
         });
 
         // 2. Отрисовка Млечного Пути (батчинг по цветам: 2 вызова вместо 1350!)
-        if (this.milkyWayBatches) {
+        if (!gpu && this.milkyWayBatches) {
             for (let b = 0; b < this.milkyWayBatches.length; b++) {
                 const batch = this.milkyWayBatches[b];
                 if (!batch.stars || !batch.stars.length) continue;
@@ -1813,7 +1865,7 @@ export class Space3DEngine {
 
         // 3. Отрисовка звезд каталога (батчинг по 6 спектральным классам: 6 вызовов вместо 850!)
         const spikedStars = [];
-        if (this.starBatches) {
+        if (!gpu && this.starBatches) {
             for (let b = 0; b < this.starBatches.length; b++) {
                 const batch = this.starBatches[b];
                 if (!batch.stars || !batch.stars.length) continue;
@@ -1876,7 +1928,7 @@ export class Space3DEngine {
         // 6. Отрисовка взрывов Сверхновых звезд
         this.renderSupernovae(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy);
 
-        // 7. Отрисовка фотореалистичной Земли (2x размер) и Луны с атмосферой и тенями облаков
+        // 7. Земля и Луна: GPU-шейдеры (или CPU-фолбэк при отсутствии WebGL2)
         CelestialPlanets.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
 
         // 8. Отрисовка 3D Международной Космической Станции (МКС)
@@ -2346,6 +2398,16 @@ export class Space3DEngine {
         this.viewport.setAttribute('aria-hidden', 'false');
         document.body.classList.add('space-3d-active');
 
+        // Возобновляем GPU-ядро космоса (было приостановлено при закрытии)
+        if (this.glEnabled && Space3DGL.ok) {
+            Space3DGL.resume();
+            Space3DGL.resize(
+                this.viewport.clientWidth || window.innerWidth,
+                this.viewport.clientHeight || window.innerHeight,
+                Math.min(window.devicePixelRatio || 1, 1.35)
+            );
+        }
+
         // Сброс камеры
         this.targetYaw = 0;
         this.targetPitch = 0;
@@ -2383,6 +2445,11 @@ export class Space3DEngine {
         if (this.viewport) {
             this.viewport.classList.add('hidden');
             this.viewport.setAttribute('aria-hidden', 'true');
+        }
+
+        // Приостанавливаем GPU-ядро: ресурсы сохраняются, кадры не тратятся впустую
+        if (this.glEnabled && Space3DGL.ok) {
+            Space3DGL.suspend();
         }
         if (CosmonautsTerminal && CosmonautsTerminal.isOpen) {
             CosmonautsTerminal.close();
