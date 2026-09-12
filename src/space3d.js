@@ -16,20 +16,20 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.8';
-import { SpaceAudio } from './space_audio.js?v=3.9.8';
-import { CelestialPlanets } from './celestial_planets.js?v=3.9.8';
-import { IssStation } from './iss_station.js?v=3.9.8';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.8';
-import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.8';
-import { Starfield } from './starfield.js?v=3.9.8';
-import { SunOptics } from './sun_optics.js?v=3.9.8';
-import { createQrSvg } from './qrcode.js?v=3.9.8';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.8';
-import { openPostModal } from './render.js?v=3.9.8';
-import { fetchHistory } from './subscribers.js?v=3.9.8';
-import { buildBranchAdvice } from './advice.js?v=3.9.8';
-import { Space3DGL } from './space3d_gl.js?v=3.9.8';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.9';
+import { SpaceAudio } from './space_audio.js?v=3.9.9';
+import { CelestialPlanets } from './celestial_planets.js?v=3.9.9';
+import { IssStation } from './iss_station.js?v=3.9.9';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.9';
+import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.9';
+import { Starfield } from './starfield.js?v=3.9.9';
+import { SunOptics } from './sun_optics.js?v=3.9.9';
+import { createQrSvg } from './qrcode.js?v=3.9.9';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.9';
+import { openPostModal } from './render.js?v=3.9.9';
+import { fetchHistory } from './subscribers.js?v=3.9.9';
+import { buildBranchAdvice } from './advice.js?v=3.9.9';
+import { Space3DGL } from './space3d_gl.js?v=3.9.9';
 
 export class Space3DEngine {
     constructor() {
@@ -686,7 +686,7 @@ export class Space3DEngine {
                     <select id="space-radar-branch-select" class="space-cosmic-select">
                         ${CANONICAL_BRANCHES.map(b => `
                             <option value="${b.shortCode}" ${b.shortCode === this.selectedRadarBranch ? 'selected' : ''}>
-                                ${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}
+                                ${escapeHtml(b.shortCode)} - ${escapeHtml(b.canonicalName)}
                             </option>
                         `).join('')}
                     </select>
@@ -880,7 +880,7 @@ export class Space3DEngine {
                             <label class="p-lbl">Филиал:</label>
                             <select id="space-promo-branch-select" class="space-cosmic-select">
                                 ${CANONICAL_BRANCHES.map(b => `
-                                    <option value="${b.shortCode}" ${b.shortCode === this.selectedPromoBranch ? 'selected' : ''}>${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}</option>
+                                    <option value="${b.shortCode}" ${b.shortCode === this.selectedPromoBranch ? 'selected' : ''}>${escapeHtml(b.shortCode)} - ${escapeHtml(b.canonicalName)}</option>
                                 `).join('')}
                             </select>
                         </div>
@@ -937,7 +937,7 @@ export class Space3DEngine {
 
                         return `
                             <div class="subs-row-item">
-                                <span class="subs-branch-name">${escapeHtml(b.shortCode)} — ${escapeHtml(b.canonicalName)}</span>
+                                <span class="subs-branch-name">${escapeHtml(b.shortCode)} - ${escapeHtml(b.canonicalName)}</span>
                                 <div class="subs-members-box">
                                     <span class="members-val">${(b.canonicalMembers || 1500).toLocaleString('ru-RU')}</span>
                                     ${deltaHtml}

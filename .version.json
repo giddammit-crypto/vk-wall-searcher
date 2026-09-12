@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.9.8",
+    "version": "3.9.9",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
     "commit_date": "2026-09-12T17:00:00+03:00",
-    "release_name": "AURORA 3.9.8 — Улучшение визуального качества 3D-пространства: сумеречный пояс Земли, Ломмель-Зеелигер для Луны, аэро-HUD карточек"
+    "release_name": "AURORA 3.9.9 — Редизайн интерфейса 3D-пространства по taste-skill, оптический рыбий глаз <= 10%, моушен-динамика и глассморфизм"
 }

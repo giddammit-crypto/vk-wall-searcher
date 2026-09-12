@@ -55,6 +55,27 @@
     pointer-events: none;
 }
 
+/* Оптическая кривизна и визор скафандра (NASA EMU Visor + Fisheye <= 10%) */
+.space-3d-viewport::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 12;
+    background:
+        radial-gradient(130% 90% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 50%, transparent 64%, rgba(2, 6, 20, 0.28) 86%, rgba(0, 1, 6, 0.65) 100%);
+    box-shadow:
+        inset 0 0 100px rgba(0, 0, 0, 0.70),
+        inset 0 0 220px rgba(2, 8, 26, 0.50),
+        inset 0 2px 2px rgba(255, 255, 255, 0.12);
+}
+
+/* Оптическая перспектива широкого угла (согласована с бочкообразным искажением GPU) */
+.space-3d-stage {
+    perspective: 920px;
+}
+
 /* --------------------------------------------------------------------------
    2. ОКНА-ТЕРМИНАЛЫ: СТЕКЛО, ХРОМ, СОСТОЯНИЯ
    -------------------------------------------------------------------------- */
@@ -256,116 +277,286 @@
 .space-object-wrapper.is-expanded .space-card-body { padding: 20px 22px 24px; }
 
 /* --------------------------------------------------------------------------
-   3. HUD: ВЕРХНЯЯ ПАНЕЛЬ, ТЕЛЕМЕТРИЯ, ДОК
+   3. HUD: ВЕРХНЯЯ ПАНЕЛЬ, ТЕЛЕМЕТРИЯ, ДОК (AEROSPACE LIQUID GLASS & SPRING MOTION)
    -------------------------------------------------------------------------- */
 .space-3d-hud-top {
-    height: 58px;
+    position: absolute;
+    top: 18px;
+    left: 24px;
+    right: 24px;
+    height: 60px;
     padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 1000;
+    border-radius: 18px;
     background:
-        linear-gradient(180deg, rgba(16, 26, 48, 0.9), rgba(8, 14, 30, 0.82));
-    border: 1px solid var(--space-line);
-    border-radius: 14px;
-    box-shadow: var(--space-shadow-deep), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(22px) saturate(1.2);
-    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+        linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.25) 100%),
+        rgba(7, 14, 30, 0.78);
+    border: 1px solid rgba(62, 230, 196, 0.28);
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.78),
+        inset 0 1px 1px rgba(255, 255, 255, 0.28),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+        0 0 30px rgba(62, 230, 196, 0.08);
+    backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
+    -webkit-backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
+    animation: spaceHudTopEnter 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes spaceHudTopEnter {
+    from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.space-hud-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.space-hud-logo-icon {
+    font-size: 26px;
+    color: var(--space-accent);
+    filter: drop-shadow(0 0 12px rgba(62, 230, 196, 0.65));
+    animation: spaceLogoOrbit 18s linear infinite;
+}
+
+@keyframes spaceLogoOrbit {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.space-hud-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
 }
 
 .space-hud-title {
     display: inline-flex;
     align-items: center;
-    font-size: 13.5px;
-    letter-spacing: 0.13em;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #ffffff;
 }
 
 .space-hud-title .brand-aurora {
+    font-weight: 900;
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     background: none !important;
-    text-shadow: 0 0 14px rgba(255, 255, 255, 0.9), 0 0 28px rgba(62, 230, 196, 0.55);
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.95), 0 0 28px rgba(62, 230, 196, 0.65);
+    letter-spacing: 0.08em;
 }
 
 .space-hud-sub {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 8.5px;
-    color: rgba(148, 178, 210, 0.85);
-    letter-spacing: 0.16em;
+    color: rgba(160, 195, 230, 0.85);
+    letter-spacing: 0.15em;
+    font-weight: 600;
 }
 
 .space-hud-telemetry {
-    background: rgba(0, 0, 0, 0.38);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 10px;
-    padding: 6px 14px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(3, 8, 20, 0.62);
+    border: 1px solid rgba(62, 230, 196, 0.22);
+    border-radius: 12px;
+    padding: 6px 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.space-compass-tape {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--space-accent);
+    white-space: nowrap;
+}
+
+.tele-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: rgba(200, 225, 248, 0.9);
+    white-space: nowrap;
+}
+
+.tele-lbl {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: rgba(140, 175, 210, 0.7);
+    margin-right: 4px;
+}
+
+.tele-val {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.space-hud-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .space-hud-btn {
-    border-radius: 10px;
+    border-radius: 11px;
     padding: 8px 14px;
     font-size: 11.5px;
+    font-weight: 700;
     letter-spacing: 0.03em;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    transition: transform 0.18s var(--space-ease), background 0.2s ease,
-                border-color 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #e2e8f0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease,
+                border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 .space-hud-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-    transform: translateY(-1px);
+    background: rgba(62, 230, 196, 0.16);
+    border-color: rgba(62, 230, 196, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 18px rgba(62, 230, 196, 0.28);
+    transform: translateY(-2px);
+    color: #ffffff;
+}
+
+.space-hud-btn:active {
+    transform: translateY(1px);
 }
 
 .space-hud-btn.active {
-    background: rgba(62, 230, 196, 0.16);
+    background: linear-gradient(135deg, rgba(62, 230, 196, 0.24), rgba(56, 189, 248, 0.18));
     border-color: rgba(62, 230, 196, 0.75);
-    color: #b9fff1;
-    box-shadow: 0 0 18px rgba(62, 230, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(62, 230, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-/* Нижний док — «пульт управления» */
+.space-cosmonauts-btn {
+    background: linear-gradient(135deg, rgba(62, 230, 196, 0.16), rgba(56, 189, 248, 0.14));
+    border-color: rgba(62, 230, 196, 0.45);
+    color: #ffffff;
+}
+
+.cosmo-btn-badge {
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(62, 230, 196, 0.24);
+    border: 1px solid rgba(62, 230, 196, 0.55);
+    font-size: 10px;
+    font-weight: 800;
+    color: #3ee6c4;
+}
+
+.space-hud-btn-exit:hover {
+    background: rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.6);
+    color: #ffe4e6;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(244, 63, 94, 0.35);
+}
+
+/* Нижний док - космический пульт управления */
 .space-3d-hud-dock {
-    padding: 9px 16px;
-    gap: 12px;
-    border-radius: 16px;
-    background: linear-gradient(180deg, rgba(14, 23, 44, 0.92), rgba(7, 13, 28, 0.9));
-    box-shadow: var(--space-shadow-deep), 0 0 34px rgba(62, 230, 196, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    gap: 10px;
+    border-radius: 20px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.25) 100%),
+        rgba(6, 12, 26, 0.82);
+    box-shadow:
+        0 24px 65px rgba(0, 0, 0, 0.82),
+        0 0 35px rgba(62, 230, 196, 0.12),
+        inset 0 1px 1px rgba(255, 255, 255, 0.26),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(62, 230, 196, 0.28);
-    backdrop-filter: blur(22px) saturate(1.2);
-    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
+    -webkit-backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
+    animation: spaceHudDockEnter 0.65s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
+    z-index: 1000;
+}
+
+@keyframes spaceHudDockEnter {
+    from { opacity: 0; transform: translate(-50%, 18px) scale(0.98); }
+    to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.space-dock-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .space-dock-btn {
-    padding: 8px 13px;
-    border-radius: 10px;
+    padding: 8px 14px;
+    border-radius: 11px;
     font-size: 11px;
+    font-weight: 700;
     gap: 7px;
-    background: rgba(255, 255, 255, 0.045);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    transition: transform 0.18s var(--space-ease), background 0.2s ease,
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: #e2e8f0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease,
                 border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 .space-dock-btn:hover {
-    background: rgba(62, 230, 196, 0.16);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5), 0 0 18px rgba(62, 230, 196, 0.24);
+    background: rgba(62, 230, 196, 0.18);
+    border-color: rgba(62, 230, 196, 0.55);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 18px rgba(62, 230, 196, 0.26);
+    transform: translateY(-2px);
+}
+
+.space-dock-btn:active {
+    transform: translateY(1px);
 }
 
 .space-dock-btn.active {
-    background: linear-gradient(135deg, rgba(62, 230, 196, 0.24), rgba(56, 189, 248, 0.2));
-    border-color: rgba(62, 230, 196, 0.7);
+    background: linear-gradient(135deg, rgba(62, 230, 196, 0.28), rgba(56, 189, 248, 0.22));
+    border-color: rgba(62, 230, 196, 0.75);
     color: #ffffff;
-    box-shadow: 0 0 20px rgba(62, 230, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 22px rgba(62, 230, 196, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .space-dock-btn-special {
-    background: linear-gradient(135deg, rgba(253, 224, 71, 0.16), rgba(245, 158, 11, 0.2));
-    border-color: rgba(245, 158, 11, 0.5);
-    color: #ffe9a8;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.22));
+    border-color: rgba(245, 158, 11, 0.55);
+    color: #fef08a;
+}
+
+.space-dock-btn-special:hover {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(245, 158, 11, 0.32));
+    border-color: rgba(245, 158, 11, 0.8);
+    box-shadow: 0 0 24px rgba(245, 158, 11, 0.45);
+    color: #ffffff;
+    transform: translateY(-2px);
 }
 
 .space-dock-divider {
-    height: 30px;
-    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+    height: 28px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.20), transparent);
 }
 
 /* Тосты и подсказки */
@@ -382,14 +573,16 @@
 }
 
 .space-3d-hint {
-    background: linear-gradient(135deg, rgba(8, 16, 33, 0.9), rgba(5, 10, 22, 0.84));
-    border: 1px solid rgba(56, 189, 248, 0.32);
-    border-radius: 13px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.2) 100%),
+        rgba(7, 14, 30, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.36);
+    border-radius: 14px;
     font-size: 11.5px;
     line-height: 1.45;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
 }
 
 /* --------------------------------------------------------------------------

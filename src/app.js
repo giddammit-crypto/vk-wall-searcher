@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.9.8';
+} from './api.js?v=3.9.9';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.9.8';
+} from './advice.js?v=3.9.9';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.9.8';
+} from './subscribers.js?v=3.9.9';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.9.8';
+} from './updater.js?v=3.9.9';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.9.8';
+} from './branches.js?v=3.9.9';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.9.8';
+} from './analytics.js?v=3.9.9';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.9.8';
+} from './render.js?v=3.9.9';
 
 import {
     exportToCsv,
@@ -79,27 +79,27 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.9.8';
+} from './export.js?v=3.9.9';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.9.8';
-import { CosmicUniverse } from './cosmic.js?v=3.9.8';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.9.9';
+import { CosmicUniverse } from './cosmic.js?v=3.9.9';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.9.8';
+} from './promo.js?v=3.9.9';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.9.8';
+} from './radar.js?v=3.9.9';
 
-import { Space3D } from './space3d.js?v=3.9.8';
-import { SpaceWarp } from './space_warp.js?v=3.9.8';
-import { SpaceAudio } from './space_audio.js?v=3.9.8';
+import { Space3D } from './space3d.js?v=3.9.9';
+import { SpaceWarp } from './space_warp.js?v=3.9.9';
+import { SpaceAudio } from './space_audio.js?v=3.9.9';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '3.9.8';
+export const APP_VERSION = '3.9.9';
 
 function initApp() {
 

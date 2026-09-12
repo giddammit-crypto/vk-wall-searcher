@@ -299,17 +299,16 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-    // --- Оптическая геометрия защитного стекла шлема скафандра (NASA EMU Visor) ---
+    // --- Оптическая геометрия защитного стекла шлема скафандра (NASA EMU Visor + Fisheye <= 10%) ---
     vec2 dv = vUv - 0.5;
-    float aspect = uResolution.x / max(uResolution.y, 1.0);
-    // Приводим к круговому профилю кривизны с учётом аспекта экрана
-    vec2 pNorm = vec2(dv.x * (aspect > 1.0 ? 1.0 : aspect), dv.y * (aspect > 1.0 ? 1.0 / aspect : 1.0));
+    // Нормализованное радиальное расстояние от оптического центра
+    vec2 pNorm = dv * 2.0;
     float r2 = dot(pNorm, pNorm);
 
-    // Линзовое бочкообразное искажение (barrel distortion) визора шлема
-    // Тонко откалибровано: даёт ощущение сферического стекла, не ломая интерфейс
-    float k1 = 0.075;
-    float k2 = 0.045;
+    // Линзовое бочкообразное искажение (Fish-Eye Lens) визора шлема
+    // Тщательно откалибровано под оптику шлема: 0% в центре, ~3.8% на краях, до 8.8% в углах (строго <= 10%)
+    float k1 = 0.032;
+    float k2 = 0.006;
     float barrel = 1.0 + k1 * r2 + k2 * (r2 * r2);
     vec2 visorUv = 0.5 + dv * barrel;
 
@@ -317,7 +316,7 @@ void main() {
     vec2 sampleUv = clamp(visorUv, vec2(0.001), vec2(0.999));
 
     // Хроматическая дисперсия стекла шлема (усиливается к краям поля зрения)
-    vec2 off = dv * (uChroma * (0.35 + r2 * 2.8));
+    vec2 off = dv * (uChroma * (0.35 + r2 * 1.5));
     vec3 col;
     col.r = texture(uScene, clamp(visorUv + off, vec2(0.001), vec2(0.999))).r;
     col.g = texture(uScene, sampleUv).g;
@@ -333,14 +332,14 @@ void main() {
 
     // Золотистое антибликовое напыление визора скафандра (NASA EMU Gold Sun Visor)
     // Тонкий мягкий золотисто-янтарный отблеск по верхнему и боковому периметру стекла
-    float rimGlint = smoothstep(0.18, 0.65, r2) * max(0.0, -dv.y * 0.7 + 0.3);
-    vec3 goldSheen = vec3(0.96, 0.78, 0.38) * (rimGlint * 0.038);
+    float rimGlint = smoothstep(0.35, 1.8, r2) * max(0.0, -dv.y * 0.7 + 0.3);
+    vec3 goldSheen = vec3(0.96, 0.78, 0.38) * (rimGlint * 0.036);
     col += goldSheen;
 
     // Виньетка визора скафандра (естественное затемнение по контуру шлема)
-    float vig = 1.0 - uVignette * r2 * 1.40;
+    float vig = 1.0 - uVignette * r2 * 0.40;
     // Мягкий спад к уплотнителю визора на крайних углах
-    float helmetSeal = 1.0 - smoothstep(0.48, 0.68, r2) * 0.28;
+    float helmetSeal = 1.0 - smoothstep(1.4, 2.1, r2) * 0.25;
     col *= clamp(vig * helmetSeal, 0.0, 1.0);
 
     // Зерно сенсора + дизеринг
@@ -1188,10 +1187,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.8',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.8',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.8',
-            moon: 'assets/textures/moon.jpg?v=3.9.8'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.9',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.9',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.9',
+            moon: 'assets/textures/moon.jpg?v=3.9.9'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
