@@ -853,7 +853,8 @@ export class ConstellationsEngine {
                 Центрировать камеру на созвездии
             </button>
         `;
-        document.body.appendChild(card);
+        const targetParent = this.viewport || document.body;
+        targetParent.appendChild(card);
         this.hudCardEl = card;
 
         const closeBtn = document.getElementById('constel-hud-close-btn');

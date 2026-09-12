@@ -689,7 +689,8 @@ export class SatellitesSwarmEngine {
                 </button>
             </div>
         `;
-        document.body.appendChild(card);
+        const targetParent = this.viewport || document.body;
+        targetParent.appendChild(card);
         this.hudCardEl = card;
 
         const closeBtn = document.getElementById('sat-hud-close-btn');
