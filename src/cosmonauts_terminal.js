@@ -161,6 +161,15 @@ export class CosmonautsTerminalEngine {
         if (this.toggleBtn) {
             this.toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // 3.9.0: данные о космонавтах перенесены в 3D-пространство —
+                // кнопка запускает «Кольцо Героев Космоса» (16 карточек,
+                // вращающихся перед наблюдателем). Подробный реестр, который
+                // раньше открывался этой кнопкой, доступен из HUD кольца,
+                // поэтому прежняя панель остаётся полностью рабочей.
+                if (window.CosmonautRing && typeof window.CosmonautRing.toggle === 'function') {
+                    window.CosmonautRing.toggle();
+                    return;
+                }
                 this.toggle();
             });
         }

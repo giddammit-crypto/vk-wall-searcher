@@ -320,47 +320,71 @@ void main() {
         // Диффуз + мягкий терминатор (полутень) по геометрической нормали
         vec3 lit = albedo * sunColor * clamp(ndl, 0.0, 1.0) * mix(0.16, 1.0, dayMask);
 
-        // Спекуляр океана (Блинн-Фонг, узкий блик солнца)
+        // --- Океан: солнечный глиттер по Гауссу + широкий блик
+        // Настоящий морской блик — не точка, а вытянутая вдоль меридиана
+        // дорожка из тысяч микробликов. Формируем шероховатость «по ветру»:
+        // сжатие луча отражения вдоль оси, перпендикулярной Солнцу.
         vec3 H = normalize(L + V);
-        float spec = pow(max(dot(Nb, H), 0.0), 190.0) * ocean * uSpecular;
-        spec += pow(max(dot(Nb, H), 0.0), 24.0) * ocean * uSpecular * 0.12;
+        float oceanMask = smoothstep(0.02, 0.16, albedo.b - max(albedo.r, albedo.g));
+        vec3 glintAxis = normalize(vec3(-H.z, 0.0, H.x) + 1e-5);
+        float aniso = abs(dot(Nb, glintAxis));
+        vec3 Hg = normalize(H + glintAxis * (H - L) * 0.16);
+        float micro = pow(max(dot(Nb, Hg), 0.0), 340.0) * (1.0 - aniso * 0.55);
+        float wide = pow(max(dot(Nb, H), 0.0), 34.0);
+        float glitter = micro * 3.4 + wide * 0.18;
+        float spec = glitter * oceanMask * uSpecular * step(0.0, ndl);
 
         // Ночные огни городов на тёмной стороне.
         // Маска «суши» здесь не нужна: чёрная мраморная карта NASA сама
         // содержит океан без огней, а умножение на land дополнительно гасило
         // прибрежные мегаполисы и делало ночную сторону почти чёрной.
-        float nightMask = smoothstep(0.18, -0.04, ndlGeom);
+        float nm = smoothstep(-0.12, 0.08, ndlGeom);
+        nm = nm * nm * (3.0 - 2.0 * nm);
+        float nightMask = 1.0 - nm;
         // В исходной карте NASA суша на ночной стороне имеет фиолетовую
         // подложку (~0.10/0.10/0.20) — она не физична и «подсвечивала»
         // континенты. Вычитаем её: остаются только огни городов, к тому же
         // тёплые (натриевые лампы), как на снимках с МКС.
-        vec3 cityLights = max(nightTex - vec3(0.10, 0.10, 0.20), 0.0) * 3.1;
-        cityLights *= vec3(1.06, 0.94, 0.80);
-        cityLights *= nightMask;
+        vec3 cityLights = max(nightTex - vec3(0.105, 0.105, 0.21), 0.0) * 3.4;
+        cityLights *= vec3(1.06, 0.94, 0.80) * nightMask;
 
         // Облачный слой (свободно дрейфует относительно поверхности).
         // Кромка сознательно резче: у настоящих кучевых облаков край
         // плотный, а тонкая перистая дымка уже заложена в самой карте.
         vec2 cuv = vec2(fract(uv.x + uCloudShift), uv.y);
-        float clouds = texture(uClouds, cuv).r;
-        clouds = smoothstep(0.10, 0.60, clouds) * uCloudOpacity;
-        float cloudLit = clamp(dot(N, L) + 0.12, 0.0, 1.0);
+        float cloudBase = texture(uClouds, cuv).r;
+        // Второй слой той же карты в 2.7 раза мельче и со сдвигом: убирает
+        // «мыльность» крупных планов, даёт рваные края и просветы в облаках
+        float cloudFine = texture(uClouds, vec2(fract(cuv.x * 2.7 + 0.31), clamp(cuv.y * 2.7 + 0.17, 0.0, 1.0))).r;
+        float clouds = smoothstep(0.10, 0.60, cloudBase);
+        clouds = clamp(clouds * (0.72 + 0.58 * cloudFine), 0.0, 1.0);
+        clouds *= uCloudOpacity;
+        float cloudLit = clamp(dot(N, L) + 0.10, 0.0, 1.0);
         // Облака почти не видны на ночной стороне (подсвечены только луной и
         // городами): квадратичный спад + видимость по терминатору убирают
         // «серые кляксы» там, где кучевых облаков в кадре быть не должно
-        vec3 cloudColor = vec3(1.0) * (0.06 + cloudLit * cloudLit * 1.02) * sunColor;
+        vec3 cloudColor = vec3(1.0) * (0.20 + pow(cloudLit, 1.35) * 0.98) * sunColor;
         clouds *= mix(0.04, 1.0, smoothstep(-0.30, 0.02, ndlGeom));
 
-        // Тени облаков на поверхности (мягкое затенение, без «грязи»)
-        lit *= (1.0 - clouds * 0.24 * cloudLit);
+        // --- ТЕНИ ОБЛАКОВ: сэмплируем карту облаков со смещением по Солнцу.
+        // Смещение в UV пропорционально проекции направления на Солнце —
+        // облака отбрасывают тень на десятки километров в сторону от светила.
+        vec2 sunUv = vec2(-L.x, L.y) * 0.010 * (1.0 + 6.0 * (1.0 - clamp(ndlGeom, 0.0, 1.0)));
+        float shadowC = texture(uClouds, vec2(fract(cuv.x + sunUv.x), clamp(cuv.y + sunUv.y, 0.0, 1.0))).r;
+        shadowC = smoothstep(0.22, 0.78, shadowC) * uCloudOpacity;
+        lit *= (1.0 - shadowC * 0.42 * clamp(ndlGeom + 0.25, 0.0, 1.0));
+        // Кромки облаков подсвечиваются на просвет (forward scattering)
+        float edge = clamp(clouds - shadowC * 0.85, 0.0, 1.0);
 
+        // Просвечивающие кромки: добавляют объём облачной шапке
+        cloudColor += vec3(0.28, 0.30, 0.34) * edge * 0.9;
         color = mix(lit + cityLights + spec, cloudColor, clouds * 0.90);
 
         // Атмосферный лимб: рэлеевское рассеяние (голубой обод)
         float fres = pow(1.0 - max(dot(N, V), 0.0), 3.4);
         float sunSide = smoothstep(-0.45, 0.65, dot(N, L));
         vec3 rayleigh = mix(vec3(0.16, 0.42, 1.0), vec3(0.85, 0.55, 0.30), smoothstep(0.1, -0.1, dot(N, L)));
-        color += rayleigh * fres * sunSide * uAtmosphere * (0.85 + clouds * 0.35);
+        color += rayleigh * fres * sunSide * uAtmosphere * 0.30 * (0.85 + clouds * 0.35);
     } else {
         // ---------- ЛУНА ----------
         vec3 sunColor = vec3(1.0, 0.97, 0.93);
@@ -391,26 +415,142 @@ precision highp float;
 in vec3 vNormal;
 in vec2 vUv;
 in vec3 vWorld;
-uniform vec3 uSunDir;
+uniform vec3 uSunDir;        // направление на Солнце, мировая система
+uniform vec3 uCenter;        // центр планеты, мировая система
+uniform float uRadius;       // радиус оболочки атмосферы
+uniform float uPlanetRadius; // радиус твёрдой поверхности
 uniform float uStrength;
 uniform float uFalloff;
 out vec4 outColor;
 
+/* ===========================================================================
+ * АНАЛИТИЧЕСКОЕ РАССЕЯНИЕ В АТМОСФЕРЕ (интеграл по лучу зрения)
+ *
+ * Модель: экспоненциальные профили плотности по высоте, рэлеевская и
+ * ми-компоненты рассеяния, учёт оптической глубины к наблюдателю (extinction)
+ * и тени планеты. Это тот же класс модели, что используют симуляторы
+ * (Nishita / O'Neil), но с малым числом шагов и дизерингом:
+ *   • голубой лимб, оранжевый горизонт со стороны Солнца;
+ *   • затухание диска у терминатора;
+ *   • «закатный» красный пояс там, где луч проходит низко над поверхностью.
+ * =========================================================================== */
+
+const float PI = 3.14159265359;
+
+/* Единицы сцены: радиус Земли = 1000 единиц = 6371 км, значит 1 единица = 6.371 км.
+   Коэффициенты рассеяния и шкалы высот приведены из километров в единицы сцены,
+   поэтому интеграл сразу получается в физически осмысленных величинах
+   (вертикальная оптическая толщина: синий ≈ 0.30, красный ≈ 0.05). */
+const float KM_PER_UNIT      = 6.371;
+const float RAYLEIGH_SCALE_H = 9000.0 / KM_PER_UNIT;     // 1412.6 единиц
+const float MIE_SCALE_H      = 1400.0 / KM_PER_UNIT;     // 219.7 единиц
+const vec3  BETA_RAYLEIGH    = vec3(5.5e-6, 13.0e-6, 33.1e-6) * KM_PER_UNIT;
+const float BETA_MIE         = 21.0e-6 * KM_PER_UNIT;
+const float MIE_G            = 0.758;
+const int   STEPS            = 14;
+
+float hash12(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+bool raySphere(vec3 o, vec3 d, vec3 c, float r, out float t0, out float t1) {
+    vec3 oc = o - c;
+    float b = dot(oc, d);
+    float cc = dot(oc, oc) - r * r;
+    float h = b * b - cc;
+    if (h < 0.0) return false;
+    h = sqrt(h);
+    t0 = -b - h;
+    t1 = -b + h;
+    return t1 > 0.0;
+}
+
+/* Оптическая глубина от точки p до Солнца (для самозатенения атмосферы) */
+float sunOpticalDepth(vec3 p, vec3 c, float pr, vec3 sd) {
+    float tp0, tp1;
+    if (!raySphere(p, sd, c, pr, tp0, tp1)) return 1.0;
+    if (tp1 <= 0.0) return 1.0;
+    float t = max(tp0, 0.0);
+    float len = tp1 - t;
+    float sum = 0.0;
+    for (int i = 0; i < 4; i++) {
+        float ts = t + len * (float(i) + 0.5) / 4.0;
+        vec3 q = p + sd * ts;
+        float h = max(length(q - c) - pr, 0.0);
+        sum += exp(-h / RAYLEIGH_SCALE_H) * (len / 4.0);
+    }
+    // Возвращаем относительную непрозрачность: полная оптическая толщина
+    // на горизонтальной трассе заметно больше вертикальной.
+    return clamp(sum / (RAYLEIGH_SCALE_H * 12.0), 0.0, 1.0);
+}
+
 void main() {
-    vec3 N = normalize(vNormal);
-    vec3 V = normalize(-vWorld);
-    vec3 L = normalize(uSunDir);
+    vec3 d = normalize(vWorld);              // камера находится в начале мировой системы
+    vec3 o = vec3(0.0);
+    vec3 sunDir = normalize(uSunDir);
 
-    float rim = pow(clamp(1.0 - dot(N, V), 0.0, 1.0), uFalloff);
-    float sun = smoothstep(-0.55, 0.55, dot(N, L));
-    float forward = pow(clamp(dot(V, -L), 0.0, 1.0), 3.0);
+    float t0, t1;
+    if (!raySphere(o, d, uCenter, uRadius, t0, t1)) { outColor = vec4(0.0); return; }
 
-    vec3 col = mix(vec3(0.20, 0.48, 1.0), vec3(0.55, 0.78, 1.0), 0.5 + 0.5 * dot(N, L));
-    col = mix(col, vec3(1.0, 0.62, 0.34), forward * 0.75);
+    // Ограничиваем луч: до касания поверхности планеты
+    float tp0, tp1;
+    bool hitSurface = raySphere(o, d, uCenter, uPlanetRadius, tp0, tp1);
+    float viewStart = max(t0, 0.0);
+    float viewEnd = t1;
+    if (hitSurface && tp0 > 0.0) viewEnd = min(viewEnd, tp0);
+    if (viewEnd <= viewStart) { outColor = vec4(0.0); return; }
 
-    float a = rim * sun * uStrength;
-    outColor = vec4(col * a, a);
+    float stepLen = (viewEnd - viewStart) / float(STEPS);
+    float jitter = hash12(gl_FragCoord.xy) * stepLen;
+
+    vec3 sumR = vec3(0.0);
+    float sumM = 0.0;
+    float odR = 0.0;      // оптическая глубина «к наблюдателю»
+    float odM = 0.0;
+
+    for (int i = 0; i < STEPS; i++) {
+        vec3 p = o + d * (viewStart + jitter + stepLen * float(i));
+        float height = max(length(p - uCenter) - uPlanetRadius, 0.0);
+        float hr = exp(-height / RAYLEIGH_SCALE_H) * stepLen;
+        float hm = exp(-height / MIE_SCALE_H) * stepLen;
+        odR += hr;
+        odM += hm;
+
+        float shadow = sunOpticalDepth(p, uCenter, uPlanetRadius, sunDir);
+        float sunVis = 1.0 - shadow;              // доля света, дошедшая до точки
+        sunVis = sunVis * sunVis * (3.0 - 2.0 * sunVis);
+        sumR += hr * sunVis;
+        sumM += hm * sunVis;
+    }
+
+    // Рэлеевская и ми-фазы
+    float mu = dot(d, sunDir);
+    float phaseR = 0.0596831 * (1.0 + mu * mu);                       // 3/(16π)
+    float g2 = MIE_G * MIE_G;
+    float phaseM = 0.0795775 * ((1.0 - g2) * (1.0 + mu * mu)) /
+                   ((2.0 + g2) * pow(max(1.0 + g2 - 2.0 * MIE_G * mu, 1e-4), 1.5));
+
+    // Ослабление собственного рассеяния по пути к наблюдателю (extinction)
+    vec3 tau = BETA_RAYLEIGH * odR + BETA_MIE * odM * 1.15;
+    vec3 extinction = exp(-tau);
+
+    vec3 col = (sumR * BETA_RAYLEIGH * phaseR + vec3(sumM * BETA_MIE * phaseM)) * extinction;
+
+    // Модель даёт радиацию «единица = единица солнечной постоянной»; для
+    // сцены нужна фотографическая экспозиция. Множитель подобран численно
+    // в tools/preview_scene.py так, чтобы яркость лимба совпадала с
+    // реальными снимками с МКС (~0.35…0.6 после тонмаппинга).
+    col *= uStrength * 0.62;
+
+    // Насыщение: у самой кромки рассеяние уходит в пересвет, как на фото
+    col = col / (1.0 + col * 0.35);
+
+    float a = clamp(max(max(col.r, col.g), col.b), 0.0, 1.0);
+    outColor = vec4(col, a);
 }`;
+
 
 /* ===========================================================================
  * Класс рендерера
@@ -1041,12 +1181,13 @@ export class Space3DGLRenderer {
             urot: this.earthRot
         });
 
-        // 3.2 Атмосферная оболочка Земли
+        // 3.2 Атмосферная оболочка Земли (аналитическое рассеяние, 14 шагов)
         this._drawSphere({
             center: earthCenter,
-            radius: 1000 * 1.028,
+            radius: 1000 * 1.025,
+            planetRadius: 1000,
             atmosphereOnly: true,
-            strength: 1.05,
+            strength: 1.0,
             falloff: 3.6,
             sunDir,
             mat: m,
@@ -1114,6 +1255,7 @@ export class Space3DGLRenderer {
             gl.depthMask(false);
             gl.uniform3fv(u.uCenter, opts.center);
             gl.uniform1f(u.uRadius, opts.radius);
+            gl.uniform1f(u.uPlanetRadius, opts.planetRadius || opts.radius * 0.97);
             gl.uniform3fv(u.uSunDir, opts.sunDir);
             gl.uniform1f(u.uStrength, opts.strength);
             gl.uniform1f(u.uFalloff, opts.falloff);

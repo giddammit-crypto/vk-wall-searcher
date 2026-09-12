@@ -21,6 +21,7 @@ import { SpaceAudio } from './space_audio.js?v=3.9.0';
 import { CelestialPlanets } from './celestial_planets.js?v=3.9.0';
 import { IssStation } from './iss_station.js?v=3.9.0';
 import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.0';
+import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.0';
 import { createQrSvg } from './qrcode.js?v=3.9.0';
 import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.0';
 import { openPostModal } from './render.js?v=3.9.0';
@@ -139,6 +140,10 @@ export class Space3DEngine {
         this.setupHudControls();
         this.buildStations();
         this.applyLayout(this.currentLayout, false);
+
+        // Кольцо «Герои Космоса» монтируется ПОСЛЕ сборки станций:
+        // buildStations() пересоздаёт содержимое мира и иначе снёс бы слой кольца
+        CosmonautRing.mount(this);
 
         // Preload subscriber history asynchronously
         fetchHistory().then(snaps => {
@@ -1770,6 +1775,9 @@ export class Space3DEngine {
         }
         this.renderCanvasStarfield();
 
+        // Кольцо Героев Космоса: вращение и раскладка карточек в 3D-мире
+        CosmonautRing.update(t);
+
         this.animId = requestAnimationFrame(this.renderLoop);
     }
 
@@ -2613,6 +2621,9 @@ export class Space3DEngine {
         }
         if (CosmonautsTerminal && CosmonautsTerminal.isOpen) {
             CosmonautsTerminal.close();
+        }
+        if (CosmonautRing && CosmonautRing.isActive) {
+            CosmonautRing.hide();
         }
         IssStation.hideOverlays();
         document.body.classList.remove('space-3d-active');
