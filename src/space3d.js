@@ -1503,14 +1503,6 @@ export class Space3DEngine {
         const closeBtn = document.getElementById('space-close-btn');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
-        // Бортовой терминал «Герои Космоса» (выдвижное окно в верхнем меню)
-        const cosmonautsBtn = document.getElementById('space-cosmonauts-btn');
-        if (cosmonautsBtn) {
-            cosmonautsBtn.addEventListener('click', () => {
-                CosmonautsTerminal.toggle();
-            });
-        }
-
         // Аудио-контроллеры
         const musicBtn = document.getElementById('space-music-btn');
         if (musicBtn) {
