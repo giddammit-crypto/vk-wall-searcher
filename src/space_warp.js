@@ -531,10 +531,8 @@ export class SpaceWarpTransition {
         const cx = w / 2;
         const cy = h / 2;
 
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, w, h);
-        // Более глубокий тёмный фон вакуума во время перехода
-        ctx.fillStyle = `rgba(1, 2, 8, ${0.30 + (1 - s.fade) * 0.65})`;
+        // Глубокий абсолютно непрозрачный космический вакуум для максимальной контрастности текста
+        ctx.fillStyle = `rgba(2, 6, 23, ${Math.max(0.96, s.fade)})`;
         ctx.fillRect(0, 0, w, h);
 
         const accel = (0.6 + s.speedNorm * 26) * 0.333;

@@ -12,6 +12,7 @@
     width: 100vw;
     height: 100vh;
     z-index: 100000 !important;
+    background: #020617;
     pointer-events: none;
     transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: opacity;

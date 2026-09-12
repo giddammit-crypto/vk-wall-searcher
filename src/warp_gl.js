@@ -1050,7 +1050,7 @@ void main(){ outColor = vec4(0.0); }`, name);
         const h = target ? target.h : this.height;
         gl.viewport(0, 0, w, h);
         if (clear) {
-            gl.clearColor(0, 0, 0, target ? 1 : 0);
+            gl.clearColor(0.008, 0.015, 0.035, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
         }
         return { w, h };
