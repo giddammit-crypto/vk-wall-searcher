@@ -128,28 +128,37 @@ float fbmStream(vec3 p) {
 void main() {
     float ang = vUv.x * 6.28318530718;
     float axial = vUv.y;
-    vec3 dir = vec3(cos(ang), sin(ang), 0.0);
 
-    // Растянутая вдоль Z координата: чем длиннее кадр — тем сильнее «полосы скорости»
-    float z = axial * 46.0 + uTravel * 0.42;
-    vec3 np = vec3(dir.xy * 1.35, z * 0.22) + uSeed;
+    // Спиральное вращение и плазменные вихри в стиле No Man's Sky
+    float swirl = axial * 3.8 + uTravel * 0.08;
+    float twistedAng = ang + swirl;
+    vec3 dir = vec3(cos(twistedAng), sin(twistedAng), 0.0);
+
+    // Растянутая вдоль Z координата: сверхсветовой туннель
+    float z = axial * 42.0 + uTravel * 0.46;
+    vec3 np = vec3(dir.xy * 1.45, z * 0.22) + uSeed;
 
     float plasma = fbmStream(np);
-    float filaments = fbmStream(np * vec3(1.0, 1.0, 0.28) + vec3(3.7, 1.9, 0.0));
-    float veins = pow(clamp(filaments, 0.0, 1.0), 2.4);
+    float filaments = fbmStream(np * vec3(1.0, 1.0, 0.26) + vec3(3.7, 1.9, 0.0));
+    float veins = pow(clamp(filaments, 0.0, 1.0), 2.2);
+
+    // Волновые кольца сжатия гиперпространства (No Man's Sky compression pulse rings)
+    float pulseRing = pow(max(0.0, sin(axial * 34.0 - uTravel * 0.85 + uSeed * 3.7)), 7.0);
 
     // Радиальная энергия горячего канала
-    float hot = pow(clamp(plasma, 0.0, 1.0), 1.6);
+    float hot = pow(clamp(plasma, 0.0, 1.0), 1.5);
     vec3 col = mix(uColorA, uColorB, hot);
     col = mix(col, uColorC, veins * 0.85);
-    col += uColorC * pow(veins, 3.0) * 1.6;
+    col += uColorC * pow(veins, 2.8) * 1.8;
+    // Всплески световых колец
+    col += mix(uColorB, uColorC, 0.65) * (pulseRing * 1.6);
 
     // Градиент глубины: у входа в тоннель ярче, вдали — растворяется в точке схода
-    float depthFade = smoothstep(0.0, 0.22, axial) * (1.0 - smoothstep(0.55, 1.0, axial));
-    float flicker = 0.82 + 0.18 * sin(uTime * 9.0 + uSeed * 12.0 + axial * 14.0);
+    float depthFade = smoothstep(0.0, 0.20, axial) * (1.0 - smoothstep(0.58, 1.0, axial));
+    float flicker = 0.84 + 0.16 * sin(uTime * 10.0 + uSeed * 12.0 + axial * 16.0);
 
     float energy = mix(0.55, 1.0, uSpeedNorm);
-    float a = depthFade * flicker * energy * uOpacity * (0.30 + hot * 0.85 + veins * 0.7);
+    float a = depthFade * flicker * energy * uOpacity * (0.32 + hot * 0.90 + veins * 0.75 + pulseRing * 0.45);
     outColor = vec4(col * a, a);
 }`;
 
@@ -901,11 +910,16 @@ void main(){ outColor = vec4(0.0); }`, name);
         gl.bindVertexArray(null);
         this.vaoSpark = sparkVao;
 
-        /* ---- Гипертоннель: 3 оболочки (кольца × сегменты) ---- */
+        /* ---- Гипертоннель: 4 оболочки в стиле No Man's Sky (кольца × сегменты) ---- */
         this.tunnelShells = [
-            { radius: 2.6, length: 120, scroll: 1.0, opacity: 0.55, seed: 0.0, colorA: [0.05, 0.16, 0.42], colorB: [0.12, 0.55, 0.95], colorC: [0.35, 1.0, 0.95], wobble: 0.03 },
-            { radius: 6.4, length: 240, scroll: 0.62, opacity: 0.42, seed: 17.3, colorA: [0.10, 0.06, 0.32], colorB: [0.42, 0.22, 0.95], colorC: [0.85, 0.45, 1.0], wobble: 0.05 },
-            { radius: 14.0, length: 420, scroll: 0.38, opacity: 0.30, seed: 41.7, colorA: [0.02, 0.05, 0.18], colorB: [0.15, 0.42, 0.85], colorC: [0.55, 0.75, 1.0], wobble: 0.07 }
+            // Shell 1: Внутренний гипердрайв-канал (No Man's Sky electric cyan & plasma white core)
+            { radius: 2.3, length: 140, scroll: 1.12, opacity: 0.62, seed: 0.0, colorA: [0.00, 0.55, 0.95], colorB: [0.00, 0.95, 1.00], colorC: [0.95, 1.00, 1.00], wobble: 0.025 },
+            // Shell 2: Промежуточный вихревой слой (No Man's Sky neon magenta & royal ultraviolet)
+            { radius: 5.4, length: 260, scroll: 0.72, opacity: 0.52, seed: 17.3, colorA: [0.22, 0.02, 0.48], colorB: [0.95, 0.05, 0.55], colorC: [0.70, 0.35, 1.00], wobble: 0.045 },
+            // Shell 3: Золотистые плазменные спирали и фотонные шлейфы (golden flare tendrils)
+            { radius: 10.2, length: 360, scroll: 0.52, opacity: 0.42, seed: 29.8, colorA: [0.16, 0.08, 0.02], colorB: [0.98, 0.62, 0.12], colorC: [1.00, 0.88, 0.45], wobble: 0.060 },
+            // Shell 4: Глубокий космический волновод (sapphire cobalt & deep void)
+            { radius: 16.8, length: 480, scroll: 0.35, opacity: 0.32, seed: 43.5, colorA: [0.02, 0.04, 0.16], colorB: [0.10, 0.38, 0.92], colorC: [0.35, 0.78, 1.00], wobble: 0.075 }
         ];
 
         const SEG = 72;

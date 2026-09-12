@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.9.5",
+    "version": "3.9.6",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T16:00:00+03:00",
-    "release_name": "AURORA 3.9.5 — Чистый белый цвет текста AURORA без затемнений, Земля приближена в 2.5x ближе (80% ширины экрана)"
+    "commit_date": "2026-09-12T16:30:00+03:00",
+    "release_name": "AURORA 3.9.6 — Отдаление Земли на 0.5x, замедление вращения в 0.5x, Луна в левом верхнем углу (0.5x Земли), гиперпрыжок No Man's Sky, линза шлема скафандра"
 }

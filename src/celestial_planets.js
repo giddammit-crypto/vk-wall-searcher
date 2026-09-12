@@ -49,10 +49,10 @@ export class CelestialPlanetsEngine {
         this.moonLut = null;
         this.moonNormals = null;
 
-        // Earth is situated in lower part of screen, occupying 80% horizontal width (pitch: -48°, dist: 980)
-        this.earthCoords = { yaw: 0, pitch: -48, dist: 980 };
-        // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
-        this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
+        // Earth is situated in lower part of screen (pitch: -44°, dist: 1470, radius: 700)
+        this.earthCoords = { yaw: 0, pitch: -44, dist: 1470 };
+        // Moon is situated in the upper-left quadrant (baseYaw: -36°, basePitch: 18°, dist: 1470, radius: 350)
+        this.moonCoords = { baseYaw: -36, basePitch: 18, dist: 1470, radius: 350 };
 
         // Sun light direction in celestial space (normalized vector)
         this.sunDir = { x: 0.72, y: 0.28, z: 0.63 };
@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.5'),
-            loadImgBuffer('assets/textures/earth_night.png?v=3.9.5'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.5'),
-            loadImgBuffer('assets/textures/moon.jpg?v=3.9.5')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.6'),
+            loadImgBuffer('assets/textures/earth_night.png?v=3.9.6'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.6'),
+            loadImgBuffer('assets/textures/moon.jpg?v=3.9.6')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -519,13 +519,13 @@ export class CelestialPlanetsEngine {
 
         this.tick = (this.tick || 0) + 1;
 
-        // Постоянное плавное вращение Земли (0.00063 * 0.8 = 0.000504)
-        this.earthRot += 0.000504;
-        this.cloudsRot += 0.00076;
+        // Постоянное плавное вращение Земли (уменьшено в 0.5 раза)
+        this.earthRot += 0.000252;
+        this.cloudsRot += 0.00038;
 
         // Орбитальное движение Луны и синхронное вращение
-        this.moonOrbit += 0.00022;
-        this.moonRot += 0.00022;
+        this.moonOrbit += 0.00011;
+        this.moonRot += 0.00011;
 
         // Оффскрин-буфер перерисовываем раз в 4 кадра для максимального FPS
         if (this.tick % 4 === 0) {
@@ -603,9 +603,9 @@ export class CelestialPlanetsEngine {
             }
         }
 
-        // 2. Отрисовка Луны (Меньше Земли, но четкая, за спиной пользователя)
-        const mCurrentYaw = this.moonCoords.baseYaw + Math.sin(this.moonOrbit) * 12;
-        const mCurrentPitch = this.moonCoords.basePitch + Math.cos(this.moonOrbit) * 4;
+        // 2. Отрисовка Луны (В левом верхнем секторе неба, ровно в 2 раза меньше Земли)
+        const mCurrentYaw = this.moonCoords.baseYaw + Math.sin(this.moonOrbit) * 1.5;
+        const mCurrentPitch = this.moonCoords.basePitch + Math.cos(this.moonOrbit) * 1.0;
 
         const mYaw = (mCurrentYaw * Math.PI) / 180;
         const mPitch = (mCurrentPitch * Math.PI) / 180;
@@ -623,8 +623,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (mx1 / mz2) * fov;
             const py = cy - (my2 / mz2) * fov;
 
-            // Луна (радиус 90px, диаметр 180px)
-            const drawRadius = 90 * zoom;
+            // Луна (в 2 раза меньше Земли на экране: радиус 350px)
+            const drawRadius = 350 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {

@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.9.5';
-import { WarpGLRenderer } from './warp_gl.js?v=3.9.5';
-import { WarpHud } from './warp_hud.js?v=3.9.5';
+import { SpaceAudio } from './space_audio.js?v=3.9.6';
+import { WarpGLRenderer } from './warp_gl.js?v=3.9.6';
+import { WarpHud } from './warp_hud.js?v=3.9.6';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -563,23 +563,25 @@ export class SpaceWarpTransition {
             ctx.stroke();
         }
 
-        // Гипертоннель: концентрические энергетические кольца (золото → циан → пурпур)
+        // Гипертоннель: концентрические энергетические кольца в стиле No Man's Sky (золото → циан → неоновая маджента)
         if (s.tunnelCover > 0.01) {
-            const rings = 20;
+            const rings = 22;
             for (let i = 0; i < rings; i++) {
                 const t = (i / rings + (s.travel * 0.0006) % 1) % 1;
                 const r = Math.pow(t, 1.8) * maxR * 1.1;
-                const a = (1 - t) * 0.18 * s.tunnelCover;
-                const grad = ctx.createRadialGradient(cx, cy, Math.max(0, r - 28), cx, cy, r + 28);
+                const a = (1 - t) * 0.22 * s.tunnelCover;
+                const grad = ctx.createRadialGradient(cx, cy, Math.max(0, r - 32), cx, cy, r + 32);
                 grad.addColorStop(0, 'rgba(0,0,0,0)');
-                // Inner rings warm gold, outer rings cool cyan-violet
-                const tGold = Math.max(0, 1 - t * 3);
-                grad.addColorStop(0.35, `rgba(${Math.round(240 - t * 184)}, ${Math.round(180 + t * 9)}, ${Math.round(60 + t * 188)}, ${a + tGold * 0.06})`);
-                grad.addColorStop(0.65, `rgba(139, 92, 246, ${a * 0.75})`);
+                // No Man's Sky palette: core cyan, mid-wave magenta, outer violet-sapphire
+                const rCol = Math.round(t < 0.5 ? (20 + t * 440) : (240 - (t - 0.5) * 200));
+                const gCol = Math.round(t < 0.4 ? (220 - t * 300) : (40 + (t - 0.4) * 80));
+                const bCol = Math.round(230 + t * 25);
+                grad.addColorStop(0.35, `rgba(${rCol}, ${gCol}, ${bCol}, ${a})`);
+                grad.addColorStop(0.65, `rgba(147, 51, 234, ${a * 0.85})`);
                 grad.addColorStop(1, 'rgba(0,0,0,0)');
                 ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(cx, cy, r + 28, 0, Math.PI * 2);
+                ctx.arc(cx, cy, r + 32, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

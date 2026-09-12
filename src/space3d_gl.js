@@ -299,18 +299,31 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-    vec2 uv = vUv;
-    vec2 dv = uv - 0.5;
-    float r2 = dot(dv, dv);
+    // --- Оптическая геометрия защитного стекла шлема скафандра (NASA EMU Visor) ---
+    vec2 dv = vUv - 0.5;
+    float aspect = uResolution.x / max(uResolution.y, 1.0);
+    // Приводим к круговому профилю кривизны с учётом аспекта экрана
+    vec2 pNorm = vec2(dv.x * (aspect > 1.0 ? 1.0 : aspect), dv.y * (aspect > 1.0 ? 1.0 / aspect : 1.0));
+    float r2 = dot(pNorm, pNorm);
 
-    // Хроматическая аберрация: радиальное расхождение каналов к краю кадра
-    vec2 off = dv * (uChroma * (0.35 + r2 * 2.2));
+    // Линзовое бочкообразное искажение (barrel distortion) визора шлема
+    // Тонко откалибровано: даёт ощущение сферического стекла, не ломая интерфейс
+    float k1 = 0.075;
+    float k2 = 0.045;
+    float barrel = 1.0 + k1 * r2 + k2 * (r2 * r2);
+    vec2 visorUv = 0.5 + dv * barrel;
+
+    // Мягкое удержание в границах кадра
+    vec2 sampleUv = clamp(visorUv, vec2(0.001), vec2(0.999));
+
+    // Хроматическая дисперсия стекла шлема (усиливается к краям поля зрения)
+    vec2 off = dv * (uChroma * (0.35 + r2 * 2.8));
     vec3 col;
-    col.r = texture(uScene, uv + off).r;
-    col.g = texture(uScene, uv).g;
-    col.b = texture(uScene, uv - off).b;
+    col.r = texture(uScene, clamp(visorUv + off, vec2(0.001), vec2(0.999))).r;
+    col.g = texture(uScene, sampleUv).g;
+    col.b = texture(uScene, clamp(visorUv - off, vec2(0.001), vec2(0.999))).b;
 
-    col += texture(uBloom, uv).rgb * uBloomStrength;
+    col += texture(uBloom, sampleUv).rgb * uBloomStrength;
     col *= uExposure;
     col = aces(max(col, vec3(0.0)));
 
@@ -318,9 +331,17 @@ void main() {
     col = pow(col, vec3(0.985, 0.997, 1.012));
     col = mix(col, col * vec3(0.93, 0.96, 1.05), 0.16);
 
-    // Виньетка объектива (cos⁴ законы падения освещённости)
-    float vig = 1.0 - uVignette * r2 * 1.55;
-    col *= clamp(vig, 0.0, 1.0);
+    // Золотистое антибликовое напыление визора скафандра (NASA EMU Gold Sun Visor)
+    // Тонкий мягкий золотисто-янтарный отблеск по верхнему и боковому периметру стекла
+    float rimGlint = smoothstep(0.18, 0.65, r2) * max(0.0, -dv.y * 0.7 + 0.3);
+    vec3 goldSheen = vec3(0.96, 0.78, 0.38) * (rimGlint * 0.038);
+    col += goldSheen;
+
+    // Виньетка визора скафандра (естественное затемнение по контуру шлема)
+    float vig = 1.0 - uVignette * r2 * 1.40;
+    // Мягкий спад к уплотнителю визора на крайних углах
+    float helmetSeal = 1.0 - smoothstep(0.48, 0.68, r2) * 0.28;
+    col *= clamp(vig * helmetSeal, 0.0, 1.0);
 
     // Зерно сенсора + дизеринг
     vec2 fc = gl_FragCoord.xy + vec2(uTime * 37.0, -uTime * 21.0);
@@ -1172,10 +1193,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.5',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.5',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.5',
-            moon: 'assets/textures/moon.jpg?v=3.9.5'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.6',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.6',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.6',
+            moon: 'assets/textures/moon.jpg?v=3.9.6'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1286,11 +1307,11 @@ export class Space3DGLRenderer {
         const gl = this.gl;
         this.time += dt || 0.016;
 
-        // Кинематика планет (синхронно с CPU-модулем, скорость вращения × 0.8)
-        this.earthRot += 0.000504 * (dt * 60);
-        this.cloudsRot += 0.00076 * (dt * 60);
-        this.moonOrbit += 0.00022 * (dt * 60);
-        this.moonRot += 0.00022 * (dt * 60);
+        // Кинематика планет (скорость вращения уменьшена в 0.5 раза)
+        this.earthRot += 0.000252 * (dt * 60);
+        this.cloudsRot += 0.00038 * (dt * 60);
+        this.moonOrbit += 0.00011 * (dt * 60);
+        this.moonRot += 0.00011 * (dt * 60);
 
         if (!this.bakeReady) this._scheduleBake();
 
@@ -1348,12 +1369,14 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -48, 980, this._earthCenter);
-        const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
-        const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
-        const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
+        // Земля отдалена на 0.5x (dist: 1470 px, pitch: -44°), радиус 700
+        const earthCenter = this._dirFromYawPitch(0, -44, 1470, this._earthCenter);
+        // Луна расположена в левом верхнем секторе неба (yaw: -36°, pitch: +18°), dist: 1470 px
+        const moonYaw = -36 + Math.sin(this.moonOrbit) * 1.5;
+        const moonPitch = 18 + Math.cos(this.moonOrbit) * 1.0;
+        const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1470, this._moonCenter);
 
-        // 3.1 Земля (приближена в 2.5× раза ближе, занимает 80% по горизонтали нижней части экрана, радиус 700, dist 980)
+        // 3.1 Земля (отдалена на 0.5x: dist 1470, радиус 700)
         this._drawSphere({
             center: earthCenter,
             radius: 700,
@@ -1390,20 +1413,20 @@ export class Space3DGLRenderer {
             texture: this.textures.earthClouds
         });
 
-        // 3.3 Луна
+        // 3.3 Луна (в левом верхнем углу, ровно в 2 раза меньше Земли на экране: радиус 350 при равном расстоянии)
         this._drawSphere({
             center: moonCenter,
-            radius: 220,
+            radius: 350,
             bodyType: 1,
             texture: this.textures.moon,
             night: this.textures.moon,
             clouds: this.textures.moon,
             cloudShift: 0,
             cloudOpacity: 0,
-            bump: 0.34,
-            specular: 0,
-            ambient: 0.22,
-            ambientColor: [0.05, 0.07, 0.12],
+            bump: 0.38,
+            specular: 0.05,
+            ambient: 0.16,
+            ambientColor: [0.06, 0.09, 0.15], // мягкий земной свет (Earthshine)
             atmosphere: 0,
             sunDir,
             mat: m,
@@ -1484,7 +1507,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 980));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -44, 1470));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);
