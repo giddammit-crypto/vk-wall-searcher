@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.8.0",
+    "version": "3.8.5",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T03:15:00+03:00",
-    "release_name": "AURORA 3.8.0 — Фоновая композиция David Bowie Space Oddity (65% volume) и фотореалистичная 3D-станция МКС (ISS) с облетом горизонта в масштабе AAA"
+    "commit_date": "2026-09-12T03:45:00+03:00",
+    "release_name": "AURORA 3.8.5 — Фотореалистичный глубокий космос, Земля 2x с физическими тенями облаков и закатным терминатором, физическая орбита МКС вокруг Земли с окклюзией, кинематографичные эффекты в стиле Rockstar Games и адаптивные 3D-окна"
 }

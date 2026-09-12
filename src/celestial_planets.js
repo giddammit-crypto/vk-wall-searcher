@@ -26,7 +26,7 @@ export class CelestialPlanetsEngine {
         this.moonOrbit = 0;
 
         // Planet radii (pixels in offscreen buffer)
-        this.earthRadius = 240;
+        this.earthRadius = 480;
         this.moonRadius = 75;
 
         // Offscreen render canvases
@@ -313,18 +313,54 @@ export class CelestialPlanetsEngine {
 
             const cloudAlpha = (cloudsPixel & 0xff) / 255.0;
 
+            // Directional cloud shadow casting in anti-sun direction
+            let shadowAlpha = 0;
+            if (this.cloudsBuffer) {
+                const sOffsetU = -lx * 0.014;
+                const sOffsetV = -ly * 0.014;
+                let uSh = (uC + sOffsetU) % 1.0;
+                if (uSh < 0) uSh += 1.0;
+                const vSh = Math.max(0.0, Math.min(1.0, vE + sOffsetV));
+                const shIdx = ((vSh * hMask) | 0) * tw + ((uSh * wMask) | 0);
+                const shPix = this.cloudsBuffer[shIdx];
+                shadowAlpha = ((shPix & 0xff) / 255.0) * 0.70;
+            }
+
             const dayFactor = Math.max(0.0, Math.min(1.0, (dotL + 0.12) / 0.28));
-            const diffuse = Math.max(0.0, dotL);
+            let diffuse = Math.max(0.0, dotL);
+
+            // Attenuate ground diffuse under cloud shadow
+            if (shadowAlpha > 0.08) {
+                diffuse *= (1.0 - shadowAlpha);
+            }
 
             let r = dR * diffuse * dayFactor + nR * (1.0 - dayFactor) * 0.95;
             let g = dG * diffuse * dayFactor + nG * (1.0 - dayFactor) * 0.95;
             let b = dB * diffuse * dayFactor + nB * (1.0 - dayFactor) * 0.95;
 
+            // Sunset / Sunrise Twilight Terminator: Intense golden-crimson Rayleigh scattering
+            const terminatorDist = Math.abs(dotL);
+            if (terminatorDist < 0.22 && dotL > -0.15) {
+                const twilight = Math.pow(1.0 - (terminatorDist / 0.22), 2.2);
+                r = Math.min(255, r + 245 * twilight * 0.95);
+                g = Math.min(255, g + 130 * twilight * 0.70);
+                b = Math.min(255, b + 42 * twilight * 0.35);
+            }
+
+            // Multi-layered Clouds with realistic atmospheric scattering
             if (cloudAlpha > 0.05) {
-                const cloudLit = 255 * (diffuse * 0.85 + 0.15) * dayFactor;
-                r = r * (1.0 - cloudAlpha * 0.85) + cloudLit * cloudAlpha * 0.85;
-                g = g * (1.0 - cloudAlpha * 0.85) + cloudLit * cloudAlpha * 0.85;
-                b = b * (1.0 - cloudAlpha * 0.85) + cloudLit * cloudAlpha * 0.85;
+                // Cloud illuminated tops with subtle sunset rim tinting
+                let cR = 255, cG = 255, cB = 255;
+                if (terminatorDist < 0.20 && dotL > -0.10) {
+                    const cTwilight = Math.pow(1.0 - (terminatorDist / 0.20), 1.8);
+                    cR = 255;
+                    cG = Math.floor(255 - 60 * cTwilight);
+                    cB = Math.floor(255 - 130 * cTwilight);
+                }
+                const cloudLit = (diffuse * 0.88 + 0.12) * dayFactor;
+                r = r * (1.0 - cloudAlpha * 0.88) + cR * cloudLit * cloudAlpha * 0.88;
+                g = g * (1.0 - cloudAlpha * 0.88) + cG * cloudLit * cloudAlpha * 0.88;
+                b = b * (1.0 - cloudAlpha * 0.88) + cB * cloudLit * cloudAlpha * 0.88;
             }
 
             const rim = Math.pow(1.0 - nz, 2.8) * 0.85 * (dayFactor * 0.8 + 0.2);
@@ -459,24 +495,36 @@ export class CelestialPlanetsEngine {
             const px = cx + (ex1 / ez2) * fov;
             const py = cy - (ey2 / ez2) * fov;
 
-            // Крупная планета Земля под пользователем (радиус 420px, диаметр 840px)
-            const drawRadius = 420 * zoom;
+            // Увеличенная в 2 раза Земля (радиус 840px, диаметр 1680px)
+            const drawRadius = 840 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {
-                // Внешний светящийся лимб атмосферы (Рэлеевское рассеяние)
-                const atmoGlow = ctx.createRadialGradient(px, py, drawRadius * 0.82, px, py, drawRadius * 1.35);
-                atmoGlow.addColorStop(0, 'rgba(62, 230, 255, 0.44)');
-                atmoGlow.addColorStop(0.35, 'rgba(56, 189, 248, 0.24)');
-                atmoGlow.addColorStop(0.7, 'rgba(14, 165, 233, 0.08)');
-                atmoGlow.addColorStop(1, 'rgba(3, 7, 18, 0)');
+                // 1. Внешнее глубокое индиго-свечение стратосферы (Outer Stratosphere Halo)
+                const outerHalo = ctx.createRadialGradient(px, py, drawRadius * 0.92, px, py, drawRadius * 1.42);
+                outerHalo.addColorStop(0, 'rgba(99, 102, 241, 0.42)');
+                outerHalo.addColorStop(0.35, 'rgba(67, 56, 202, 0.22)');
+                outerHalo.addColorStop(0.70, 'rgba(30, 27, 75, 0.08)');
+                outerHalo.addColorStop(1, 'rgba(3, 7, 18, 0)');
 
-                ctx.fillStyle = atmoGlow;
+                ctx.fillStyle = outerHalo;
                 ctx.beginPath();
-                ctx.arc(px, py, drawRadius * 1.35, 0, Math.PI * 2);
+                ctx.arc(px, py, drawRadius * 1.42, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Отрисовка самой планеты Земля
+                // 2. Внутренний яркий циан-ореол тропосферы (Рэлеевское рассеяние)
+                const innerGlow = ctx.createRadialGradient(px, py, drawRadius * 0.86, px, py, drawRadius * 1.18);
+                innerGlow.addColorStop(0, 'rgba(62, 230, 255, 0.65)');
+                innerGlow.addColorStop(0.40, 'rgba(56, 189, 248, 0.35)');
+                innerGlow.addColorStop(0.80, 'rgba(14, 165, 233, 0.10)');
+                innerGlow.addColorStop(1, 'rgba(3, 7, 18, 0)');
+
+                ctx.fillStyle = innerGlow;
+                ctx.beginPath();
+                ctx.arc(px, py, drawRadius * 1.18, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Отрисовка самой планеты Земля высокого разрешения
                 ctx.drawImage(this.earthCanvas, px - drawRadius, py - drawRadius, drawSize, drawSize);
             }
         }
@@ -521,6 +569,26 @@ export class CelestialPlanetsEngine {
                 ctx.drawImage(this.moonCanvas, px - drawRadius, py - drawRadius, drawSize, drawSize);
             }
         }
+    }
+
+    /**
+     * Получить мировые координаты и геометрические параметры Земли
+     * для синхронизации орбиты станции МКС и проверки окклюзии
+     */
+    getEarthWorldMetrics() {
+        const eYaw = (this.earthCoords.yaw * Math.PI) / 180;
+        const ePitch = (this.earthCoords.pitch * Math.PI) / 180;
+        const eDist = this.earthCoords.dist;
+        return {
+            center: {
+                x: eDist * Math.cos(ePitch) * Math.sin(eYaw),
+                y: eDist * Math.sin(ePitch),
+                z: eDist * Math.cos(ePitch) * Math.cos(eYaw)
+            },
+            radius: 840,
+            dist: eDist,
+            coords: { ...this.earthCoords }
+        };
     }
 }
 

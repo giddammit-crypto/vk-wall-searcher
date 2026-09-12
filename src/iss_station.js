@@ -4,29 +4,32 @@
  * Разработка: Lead 3D Game Engineer & Graphics Programmer for AURORA
  *
  * Архитектура и функционал:
- * - Орбитальная кинематика МКС: R = 1800-2100 px, период ~3.75 мин (360°),
- *   наклонение орбиты: yaw = (baseYaw + time * speed) % 360,
- *   pitch = basePitch + Math.sin(time * 0.5) * 5.2°.
- * - Проградная ориентация: продольная ось модулей выровнена по вектору скорости,
- *   ферма ITS ориентирована строго перпендикулярно вектору полета.
- * - Слежение за Солнцем (BGA - Beta Gimbal Assembly): 8 солнечных панелей
- *   непрерывно разворачиваются вокруг осей фермы к виртуальному вектору Солнца
- *   { x: 0.72, y: 0.28, z: 0.63 }, идентичному celestial_planets.js.
- * - Полная синхронизация с 3D-камерой Space3D (Yaw, Pitch, Zoom, FOV).
- * - Детальная 3D-геометрия: основная ферма (ITS S0-S6, P1-P6), 8 солнечных батарей (SAW),
- *   3 радиатора охлаждения (TCS), модули Заря, Звезда, Destiny, Columbus, Kibo, Cupola,
- *   пристыкованные корабли Crew Dragon и Союз МС, манипулятор Canadarm2.
- * - Глубинная сортировка (Depth-Sorting / Painter's Algorithm) и полигональный рендеринг.
- * - Интерактивный хитбокс (Raycast / Screen-space Bounding Sphere) с детекцией наведения
- *   мыши, голографическим прицелом-локером и интерактивной карточкой телеметрии.
- * - Звуковые эффекты: аутентичные квиндар-тоны (Quindar Beeps) через Web Audio API
- *   и голосовые уведомления ассистентки через SpaceAudio.
- * - Высокая производительность: оффскрин-кэширование текстур солнечных панелей,
- *   радиаторов и обшивки модулей; стабильные 60-120 FPS без аллокаций в цикле кадра.
+ * - Физическая орбита вокруг Земли: МКС физически огибает сферу Земли
+ *   (центр Земли: eCoords = { yaw: 0, pitch: -48, dist: 1350 }, R_земли = 840 px,
+ *   R_орбиты = 930 px, высота полета 90 px над поверхностью планеты).
+ * - Наклонение орбиты 51.64°: станция совершает величественный 3D-полет вокруг глобуса
+ *   с периодом ~3.75 мин (225 с).
+ * - Проградная ориентация (LVLH - Local Vertical Local Horizontal):
+ *   продольная ось модулей выровнена по вектору скорости (полет носом вперед),
+ *   ферма ITS ориентирована строго перпендикулярно вектору полета и радиальному зениту,
+ *   а купол Cupola направлен прямо в надир к Земле!
+ * - Трассировка лучей (Ray-Sphere Earth Occlusion Test):
+ *   при уходе на дальнюю сторону Земли станция реалистично скрывается за глобусом.
+ *   На краю диска (в атмосферном лимбе Рэлея) происходит плавное затухание (силуэт).
+ * - Слежение за Солнцем (BGA - Beta Gimbal Assembly) и орбитальные затмения:
+ *   8 солнечных батарей разворачиваются к вектору Солнца { x: 0.72, y: 0.28, z: 0.63 }.
+ *   При заходе в тень Земли (Eclipse) выработка энергии падает, а навигационные
+ *   стробоскопы ярко вспыхивают на темной стороне.
+ * - Полная синхронизация с 3D-камерой Space3D (Yaw, Pitch, Zoom, FOV) и наведение.
+ * - Глубинная сортировка (Painter's Algorithm) и полигональный рендеринг:
+ *   ферма ITS (S0-S6, P1-P6), 8 панелей SAW, 3 радиатора TCS, модули Заря, Звезда,
+ *   Destiny, Columbus, Kibo, Cupola, пристыкованные Crew Dragon и Союз МС, Canadarm2.
+ * - Интерактивный Raycast / Hitbox с детекцией наведения, голографическим прицелом
+ *   и интерактивной карточкой телеметрии.
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.8.0';
+import { SpaceAudio } from './space_audio.js?v=3.8.5';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)
@@ -40,21 +43,43 @@ export const SUN_VECTOR = {
 };
 
 /**
- * Конфигурация орбиты и параметров станции
+ * Параметры планеты Земля и орбиты МКС
  */
+export const EARTH_CONFIG = {
+    yawDeg: 0,                   // Азимут центра Земли
+    pitchDeg: -48,               // Возвышение центра Земли (под пользователем)
+    dist: 1350,                  // Расстояние до центра Земли от камеры (px)
+    radius: 840,                 // Радиус физической сферы Земли (px)
+    atmoRadius: 840 * 1.08,      // Внешний радиус атмосферного ореола (907.2 px)
+    axialTiltDeg: 23.44          // Наклон оси вращения Земли (градусы)
+};
+
 export const ISS_CONFIG = {
-    orbitRadius: 1950,           // Радиус орбиты вокруг пользователя (1800 - 2100 px)
-    orbitPeriodSec: 225,         // Полный оборот 360° за 3.75 минуты (225 сек)
-    baseYaw: 38,                 // Начальный азимут орбиты (градусы)
-    basePitch: -11,              // Базовое возвышение над горизонтом Земли (градусы)
-    inclinationAmp: 5.2,         // Амплитуда орбитального наклонения (градусы)
-    inclinationFreq: 0.5,        // Частота гармонического колебания наклонения (Math.sin(time * 0.5))
-    stationScale: 1.0,           // Масштабный коэффициент геометрии
-    hitRadiusMultiplier: 1.25,   // Множитель экранного хитбокса
-    realAltitudeKm: 418.4,       // Реальная высота орбиты МКС (км)
+    orbitAltitudePx: 90,         // Высота орбиты над поверхностью Земли (px)
+    orbitRadiusPx: 930,          // 840 + 90 = 930 px от центра Земли
+    orbitPeriodSec: 225,         // Полный виток за 3.75 минуты (225 сек)
+    inclinationDeg: 51.64,       // Реальное наклонение орбиты МКС к экватору Земли (градусы)
+    raanDeg: 35.0,               // Долгота восходящего узла (RAAN) орбиты
+    stationScale: 1.15,          // Масштабный коэффициент геометрии
+    hitRadiusMultiplier: 1.35,   // Множитель экранного хитбокса
+    realAltitudeKm: 418.4,       // Реальная высота орбиты (км)
     realSpeedKmS: 7.66,          // Реальная орбитальная скорость (км/с)
     realPeriodMin: 92.8,         // Реальный период обращения (мин)
-    realInclinationDeg: 51.64    // Реальное наклонение орбиты МКС (градусы)
+    realInclinationDeg: 51.64    // Наклонение орбиты МКС
+};
+
+/**
+ * Вычисление мировых координат центра Земли
+ */
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
+const ePitchRad = EARTH_CONFIG.pitchDeg * DEG_TO_RAD;
+const eYawRad = EARTH_CONFIG.yawDeg * DEG_TO_RAD;
+export const EARTH_CENTER = {
+    x: EARTH_CONFIG.dist * Math.cos(ePitchRad) * Math.sin(eYawRad),
+    y: EARTH_CONFIG.dist * Math.sin(ePitchRad),
+    z: EARTH_CONFIG.dist * Math.cos(ePitchRad) * Math.cos(eYawRad)
 };
 
 /**
@@ -68,25 +93,34 @@ export class IssStationEngine {
         this.viewport = null;
         this.spaceEngine = null;
 
-        // Временная шкала и кинематика орбиты
+        // Временная шкала и орбитальная фаза
         this.time = 0;               // Секунды с момента старта
         this.lastTimeMs = 0;         // Предыдущий timestamp
-        this.lastUpdateFrame = 0;    // Защита от дублирования update в одном кадре
-        this.yaw = ISS_CONFIG.baseYaw;
-        this.pitch = ISS_CONFIG.basePitch;
-        this.orbitRadius = ISS_CONFIG.orbitRadius;
+        this.orbitPhase = 0.35;      // Текущая фаза на орбите (0..2π)
 
-        // Положение и ориентация в 3D мировом пространстве
+        // Базис орбитальной плоскости вокруг центра Земли
+        this.pNode = { x: 1, y: 0, z: 0 };  // Вектор к восходящему узлу
+        this.qNode = { x: 0, y: 1, z: 0 };  // Орбитальный вектор +90° от узла
+        this.orbitNormal = { x: 0, y: 0, z: 1 }; // Нормаль к плоскости орбиты
+        this.initOrbitalBasis();
+
+        // Положение и ориентация станции в 3D мировом пространстве
         this.worldPos = { x: 0, y: 0, z: 0 };
+        this.relPos = { x: 0, y: 0, z: 0 };   // Положение относительно центра Земли
         this.velocity = { x: 0, y: 0, z: 0 };
-        this.forward = { x: 1, y: 0, z: 0 };   // Проградный вектор (полет носом вперед)
-        this.up = { x: 0, y: 1, z: 0 };        // Локальный вектор зенита (от Земли)
-        this.right = { x: 0, y: 0, z: 1 };     // Вектор фермы (Starboard, перпендикулярно полету)
+        this.forward = { x: 1, y: 0, z: 0 };  // Проградный вектор (полет носом вперед)
+        this.up = { x: 0, y: 1, z: 0 };       // Зенитный вектор (от Земли)
+        this.right = { x: 0, y: 0, z: 1 };    // Вектор фермы (Starboard, перпендикулярно полету)
+
+        // Окклюзия планетой Земля (Ray-Sphere Intersection)
+        this.isOccluded = false;     // Находится ли за Землей
+        this.inEclipse = false;      // Находится ли в тени Земли от Солнца
+        this.limbVisibility = 1.0;   // Плавный коэффициент видимости (0..1)
+        this.distToCamera = 1350;    // Расстояние от камеры до станции
 
         // Слежение за Солнцем (BGA - Beta Gimbal Assembly)
         this.betaAngle = 0;          // Текущий угол поворота солнечных батарей (радианы)
         this.targetBeta = 0;         // Оптимальный угол направления на Солнце
-        this.bgaMode = 'auto';       // 'auto' | 'feather' | 'parked'
         this.sunDotProduct = 1.0;    // Эффективность освещения солнечных батарей
         this.powerOutputKW = 120.0;  // Выходная мощность солнечных батарей (кВт)
 
@@ -99,7 +133,6 @@ export class IssStationEngine {
         this.screenScale = 1.0;
         this.screenRadius = 40;
         this.isVisible = false;
-        this.cameraDist = 2000;
 
         // Интерактивность и Raycast / Hitbox
         this.mousePos = { x: -9999, y: -9999 };
@@ -119,9 +152,8 @@ export class IssStationEngine {
         this.solarPanelTex = null;
         this.radiatorTex = null;
         this.moduleTex = null;
-        this.earthReflectionTex = null;
 
-        // Буфер геометрии для бесперебойной 60 FPS глубинно-сортированной отрисовки
+        // Буфер геометрии для 60-120 FPS глубинной сортировки
         this.renderQueue = [];
 
         // Привязка методов
@@ -130,12 +162,56 @@ export class IssStationEngine {
     }
 
     /**
+     * Вычисление базиса Кеплеровой орбитальной плоскости с наклонением 51.64° вокруг Земли
+     */
+    initOrbitalBasis() {
+        const tilt = EARTH_CONFIG.axialTiltDeg * DEG_TO_RAD;
+        const inc = ISS_CONFIG.inclinationDeg * DEG_TO_RAD;
+        const raan = ISS_CONFIG.raanDeg * DEG_TO_RAD;
+
+        // Ось вращения Земли (Северный полюс с наклоном 23.44°)
+        const nE = { x: 0, y: Math.cos(tilt), z: -Math.sin(tilt) };
+        // Экваториальная ось X (Точка весеннего равноденствия)
+        const xE = { x: 1, y: 0, z: 0 };
+        // Экваториальная ось Y = nE x xE
+        const yE = {
+            x: nE.y * xE.z - nE.z * xE.y,
+            y: nE.z * xE.x - nE.x * xE.z,
+            z: nE.x * xE.y - nE.y * xE.x
+        };
+
+        // Вектор восходящего узла P_node в экваториальной плоскости
+        const cosR = Math.cos(raan);
+        const sinR = Math.sin(raan);
+        this.pNode = {
+            x: cosR * xE.x + sinR * yE.x,
+            y: cosR * xE.y + sinR * yE.y,
+            z: cosR * xE.z + sinR * yE.z
+        };
+
+        // Вектор Q_node в орбитальной плоскости (перпендикулярен P_node)
+        const cosI = Math.cos(inc);
+        const sinI = Math.sin(inc);
+        this.qNode = {
+            x: -sinR * cosI * xE.x + cosR * cosI * yE.x + sinI * nE.x,
+            y: -sinR * cosI * xE.y + cosR * cosI * yE.y + sinI * nE.y,
+            z: -sinR * cosI * xE.z + cosR * cosI * yE.z + sinI * nE.z
+        };
+
+        // Нормаль к орбитальной плоскости W_orb = P_node x Q_node
+        this.orbitNormal = {
+            x: this.pNode.y * this.qNode.z - this.pNode.z * this.qNode.y,
+            y: this.pNode.z * this.qNode.x - this.pNode.x * this.qNode.z,
+            z: this.pNode.x * this.qNode.y - this.pNode.y * this.qNode.x
+        };
+    }
+
+    /**
      * Инициализация подсистем станции, текстур и событий
      * Поддерживает вызовы init(spaceEngine) и init(canvas, ctx, viewport, spaceEngine)
      */
     init(arg1 = null, ctx = null, viewport = null, spaceEngine = null) {
         if (arg1 && typeof arg1 === 'object' && ('canvas' in arg1 || 'world' in arg1 || 'viewport' in arg1)) {
-            // Вызов вида init(spaceEngine)
             this.spaceEngine = arg1;
             this.canvas = arg1.canvas || null;
             this.ctx = arg1.ctx || (this.canvas ? this.canvas.getContext('2d') : null);
@@ -163,7 +239,7 @@ export class IssStationEngine {
         this.setupEventListeners();
 
         this.lastTimeMs = performance.now();
-        console.log('[IssStation] ISS 3D Module & Orbital Kinematics successfully initialized.');
+        console.log('[IssStation] Physical Earth Orbit & 3D Kinematics successfully initialized.');
     }
 
     /**
@@ -180,7 +256,6 @@ export class IssStationEngine {
         this.solarPanelTex.height = spH;
         const spCtx = this.solarPanelTex.getContext('2d');
 
-        // Глубокий космический кремниевый сине-золотой градиент
         const spGrad = spCtx.createLinearGradient(0, 0, spW, spH);
         spGrad.addColorStop(0, '#0d1e3d');
         spGrad.addColorStop(0.35, '#132c54');
@@ -189,7 +264,6 @@ export class IssStationEngine {
         spCtx.fillStyle = spGrad;
         spCtx.fillRect(0, 0, spW, spH);
 
-        // Фотоэлементы и серебряные токоведущие шины
         spCtx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
         spCtx.lineWidth = 1;
         const cols = 6;
@@ -204,11 +278,9 @@ export class IssStationEngine {
                 const w = cw - 3;
                 const h = ch - 3;
 
-                // Индивидуальный кристалл с антибликовым покрытием
                 spCtx.fillStyle = ((r + c) % 2 === 0) ? '#10284d' : '#0e2344';
                 spCtx.fillRect(px, py, w, h);
 
-                // Тонкие микро-сетки сбора тока
                 spCtx.strokeStyle = 'rgba(125, 211, 252, 0.18)';
                 spCtx.beginPath();
                 spCtx.moveTo(px, py + h * 0.5);
@@ -217,7 +289,6 @@ export class IssStationEngine {
             }
         }
 
-        // Золотые каптоновые краевые полосы и центральный силовой лонжерон
         spCtx.fillStyle = '#d97706';
         spCtx.fillRect(0, 0, 4, spH);
         spCtx.fillRect(spW - 4, 0, 4, spH);
@@ -232,7 +303,6 @@ export class IssStationEngine {
         this.radiatorTex.height = radH;
         const radCtx = this.radiatorTex.getContext('2d');
 
-        // Белое отражающее керамическое покрытие с микротенением гофр
         radCtx.fillStyle = '#e2e8f0';
         radCtx.fillRect(0, 0, radW, radH);
 
@@ -248,7 +318,6 @@ export class IssStationEngine {
             radCtx.stroke();
 
             if (i < radPanels) {
-                // Теневой рельеф гармошки
                 const shadGrad = radCtx.createLinearGradient(0, y, 0, y + rph);
                 shadGrad.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
                 shadGrad.addColorStop(0.5, 'rgba(241, 245, 249, 0.2)');
@@ -258,7 +327,7 @@ export class IssStationEngine {
             }
         }
 
-        // 3. Текстура обшивки модулей (аэрокосмический алюминий и термоизоляция)
+        // 3. Текстура обшивки модулей
         const modW = 128;
         const modH = 128;
         this.moduleTex = document.createElement('canvas');
@@ -275,7 +344,6 @@ export class IssStationEngine {
         modCtx.fillStyle = modGrad;
         modCtx.fillRect(0, 0, modW, modH);
 
-        // Швы панелей защиты от микрометеороидов (MMOD)
         modCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
         modCtx.lineWidth = 1;
         for (let x = 16; x < modW; x += 32) {
@@ -307,8 +375,8 @@ export class IssStationEngine {
                 position: absolute;
                 bottom: 84px;
                 right: 32px;
-                width: 380px;
-                background: linear-gradient(135deg, rgba(6, 13, 27, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+                width: 390px;
+                background: linear-gradient(135deg, rgba(6, 13, 27, 0.94) 0%, rgba(15, 23, 42, 0.96) 100%);
                 border: 1px solid rgba(62, 230, 196, 0.45);
                 box-shadow: 0 0 35px rgba(62, 230, 196, 0.18), inset 0 0 20px rgba(56, 189, 248, 0.08);
                 backdrop-filter: blur(14px);
@@ -317,21 +385,18 @@ export class IssStationEngine {
                 color: #f1f5f9;
                 font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
                 padding: 18px 20px;
-                z-index: 100005;
-                transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.32s;
+                z-index: 10000;
+                transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
                 opacity: 0;
-                visibility: hidden;
                 transform: translateY(18px) scale(0.96);
                 pointer-events: none;
                 user-select: none;
             }
 
-            .iss-telemetry-hud.active,
-            .iss-telemetry-hud.visible {
-                opacity: 1 !important;
-                visibility: visible !important;
-                transform: translateY(0) scale(1) !important;
-                pointer-events: auto !important;
+            .iss-telemetry-hud.active {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                pointer-events: auto;
             }
 
             .iss-hud-header {
@@ -537,7 +602,7 @@ export class IssStationEngine {
                     <div class="iss-hud-status-dot"></div>
                     <div>
                         <div class="iss-hud-title">МКС-71 // ISS-ALPHA</div>
-                        <div class="iss-hud-sub">ОРБИТАЛЬНЫЙ КОМПЛЕКС • ЭКСПЕДИЦИЯ 71/72</div>
+                        <div class="iss-hud-sub">ОРБИТА ВОКРУГ ЗЕМЛИ • ЭКСПЕДИЦИЯ 71/72</div>
                     </div>
                 </div>
                 <button type="button" class="iss-hud-close-btn" id="iss-hud-close-btn" title="Закрыть HUD">
@@ -547,11 +612,11 @@ export class IssStationEngine {
 
             <div class="iss-hud-grid">
                 <div class="iss-tele-tile">
-                    <div class="iss-tile-label">Высота / Апогей</div>
+                    <div class="iss-tile-label">Высота над Землей</div>
                     <div class="iss-tile-val accent" id="iss-tele-alt">418.4 км</div>
                 </div>
                 <div class="iss-tele-tile">
-                    <div class="iss-tile-label">Скорость полета</div>
+                    <div class="iss-tile-label">Орбитальная скорость</div>
                     <div class="iss-tile-val accent" id="iss-tele-speed">7.66 км/с</div>
                 </div>
                 <div class="iss-tele-tile">
@@ -559,7 +624,7 @@ export class IssStationEngine {
                     <div class="iss-tile-val" id="iss-tele-period">92.8 мин</div>
                 </div>
                 <div class="iss-tele-tile">
-                    <div class="iss-tile-label">Наклонение</div>
+                    <div class="iss-tile-label">Наклонение к экватору</div>
                     <div class="iss-tile-val" id="iss-tele-inc">51.64°</div>
                 </div>
                 <div class="iss-tele-tile">
@@ -613,7 +678,6 @@ export class IssStationEngine {
         targetParent.appendChild(card);
         this.telemetryCardEl = card;
 
-        // Обработчики кнопок карточки
         const closeBtn = card.querySelector('#iss-hud-close-btn');
         if (closeBtn) {
             closeBtn.addEventListener('click', (e) => {
@@ -665,7 +729,7 @@ export class IssStationEngine {
         this.mousePos.x = e.clientX;
         this.mousePos.y = e.clientY;
 
-        if (!this.isVisible) {
+        if (!this.isVisible || this.isOccluded) {
             if (this.isHovered) {
                 this.isHovered = false;
                 if (this.viewport) this.viewport.style.cursor = '';
@@ -683,7 +747,7 @@ export class IssStationEngine {
 
         if (this.isHovered && !wasHovered) {
             if (this.viewport) this.viewport.style.cursor = 'pointer';
-            this.playQuindarTone(false); // Мягкий пинг детекции
+            this.playQuindarTone(false);
         } else if (!this.isHovered && wasHovered) {
             if (this.viewport) this.viewport.style.cursor = '';
         }
@@ -697,15 +761,12 @@ export class IssStationEngine {
             return;
         }
 
-        if (this.isHovered && this.isVisible) {
+        if (this.isHovered && this.isVisible && !this.isOccluded) {
             this.toggleTelemetry();
             e.stopPropagation();
         }
     }
 
-    /**
-     * Открытие/закрытие карточки телеметрии
-     */
     toggleTelemetry() {
         if (this.isTelemetryOpen) {
             this.closeTelemetry();
@@ -717,8 +778,7 @@ export class IssStationEngine {
     openTelemetry() {
         this.isTelemetryOpen = true;
         if (this.telemetryCardEl) {
-            this.telemetryCardEl.classList.add('active', 'visible');
-            this.telemetryCardEl.classList.remove('hidden');
+            this.telemetryCardEl.classList.add('active');
         }
         this.playQuindarTone(true);
         SpaceAudio.playVoice('focus');
@@ -727,12 +787,12 @@ export class IssStationEngine {
     closeTelemetry() {
         this.isTelemetryOpen = false;
         if (this.telemetryCardEl) {
-            this.telemetryCardEl.classList.remove('active', 'visible');
+            this.telemetryCardEl.classList.remove('active');
         }
     }
 
     /**
-     * Плавное наведение камеры Space3D на станцию МКС
+     * Плавное наведение камеры Space3D на станцию МКС на её орбите вокруг Земли
      */
     focusCameraOnIss() {
         if (!this.spaceEngine) {
@@ -740,14 +800,18 @@ export class IssStationEngine {
             if (found) this.spaceEngine = found;
         }
 
-        if (this.spaceEngine) {
-            let targetYaw = this.yaw % 360;
+        if (this.spaceEngine && this.distToCamera > 10) {
+            // Вычисляем сферические углы Yaw и Pitch направления от камеры (0,0,0) на станцию
+            const yawDeg = Math.atan2(this.worldPos.x, this.worldPos.z) * RAD_TO_DEG;
+            const pitchDeg = Math.asin(this.worldPos.y / this.distToCamera) * RAD_TO_DEG;
+
+            let targetYaw = yawDeg % 360;
             if (targetYaw > 180) targetYaw -= 360;
             if (targetYaw < -180) targetYaw += 360;
 
             this.spaceEngine.targetYaw = targetYaw;
-            this.spaceEngine.targetPitch = Math.max(-60, Math.min(60, this.pitch));
-            this.spaceEngine.targetZoom = 1.35; // Кинематографичный обзор
+            this.spaceEngine.targetPitch = Math.max(-65, Math.min(65, pitchDeg));
+            this.spaceEngine.targetZoom = 1.35; // Кинематографичный обзор станции над Землей
             SpaceAudio.playVoice('focus');
             this.playQuindarTone(true);
         }
@@ -755,7 +819,6 @@ export class IssStationEngine {
 
     /**
      * Синтез легендарного космического Quindar-тона (NASA / ISS Comm Beep)
-     * частоты 2525 Гц (Intro) и 2475 Гц (Outro) через Web Audio API
      */
     playQuindarTone(isIntro = true) {
         try {
@@ -789,13 +852,11 @@ export class IssStationEngine {
 
             osc.start(now);
             osc.stop(now + dur);
-        } catch (e) {
-            // Безопасный откат при отключенном аудио
-        }
+        } catch (e) {}
     }
 
     /**
-     * Обновление орбитальной кинематики и ориентации МКС (60-120 FPS)
+     * Обновление физической орбиты МКС вокруг Земли (60-120 FPS)
      */
     update() {
         const now = performance.now();
@@ -803,116 +864,151 @@ export class IssStationEngine {
         this.lastTimeMs = now;
         this.time += dt;
 
-        // 1. Орбитальная скорость и углы
-        const orbitalSpeedDegPerSec = 360 / ISS_CONFIG.orbitPeriodSec; // ~1.6° в секунду
-        this.yaw = (ISS_CONFIG.baseYaw + this.time * orbitalSpeedDegPerSec) % 360;
+        // 1. Орбитальное угловое движение вокруг Земли (360° за 225 сек)
+        const omega = (2 * Math.PI) / ISS_CONFIG.orbitPeriodSec; // ~0.0279 рад/с
+        this.orbitPhase = (this.orbitPhase + omega * dt) % (2 * Math.PI);
 
-        // Наклонение орбиты: синусоидальное колебание с амплитудой 5.2°
-        const incOffset = Math.sin(this.time * ISS_CONFIG.inclinationFreq) * ISS_CONFIG.inclinationAmp;
-        this.pitch = ISS_CONFIG.basePitch + incOffset;
+        // 2. Положение МКС относительно центра Земли: r_rel = R * [cos(θ)*P_node + sin(θ)*Q_node]
+        const cosTh = Math.cos(this.orbitPhase);
+        const sinTh = Math.sin(this.orbitPhase);
+        const R_iss = ISS_CONFIG.orbitRadiusPx; // 930 px вокруг центра Земли
 
-        // 2. Вычисление трехмерного положения станции в мировых координатах
-        const radYaw = (this.yaw * Math.PI) / 180;
-        const radPitch = (this.pitch * Math.PI) / 180;
+        this.relPos.x = R_iss * (cosTh * this.pNode.x + sinTh * this.qNode.x);
+        this.relPos.y = R_iss * (cosTh * this.pNode.y + sinTh * this.qNode.y);
+        this.relPos.z = R_iss * (cosTh * this.pNode.z + sinTh * this.qNode.z);
 
-        const cosPitch = Math.cos(radPitch);
-        const sinPitch = Math.sin(radPitch);
-        const cosYaw = Math.cos(radYaw);
-        const sinYaw = Math.sin(radYaw);
+        // Абсолютное трехмерное мировое положение МКС
+        this.worldPos.x = EARTH_CENTER.x + this.relPos.x;
+        this.worldPos.y = EARTH_CENTER.y + this.relPos.y;
+        this.worldPos.z = EARTH_CENTER.z + this.relPos.z;
 
-        const R = this.orbitRadius;
-        this.worldPos.x = R * cosPitch * sinYaw;
-        this.worldPos.y = R * sinPitch;
-        this.worldPos.z = R * cosPitch * cosYaw;
+        this.distToCamera = Math.hypot(this.worldPos.x, this.worldPos.y, this.worldPos.z) || 1;
 
-        // 3. Вычисление проградного вектора скорости (tangent flight path)
-        const dTheta = (orbitalSpeedDegPerSec * Math.PI) / 180;
-        const dPhi = (ISS_CONFIG.inclinationFreq * (ISS_CONFIG.inclinationAmp * Math.PI / 180)) * Math.cos(this.time * ISS_CONFIG.inclinationFreq);
+        // 3. Проградный вектор касательной скорости (Forward = d(r_rel)/dt / |v|)
+        this.forward.x = -sinTh * this.pNode.x + cosTh * this.qNode.x;
+        this.forward.y = -sinTh * this.pNode.y + cosTh * this.qNode.y;
+        this.forward.z = -sinTh * this.pNode.z + cosTh * this.qNode.z;
+        const fLen = Math.hypot(this.forward.x, this.forward.y, this.forward.z) || 1;
+        this.forward.x /= fLen;
+        this.forward.y /= fLen;
+        this.forward.z /= fLen;
 
-        const vx = R * (-sinPitch * sinYaw * dPhi + cosPitch * cosYaw * dTheta);
-        const vy = R * (cosPitch * dPhi);
-        const vz = R * (-sinPitch * cosYaw * dPhi - cosPitch * sinYaw * dTheta);
+        this.velocity.x = this.forward.x * (R_iss * omega);
+        this.velocity.y = this.forward.y * (R_iss * omega);
+        this.velocity.z = this.forward.z * (R_iss * omega);
 
-        const vLen = Math.hypot(vx, vy, vz) || 1;
-        this.velocity.x = vx;
-        this.velocity.y = vy;
-        this.velocity.z = vz;
+        // 4. Радиальный вектор Зенита (направлен строго от Земли в космос)
+        this.up.x = this.relPos.x / R_iss;
+        this.up.y = this.relPos.y / R_iss;
+        this.up.z = this.relPos.z / R_iss;
 
-        // Проградная ориентация: Forward = нормализованный вектор скорости
-        this.forward.x = vx / vLen;
-        this.forward.y = vy / vLen;
-        this.forward.z = vz / vLen;
+        // 5. Вектор фермы ITS (Starboard / Right) = Forward x Up
+        this.right.x = this.forward.y * this.up.z - this.forward.z * this.up.y;
+        this.right.y = this.forward.z * this.up.x - this.forward.x * this.up.z;
+        this.right.z = this.forward.x * this.up.y - this.forward.y * this.up.x;
+        const rLen = Math.hypot(this.right.x, this.right.y, this.right.z) || 1;
+        this.right.x /= rLen;
+        this.right.y /= rLen;
+        this.right.z /= rLen;
 
-        // Вектор Up (радиальный от центра Земли)
-        const pLen = Math.hypot(this.worldPos.x, this.worldPos.y, this.worldPos.z) || 1;
-        const radialUp = {
-            x: this.worldPos.x / pLen,
-            y: this.worldPos.y / pLen,
-            z: this.worldPos.z / pLen
+        // 6. Трассировка лучей (Ray-Sphere Occlusion Test) относительно Земли
+        // Луч от камеры (0,0,0) в направлении МКС
+        const rayDir = {
+            x: this.worldPos.x / this.distToCamera,
+            y: this.worldPos.y / this.distToCamera,
+            z: this.worldPos.z / this.distToCamera
         };
 
-        // Вектор фермы ITS (Right / Starboard): ортогонален полету и направлению на Землю
-        // Right = Forward x Up
-        const rx = this.forward.y * radialUp.z - this.forward.z * radialUp.y;
-        const ry = this.forward.z * radialUp.x - this.forward.x * radialUp.z;
-        const rz = this.forward.x * radialUp.y - this.forward.y * radialUp.x;
-        const rLen = Math.hypot(rx, ry, rz) || 1;
+        // Проекция центра Земли на луч камеры к станции
+        const tca = EARTH_CENTER.x * rayDir.x + EARTH_CENTER.y * rayDir.y + EARTH_CENTER.z * rayDir.z;
+        const eDistSq = EARTH_CENTER.x * EARTH_CENTER.x + EARTH_CENTER.y * EARTH_CENTER.y + EARTH_CENTER.z * EARTH_CENTER.z;
+        const dSq = eDistSq - tca * tca;
+        const dPerp = Math.sqrt(Math.max(0, dSq));
 
-        this.right.x = rx / rLen;
-        this.right.y = ry / rLen;
-        this.right.z = rz / rLen;
+        const eRad = EARTH_CONFIG.radius;        // 840 px
+        const atmoRad = EARTH_CONFIG.atmoRadius; // 907.2 px
 
-        // Точный ортонормированный Up = Right x Forward
-        this.up.x = this.right.y * this.forward.z - this.right.z * this.forward.y;
-        this.up.y = this.right.z * this.forward.x - this.right.x * this.forward.z;
-        this.up.z = this.right.x * this.forward.y - this.right.y * this.forward.x;
+        if (this.distToCamera < tca) {
+            // МКС находится ПЕРЕД Землей (между наблюдателем и планетой)
+            this.isOccluded = false;
+            this.limbVisibility = 1.0;
+        } else {
+            // МКС находится за плоскостью центра Земли
+            if (dPerp <= eRad) {
+                // Полная окклюзия за твердым телом планеты Земля
+                this.isOccluded = true;
+                this.limbVisibility = 0.0;
+            } else if (dPerp < atmoRad) {
+                // Переходная область: прохождение сквозь светящийся лимб атмосферы Земли
+                this.isOccluded = false;
+                const atmoFrac = (dPerp - eRad) / (atmoRad - eRad);
+                this.limbVisibility = Math.max(0.05, Math.min(1.0, atmoFrac));
+            } else {
+                // На фоне открытого космоса рядом с планетой
+                this.isOccluded = false;
+                this.limbVisibility = 1.0;
+            }
+        }
 
-        // 4. Слежение солнечных батарей за Солнцем (BGA - Beta Gimbal Assembly)
+        // 7. Проверка орбитального затмения (Eclipse) в тени Земли от Солнца
+        const sProj = this.relPos.x * SUN_VECTOR.x + this.relPos.y * SUN_VECTOR.y + this.relPos.z * SUN_VECTOR.z;
+        if (sProj < 0) {
+            // Ночная сторона Земли относительно направления солнечных лучей
+            const dShadowSq = (R_iss * R_iss) - (sProj * sProj);
+            this.inEclipse = (Math.sqrt(Math.max(0, dShadowSq)) < eRad);
+        } else {
+            this.inEclipse = false;
+        }
+
+        // 8. Слежение солнечных батарей за Солнцем (BGA - Beta Gimbal Assembly)
         // Вращение батарей происходит вокруг оси фермы (this.right)
-        // Проецируем вектор Солнца на плоскость [Forward, Up]
         const sDotF = SUN_VECTOR.x * this.forward.x + SUN_VECTOR.y * this.forward.y + SUN_VECTOR.z * this.forward.z;
         const sDotU = SUN_VECTOR.x * this.up.x + SUN_VECTOR.y * this.up.y + SUN_VECTOR.z * this.up.z;
 
-        // Оптимальный угол направления панелей к Солнцу
         this.targetBeta = Math.atan2(sDotU, sDotF);
 
-        // Плавная работа электроприводов BGA с кинематическим сглаживанием
         let betaDiff = this.targetBeta - this.betaAngle;
         while (betaDiff > Math.PI) betaDiff -= Math.PI * 2;
         while (betaDiff < -Math.PI) betaDiff += Math.PI * 2;
         this.betaAngle += betaDiff * 0.04;
 
-        // Расчет эффективности освещения панелей и генерируемой мощности
-        const panelNormF = Math.cos(this.betaAngle);
-        const panelNormU = Math.sin(this.betaAngle);
-        const rawDot = sDotF * panelNormF + sDotU * panelNormU;
-        this.sunDotProduct = Math.max(0, rawDot);
-        this.powerOutputKW = 85.0 + this.sunDotProduct * 35.0; // 85 - 120 кВт
+        if (this.inEclipse) {
+            this.sunDotProduct = 0;
+            this.powerOutputKW = 14.5; // Аварийное питание от буферных NiH2 аккумуляторов
+        } else {
+            const panelNormF = Math.cos(this.betaAngle);
+            const panelNormU = Math.sin(this.betaAngle);
+            const rawDot = sDotF * panelNormF + sDotU * panelNormU;
+            this.sunDotProduct = Math.max(0, rawDot);
+            this.powerOutputKW = 85.0 + this.sunDotProduct * 35.0; // 85 - 120 кВт
+        }
 
-        // 5. Обновление навигационных стробоскопов (1 раз в 1.2 сек)
+        // 9. Навигационные стробоскопы
         this.strobeTimer += dt;
         this.strobePhase = (this.strobeTimer % 1.2) / 1.2;
 
-        // 6. Плавная интерполяция эффектов наведения мыши
-        if (this.isHovered) {
+        // 10. Плавная интерполяция наведения
+        if (this.isHovered && !this.isOccluded) {
             this.hoverTransition = Math.min(1.0, this.hoverTransition + dt * 5.0);
             this.lockReticleAngle += dt * 1.8;
         } else {
             this.hoverTransition = Math.max(0.0, this.hoverTransition - dt * 4.0);
         }
 
-        // 7. Обновление значений в HUD если он открыт
+        // 11. Обновление значений в телеметрии
         if (this.isTelemetryOpen && this.telemetryCardEl) {
-            const bgaDeg = (this.betaAngle * 180 / Math.PI).toFixed(1);
+            const bgaDeg = (this.betaAngle * RAD_TO_DEG).toFixed(1);
             const bgaEl = this.telemetryCardEl.querySelector('#iss-tele-bga');
-            if (bgaEl) bgaEl.textContent = `${bgaDeg >= 0 ? '+' : ''}${bgaDeg}° [BGA TRACK]`;
+            if (bgaEl) {
+                bgaEl.textContent = this.inEclipse ? 'ЗАТМЕНИЕ [ТЕНЬ]' : `${bgaDeg >= 0 ? '+' : ''}${bgaDeg}° [BGA TRACK]`;
+            }
 
             const pwrEl = this.telemetryCardEl.querySelector('#iss-tele-pwr');
             if (pwrEl) pwrEl.textContent = `${this.powerOutputKW.toFixed(1)} кВт`;
 
             const altEl = this.telemetryCardEl.querySelector('#iss-tele-alt');
             if (altEl) {
-                const liveAlt = (ISS_CONFIG.realAltitudeKm + Math.sin(this.time * 0.2) * 1.2).toFixed(1);
+                const liveAlt = (ISS_CONFIG.realAltitudeKm + Math.sin(this.orbitPhase * 2) * 1.4).toFixed(1);
                 altEl.textContent = `${liveAlt} км`;
             }
         }
@@ -920,19 +1016,19 @@ export class IssStationEngine {
 
     /**
      * Отрисовка МКС на главном небесном холсте Space3D (ctx)
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {number} w - ширина холста
-     * @param {number} h - высота холста
-     * @param {number} camYaw - азимут камеры Space3D
-     * @param {number} camPitch - возвышение камеры Space3D
-     * @param {number} zoom - множитель зума
      */
     render(ctx, w, h, camYaw, camPitch, zoom) {
         if (!this.ctx && ctx) this.ctx = ctx;
         if (!ctx) return;
 
-        // Автоматическое обновление кинематики если render вызван напрямую
+        // Автоматическое обновление орбиты перед кадром
         this.update();
+
+        // Если МКС полностью скрыта за глобусом Земли — не отрисовывать
+        if (this.isOccluded) {
+            this.isVisible = false;
+            return;
+        }
 
         this.camYaw = camYaw;
         this.camPitch = camPitch;
@@ -943,8 +1039,8 @@ export class IssStationEngine {
         const fov = 750 * zoom;
 
         // Матрица трансформации камеры Space3D
-        const radCamYaw = (camYaw * Math.PI) / 180;
-        const radCamPitch = (camPitch * Math.PI) / 180;
+        const radCamYaw = camYaw * DEG_TO_RAD;
+        const radCamPitch = camPitch * DEG_TO_RAD;
 
         const cosCY = Math.cos(radCamYaw);
         const sinCY = Math.sin(radCamYaw);
@@ -961,9 +1057,7 @@ export class IssStationEngine {
         const y2 = wy * cosCP - z1 * sinCP;
         const z2 = wy * sinCP + z1 * cosCP;
 
-        this.cameraDist = z2;
-
-        // Отсечение, если станция за спиной камеры
+        // Отсечение за спиной камеры
         if (z2 <= 0.1) {
             this.isVisible = false;
             return;
@@ -976,12 +1070,12 @@ export class IssStationEngine {
         this.screenX = px;
         this.screenY = py;
 
-        // Базовый масштаб геометрии на экране
+        // Динамический масштаб геометрии: станция крупнее при сближении и компактнее вдали
         const baseScale = (fov / z2) * ISS_CONFIG.stationScale;
         this.screenScale = baseScale;
-        this.screenRadius = 145 * baseScale; // Оценочный радиус станции
+        this.screenRadius = 135 * baseScale;
 
-        // Проверка вхождения в границы холста
+        // Проверка выхода за экран
         const margin = this.screenRadius * 2;
         if (px < -margin || px > w + margin || py < -margin || py > h + margin) {
             this.isVisible = false;
@@ -1004,7 +1098,7 @@ export class IssStationEngine {
         const camRight = transformDirToCam(this.right);
         const camSun = transformDirToCam(SUN_VECTOR);
 
-        // Функция проекции локальной точки станции (lx=Forward, ly=Up, lz=Starboard) в экран
+        // Проекция локальной точки станции (lx=Forward, ly=Up, lz=Starboard) в экран
         const projectLocalPoint = (lx, ly, lz) => {
             const pCamX = x1 + lx * camFwd.x + ly * camUp.x + lz * camRight.x;
             const pCamY = y2 + lx * camFwd.y + ly * camUp.y + lz * camRight.y;
@@ -1021,22 +1115,19 @@ export class IssStationEngine {
         // Вектор поперечного разворота солнечных батарей BGA
         const bgaCos = Math.cos(this.betaAngle);
         const bgaSin = Math.sin(this.betaAngle);
-        // Нормаль к панели в локальных координатах станции
         const panelNormL = { x: bgaCos, y: bgaSin, z: 0 };
-        // Поперечный вектор плоскости панели
         const panelSpanL = { x: -bgaSin, y: bgaCos, z: 0 };
 
-        // Очищаем очередь отрисовки
         this.renderQueue.length = 0;
 
         // ====================================================================
         // ПОСТРОЕНИЕ И СОРТИРОВКА ДЕТАЛЕЙ СТАНЦИИ
         // ====================================================================
 
-        // 1. Основная интегрированная ферма ITS (S0, S1-S6, P1-P6)
+        // 1. Интегрированная ферма ITS (S0, S1-S6, P1-P6)
         this.queueTrussStructure(projectLocalPoint, camSun, x1, y2, z2, camRight);
 
-        // 2. 8 Солнечных батарей (SAW) с вращением BGA
+        // 2. 8 Солнечных батарей (SAW) с BGA-вращением
         this.queueSolarPanels(projectLocalPoint, camSun, panelNormL, panelSpanL);
 
         // 3. 3 Тепловых радиатора охлаждения (TCS)
@@ -1045,25 +1136,33 @@ export class IssStationEngine {
         // 4. Герметичные модули (Заря, Звезда, Destiny, Columbus, Kibo, Cupola)
         this.queueModules(projectLocalPoint, camSun);
 
-        // 5. Пристыкованные космические корабли (Crew Dragon и Союз МС)
+        // 5. Пристыкованные корабли Crew Dragon и Союз МС
         this.queueVisitingVehicles(projectLocalPoint, camSun);
 
         // 6. Роботизированная рука-манипулятор Canadarm2
         this.queueCanadarm2(projectLocalPoint, camSun);
 
-        // ГЛУБИННАЯ СОРТИРОВКА ПО Z (Painter's Algorithm: от дальних к ближним)
+        // Глубинная сортировка по Z (Painter's Algorithm)
         this.renderQueue.sort((a, b) => b.depth - a.depth);
 
-        // ОТРИСОВКА ВСЕХ СОРТИРОВАННЫХ ЭЛЕМЕНТОВ
+        // Применение атмосферного затухания в лимбе Земли
+        ctx.save();
+        if (this.limbVisibility < 0.98) {
+            ctx.globalAlpha = this.limbVisibility;
+        }
+
+        // Отрисовка геометрии
         const queueLen = this.renderQueue.length;
         for (let i = 0; i < queueLen; i++) {
             this.renderQueue[i].render(ctx);
         }
 
-        // 7. Навигационные стробоскопы и антиколлизионные огни
+        // 7. Навигационные стробоскопы
         this.renderNavigationBeacons(ctx, projectLocalPoint);
 
-        // 8. Интерактивный голографический прицел и HUD-наведение
+        ctx.restore();
+
+        // 8. Интерактивный голографический прицел
         this.renderHolographicReticle(ctx, px, py);
     }
 
@@ -1107,7 +1206,7 @@ export class IssStationEngine {
                     ctx.lineTo(pEnd.x, pEnd.y);
                     ctx.stroke();
 
-                    // Решетчатые треугольные ферменные раскосы
+                    // Треугольные ферменные раскосы
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
                     ctx.lineWidth = Math.max(0.7, 0.8 * this.screenScale);
                     const steps = 4;
@@ -1125,7 +1224,7 @@ export class IssStationEngine {
                         }
                     }
 
-                    // Золотые поворотные шарниры SARJ (Solar Alpha Rotary Joint)
+                    // Поворотные шарниры SARJ
                     if (seg.name.includes('sarj')) {
                         const sarjZ = (seg.z1 + seg.z2) * 0.5;
                         const ptSarj = project(0, 0, sarjZ);
@@ -1145,21 +1244,17 @@ export class IssStationEngine {
      * Построение 8 Солнечных батарей (Solar Array Wings) с BGA-слежением
      */
     queueSolarPanels(project, camSun, panelNormL, panelSpanL) {
-        const wingLength = 58;  // Длина по выносу
-        const wingWidth = 18;   // Ширина по оси фермы
-        const mastGap = 3.5;    // Зазор между полукрыльями для мачты
+        const wingLength = 58;
+        const wingWidth = 18;
+        const mastGap = 3.5;
 
         const wings = [
-            // Starboard S6 (Внешние правые)
             { id: 'S6_fwd', zAnchor: 122, dir: 1 },
             { id: 'S6_aft', zAnchor: 122, dir: -1 },
-            // Starboard S4 (Внутренние правые)
             { id: 'S4_fwd', zAnchor: 82, dir: 1 },
             { id: 'S4_aft', zAnchor: 82, dir: -1 },
-            // Port P4 (Внутренние левые)
             { id: 'P4_fwd', zAnchor: -82, dir: 1 },
             { id: 'P4_aft', zAnchor: -82, dir: -1 },
-            // Port P6 (Внешние левые)
             { id: 'P6_fwd', zAnchor: -122, dir: 1 },
             { id: 'P6_aft', zAnchor: -122, dir: -1 }
         ];
@@ -1213,7 +1308,7 @@ export class IssStationEngine {
                     ctx.lineTo(pt4.x, pt4.y);
                     ctx.closePath();
 
-                    const isSunFacing = this.sunDotProduct > 0.15;
+                    const isSunFacing = !this.inEclipse && this.sunDotProduct > 0.15;
                     const baseAlpha = 0.92;
 
                     if (this.isTexturesReady && this.solarPanelTex) {
@@ -1225,7 +1320,6 @@ export class IssStationEngine {
                         ctx.fill();
                     }
 
-                    // Золотистый блик от прямого солнечного света
                     if (isSunFacing) {
                         const sunGlint = ctx.createLinearGradient(pt1.x, pt1.y, pt3.x, pt3.y);
                         sunGlint.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
@@ -1236,12 +1330,10 @@ export class IssStationEngine {
                         ctx.fill();
                     }
 
-                    // Золотая каптоновая окантовка панели
                     ctx.strokeStyle = isSunFacing ? 'rgba(245, 158, 11, 0.85)' : 'rgba(100, 116, 139, 0.6)';
                     ctx.lineWidth = Math.max(0.8, 1.2 * this.screenScale);
                     ctx.stroke();
 
-                    // Центральная несущая телескопическая мачта крыла
                     const mastPt1 = project(c1.x, c1.y, zCenter);
                     const mastPt2 = project(c3.x, c3.y, zCenter);
                     if (mastPt1 && mastPt2) {
@@ -1302,12 +1394,10 @@ export class IssStationEngine {
                     }
                     ctx.fill();
 
-                    // Контурная рамка тепловых панелей
                     ctx.strokeStyle = '#94a3b8';
                     ctx.lineWidth = Math.max(0.6, 1.0 * this.screenScale);
                     ctx.stroke();
 
-                    // Линии секций гармошки
                     const panels = 3;
                     for (let i = 1; i < panels; i++) {
                         const t = i / panels;
@@ -1330,7 +1420,6 @@ export class IssStationEngine {
 
     /**
      * Построение герметичных модулей станции
-     * (Звезда, Заря, Unity, Destiny, Harmony, Columbus, Kibo, Cupola)
      */
     queueModules(project, camSun) {
         const modules = [
@@ -1369,7 +1458,7 @@ export class IssStationEngine {
             },
             {
                 name: 'Cupola',
-                label: 'Купол «Cupola»',
+                label: 'Купол «Cupola» (Nadir)',
                 x1: 0, x2: 5, radius: 3.6,
                 offsetY: -6.5, offsetZ: -8.5, isCupola: true
             },
@@ -1436,7 +1525,7 @@ export class IssStationEngine {
                     ctx.lineTo(p2.x, p2.y);
                     ctx.stroke();
 
-                    // Швы обшивки и маркировка модуля
+                    // Швы обшивки
                     ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
                     ctx.lineWidth = Math.max(0.6, 0.8 * this.screenScale);
                     ctx.beginPath();
@@ -1444,7 +1533,7 @@ export class IssStationEngine {
                     ctx.lineTo((p1.x + p2.x) * 0.5, (p1.y + p2.y) * 0.5 + screenR);
                     ctx.stroke();
 
-                    // Особенность модуля Cupola: 7 иллюминаторов с голубым отражением Земли
+                    // Модуль Cupola: иллюминаторы смотрят прямо на Землю в надир
                     if (mod.isCupola) {
                         ctx.fillStyle = '#0284c7';
                         ctx.beginPath();
@@ -1461,7 +1550,6 @@ export class IssStationEngine {
                         ctx.fill();
                     }
 
-                    // Небольшие собственные солнечные панели модуля Звезда
                     if (mod.hasSolar) {
                         const solLeft = project(mod.x1 + 10, offY, offZ - 20);
                         const solRight = project(mod.x1 + 10, offY, offZ + 20);
@@ -1475,7 +1563,6 @@ export class IssStationEngine {
                         }
                     }
 
-                    // Выносная платформа JAXA Exposed Facility на модуле Kibo
                     if (mod.isKibo) {
                         const efPt = project(mod.x2, offY, offZ - 6);
                         if (efPt) {
@@ -1492,7 +1579,7 @@ export class IssStationEngine {
      * Построение пристыкованных космических кораблей (Crew Dragon и Союз МС)
      */
     queueVisitingVehicles(project, camSun) {
-        // 1. SpaceX Crew Dragon (Пристыкован к Harmony Fwd IDA-2, нос вперед: X: 44 -> 62)
+        // 1. SpaceX Crew Dragon (Harmony Fwd IDA-2, нос вперед: X: 44 -> 62)
         const dNose = project(62, 0, 0);
         const dBase = project(44, 0, 0);
 
@@ -1515,13 +1602,11 @@ export class IssStationEngine {
                     ctx.lineTo(dNose.x, dNose.y);
                     ctx.stroke();
 
-                    // Черное защитное кольцо адаптера стыковки IDA
                     ctx.fillStyle = '#0f172a';
                     ctx.beginPath();
                     ctx.arc(dBase.x, dBase.y, r * 1.05, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Аэродинамические стабилизаторы грузового отсека (Trunk fins)
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.lineWidth = Math.max(0.6, 1.0 * this.screenScale);
                     ctx.strokeRect(dBase.x - 2, dBase.y - r - 2, 4, r * 2 + 4);
@@ -1529,7 +1614,7 @@ export class IssStationEngine {
             });
         }
 
-        // 2. Союз МС (Пристыкован к надирному узлу МИМ-1 Рассвет: Y: -12, X: -22)
+        // 2. Союз МС (Надирный узел МИМ-1 Рассвет: Y: -12, X: -22)
         const sOrb = project(-22, -14, 0);
         const sDes = project(-22, -9, 0);
         const sInst = project(-22, -4, 0);
@@ -1540,23 +1625,19 @@ export class IssStationEngine {
                 render: (ctx) => {
                     const sr = Math.max(1.4, 2.6 * this.screenScale);
 
-                    // Бытовой отсек (сфера)
                     ctx.fillStyle = '#64748b';
                     ctx.beginPath();
                     ctx.arc(sOrb.x, sOrb.y, sr, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Спускаемый аппарат (фара)
                     ctx.fillStyle = '#475569';
                     ctx.beginPath();
                     ctx.arc(sDes.x, sDes.y, sr * 0.9, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Приборно-агрегатный отсек (цилиндр)
                     ctx.fillStyle = '#94a3b8';
                     ctx.fillRect(sInst.x - sr, sInst.y - 1.5, sr * 2, 3);
 
-                    // Крылья солнечных батарей Союза
                     const sSolL = project(-22, -6, -10);
                     const sSolR = project(-22, -6, 10);
                     if (sSolL && sSolR) {
@@ -1573,7 +1654,7 @@ export class IssStationEngine {
     }
 
     /**
-     * Построение многозвенного манипулятора Canadarm2 (SSRMS)
+     * Построение манипулятора Canadarm2 (SSRMS)
      */
     queueCanadarm2(project, camSun) {
         const base = project(18, 6.5, -3.5);
@@ -1589,26 +1670,22 @@ export class IssStationEngine {
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    // Первое плечо Canadarm2 (Boom 1)
                     ctx.beginPath();
                     ctx.moveTo(base.x, base.y);
                     ctx.lineTo(elbow.x, elbow.y);
                     ctx.stroke();
 
-                    // Локтевой шарнир
                     ctx.fillStyle = '#38bdf8';
                     ctx.beginPath();
                     ctx.arc(elbow.x, elbow.y, Math.max(1.2, 2.0 * this.screenScale), 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Второе плечо (Boom 2)
                     ctx.strokeStyle = '#e2e8f0';
                     ctx.beginPath();
                     ctx.moveTo(elbow.x, elbow.y);
                     ctx.lineTo(tip.x, tip.y);
                     ctx.stroke();
 
-                    // Захват Latching End Effector (LEE)
                     ctx.fillStyle = '#f59e0b';
                     ctx.beginPath();
                     ctx.arc(tip.x, tip.y, Math.max(1.0, 1.5 * this.screenScale), 0, Math.PI * 2);
@@ -1619,13 +1696,13 @@ export class IssStationEngine {
     }
 
     /**
-     * Отрисовка навигационных стробоскопов (красный левый, зеленый правый, белые ксеноны)
+     * Отрисовка навигационных стробоскопов
      */
     renderNavigationBeacons(ctx, project) {
         const isFlash = this.strobePhase < 0.12;
         const flashAlpha = isFlash ? 1.0 : 0.25;
 
-        // 1. Левый габаритный огонь (Port tip: Красный)
+        // Левый габаритный огонь (Port tip: Красный)
         const portTip = project(0, 0, -135);
         if (portTip) {
             ctx.fillStyle = `rgba(239, 68, 68, ${flashAlpha})`;
@@ -1634,7 +1711,7 @@ export class IssStationEngine {
             ctx.fill();
         }
 
-        // 2. Правый габаритный огонь (Starboard tip: Зеленый)
+        // Правый габаритный огонь (Starboard tip: Зеленый)
         const stbdTip = project(0, 0, 135);
         if (stbdTip) {
             ctx.fillStyle = `rgba(34, 197, 94, ${flashAlpha})`;
@@ -1643,7 +1720,7 @@ export class IssStationEngine {
             ctx.fill();
         }
 
-        // 3. Белый ксеноновый импульсный маяк на ферме S0 (каждые 1.2 сек)
+        // Белый ксеноновый импульсный маяк на ферме S0
         if (isFlash) {
             const s0Pt = project(0, 5.5, 0);
             if (s0Pt) {
@@ -1666,13 +1743,12 @@ export class IssStationEngine {
         if (this.hoverTransition <= 0.01 && !this.isTelemetryOpen) return;
 
         ctx.save();
-        const alpha = Math.max(this.hoverTransition, this.isTelemetryOpen ? 0.85 : 0);
+        const alpha = Math.max(this.hoverTransition, this.isTelemetryOpen ? 0.85 : 0) * this.limbVisibility;
         ctx.globalAlpha = alpha;
 
         const reticleR = Math.max(36, this.screenRadius * 1.15);
         const angle = this.lockReticleAngle;
 
-        // Вращающиеся угловые скобки прицеливания
         ctx.strokeStyle = '#3ee6c4';
         ctx.lineWidth = 1.5;
 
@@ -1686,7 +1762,6 @@ export class IssStationEngine {
             ctx.stroke();
         }
 
-        // Внутреннее перекрестие наведения
         const crossLen = 6;
         ctx.strokeStyle = 'rgba(62, 230, 196, 0.75)';
         ctx.lineWidth = 1;
@@ -1701,7 +1776,6 @@ export class IssStationEngine {
         ctx.lineTo(px, py + reticleR + crossLen);
         ctx.stroke();
 
-        // Голографические текстовые маркеры
         ctx.font = '10px "JetBrains Mono", monospace';
         ctx.fillStyle = '#3ee6c4';
         ctx.fillText(`[ ISS-ZARYA // EXP-71 ]`, px + reticleR + 10, py - 6);
@@ -1710,7 +1784,6 @@ export class IssStationEngine {
         ctx.fillStyle = '#94a3b8';
         ctx.fillText(`RANGE: ${ISS_CONFIG.realAltitudeKm} KM • VEL: ${ISS_CONFIG.realSpeedKmS} KM/S`, px + reticleR + 10, py + 8);
 
-        // Вектор путевой скорости (Flight Vector)
         if (this.velocity) {
             const vAngle = Math.atan2(this.velocity.y, this.velocity.x);
             const vLen = 22;
@@ -1724,14 +1797,12 @@ export class IssStationEngine {
             ctx.lineTo(vx, vy);
             ctx.stroke();
 
-            // Стрелочка вектора скорости
             ctx.fillStyle = '#38bdf8';
             ctx.beginPath();
             ctx.arc(vx, vy, 2, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Голографическая связующая линия к открытой карточке HUD
         if (this.isTelemetryOpen && this.telemetryCardEl) {
             const cardRect = this.telemetryCardEl.getBoundingClientRect();
             const targetX = cardRect.left;
@@ -1755,8 +1826,4 @@ export class IssStationEngine {
 export const IssStation = new IssStationEngine();
 export const ISSStation = IssStation;
 export const ISSVisuals = IssStation;
-if (typeof window !== 'undefined') {
-    window.IssStation = IssStation;
-    window.ISSVisuals = IssStation;
-}
 export default IssStation;
