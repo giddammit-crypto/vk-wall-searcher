@@ -306,9 +306,9 @@ void main() {
     float r2 = dot(pNorm, pNorm);
 
     // Линзовое бочкообразное искажение (Fish-Eye Lens) визора шлема
-    // Тщательно откалибровано под оптику шлема: 0% в центре, ~3.8% на краях, до 8.8% в углах (строго <= 10%)
-    float k1 = 0.032;
-    float k2 = 0.006;
+    // Откалибровано по запросу: уменьшено ровно на 3% (максимум в углах 5.8% вместо 8.8%)
+    float k1 = 0.021;
+    float k2 = 0.004;
     float barrel = 1.0 + k1 * r2 + k2 * (r2 * r2);
     vec2 visorUv = 0.5 + dv * barrel;
 
@@ -1187,10 +1187,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.9',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.9',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.9',
-            moon: 'assets/textures/moon.jpg?v=3.9.9'
+            earthDay: 'assets/textures/earth_day.jpg?v=4.0.0',
+            earthNight: 'assets/textures/earth_night.png?v=4.0.0',
+            earthClouds: 'assets/textures/earth_clouds.png?v=4.0.0',
+            moon: 'assets/textures/moon.jpg?v=4.0.0'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');

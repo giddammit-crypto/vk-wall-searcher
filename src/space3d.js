@@ -16,20 +16,22 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.9';
-import { SpaceAudio } from './space_audio.js?v=3.9.9';
-import { CelestialPlanets } from './celestial_planets.js?v=3.9.9';
-import { IssStation } from './iss_station.js?v=3.9.9';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.9';
-import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.9';
-import { Starfield } from './starfield.js?v=3.9.9';
-import { SunOptics } from './sun_optics.js?v=3.9.9';
-import { createQrSvg } from './qrcode.js?v=3.9.9';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.9';
-import { openPostModal } from './render.js?v=3.9.9';
-import { fetchHistory } from './subscribers.js?v=3.9.9';
-import { buildBranchAdvice } from './advice.js?v=3.9.9';
-import { Space3DGL } from './space3d_gl.js?v=3.9.9';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.0.0';
+import { SpaceAudio } from './space_audio.js?v=4.0.0';
+import { CelestialPlanets } from './celestial_planets.js?v=4.0.0';
+import { IssStation } from './iss_station.js?v=4.0.0';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.0.0';
+import { Constellations } from './constellations.js?v=4.0.0';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.0.0';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.0.0';
+import { Starfield } from './starfield.js?v=4.0.0';
+import { SunOptics } from './sun_optics.js?v=4.0.0';
+import { createQrSvg } from './qrcode.js?v=4.0.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.0.0';
+import { openPostModal } from './render.js?v=4.0.0';
+import { fetchHistory } from './subscribers.js?v=4.0.0';
+import { buildBranchAdvice } from './advice.js?v=4.0.0';
+import { Space3DGL } from './space3d_gl.js?v=4.0.0';
 
 export class Space3DEngine {
     constructor() {
@@ -137,6 +139,8 @@ export class Space3DEngine {
 
         CelestialPlanets.init();
         IssStation.init(this);
+        SatellitesSwarm.init(this);
+        Constellations.init(this);
         CosmonautsTerminal.init(this);
         this.setupEventListeners();
         this.setupHudControls();
@@ -1565,6 +1569,7 @@ export class Space3DEngine {
         if (this.glEnabled) Space3DGL.render(this.yaw, this.pitch, this.zoom, this.lastDt || 0.016);
         CelestialPlanets.update();
         IssStation.update();
+        SatellitesSwarm.update();
 
         this.telemetryTick = (this.telemetryTick || 0) + 1;
         if (this.telemetryTick % 4 === 0) {
@@ -1758,8 +1763,14 @@ export class Space3DEngine {
         // 6. Отрисовка взрывов Сверхновых звезд
         this.renderSupernovae(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy);
 
+        // 6.5 Реальные созвездия звездного неба (линии астеризмов, звезды, телеметрия)
+        Constellations.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
+
         // 7. Земля и Луна: GPU-шейдеры (или CPU-фолбэк при отсутствии WebGL2)
         CelestialPlanets.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
+
+        // 7.5 Рой 60 спутников Земли на непересекающихся орбитах
+        SatellitesSwarm.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
 
         // 8. Отрисовка 3D Международной Космической Станции (МКС)
         IssStation.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
@@ -2315,6 +2326,8 @@ export class Space3DEngine {
             CosmonautRing.hide();
         }
         IssStation.hideOverlays();
+        SatellitesSwarm.hideOverlays();
+        Constellations.hideOverlays();
         document.body.classList.remove('space-3d-active');
     }
 

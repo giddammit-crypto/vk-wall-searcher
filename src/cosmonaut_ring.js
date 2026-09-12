@@ -24,8 +24,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=3.9.9';
-import { SpaceAudio } from './space_audio.js?v=3.9.9';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.0.0';
+import { SpaceAudio } from './space_audio.js?v=4.0.0';
 
 const DEG = Math.PI / 180;
 
@@ -309,7 +309,7 @@ class CosmonautRingEngine {
     }
 
     _setToggleIcon(spinning) {
-        if (this.toggleIcon) this.toggleIcon.textContent = spinning ? 'pause' : 'play';
+        if (this.toggleIcon) this.toggleIcon.textContent = spinning ? 'pause' : 'play_arrow';
     }
 
     _focusFlow() {
