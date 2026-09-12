@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.8.6';
+import { SpaceAudio } from './space_audio.js?v=3.9.0';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)
@@ -249,8 +249,8 @@ export class IssStationEngine {
         if (this.isTexturesReady) return;
 
         // 1. Текстура фотоэлектрических ячеек солнечных батарей (SAW)
-        const spW = 128;
-        const spH = 256;
+        const spW = 256;
+        const spH = 512;
         this.solarPanelTex = document.createElement('canvas');
         this.solarPanelTex.width = spW;
         this.solarPanelTex.height = spH;
@@ -266,8 +266,8 @@ export class IssStationEngine {
 
         spCtx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
         spCtx.lineWidth = 1;
-        const cols = 6;
-        const rows = 18;
+        const cols = 8;
+        const rows = 30;
         const cw = spW / cols;
         const ch = spH / rows;
 
@@ -278,13 +278,29 @@ export class IssStationEngine {
                 const w = cw - 3;
                 const h = ch - 3;
 
-                spCtx.fillStyle = ((r + c) % 2 === 0) ? '#10284d' : '#0e2344';
+                // Ячейка кремния: затемнение к краям + серебристая шина в центре
+                const cellGrad = spCtx.createLinearGradient(px, py, px + w, py + h);
+                const odd = (r + c) % 2 === 0;
+                cellGrad.addColorStop(0.00, odd ? '#17335d' : '#0c1f3d');
+                cellGrad.addColorStop(0.45, odd ? '#1b3f70' : '#112a52');
+                cellGrad.addColorStop(1.00, odd ? '#081426' : '#060f1f');
+                spCtx.fillStyle = cellGrad;
                 spCtx.fillRect(px, py, w, h);
 
-                spCtx.strokeStyle = 'rgba(125, 211, 252, 0.18)';
+                spCtx.strokeStyle = 'rgba(125, 211, 252, 0.20)';
+                spCtx.lineWidth = 1;
                 spCtx.beginPath();
                 spCtx.moveTo(px, py + h * 0.5);
                 spCtx.lineTo(px + w, py + h * 0.5);
+                spCtx.stroke();
+
+                // Тонкие токосъёмные полосы (по 2 на ячейку) — «силиконовый» микрорельеф
+                spCtx.strokeStyle = 'rgba(186, 230, 253, 0.13)';
+                spCtx.beginPath();
+                spCtx.moveTo(px, py + h * 0.26);
+                spCtx.lineTo(px + w, py + h * 0.26);
+                spCtx.moveTo(px, py + h * 0.74);
+                spCtx.lineTo(px + w, py + h * 0.74);
                 spCtx.stroke();
             }
         }
@@ -1312,7 +1328,12 @@ export class IssStationEngine {
                     const baseAlpha = 0.92;
 
                     if (this.isTexturesReady && this.solarPanelTex) {
-                        ctx.fillStyle = ctx.createPattern(this.solarPanelTex, 'repeat');
+                        // Паттерн кэшируется: createPattern на каждый кадр для 8 крыльев
+                        // давал ~480 аллокаций в секунду и заметные просадки FPS.
+                        if (!this._solarPattern) {
+                            this._solarPattern = ctx.createPattern(this.solarPanelTex, 'repeat');
+                        }
+                        ctx.fillStyle = this._solarPattern;
                         ctx.globalAlpha = baseAlpha;
                         ctx.fill();
                     } else {
@@ -1388,7 +1409,10 @@ export class IssStationEngine {
                     ctx.closePath();
 
                     if (this.isTexturesReady && this.radiatorTex) {
-                        ctx.fillStyle = ctx.createPattern(this.radiatorTex, 'repeat');
+                        if (!this._radiatorPattern) {
+                            this._radiatorPattern = ctx.createPattern(this.radiatorTex, 'repeat');
+                        }
+                        ctx.fillStyle = this._radiatorPattern;
                     } else {
                         ctx.fillStyle = '#f1f5f9';
                     }

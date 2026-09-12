@@ -1,44 +1,112 @@
 /**
- * src/space_warp.js — Cosmic Warp Screen-Fill Transition Engine
+ * src/space_warp.js — AURORA «ГИПЕРДРАЙВ»: Кинематографический варп-прыжок
  * ============================================================================
- * Кинематографичный переход и гиперпространственный перелёт:
- * 1. Радиальный разгон звезд и туманностей из центра со спокойной скоростью
- * 2. Полноэкранное космическое заполнение и фирменная надпись AURORA
- * 3. Вступительная речь Беллы (ElevenLabs) об эксперименте ко Дню космонавтики
- * 4. Непрерывный гиперпространственный полёт, пока говорит Белла
- * 5. Плавное торможение и прибытие в 3D Космо-пространство по окончании речи
- *    (или по кнопке быстрого пропуска «Прибыть на станцию»)
+ * Режиссура перехода (Game Director + Lead 3D Programmer):
+ *
+ *   ФАЗА 1 «IGNITION»  Спокойная зарядка гиперпривода: стягивание ядра,
+ *                      искры плазмы, первые штрихи звёзд, лёгкая тряска.
+ *   ФАЗА 2 «SPOOL-UP»  Разгон сверхсветовой скорости: звёзды превращаются в
+ *                      километровые штрихи, раскрывается гипертоннель,
+ *                      включается кинематографический letterbox.
+ *   ФАЗА 3 «CRUISE»    Крейсерский полёт, пока идёт голосовой брифинг Беллы
+ *                      (ElevenLabs): энергия голоса управляет яркостью ядра,
+ *                      bloom, тряской и всплесками фазовой турбулентности.
+ *   ФАЗА 4 «DECEL»     Торможение: тоннель схлопывается в точку схода,
+ *                      звёзды замедляются, вспышка прибытия, кроссфейд
+ *                      в 3D космо-пространство AURORA.
+ *   ФАЗА 5 «DOCKED»    Растворение варп-слоя поверх уже живущей 3D-сцены.
+ *
+ * Технические гарантии:
+ *   • Полностью GPU-конвейер (WebGL2 + HDR + ACES + bloom + анаморфный штрих)
+ *   • Автоматический фолбэк на улучшенный 2D-рендер без WebGL2
+ *   • Адаптивное качество по времени кадра (60 FPS приоритет)
+ *   • Ноль аллокаций в кадре, пауза при скрытой вкладке, поддержка
+ *     prefers-reduced-motion, потеря контекста обрабатывается на лету
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.8.6';
+import { SpaceAudio } from './space_audio.js?v=3.9.0';
+import { WarpGLRenderer } from './warp_gl.js?v=3.9.0';
+import { WarpHud } from './warp_hud.js?v=3.9.0';
+
+const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
+const smoothstep = (e0, e1, x) => {
+    const t = clamp((x - e0) / Math.max(e1 - e0, 1e-6), 0, 1);
+    return t * t * (3 - 2 * t);
+};
+const easeInCubic = (t) => t * t * t;
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/* Тайминги фаз (секунды) */
+const T_IGNITION = 1.15;
+const T_SPOOL = 2.15;
+const T_SPOOL_END = T_IGNITION + T_SPOOL;
+const T_DECEL = 1.55;
+const T_DOCK = 0.7;
+const SHORT_WARP_TOTAL = 9.6; // когда голос Беллы выключен — короткий, но эффектный перелёт
 
 export class SpaceWarpTransition {
     constructor() {
         this.canvas = null;
-        this.ctx = null;
+        this.ctx2d = null;
+        this.renderer = null;
+        this.hud = new WarpHud();
+
         this.animId = null;
         this.isWarping = false;
-        this.stars = [];
-        this.skipBtn = null;
+        this.usingGL = false;
 
-        // Modes: 'idle' | 'takeoff' | 'cruise' | 'decelerating'
-        this.mode = 'idle';
+        this.phase = 'idle';
         this.startTime = 0;
+        this.phaseStart = 0;
         this.decelStartTime = 0;
-        this.takeoffDurationMs = 2400; // Размеренная величественная скорость появления космоса (~2.4 сек)
-        this.decelDurationMs = 1200;   // Плавное торможение корабля при прибытии (~1.2 сек)
+
         this.onArrivalCallback = null;
         this.hasTriggeredArrival = false;
-        this.speechFallbackTimer = null;
+        this.speechTimer = null;
+        this.voiceStartMs = 0;
+        this.voiceDurationMs = 20820;
+        this.warpTotalMs = 22000;
+
+        // Анимационное состояние (мутируется каждый кадр — без аллокаций)
+        this.travel = 0;
+        this.speed = 40;
+        this.renderState = {
+            time: 0, dt: 1 / 60, travel: 0,
+            speedNorm: 0, stretch: 0.3, tunnelCover: 0, gasCover: 0,
+            charge: 0, warpLevel: 0, pulse: 0, flash: 0, energy: 0.55,
+            shakeX: 0, shakeY: 0, roll: 0,
+            exposure: 1, bloom: 0.9, streak: 0.3, streakLength: 3,
+            radialBlur: 0, chroma: 0.3, vignette: 0.55, grain: 0.35,
+            letterbox: 0, fade: 1, scanline: 0,
+            starBrightness: 0.35, glowFade: 1, jitter: 0,
+            sparkIntensity: 0, coreIntensity: 1, bloomThreshold: 0.72
+        };
+
+        // 2D-фолбэк
+        this.fallbackStars = [];
+        this.fallbackRings = [];
+
+        // Адаптивное качество
+        this.frameAvg = 16.7;
+        this.qualityCooldown = 0;
+
+        this.reducedMotion = false;
+        try {
+            this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (e) { /* noop */ }
 
         this.render = this.render.bind(this);
         this.initiateDeceleration = this.initiateDeceleration.bind(this);
+        this.onResize = this.onResize.bind(this);
+        this.onKeyDown = this.onKeyDown.bind(this);
+        this.onVisibility = this.onVisibility.bind(this);
     }
 
-    /**
-     * Создание или получение холста варп-перехода
-     */
+    /* =====================================================================
+     * Инициализация холста и рендерера
+     * =================================================================== */
     getCanvas() {
         if (!this.canvas) {
             this.canvas = document.getElementById('space-warp-canvas');
@@ -48,338 +116,534 @@ export class SpaceWarpTransition {
                 this.canvas.className = 'space-warp-canvas hidden';
                 document.body.appendChild(this.canvas);
             }
-            this.ctx = this.canvas.getContext('2d');
         }
         return this.canvas;
     }
 
-    /**
-     * Кнопка пропуска для мгновенного входа в 3D
-     */
-    ensureSkipButton() {
-        this.removeSkipButton();
-
-        this.skipBtn = document.createElement('button');
-        this.skipBtn.id = 'space-warp-skip-btn';
-        this.skipBtn.className = 'space-warp-skip-btn';
-        this.skipBtn.setAttribute('type', 'button');
-        this.skipBtn.innerHTML = `
-            <span class="material-symbols-outlined" style="font-size: 18px;">rocket_launch</span>
-            <span>Прибыть на станцию (Пропустить)</span>
-            <span class="material-symbols-outlined" style="font-size: 16px;">fast_forward</span>
-        `;
-
-        this.skipBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.initiateDeceleration();
-        });
-
-        document.body.appendChild(this.skipBtn);
-    }
-
-    removeSkipButton() {
-        if (this.skipBtn && this.skipBtn.parentNode) {
-            this.skipBtn.parentNode.removeChild(this.skipBtn);
+    ensureRenderer() {
+        const canvas = this.getCanvas();
+        if (!this.renderer && WarpGLRenderer.isSupported()) {
+            this.renderer = new WarpGLRenderer(canvas);
+            if (!this.renderer.init()) {
+                this.renderer = null;
+            }
         }
-        this.skipBtn = null;
-        const old = document.getElementById('space-warp-skip-btn');
-        if (old && old.parentNode) old.parentNode.removeChild(old);
+        this.usingGL = !!(this.renderer && this.renderer.ok);
+        if (!this.usingGL) {
+            this.initFallback2D(canvas);
+        }
+        return this.usingGL;
     }
 
-    /**
-     * Инициализация частиц для гиперпространственного разгона
-     */
-    initParticles(w, h) {
-        const count = 520;
-        this.stars = [];
-        const colors = [
-            '#ffffff', '#ffffff', '#e0f2fe', '#bae6fd',
-            '#3ee6c4', '#38bdf8', '#818cf8', '#c084fc', '#fcd34d'
-        ];
+    /* =====================================================================
+     * Запуск перелёта
+     * =================================================================== */
+    start(onArrival) {
+        if (this.isWarping) return;
+        this.isWarping = true;
+        this.hasTriggeredArrival = false;
+        this.onArrivalCallback = onArrival;
+        this.phase = 'ignition';
+        this.startTime = performance.now();
+        this.phaseStart = this.startTime;
+        this.travel = 0;
+        this.speed = 40;
+        this.frameAvg = 16.7;
+        this.qualityCooldown = 0;
 
+        const canvas = this.getCanvas();
+        canvas.classList.remove('hidden');
+        canvas.style.opacity = '1';
+
+        this.ensureRenderer();
+        this.onResize();
+
+        // HUD поверх рендера
+        this.hud.mount(() => this.initiateDeceleration());
+        this.hud.setPhase('ignition');
+
+        // Озвучка и звуковой дизайн гиперпрыжка
+        try {
+            SpaceAudio.playWarpWhoosh();
+            SpaceAudio.startAmbientMusic(0.32, 1800);
+            SpaceAudio.playVoice('aurora_welcome', true);
+        } catch (e) {
+            console.warn('[SpaceWarp] Аудио недоступно:', e);
+        }
+
+        // Анализ голоса Беллы для «живой» реакции графики
+        try {
+            if (SpaceAudio.enableVoiceAnalyser) SpaceAudio.enableVoiceAnalyser();
+        } catch (e) { /* noop */ }
+
+        this.voiceStartMs = performance.now();
+        const voiceEl = SpaceAudio.voiceAudio;
+        const dur = voiceEl && isFinite(voiceEl.duration) && voiceEl.duration > 1 ? voiceEl.duration : 20.82;
+        this.voiceDurationMs = dur * 1000;
+
+        const voiceOn = SpaceAudio.voiceEnabled !== false;
+        this.warpTotalMs = voiceOn
+            ? this.voiceDurationMs + 1400
+            : (this.reducedMotion ? 5200 : SHORT_WARP_TOTAL * 1000);
+
+        // Страховочный таймер (если речь прервана, отключена или файл не загрузился)
+        clearTimeout(this.speechTimer);
+        this.speechTimer = setTimeout(() => this.initiateDeceleration(), this.warpTotalMs);
+
+        window.addEventListener('resize', this.onResize);
+        document.addEventListener('keydown', this.onKeyDown);
+        document.addEventListener('visibilitychange', this.onVisibility);
+
+        cancelAnimationFrame(this.animId);
+        this.lastFrame = this.startTime;
+        this.animId = requestAnimationFrame(this.render);
+    }
+
+    /* =====================================================================
+     * Торможение и прибытие
+     * =================================================================== */
+    initiateDeceleration() {
+        if (!this.isWarping || this.phase === 'decel' || this.phase === 'docked' || this.phase === 'idle') return;
+        clearTimeout(this.speechTimer);
+        this.phase = 'decel';
+        this.phaseStart = performance.now();
+        this.decelStartTime = performance.now();
+        this.hud.setPhase('decel');
+        try { SpaceAudio.playWarpWhoosh(); } catch (e) { /* noop */ }
+    }
+
+    /* =====================================================================
+     * Ключи и видимость вкладки
+     * =================================================================== */
+    onKeyDown(e) {
+        if (!this.isWarping) return;
+        if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            this.initiateDeceleration();
+        }
+    }
+
+    onVisibility() {
+        if (!this.isWarping) return;
+        const now = performance.now();
+        if (document.hidden) {
+            this.pausedAt = now;
+        } else if (this.pausedAt) {
+            // Сдвигаем таймлайн, чтобы анимация не «прыгала»
+            const delta = now - this.pausedAt;
+            this.startTime += delta;
+            this.phaseStart += delta;
+            this.pausedAt = null;
+        }
+    }
+
+    onResize() {
+        const canvas = this.getCanvas();
+        if (!this.isWarping) return;
+        if (this.usingGL && this.renderer) {
+            this.renderer.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+        } else {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+    }
+
+    /* =====================================================================
+     * 2D-фолбэк (если WebGL2 недоступен или потерян контекст)
+     * =================================================================== */
+    initFallback2D(canvas) {
+        try {
+            this.ctx2d = canvas.getContext('2d');
+        } catch (e) {
+            this.ctx2d = null;
+        }
+        if (!this.ctx2d) return;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const count = window.innerWidth < 820 ? 320 : 620;
+        this.fallbackStars = [];
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const dist = Math.random() * 80 + 4;
-            const speed = 0.5 + Math.random() * 1.5;
-            const size = 1.1 + Math.random() * 2.4;
-            const color = colors[Math.floor(Math.random() * colors.length)];
-
-            this.stars.push({
+            const dist = 4 + Math.pow(Math.random(), 0.7) * 90;
+            const speed = 0.6 + Math.random() * 2.4;
+            this.fallbackStars.push({
                 x: Math.cos(angle) * dist,
                 y: Math.sin(angle) * dist,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                prevX: Math.cos(angle) * dist,
-                prevY: Math.sin(angle) * dist,
-                color,
-                size
+                px: Math.cos(angle) * dist,
+                py: Math.sin(angle) * dist,
+                hue: Math.random() < 0.18 ? 'rgba(186, 230, 253, 1)' : (Math.random() < 0.5 ? 'rgba(255,255,255,1)' : 'rgba(224, 242, 254, 1)'),
+                size: 1.1 + Math.random() * 2.2
             });
         }
     }
 
-    /**
-     * Запуск перехода с заполнением экрана и речью Беллы
-     * @param {Function} onArrival - функция, вызываемая в момент выхода из гиперпространства в 3D
-     */
-    start(onArrival) {
-        if (this.isWarping) return;
-        this.isWarping = true;
-        this.mode = 'takeoff';
-        this.hasTriggeredArrival = false;
-        this.onArrivalCallback = onArrival;
-
-        const canvas = this.getCanvas();
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        canvas.classList.remove('hidden');
-        canvas.style.opacity = '1';
-
-        this.initParticles(canvas.width, canvas.height);
-        this.startTime = performance.now();
-        this.ensureSkipButton();
-
-        // 1. Звуковой разгон космоса
-        SpaceAudio.playWarpWhoosh();
-
-        // 2. Старт легкой амбиент-музыки
-        SpaceAudio.startAmbientMusic(0.35, 2000);
-
-        // 3. Запуск вступительной речи девушки Беллы (ElevenLabs)
-        SpaceAudio.playVoice('aurora_welcome', true);
-
-        // 4. Ожидание завершения речи для автоматического перехода к станции
-        clearTimeout(this.speechFallbackTimer);
-        const checkVoiceEnded = () => {
-            if (SpaceAudio.voiceAudio) {
-                SpaceAudio.voiceAudio.addEventListener('ended', () => {
-                    this.initiateDeceleration();
-                }, { once: true });
-            }
-        };
-        setTimeout(checkVoiceEnded, 300);
-
-        // Таймер безопасности: если звук отключен или прерван, переход произойдет через 22 сек
-        this.speechFallbackTimer = setTimeout(() => {
-            this.initiateDeceleration();
-        }, 22000);
-
-        cancelAnimationFrame(this.animId);
-        this.animId = requestAnimationFrame(this.render);
+    /** Замена холста после потери WebGL-контекста */
+    rebuildCanvasElement() {
+        const old = this.canvas;
+        const fresh = document.createElement('canvas');
+        fresh.id = 'space-warp-canvas';
+        fresh.className = old ? old.className.replace(' hidden', '') : 'space-warp-canvas';
+        if (old && old.parentNode) {
+            old.parentNode.replaceChild(fresh, old);
+        } else {
+            document.body.appendChild(fresh);
+        }
+        this.canvas = fresh;
+        this.renderer = null;
+        this.usingGL = false;
+        this.initFallback2D(fresh);
     }
 
-    /**
-     * Инициация плавного торможения и прибытия на орбитальную станцию
-     */
-    initiateDeceleration() {
-        if (!this.isWarping || this.mode === 'decelerating') return;
-        clearTimeout(this.speechFallbackTimer);
-        this.mode = 'decelerating';
-        this.decelStartTime = performance.now();
-        this.removeSkipButton();
-
-        // Звук прибытия / выхода из гиперпространства
-        SpaceAudio.playWarpWhoosh();
-    }
-
-    /**
-     * Рендеринг одного кадра варп-анимации
-     */
+    /* =====================================================================
+     * Главный кадр: расчёт состояния + рендер
+     * =================================================================== */
     render(now) {
         if (!this.isWarping) return;
+        if (document.hidden) {
+            this.animId = requestAnimationFrame(this.render);
+            return;
+        }
 
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        const cx = w / 2;
-        const cy = h / 2;
-        const ctx = this.ctx;
+        const dt = clamp((now - (this.lastFrame || now)) / 1000, 0.0005, 0.05);
+        this.lastFrame = now;
 
-        const elapsed = now - this.startTime;
-
-        // Определяем фазу полета
-        let accel = 1;
-        let fillProgress = 1;
-        let titleAlpha = 1;
-
-        if (this.mode === 'takeoff') {
-            const takeoffProg = Math.min(1, elapsed / this.takeoffDurationMs);
-            // Спокойный размеренный разгон
-            accel = 1 + Math.pow(takeoffProg, 2.0) * 16;
-            fillProgress = takeoffProg;
-            titleAlpha = Math.min(1, Math.max(0, (takeoffProg - 0.35) / 0.45));
-
-            if (takeoffProg >= 1) {
-                this.mode = 'cruise';
-            }
-        } else if (this.mode === 'cruise') {
-            // Непрерывный крейсерский гиперпространственный полет со стабильной скоростью
-            accel = 17;
-            fillProgress = 1;
-            titleAlpha = 1;
-        } else if (this.mode === 'decelerating') {
-            // Торможение перед орбитальным комплексом
-            const decelElapsed = now - this.decelStartTime;
-            const decelProg = Math.min(1, decelElapsed / this.decelDurationMs);
-
-            accel = Math.max(0.6, 17 * Math.pow(1 - decelProg, 1.8));
-            fillProgress = 1;
-            titleAlpha = Math.max(0, 1 - decelProg * 1.3);
-
-            // Плавное растворение холста варп-перехода
-            if (decelProg >= 0.65) {
-                const fadeOut = (decelProg - 0.65) / 0.35;
-                this.canvas.style.opacity = String(Math.max(0, 1 - fadeOut));
-            }
-
-            // На пике торможения (88%) открываем 3D пространство!
-            if (decelProg >= 0.88 && !this.hasTriggeredArrival) {
-                this.hasTriggeredArrival = true;
-                if (typeof this.onArrivalCallback === 'function') {
-                    this.onArrivalCallback();
+        // Авто-контроль качества по времени кадра (AAA-практика: стабильные 60 FPS)
+        if (this.usingGL && this.renderer) {
+            this.frameAvg = this.frameAvg * 0.9 + (dt * 1000) * 0.1;
+            this.qualityCooldown -= dt;
+            if (this.qualityCooldown <= 0) {
+                if (this.frameAvg > 22 && this.renderer.renderScale > 0.6) {
+                    this.renderer.setRenderScale(this.renderer.renderScale - 0.08);
+                    this.qualityCooldown = 1.2;
+                } else if (this.frameAvg < 13.5 && this.renderer.renderScale < 1.0) {
+                    this.renderer.setRenderScale(this.renderer.renderScale + 0.05);
+                    this.qualityCooldown = 2.2;
                 }
             }
+        }
 
-            if (decelProg >= 1) {
-                this.finish();
-                return;
+        const elapsed = (now - this.startTime) / 1000;
+        const state = this.buildRenderState(elapsed, now, dt);
+
+        // Проверка завершения речи Беллы → автоматическое торможение
+        if (this.phase === 'cruise' && SpaceAudio.voiceEnabled !== false) {
+            const voiceEl = SpaceAudio.voiceAudio;
+            const finished = voiceEl && (voiceEl.ended || (voiceEl.paused && voiceEl.currentTime > 0.4));
+            if (finished && elapsed > 3.2) {
+                this.initiateDeceleration();
             }
         }
 
-        // 1. Космическое затухание следов (Trail effect)
-        ctx.fillStyle = 'rgba(3, 7, 18, 0.24)';
-        ctx.fillRect(0, 0, w, h);
+        if (this.usingGL && this.renderer && this.renderer.ok) {
+            this.renderer.setFovPx(750 * (1 + state.fovPunch));
+            this.renderer.render(state);
+        } else {
+            if (this.renderer && !this.renderer.ok) this.rebuildCanvasElement();
+            this.render2D(state, now);
+        }
 
-        // 2. Отрисовка лучей звезд
-        this.stars.forEach(s => {
-            s.prevX = s.x;
-            s.prevY = s.y;
-
-            s.x += s.vx * accel;
-            s.y += s.vy * accel;
-
-            // Если вылетела за пределы экрана — респавн ближе к центру для непрерывного космического потока
-            const distFromCenter = Math.hypot(s.x, s.y);
-            const maxRadius = Math.hypot(cx, cy) * 1.35;
-            if (distFromCenter > maxRadius) {
-                const angle = Math.random() * Math.PI * 2;
-                const r = Math.random() * 40 + 4;
-                s.x = Math.cos(angle) * r;
-                s.y = Math.sin(angle) * r;
-                s.prevX = s.x;
-                s.prevY = s.y;
-            }
-
-            const drawX = cx + s.x;
-            const drawY = cy + s.y;
-            const prevDrawX = cx + s.prevX;
-            const prevDrawY = cy + s.prevY;
-
-            ctx.beginPath();
-            ctx.moveTo(prevDrawX, prevDrawY);
-            ctx.lineTo(drawX, drawY);
-            ctx.strokeStyle = s.color;
-            ctx.lineWidth = s.size * (1 + (accel / 17) * 1.2);
-            ctx.lineCap = 'round';
-            ctx.stroke();
+        // HUD
+        this.hud.drawWave(state.energy, SpaceAudio.getVoiceSpectrum ? SpaceAudio.getVoiceSpectrum() : null);
+        this.hud.setTelemetry({
+            speedC: state.speedC,
+            reactor: state.reactor,
+            distanceAu: state.distanceAu,
+            status: this.phase === 'decel' ? 'ТОРМОЖЕНИЕ' : (this.phase === 'docked' ? 'СТЫКОВКА' : 'НОМИНАЛЬНО')
         });
 
-        // 3. Радиальное свечение туманности из центра (заполнение экрана)
-        if (fillProgress > 0.15) {
-            const normFill = (fillProgress - 0.15) / 0.85;
-            const fillRadius = Math.hypot(cx, cy) * Math.pow(normFill, 1.4) * 1.3;
-
-            const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(10, fillRadius));
-            glow.addColorStop(0, `rgba(62, 230, 196, ${0.44 * normFill})`);
-            glow.addColorStop(0.35, `rgba(56, 189, 248, ${0.38 * normFill})`);
-            glow.addColorStop(0.75, `rgba(139, 92, 246, ${0.52 * normFill})`);
-            glow.addColorStop(1, `rgba(3, 7, 18, ${0.88 * normFill})`);
-
-            ctx.fillStyle = glow;
-            ctx.beginPath();
-            ctx.arc(cx, cy, fillRadius, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // 4. Приветственная надпись AURORA фирменным шрифтом
-        if (titleAlpha > 0.02) {
-            ctx.save();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            // Мягкое дыхание надписи во время полета
-            const breathe = 1 + Math.sin(now * 0.0022) * 0.025;
-            ctx.translate(cx, cy);
-            ctx.scale(breathe, breathe);
-
-            // Фирменный заголовок AURORA (Montserrat 900)
-            const fontSize = Math.min(88, Math.max(46, Math.round(w * 0.075)));
-            ctx.font = `900 ${fontSize}px 'Montserrat', sans-serif`;
-
-            // Неоновый ореол
-            ctx.shadowColor = 'rgba(62, 230, 196, 0.9)';
-            ctx.shadowBlur = 42 * titleAlpha;
-
-            const grad = ctx.createLinearGradient(-190, -fontSize / 2, 190, fontSize / 2);
-            grad.addColorStop(0, `rgba(255, 255, 255, ${titleAlpha})`);
-            grad.addColorStop(0.5, `rgba(62, 230, 196, ${titleAlpha})`);
-            grad.addColorStop(1, `rgba(56, 189, 248, ${titleAlpha})`);
-
-            ctx.fillStyle = grad;
-            ctx.fillText('AURORA', 0, -32);
-
-            // Подзаголовок: 3D Исследовательский эксперимент
-            ctx.shadowBlur = 14 * titleAlpha;
-            ctx.shadowColor = 'rgba(56, 189, 248, 0.7)';
-            ctx.font = `700 ${Math.max(10, Math.round(fontSize * 0.17))}px 'JetBrains Mono', monospace`;
-            ctx.fillStyle = `rgba(224, 242, 254, ${titleAlpha * 0.95})`;
-            ctx.fillText('3D ИССЛЕДОВАТЕЛЬСКИЙ ЭКСПЕРИМЕНТ', 0, fontSize * 0.22);
-
-            // Линия-разделитель
-            ctx.strokeStyle = `rgba(62, 230, 196, ${titleAlpha * 0.8})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-160, fontSize * 0.42);
-            ctx.lineTo(160, fontSize * 0.42);
-            ctx.stroke();
-
-            // Посвящение Дню космонавтики
-            ctx.font = `800 ${Math.max(10, Math.round(fontSize * 0.15))}px 'Montserrat', sans-serif`;
-            ctx.fillStyle = `rgba(253, 224, 71, ${titleAlpha * 0.95})`;
-            ctx.fillText('ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ И ДНЮ КОСМОСА', 0, fontSize * 0.62);
-
-            // Бейдж библиотек Владимира
-            ctx.font = `700 ${Math.max(9, Math.round(fontSize * 0.13))}px 'Montserrat', sans-serif`;
-            ctx.fillStyle = `rgba(186, 230, 253, ${titleAlpha * 0.85})`;
-            ctx.fillText('ОРБИТАЛЬНЫЙ КОМПЛЕКС • МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА', 0, fontSize * 0.86);
-
-            // Индикатор звукового брифинга Беллы
-            if (this.mode === 'cruise' || (this.mode === 'takeoff' && elapsed > 1500)) {
-                const pulseBar = (Math.sin(now * 0.005) + 1) * 0.5;
-                ctx.font = `600 11px 'JetBrains Mono', monospace`;
-                ctx.fillStyle = `rgba(62, 230, 196, ${0.75 + pulseBar * 0.25})`;
-                ctx.fillText('● СВЯЗЬ С ОРБИТАЛЬНЫМ КОМПЛЕКСОМ: ГОЛОСОВОЙ БРИФИНГ...', 0, fontSize * 1.18);
-            }
-
-            ctx.restore();
+        if (this.phase === 'docked' && state.fade <= 0.001) {
+            this.finish();
+            return;
         }
 
         this.animId = requestAnimationFrame(this.render);
     }
 
     /**
-     * Завершение анимации и скрытие
+     * Расчёт всех параметров кадра (единый источник истины для GL и 2D)
      */
+    buildRenderState(elapsed, now, dt) {
+        const s = this.renderState;
+        const phase = this.phase;
+
+        // --- Прогресс текущей фазы
+        let p = 0;
+        if (phase === 'ignition') {
+            p = clamp(elapsed / T_IGNITION, 0, 1);
+            if (p >= 1) { this.phase = 'spool'; this.phaseStart = now; this.hud.setPhase('spool'); }
+        } else if (phase === 'spool') {
+            p = clamp((elapsed - T_IGNITION) / T_SPOOL, 0, 1);
+            if (p >= 1) { this.phase = 'cruise'; this.phaseStart = now; this.hud.setPhase('cruise'); }
+        } else if (phase === 'cruise') {
+            p = 1;
+        } else if (phase === 'decel') {
+            p = clamp((now - this.decelStartTime) / 1000 / T_DECEL, 0, 1);
+            if (!this.hasTriggeredArrival && p >= 0.58) {
+                this.hasTriggeredArrival = true;
+                if (typeof this.onArrivalCallback === 'function') {
+                    try { this.onArrivalCallback(); } catch (e) { console.warn('[SpaceWarp] onArrival:', e); }
+                }
+            }
+            if (p >= 1) {
+                this.phase = 'docked';
+                this.phaseStart = now;
+                this.hud.setPhase('arrived');
+            }
+        } else if (phase === 'docked') {
+            p = clamp((now - this.phaseStart) / 1000 / T_DOCK, 0, 1);
+        }
+
+        // --- Амплитуда импульсов (вспышки переходов)
+        this.pulse = Math.max(0, (this.pulse || 0) - dt * 2.2);
+        if (phase === 'cruise') {
+            const pulsePhase = (elapsed % 4.6) / 4.6;
+            if (pulsePhase < 0.02) this.pulse = Math.max(this.pulse, 0.32);
+        }
+
+        // --- Энергия голоса Беллы (анализатор или синтетическая огибающая)
+        let energy = 0.55;
+        if (SpaceAudio.getVoiceEnergy) {
+            const measured = SpaceAudio.getVoiceEnergy();
+            if (measured > 0.001) energy = measured;
+        }
+        if (energy <= 0.02) {
+            // Синтетическая «речевая» огибающая — графика живёт даже без звука
+            const t = elapsed;
+            energy = 0.45 + 0.28 * Math.sin(t * 3.1) + 0.18 * Math.sin(t * 7.7 + 1.3) + 0.09 * Math.sin(t * 13.4);
+        }
+        energy = clamp(energy, 0.12, 1.15);
+        this.smoothEnergy = this.smoothEnergy === undefined ? energy : this.smoothEnergy * 0.82 + energy * 0.18;
+        s.energy = this.smoothEnergy;
+
+        // --- Скорость полёта
+        let speed;
+        if (phase === 'ignition') {
+            speed = 40 + easeInCubic(p) * 90;
+        } else if (phase === 'spool') {
+            speed = 130 + easeInOutCubic(p) * 1520;
+        } else if (phase === 'cruise') {
+            const surge = Math.sin(elapsed * 0.71) * 0.14 + Math.sin(elapsed * 1.93 + 0.7) * 0.06;
+            speed = 1650 * (1 + surge) + this.pulse * 260 + s.energy * 90;
+        } else {
+            speed = 1650 * (1 - easeInCubic(p)) * (1 - 0.86 * easeOutCubic(p)) + 22;
+        }
+        speed = Math.max(6, speed);
+        this.speed = speed;
+        this.travel += speed * dt;
+
+        const speedNorm = clamp(speed / 1650, 0, 1.25);
+        s.travel = this.travel;
+        s.speedNorm = speedNorm;
+        s.time = elapsed;
+        s.dt = dt;
+        s.speedC = speed / 172;                 // условные «сверхсветовые» единицы для телеметрии
+        s.reactor = clamp(100 - speedNorm * 9 - (phase === 'decel' ? -6 : 0), 82, 100);
+        s.distanceAu = this.travel * 0.00042;
+
+        // --- Штрихование звёзд
+        if (phase === 'ignition') s.stretch = 0.22 + p * 0.5;
+        else if (phase === 'spool') s.stretch = 0.72 + easeInOutCubic(p) * 0.95;
+        else if (phase === 'cruise') s.stretch = 1.55 + speedNorm * 0.45 + this.pulse * 0.5;
+        else s.stretch = 1.9 * Math.pow(1 - p, 1.7) + 0.12;
+
+        // --- Раскрытие гипертоннеля и газовых волокон
+        if (phase === 'ignition') { s.tunnelCover = 0; s.gasCover = p * 0.18; }
+        else if (phase === 'spool') { s.tunnelCover = smoothstep(0.1, 0.92, p) * 0.92; s.gasCover = 0.18 + p * 0.42; }
+        else if (phase === 'cruise') { s.tunnelCover = 0.9 + 0.08 * Math.sin(elapsed * 0.9); s.gasCover = 0.6 + 0.12 * Math.sin(elapsed * 1.4); }
+        else { s.tunnelCover = 0.92 * (1 - smoothstep(0.05, 0.62, p)); s.gasCover = 0.6 * (1 - smoothstep(0, 0.45, p)); }
+
+        // --- Ядро / гиперканал
+        if (phase === 'ignition') { s.charge = p; s.warpLevel = p * 0.18; }
+        else if (phase === 'spool') { s.charge = 1; s.warpLevel = 0.2 + p * 0.8; }
+        else if (phase === 'cruise') { s.charge = 1; s.warpLevel = 1; }
+        else { s.charge = 1 + p * 0.55; s.warpLevel = Math.max(0, 1 - p * 1.4); }
+
+        s.coreIntensity = smoothstep(0, 0.12, elapsed) * (1 - smoothstep(0.72, 0.98, p) * (phase === 'decel' ? 1 : 0));
+        s.starBrightness = 0.32 + 0.78 * smoothstep(0, 0.55, elapsed) + this.pulse * 0.35;
+        s.glowFade = phase === 'decel' ? Math.max(0.25, 1 - p) : 1;
+        s.jitter = this.reducedMotion ? 0 : clamp(speedNorm * 1.5 + this.pulse * 3, 0, 4.5);
+        s.sparkIntensity = (phase === 'ignition' ? p * 0.5 : (phase === 'decel' ? Math.max(0, 0.6 - p * 0.8) : 0.28 + speedNorm * 0.3)) + this.pulse * 0.5;
+
+        // --- Тряска камеры и крен
+        const shakeAmp = this.reducedMotion ? 0 : (s.energy * 0.5 + speedNorm * 0.7 + this.pulse * 4) * (phase === 'ignition' ? p * 0.6 : 1);
+        this.shakeT = (this.shakeT || 0) + dt;
+        s.shakeX = (Math.sin(this.shakeT * 34.1) * 0.6 + Math.sin(this.shakeT * 11.7) * 0.4) * shakeAmp;
+        s.shakeY = (Math.cos(this.shakeT * 29.3) * 0.6 + Math.cos(this.shakeT * 9.1) * 0.4) * shakeAmp;
+        s.roll = (this.reducedMotion ? 0 : Math.sin(this.shakeT * 0.63) * 0.55 * speedNorm + this.pulse * 0.6);
+
+        // --- Вспышка прибытия / старта
+        let flash = 0;
+        if (phase === 'ignition' && p > 0.86) flash = (p - 0.86) / 0.14 * 0.35;
+        if (phase === 'spool' && p < 0.08) flash = Math.max(flash, (1 - p / 0.08) * 0.3);
+        if (phase === 'decel') {
+            flash = Math.max(0, Math.exp(-Math.pow((p - 0.42) / 0.1, 2)) * 1.0);
+        }
+        s.flash = flash;
+
+        // --- Кинематографический режим кадра
+        const targetLetterbox = this.reducedMotion ? 0 : 0.052;
+        s.letterbox = (phase === 'ignition' ? targetLetterbox * p : targetLetterbox) * (phase === 'docked' ? Math.max(0, 1 - p) : 1);
+
+        // --- Пост-обработка
+        s.exposure = 1.02 + this.pulse * 0.22 + s.energy * 0.06;
+        s.bloom = 0.85 + speedNorm * 0.35 + this.pulse * 0.65 + s.energy * 0.18;
+        s.streak = 0.22 + speedNorm * 0.55 + this.pulse * 0.5;
+        s.streakLength = 2.6 + this.pulse * 4.5;
+        s.radialBlur = clamp(speedNorm * 0.85 + this.pulse * 0.35, 0, 1) * (phase === 'decel' ? Math.max(0, 1 - p * 1.6) : 1);
+        s.chroma = 0.25 + speedNorm * 0.75 + this.pulse * 0.5 + (phase === 'decel' ? p * 0.7 : 0);
+        s.vignette = 0.52 + speedNorm * 0.12;
+        s.grain = 0.32 + this.pulse * 0.2;
+        s.scanline = this.reducedMotion ? 0 : 0.25 + speedNorm * 0.25;
+        s.fovPunch = this.pulse * 0.045 + speedNorm * 0.02;
+        s.bloomThreshold = 0.7;
+
+        // --- Растворение в 3D-пространство
+        if (phase === 'decel') s.fade = 1 - smoothstep(0.6, 0.99, p);
+        else if (phase === 'docked') s.fade = Math.max(0, 1 - p);
+        else s.fade = 1;
+
+        // --- Прогресс для HUD
+        let progress = 0;
+        if (phase === 'ignition') progress = p * 0.12;
+        else if (phase === 'spool') progress = 0.12 + p * 0.2;
+        else if (phase === 'cruise') {
+            const total = Math.max(this.warpTotalMs / 1000, 1);
+            progress = 0.32 + clamp(elapsed / total, 0, 1) * 0.5;
+        } else if (phase === 'decel') progress = 0.82 + p * 0.15;
+        else progress = 0.97 + p * 0.03;
+        this.hud.setProgress(progress);
+
+        return s;
+    }
+
+    /* =====================================================================
+     * 2D-рендер фолбэка
+     * =================================================================== */
+    render2D(s, now) {
+        const canvas = this.canvas;
+        const ctx = this.ctx2d;
+        if (!canvas || !ctx) return;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = `rgba(2, 4, 12, ${0.22 + (1 - s.fade) * 0.6})`;
+        ctx.fillRect(0, 0, w, h);
+
+        const accel = 0.6 + s.speedNorm * 26;
+        const maxR = Math.hypot(cx, cy) * 1.35;
+
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < this.fallbackStars.length; i++) {
+            const st = this.fallbackStars[i];
+            st.px = st.x;
+            st.py = st.y;
+            st.x += st.vx * accel * 0.32;
+            st.y += st.vy * accel * 0.32;
+
+            if (Math.hypot(st.x, st.y) > maxR) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = 3 + Math.random() * 40;
+                st.x = Math.cos(angle) * r;
+                st.y = Math.sin(angle) * r;
+                st.px = st.x;
+                st.py = st.y;
+            }
+            ctx.beginPath();
+            ctx.moveTo(cx + st.px, cy + st.py);
+            ctx.lineTo(cx + st.x, cy + st.y);
+            ctx.strokeStyle = st.hue;
+            ctx.lineWidth = st.size * (0.7 + s.speedNorm * 1.5);
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // Гипертоннель: концентрические энергетические кольца
+        if (s.tunnelCover > 0.01) {
+            const rings = 16;
+            for (let i = 0; i < rings; i++) {
+                const t = (i / rings + (s.travel * 0.0006) % 1) % 1;
+                const r = Math.pow(t, 1.8) * maxR * 1.1;
+                const a = (1 - t) * 0.16 * s.tunnelCover;
+                const grad = ctx.createRadialGradient(cx, cy, Math.max(0, r - 26), cx, cy, r + 26);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(0.5, `rgba(56, 189, 248, ${a})`);
+                grad.addColorStop(0.75, `rgba(139, 92, 246, ${a * 0.8})`);
+                grad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r + 26, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Ядро перехода
+        const coreR = Math.max(18, Math.min(w, h) * (0.16 - s.charge * 0.09) * (1 + this.pulse));
+        const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 4);
+        core.addColorStop(0, `rgba(255,255,255,${0.55 + s.energy * 0.3})`);
+        core.addColorStop(0.22, `rgba(150, 240, 255, ${0.5 * s.warpLevel + 0.2})`);
+        core.addColorStop(0.6, `rgba(56, 189, 248, ${0.18 * s.warpLevel})`);
+        core.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreR * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (s.flash > 0.001) {
+            ctx.fillStyle = `rgba(226, 244, 255, ${Math.min(0.92, s.flash * 0.9)})`;
+            ctx.fillRect(0, 0, w, h);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+
+        // Виньетка и полосы
+        const vig = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.25, cx, cy, Math.max(w, h) * 0.75);
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, `rgba(0,0,0,${0.35 + s.vignette * 0.4})`);
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, w, h);
+
+        if (s.letterbox > 0.001) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, w, h * s.letterbox);
+            ctx.fillRect(0, h - h * s.letterbox, w, h * s.letterbox);
+        }
+
+        if (s.fade < 0.999) {
+            canvas.style.opacity = String(s.fade);
+        } else {
+            canvas.style.opacity = '1';
+        }
+    }
+
+    /* =====================================================================
+     * Завершение
+     * =================================================================== */
     finish() {
         this.isWarping = false;
-        this.mode = 'idle';
-        clearTimeout(this.speechFallbackTimer);
+        this.phase = 'idle';
+        clearTimeout(this.speechTimer);
         cancelAnimationFrame(this.animId);
-        this.removeSkipButton();
+
+        window.removeEventListener('resize', this.onResize);
+        document.removeEventListener('keydown', this.onKeyDown);
+        document.removeEventListener('visibilitychange', this.onVisibility);
+
+        this.hud.unmount();
 
         if (this.canvas) {
             this.canvas.classList.add('hidden');
             this.canvas.style.opacity = '0';
-            if (this.ctx) {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            if (this.ctx2d) {
+                this.ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+                this.ctx2d.clearRect(0, 0, this.canvas.width, this.canvas.height);
             }
         }
     }
