@@ -101,7 +101,7 @@ class CosmonautRingEngine {
         if (!this.isMounted) {
             const cardsRoot = layer.querySelector('#cosmo-ring-cards') || layer;
             this._buildCards(cardsRoot);
-            this._buildHud(layer);
+            this._buildHud();
             this.isMounted = true;
         }
         return true;
@@ -180,9 +180,13 @@ class CosmonautRingEngine {
         `).join('');
     }
 
-    _buildHud(layer) {
-        const hud = document.createElement('div');
-        hud.className = 'cosmo-ring-hud';
+    _buildHud() {
+        // ВАЖНО: HUD крепится к <body>, а не внутрь 3D-мира. У #space-3d-world
+        // есть transform, поэтому он становится содержащим блоком для
+        // position: fixed — панель управления уезжала бы вместе с камерой.
+        const existing = this.hud && this.hud.parentNode;
+        const hud = existing || document.createElement('div');
+        hud.className = 'cosmo-ring-hud hidden';
         hud.innerHTML = `
             <div class="cosmo-ring-progress" aria-hidden="true"><i data-ring-progress></i></div>
             <div class="cosmo-ring-actions">
@@ -204,7 +208,7 @@ class CosmonautRingEngine {
                 </button>
             </div>
         `;
-        layer.appendChild(hud);
+        if (!existing) document.body.appendChild(hud);
         this.hud = hud;
         this.progressEl = hud.querySelector('[data-ring-progress]');
         this.toggleIcon = hud.querySelector('[data-ring-toggle-icon]');
@@ -237,6 +241,7 @@ class CosmonautRingEngine {
 
         this.container.classList.remove('hidden');
         this.container.setAttribute('aria-hidden', 'false');
+        if (this.hud) this.hud.classList.remove('hidden');
         document.body.classList.add('cosmo-ring-active');
 
         // Всегда начинаем с первого героя на переднем плане
@@ -271,6 +276,7 @@ class CosmonautRingEngine {
         this.spinning = false;
         this.container.classList.add('hidden');
         this.container.setAttribute('aria-hidden', 'true');
+        if (this.hud) this.hud.classList.add('hidden');
         document.body.classList.remove('cosmo-ring-active');
 
         this.container.removeEventListener('pointerdown', this._onPointerDown);
