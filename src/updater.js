@@ -7,7 +7,7 @@
  * Разработка: Амброзиев О.А. (модуль 3.4)
  */
 
-import { resolveApiUrl } from './api.js?v=3.9.0';
+import { resolveApiUrl } from './api.js?v=3.9.1';
 
 const UPDATER_URL = resolveApiUrl('api/updater.php');
 
