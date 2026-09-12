@@ -152,12 +152,6 @@ uniform float uExposure;
 uniform float uNebulaBoost;
 out vec4 outColor;
 
-vec3 aces(vec3 x) {
-    const float a = 2.51; const float b = 0.03; const float c = 2.43;
-    const float d = 0.59; const float e = 0.14;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
 void main() {
     vec2 ndc = vUv * 2.0 - 1.0;
     vec3 dirCam = vec3(ndc.x * uResolution.x * 0.5 / uFov, ndc.y * uResolution.y * 0.5 / uFov, 1.0);
@@ -171,8 +165,9 @@ void main() {
     vec3 sky2 = texture(uSkyTex, vec2(fract(u + 0.001), v)).rgb;
     sky = mix(sky, sky2, 0.5);
 
-    vec3 col = aces(sky * uExposure * uNebulaBoost);
-    col = pow(max(col, 0.0), vec3(0.96, 0.99, 1.02));
+    // Сцена отдаётся в ЛИНЕЙНОМ HDR: тонмаппинг (ACES) живёт в финальном
+    // проходе, поэтому запечённое небо остаётся радиометрией, а не картинкой.
+    vec3 col = sky * uExposure * uNebulaBoost;
     outColor = vec4(col, 1.0);
 }`;
 
@@ -183,32 +178,35 @@ const STAR_VS = `#version 300 es
 precision highp float;
 layout(location = 0) in vec3 aDir;
 layout(location = 1) in vec3 aColor;
-layout(location = 2) in vec3 aParam;   // размер(px), яркость, фаза мерцания
+layout(location = 2) in vec3 aParam;   // x: поток (HDR), y: размер, z: фаза
 uniform mat4 uViewProj;
 uniform float uPixelScale;
 uniform float uTime;
 uniform float uTwinkle;
 out vec3 vColor;
-out float vAlpha;
+out float vFlux;
 out float vSpike;
 
 void main() {
     vec4 clip = uViewProj * vec4(aDir * 1000.0, 1.0);
     gl_Position = clip;
 
-    float tw = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * 1.7 + aParam.z * 6.28));
-    vAlpha = aParam.y * tw;
+    // В вакууме звёзды не мерцают (сцинтилляция — эффект атмосферы):
+    // остаётся лишь микродрожание оптики прибора.
+    float tw = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * 0.9 + aParam.z));
+    vFlux = aParam.x * tw;
     vColor = aColor;
-    vSpike = step(2.6, aParam.x) * aParam.y;
+    // Лучи — только у самых ярких звёзд (дифракция на диафрагме)
+    vSpike = aParam.x > 7.0 ? 1.0 : 0.0;
 
-    float size = aParam.x * uPixelScale * (1.0 + (aParam.y - 0.7) * 0.35);
-    gl_PointSize = clamp(size, 1.0, 96.0);
+    float size = aParam.y * uPixelScale * (1.0 + 0.34 * log2(1.0 + aParam.x));
+    gl_PointSize = clamp(size, 1.0, 64.0);
 }`;
 
 const STAR_FS = `#version 300 es
 precision highp float;
 in vec3 vColor;
-in float vAlpha;
+in float vFlux;
 in float vSpike;
 out vec4 outColor;
 
@@ -217,17 +215,187 @@ void main() {
     float d = length(p);
     if (d > 1.0) discard;
 
-    // Гауссов профиль рассеяния точки (Point Spread Function)
-    float core = exp(-pow(d * 3.4, 2.0));
-    float halo = exp(-pow(d * 1.35, 2.0)) * 0.32;
+    // PSF прибора: ядро Эйри + широкий ореол + слабая дымка каталога.
+    // Все три компонента работают в HDR — ядро ярких звёзд уходит за 1.0 и
+    // после ACES «выбивается в белый», а ореол даёт цветной ободок.
+    float core = exp(-d * d * 5.4);
+    float halo = 0.16 * pow(max(0.0, 1.0 - d), 2.2);
+    float haze = 0.045 * pow(max(0.0, 1.0 - d), 1.05);
+
     float spike = 0.0;
     if (vSpike > 0.5) {
-        float armH = exp(-abs(p.y) * 26.0) * exp(-abs(p.x) * 2.2);
-        float armV = exp(-abs(p.x) * 26.0) * exp(-abs(p.y) * 2.2);
-        spike = (armH + armV) * 0.85;
+        // Шестилучевая диафрагма: горизонталь/вертикаль сильнее диагоналей
+        vec2 q = vec2(p.x * 0.7071 - p.y * 0.7071, p.x * 0.7071 + p.y * 0.7071);
+        float armH = exp(-abs(p.y) * 34.0) * exp(-abs(p.x) * 2.4);
+        float armV = exp(-abs(p.x) * 34.0) * exp(-abs(p.y) * 2.4);
+        float armD = (exp(-abs(q.y) * 44.0) * exp(-abs(q.x) * 3.0)) * 0.45;
+        spike = (armH + armV * 0.7 + armD) * 0.75;
     }
-    float a = (core + halo + spike) * vAlpha;
-    outColor = vec4(vColor * a, a);
+
+    float prof = core + halo + haze + spike;
+    vec3 radiance = vColor * prof * vFlux;
+    outColor = vec4(radiance, 1.0);
+}`;
+
+/* ---------------------------------------------------------------------------
+ * 3b. СОЛНЦЕ: билборд с физическим диском и потемнением к краю
+ *     Радиус диска = 0.2665° (угловой размер Солнца с Земли), радианс ~55 —
+ *     это HDR-источник, который далее подхватывает bloom и ACES.
+ * ------------------------------------------------------------------------- */
+const SUN_VS = `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 aPos;
+uniform vec2 uSunNdc;      // центр Солнца в NDC
+uniform vec2 uSunHalf;     // половина размера квада в NDC
+out vec2 vQ;
+void main() {
+    vQ = aPos;
+    vec3 p = vec3(uSunNdc + aPos * uSunHalf, 0.999995);
+    gl_Position = vec4(p, 1.0);
+}`;
+
+const SUN_FS = `#version 300 es
+precision highp float;
+in vec2 vQ;
+uniform float uDisc;         // радиус диска в единицах квада (0…1)
+uniform float uRadiance;     // HDR-яркость диска
+uniform vec3 uTint;
+out vec4 outColor;
+void main() {
+    float d = length(vQ);
+    if (d > 1.0) discard;
+
+    // Диск: потемнение к краю I(μ) = 1 − u(1 − μ), u = 0.62
+    float t = min(1.0, d / max(uDisc, 0.0001));
+    float mu = sqrt(max(0.0, 1.0 - t * t));
+    float limb = 1.0 - 0.62 * (1.0 - mu);
+    float disc = smoothstep(uDisc * 1.03, uDisc * 0.955, d) * limb;
+
+    // Хромосфера/корона: свечение порядка 1e-3 от диска, но широкое
+    float corona = pow(max(0.0, 1.0 - d), 3.4) * 0.020;
+
+    vec3 col = uTint * (disc + corona) * uRadiance;
+    outColor = vec4(col, 1.0);
+}`;
+
+/* ---------------------------------------------------------------------------
+ * 3c. BLOOM: bright-pass с «мягким коленом» + двухфильтровый (dual filter)
+ *     каскад понижений/повышений разрешения — свет от Солнца и ярких звёзд
+ *     «протекает» на соседние пиксели, как на реальной оптике.
+ * ------------------------------------------------------------------------- */
+const BRIGHT_FS = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+uniform float uThreshold;
+uniform float uKnee;
+out vec4 outColor;
+
+void main() {
+    // Коробчатый 2×2-фильтр: четыре билинейные выборки = 16 текселей
+    vec3 s = texture(uSrc, vUv + uTexel * vec2(-0.5, -0.5)).rgb
+           + texture(uSrc, vUv + uTexel * vec2( 0.5, -0.5)).rgb
+           + texture(uSrc, vUv + uTexel * vec2(-0.5,  0.5)).rgb
+           + texture(uSrc, vUv + uTexel * vec2( 0.5,  0.5)).rgb;
+    s *= 0.25;
+
+    float lum = dot(s, vec3(0.2126, 0.7152, 0.0722));
+    float knee = max(uKnee, 0.0001);
+    float soft = clamp(lum - uThreshold + knee, 0.0, 2.0 * knee);
+    soft = soft * soft / (4.0 * knee);
+    float contrib = max(soft, lum - uThreshold) / max(lum, 0.0001);
+    outColor = vec4(max(s * contrib, vec3(0.0)), 1.0);
+}`;
+
+const BLOOM_FS = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+uniform float uMode;    // 0 — down (box), 1 — up (tent, аддитивно)
+uniform float uWeight;
+out vec4 outColor;
+
+void main() {
+    vec3 c;
+    if (uMode < 0.5) {
+        c = texture(uSrc, vUv + uTexel * vec2(-0.5, -0.5)).rgb
+          + texture(uSrc, vUv + uTexel * vec2( 0.5, -0.5)).rgb
+          + texture(uSrc, vUv + uTexel * vec2(-0.5,  0.5)).rgb
+          + texture(uSrc, vUv + uTexel * vec2( 0.5,  0.5)).rgb;
+        c *= 0.25;
+    } else {
+        // Шатёр 3×3: сумма весов = 1 (центр 4/16, ребра 2/16, углы 1/16)
+        c  = texture(uSrc, vUv).rgb * 0.25;
+        c += (texture(uSrc, vUv + vec2(uTexel.x, 0.0)).rgb
+            + texture(uSrc, vUv - vec2(uTexel.x, 0.0)).rgb
+            + texture(uSrc, vUv + vec2(0.0, uTexel.y)).rgb
+            + texture(uSrc, vUv - vec2(0.0, uTexel.y)).rgb) * 0.125;
+        c += (texture(uSrc, vUv + uTexel).rgb
+            + texture(uSrc, vUv - uTexel).rgb
+            + texture(uSrc, vUv + vec2(uTexel.x, -uTexel.y)).rgb
+            + texture(uSrc, vUv + vec2(-uTexel.x, uTexel.y)).rgb) * 0.0625;
+    }
+    outColor = vec4(c * uWeight, 1.0);
+}`;
+
+/* ---------------------------------------------------------------------------
+ * 3d. ФИНАЛЬНЫЙ ПРОХОД: HDR + bloom → ACES → оптика объектива → сигнал
+ *     Здесь же живёт «плёнка»: хроматическая аберрация, виньетка cos⁴,
+ *     зерно сенсора и дизеринг (без него 8 бит дают ступеньки на градиентах).
+ * ------------------------------------------------------------------------- */
+const POST_FS = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform float uExposure;
+uniform float uBloomStrength;
+uniform float uVignette;
+uniform float uGrain;
+uniform float uChroma;
+uniform float uTime;
+uniform vec2 uResolution;
+out vec4 outColor;
+
+vec3 aces(vec3 x) {
+    const float a = 2.51; const float b = 0.03; const float c = 2.43;
+    const float d = 0.59; const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+void main() {
+    vec2 uv = vUv;
+    vec2 dv = uv - 0.5;
+    float r2 = dot(dv, dv);
+
+    // Хроматическая аберрация: радиальное расхождение каналов к краю кадра
+    vec2 off = dv * (uChroma * (0.35 + r2 * 2.2));
+    vec3 col;
+    col.r = texture(uScene, uv + off).r;
+    col.g = texture(uScene, uv).g;
+    col.b = texture(uScene, uv - off).b;
+
+    col += texture(uBloom, uv).rgb * uBloomStrength;
+    col *= uExposure;
+    col = aces(max(col, vec3(0.0)));
+
+    // Тонкая плёночная кривая: холодные тени, нейтральные света
+    col = pow(col, vec3(0.985, 0.997, 1.012));
+    col = mix(col, col * vec3(0.93, 0.96, 1.05), 0.16);
+
+    // Виньетка объектива (cos⁴ законы падения освещённости)
+    float vig = 1.0 - uVignette * r2 * 1.55;
+    col *= clamp(vig, 0.0, 1.0);
+
+    // Зерно сенсора + дизеринг
+    vec2 fc = gl_FragCoord.xy + vec2(uTime * 37.0, -uTime * 21.0);
+    float g = fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453);
+    float g2 = fract(sin(dot(fc, vec2(63.7264, 10.873))) * 24634.6345);
+    col += ((g + g2) * 0.5 - 0.5) * uGrain;
+
+    outColor = vec4(max(col, vec3(0.0)), 1.0);
 }`;
 
 /* ---------------------------------------------------------------------------
@@ -587,6 +755,26 @@ export class Space3DGLRenderer {
         this.skyFbo = null;
         this.hdrFormat = null;
 
+        // HDR-пайплайн сцены: буфер сцены + каскад bloom
+        this.sceneFbo = null;
+        this.sceneDepth = null;
+        this.sceneSize = { w: 0, h: 0 };
+        this.bloomLevels = [];
+        this.bloomCount = 5;
+
+        // Оптика «камеры»: экспозиция, блик, плёночные эффекты
+        this.optics = {
+            exposure: 1.0,
+            bloomStrength: 0.55,
+            vignette: 0.30,
+            grain: 0.010,
+            chroma: 0.0015,
+            sunRadiance: 46.0,
+            sunNdc: [0, 0],
+            sunHalf: [0, 0],
+            sunVisible: 0
+        };
+
         this._mat = new Float32Array(16);
         this._mat3 = new Float32Array(9);
     }
@@ -705,7 +893,11 @@ export class Space3DGLRenderer {
             ['sky', FULLSCREEN_VS, SKY_FS],
             ['star', STAR_VS, STAR_FS],
             ['sphere', SPHERE_VS, SPHERE_FS],
-            ['atmo', SPHERE_VS, ATMO_FS]
+            ['atmo', SPHERE_VS, ATMO_FS],
+            ['sun', SUN_VS, SUN_FS],
+            ['bright', FULLSCREEN_VS, BRIGHT_FS],
+            ['bloom', FULLSCREEN_VS, BLOOM_FS],
+            ['post', FULLSCREEN_VS, POST_FS]
         ];
         for (const [name, vs, fs] of defs) {
             const p = this._program(vs, fs, name);
@@ -772,6 +964,79 @@ export class Space3DGLRenderer {
         this.bakeSlices = 6;
         this.bakeDoneSlices = 0;
         this.bakeReady = false;
+    }
+
+    /* ---------------------------------------------------------------------
+     * HDR-таргеты кадра: буфер сцены (rgba16f) + пирамида bloom
+     * ------------------------------------------------------------------- */
+    _makeTarget(w, h, withDepth) {
+        const gl = this.gl;
+        const isFloat = this.hdrFormat === gl.RGBA16F;
+        const internal = isFloat ? gl.RGBA16F : gl.RGBA8;
+        const type = isFloat ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, gl.RGBA, type, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+
+        let depth = null;
+        if (withDepth) {
+            depth = gl.createRenderbuffer();
+            gl.bindRenderbuffer(gl.RENDERBUFFER, depth);
+            const fmt = this.quality === 'high' ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT16;
+            gl.renderbufferStorage(gl.RENDERBUFFER, fmt, w, h);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return { fbo, tex, texel: [1 / w, 1 / h], size: { w, h }, depth };
+    }
+
+    _releaseHdrTargets() {
+        const gl = this.gl;
+        if (!gl) return;
+        const kill = (t) => {
+            if (!t) return;
+            if (t.tex) gl.deleteTexture(t.tex);
+            if (t.fbo) gl.deleteFramebuffer(t.fbo);
+            if (t.depth) gl.deleteRenderbuffer(t.depth);
+        };
+        kill(this.sceneFbo);
+        this.bloomLevels.forEach(kill);
+        this.sceneFbo = null;
+        this.bloomLevels = [];
+    }
+
+    /** Построение (или пересборка при смене размера) HDR-таргетов кадра. */
+    _ensureHdrTargets(w, h) {
+        if (this.sceneFbo && this.sceneSize.w === w && this.sceneSize.h === h) return true;
+        const gl = this.gl;
+        this._releaseHdrTargets();
+        if (!gl) return false;
+
+        this.sceneSize = { w, h };
+        this.sceneFbo = this._makeTarget(w, h, true);
+        if (!this.sceneFbo) return false;
+
+        // Пирамида bloom: базовый уровень — половина кадра, далее деление на 2.
+        // Для мобильного профиля каскад короче (экономия fill-rate).
+        const levels = this.quality === 'high' ? 5 : 4;
+        this.bloomCount = levels;
+        let bw = Math.max(8, Math.floor(w / 2));
+        let bh = Math.max(8, Math.floor(h / 2));
+        for (let i = 0; i < levels; i++) {
+            this.bloomLevels.push(this._makeTarget(bw, bh, false));
+            bw = Math.max(8, Math.floor(bw / 2));
+            bh = Math.max(8, Math.floor(bh / 2));
+        }
+        return true;
     }
 
     /**
@@ -850,65 +1115,32 @@ export class Space3DGLRenderer {
         const gl = this.gl;
         const engine = this.engine;
 
-        /* --- Звёзды: каталог движка + плотное поле Млечного Пути --- */
+        /* --- Звёзды: единый физический каталог движка (Starfield) ---
+         * В атрибут потока (aParam.x) идёт HDR-радианс, поэтому яркие звёзды
+         * реально пересвечиваются и «протекают» через bloom, как на настоящих
+         * астрофотографиях, а не просто рисуются белыми точками. */
         const stars = [];
-        const push = (x, y, z, size, bright, color, phase) => {
-            stars.push(x, y, z, color[0], color[1], color[2], size, bright, phase);
+        const push = (x, y, z, flux, size, color, phase) => {
+            stars.push(x, y, z, color[0], color[1], color[2], flux, size, phase);
         };
+        const colorOf = (s) => (Array.isArray(s.colorLin) ? s.colorLin : this._hexToRgb(s.color || '#ffffff'));
 
         if (engine && Array.isArray(engine.stars)) {
             engine.stars.forEach(s => {
-                push(s.x, s.y, s.z, (s.hasSpike ? 4.2 : 2.0) * (0.75 + s.size * 0.24), s.alpha * 0.95, this._hexToRgb(s.color), Math.random() * 6.28);
+                const flux = s.flux !== undefined ? s.flux : (s.alpha || 0.5);
+                const size = (s.hasSpike ? 3.6 : 1.9) * (0.72 + Math.min(2.4, s.size || 1) * 0.22);
+                push(s.x, s.y, s.z, flux, size, colorOf(s), s.twinklePhase || Math.random() * 6.28);
             });
         }
         if (engine && Array.isArray(engine.milkyWayStars)) {
             engine.milkyWayStars.forEach(s => {
-                push(s.x, s.y, s.z, 1.1 + s.size * 0.7, Math.min(0.85, s.alpha + 0.15), this._hexToRgb(s.color), Math.random() * 6.28);
+                const flux = s.flux !== undefined ? s.flux : (s.alpha || 0.2) * 0.35;
+                push(s.x, s.y, s.z, flux, 0.95 + Math.min(1.6, s.size || 1) * 0.75, colorOf(s), s.twinklePhase || Math.random() * 6.28);
             });
         }
 
-        // Плотное звёздное поле (изотропное) + звёздная пыль галактической плоскости
-        const fieldCount = this.quality === 'high' ? 5200 : 2200;
-        const palette = [
-            { c: [0.66, 0.78, 1.0], w: 0.09 },
-            { c: [0.94, 0.96, 1.0], w: 0.22 },
-            { c: [1.0, 0.97, 0.88], w: 0.19 },
-            { c: [1.0, 0.90, 0.66], w: 0.20 },
-            { c: [1.0, 0.74, 0.48], w: 0.17 },
-            { c: [1.0, 0.58, 0.50], w: 0.13 }
-        ];
-        const pickColor = () => {
-            let r = Math.random(), acc = 0;
-            for (const p of palette) { acc += p.w; if (r <= acc) return p.c; }
-            return palette[1].c;
-        };
-
-        for (let i = 0; i < fieldCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const cosPhi = Math.random() * 2 - 1;
-            const sinPhi = Math.sqrt(Math.max(0, 1 - cosPhi * cosPhi));
-            const x = sinPhi * Math.cos(theta);
-            const y = cosPhi;
-            const z = sinPhi * Math.sin(theta);
-            const bright = 0.22 + Math.pow(Math.random(), 2.4) * 0.7;
-            push(x, y, z, 0.9 + Math.random() * 1.7, bright, pickColor(), Math.random() * 6.28);
-        }
-
-        const mwDust = this.quality === 'high' ? 4200 : 1800;
-        const mwTilt = 1.08;
-        const cm = Math.cos(mwTilt), sm = Math.sin(mwTilt);
-        for (let i = 0; i < mwDust; i++) {
-            const l = Math.random() * Math.PI * 2;
-            const b = (Math.random() - 0.5 + Math.random() - 0.5) * 0.19;
-            const gx = Math.cos(b) * Math.cos(l);
-            const gy0 = Math.sin(b);
-            const gz = Math.cos(b) * Math.sin(l);
-            // Обратный поворот наклона галактической плоскости в небесные координаты
-            const y = gy0 * cm - gz * sm;
-            const z = gy0 * sm + gz * cm;
-            const x = gx;
-            const core = Math.abs(l - 1.2) < 0.85 ? 1.35 : 1.0;
-            push(x, y, z, 0.85 + Math.random() * 1.05, (0.14 + Math.random() * 0.4) * core, pickColor(), Math.random() * 6.28);
+        if (!engine || !engine.stars || !engine.stars.length) {
+            this._pushFallbackStarfield(push);
         }
 
         this.starVertexCount = stars.length / 9;
@@ -977,6 +1209,30 @@ export class Space3DGLRenderer {
         this.sphereIndexCount = idx.length;
     }
 
+    /** Резервный звёздный каталог (если движок не успел сгенерировать свой). */
+    _pushFallbackStarfield(push) {
+        const tints = [
+            [0.62, 0.74, 1.0], [0.80, 0.88, 1.0], [0.94, 0.96, 1.0],
+            [1.0, 0.96, 0.86], [1.0, 0.88, 0.66], [1.0, 0.72, 0.52], [1.0, 0.56, 0.46]
+        ];
+        const count = this.quality === 'high' ? 3400 : 1500;
+        for (let i = 0; i < count; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const cosPhi = Math.random() * 2 - 1;
+            const sinPhi = Math.sqrt(Math.max(0, 1 - cosPhi * cosPhi));
+            // Степенной закон светимости: слабых звёзд на порядки больше
+            const flux = 0.28 * Math.min(Math.pow(1 - Math.random(), -0.667), 26);
+            const tint = tints[Math.floor(Math.random() * tints.length)];
+            push(
+                sinPhi * Math.cos(theta), cosPhi, sinPhi * Math.sin(theta),
+                flux,
+                0.95 + Math.pow(Math.min(flux, 10) / 10, 0.4) * 2.2 * (0.7 + Math.random() * 0.6),
+                tint,
+                Math.random() * 6.28
+            );
+        }
+    }
+
     /* ---------------------------------------------------------------------
      * Текстуры планет
      * ------------------------------------------------------------------- */
@@ -1032,6 +1288,7 @@ export class Space3DGLRenderer {
         if (this.canvas.width !== w || this.canvas.height !== h) {
             this.canvas.width = w;
             this.canvas.height = h;
+            this._releaseHdrTargets();   // размер кадра изменился — пересобрать HDR
         }
         this.width = w;
         this.height = h;
@@ -1107,9 +1364,14 @@ export class Space3DGLRenderer {
         const fov = 750 * camZoom;
         const { m, inv } = this._updateMatrices(camYaw, camPitch, fov);
 
+        // Сцена рисуется в линейный HDR-буфер: тонмаппинг и оптика — в конце
+        if (!this._ensureHdrTargets(this.width, this.height)) return;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneFbo.fbo);
         gl.viewport(0, 0, this.width, this.height);
-        gl.clearColor(0.002, 0.004, 0.011, 1.0);
+        gl.clearColor(0.0016, 0.0032, 0.0092, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        this._sunNdcNow = this._sunScreenNdc(m, fov);
 
         /* === 1. СКАЙДОМ === */
         if (this.bakeReady && this.skyFbo) {
@@ -1140,7 +1402,7 @@ export class Space3DGLRenderer {
             gl.uniformMatrix4fv(u.uViewProj, false, m);
             gl.uniform1f(u.uPixelScale, this.dpr * this.renderScale * Math.max(0.7, camZoom));
             gl.uniform1f(u.uTime, this.time);
-            gl.uniform1f(u.uTwinkle, 0.22);
+            gl.uniform1f(u.uTwinkle, 0.035);   // в вакууме звёзды не мерцают
             gl.bindVertexArray(this.vaos.stars);
             gl.drawArrays(gl.POINTS, 0, this.starVertexCount);
             gl.bindVertexArray(null);
@@ -1172,7 +1434,7 @@ export class Space3DGLRenderer {
             bump: 0.55,
             specular: 1.5,
             ambient: 0.06,
-            exposure: 1.10,
+            exposure: 0.92,   // компенсация тональной кривой ACES (см. POST_FS)
             ambientColor: [0.05, 0.09, 0.16],
             atmosphere: 0.85,
             sunDir,
@@ -1187,7 +1449,7 @@ export class Space3DGLRenderer {
             radius: 1000 * 1.025,
             planetRadius: 1000,
             atmosphereOnly: true,
-            strength: 1.0,
+            strength: 0.88,   // компенсация тональной кривой ACES
             falloff: 3.6,
             sunDir,
             mat: m,
@@ -1216,6 +1478,17 @@ export class Space3DGLRenderer {
             texel: [1 / 2048, 1 / 1024],
             urot: this.moonRot
         });
+
+        // 3.4 Солнце: физический диск + корона в HDR.
+        //     Глубинный тест оставляет Земле право закрыть Солнце — это
+        //     настоящая окклюзия, без ручных коэффициентов.
+        this._renderSunDisc();
+
+        // 3.5 Bloom: свет от Солнца и ярких звёзд «протекает» по кадру
+        this._renderBloom();
+
+        // 3.6 Финал: HDR + bloom → ACES → оптика объектива → сигнал
+        this._renderPost();
 
         if (!this.isReadyLogged) {
             this.isReadyLogged = true;
@@ -1308,6 +1581,199 @@ export class Space3DGLRenderer {
     }
 
     /* ---------------------------------------------------------------------
+     * СОЛНЦЕ: экранный билборд с физическим угловым размером
+     * ------------------------------------------------------------------- */
+    /** Направление Солнца в мировых координатах (совпадает с 2D-движком). */
+    sunDirection() {
+        return [0.72, 0.28, 0.63];
+    }
+
+    /**
+     * Экранные координаты Солнца: NDC-центр и половина размера квада в NDC.
+     * Диск Солнца = 0.2665°; квад рисуется с запасом под корону.
+     */
+    _sunScreenNdc(m, fov) {
+        const d = this.sunDirection();
+        const len = Math.hypot(d[0], d[1], d[2]) || 1;
+        const dx = d[0] / len, dy = d[1] / len, dz = d[2] / len;
+
+        // Компоненты клип-пространства: w = z_cam (см. _updateMatrices)
+        const xc = m[0] * dx + m[4] * dy + m[8] * dz;
+        const yc = m[1] * dx + m[5] * dy + m[9] * dz;
+        const zc = m[3] * dx + m[7] * dy + m[11] * dz;
+
+        if (zc <= 0.06) {
+            this.optics.sunVisible = 0;
+            return this.optics;
+        }
+        const ndcX = xc / zc;
+        const ndcY = yc / zc;
+
+        // Угловой радиус → половина квада (корона ~5 радиусов диска)
+        const half = Math.tan(0.2665 * Math.PI / 180) * (fov / (this.height * 0.5)) * 5.2;
+        const halfX = half * (this.height / this.width);
+
+        this.optics.sunNdc = [ndcX, ndcY];
+        this.optics.sunHalf = [halfX, half];
+        this.optics.sunVisible = (Math.abs(ndcX) < 1.6 && Math.abs(ndcY) < 1.6) ? 1 : 0;
+        return this.optics;
+    }
+
+    _renderSunDisc() {
+        const gl = this.gl;
+        const opt = this.optics;
+        if (!opt.sunVisible) return;
+
+        const p = this.programs.sun;
+        if (!p) return;
+        const u = p.uniforms;
+
+        gl.useProgram(p.prog);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);        // HDR-сумма: диск складывается со сценой
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LESS);
+        gl.depthMask(false);                 // диск не пишет глубину
+
+        gl.uniform2f(u.uSunNdc, opt.sunNdc[0], opt.sunNdc[1]);
+        gl.uniform2f(u.uSunHalf, opt.sunHalf[0], opt.sunHalf[1]);
+        const halfRatio = Math.max(0.02, Math.tan(0.2665 * Math.PI / 180) / (Math.tan(0.2665 * Math.PI / 180) * 5.2));
+        gl.uniform1f(u.uDisc, halfRatio);
+        gl.uniform1f(u.uRadiance, opt.sunRadiance);
+        gl.uniform3f(u.uTint, 1.0, 0.975, 0.94);
+
+        gl.bindVertexArray(this.vaos.fullscreen);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.bindVertexArray(null);
+
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+    }
+
+    /* ---------------------------------------------------------------------
+     * BLOOM: bright-pass + двухфильтровая пирамида (down/up)
+     * ------------------------------------------------------------------- */
+    _renderBloom() {
+        const gl = this.gl;
+        const levels = this.bloomLevels;
+        if (!levels.length) return;
+
+        const src = this.sceneFbo;
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.BLEND);
+
+        /* 1. Bright-pass: ¼ разрешения кадра */
+        {
+            const dst = levels[0];
+            const p = this.programs.bright;
+            const u = p.uniforms;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+            gl.viewport(0, 0, dst.size.w, dst.size.h);
+            gl.useProgram(p.prog);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, src.tex);
+            gl.uniform1i(u.uSrc, 0);
+            gl.uniform2f(u.uTexel, src.texel[0], src.texel[1]);
+            // Порог в HDR: 1.0 для float-буфера, мягче — для LDR-отката
+            const isFloat = this.hdrFormat === gl.RGBA16F;
+            gl.uniform1f(u.uThreshold, isFloat ? 0.85 : 0.60);
+            gl.uniform1f(u.uKnee, 0.55);
+            gl.bindVertexArray(this.vaos.fullscreen);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            gl.bindVertexArray(null);
+        }
+
+        /* 2. Понижение разрешения (box 2×2) */
+        const bloomP = this.programs.bloom;
+        for (let i = 1; i < levels.length; i++) {
+            const dst = levels[i];
+            const up = levels[i - 1];
+            gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+            gl.viewport(0, 0, dst.size.w, dst.size.h);
+            gl.useProgram(bloomP.prog);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, up.tex);
+            gl.uniform1i(bloomP.uniforms.uSrc, 0);
+            gl.uniform2f(bloomP.uniforms.uTexel, up.texel[0], up.texel[1]);
+            gl.uniform1f(bloomP.uniforms.uMode, 0);
+            gl.uniform1f(bloomP.uniforms.uWeight, 1.0);
+            gl.bindVertexArray(this.vaos.fullscreen);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            gl.bindVertexArray(null);
+        }
+
+        /* 3. Повышение разрешения с шатром 3×3 (аддитивно) */
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        for (let i = levels.length - 1; i > 0; i--) {
+            const srcL = levels[i];
+            const dstL = levels[i - 1];
+            gl.bindFramebuffer(gl.FRAMEBUFFER, dstL.fbo);
+            gl.viewport(0, 0, dstL.size.w, dstL.size.h);
+            gl.useProgram(bloomP.prog);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, srcL.tex);
+            gl.uniform1i(bloomP.uniforms.uSrc, 0);
+            gl.uniform2f(bloomP.uniforms.uTexel, srcL.texel[0], srcL.texel[1]);
+            gl.uniform1f(bloomP.uniforms.uMode, 1);
+            gl.uniform1f(bloomP.uniforms.uWeight, i === levels.length - 1 ? 0.85 : 0.72);
+            gl.bindVertexArray(this.vaos.fullscreen);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            gl.bindVertexArray(null);
+        }
+        gl.disable(gl.BLEND);
+    }
+
+    /* ---------------------------------------------------------------------
+     * ФИНАЛЬНЫЙ ПРОХОД: HDR + bloom → ACES → плёночная оптика
+     * ------------------------------------------------------------------- */
+    _renderPost() {
+        const gl = this.gl;
+        const p = this.programs.post;
+        if (!p) return;
+        const u = p.uniforms;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.width, this.height);
+        gl.disable(gl.BLEND);
+        gl.disable(gl.DEPTH_TEST);
+        gl.useProgram(p.prog);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.sceneFbo.tex);
+        gl.uniform1i(u.uScene, 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.bloomLevels.length ? this.bloomLevels[0].tex : this.sceneFbo.tex);
+        gl.uniform1i(u.uBloom, 1);
+        gl.activeTexture(gl.TEXTURE0);
+
+        const isFloat = this.hdrFormat === gl.RGBA16F;
+        gl.uniform1f(u.uExposure, this.optics.exposure);
+        gl.uniform1f(u.uBloomStrength, this.optics.bloomStrength * (isFloat ? 1.0 : 0.55));
+        gl.uniform1f(u.uVignette, this.optics.vignette);
+        gl.uniform1f(u.uGrain, this.optics.grain);
+        gl.uniform1f(u.uChroma, this.quality === 'high' ? this.optics.chroma : 0);
+        gl.uniform1f(u.uTime, this.time);
+        gl.uniform2f(u.uResolution, this.width, this.height);
+
+        gl.bindVertexArray(this.vaos.fullscreen);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.bindVertexArray(null);
+    }
+
+    /**
+     * Управление оптикой кадра (автоэкспозиция «глаза», сила блика).
+     * Вызывается движком, который знает, смотрит ли пользователь на Солнце.
+     */
+    setOptics(o) {
+        if (!o) return;
+        if (o.exposure !== undefined) this.optics.exposure = o.exposure;
+        if (o.bloomStrength !== undefined) this.optics.bloomStrength = o.bloomStrength;
+        if (o.sunRadiance !== undefined) this.optics.sunRadiance = o.sunRadiance;
+        if (o.grain !== undefined) this.optics.grain = o.grain;
+    }
+
+    /* ---------------------------------------------------------------------
      * Данные туманностей для запекания (заполняются движком)
      * ------------------------------------------------------------------- */
     setNebulae(nebulae) {
@@ -1352,6 +1818,7 @@ export class Space3DGLRenderer {
             gl.deleteFramebuffer(this.skyFbo.fbo);
             this.skyFbo = null;
         }
+        this._releaseHdrTargets();
         Object.values(this.textures).forEach(t => gl.deleteTexture(t));
         this.textures = {};
         this.ok = false;

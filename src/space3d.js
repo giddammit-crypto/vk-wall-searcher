@@ -22,6 +22,8 @@ import { CelestialPlanets } from './celestial_planets.js?v=3.9.0';
 import { IssStation } from './iss_station.js?v=3.9.0';
 import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.0';
 import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.0';
+import { Starfield } from './starfield.js?v=3.9.0';
+import { SunOptics } from './sun_optics.js?v=3.9.0';
 import { createQrSvg } from './qrcode.js?v=3.9.0';
 import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.0';
 import { openPostModal } from './render.js?v=3.9.0';
@@ -167,109 +169,48 @@ export class Space3DEngine {
         ];
         this.dustMotes = [];
 
-        // 1. Мультиспектральный звездный каталог (O/B, A, F, G, K, M)
-        // Точные планковские цветовые координаты астрономических спектральных классов
-        const spectralClasses = [
-            { type: 'O/B', color: '#93c5fd', core: '#bfdbfe', weight: 0.10, sizeMin: 1.8, sizeMax: 3.2, spike: true },  // Голубые сверхгиганты (Ригель, Спика)
-            { type: 'A',   color: '#ffffff', core: '#f8fafc', weight: 0.22, sizeMin: 1.4, sizeMax: 2.8, spike: true },  // Белые звезды (Сириус, Вега)
-            { type: 'F',   color: '#fef9c3', core: '#ffffff', weight: 0.18, sizeMin: 1.2, sizeMax: 2.2, spike: false }, // Желто-белые (Процион)
-            { type: 'G',   color: '#fde047', core: '#fef08a', weight: 0.20, sizeMin: 1.0, sizeMax: 2.0, spike: false }, // Желтые карлики (Солнце, Капелла)
-            { type: 'K',   color: '#fb923c', core: '#fed7aa', weight: 0.16, sizeMin: 1.2, sizeMax: 2.4, spike: false }, // Оранжевые гиганты (Арктур, Альдебаран)
-            { type: 'M',   color: '#f87171', core: '#fca5a5', weight: 0.14, sizeMin: 1.4, sizeMax: 2.9, spike: true }   // Красные сверхгиганты (Бетельгейзе, Антарес)
-        ];
+        // 1–2. Физический каталог неба (модуль Starfield): степенная функция
+        // светимости, планковские цвета фотосфер, галактическая плоскость.
+        // Один и тот же каталог используется CPU- и GPU-путями — картинка
+        // совпадает в обоих режимах.
+        const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '');
+        const catalogue = Starfield.build({
+            starCount: mobile ? 2000 : 5200,
+            mwCount: mobile ? 2600 : 7000,
+            fluxGain: 0.26
+        });
 
-        this.starBatches = spectralClasses.map(sp => ({
-            type: sp.type,
-            color: sp.color,
-            core: sp.core,
-            stars: []
-        }));
+        this.stars = catalogue.stars;
+        this.milkyWayStars = catalogue.milkyWay;
 
-        const starCount = 850;
-        for (let i = 0; i < starCount; i++) {
-            const u = Math.random();
-            const v = Math.random();
-            const theta = u * 2.0 * Math.PI;
-            const phi = Math.acos(2.0 * v - 1.0);
-
-            // Выбор спектрального класса по весам
-            let rWeight = Math.random();
-            let selectedSpec = spectralClasses[0];
-            let acc = 0;
-            for (const sp of spectralClasses) {
-                acc += sp.weight;
-                if (rWeight <= acc) {
-                    selectedSpec = sp;
-                    break;
+        // Батчи по оттенкам — чтобы 2D-фолбэк рисовал звёзды одним fill() на цвет
+        const bucketOf = (list, limit) => {
+            const map = new Map();
+            list.forEach(star => {
+                // Три ступени яркости: слабые, средние и яркие звёзды должны
+                // читаться по-разному, иначе небо выглядит «обоями».
+                const band = star.alpha < 0.34 ? 0 : (star.alpha < 0.62 ? 1 : 2);
+                const key = star.color + '|' + band;
+                if (!map.has(key)) {
+                    map.set(key, {
+                        color: star.color,
+                        core: star.coreColor,
+                        stars: [],
+                        alpha: band === 0 ? 0.32 : (band === 1 ? 0.58 : 0.94)
+                    });
                 }
+                map.get(key).stars.push(star);
+            });
+            const groups = [...map.values()].sort((a, b) => b.stars.length - a.stars.length);
+            if (groups.length > limit) {
+                const rest = groups.splice(limit - 1);
+                rest.forEach(g => groups[groups.length - 1].stars.push(...g.stars));
             }
+            return groups;
+        };
 
-            const isBright = Math.random() < 0.08;
-            const size = (isBright ? (selectedSpec.sizeMax + 0.8) : (selectedSpec.sizeMin + Math.random() * (selectedSpec.sizeMax - selectedSpec.sizeMin)));
-
-            const starObj = {
-                x: Math.sin(phi) * Math.cos(theta),
-                y: Math.cos(phi),
-                z: Math.sin(phi) * Math.sin(theta),
-                size: size,
-                color: selectedSpec.color,
-                coreColor: selectedSpec.core,
-                hasSpike: selectedSpec.spike && isBright,
-                alpha: Math.random() * 0.45 + 0.55,
-                twinkleSpeed: Math.random() * 0.035 + 0.012,
-                twinklePhase: Math.random() * Math.PI * 2
-            };
-
-            this.stars.push(starObj);
-            const batch = this.starBatches.find(b => b.color === selectedSpec.color);
-            if (batch) batch.stars.push(starObj);
-        }
-
-        // 2. Галактический рукав Млечного Пути и полоса космической пыли (Milky Way Galactic Core & Great Rift)
-        // Плоскость галактики наклонена под углом ~62° к небесному экватору
-        const mwCount = 1350;
-        const mwTilt = 1.08; // ~62 градуса
-        const cosMw = Math.cos(mwTilt);
-        const sinMw = Math.sin(mwTilt);
-
-        for (let i = 0; i < mwCount; i++) {
-            const l = Math.random() * Math.PI * 2; // Галактическая долгота
-            const b = (Math.random() - 0.5 + Math.random() - 0.5) * 0.28; // Концентрация к плоскости
-
-            const gx = Math.cos(b) * Math.cos(l);
-            const gy = Math.sin(b);
-            const gz = Math.cos(b) * Math.sin(l);
-
-            // Поворот наклона галактической плоскости
-            const wx = gx;
-            const wy = gy * cosMw - gz * sinMw;
-            const wz = gy * sinMw + gz * cosMw;
-
-            // Великий Разлом (пылевые облака поглощают свет в полосе)
-            const isDarkDust = Math.abs(b) < 0.08 && (l > 0.4 && l < 2.2) && Math.random() < 0.38;
-            if (isDarkDust) continue;
-
-            const isGalacticCore = (Math.abs(l - 1.2) < 0.85);
-            const mwSize = Math.random() * 1.5 + (isGalacticCore ? 0.9 : 0.5);
-            const mwAlpha = Math.random() * 0.5 + (isGalacticCore ? 0.42 : 0.22);
-
-            const mwColor = isGalacticCore 
-                ? (Math.random() > 0.4 ? '#fed7aa' : '#fef08a') 
-                : (Math.random() > 0.5 ? '#e0f2fe' : '#bae6fd');
-
-            const sObj = {
-                x: wx,
-                y: wy,
-                z: wz,
-                size: mwSize,
-                color: mwColor,
-                alpha: mwAlpha,
-                twinklePhase: Math.random() * Math.PI * 2
-            };
-
-            this.milkyWayStars.push(sObj);
-            this.milkyWayBatches[isGalacticCore ? 0 : 1].stars.push(sObj);
-        }
+        this.starBatches = bucketOf(this.stars, 24);
+        this.milkyWayBatches = bucketOf(this.milkyWayStars, 8);
 
         // 3. Плавающие в невесомости космические микро-пылинки с 3D параллаксом (Zero-g Dust Motes)
         const dustCount = 65;
@@ -1873,13 +1814,14 @@ export class Space3DEngine {
 
         // 3. Отрисовка звезд каталога (батчинг по 6 спектральным классам: 6 вызовов вместо 850!)
         const spikedStars = [];
+        const brightStars = [];
         if (!gpu && this.starBatches) {
             for (let b = 0; b < this.starBatches.length; b++) {
                 const batch = this.starBatches[b];
                 if (!batch.stars || !batch.stars.length) continue;
 
                 ctx.fillStyle = batch.color;
-                ctx.globalAlpha = 0.90;
+                ctx.globalAlpha = batch.alpha !== undefined ? batch.alpha : 0.90;
                 ctx.beginPath();
                 const sLen = batch.stars.length;
                 for (let i = 0; i < sLen; i++) {
@@ -1899,6 +1841,10 @@ export class Space3DEngine {
                             ctx.moveTo(px + pSize, py);
                             ctx.arc(px, py, pSize, 0, Math.PI * 2);
 
+                            // Яркие звёзды получают ореол и лучи (как на оптике)
+                            if (s.alpha > 0.7 && pSize > 1.05) {
+                                brightStars.push({ px, py, pSize, color: s.coreColor || s.color });
+                            }
                             if (s.hasSpike && pSize > 1.8) {
                                 spikedStars.push({ px, py, pSize, coreColor: s.coreColor || '#ffffff' });
                             }
@@ -1907,6 +1853,26 @@ export class Space3DEngine {
                 }
                 ctx.fill();
             }
+        }
+
+        // Ореолы ярких звёзд: аддитивное свечение оптики (bloom-имитация)
+        if (brightStars.length > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = 0; i < brightStars.length; i++) {
+                const bs = brightStars[i];
+                const haloR = Math.max(2.4, bs.pSize * 4.6);
+                const grad = ctx.createRadialGradient(bs.px, bs.py, 0, bs.px, bs.py, haloR);
+                grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+                grad.addColorStop(0.28, 'rgba(255,255,255,0.16)');
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bs.px, bs.py, haloR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
 
         // Дифракционные 4-лучевые кресты для ярких звезд (единый батч линий)
@@ -2006,188 +1972,53 @@ export class Space3DEngine {
      *   • ghostSprite — цепочка бликов диафрагмы вдоль оси «солнце → центр кадра».
      * Кадр стоит 2–4 вызова drawImage в режиме 'lighter'.
      */
-    buildSunFlareSprites() {
-        if (this.sunFlareSprites || this.sunFlareFailed) return this.sunFlareSprites;
+    /**
+     * Солнечная оптика кадра.
+     *
+     * Роль: рассчитать, где Солнце на экране, перекрыто ли оно планетой, и
+     * передать это в две подсистемы:
+     *   • GPU-ядро — рисует физический диск Солнца и его рассеяние (bloom);
+     *   • 2D-оверлей — линзовые артефакты объектива (вуаль, призраки, лучи,
+     *     анаморфная полоса), которые обязаны быть ПОВЕРХ сцены.
+     *
+     * Дополнительно здесь живёт автоэкспозиция «глаза»: когда Солнце в кадре,
+     * сцена притемняется, как при реальной переадаптации зрения.
+     */
+    renderAnamorphicSunFlare(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
+        const optics = this.computeSunOptics(cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy);
+        this.sunOptics = optics;
 
-        const make = (size) => {
-            const c = document.createElement('canvas');
-            c.width = c.height = size;
-            return { c, ctx: c.getContext('2d') };
-        };
-
-        try {
-            const S = (typeof window !== 'undefined' && window.innerWidth < 900) ? 640 : 1024;
-            const sun = make(S);
-            const ghost = make(S);
-            if (!sun.ctx || !ghost.ctx) throw new Error('canvas 2d недоступен');
-
-            const C = S / 2;
-            const k = S / 1024;               // масштаб всех величин от базового 1024
-            const g = sun.ctx;
-
-            g.globalCompositeOperation = 'lighter';
-
-            /* --- 1. Вейлинговая засветка (вуаль по всему кадру) --- */
-            const veil = g.createRadialGradient(C, C, 0, C, C, C);
-            veil.addColorStop(0.00, 'rgba(255, 236, 190, 0.30)');
-            veil.addColorStop(0.16, 'rgba(255, 214, 150, 0.11)');
-            veil.addColorStop(0.42, 'rgba(255, 186, 120, 0.035)');
-            veil.addColorStop(1.00, 'rgba(120, 90, 60, 0)');
-            g.fillStyle = veil;
-            g.fillRect(0, 0, S, S);
-
-            /* --- 2. Пыль и разводы на передней линзе (даёт структуру свечению) --- */
-            const rnd = (() => { let s = 20260912; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; })();
-            for (let i = 0; i < 150; i++) {
-                const ang = rnd() * Math.PI * 2;
-                const rad = Math.pow(rnd(), 0.62) * C * 0.92;
-                const px = C + Math.cos(ang) * rad;
-                const py = C + Math.sin(ang) * rad;
-                const rr = (2 + rnd() * 22) * k;
-                const a = 0.012 + rnd() * 0.05;
-                const dirt = g.createRadialGradient(px, py, 0, px, py, rr);
-                dirt.addColorStop(0, `rgba(255, 244, 220, ${a})`);
-                dirt.addColorStop(1, 'rgba(255, 244, 220, 0)');
-                g.fillStyle = dirt;
-                g.beginPath();
-                g.arc(px, py, rr, 0, Math.PI * 2);
-                g.fill();
-            }
-
-            /* --- 3. Корона: тёплое кольцо вокруг диска --- */
-            const corona = g.createRadialGradient(C, C, 6 * k, C, C, 190 * k);
-            corona.addColorStop(0.00, 'rgba(255, 255, 255, 0.95)');
-            corona.addColorStop(0.10, 'rgba(255, 246, 214, 0.72)');
-            corona.addColorStop(0.30, 'rgba(255, 196, 110, 0.34)');
-            corona.addColorStop(0.62, 'rgba(236, 146, 62, 0.12)');
-            corona.addColorStop(1.00, 'rgba(180, 100, 40, 0)');
-            g.fillStyle = corona;
-            g.beginPath();
-            g.arc(C, C, 190 * k, 0, Math.PI * 2);
-            g.fill();
-
-            /* --- 4. Дифракционные лучи 6-лепестковой диафрагмы --- */
-            const spikes = 6;
-            const spikeRot = Math.PI / 6;
-            for (let i = 0; i < spikes; i++) {
-                const a = spikeRot + (i * Math.PI * 2) / spikes;
-                const len = C * (i % 2 === 0 ? 0.94 : 0.66);
-                for (const dir of (i % 2 === 0 ? [1] : [1, -1])) {
-                    const ex = C + Math.cos(a) * len * dir;
-                    const ey = C + Math.sin(a) * len * dir;
-                    const nx = Math.cos(a + Math.PI / 2);
-                    const ny = Math.sin(a + Math.PI / 2);
-                    const w = 13 * k;
-                    const lg = g.createLinearGradient(C, C, ex, ey);
-                    lg.addColorStop(0.00, 'rgba(255, 250, 232, 0.55)');
-                    lg.addColorStop(0.12, 'rgba(255, 232, 178, 0.30)');
-                    lg.addColorStop(0.45, 'rgba(255, 196, 120, 0.10)');
-                    lg.addColorStop(1.00, 'rgba(255, 170, 90, 0)');
-                    g.fillStyle = lg;
-                    g.beginPath();
-                    g.moveTo(C, C);
-                    g.lineTo(ex + nx * w, ey + ny * w);
-                    g.lineTo(ex - nx * w, ey - ny * w);
-                    g.closePath();
-                    g.fill();
-                }
-            }
-
-            /* --- 5. Ядро диска (пересвет) --- */
-            const core = g.createRadialGradient(C, C, 0, C, C, 34 * k);
-            core.addColorStop(0.00, 'rgba(255, 255, 255, 1)');
-            core.addColorStop(0.55, 'rgba(255, 253, 245, 0.92)');
-            core.addColorStop(1.00, 'rgba(255, 240, 200, 0)');
-            g.fillStyle = core;
-            g.beginPath();
-            g.arc(C, C, 34 * k, 0, Math.PI * 2);
-            g.fill();
-
-            /* --- 6. Анаморфная сине-золотая полоса --- */
-            const streakW = S * 0.99;
-            const streak = g.createLinearGradient(C - streakW / 2, 0, C + streakW / 2, 0);
-            streak.addColorStop(0.00, 'rgba(56, 189, 248, 0)');
-            streak.addColorStop(0.22, 'rgba(56, 189, 248, 0.20)');
-            streak.addColorStop(0.44, 'rgba(186, 226, 255, 0.62)');
-            streak.addColorStop(0.50, 'rgba(255, 255, 255, 0.92)');
-            streak.addColorStop(0.56, 'rgba(255, 226, 176, 0.62)');
-            streak.addColorStop(0.78, 'rgba(245, 158, 11, 0.20)');
-            streak.addColorStop(1.00, 'rgba(245, 158, 11, 0)');
-            g.fillStyle = streak;
-            g.fillRect(C - streakW / 2, C - 5 * k, streakW, 10 * k);
-            g.globalAlpha = 0.34;
-            g.fillRect(C - streakW / 2, C - 22 * k, streakW, 44 * k);
-            g.globalAlpha = 1;
-            // Тонкая «волосяная» линия, характерная для анаморфной оптики
-            g.globalAlpha = 0.5;
-            g.fillRect(C - streakW / 2, C - 0.7 * k, streakW, 1.4 * k);
-            g.globalAlpha = 1;
-
-            /* --- 7. Цепочка бликов диафрагмы (собственный спрайт) --- */
-            const h = ghost.ctx;
-            h.globalCompositeOperation = 'lighter';
-            const ghosts = [
-                { t: 0.42, r: 20, color: 'rgba(56, 189, 248, 0.32)', sides: 6, rot: 0.4 },
-                { t: 0.72, r: 34, color: 'rgba(62, 230, 196, 0.22)', sides: 0, rot: 0.0 },
-                { t: 1.00, r: 15, color: 'rgba(251, 191, 36, 0.34)', sides: 6, rot: 0.9 },
-                { t: 1.30, r: 52, color: 'rgba(129, 140, 248, 0.17)', sides: 6, rot: 0.2 },
-                { t: 1.62, r: 27, color: 'rgba(244, 114, 182, 0.20)', sides: 0, rot: 0.0 },
-                { t: 1.92, r: 62, color: 'rgba(56, 189, 248, 0.13)', sides: 6, rot: 0.6 },
-                { t: 2.20, r: 12, color: 'rgba(226, 232, 240, 0.26)', sides: 0, rot: 0.0 }
-            ];
-            ghosts.forEach(gh => {
-                const gx = C + gh.t * C * 0.62;
-                const gy = C + Math.sin(gh.t * 2.4) * 26 * k;
-                const gr = gh.r * k;
-                const rg = h.createRadialGradient(gx, gy, 0, gx, gy, gr);
-                rg.addColorStop(0, gh.color);
-                rg.addColorStop(0.72, gh.color.replace(/[\d.]+\)$/, '0.06)'));
-                rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                h.fillStyle = rg;
-                if (gh.sides >= 3) {
-                    h.save();
-                    h.translate(gx, gy);
-                    h.rotate(gh.rot);
-                    h.beginPath();
-                    for (let i = 0; i < gh.sides; i++) {
-                        const a = (i * Math.PI * 2) / gh.sides;
-                        const px = Math.cos(a) * gr;
-                        const py = Math.sin(a) * gr;
-                        i === 0 ? h.moveTo(px, py) : h.lineTo(px, py);
-                    }
-                    h.closePath();
-                    h.fill();
-                    h.restore();
-                } else {
-                    h.beginPath();
-                    h.arc(gx, gy, gr, 0, Math.PI * 2);
-                    h.fill();
-                }
-            });
-
-            this.sunFlareSprites = { sun: sun.c, ghost: ghost.c, size: S, base: S / 1024 };
-            return this.sunFlareSprites;
-        } catch (e) {
-            this.sunFlareFailed = true;
-            return null;
+        // Глаз/камера переадаптируется к яркому источнику в кадре
+        if (this.glEnabled && Space3DGL && Space3DGL.setOptics) {
+            // Нейтральная экспозиция 1.0 сохраняет прежнюю яркость неба
+            // (запечённый скайдом уже был рассчитан под ACES), а Солнце в
+            // кадре притемняет сцену — как переадаптация зрения.
+            const target = 1.0 / (1.0 + optics.onScreen * 0.30);
+            this.eyeExposure = (this.eyeExposure === undefined ? target : this.eyeExposure + (target - this.eyeExposure) * 0.035);
+            Space3DGL.setOptics({ exposure: this.eyeExposure });
         }
+
+        if (!ctx || optics.onScreen <= 0 || optics.occlusion <= 0) return;
+
+        SunOptics.render(ctx, {
+            w, h,
+            x: optics.x,
+            y: optics.y,
+            focalPx: fov,
+            occlusion: optics.occlusion,
+            intensity: optics.onScreen,
+            flareScale: Math.min(2.0, 0.85 + this.zoom * 0.3),
+            // На GPU диск и его свечение уже нарисованы физически — здесь
+            // остаются только артефакты линзы (правильный слой композиции).
+            mode: this.glEnabled && Space3DGL && Space3DGL.ok ? 'lens' : 'full'
+        });
     }
 
     /**
-     * Кинематографичный анаморфный блик Солнца.
-     *
-     * Физика, учтённая в расчёте:
-     *   • сложение света (additive / 'lighter'), а не наложение «поверх»;
-     *   • затухание при уходе источника из кадра и по краю FOV;
-     *   • ПЕРЕКРЫТИЕ: если Солнце за диском Земли — блик гаснет (иначе светил бы
-     *     «сквозь» планету);
-     *   • связь с зумом: угловой размер источника и полосы растут с приближением.
+     * Геометрия Солнца для кадра: экранные координаты, перекрытие, яркость.
      */
-    renderAnamorphicSunFlare(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
-        // Направление Солнца в небесных координатах (согласовано со скайдомом)
-        const lx = 0.72;
-        const ly = 0.28;
-        const lz = 0.63;
+    computeSunOptics(cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
+        const lx = 0.72, ly = 0.28, lz = 0.63;
 
         // Поворот в систему координат камеры: R = RotX(pitch) · RotY(yaw)
         const x1 = lx * cosYaw - lz * sinYaw;
@@ -2195,73 +2026,70 @@ export class Space3DEngine {
         const y2 = ly * cosPitch - z1 * sinPitch;
         const z2 = ly * sinPitch + z1 * cosPitch;
 
-        if (z2 <= 0.05) return;
+        const sPx = cx + (x1 / Math.max(z2, 0.001)) * fov;
+        const sPy = cy - (y2 / Math.max(z2, 0.001)) * fov;
 
-        const dirLen = Math.hypot(x1, y2, z2) || 1;
-        const sx = cx + (x1 / z2) * fov;
-        const sy = cy - (y2 / z2) * fov;
+        const result = { x: sPx, y: sPy, onScreen: 0, occlusion: 0, front: z2 > 0.05, behind: z2 <= 0.05 };
 
-        const distFromCenter = Math.hypot(sx - cx, sy - cy);
-        const maxVisibleDist = Math.max(w, h) * 0.95;
-        if (distFromCenter > maxVisibleDist) return;
+        if (!result.front) return result;
 
-        // --- Перекрытие диском Земли: гасим блик, если источник за планетой
+        // Насколько источник в кадре: мягкий спад к краю поля зрения
+        const distFromCenter = Math.hypot(sPx - cx, sPy - cy);
+        const maxVisibleDist = Math.max(cx, cy) * 2.15;
+        const radial = 1 - Math.min(1, distFromCenter / maxVisibleDist);
+        result.onScreen = Math.pow(radial, 0.75);
+
+        if (distFromCenter > maxVisibleDist) return result;
+
+        /* --- Перекрытие диском Земли (и Луны): точная угловая проверка --- */
         let occlusion = 1;
+        const bodies = [];
         const metrics = CelestialPlanets && CelestialPlanets.getEarthWorldMetrics
             ? CelestialPlanets.getEarthWorldMetrics() : null;
         if (metrics) {
-            const eYaw = (metrics.coords.yaw * Math.PI) / 180;
-            const ePitch = (metrics.coords.pitch * Math.PI) / 180;
-            const ew = {
-                x: Math.cos(ePitch) * Math.sin(eYaw),
-                y: Math.sin(ePitch),
-                z: Math.cos(ePitch) * Math.cos(eYaw)
-            };
-            const ex1 = ew.x * cosYaw - ew.z * sinYaw;
-            const ez1 = ew.x * sinYaw + ew.z * cosYaw;
-            const ey2 = ew.y * cosPitch - ez1 * sinPitch;
-            const ez2 = ew.y * sinPitch + ez1 * cosPitch;
-            if (ez2 > 0.05) {
-                const eLen = Math.hypot(ex1, ey2, ez2) || 1;
-                const dot = (x1 * ex1 + y2 * ey2 + z2 * ez2) / (dirLen * eLen);
-                const earthRadius = this.glEnabled ? 1000 : 840;
-                const earthDist = this.glEnabled ? 1350 : 750 / Math.max(this.zoom, 0.2);
-                const angular = Math.atan2(earthRadius, Math.max(earthDist, 1));
-                const cosA = Math.cos(angular);
-                // Мягкая граница: гаснет на подлёте к лимбу планеты
-                occlusion = Math.min(1, Math.max(0, (cosA - dot) / 0.05));
-                if (occlusion <= 0) return;
-            }
+            bodies.push({
+                yaw: metrics.coords.yaw,
+                pitch: metrics.coords.pitch,
+                radius: this.glEnabled ? 1000 : 840,
+                dist: this.glEnabled ? 1350 : 750 / Math.max(this.zoom, 0.2),
+                soften: 0.035
+            });
+        }
+        // Луна перекрывает Солнце реже, но солнечные затмения — зрелищны
+        bodies.push({
+            yaw: 180 + Math.sin(this.moonOrbit || 0) * 12,
+            pitch: 20 + Math.cos(this.moonOrbit || 0) * 4,
+            radius: 220,
+            dist: 1850,
+            soften: 0.012
+        });
+
+        const dirLen = Math.hypot(x1, y2, z2) || 1;
+        for (const b of bodies) {
+            const bYaw = (b.yaw * Math.PI) / 180;
+            const bPitch = (b.pitch * Math.PI) / 180;
+            const bx = Math.cos(bPitch) * Math.sin(bYaw);
+            const by = Math.sin(bPitch);
+            const bz = Math.cos(bPitch) * Math.cos(bYaw);
+
+            const bx1 = bx * cosYaw - bz * sinYaw;
+            const bz1 = bx * sinYaw + bz * cosYaw;
+            const by2 = by * cosPitch - bz1 * sinPitch;
+            const bz2 = by * sinPitch + bz1 * cosPitch;
+            if (bz2 <= 0.05) continue;
+
+            const bLen = Math.hypot(bx1, by2, bz2) || 1;
+            // Угловое расстояние Солнце—центр тела против углового радиуса тела
+            const dot = (x1 * bx1 + y2 * by2 + z2 * bz2) / (dirLen * bLen);
+            const angular = Math.atan2(b.radius, Math.max(b.dist, 1));
+            const cosA = Math.cos(angular);
+            const cover = Math.min(1, Math.max(0, (cosA - dot) / b.soften));
+            occlusion = Math.min(occlusion, 1 - cover);
         }
 
-        const sprites = this.buildSunFlareSprites();
-        if (!sprites) return;
-
-        const flareIntensity = (1.0 - distFromCenter / maxVisibleDist) * occlusion;
-        const zoomGrow = 1 + Math.min(this.zoom, 2) * 0.22;
-        const shimmer = 1 + Math.sin((this.tick || 0) * 0.013) * 0.02;
-        const sunSize = sprites.size * 1.35 * zoomGrow;
-
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-
-        // 1. Солнце: вуаль + корона + ядро + лучи + анаморфная полоса + пыль
-        ctx.globalAlpha = Math.min(1, flareIntensity * shimmer * 1.08);
-        ctx.drawImage(sprites.sun, sx - sunSize / 2, sy - sunSize / 2, sunSize, sunSize);
-
-        // 2. Цепочка бликов диафрагмы вдоль оси «солнце → центр кадра»
-        const dx = cx - sx;
-        const dy = cy - sy;
-        const ghostDist = Math.hypot(dx, dy);
-        if (ghostDist > sprites.size * 0.02) {
-            ctx.translate(sx, sy);
-            ctx.rotate(Math.atan2(dy, dx));
-            const gs = (ghostDist / (sprites.size * 0.31)) * zoomGrow * 1.35;
-            ctx.globalAlpha = Math.min(1, flareIntensity * 0.9);
-            ctx.drawImage(sprites.ghost, -sprites.size * gs / 2, -sprites.size * gs / 2, sprites.size * gs, sprites.size * gs);
-        }
-
-        ctx.restore();
+        result.occlusion = occlusion;
+        result.onScreen *= occlusion;
+        return result;
     }
 
     /**
