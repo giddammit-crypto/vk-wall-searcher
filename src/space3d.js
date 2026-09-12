@@ -1988,112 +1988,272 @@ export class Space3DEngine {
     }
 
     /**
-     * Отрисовка кинематографичного анаморфного блика Солнца и оптики в стиле Rockstar Games
+     * Запекание оптических спрайтов солнечного блика (выполняется один раз).
+     *
+     * Вместо 14 градиентов на кадр (GC-нагрузка и «наклеенный» вид) блик
+     * рисуется как настоящая оптика: две запечённые текстуры —
+     *   • sunSprite   — вейлинговая засветка, корона, ядро, 6 дифракционных
+     *                   лучей диафрагмы, анаморфная сине-золотая полоса и пыль
+     *                   на передней линзе;
+     *   • ghostSprite — цепочка бликов диафрагмы вдоль оси «солнце → центр кадра».
+     * Кадр стоит 2–4 вызова drawImage в режиме 'lighter'.
+     */
+    buildSunFlareSprites() {
+        if (this.sunFlareSprites || this.sunFlareFailed) return this.sunFlareSprites;
+
+        const make = (size) => {
+            const c = document.createElement('canvas');
+            c.width = c.height = size;
+            return { c, ctx: c.getContext('2d') };
+        };
+
+        try {
+            const S = (typeof window !== 'undefined' && window.innerWidth < 900) ? 640 : 1024;
+            const sun = make(S);
+            const ghost = make(S);
+            if (!sun.ctx || !ghost.ctx) throw new Error('canvas 2d недоступен');
+
+            const C = S / 2;
+            const k = S / 1024;               // масштаб всех величин от базового 1024
+            const g = sun.ctx;
+
+            g.globalCompositeOperation = 'lighter';
+
+            /* --- 1. Вейлинговая засветка (вуаль по всему кадру) --- */
+            const veil = g.createRadialGradient(C, C, 0, C, C, C);
+            veil.addColorStop(0.00, 'rgba(255, 236, 190, 0.30)');
+            veil.addColorStop(0.16, 'rgba(255, 214, 150, 0.11)');
+            veil.addColorStop(0.42, 'rgba(255, 186, 120, 0.035)');
+            veil.addColorStop(1.00, 'rgba(120, 90, 60, 0)');
+            g.fillStyle = veil;
+            g.fillRect(0, 0, S, S);
+
+            /* --- 2. Пыль и разводы на передней линзе (даёт структуру свечению) --- */
+            const rnd = (() => { let s = 20260912; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; })();
+            for (let i = 0; i < 150; i++) {
+                const ang = rnd() * Math.PI * 2;
+                const rad = Math.pow(rnd(), 0.62) * C * 0.92;
+                const px = C + Math.cos(ang) * rad;
+                const py = C + Math.sin(ang) * rad;
+                const rr = (2 + rnd() * 22) * k;
+                const a = 0.012 + rnd() * 0.05;
+                const dirt = g.createRadialGradient(px, py, 0, px, py, rr);
+                dirt.addColorStop(0, `rgba(255, 244, 220, ${a})`);
+                dirt.addColorStop(1, 'rgba(255, 244, 220, 0)');
+                g.fillStyle = dirt;
+                g.beginPath();
+                g.arc(px, py, rr, 0, Math.PI * 2);
+                g.fill();
+            }
+
+            /* --- 3. Корона: тёплое кольцо вокруг диска --- */
+            const corona = g.createRadialGradient(C, C, 6 * k, C, C, 190 * k);
+            corona.addColorStop(0.00, 'rgba(255, 255, 255, 0.95)');
+            corona.addColorStop(0.10, 'rgba(255, 246, 214, 0.72)');
+            corona.addColorStop(0.30, 'rgba(255, 196, 110, 0.34)');
+            corona.addColorStop(0.62, 'rgba(236, 146, 62, 0.12)');
+            corona.addColorStop(1.00, 'rgba(180, 100, 40, 0)');
+            g.fillStyle = corona;
+            g.beginPath();
+            g.arc(C, C, 190 * k, 0, Math.PI * 2);
+            g.fill();
+
+            /* --- 4. Дифракционные лучи 6-лепестковой диафрагмы --- */
+            const spikes = 6;
+            const spikeRot = Math.PI / 6;
+            for (let i = 0; i < spikes; i++) {
+                const a = spikeRot + (i * Math.PI * 2) / spikes;
+                const len = C * (i % 2 === 0 ? 0.94 : 0.66);
+                for (const dir of (i % 2 === 0 ? [1] : [1, -1])) {
+                    const ex = C + Math.cos(a) * len * dir;
+                    const ey = C + Math.sin(a) * len * dir;
+                    const nx = Math.cos(a + Math.PI / 2);
+                    const ny = Math.sin(a + Math.PI / 2);
+                    const w = 13 * k;
+                    const lg = g.createLinearGradient(C, C, ex, ey);
+                    lg.addColorStop(0.00, 'rgba(255, 250, 232, 0.55)');
+                    lg.addColorStop(0.12, 'rgba(255, 232, 178, 0.30)');
+                    lg.addColorStop(0.45, 'rgba(255, 196, 120, 0.10)');
+                    lg.addColorStop(1.00, 'rgba(255, 170, 90, 0)');
+                    g.fillStyle = lg;
+                    g.beginPath();
+                    g.moveTo(C, C);
+                    g.lineTo(ex + nx * w, ey + ny * w);
+                    g.lineTo(ex - nx * w, ey - ny * w);
+                    g.closePath();
+                    g.fill();
+                }
+            }
+
+            /* --- 5. Ядро диска (пересвет) --- */
+            const core = g.createRadialGradient(C, C, 0, C, C, 34 * k);
+            core.addColorStop(0.00, 'rgba(255, 255, 255, 1)');
+            core.addColorStop(0.55, 'rgba(255, 253, 245, 0.92)');
+            core.addColorStop(1.00, 'rgba(255, 240, 200, 0)');
+            g.fillStyle = core;
+            g.beginPath();
+            g.arc(C, C, 34 * k, 0, Math.PI * 2);
+            g.fill();
+
+            /* --- 6. Анаморфная сине-золотая полоса --- */
+            const streakW = S * 0.99;
+            const streak = g.createLinearGradient(C - streakW / 2, 0, C + streakW / 2, 0);
+            streak.addColorStop(0.00, 'rgba(56, 189, 248, 0)');
+            streak.addColorStop(0.22, 'rgba(56, 189, 248, 0.20)');
+            streak.addColorStop(0.44, 'rgba(186, 226, 255, 0.62)');
+            streak.addColorStop(0.50, 'rgba(255, 255, 255, 0.92)');
+            streak.addColorStop(0.56, 'rgba(255, 226, 176, 0.62)');
+            streak.addColorStop(0.78, 'rgba(245, 158, 11, 0.20)');
+            streak.addColorStop(1.00, 'rgba(245, 158, 11, 0)');
+            g.fillStyle = streak;
+            g.fillRect(C - streakW / 2, C - 5 * k, streakW, 10 * k);
+            g.globalAlpha = 0.34;
+            g.fillRect(C - streakW / 2, C - 22 * k, streakW, 44 * k);
+            g.globalAlpha = 1;
+            // Тонкая «волосяная» линия, характерная для анаморфной оптики
+            g.globalAlpha = 0.5;
+            g.fillRect(C - streakW / 2, C - 0.7 * k, streakW, 1.4 * k);
+            g.globalAlpha = 1;
+
+            /* --- 7. Цепочка бликов диафрагмы (собственный спрайт) --- */
+            const h = ghost.ctx;
+            h.globalCompositeOperation = 'lighter';
+            const ghosts = [
+                { t: 0.42, r: 20, color: 'rgba(56, 189, 248, 0.32)', sides: 6, rot: 0.4 },
+                { t: 0.72, r: 34, color: 'rgba(62, 230, 196, 0.22)', sides: 0, rot: 0.0 },
+                { t: 1.00, r: 15, color: 'rgba(251, 191, 36, 0.34)', sides: 6, rot: 0.9 },
+                { t: 1.30, r: 52, color: 'rgba(129, 140, 248, 0.17)', sides: 6, rot: 0.2 },
+                { t: 1.62, r: 27, color: 'rgba(244, 114, 182, 0.20)', sides: 0, rot: 0.0 },
+                { t: 1.92, r: 62, color: 'rgba(56, 189, 248, 0.13)', sides: 6, rot: 0.6 },
+                { t: 2.20, r: 12, color: 'rgba(226, 232, 240, 0.26)', sides: 0, rot: 0.0 }
+            ];
+            ghosts.forEach(gh => {
+                const gx = C + gh.t * C * 0.62;
+                const gy = C + Math.sin(gh.t * 2.4) * 26 * k;
+                const gr = gh.r * k;
+                const rg = h.createRadialGradient(gx, gy, 0, gx, gy, gr);
+                rg.addColorStop(0, gh.color);
+                rg.addColorStop(0.72, gh.color.replace(/[\d.]+\)$/, '0.06)'));
+                rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                h.fillStyle = rg;
+                if (gh.sides >= 3) {
+                    h.save();
+                    h.translate(gx, gy);
+                    h.rotate(gh.rot);
+                    h.beginPath();
+                    for (let i = 0; i < gh.sides; i++) {
+                        const a = (i * Math.PI * 2) / gh.sides;
+                        const px = Math.cos(a) * gr;
+                        const py = Math.sin(a) * gr;
+                        i === 0 ? h.moveTo(px, py) : h.lineTo(px, py);
+                    }
+                    h.closePath();
+                    h.fill();
+                    h.restore();
+                } else {
+                    h.beginPath();
+                    h.arc(gx, gy, gr, 0, Math.PI * 2);
+                    h.fill();
+                }
+            });
+
+            this.sunFlareSprites = { sun: sun.c, ghost: ghost.c, size: S, base: S / 1024 };
+            return this.sunFlareSprites;
+        } catch (e) {
+            this.sunFlareFailed = true;
+            return null;
+        }
+    }
+
+    /**
+     * Кинематографичный анаморфный блик Солнца.
+     *
+     * Физика, учтённая в расчёте:
+     *   • сложение света (additive / 'lighter'), а не наложение «поверх»;
+     *   • затухание при уходе источника из кадра и по краю FOV;
+     *   • ПЕРЕКРЫТИЕ: если Солнце за диском Земли — блик гаснет (иначе светил бы
+     *     «сквозь» планету);
+     *   • связь с зумом: угловой размер источника и полосы растут с приближением.
      */
     renderAnamorphicSunFlare(ctx, w, h, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy) {
-        // Вектор Солнца в небесных координатах: { x: 0.72, y: 0.28, z: 0.63 }
+        // Направление Солнца в небесных координатах (согласовано со скайдомом)
         const lx = 0.72;
         const ly = 0.28;
         const lz = 0.63;
 
-        // Поворот направления Солнца в систему координат камеры
+        // Поворот в систему координат камеры: R = RotX(pitch) · RotY(yaw)
         const x1 = lx * cosYaw - lz * sinYaw;
         const z1 = lx * sinYaw + lz * cosYaw;
         const y2 = ly * cosPitch - z1 * sinPitch;
         const z2 = ly * sinPitch + z1 * cosPitch;
 
-        if (z2 > 0.05) {
-            const sx = cx + (x1 / z2) * fov;
-            const sy = cy - (y2 / z2) * fov;
+        if (z2 <= 0.05) return;
 
-            const distFromCenter = Math.hypot(sx - cx, sy - cy);
-            const maxVisibleDist = Math.max(w, h) * 0.95;
+        const dirLen = Math.hypot(x1, y2, z2) || 1;
+        const sx = cx + (x1 / z2) * fov;
+        const sy = cy - (y2 / z2) * fov;
 
-            if (distFromCenter < maxVisibleDist) {
-                const flareIntensity = Math.max(0.0, 1.0 - (distFromCenter / maxVisibleDist));
-                const sunRadius = (45 / z2) * Math.min(1.6, this.zoom);
+        const distFromCenter = Math.hypot(sx - cx, sy - cy);
+        const maxVisibleDist = Math.max(w, h) * 0.95;
+        if (distFromCenter > maxVisibleDist) return;
 
-                // 0. Объемные реалистичные солнечные лучи (Crepuscular God Rays)
-                const rayCount = 8;
-                const baseAngle = (this.tick || 0) * 0.0006;
-                ctx.save();
-                for (let rIdx = 0; rIdx < rayCount; rIdx++) {
-                    const rayAngle = baseAngle + (rIdx * Math.PI * 2 / rayCount) + Math.sin(rIdx * 1.6) * 0.18;
-                    const raySpread = 0.07 + (rIdx % 3) * 0.025;
-                    const rayLength = Math.max(w, h) * (1.3 + (rIdx % 2) * 0.4);
-
-                    const p1x = sx + Math.cos(rayAngle - raySpread) * rayLength;
-                    const p1y = sy + Math.sin(rayAngle - raySpread) * rayLength;
-                    const p2x = sx + Math.cos(rayAngle + raySpread) * rayLength;
-                    const p2y = sy + Math.sin(rayAngle + raySpread) * rayLength;
-
-                    const rayGrad = ctx.createRadialGradient(sx, sy, sunRadius * 0.8, sx, sy, rayLength);
-                    const alpha = (0.13 + Math.sin((this.tick || 0) * 0.012 + rIdx) * 0.03) * flareIntensity;
-                    rayGrad.addColorStop(0, `rgba(255, 248, 220, ${alpha * 1.4})`);
-                    rayGrad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.7})`);
-                    rayGrad.addColorStop(0.65, `rgba(217, 119, 6, ${alpha * 0.25})`);
-                    rayGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-                    ctx.fillStyle = rayGrad;
-                    ctx.beginPath();
-                    ctx.moveTo(sx, sy);
-                    ctx.lineTo(p1x, p1y);
-                    ctx.lineTo(p2x, p2y);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                ctx.restore();
-
-                // 1. Ослепительный солнечный диск с золотисто-белой короной
-                const corona = ctx.createRadialGradient(sx, sy, 2, sx, sy, sunRadius * 4.5);
-                corona.addColorStop(0, '#ffffff');
-                corona.addColorStop(0.18, 'rgba(254, 240, 138, 0.95)');
-                corona.addColorStop(0.45, 'rgba(245, 158, 11, 0.55)');
-                corona.addColorStop(0.80, 'rgba(217, 119, 6, 0.18)');
-                corona.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-                ctx.fillStyle = corona;
-                ctx.beginPath();
-                ctx.arc(sx, sy, sunRadius * 4.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 2. Горизонтальная анаморфная сине-золотая световая полоса (Anamorphic Streak)
-                const streakHalfWidth = w * 0.85 * flareIntensity;
-                const streakGrad = ctx.createLinearGradient(sx - streakHalfWidth, sy, sx + streakHalfWidth, sy);
-                streakGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
-                streakGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.45 * flareIntensity})`);
-                streakGrad.addColorStop(0.50, `rgba(255, 255, 255, ${0.92 * flareIntensity})`);
-                streakGrad.addColorStop(0.65, `rgba(245, 158, 11, ${0.45 * flareIntensity})`);
-                streakGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
-
-                ctx.fillStyle = streakGrad;
-                ctx.fillRect(sx - streakHalfWidth, sy - 2.5, streakHalfWidth * 2, 5);
-
-                // 3. Оптические артефакты диафрагмы объектива (Lens Flare Ghosts)
-                const dx = cx - sx;
-                const dy = cy - sy;
-                const ghosts = [
-                    { t: 0.35, r: 18, color: 'rgba(56, 189, 248, 0.28)' },
-                    { t: 0.65, r: 32, color: 'rgba(62, 230, 196, 0.20)' },
-                    { t: 0.90, r: 12, color: 'rgba(251, 191, 36, 0.32)' },
-                    { t: 1.25, r: 45, color: 'rgba(129, 140, 248, 0.15)' },
-                    { t: 1.55, r: 24, color: 'rgba(244, 114, 182, 0.18)' },
-                    { t: 1.85, r: 58, color: 'rgba(56, 189, 248, 0.12)' }
-                ];
-
-                ghosts.forEach(g => {
-                    const gx = sx + dx * g.t;
-                    const gy = sy + dy * g.t;
-                    const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, g.r * flareIntensity);
-                    grad.addColorStop(0, g.color);
-                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(gx, gy, g.r * flareIntensity, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+        // --- Перекрытие диском Земли: гасим блик, если источник за планетой
+        let occlusion = 1;
+        const metrics = CelestialPlanets && CelestialPlanets.getEarthWorldMetrics
+            ? CelestialPlanets.getEarthWorldMetrics() : null;
+        if (metrics) {
+            const eYaw = (metrics.coords.yaw * Math.PI) / 180;
+            const ePitch = (metrics.coords.pitch * Math.PI) / 180;
+            const ew = {
+                x: Math.cos(ePitch) * Math.sin(eYaw),
+                y: Math.sin(ePitch),
+                z: Math.cos(ePitch) * Math.cos(eYaw)
+            };
+            const ex1 = ew.x * cosYaw - ew.z * sinYaw;
+            const ez1 = ew.x * sinYaw + ew.z * cosYaw;
+            const ey2 = ew.y * cosPitch - ez1 * sinPitch;
+            const ez2 = ew.y * sinPitch + ez1 * cosPitch;
+            if (ez2 > 0.05) {
+                const eLen = Math.hypot(ex1, ey2, ez2) || 1;
+                const dot = (x1 * ex1 + y2 * ey2 + z2 * ez2) / (dirLen * eLen);
+                const earthRadius = this.glEnabled ? 1000 : 840;
+                const earthDist = this.glEnabled ? 1350 : 750 / Math.max(this.zoom, 0.2);
+                const angular = Math.atan2(earthRadius, Math.max(earthDist, 1));
+                const cosA = Math.cos(angular);
+                // Мягкая граница: гаснет на подлёте к лимбу планеты
+                occlusion = Math.min(1, Math.max(0, (cosA - dot) / 0.05));
+                if (occlusion <= 0) return;
             }
         }
+
+        const sprites = this.buildSunFlareSprites();
+        if (!sprites) return;
+
+        const flareIntensity = (1.0 - distFromCenter / maxVisibleDist) * occlusion;
+        const zoomGrow = 1 + Math.min(this.zoom, 2) * 0.22;
+        const shimmer = 1 + Math.sin((this.tick || 0) * 0.013) * 0.02;
+        const sunSize = sprites.size * 1.35 * zoomGrow;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        // 1. Солнце: вуаль + корона + ядро + лучи + анаморфная полоса + пыль
+        ctx.globalAlpha = Math.min(1, flareIntensity * shimmer * 1.08);
+        ctx.drawImage(sprites.sun, sx - sunSize / 2, sy - sunSize / 2, sunSize, sunSize);
+
+        // 2. Цепочка бликов диафрагмы вдоль оси «солнце → центр кадра»
+        const dx = cx - sx;
+        const dy = cy - sy;
+        const ghostDist = Math.hypot(dx, dy);
+        if (ghostDist > sprites.size * 0.02) {
+            ctx.translate(sx, sy);
+            ctx.rotate(Math.atan2(dy, dx));
+            const gs = (ghostDist / (sprites.size * 0.31)) * zoomGrow * 1.35;
+            ctx.globalAlpha = Math.min(1, flareIntensity * 0.9);
+            ctx.drawImage(sprites.ghost, -sprites.size * gs / 2, -sprites.size * gs / 2, sprites.size * gs, sprites.size * gs);
+        }
+
+        ctx.restore();
     }
 
     /**

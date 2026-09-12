@@ -294,12 +294,17 @@ void main() {
     vec3 up = vec3(0.0, 1.0, 0.0);
     vec3 east = normalize(cross(up, N) + 1e-5);
     vec3 north = normalize(cross(N, east));
-    vec3 Nb = normalize(N + east * (h0 - hx) * uBumpScale * 26.0 + north * (h0 - hy) * uBumpScale * 26.0);
+    // Амплитуда рельефа спадает к терминатору: иначе на скользящем свете
+    // склоны «ловят» солнце и на лимбе возникает резкая яркая кайма.
+    float graze = smoothstep(0.02, 0.38, dot(N, L));
+    vec3 Nb = normalize(N + east * (h0 - hx) * uBumpScale * 26.0 * graze
+                          + north * (h0 - hy) * uBumpScale * 26.0 * graze);
 
     float ndl = dot(Nb, L);
+    float ndlGeom = dot(N, L);
 
     // --- Мягкий терминатор (полутень атмосферы)
-    float dayMask = smoothstep(-0.10, 0.26, dot(N, L));
+    float dayMask = smoothstep(-0.10, 0.26, ndlGeom);
 
     vec3 albedo = texture(uDay, uv).rgb;
     vec3 color;
@@ -312,28 +317,44 @@ void main() {
 
         // Диффузное освещение суши/океана + подсветка лимбового рассеяния
         vec3 sunColor = vec3(1.0, 0.965, 0.92);
-        vec3 lit = albedo * sunColor * clamp(ndl, 0.0, 1.0);
+        // Диффуз + мягкий терминатор (полутень) по геометрической нормали
+        vec3 lit = albedo * sunColor * clamp(ndl, 0.0, 1.0) * mix(0.16, 1.0, dayMask);
 
         // Спекуляр океана (Блинн-Фонг, узкий блик солнца)
         vec3 H = normalize(L + V);
         float spec = pow(max(dot(Nb, H), 0.0), 190.0) * ocean * uSpecular;
         spec += pow(max(dot(Nb, H), 0.0), 24.0) * ocean * uSpecular * 0.12;
 
-        // Ночные огни городов на тёмной стороне
-        float nightMask = smoothstep(0.16, -0.06, dot(N, L));
-        vec3 cityLights = nightTex * nightMask * 1.35 * land;
+        // Ночные огни городов на тёмной стороне.
+        // Маска «суши» здесь не нужна: чёрная мраморная карта NASA сама
+        // содержит океан без огней, а умножение на land дополнительно гасило
+        // прибрежные мегаполисы и делало ночную сторону почти чёрной.
+        float nightMask = smoothstep(0.18, -0.04, ndlGeom);
+        // В исходной карте NASA суша на ночной стороне имеет фиолетовую
+        // подложку (~0.10/0.10/0.20) — она не физична и «подсвечивала»
+        // континенты. Вычитаем её: остаются только огни городов, к тому же
+        // тёплые (натриевые лампы), как на снимках с МКС.
+        vec3 cityLights = max(nightTex - vec3(0.10, 0.10, 0.20), 0.0) * 3.1;
+        cityLights *= vec3(1.06, 0.94, 0.80);
+        cityLights *= nightMask;
 
-        // Облачный слой (свободно дрейфует относительно поверхности)
+        // Облачный слой (свободно дрейфует относительно поверхности).
+        // Кромка сознательно резче: у настоящих кучевых облаков край
+        // плотный, а тонкая перистая дымка уже заложена в самой карте.
         vec2 cuv = vec2(fract(uv.x + uCloudShift), uv.y);
         float clouds = texture(uClouds, cuv).r;
-        clouds = smoothstep(0.05, 0.75, clouds) * uCloudOpacity;
+        clouds = smoothstep(0.10, 0.60, clouds) * uCloudOpacity;
         float cloudLit = clamp(dot(N, L) + 0.12, 0.0, 1.0);
-        vec3 cloudColor = vec3(1.0) * (0.24 + cloudLit * 0.92) * sunColor;
+        // Облака почти не видны на ночной стороне (подсвечены только луной и
+        // городами): квадратичный спад + видимость по терминатору убирают
+        // «серые кляксы» там, где кучевых облаков в кадре быть не должно
+        vec3 cloudColor = vec3(1.0) * (0.06 + cloudLit * cloudLit * 1.02) * sunColor;
+        clouds *= mix(0.04, 1.0, smoothstep(-0.30, 0.02, ndlGeom));
 
-        // Тени облаков на поверхности (лёгкое затенение континентов)
-        lit *= (1.0 - clouds * 0.42 * cloudLit);
+        // Тени облаков на поверхности (мягкое затенение, без «грязи»)
+        lit *= (1.0 - clouds * 0.24 * cloudLit);
 
-        color = mix(lit + cityLights + spec, cloudColor, clouds * 0.92);
+        color = mix(lit + cityLights + spec, cloudColor, clouds * 0.90);
 
         // Атмосферный лимб: рэлеевское рассеяние (голубой обод)
         float fres = pow(1.0 - max(dot(N, V), 0.0), 3.4);
@@ -822,10 +843,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg',
-            earthNight: 'assets/textures/earth_night.png',
-            earthClouds: 'assets/textures/earth_clouds.png',
-            moon: 'assets/textures/moon.jpg'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.0',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.0',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.0',
+            moon: 'assets/textures/moon.jpg?v=3.9.0'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1007,10 +1028,11 @@ export class Space3DGLRenderer {
             cloudShift: -this.cloudsRot,
             groundShift: -this.earthRot,
             texel: [1 / 2048, 1 / 1024],
-            cloudOpacity: 0.92,
+            cloudOpacity: 0.90,
             bump: 0.55,
             specular: 1.5,
             ambient: 0.06,
+            exposure: 1.10,
             ambientColor: [0.05, 0.09, 0.16],
             atmosphere: 0.85,
             sunDir,
@@ -1050,7 +1072,7 @@ export class Space3DGLRenderer {
             mat: m,
             earthDir: earthCenter,
             groundShift: -this.moonRot,
-            texel: [1 / 1024, 1 / 512],
+            texel: [1 / 2048, 1 / 1024],
             urot: this.moonRot
         });
 
@@ -1123,7 +1145,7 @@ export class Space3DGLRenderer {
         gl.uniform1f(u.uSpecular, opts.specular || 0);
         gl.uniform1f(u.uAmbient, opts.ambient || 0);
         gl.uniform1f(u.uAtmosphere, opts.atmosphere || 0);
-        gl.uniform1f(u.uExposure, 1.0);
+        gl.uniform1f(u.uExposure, opts.exposure || 1.0);
         if (u.uAmbientColor) gl.uniform3fv(u.uAmbientColor, opts.ambientColor || [0.0, 0.0, 0.0]);
 
         const texUnits = [
