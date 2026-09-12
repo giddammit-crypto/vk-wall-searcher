@@ -548,17 +548,29 @@ body {
     font-weight: 800;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #3EE6C4 0%, #38BDF8 48%, #8A6CFF 100%);
+    background: linear-gradient(135deg,
+        #ffffff 0%,
+        #fff3d4 12%,
+        #FFD37A 28%,
+        #3EE6C4 58%,
+        #38BDF8 80%,
+        #8A6CFF 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 16px rgba(62, 230, 196, 0.42));
+    filter:
+        drop-shadow(0 0 8px rgba(255, 211, 122, 0.60))
+        drop-shadow(0 0 28px rgba(62, 230, 196, 0.40))
+        drop-shadow(0 0 54px rgba(56, 189, 248, 0.20));
     display: inline-block;
     line-height: 1.15;
     transition: filter var(--duration) var(--ease), letter-spacing var(--duration) var(--ease);
 }
 .brand-aurora:hover {
-    filter: drop-shadow(0 0 24px rgba(62, 230, 196, 0.75)) drop-shadow(0 0 38px rgba(56, 189, 248, 0.45));
+    filter:
+        drop-shadow(0 0 12px rgba(255, 211, 122, 0.90))
+        drop-shadow(0 0 36px rgba(62, 230, 196, 0.70))
+        drop-shadow(0 0 70px rgba(56, 189, 248, 0.40));
     letter-spacing: 0.17em;
 }
 

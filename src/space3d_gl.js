@@ -150,7 +150,15 @@ uniform vec2 uResolution;
 uniform float uFov;
 uniform float uExposure;
 uniform float uNebulaBoost;
+uniform float uTime;
 out vec4 outColor;
+
+// Треугольный дизеринг — убирает ступеньки на тёмных градиентах (8 бит)
+float tridither(vec2 fc) {
+    float r1 = fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453);
+    float r2 = fract(sin(dot(fc, vec2(63.7264, 10.873))) * 24634.6345);
+    return (r1 + r2 - 1.0) * (1.0 / 255.0);
+}
 
 void main() {
     vec2 ndc = vUv * 2.0 - 1.0;
@@ -160,14 +168,15 @@ void main() {
     float u = atan(dir.x, dir.z) * 0.15915494 + 0.5;
     float v = 0.5 - asin(clamp(dir.y, -1.0, 1.0)) * 0.31830989;
 
-    // Бикубическая выборка по горизонтали для мягкости на стыке меридиана
+    // Прямая выборка без блюра — оригинальная резкость запечённого скайдома
     vec3 sky = texture(uSkyTex, vec2(u, v)).rgb;
-    vec3 sky2 = texture(uSkyTex, vec2(fract(u + 0.001), v)).rgb;
-    sky = mix(sky, sky2, 0.5);
 
-    // Сцена отдаётся в ЛИНЕЙНОМ HDR: тонмаппинг (ACES) живёт в финальном
-    // проходе, поэтому запечённое небо остаётся радиометрией, а не картинкой.
+    // ACES / HDR коэффициенты
     vec3 col = sky * uExposure * uNebulaBoost;
+
+    // Треугольный дизеринг — устраняет полосы (banding) на тёмном вакууме
+    col += tridither(gl_FragCoord.xy + vec2(uTime * 7.3, -uTime * 3.1));
+
     outColor = vec4(col, 1.0);
 }`;
 
@@ -1353,9 +1362,9 @@ export class Space3DGLRenderer {
         const gl = this.gl;
         this.time += dt || 0.016;
 
-        // Кинематика планет (синхронно с CPU-модулем)
-        this.earthRot += 0.00063 * (dt * 60);
-        this.cloudsRot += 0.00095 * (dt * 60);
+        // Кинематика планет (синхронно с CPU-модулем, скорость вращения × 0.8)
+        this.earthRot += 0.000504 * (dt * 60);
+        this.cloudsRot += 0.00076 * (dt * 60);
         this.moonOrbit += 0.00022 * (dt * 60);
         this.moonRot += 0.00022 * (dt * 60);
 
@@ -1387,6 +1396,7 @@ export class Space3DGLRenderer {
             gl.uniform1f(u.uFov, fov);
             gl.uniform1f(u.uExposure, 1.0);
             gl.uniform1f(u.uNebulaBoost, 1.0);
+            if (u.uTime !== undefined) gl.uniform1f(u.uTime, this.time || 0);
             gl.bindVertexArray(this.vaos.fullscreen);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             gl.bindVertexArray(null);
@@ -1414,15 +1424,15 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -48, 1350, this._earthCenter);
+        const earthCenter = this._dirFromYawPitch(0, -48, 3375, this._earthCenter);
         const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
         const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
 
-        // 3.1 Земля
+        // 3.1 Земля (2.5× дальше, радиус 400)
         this._drawSphere({
             center: earthCenter,
-            radius: 1000,
+            radius: 400,
             bodyType: 0,
             texture: this.textures.earthDay,
             night: this.textures.earthNight,
@@ -1446,8 +1456,8 @@ export class Space3DGLRenderer {
         // 3.2 Атмосферная оболочка Земли (аналитическое рассеяние, 14 шагов)
         this._drawSphere({
             center: earthCenter,
-            radius: 1000 * 1.025,
-            planetRadius: 1000,
+            radius: 400 * 1.025,
+            planetRadius: 400,
             atmosphereOnly: true,
             strength: 0.88,   // компенсация тональной кривой ACES
             falloff: 3.6,
@@ -1550,7 +1560,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 1350));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 3375));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);

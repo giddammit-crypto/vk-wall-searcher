@@ -535,7 +535,8 @@ export class SpaceWarpTransition {
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = `rgba(2, 4, 12, ${0.22 + (1 - s.fade) * 0.6})`;
+        // Более глубокий тёмный фон вакуума во время перехода
+        ctx.fillStyle = `rgba(1, 2, 8, ${0.30 + (1 - s.fade) * 0.65})`;
         ctx.fillRect(0, 0, w, h);
 
         const accel = 0.6 + s.speedNorm * 26;
@@ -566,31 +567,34 @@ export class SpaceWarpTransition {
             ctx.stroke();
         }
 
-        // Гипертоннель: концентрические энергетические кольца
+        // Гипертоннель: концентрические энергетические кольца (золото → циан → пурпур)
         if (s.tunnelCover > 0.01) {
-            const rings = 16;
+            const rings = 20;
             for (let i = 0; i < rings; i++) {
                 const t = (i / rings + (s.travel * 0.0006) % 1) % 1;
                 const r = Math.pow(t, 1.8) * maxR * 1.1;
-                const a = (1 - t) * 0.16 * s.tunnelCover;
-                const grad = ctx.createRadialGradient(cx, cy, Math.max(0, r - 26), cx, cy, r + 26);
+                const a = (1 - t) * 0.18 * s.tunnelCover;
+                const grad = ctx.createRadialGradient(cx, cy, Math.max(0, r - 28), cx, cy, r + 28);
                 grad.addColorStop(0, 'rgba(0,0,0,0)');
-                grad.addColorStop(0.5, `rgba(56, 189, 248, ${a})`);
-                grad.addColorStop(0.75, `rgba(139, 92, 246, ${a * 0.8})`);
+                // Inner rings warm gold, outer rings cool cyan-violet
+                const tGold = Math.max(0, 1 - t * 3);
+                grad.addColorStop(0.35, `rgba(${Math.round(240 - t * 184)}, ${Math.round(180 + t * 9)}, ${Math.round(60 + t * 188)}, ${a + tGold * 0.06})`);
+                grad.addColorStop(0.65, `rgba(139, 92, 246, ${a * 0.75})`);
                 grad.addColorStop(1, 'rgba(0,0,0,0)');
                 ctx.fillStyle = grad;
                 ctx.beginPath();
-                ctx.arc(cx, cy, r + 26, 0, Math.PI * 2);
+                ctx.arc(cx, cy, r + 28, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
 
-        // Ядро перехода
+        // Ядро перехода — золотисто-белое в начале, чисто-белое на пике
         const coreR = Math.max(18, Math.min(w, h) * (0.16 - s.charge * 0.09) * (1 + this.pulse));
         const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 4);
-        core.addColorStop(0, `rgba(255,255,255,${0.55 + s.energy * 0.3})`);
-        core.addColorStop(0.22, `rgba(150, 240, 255, ${0.5 * s.warpLevel + 0.2})`);
-        core.addColorStop(0.6, `rgba(56, 189, 248, ${0.18 * s.warpLevel})`);
+        core.addColorStop(0, `rgba(255, 252, 230, ${0.65 + s.energy * 0.30})`);
+        core.addColorStop(0.12, `rgba(255, 211, 122, ${0.55 + s.warpLevel * 0.25})`);
+        core.addColorStop(0.28, `rgba(62, 230, 196, ${0.38 * s.warpLevel + 0.12})`);
+        core.addColorStop(0.60, `rgba(56, 189, 248, ${0.16 * s.warpLevel})`);
         core.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = core;
         ctx.beginPath();

@@ -50,8 +50,8 @@ export class CelestialPlanetsEngine {
         this.moonNormals = null;
 
         // Celestial coordinates in space (degrees & distance)
-        // Earth is large and situated UNDER the user (yaw: 0°, pitch: -48°)
-        this.earthCoords = { yaw: 0, pitch: -48, dist: 1350 };
+        // Earth is situated UNDER the user (yaw: 0°, pitch: -48°, pushed 2.5× farther)
+        this.earthCoords = { yaw: 0, pitch: -48, dist: 3375 };
         // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
         this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
 
@@ -520,9 +520,9 @@ export class CelestialPlanetsEngine {
 
         this.tick = (this.tick || 0) + 1;
 
-        // Постоянное плавное вращение Земли (+80% быстрее, 0.00035 * 1.8 = 0.00063)
-        this.earthRot += 0.00063;
-        this.cloudsRot += 0.00095;
+        // Постоянное плавное вращение Земли (0.00063 * 0.8 = 0.000504)
+        this.earthRot += 0.000504;
+        this.cloudsRot += 0.00076;
 
         // Орбитальное движение Луны и синхронное вращение
         this.moonOrbit += 0.00022;
@@ -570,8 +570,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (ex1 / ez2) * fov;
             const py = cy - (ey2 / ez2) * fov;
 
-            // Увеличенная в 2 раза Земля (радиус 840px, диаметр 1680px)
-            const drawRadius = 840 * zoom;
+            // Увеличенная Земля — 2.5× дальше (радиус 336px, диаметр 672px в CPU-буфере)
+            const drawRadius = 336 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {
@@ -660,7 +660,7 @@ export class CelestialPlanetsEngine {
                 y: eDist * Math.sin(ePitch),
                 z: eDist * Math.cos(ePitch) * Math.cos(eYaw)
             },
-            radius: 840,
+            radius: 336,
             dist: eDist,
             coords: { ...this.earthCoords }
         };
