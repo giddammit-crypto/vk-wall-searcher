@@ -442,65 +442,49 @@ void main() {
         // Диффуз + мягкий терминатор (полутень) по геометрической нормали
         vec3 lit = albedo * sunColor * clamp(ndl, 0.0, 1.0) * mix(0.16, 1.0, dayMask);
 
-        // --- Океан: солнечный глиттер по Гауссу + широкий блик
-        // Настоящий морской блик — не точка, а вытянутая вдоль меридиана
-        // дорожка из тысяч микробликов. Формируем шероховатость «по ветру»:
-        // сжатие луча отражения вдоль оси, перпендикулярной Солнцу.
+        // --- Океан: солнечный глиттер по Гауссу + широкий блик + френелевское отражение
         vec3 H = normalize(L + V);
         float oceanMask = smoothstep(0.02, 0.16, albedo.b - max(albedo.r, albedo.g));
+        float fresnelWater = pow(1.0 - max(dot(Nb, V), 0.0), 4.5);
         vec3 glintAxis = normalize(vec3(-H.z, 0.0, H.x) + 1e-5);
         float aniso = abs(dot(Nb, glintAxis));
         vec3 Hg = normalize(H + glintAxis * (H - L) * 0.16);
-        float micro = pow(max(dot(Nb, Hg), 0.0), 340.0) * (1.0 - aniso * 0.55);
-        float wide = pow(max(dot(Nb, H), 0.0), 34.0);
-        float glitter = micro * 3.4 + wide * 0.18;
+        float micro = pow(max(dot(Nb, Hg), 0.0), 360.0) * (1.0 - aniso * 0.55);
+        float wide = pow(max(dot(Nb, H), 0.0), 36.0);
+        float glitter = (micro * 4.2 + wide * 0.24) * (1.0 + fresnelWater * 2.2);
         float spec = glitter * oceanMask * uSpecular * step(0.0, ndl);
 
-        // Ночные огни городов на тёмной стороне.
-        // Маска «суши» здесь не нужна: чёрная мраморная карта NASA сама
-        // содержит океан без огней, а умножение на land дополнительно гасило
-        // прибрежные мегаполисы и делало ночную сторону почти чёрной.
+        // Ночные огни городов на тёмной стороне (теплые натриевые лампы, микросвечение)
         float nm = smoothstep(-0.12, 0.08, ndlGeom);
         nm = nm * nm * (3.0 - 2.0 * nm);
         float nightMask = 1.0 - nm;
-        // В исходной карте NASA суша на ночной стороне имеет фиолетовую
-        // подложку (~0.10/0.10/0.20) — она не физична и «подсвечивала»
-        // континенты. Вычитаем её: остаются только огни городов, к тому же
-        // тёплые (натриевые лампы), как на снимках с МКС.
-        vec3 cityLights = max(nightTex - vec3(0.105, 0.105, 0.21), 0.0) * 3.4;
-        cityLights *= vec3(1.06, 0.94, 0.80) * nightMask;
+        vec3 cityLights = max(nightTex - vec3(0.09, 0.09, 0.18), 0.0) * 3.9;
+        cityLights *= vec3(1.10, 0.93, 0.76) * nightMask;
 
         // Облачный слой (свободно дрейфует относительно поверхности).
-        // Кромка сознательно резче: у настоящих кучевых облаков край
-        // плотный, а тонкая перистая дымка уже заложена в самой карте.
         vec2 cuv = vec2(fract(uv.x + uCloudShift), uv.y);
         float cloudBase = texture(uClouds, cuv).r;
-        // Второй слой той же карты в 2.7 раза мельче и со сдвигом: убирает
-        // «мыльность» крупных планов, даёт рваные края и просветы в облаках
         float cloudFine = texture(uClouds, vec2(fract(cuv.x * 2.7 + 0.31), clamp(cuv.y * 2.7 + 0.17, 0.0, 1.0))).r;
         float clouds = smoothstep(0.10, 0.60, cloudBase);
         clouds = clamp(clouds * (0.72 + 0.58 * cloudFine), 0.0, 1.0);
         clouds *= uCloudOpacity;
         float cloudLit = clamp(dot(N, L) + 0.10, 0.0, 1.0);
-        // Облака почти не видны на ночной стороне (подсвечены только луной и
-        // городами): квадратичный спад + видимость по терминатору убирают
-        // «серые кляксы» там, где кучевых облаков в кадре быть не должно
         vec3 cloudColor = vec3(1.0) * (0.20 + pow(cloudLit, 1.35) * 0.98) * sunColor;
         clouds *= mix(0.04, 1.0, smoothstep(-0.30, 0.02, ndlGeom));
 
-        // --- ТЕНИ ОБЛАКОВ: сэмплируем карту облаков со смещением по Солнцу.
-        // Смещение в UV пропорционально проекции направления на Солнце —
-        // облака отбрасывают тень на десятки километров в сторону от светила.
+        // --- ТЕНИ ОБЛАКОВ: сэмплируем карту облаков со смещением по Солнцу
         vec2 sunUv = vec2(-L.x, L.y) * 0.010 * (1.0 + 6.0 * (1.0 - clamp(ndlGeom, 0.0, 1.0)));
         float shadowC = texture(uClouds, vec2(fract(cuv.x + sunUv.x), clamp(cuv.y + sunUv.y, 0.0, 1.0))).r;
         shadowC = smoothstep(0.22, 0.78, shadowC) * uCloudOpacity;
         lit *= (1.0 - shadowC * 0.42 * clamp(ndlGeom + 0.25, 0.0, 1.0));
-        // Кромки облаков подсвечиваются на просвет (forward scattering)
         float edge = clamp(clouds - shadowC * 0.85, 0.0, 1.0);
-
-        // Просвечивающие кромки: добавляют объём облачной шапке
         cloudColor += vec3(0.28, 0.30, 0.34) * edge * 0.9;
         color = mix(lit + cityLights + spec, cloudColor, clouds * 0.90);
+
+        // Огненный пояс заката / рассвета на терминаторе (twilight ember belt)
+        float twilightMask = exp(-pow((ndlGeom - 0.035) / 0.085, 2.0));
+        vec3 twilightColor = vec3(1.0, 0.42, 0.12) * (twilightMask * 0.48 * (0.65 + clouds * 0.5));
+        color += twilightColor;
 
         // Атмосферный лимб: рэлеевское рассеяние (голубой обод)
         float fres = pow(1.0 - max(dot(N, V), 0.0), 3.4);
@@ -510,16 +494,27 @@ void main() {
     } else {
         // ---------- ЛУНА ----------
         vec3 sunColor = vec3(1.0, 0.97, 0.93);
-        color = albedo * sunColor * clamp(ndl, 0.0, 1.0) * 1.06;
 
-        // Пепельный свет (отражённый от Земли) на ночной стороне
+        // Закон Ломмеля-Зеелигера для безатмосферного пористого реголита:
+        // естественная глубина кратеров и микрорельеф
+        float cosI = max(ndl, 0.0);
+        float cosE = max(dot(Nb, V), 0.0);
+        float lommel = cosI / max(cosI + cosE, 0.001);
+        vec3 lunarLit = albedo * sunColor * mix(cosI, lommel * 1.85, 0.45);
+        color = lunarLit * 1.10;
+
+        // Пепельный свет Земли (Earthshine) на ночной стороне
         vec3 toEarth = normalize(uEarthDir);
-        float earthFill = max(dot(N, toEarth), 0.0) * (1.0 - clamp(ndl, 0.0, 1.0));
-        color += albedo * vec3(0.20, 0.34, 0.62) * earthFill * uAmbient;
+        float earthFill = max(dot(Nb, toEarth), 0.0) * (1.0 - clamp(ndl, 0.0, 1.0));
+        color += albedo * vec3(0.18, 0.32, 0.58) * earthFill * (uAmbient * 1.35);
+
+        // Оппозиционный пик реголита у лимба
+        float opp = pow(max(dot(-V, L), 0.0), 8.0) * 0.28;
+        color += albedo * vec3(0.95, 0.96, 1.0) * opp * cosI;
 
         // Слабое свечение реголита у лимба
         float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-        color += vec3(0.55, 0.62, 0.78) * fres * max(ndl, 0.0) * 0.14;
+        color += vec3(0.55, 0.62, 0.78) * fres * max(ndl, 0.0) * 0.12;
     }
 
     // Общий ambient и экспозиция
@@ -1193,10 +1188,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.7',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.7',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.7',
-            moon: 'assets/textures/moon.jpg?v=3.9.7'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.8',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.8',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.8',
+            moon: 'assets/textures/moon.jpg?v=3.9.8'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
