@@ -51,8 +51,8 @@ export class CelestialPlanetsEngine {
 
         // Earth is situated in lower part of screen (pitch: -44°, dist: 1470, radius: 700)
         this.earthCoords = { yaw: 0, pitch: -44, dist: 1470 };
-        // Moon is situated in the upper-left quadrant (baseYaw: -36°, basePitch: 18°, dist: 1470, radius: 350)
-        this.moonCoords = { baseYaw: -36, basePitch: 18, dist: 1470, radius: 350 };
+        // Moon is situated in the upper-left quadrant (baseYaw: -28°, basePitch: 24°, dist: 1470, radius: 290)
+        this.moonCoords = { baseYaw: -28, basePitch: 24, dist: 1470, radius: 290 };
 
         // Sun light direction in celestial space (normalized vector)
         this.sunDir = { x: 0.72, y: 0.28, z: 0.63 };
@@ -623,8 +623,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (mx1 / mz2) * fov;
             const py = cy - (my2 / mz2) * fov;
 
-            // Луна (в 2 раза меньше Земли на экране: радиус 350px)
-            const drawRadius = 350 * zoom;
+            // Луна (в 2 раза меньше Земли на экране: радиус 290px)
+            const drawRadius = 290 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {

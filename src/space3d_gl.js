@@ -1371,9 +1371,9 @@ export class Space3DGLRenderer {
         }
         // Земля отдалена на 0.5x (dist: 1470 px, pitch: -44°), радиус 700
         const earthCenter = this._dirFromYawPitch(0, -44, 1470, this._earthCenter);
-        // Луна расположена в левом верхнем секторе неба (yaw: -36°, pitch: +18°), dist: 1470 px
-        const moonYaw = -36 + Math.sin(this.moonOrbit) * 1.5;
-        const moonPitch = 18 + Math.cos(this.moonOrbit) * 1.0;
+        // Луна расположена в левом верхнем секторе неба (yaw: -28°, pitch: +24°), dist: 1470 px
+        const moonYaw = -28 + Math.sin(this.moonOrbit) * 1.5;
+        const moonPitch = 24 + Math.cos(this.moonOrbit) * 1.0;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1470, this._moonCenter);
 
         // 3.1 Земля (отдалена на 0.5x: dist 1470, радиус 700)
@@ -1413,10 +1413,10 @@ export class Space3DGLRenderer {
             texture: this.textures.earthClouds
         });
 
-        // 3.3 Луна (в левом верхнем углу, ровно в 2 раза меньше Земли на экране: радиус 350 при равном расстоянии)
+        // 3.3 Луна (в левом верхнем секторе, ровно в 2 раза меньше Земли на экране: радиус 290 px)
         this._drawSphere({
             center: moonCenter,
-            radius: 350,
+            radius: 290,
             bodyType: 1,
             texture: this.textures.moon,
             night: this.textures.moon,
