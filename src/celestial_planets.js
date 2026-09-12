@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=4.0.0'),
-            loadImgBuffer('assets/textures/earth_night.png?v=4.0.0'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=4.0.0'),
-            loadImgBuffer('assets/textures/moon.jpg?v=4.0.0')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=4.1.0'),
+            loadImgBuffer('assets/textures/earth_night.png?v=4.1.0'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=4.1.0'),
+            loadImgBuffer('assets/textures/moon.jpg?v=4.1.0')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;

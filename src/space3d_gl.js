@@ -1187,10 +1187,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=4.0.0',
-            earthNight: 'assets/textures/earth_night.png?v=4.0.0',
-            earthClouds: 'assets/textures/earth_clouds.png?v=4.0.0',
-            moon: 'assets/textures/moon.jpg?v=4.0.0'
+            earthDay: 'assets/textures/earth_day.jpg?v=4.1.0',
+            earthNight: 'assets/textures/earth_night.png?v=4.1.0',
+            earthClouds: 'assets/textures/earth_clouds.png?v=4.1.0',
+            moon: 'assets/textures/moon.jpg?v=4.1.0'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
