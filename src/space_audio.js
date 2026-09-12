@@ -378,4 +378,7 @@ export class SpaceAudioEngine {
 }
 
 export const SpaceAudio = new SpaceAudioEngine();
+if (typeof window !== 'undefined') {
+    window.SpaceAudio = SpaceAudio;
+}
 export default SpaceAudio;

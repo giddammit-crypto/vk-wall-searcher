@@ -317,18 +317,21 @@ export class IssStationEngine {
                 color: #f1f5f9;
                 font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
                 padding: 18px 20px;
-                z-index: 10000;
-                transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+                z-index: 100005;
+                transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.32s;
                 opacity: 0;
+                visibility: hidden;
                 transform: translateY(18px) scale(0.96);
                 pointer-events: none;
                 user-select: none;
             }
 
-            .iss-telemetry-hud.active {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-                pointer-events: auto;
+            .iss-telemetry-hud.active,
+            .iss-telemetry-hud.visible {
+                opacity: 1 !important;
+                visibility: visible !important;
+                transform: translateY(0) scale(1) !important;
+                pointer-events: auto !important;
             }
 
             .iss-hud-header {
@@ -714,7 +717,8 @@ export class IssStationEngine {
     openTelemetry() {
         this.isTelemetryOpen = true;
         if (this.telemetryCardEl) {
-            this.telemetryCardEl.classList.add('active');
+            this.telemetryCardEl.classList.add('active', 'visible');
+            this.telemetryCardEl.classList.remove('hidden');
         }
         this.playQuindarTone(true);
         SpaceAudio.playVoice('focus');
@@ -723,7 +727,7 @@ export class IssStationEngine {
     closeTelemetry() {
         this.isTelemetryOpen = false;
         if (this.telemetryCardEl) {
-            this.telemetryCardEl.classList.remove('active');
+            this.telemetryCardEl.classList.remove('active', 'visible');
         }
     }
 
@@ -1751,4 +1755,8 @@ export class IssStationEngine {
 export const IssStation = new IssStationEngine();
 export const ISSStation = IssStation;
 export const ISSVisuals = IssStation;
+if (typeof window !== 'undefined') {
+    window.IssStation = IssStation;
+    window.ISSVisuals = IssStation;
+}
 export default IssStation;

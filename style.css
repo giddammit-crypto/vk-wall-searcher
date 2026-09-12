@@ -10350,21 +10350,25 @@ body.space-3d-active {
     display: none !important;
 }
 
-/* Legacy floating tooltip support */
+/* ISS Telemetry HUD & Holographic Overlay */
 .iss-telemetry-hud {
-    position: fixed;
-    pointer-events: none;
-    z-index: 99998;
-    transform: translate(-50%, -125%);
+    position: absolute;
+    bottom: 84px;
+    right: 32px;
+    width: 380px;
+    z-index: 100005;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s;
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
+    pointer-events: none;
 }
 
+.iss-telemetry-hud.active,
 .iss-telemetry-hud.visible {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, -115%);
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateY(0) scale(1) !important;
 }
 
 .iss-card-header {
