@@ -1172,10 +1172,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.3',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.3',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.3',
-            moon: 'assets/textures/moon.jpg?v=3.9.3'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.5',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.5',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.5',
+            moon: 'assets/textures/moon.jpg?v=3.9.5'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1348,15 +1348,15 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -12, 2454, this._earthCenter);
+        const earthCenter = this._dirFromYawPitch(0, -48, 980, this._earthCenter);
         const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
         const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
 
-        // 3.1 Земля (приближена в 1.1× раза, радиус 440)
+        // 3.1 Земля (приближена в 2.5× раза ближе, занимает 80% по горизонтали нижней части экрана, радиус 700, dist 980)
         this._drawSphere({
             center: earthCenter,
-            radius: 440,
+            radius: 700,
             bodyType: 0,
             texture: this.textures.earthDay,
             night: this.textures.earthNight,
@@ -1380,8 +1380,8 @@ export class Space3DGLRenderer {
         // 3.2 Атмосферная оболочка Земли (аналитическое рассеяние, 14 шагов)
         this._drawSphere({
             center: earthCenter,
-            radius: 440 * 1.025,
-            planetRadius: 440,
+            radius: 700 * 1.025,
+            planetRadius: 700,
             atmosphereOnly: true,
             strength: 0.88,   // компенсация тональной кривой ACES
             falloff: 3.6,
@@ -1484,7 +1484,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -12, 2454));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 980));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);

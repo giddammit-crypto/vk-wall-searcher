@@ -8865,6 +8865,15 @@ textarea:focus-visible,
     display: none !important;
 }
 
+.title-letters span,
+.title-letters .white-letter {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: none !important;
+    text-shadow: 0 0 20px #ffffff, 0 0 45px rgba(255, 255, 255, 0.95), 0 0 80px rgba(56, 189, 248, 0.5) !important;
+    filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.95)) !important;
+}
+
 /* Fullscreen 3D Viewport */
 .space-3d-viewport {
     position: fixed;

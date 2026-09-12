@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.9.3';
-import { WarpGLRenderer } from './warp_gl.js?v=3.9.3';
-import { WarpHud } from './warp_hud.js?v=3.9.3';
+import { SpaceAudio } from './space_audio.js?v=3.9.5';
+import { WarpGLRenderer } from './warp_gl.js?v=3.9.5';
+import { WarpHud } from './warp_hud.js?v=3.9.5';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {

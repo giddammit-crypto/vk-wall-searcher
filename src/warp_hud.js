@@ -126,7 +126,7 @@ export class WarpHud {
             </div>
 
             <div class="warp-title">
-                <div class="title-letters">${LETTERS.map(l => `<span>${l}</span>`).join('')}</div>
+                <div class="title-letters">${LETTERS.map(l => `<span class="white-letter" style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; background: none !important; text-shadow: 0 0 20px #ffffff, 0 0 45px rgba(255, 255, 255, 0.9), 0 0 70px rgba(56, 189, 248, 0.6);">${l}</span>`).join('')}</div>
                 <div class="title-sub">3D ИССЛЕДОВАТЕЛЬСКИЙ ЭКСПЕРИМЕНТ • КОСМО-ПРОСТРАНСТВО 360°</div>
                 <div class="title-divider"><i></i></div>
                 <div class="title-dedication">ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ И ДНЮ КОСМОСА</div>

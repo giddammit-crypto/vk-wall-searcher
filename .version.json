@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "3.9.3",
+    "version": "3.9.5",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T15:00:00+03:00",
-    "release_name": "AURORA 3.9.3 — Вращение карточек героев в 0.5x, Земля на горизонте обзора игрока (pitch -12°), оптимизированные шейдеры космоса без перегрузки GPU/CPU"
+    "commit_date": "2026-09-12T16:00:00+03:00",
+    "release_name": "AURORA 3.9.5 — Чистый белый цвет текста AURORA без затемнений, Земля приближена в 2.5x ближе (80% ширины экрана)"
 }

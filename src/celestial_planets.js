@@ -49,8 +49,8 @@ export class CelestialPlanetsEngine {
         this.moonLut = null;
         this.moonNormals = null;
 
-        // Earth is situated just below the horizon of the player (yaw: 0°, pitch: -12°, brought 0.8x closer)
-        this.earthCoords = { yaw: 0, pitch: -12, dist: 2454 };
+        // Earth is situated in lower part of screen, occupying 80% horizontal width (pitch: -48°, dist: 980)
+        this.earthCoords = { yaw: 0, pitch: -48, dist: 980 };
         // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
         this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
 
@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.3'),
-            loadImgBuffer('assets/textures/earth_night.png?v=3.9.3'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.3'),
-            loadImgBuffer('assets/textures/moon.jpg?v=3.9.3')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.5'),
+            loadImgBuffer('assets/textures/earth_night.png?v=3.9.5'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.5'),
+            loadImgBuffer('assets/textures/moon.jpg?v=3.9.5')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -569,8 +569,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (ex1 / ez2) * fov;
             const py = cy - (ey2 / ez2) * fov;
 
-            // Земля — приближена в 1.1× раза (радиус 370px, диаметр 740px в CPU-буфере)
-            const drawRadius = 370 * zoom;
+            // Земля — занимает ~80% нижней части экрана (радиус 700px, диаметр 1400-1530px)
+            const drawRadius = 700 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {

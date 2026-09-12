@@ -248,12 +248,13 @@
     letter-spacing: 0.02em;
 }
 
-.title-letters span {
-    color: #ffffff;
-    -webkit-text-fill-color: #ffffff;
-    background: none;
-    text-shadow: 0 0 24px rgba(255, 255, 255, 0.95), 0 0 50px rgba(62, 230, 196, 0.55), 0 0 80px rgba(56, 189, 248, 0.45);
-    filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.95));
+.title-letters span,
+.title-letters .white-letter {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: none !important;
+    text-shadow: 0 0 20px #ffffff, 0 0 45px rgba(255, 255, 255, 0.95), 0 0 80px rgba(56, 189, 248, 0.5) !important;
+    filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.95)) !important;
     animation: letterIn 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .title-letters span:nth-child(1) { animation-delay: 0.78s; }
