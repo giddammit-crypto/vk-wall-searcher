@@ -375,6 +375,32 @@ export class SpaceAudioEngine {
             console.warn('[SpaceAudio] ISS telemetry sound synth failed:', e);
         }
     }
+
+    /**
+     * Легендарный Quindar-тон связи с экипажем (2525 Гц короткий тон космической связи)
+     */
+    playQuindarTone(isIntro = true) {
+        try {
+            this.initAudioContext();
+            if (!this.audioCtx) return;
+            const now = this.audioCtx.currentTime;
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = 'sine';
+            const freq = isIntro ? 2525 : 2475;
+            osc.frequency.setValueAtTime(freq, now);
+
+            gain.gain.setValueAtTime(0.09, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+            osc.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+        } catch (e) {
+            // silent fallback
+        }
+    }
 }
 
 export const SpaceAudio = new SpaceAudioEngine();

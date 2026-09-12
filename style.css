@@ -8871,7 +8871,7 @@ textarea:focus-visible,
     width: 100vw;
     height: 100vh;
     z-index: 99999;
-    background: #030712;
+    background: #000105;
     overflow: hidden;
     cursor: grab;
     user-select: none;
@@ -8900,16 +8900,16 @@ body.space-3d-active {
     z-index: 1;
 }
 
-/* Ambient Deep Nebula Glow */
+/* Ambient Deep Nebula Glow (глубокий бархатный темный космос) */
 .space-3d-aurora-glow {
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 2;
     background: 
-        radial-gradient(circle at 20% 30%, rgba(62, 230, 196, 0.08) 0%, transparent 45%),
-        radial-gradient(circle at 80% 70%, rgba(129, 140, 248, 0.10) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.05) 0%, transparent 60%);
+        radial-gradient(circle at 20% 30%, rgba(62, 230, 196, 0.035) 0%, transparent 45%),
+        radial-gradient(circle at 80% 70%, rgba(129, 140, 248, 0.045) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.025) 0%, transparent 60%);
 }
 
 /* Cyber Grid Floor */
@@ -9329,6 +9329,39 @@ body.space-3d-active {
     border-color: #e11d48 !important;
     color: #ffffff !important;
     box-shadow: 0 0 16px rgba(225, 29, 72, 0.6);
+}
+
+/* Кнопка бортового терминала «Герои Космоса» */
+.space-hud-btn.space-cosmonauts-btn {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(62, 230, 196, 0.16));
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #e0f2fe;
+    position: relative;
+    overflow: hidden;
+}
+
+.space-hud-btn.space-cosmonauts-btn:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(62, 230, 196, 0.28));
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+}
+
+.space-hud-btn.space-cosmonauts-btn.active {
+    background: linear-gradient(135deg, rgba(62, 230, 196, 0.32), rgba(56, 189, 248, 0.32));
+    border-color: #3ee6c4;
+    color: #ffffff;
+    box-shadow: 0 0 22px rgba(62, 230, 196, 0.65);
+}
+
+.space-hud-btn.space-cosmonauts-btn .cosmo-btn-badge {
+    background: #3ee6c4;
+    color: #022c22;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 2px;
 }
 
 /* HUD Bottom Dock (Control Center) */
@@ -10868,5 +10901,540 @@ body.space-3d-active {
         transform: scale(1) translateY(0);
     }
 }
+
+/* ==========================================================================
+   Бортовой Терминал «Герои Космоса» (Cosmonauts Terminal Console)
+   ========================================================================== */
+.space-cosmonauts-panel {
+    position: absolute;
+    top: 76px;
+    left: 50%;
+    transform: translate(-50%, -125%);
+    width: min(840px, calc(100vw - 32px));
+    max-height: calc(100vh - 96px);
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    font-family: 'Montserrat', system-ui, sans-serif;
+    color: #f8fafc;
+}
+
+.space-cosmonauts-panel.is-open {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cosmo-panel-frame {
+    position: relative;
+    background: rgba(8, 14, 28, 0.92);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(62, 230, 196, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.90), 0 0 35px rgba(62, 230, 196, 0.20);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Угловые высокотехнологичные риски визора */
+.cosmo-reticle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    z-index: 5;
+}
+.reticle-tl { top: 6px; left: 6px; border-top: 2px solid #3ee6c4; border-left: 2px solid #3ee6c4; }
+.reticle-tr { top: 6px; right: 6px; border-top: 2px solid #3ee6c4; border-right: 2px solid #3ee6c4; }
+.reticle-bl { bottom: 6px; left: 6px; border-bottom: 2px solid #3ee6c4; border-left: 2px solid #3ee6c4; }
+.reticle-br { bottom: 6px; right: 6px; border-bottom: 2px solid #3ee6c4; border-right: 2px solid #3ee6c4; }
+
+/* 10-секундный лазерный таймер-бар */
+.cosmo-progress-container {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.cosmo-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3ee6c4, #38bdf8, #818cf8);
+    box-shadow: 0 0 10px #3ee6c4;
+    transition: width 0.1s linear;
+}
+
+/* Верхняя полоса телеметрии */
+.cosmo-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    background: rgba(15, 23, 42, 0.75);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 12px;
+}
+
+.cosmo-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    flex-wrap: wrap;
+}
+
+.cosmo-beacon-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #3ee6c4;
+    box-shadow: 0 0 8px #3ee6c4;
+    animation: beaconPulse 1.8s infinite;
+}
+
+@keyframes beaconPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.5; }
+}
+
+.cosmo-header-tag {
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+}
+
+.cosmo-index-badge {
+    background: rgba(62, 230, 196, 0.12);
+    color: #3ee6c4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.cosmo-callsign-badge {
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid #3ee6c4;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.cosmo-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cosmo-timer-readout {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 3px 8px;
+    border-radius: 6px;
+    min-width: 48px;
+    text-align: center;
+}
+
+.cosmo-timer-readout.is-paused {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.cosmo-btn-icon {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cosmo-btn-icon:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #3ee6c4;
+}
+
+.cosmo-btn-icon.active {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.cosmo-btn-icon .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.cosmo-close-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cosmo-close-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+.cosmo-close-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+/* Основное тело карточки */
+.cosmo-card-body {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+    padding: 18px 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 170px);
+}
+
+/* Левая колонка: Фото и статистика */
+.cosmo-col-photo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cosmo-photo-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #020617;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.cosmo-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+    filter: contrast(1.05) brightness(1.02);
+}
+
+.cosmo-photo-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+
+.cosmo-photo-scanline {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    background-size: 100% 3px, 6px 100%;
+}
+
+.cosmo-agency-tag {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #e2e8f0;
+    text-align: center;
+    padding: 4px 6px;
+    letter-spacing: 0.05em;
+}
+
+.cosmo-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.cosmo-stat-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.cosmo-stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: #64748b;
+    letter-spacing: 0.05em;
+}
+
+.cosmo-stat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Правая колонка: Имя, цитата, факт, навигация */
+.cosmo-col-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cosmo-name {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.cosmo-subtitle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.cosmo-title-badge {
+    background: rgba(62, 230, 196, 0.15);
+    border: 1px solid rgba(62, 230, 196, 0.35);
+    color: #3ee6c4;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.cosmo-date-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.cosmo-quote-box {
+    margin: 0;
+    position: relative;
+    padding: 10px 14px 10px 32px;
+    background: rgba(56, 189, 248, 0.06);
+    border-left: 3px solid #38bdf8;
+    border-radius: 0 8px 8px 0;
+}
+
+.cosmo-quote-mark {
+    position: absolute;
+    left: 8px;
+    top: 0px;
+    font-size: 32px;
+    color: rgba(56, 189, 248, 0.4);
+    font-family: Georgia, serif;
+    line-height: 1;
+}
+
+.cosmo-quote-text {
+    margin: 0;
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #e0f2fe;
+}
+
+.cosmo-fact-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.cosmo-fact-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.cosmo-fact-icon {
+    font-size: 15px;
+    color: #f59e0b;
+}
+
+.cosmo-fact-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.06em;
+}
+
+.cosmo-fact-text {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #cbd5e1;
+}
+
+/* Нижняя навигация */
+.cosmo-nav-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cosmo-nav-arrows {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.cosmo-nav-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+    padding: 6px 14px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cosmo-nav-btn:hover {
+    background: rgba(62, 230, 196, 0.2);
+    border-color: #3ee6c4;
+    color: #3ee6c4;
+}
+
+.cosmo-nav-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.cosmo-dots-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.cosmo-dot-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.cosmo-dot-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-color: #38bdf8;
+}
+
+.cosmo-dot-btn.active {
+    background: #3ee6c4;
+    color: #022c22;
+    border-color: #3ee6c4;
+    box-shadow: 0 0 8px rgba(62, 230, 196, 0.6);
+}
+
+/* Адаптивность для планшетов и мобильных */
+@media (max-width: 768px) {
+    .space-cosmonauts-panel {
+        top: 60px;
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 72px);
+    }
+
+    .cosmo-card-body {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 12px;
+    }
+
+    .cosmo-col-photo {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cosmo-photo-wrapper {
+        width: 100px;
+        aspect-ratio: 1;
+        flex-shrink: 0;
+    }
+
+    .cosmo-stats-grid {
+        flex: 1;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .cosmo-name {
+        font-size: 18px;
+    }
+
+    .cosmo-quote-text {
+        font-size: 12px;
+    }
+
+    .cosmo-fact-text {
+        font-size: 11.5px;
+    }
+
+    .cosmo-dots-bar {
+        display: none;
+    }
+}
+
 
 

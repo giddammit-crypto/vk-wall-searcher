@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.8.5';
+import { SpaceAudio } from './space_audio.js?v=3.8.6';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)
@@ -57,7 +57,7 @@ export const EARTH_CONFIG = {
 export const ISS_CONFIG = {
     orbitAltitudePx: 90,         // Высота орбиты над поверхностью Земли (px)
     orbitRadiusPx: 930,          // 840 + 90 = 930 px от центра Земли
-    orbitPeriodSec: 225,         // Полный виток за 3.75 минуты (225 сек)
+    orbitPeriodSec: 45,          // Увеличенная в 5 раз скорость (полный виток за 45 сек)
     inclinationDeg: 51.64,       // Реальное наклонение орбиты МКС к экватору Земли (градусы)
     raanDeg: 35.0,               // Долгота восходящего узла (RAAN) орбиты
     stationScale: 1.15,          // Масштабный коэффициент геометрии

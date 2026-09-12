@@ -196,15 +196,76 @@ export class CelestialPlanetsEngine {
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
-            this.cloudsBuffer = clouds;
+            this.cloudsBuffer = this.blurCloudsBuffer(clouds, this.texW, this.texH, 3);
             this.moonBuffer = moon;
             this.isLoaded = true;
             this.isLoading = false;
-            console.log('[CelestialPlanets] Real NASA Earth & Moon textures loaded.');
+            console.log('[CelestialPlanets] Real NASA Earth & Moon textures loaded with soft clouds.');
         }).catch(err => {
             console.warn('[CelestialPlanets] Error loading textures:', err);
             this.isLoading = false;
         });
+    }
+
+    /**
+     * Быстрый сепарабельный box-blur для текстуры облаков (сглаживание краев без ступенек)
+     */
+    blurCloudsBuffer(srcBuf, w, h, radius = 3) {
+        if (!srcBuf || radius <= 0) return srcBuf;
+
+        const total = w * h;
+        const inVals = new Uint8Array(total);
+        for (let i = 0; i < total; i++) {
+            inVals[i] = srcBuf[i] & 0xff;
+        }
+
+        const temp = new Float32Array(total);
+        const outVals = new Uint8Array(total);
+
+        const diameter = radius * 2 + 1;
+        const invDiam = 1.0 / diameter;
+
+        // Горизонтальный проход (с зацикливанием по долготе)
+        for (let y = 0; y < h; y++) {
+            const rowOffset = y * w;
+            let sum = 0;
+            for (let k = -radius; k <= radius; k++) {
+                const xWrapped = (k + w) % w;
+                sum += inVals[rowOffset + xWrapped];
+            }
+            temp[rowOffset] = sum * invDiam;
+
+            for (let x = 1; x < w; x++) {
+                const addX = (x + radius) % w;
+                const subX = (x - radius - 1 + w) % w;
+                sum += inVals[rowOffset + addX] - inVals[rowOffset + subX];
+                temp[rowOffset + x] = sum * invDiam;
+            }
+        }
+
+        // Вертикальный проход (с фиксацией на полюсах)
+        for (let x = 0; x < w; x++) {
+            let sum = 0;
+            for (let k = -radius; k <= radius; k++) {
+                const yClamped = Math.max(0, Math.min(h - 1, k));
+                sum += temp[yClamped * w + x];
+            }
+            outVals[x] = Math.min(255, Math.round(sum * invDiam));
+
+            for (let y = 1; y < h; y++) {
+                const addY = Math.min(h - 1, y + radius);
+                const subY = Math.max(0, y - radius - 1);
+                sum += temp[addY * w + x] - temp[subY * w + x];
+                outVals[y * w + x] = Math.min(255, Math.round(sum * invDiam));
+            }
+        }
+
+        const result = new Uint32Array(total);
+        for (let i = 0; i < total; i++) {
+            const c = outVals[i];
+            result[i] = 0xff000000 | (c << 16) | (c << 8) | c;
+        }
+        return result;
     }
 
     /**
@@ -247,14 +308,17 @@ export class CelestialPlanetsEngine {
     }
 
     /**
-     * Отрисовка Земли в оффскрин-буфер с реалистичным освещением
+     * Отрисовка Земли в оффскрин-буфер с реалистичным освещением (0 аллокаций в секунду)
      */
     updateEarthBuffer() {
         if (!this.earthCtx || !this.dayBuffer) return;
 
         const d = this.earthRadius * 2;
-        const imgData = this.earthCtx.createImageData(d, d);
-        const outBuf = new Uint32Array(imgData.data.buffer);
+        if (!this.cachedEarthImageData) {
+            this.cachedEarthImageData = this.earthCtx.createImageData(d, d);
+            this.cachedEarthBuf = new Uint32Array(this.cachedEarthImageData.data.buffer);
+        }
+        const outBuf = this.cachedEarthBuf;
 
         const lx = this.sunDir.x;
         const ly = this.sunDir.y;
@@ -311,26 +375,27 @@ export class CelestialPlanetsEngine {
             const nG = (nightPixel >> 8) & 0xff;
             const nB = (nightPixel >> 16) & 0xff;
 
-            const cloudAlpha = (cloudsPixel & 0xff) / 255.0;
+            // Видимость облаков ровно до 10% для кристальной четкости материков и океанов
+            const cloudAlpha = ((cloudsPixel & 0xff) / 255.0) * 0.10;
 
-            // Directional cloud shadow casting in anti-sun direction
+            // Направленная мягкая тень от облаков (не более 7%)
             let shadowAlpha = 0;
             if (this.cloudsBuffer) {
-                const sOffsetU = -lx * 0.014;
-                const sOffsetV = -ly * 0.014;
+                const sOffsetU = -lx * 0.012;
+                const sOffsetV = -ly * 0.012;
                 let uSh = (uC + sOffsetU) % 1.0;
                 if (uSh < 0) uSh += 1.0;
                 const vSh = Math.max(0.0, Math.min(1.0, vE + sOffsetV));
                 const shIdx = ((vSh * hMask) | 0) * tw + ((uSh * wMask) | 0);
                 const shPix = this.cloudsBuffer[shIdx];
-                shadowAlpha = ((shPix & 0xff) / 255.0) * 0.70;
+                shadowAlpha = ((shPix & 0xff) / 255.0) * 0.07;
             }
 
-            const dayFactor = Math.max(0.0, Math.min(1.0, (dotL + 0.12) / 0.28));
+            // Ровно 50% день и 50% ночь с узким кинематографичным терминатором
+            const dayFactor = Math.max(0.0, Math.min(1.0, (dotL + 0.04) / 0.09));
             let diffuse = Math.max(0.0, dotL);
 
-            // Attenuate ground diffuse under cloud shadow
-            if (shadowAlpha > 0.08) {
+            if (shadowAlpha > 0.01) {
                 diffuse *= (1.0 - shadowAlpha);
             }
 
@@ -338,32 +403,31 @@ export class CelestialPlanetsEngine {
             let g = dG * diffuse * dayFactor + nG * (1.0 - dayFactor) * 0.95;
             let b = dB * diffuse * dayFactor + nB * (1.0 - dayFactor) * 0.95;
 
-            // Sunset / Sunrise Twilight Terminator: Intense golden-crimson Rayleigh scattering
+            // Золотисто-янтарный терминатор Рэлея на границе дня и ночи
             const terminatorDist = Math.abs(dotL);
-            if (terminatorDist < 0.22 && dotL > -0.15) {
-                const twilight = Math.pow(1.0 - (terminatorDist / 0.22), 2.2);
-                r = Math.min(255, r + 245 * twilight * 0.95);
-                g = Math.min(255, g + 130 * twilight * 0.70);
-                b = Math.min(255, b + 42 * twilight * 0.35);
+            if (terminatorDist < 0.12 && dotL > -0.07) {
+                const twilight = Math.pow(1.0 - (terminatorDist / 0.12), 2.0);
+                r = Math.min(255, r + 245 * twilight * 0.92);
+                g = Math.min(255, g + 130 * twilight * 0.65);
+                b = Math.min(255, b + 40 * twilight * 0.30);
             }
 
-            // Multi-layered Clouds with realistic atmospheric scattering
-            if (cloudAlpha > 0.05) {
-                // Cloud illuminated tops with subtle sunset rim tinting
+            // Мягкие, деликатные полупрозрачные облака (10% видимости)
+            if (cloudAlpha > 0.005) {
                 let cR = 255, cG = 255, cB = 255;
-                if (terminatorDist < 0.20 && dotL > -0.10) {
-                    const cTwilight = Math.pow(1.0 - (terminatorDist / 0.20), 1.8);
+                if (terminatorDist < 0.12 && dotL > -0.05) {
+                    const cTwilight = Math.pow(1.0 - (terminatorDist / 0.12), 1.8);
                     cR = 255;
                     cG = Math.floor(255 - 60 * cTwilight);
                     cB = Math.floor(255 - 130 * cTwilight);
                 }
                 const cloudLit = (diffuse * 0.88 + 0.12) * dayFactor;
-                r = r * (1.0 - cloudAlpha * 0.88) + cR * cloudLit * cloudAlpha * 0.88;
-                g = g * (1.0 - cloudAlpha * 0.88) + cG * cloudLit * cloudAlpha * 0.88;
-                b = b * (1.0 - cloudAlpha * 0.88) + cB * cloudLit * cloudAlpha * 0.88;
+                r = r * (1.0 - cloudAlpha) + cR * cloudLit * cloudAlpha;
+                g = g * (1.0 - cloudAlpha) + cG * cloudLit * cloudAlpha;
+                b = b * (1.0 - cloudAlpha) + cB * cloudLit * cloudAlpha;
             }
 
-            const rim = Math.pow(1.0 - nz, 2.8) * 0.85 * (dayFactor * 0.8 + 0.2);
+            const rim = Math.pow(1.0 - nz, 2.8) * 0.80 * (dayFactor * 0.8 + 0.2);
             r = Math.min(255, r + 62 * rim);
             g = Math.min(255, g + 215 * rim);
             b = Math.min(255, b + 255 * rim);
@@ -371,18 +435,21 @@ export class CelestialPlanetsEngine {
             outBuf[i] = 0xff000000 | (((b | 0) & 0xff) << 16) | (((g | 0) & 0xff) << 8) | ((r | 0) & 0xff);
         }
 
-        this.earthCtx.putImageData(imgData, 0, 0);
+        this.earthCtx.putImageData(this.cachedEarthImageData, 0, 0);
     }
 
     /**
-     * Отрисовка Луны в оффскрин-буфер с лунными морями и кратерами
+     * Отрисовка Луны в оффскрин-буфер с лунными морями и кратерами (0 аллокаций в секунду)
      */
     updateMoonBuffer() {
         if (!this.moonCtx || !this.moonBuffer) return;
 
         const d = this.moonRadius * 2;
-        const imgData = this.moonCtx.createImageData(d, d);
-        const outBuf = new Uint32Array(imgData.data.buffer);
+        if (!this.cachedMoonImageData) {
+            this.cachedMoonImageData = this.moonCtx.createImageData(d, d);
+            this.cachedMoonBuf = new Uint32Array(this.cachedMoonImageData.data.buffer);
+        }
+        const outBuf = this.cachedMoonBuf;
 
         const lx = this.sunDir.x;
         const ly = this.sunDir.y;
@@ -434,7 +501,7 @@ export class CelestialPlanetsEngine {
             outBuf[i] = 0xff000000 | (((b | 0) & 0xff) << 16) | (((g | 0) & 0xff) << 8) | ((r | 0) & 0xff);
         }
 
-        this.moonCtx.putImageData(imgData, 0, 0);
+        this.moonCtx.putImageData(this.cachedMoonImageData, 0, 0);
     }
 
     /**
@@ -445,16 +512,16 @@ export class CelestialPlanetsEngine {
 
         this.tick = (this.tick || 0) + 1;
 
-        // Постоянное плавное вращение Земли и дрейф облаков
-        this.earthRot += 0.00035;
-        this.cloudsRot += 0.00065;
+        // Постоянное плавное вращение Земли (+80% быстрее, 0.00035 * 1.8 = 0.00063)
+        this.earthRot += 0.00063;
+        this.cloudsRot += 0.00095;
 
         // Орбитальное движение Луны и синхронное вращение
         this.moonOrbit += 0.00022;
         this.moonRot += 0.00022;
 
-        // Оффскрин-буфер перерисовываем раз в 3 кадра для экономии CPU (стабильные 60 FPS)
-        if (this.tick % 3 === 0) {
+        // Оффскрин-буфер перерисовываем раз в 4 кадра для максимального FPS
+        if (this.tick % 4 === 0) {
             this.updateEarthBuffer();
             this.updateMoonBuffer();
         }

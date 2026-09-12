@@ -11,7 +11,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.8.5';
+import { SpaceAudio } from './space_audio.js?v=3.8.6';
 
 export class SpaceWarpTransition {
     constructor() {

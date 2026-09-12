@@ -16,15 +16,16 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.8.5';
-import { SpaceAudio } from './space_audio.js?v=3.8.5';
-import { CelestialPlanets } from './celestial_planets.js?v=3.8.5';
-import { IssStation } from './iss_station.js?v=3.8.5';
-import { createQrSvg } from './qrcode.js?v=3.8.5';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.8.5';
-import { openPostModal } from './render.js?v=3.8.5';
-import { fetchHistory } from './subscribers.js?v=3.8.5';
-import { buildBranchAdvice } from './advice.js?v=3.8.5';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.8.6';
+import { SpaceAudio } from './space_audio.js?v=3.8.6';
+import { CelestialPlanets } from './celestial_planets.js?v=3.8.6';
+import { IssStation } from './iss_station.js?v=3.8.6';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.8.6';
+import { createQrSvg } from './qrcode.js?v=3.8.6';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.8.6';
+import { openPostModal } from './render.js?v=3.8.6';
+import { fetchHistory } from './subscribers.js?v=3.8.6';
+import { buildBranchAdvice } from './advice.js?v=3.8.6';
 
 export class Space3DEngine {
     constructor() {
@@ -118,6 +119,7 @@ export class Space3DEngine {
         this.initStarfield();
         CelestialPlanets.init();
         IssStation.init(this);
+        CosmonautsTerminal.init(this);
         this.setupEventListeners();
         this.setupHudControls();
         this.buildStations();
@@ -137,7 +139,12 @@ export class Space3DEngine {
      */
     initStarfield() {
         this.stars = [];
+        this.starBatches = [];
         this.milkyWayStars = [];
+        this.milkyWayBatches = [
+            { color: '#fed7aa', stars: [] },
+            { color: '#bae6fd', stars: [] }
+        ];
         this.dustMotes = [];
 
         // 1. Мультиспектральный звездный каталог (O/B, A, F, G, K, M)
@@ -150,6 +157,13 @@ export class Space3DEngine {
             { type: 'K',   color: '#fb923c', core: '#fed7aa', weight: 0.16, sizeMin: 1.2, sizeMax: 2.4, spike: false }, // Оранжевые гиганты (Арктур, Альдебаран)
             { type: 'M',   color: '#f87171', core: '#fca5a5', weight: 0.14, sizeMin: 1.4, sizeMax: 2.9, spike: true }   // Красные сверхгиганты (Бетельгейзе, Антарес)
         ];
+
+        this.starBatches = spectralClasses.map(sp => ({
+            type: sp.type,
+            color: sp.color,
+            core: sp.core,
+            stars: []
+        }));
 
         const starCount = 850;
         for (let i = 0; i < starCount; i++) {
@@ -173,7 +187,7 @@ export class Space3DEngine {
             const isBright = Math.random() < 0.08;
             const size = (isBright ? (selectedSpec.sizeMax + 0.8) : (selectedSpec.sizeMin + Math.random() * (selectedSpec.sizeMax - selectedSpec.sizeMin)));
 
-            this.stars.push({
+            const starObj = {
                 x: Math.sin(phi) * Math.cos(theta),
                 y: Math.cos(phi),
                 z: Math.sin(phi) * Math.sin(theta),
@@ -184,7 +198,11 @@ export class Space3DEngine {
                 alpha: Math.random() * 0.45 + 0.55,
                 twinkleSpeed: Math.random() * 0.035 + 0.012,
                 twinklePhase: Math.random() * Math.PI * 2
-            });
+            };
+
+            this.stars.push(starObj);
+            const batch = this.starBatches.find(b => b.color === selectedSpec.color);
+            if (batch) batch.stars.push(starObj);
         }
 
         // 2. Галактический рукав Млечного Пути и полоса космической пыли (Milky Way Galactic Core & Great Rift)
@@ -219,7 +237,7 @@ export class Space3DEngine {
                 ? (Math.random() > 0.4 ? '#fed7aa' : '#fef08a') 
                 : (Math.random() > 0.5 ? '#e0f2fe' : '#bae6fd');
 
-            this.milkyWayStars.push({
+            const sObj = {
                 x: wx,
                 y: wy,
                 z: wz,
@@ -227,7 +245,10 @@ export class Space3DEngine {
                 color: mwColor,
                 alpha: mwAlpha,
                 twinklePhase: Math.random() * Math.PI * 2
-            });
+            };
+
+            this.milkyWayStars.push(sObj);
+            this.milkyWayBatches[isGalacticCore ? 0 : 1].stars.push(sObj);
         }
 
         // 3. Плавающие в невесомости космические микро-пылинки с 3D параллаксом (Zero-g Dust Motes)
@@ -247,16 +268,16 @@ export class Space3DEngine {
             });
         }
 
-        // 4. Глубокие диффузные туманности и Галактическое Ядро
+        // 4. Глубокие диффузные туманности и Галактическое Ядро (глубокий темный бархатный космос)
         this.nebulae = [
-            // Ядро Млечного Пути (Sagittarius A* Core Glow - Теплое золотисто-розовое свечение)
-            { yaw: 68,  pitch: 22,  radius: 560, color: 'rgba(251, 146, 60, 0.20)',  coreColor: 'rgba(254, 215, 170, 0.40)' },
-            // Туманность Киля / Ориона (Ионизированный водород H-alpha, глубокий циан и неон)
-            { yaw: 185, pitch: -24, radius: 480, color: 'rgba(129, 140, 248, 0.20)', coreColor: 'rgba(56, 189, 248, 0.32)' },
-            // Вуаль Лебедя (Кислородная эмиссия O-III, бирюзовый аврора-шлейф)
-            { yaw: 310, pitch: 35,  radius: 460, color: 'rgba(62, 230, 196, 0.18)',  coreColor: 'rgba(14, 165, 233, 0.28)' },
-            // Пылевой комплекс Змееносца (Пурпурно-малиновый молекулярный комплекс)
-            { yaw: 245, pitch: -14, radius: 420, color: 'rgba(244, 114, 182, 0.16)', coreColor: 'rgba(192, 132, 252, 0.26)' }
+            // Ядро Млечного Пути (Sagittarius A* Core Glow)
+            { yaw: 68,  pitch: 22,  radius: 560, color: 'rgba(251, 146, 60, 0.08)',  coreColor: 'rgba(254, 215, 170, 0.16)' },
+            // Туманность Киля / Ориона (Ионизированный водород H-alpha)
+            { yaw: 185, pitch: -24, radius: 480, color: 'rgba(129, 140, 248, 0.08)', coreColor: 'rgba(56, 189, 248, 0.14)' },
+            // Вуаль Лебедя (Кислородная эмиссия O-III)
+            { yaw: 310, pitch: 35,  radius: 460, color: 'rgba(62, 230, 196, 0.07)',  coreColor: 'rgba(14, 165, 233, 0.12)' },
+            // Пылевой комплекс Змееносца
+            { yaw: 245, pitch: -14, radius: 420, color: 'rgba(244, 114, 182, 0.06)', coreColor: 'rgba(192, 132, 252, 0.12)' }
         ];
 
         this.meteors = [];
@@ -1482,6 +1503,14 @@ export class Space3DEngine {
         const closeBtn = document.getElementById('space-close-btn');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
+        // Бортовой терминал «Герои Космоса» (выдвижное окно в верхнем меню)
+        const cosmonautsBtn = document.getElementById('space-cosmonauts-btn');
+        if (cosmonautsBtn) {
+            cosmonautsBtn.addEventListener('click', () => {
+                CosmonautsTerminal.toggle();
+            });
+        }
+
         // Аудио-контроллеры
         const musicBtn = document.getElementById('space-music-btn');
         if (musicBtn) {
@@ -1693,7 +1722,10 @@ export class Space3DEngine {
         CelestialPlanets.update();
         IssStation.update();
 
-        this.updateHudTelemetry();
+        this.telemetryTick = (this.telemetryTick || 0) + 1;
+        if (this.telemetryTick % 4 === 0) {
+            this.updateHudTelemetry();
+        }
         this.renderCanvasStarfield();
 
         this.animId = requestAnimationFrame(this.renderLoop);
@@ -1755,70 +1787,91 @@ export class Space3DEngine {
             }
         });
 
-        // 2. Отрисовка Млечного Пути (Галактический рукав и звездная россыпь)
-        if (this.milkyWayStars && this.milkyWayStars.length > 0) {
-            const mwLen = this.milkyWayStars.length;
-            for (let i = 0; i < mwLen; i++) {
-                const s = this.milkyWayStars[i];
-                const x1 = s.x * cosYaw - s.z * sinYaw;
-                const z1 = s.x * sinYaw + s.z * cosYaw;
-                const y2 = s.y * cosPitch - z1 * sinPitch;
-                const z2 = s.y * sinPitch + z1 * cosPitch;
+        // 2. Отрисовка Млечного Пути (батчинг по цветам: 2 вызова вместо 1350!)
+        if (this.milkyWayBatches) {
+            for (let b = 0; b < this.milkyWayBatches.length; b++) {
+                const batch = this.milkyWayBatches[b];
+                if (!batch.stars || !batch.stars.length) continue;
 
-                if (z2 > 0.08) {
-                    const px = cx + (x1 / z2) * fov;
-                    const py = cy - (y2 / z2) * fov;
+                ctx.fillStyle = batch.color;
+                ctx.globalAlpha = 0.55;
+                ctx.beginPath();
+                const bLen = batch.stars.length;
+                for (let i = 0; i < bLen; i++) {
+                    const s = batch.stars[i];
+                    const x1 = s.x * cosYaw - s.z * sinYaw;
+                    const z1 = s.x * sinYaw + s.z * cosYaw;
+                    const y2 = s.y * cosPitch - z1 * sinPitch;
+                    const z2 = s.y * sinPitch + z1 * cosPitch;
 
-                    if (px >= 0 && px <= w && py >= 0 && py <= h) {
-                        ctx.fillStyle = s.color;
-                        ctx.globalAlpha = s.alpha * 0.85;
-                        ctx.beginPath();
-                        ctx.arc(px, py, Math.max(0.5, (s.size / z2) * 0.8 * this.zoom), 0, Math.PI * 2);
-                        ctx.fill();
+                    if (z2 > 0.08) {
+                        const px = cx + (x1 / z2) * fov;
+                        const py = cy - (y2 / z2) * fov;
+
+                        if (px >= 0 && px <= w && py >= 0 && py <= h) {
+                            const r = Math.max(0.5, (s.size / z2) * 0.8 * this.zoom);
+                            ctx.moveTo(px + r, py);
+                            ctx.arc(px, py, r, 0, Math.PI * 2);
+                        }
                     }
                 }
+                ctx.fill();
             }
         }
 
-        // 3. Отрисовка звезд каталога (Мультиспектральные звезды с дифракционными крестами)
-        const starLen = this.stars.length;
-        for (let i = 0; i < starLen; i++) {
-            const s = this.stars[i];
+        // 3. Отрисовка звезд каталога (батчинг по 6 спектральным классам: 6 вызовов вместо 850!)
+        const spikedStars = [];
+        if (this.starBatches) {
+            for (let b = 0; b < this.starBatches.length; b++) {
+                const batch = this.starBatches[b];
+                if (!batch.stars || !batch.stars.length) continue;
 
-            const x1 = s.x * cosYaw - s.z * sinYaw;
-            const z1 = s.x * sinYaw + s.z * cosYaw;
-            const y2 = s.y * cosPitch - z1 * sinPitch;
-            const z2 = s.y * sinPitch + z1 * cosPitch;
+                ctx.fillStyle = batch.color;
+                ctx.globalAlpha = 0.90;
+                ctx.beginPath();
+                const sLen = batch.stars.length;
+                for (let i = 0; i < sLen; i++) {
+                    const s = batch.stars[i];
+                    const x1 = s.x * cosYaw - s.z * sinYaw;
+                    const z1 = s.x * sinYaw + s.z * cosYaw;
+                    const y2 = s.y * cosPitch - z1 * sinPitch;
+                    const z2 = s.y * sinPitch + z1 * cosPitch;
 
-            if (z2 > 0.08) {
-                const px = cx + (x1 / z2) * fov;
-                const py = cy - (y2 / z2) * fov;
+                    if (z2 > 0.08) {
+                        const px = cx + (x1 / z2) * fov;
+                        const py = cy - (y2 / z2) * fov;
 
-                if (px >= 0 && px <= w && py >= 0 && py <= h) {
-                    s.twinklePhase += s.twinkleSpeed;
-                    const twinkle = Math.sin(s.twinklePhase) * 0.35 + 0.65;
-                    const pSize = Math.max(0.6, (s.size / z2) * 0.9 * this.zoom);
+                        if (px >= 0 && px <= w && py >= 0 && py <= h) {
+                            s.twinklePhase += s.twinkleSpeed;
+                            const pSize = Math.max(0.6, (s.size / z2) * 0.9 * this.zoom);
+                            ctx.moveTo(px + pSize, py);
+                            ctx.arc(px, py, pSize, 0, Math.PI * 2);
 
-                    ctx.fillStyle = s.color;
-                    ctx.globalAlpha = Math.min(1.0, s.alpha * twinkle);
-                    ctx.beginPath();
-                    ctx.arc(px, py, pSize, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // Дифракционные 4-лучевые кресты для ярких звезд (Rockstar Games AAA Optical Flare)
-                    if (s.hasSpike && pSize > 1.8) {
-                        ctx.strokeStyle = s.coreColor || '#ffffff';
-                        ctx.lineWidth = 0.75;
-                        const spikeLen = pSize * 2.8;
-                        ctx.beginPath();
-                        ctx.moveTo(px - spikeLen, py);
-                        ctx.lineTo(px + spikeLen, py);
-                        ctx.moveTo(px, py - spikeLen);
-                        ctx.lineTo(px, py + spikeLen);
-                        ctx.stroke();
+                            if (s.hasSpike && pSize > 1.8) {
+                                spikedStars.push({ px, py, pSize, coreColor: s.coreColor || '#ffffff' });
+                            }
+                        }
                     }
                 }
+                ctx.fill();
             }
+        }
+
+        // Дифракционные 4-лучевые кресты для ярких звезд (единый батч линий)
+        if (spikedStars.length > 0) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.75;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            for (let i = 0; i < spikedStars.length; i++) {
+                const sp = spikedStars[i];
+                const spikeLen = sp.pSize * 2.8;
+                ctx.moveTo(sp.px - spikeLen, sp.py);
+                ctx.lineTo(sp.px + spikeLen, sp.py);
+                ctx.moveTo(sp.px, sp.py - spikeLen);
+                ctx.lineTo(sp.px, sp.py + spikeLen);
+            }
+            ctx.stroke();
         }
         ctx.globalAlpha = 1.0;
 
@@ -1914,9 +1967,40 @@ export class Space3DEngine {
 
             if (distFromCenter < maxVisibleDist) {
                 const flareIntensity = Math.max(0.0, 1.0 - (distFromCenter / maxVisibleDist));
+                const sunRadius = (45 / z2) * Math.min(1.6, this.zoom);
+
+                // 0. Объемные реалистичные солнечные лучи (Crepuscular God Rays)
+                const rayCount = 8;
+                const baseAngle = (this.tick || 0) * 0.0006;
+                ctx.save();
+                for (let rIdx = 0; rIdx < rayCount; rIdx++) {
+                    const rayAngle = baseAngle + (rIdx * Math.PI * 2 / rayCount) + Math.sin(rIdx * 1.6) * 0.18;
+                    const raySpread = 0.07 + (rIdx % 3) * 0.025;
+                    const rayLength = Math.max(w, h) * (1.3 + (rIdx % 2) * 0.4);
+
+                    const p1x = sx + Math.cos(rayAngle - raySpread) * rayLength;
+                    const p1y = sy + Math.sin(rayAngle - raySpread) * rayLength;
+                    const p2x = sx + Math.cos(rayAngle + raySpread) * rayLength;
+                    const p2y = sy + Math.sin(rayAngle + raySpread) * rayLength;
+
+                    const rayGrad = ctx.createRadialGradient(sx, sy, sunRadius * 0.8, sx, sy, rayLength);
+                    const alpha = (0.13 + Math.sin((this.tick || 0) * 0.012 + rIdx) * 0.03) * flareIntensity;
+                    rayGrad.addColorStop(0, `rgba(255, 248, 220, ${alpha * 1.4})`);
+                    rayGrad.addColorStop(0.25, `rgba(254, 215, 170, ${alpha * 0.7})`);
+                    rayGrad.addColorStop(0.65, `rgba(217, 119, 6, ${alpha * 0.25})`);
+                    rayGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                    ctx.fillStyle = rayGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(p1x, p1y);
+                    ctx.lineTo(p2x, p2y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
 
                 // 1. Ослепительный солнечный диск с золотисто-белой короной
-                const sunRadius = (45 / z2) * Math.min(1.6, this.zoom);
                 const corona = ctx.createRadialGradient(sx, sy, 2, sx, sy, sunRadius * 4.5);
                 corona.addColorStop(0, '#ffffff');
                 corona.addColorStop(0.18, 'rgba(254, 240, 138, 0.95)');
@@ -2307,6 +2391,9 @@ export class Space3DEngine {
         if (this.viewport) {
             this.viewport.classList.add('hidden');
             this.viewport.setAttribute('aria-hidden', 'true');
+        }
+        if (CosmonautsTerminal && CosmonautsTerminal.isOpen) {
+            CosmonautsTerminal.close();
         }
         IssStation.hideOverlays();
         document.body.classList.remove('space-3d-active');

@@ -13,12 +13,12 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=3.8.5';
+} from './api.js?v=3.8.6';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=3.8.5';
+} from './advice.js?v=3.8.6';
 
 import {
     fetchHistory,
@@ -28,7 +28,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=3.8.5';
+} from './subscribers.js?v=3.8.6';
 
 import {
     fetchUpdaterStatus,
@@ -37,7 +37,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=3.8.5';
+} from './updater.js?v=3.8.6';
 
 import {
     CANONICAL_BRANCHES,
@@ -48,7 +48,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=3.8.5';
+} from './branches.js?v=3.8.6';
 
 import {
     calculateKPIs,
@@ -57,7 +57,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=3.8.5';
+} from './analytics.js?v=3.8.6';
 
 import {
     createPostCard,
@@ -69,7 +69,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=3.8.5';
+} from './render.js?v=3.8.6';
 
 import {
     exportToCsv,
@@ -79,24 +79,24 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=3.8.5';
+} from './export.js?v=3.8.6';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.8.5';
-import { CosmicUniverse } from './cosmic.js?v=3.8.5';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=3.8.6';
+import { CosmicUniverse } from './cosmic.js?v=3.8.6';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=3.8.5';
+} from './promo.js?v=3.8.6';
 
 import {
     renderRadarSection
-} from './radar.js?v=3.8.5';
+} from './radar.js?v=3.8.6';
 
-import { Space3D } from './space3d.js?v=3.8.5';
-import { SpaceWarp } from './space_warp.js?v=3.8.5';
-import { SpaceAudio } from './space_audio.js?v=3.8.5';
+import { Space3D } from './space3d.js?v=3.8.6';
+import { SpaceWarp } from './space_warp.js?v=3.8.6';
+import { SpaceAudio } from './space_audio.js?v=3.8.6';
 
 function initApp() {
 
@@ -2653,7 +2653,7 @@ function initApp() {
                 searchQuery: elements.reportSearchQuery?.textContent || '',
                 generationTime: elements.reportGenerationTime?.textContent || new Date().toLocaleString('ru-RU'),
                 subscribers: subsRows,
-                appVersion: '3.8.5'
+                appVersion: '3.8.6'
             };
             exportToDocx(posts, state.lastGroupsStats || [], meta);
             showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');

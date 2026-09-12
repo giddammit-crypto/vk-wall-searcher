@@ -8,7 +8,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=3.8.5';
+import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=3.8.6';
 
 const LEVEL_META = {
     success: { icon: 'check_circle', label: 'Отлично', cls: 'adv-success' },
