@@ -16,14 +16,15 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.7.9';
-import { SpaceAudio } from './space_audio.js?v=3.7.9';
-import { CelestialPlanets } from './celestial_planets.js?v=3.7.9';
-import { createQrSvg } from './qrcode.js?v=3.7.9';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.7.9';
-import { openPostModal } from './render.js?v=3.7.9';
-import { fetchHistory } from './subscribers.js?v=3.7.9';
-import { buildBranchAdvice } from './advice.js?v=3.7.9';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.8.0';
+import { SpaceAudio } from './space_audio.js?v=3.8.0';
+import { CelestialPlanets } from './celestial_planets.js?v=3.8.0';
+import { IssStation } from './iss_station.js?v=3.8.0';
+import { createQrSvg } from './qrcode.js?v=3.8.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.8.0';
+import { openPostModal } from './render.js?v=3.8.0';
+import { fetchHistory } from './subscribers.js?v=3.8.0';
+import { buildBranchAdvice } from './advice.js?v=3.8.0';
 
 export class Space3DEngine {
     constructor() {
@@ -109,6 +110,7 @@ export class Space3DEngine {
         this.ctx = this.canvas.getContext('2d');
         this.initStarfield();
         CelestialPlanets.init();
+        IssStation.init(this);
         this.setupEventListeners();
         this.setupHudControls();
         this.buildStations();
@@ -1575,6 +1577,7 @@ export class Space3DEngine {
 
         // Обновляем кинематику вращения Земли и Луны
         CelestialPlanets.update();
+        IssStation.update();
 
         this.updateHudTelemetry();
         this.renderCanvasStarfield();
@@ -1675,6 +1678,9 @@ export class Space3DEngine {
 
         // 5. Отрисовка фотореалистичной Земли и Луны с вращением и атмосферой
         CelestialPlanets.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
+
+        // 5.1. Отрисовка 3D Международной Космической Станции (МКС)
+        IssStation.render(ctx, w, h, this.yaw, this.pitch, this.zoom);
 
         // 6. Метеоры и космические болиды
         this.renderMeteors(ctx, w, h);
@@ -2020,6 +2026,7 @@ export class Space3DEngine {
             this.viewport.classList.add('hidden');
             this.viewport.setAttribute('aria-hidden', 'true');
         }
+        IssStation.hideOverlays();
         document.body.classList.remove('space-3d-active');
     }
 

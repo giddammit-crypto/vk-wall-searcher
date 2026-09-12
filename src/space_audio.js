@@ -12,7 +12,7 @@ export class SpaceAudioEngine {
     constructor() {
         this.musicEnabled = localStorage.getItem('space3d_music_enabled') !== 'false';
         this.voiceEnabled = localStorage.getItem('space3d_voice_enabled') !== 'false';
-        this.musicVolume = 0.35;
+        this.musicVolume = 0.65; // David Bowie - Space Oddity 65% volume
         this.voiceVolume = 0.90;
 
         this.ambientAudio = null;
@@ -97,14 +97,16 @@ export class SpaceAudioEngine {
     }
 
     /**
-     * Инициализация фоновой амбиент-музыки
+     * Инициализация фоновой амбиент-музыки (David Bowie - Space Oddity)
      */
-    initAmbientMusic() {
+    initAmbientMusic(src = 'audio/ambient/david_bowie_space_oddity.mp3') {
         if (!this.ambientAudio) {
-            this.ambientAudio = new Audio('audio/ambient/space_ambient_calm.mp3');
+            this.ambientAudio = new Audio(src);
             this.ambientAudio.loop = true;
             this.ambientAudio.preload = 'auto';
             this.ambientAudio.volume = 0;
+        } else if (src && this.ambientAudio.src && !this.ambientAudio.src.includes(src)) {
+            this.ambientAudio.src = src;
         }
     }
 
@@ -341,6 +343,36 @@ export class SpaceAudioEngine {
             chime.stop(now + 1.3);
         } catch (e) {
             console.warn('[SpaceAudio] Supernova sound synth failed:', e);
+        }
+    }
+
+    /**
+     * Высокотехнологичный сигнал телеметрии МКС (двойной короткий чирп 1760 Гц -> 2640 Гц)
+     */
+    playIssTelemetrySound() {
+        try {
+            this.initAudioContext();
+            if (!this.audioCtx) return;
+            const now = this.audioCtx.currentTime;
+
+            [0, 0.09].forEach((delay, idx) => {
+                const osc = this.audioCtx.createOscillator();
+                const gain = this.audioCtx.createGain();
+                osc.type = 'sine';
+                const f = idx === 0 ? 1760 : 2640;
+                osc.frequency.setValueAtTime(f, now + delay);
+                osc.frequency.exponentialRampToValueAtTime(f * 1.12, now + delay + 0.055);
+
+                gain.gain.setValueAtTime(0.18, now + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.055);
+
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(now + delay);
+                osc.stop(now + delay + 0.065);
+            });
+        } catch (e) {
+            console.warn('[SpaceAudio] ISS telemetry sound synth failed:', e);
         }
     }
 }

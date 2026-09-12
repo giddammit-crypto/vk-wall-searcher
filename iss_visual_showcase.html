@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURORA — ISS (МКС) Visual & Telemetry Showcase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="src/iss_hud.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #020617;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            user-select: none;
+        }
+        #space-viewport {
+            position: absolute;
+            inset: 0;
+            cursor: grab;
+        }
+        #space-viewport.is-panning {
+            cursor: grabbing;
+        }
+        #space-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .showcase-overlay-top {
+            position: absolute;
+            top: 20px;
+            left: 24px;
+            z-index: 50;
+            pointer-events: none;
+        }
+        .showcase-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            background: linear-gradient(90deg, #38bdf8, #3ee6c4, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .showcase-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            letter-spacing: 0.05em;
+        }
+        .controls-bar {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 9999px;
+            padding: 8px 18px;
+            z-index: 50;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+        .ctrl-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            padding: 8px 14px;
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .ctrl-btn:hover, .ctrl-btn.active {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        }
+        .ctrl-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+        .texture-gallery-modal {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 320px;
+            max-height: 85vh;
+            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 60;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+        }
+        .texture-gallery-modal.hidden {
+            display: none;
+        }
+        .gallery-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #38bdf8;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .gallery-item {
+            margin-bottom: 14px;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .gallery-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .gallery-canvas-wrap {
+            display: flex;
+            justify-content: center;
+            background: #090d16;
+            border-radius: 6px;
+            padding: 6px;
+            overflow: hidden;
+        }
+        .gallery-canvas-wrap canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="showcase-overlay-top">
+        <div class="showcase-title">
+            <span class="material-symbols-outlined">satellite_alt</span>
+            AURORA // МКС (ISS) PHOTOREALISTIC 3D VISUALS
+        </div>
+        <div class="showcase-sub">EXPEDITION 71 • NORAD #25544 • PROCEDURAL SHADERS & HUD TELEMETRY</div>
+    </div>
+
+    <div id="space-viewport">
+        <canvas id="space-canvas"></canvas>
+    </div>
+
+    <!-- Procedural Texture Inspector Modal -->
+    <div id="texture-gallery" class="texture-gallery-modal hidden">
+        <div class="gallery-title">
+            <span>ПРОЦЕДУРНЫЕ ТЕКСТУРЫ МКС</span>
+            <button type="button" id="close-gallery-btn" style="background:transparent;border:none;color:#94a3b8;cursor:pointer;">✕</button>
+        </div>
+        <div id="gallery-container"></div>
+    </div>
+
+    <!-- Interactive HUD Control Dock -->
+    <div class="controls-bar">
+        <button type="button" class="ctrl-btn" id="btn-lock-reticle">
+            <span class="material-symbols-outlined">track_changes</span>
+            <span>Захват цели</span>
+        </button>
+        <button type="button" class="ctrl-btn" id="btn-reset-camera">
+            <span class="material-symbols-outlined">center_focus_strong</span>
+            <span>Центрировать</span>
+        </button>
+        <button type="button" class="ctrl-btn" id="btn-toggle-gallery">
+            <span class="material-symbols-outlined">texture</span>
+            <span>Текстуры</span>
+        </button>
+        <button type="button" class="ctrl-btn" id="btn-toggle-speed">
+            <span class="material-symbols-outlined">speed</span>
+            <span>Орбита x1</span>
+        </button>
+    </div>
+
+    <script type="module">
+        import { ISSVisuals } from './src/iss_visuals.js';
+
+        const canvas = document.getElementById('space-canvas');
+        const ctx = canvas.getContext('2d');
+        const viewport = document.getElementById('space-viewport');
+
+        let camYaw = 22;
+        let camPitch = -32;
+        let zoom = 1.6;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        let speedMultiplier = 1;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Background Starfield
+        const stars = [];
+        for (let i = 0; i < 400; i++) {
+            stars.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                sz: Math.random() * 1.8 + 0.5,
+                alpha: Math.random() * 0.8 + 0.2,
+                twinkle: Math.random() * 0.02 + 0.01
+            });
+        }
+
+        // Initialize ISS Engine
+        ISSVisuals.init({
+            get targetYaw() { return camYaw; },
+            set targetYaw(v) { camYaw = v; },
+            get targetPitch() { return camPitch; },
+            set targetPitch(v) { camPitch = v; }
+        });
+
+        // Mouse Drag / Camera Orbit Controls
+        viewport.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            viewport.classList.add('is-panning');
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                camYaw -= dx * 0.3;
+                camPitch += dy * 0.3;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            isDragging = false;
+            viewport.classList.remove('is-panning');
+        });
+
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom = Math.max(0.6, Math.min(3.5, zoom * delta));
+        }, { passive: false });
+
+        // Dock controls
+        document.getElementById('btn-lock-reticle').addEventListener('click', () => {
+            ISSVisuals.toggleTargetLock();
+        });
+
+        document.getElementById('btn-reset-camera').addEventListener('click', () => {
+            camYaw = ISSVisuals.orbitalParams.baseYaw;
+            camPitch = ISSVisuals.orbitalParams.basePitch;
+            zoom = 1.6;
+        });
+
+        const gallery = document.getElementById('texture-gallery');
+        document.getElementById('btn-toggle-gallery').addEventListener('click', () => {
+            gallery.classList.toggle('hidden');
+            if (!gallery.classList.contains('hidden') && gallery.dataset.populated !== 'true') {
+                populateTextureGallery();
+                gallery.dataset.populated = 'true';
+            }
+        });
+
+        document.getElementById('close-gallery-btn').addEventListener('click', () => {
+            gallery.classList.add('hidden');
+        });
+
+        const speedBtn = document.getElementById('btn-toggle-speed');
+        speedBtn.addEventListener('click', () => {
+            if (speedMultiplier === 1) {
+                speedMultiplier = 4;
+                speedBtn.querySelector('span:last-child').textContent = 'Орбита x4';
+                ISSVisuals.orbitalParams.orbitSpeed = 0.0018;
+            } else if (speedMultiplier === 4) {
+                speedMultiplier = 16;
+                speedBtn.querySelector('span:last-child').textContent = 'Орбита x16';
+                ISSVisuals.orbitalParams.orbitSpeed = 0.0072;
+            } else {
+                speedMultiplier = 1;
+                speedBtn.querySelector('span:last-child').textContent = 'Орбита x1';
+                ISSVisuals.orbitalParams.orbitSpeed = 0.00045;
+            }
+        });
+
+        function populateTextureGallery() {
+            const container = document.getElementById('gallery-container');
+            const items = [
+                { name: '1. Солнечные крылья (SAW - Silicon Blue & Gold)', canvas: ISSVisuals.textures.sawPort },
+                { name: '2. Ферменная конструкция (ITS Aluminum Lattice)', canvas: ISSVisuals.textures.trussSegment },
+                { name: '3. Термо-радиаторы (HRS White Accordion Pleats)', canvas: ISSVisuals.textures.radiatorPanel },
+                { name: '4. Модули USOS (Destiny / Harmony MLI Mylar)', canvas: ISSVisuals.textures.mliDestiny },
+                { name: '5. Модули ESA/JAXA (Gold Kapton Foil MLI)', canvas: ISSVisuals.textures.mliGoldKapton },
+                { name: '6. Обзорный модуль Купол (Cupola 7-Window Earth Specular)', canvas: ISSVisuals.textures.cupolaDome },
+                { name: '7. Корабль Crew Dragon (SpaceX White / Black Trunk)', canvas: ISSVisuals.textures.crewDragon },
+                { name: '8. Корабль Союз МС (Роскосмос 3-Module Stack)', canvas: ISSVisuals.textures.soyuzMs }
+            ];
+
+            items.forEach(item => {
+                if (!item.canvas) return;
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.innerHTML = `<div class="gallery-label">${item.name}</div>`;
+                const wrap = document.createElement('div');
+                wrap.className = 'gallery-canvas-wrap';
+                wrap.appendChild(item.canvas);
+                div.appendChild(wrap);
+                container.appendChild(div);
+            });
+        }
+
+        // Render Loop
+        function loop() {
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            for (let s of stars) {
+                s.alpha += Math.sin(Date.now() * s.twinkle) * 0.01;
+                ctx.fillStyle = `rgba(224, 242, 254, ${Math.max(0.2, Math.min(1.0, s.alpha))})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.sz, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Earth Atmospheric Glow on horizon
+            const earthGrad = ctx.createRadialGradient(
+                canvas.width * 0.5, canvas.height + 300, 100,
+                canvas.width * 0.5, canvas.height + 300, canvas.height * 0.85
+            );
+            earthGrad.addColorStop(0, 'rgba(14, 165, 233, 0.35)');
+            earthGrad.addColorStop(0.4, 'rgba(2, 132, 199, 0.15)');
+            earthGrad.addColorStop(1, 'rgba(3, 7, 18, 0)');
+            ctx.fillStyle = earthGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Render ISS Visuals
+            ISSVisuals.render(ctx, canvas.width, canvas.height, camYaw, camPitch, zoom);
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
