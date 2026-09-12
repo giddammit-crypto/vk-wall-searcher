@@ -51,8 +51,8 @@ export class CelestialPlanetsEngine {
 
         // Earth is situated in lower part of screen (pitch: -44°, dist: 1470, radius: 700)
         this.earthCoords = { yaw: 0, pitch: -44, dist: 1470 };
-        // Moon is situated in the upper-left quadrant (baseYaw: -28°, basePitch: 24°, dist: 1470, radius: 290)
-        this.moonCoords = { baseYaw: -28, basePitch: 24, dist: 1470, radius: 290 };
+        // Moon is situated in the upper-left quadrant (baseYaw: -28°, basePitch: 24°, dist: 1470, radius: 145)
+        this.moonCoords = { baseYaw: -28, basePitch: 24, dist: 1470, radius: 145 };
 
         // Sun light direction in celestial space (normalized vector)
         this.sunDir = { x: 0.72, y: 0.28, z: 0.63 };
@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.6'),
-            loadImgBuffer('assets/textures/earth_night.png?v=3.9.6'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.6'),
-            loadImgBuffer('assets/textures/moon.jpg?v=3.9.6')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.7'),
+            loadImgBuffer('assets/textures/earth_night.png?v=3.9.7'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.7'),
+            loadImgBuffer('assets/textures/moon.jpg?v=3.9.7')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -524,8 +524,8 @@ export class CelestialPlanetsEngine {
         this.cloudsRot += 0.00038;
 
         // Орбитальное движение Луны и синхронное вращение
-        this.moonOrbit += 0.00011;
-        this.moonRot += 0.00011;
+        this.moonOrbit += 0.000035;
+        this.moonRot += 0.000035;
 
         // Оффскрин-буфер перерисовываем раз в 4 кадра для максимального FPS
         if (this.tick % 4 === 0) {
@@ -623,8 +623,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (mx1 / mz2) * fov;
             const py = cy - (my2 / mz2) * fov;
 
-            // Луна (в 2 раза меньше Земли на экране: радиус 290px)
-            const drawRadius = 290 * zoom;
+            // Луна (уменьшена в 2 раза: радиус 145px)
+            const drawRadius = 145 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {

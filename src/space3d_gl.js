@@ -1193,10 +1193,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.6',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.6',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.6',
-            moon: 'assets/textures/moon.jpg?v=3.9.6'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.7',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.7',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.7',
+            moon: 'assets/textures/moon.jpg?v=3.9.7'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1310,8 +1310,8 @@ export class Space3DGLRenderer {
         // Кинематика планет (скорость вращения уменьшена в 0.5 раза)
         this.earthRot += 0.000252 * (dt * 60);
         this.cloudsRot += 0.00038 * (dt * 60);
-        this.moonOrbit += 0.00011 * (dt * 60);
-        this.moonRot += 0.00011 * (dt * 60);
+        this.moonOrbit += 0.000035 * (dt * 60);
+        this.moonRot += 0.000035 * (dt * 60);
 
         if (!this.bakeReady) this._scheduleBake();
 
@@ -1413,10 +1413,10 @@ export class Space3DGLRenderer {
             texture: this.textures.earthClouds
         });
 
-        // 3.3 Луна (в левом верхнем секторе, ровно в 2 раза меньше Земли на экране: радиус 290 px)
+        // 3.3 Луна (уменьшена в 2 раза: радиус 145 px, медленное реалистичное вращение)
         this._drawSphere({
             center: moonCenter,
-            radius: 290,
+            radius: 145,
             bodyType: 1,
             texture: this.textures.moon,
             night: this.textures.moon,

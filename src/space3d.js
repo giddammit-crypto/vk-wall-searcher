@@ -16,20 +16,20 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.6';
-import { SpaceAudio } from './space_audio.js?v=3.9.6';
-import { CelestialPlanets } from './celestial_planets.js?v=3.9.6';
-import { IssStation } from './iss_station.js?v=3.9.6';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.6';
-import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.6';
-import { Starfield } from './starfield.js?v=3.9.6';
-import { SunOptics } from './sun_optics.js?v=3.9.6';
-import { createQrSvg } from './qrcode.js?v=3.9.6';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.6';
-import { openPostModal } from './render.js?v=3.9.6';
-import { fetchHistory } from './subscribers.js?v=3.9.6';
-import { buildBranchAdvice } from './advice.js?v=3.9.6';
-import { Space3DGL } from './space3d_gl.js?v=3.9.6';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.7';
+import { SpaceAudio } from './space_audio.js?v=3.9.7';
+import { CelestialPlanets } from './celestial_planets.js?v=3.9.7';
+import { IssStation } from './iss_station.js?v=3.9.7';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.7';
+import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.7';
+import { Starfield } from './starfield.js?v=3.9.7';
+import { SunOptics } from './sun_optics.js?v=3.9.7';
+import { createQrSvg } from './qrcode.js?v=3.9.7';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.7';
+import { openPostModal } from './render.js?v=3.9.7';
+import { fetchHistory } from './subscribers.js?v=3.9.7';
+import { buildBranchAdvice } from './advice.js?v=3.9.7';
+import { Space3DGL } from './space3d_gl.js?v=3.9.7';
 
 export class Space3DEngine {
     constructor() {
