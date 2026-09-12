@@ -189,9 +189,9 @@ void main() {
     vec2 dir = r > 0.75 ? screen / r : normalize(screen + vec2(0.001, 0.001));
     vec2 perp = vec2(-dir.y, dir.x);
 
-    // Длина штриха: производная d(r)/dt ~ |xy| * f * z^-2
+    // Длина штриха: строго ограничена, звёзды остаются точками/мягкими штрихами
     float rawLen = uStretch * length(aPos.xy) * uFov * invZ * invZ;
-    float streak = clamp(rawLen, aParam.x * 0.9, uResolution.y * 1.35);
+    float streak = clamp(rawLen, aParam.x * 0.8, uResolution.y * 0.04);
     float width = aParam.x * (0.85 + 0.9 * invZ);
 
     float t = aCorner.x * 0.5 + 0.5;     // 0 = хвост (к центру), 1 = голова

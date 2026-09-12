@@ -50,9 +50,14 @@ void main() {
     float phi = (0.5 - vUv.y) * 3.14159265359;
     vec3 dir = vec3(cos(phi) * sin(theta), sin(phi), cos(phi) * cos(theta));
 
-    // Чистый, глубокий, кристально ясный космический вакуум (без искусственных полос и размытий)
-    // Звёздное поле рисуется физическим каталогом звёзд высокой чёткости
-    vec3 col = vec3(0.0006, 0.0008, 0.0016);
+    // Глубокий бархатный космический вакуум
+    vec3 col = vec3(0.0006, 0.0008, 0.0018);
+
+    // Тончайшая изотропная космическая дымка дальнего космоса (без полос, без растяжений, 0 лагов)
+    float s1 = sin(dir.x * 2.5 + dir.y * 1.8) * cos(dir.z * 2.5 + dir.x * 1.2);
+    float s2 = cos(dir.y * 4.6 - dir.z * 2.2) * sin(dir.x * 3.8 + dir.z * 1.7);
+    float dust = max(0.0, s1 * 0.5 + s2 * 0.35 + 0.15);
+    col += vec3(0.0007, 0.0011, 0.0024) * (dust * dust);
 
     outColor = vec4(col, 1.0);
 }`;
@@ -1167,10 +1172,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.2',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.2',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.2',
-            moon: 'assets/textures/moon.jpg?v=3.9.2'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.3',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.3',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.3',
+            moon: 'assets/textures/moon.jpg?v=3.9.3'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1343,7 +1348,7 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -48, 3068, this._earthCenter);
+        const earthCenter = this._dirFromYawPitch(0, -12, 3068, this._earthCenter);
         const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
         const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
@@ -1479,7 +1484,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 3068));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -12, 3068));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);

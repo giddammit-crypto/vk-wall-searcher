@@ -50,8 +50,8 @@ export class CelestialPlanetsEngine {
         this.moonNormals = null;
 
         // Celestial coordinates in space (degrees & distance)
-        // Earth is situated UNDER the user (yaw: 0°, pitch: -48°, brought 1.1× closer)
-        this.earthCoords = { yaw: 0, pitch: -48, dist: 3068 };
+        // Earth is situated just below the horizon of the player (yaw: 0°, pitch: -12°)
+        this.earthCoords = { yaw: 0, pitch: -12, dist: 3068 };
         // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
         this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
 
@@ -189,10 +189,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.2'),
-            loadImgBuffer('assets/textures/earth_night.png?v=3.9.2'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.2'),
-            loadImgBuffer('assets/textures/moon.jpg?v=3.9.2')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.3'),
+            loadImgBuffer('assets/textures/earth_night.png?v=3.9.3'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.3'),
+            loadImgBuffer('assets/textures/moon.jpg?v=3.9.3')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;

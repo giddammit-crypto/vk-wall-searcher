@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.9.2';
-import { WarpGLRenderer } from './warp_gl.js?v=3.9.2';
-import { WarpHud } from './warp_hud.js?v=3.9.2';
+import { SpaceAudio } from './space_audio.js?v=3.9.3';
+import { WarpGLRenderer } from './warp_gl.js?v=3.9.3';
+import { WarpHud } from './warp_hud.js?v=3.9.3';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -419,36 +419,36 @@ export class SpaceWarpTransition {
         this.smoothEnergy = this.smoothEnergy === undefined ? energy : this.smoothEnergy * 0.82 + energy * 0.18;
         s.energy = this.smoothEnergy;
 
-        // --- Скорость полёта (уменьшена ровно в 3 раза для комфортного входа)
+        // --- Скорость полёта (уменьшена в 2 раза — звёзды плавно дрейфуют, без превращения в полосы)
         let speed;
         if (phase === 'ignition') {
-            speed = (40 + easeInCubic(p) * 90) / 3;
+            speed = (40 + easeInCubic(p) * 90) / 12;
         } else if (phase === 'spool') {
-            speed = (130 + easeInOutCubic(p) * 1520) / 3;
+            speed = (130 + easeInOutCubic(p) * 1520) / 12;
         } else if (phase === 'cruise') {
             const surge = Math.sin(elapsed * 0.71) * 0.14 + Math.sin(elapsed * 1.93 + 0.7) * 0.06;
-            speed = (1650 * (1 + surge) + this.pulse * 260 + s.energy * 90) / 3;
+            speed = (1650 * (1 + surge) + this.pulse * 260 + s.energy * 90) / 12;
         } else {
-            speed = (1650 * (1 - easeInCubic(p)) * (1 - 0.86 * easeOutCubic(p)) + 22) / 3;
+            speed = (1650 * (1 - easeInCubic(p)) * (1 - 0.86 * easeOutCubic(p)) + 22) / 12;
         }
-        speed = Math.max(2, speed);
+        speed = Math.max(1, speed);
         this.speed = speed;
         this.travel += speed * dt;
 
-        const speedNorm = clamp(speed / 550, 0, 1.25);
+        const speedNorm = clamp(speed / 138, 0, 1.25);
         s.travel = this.travel;
         s.speedNorm = speedNorm;
         s.time = elapsed;
         s.dt = dt;
-        s.speedC = speed / 57.3;                 // условные «сверхсветовые» единицы для телеметрии
-        s.reactor = clamp(100 - speedNorm * 9 - (phase === 'decel' ? -6 : 0), 82, 100);
+        s.speedC = speed / 14.3;                 // условные «сверхсветовые» единицы для телеметрии
+        s.reactor = clamp(100 - speedNorm * 5 - (phase === 'decel' ? -4 : 0), 88, 100);
         s.distanceAu = this.travel * 0.00042;
 
-        // --- Штрихование звёзд
-        if (phase === 'ignition') s.stretch = 0.22 + p * 0.5;
-        else if (phase === 'spool') s.stretch = 0.72 + easeInOutCubic(p) * 0.95;
-        else if (phase === 'cruise') s.stretch = 1.55 + speedNorm * 0.45 + this.pulse * 0.5;
-        else s.stretch = 1.9 * Math.pow(1 - p, 1.7) + 0.12;
+        // --- Штрихование звёзд (минимизировано: звёзды остаются чёткими точками, не превращаясь в полосы)
+        if (phase === 'ignition') s.stretch = 0.03 + p * 0.04;
+        else if (phase === 'spool') s.stretch = 0.06 + easeInOutCubic(p) * 0.08;
+        else if (phase === 'cruise') s.stretch = 0.10 + speedNorm * 0.05;
+        else s.stretch = 0.12 * Math.pow(1 - p, 1.7) + 0.02;
 
         // --- Раскрытие гипертоннеля и газовых волокон
         if (phase === 'ignition') { s.tunnelCover = 0; s.gasCover = p * 0.18; }
@@ -465,15 +465,13 @@ export class SpaceWarpTransition {
         s.coreIntensity = smoothstep(0, 0.12, elapsed) * (1 - smoothstep(0.72, 0.98, p) * (phase === 'decel' ? 1 : 0));
         s.starBrightness = 0.32 + 0.78 * smoothstep(0, 0.55, elapsed) + this.pulse * 0.35;
         s.glowFade = phase === 'decel' ? Math.max(0.25, 1 - p) : 1;
-        s.jitter = this.reducedMotion ? 0 : clamp(speedNorm * 1.5 + this.pulse * 3, 0, 4.5);
-        s.sparkIntensity = (phase === 'ignition' ? p * 0.5 : (phase === 'decel' ? Math.max(0, 0.6 - p * 0.8) : 0.28 + speedNorm * 0.3)) + this.pulse * 0.5;
+        s.jitter = 0; // убираем дрожание для стабильной читаемости
+        s.sparkIntensity = (phase === 'ignition' ? p * 0.3 : (phase === 'decel' ? Math.max(0, 0.4 - p * 0.6) : 0.18 + speedNorm * 0.15));
 
-        // --- Тряска камеры и крен
-        const shakeAmp = this.reducedMotion ? 0 : (s.energy * 0.5 + speedNorm * 0.7 + this.pulse * 4) * (phase === 'ignition' ? p * 0.6 : 1);
-        this.shakeT = (this.shakeT || 0) + dt;
-        s.shakeX = (Math.sin(this.shakeT * 34.1) * 0.6 + Math.sin(this.shakeT * 11.7) * 0.4) * shakeAmp;
-        s.shakeY = (Math.cos(this.shakeT * 29.3) * 0.6 + Math.cos(this.shakeT * 9.1) * 0.4) * shakeAmp;
-        s.roll = (this.reducedMotion ? 0 : Math.sin(this.shakeT * 0.63) * 0.55 * speedNorm + this.pulse * 0.6);
+        // --- Тряска камеры и крен (минимальные для комфортного чтения)
+        s.shakeX = 0;
+        s.shakeY = 0;
+        s.roll = 0;
 
         // --- Вспышка прибытия / старта
         let flash = 0;
@@ -488,18 +486,18 @@ export class SpaceWarpTransition {
         const targetLetterbox = this.reducedMotion ? 0 : 0.052;
         s.letterbox = (phase === 'ignition' ? targetLetterbox * p : targetLetterbox) * (phase === 'docked' ? Math.max(0, 1 - p) : 1);
 
-        // --- Пост-обработка
-        s.exposure = 1.02 + this.pulse * 0.22 + s.energy * 0.06;
-        s.bloom = 0.85 + speedNorm * 0.35 + this.pulse * 0.65 + s.energy * 0.18;
-        s.streak = 0.22 + speedNorm * 0.55 + this.pulse * 0.5;
-        s.streakLength = 2.6 + this.pulse * 4.5;
-        s.radialBlur = clamp(speedNorm * 0.85 + this.pulse * 0.35, 0, 1) * (phase === 'decel' ? Math.max(0, 1 - p * 1.6) : 1);
-        s.chroma = 0.25 + speedNorm * 0.75 + this.pulse * 0.5 + (phase === 'decel' ? p * 0.7 : 0);
-        s.vignette = 0.52 + speedNorm * 0.12;
-        s.grain = 0.32 + this.pulse * 0.2;
-        s.scanline = this.reducedMotion ? 0 : 0.25 + speedNorm * 0.25;
-        s.fovPunch = this.pulse * 0.045 + speedNorm * 0.02;
-        s.bloomThreshold = 0.7;
+        // --- Пост-обработка (кристальная резкость текста)
+        s.exposure = 1.0;
+        s.bloom = 0.45 + speedNorm * 0.20;
+        s.streak = 0.08;
+        s.streakLength = 0.8;
+        s.radialBlur = 0; // ноль размытия: текст не смазывается!
+        s.chroma = 0.08; // минимальная аберрация для сохранения чёткости букв
+        s.vignette = 0.42;
+        s.grain = 0.12;
+        s.scanline = 0;
+        s.fovPunch = 0;
+        s.bloomThreshold = 0.82;
 
         // --- Растворение в 3D-пространство
         if (phase === 'decel') s.fade = 1 - smoothstep(0.6, 0.99, p);

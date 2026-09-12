@@ -24,8 +24,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=3.9.2';
-import { SpaceAudio } from './space_audio.js?v=3.9.2';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=3.9.3';
+import { SpaceAudio } from './space_audio.js?v=3.9.3';
 
 const DEG = Math.PI / 180;
 
@@ -34,9 +34,9 @@ export const RING_CONFIG = {
     cardWidth: 336,
     cardHeight: 452,
     visibleConeDeg: 82,      // за этим углом карточка не рисуется
-    fullTurnMs: 46000,       // время полного оборота (16 карточек ≈ 2.9 с на каждую)
-    easeInMs: 1400,          // плавный разгон
-    easeOutMs: 2200,         // плавное торможение перед остановкой
+    fullTurnMs: 92000,       // время полного оборота уменьшено в 0.5 раз (92с вместо 46с — 5.75 с на каждого героя)
+    easeInMs: 2400,          // плавный разгон
+    easeOutMs: 3600,         // плавное торможение перед остановкой
     idleResumeMs: 9000       // после ручного управления автопрокрутка возвращается
 };
 

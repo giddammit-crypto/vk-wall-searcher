@@ -9219,6 +9219,8 @@ body.space-3d-active {
 }
 
 .space-hud-title {
+    display: inline-flex;
+    align-items: center;
     font-size: 13px;
     font-weight: 900;
     letter-spacing: 0.1em;

@@ -155,7 +155,11 @@
     font-size: 15px;
     font-weight: 800;
     letter-spacing: 0.22em;
-    color: #ffffff;
+    background: linear-gradient(135deg, #3EE6C4 0%, #38BDF8 48%, #8A6CFF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 12px rgba(62, 230, 196, 0.45));
 }
 .patch-sub {
     font-size: 8.5px;
@@ -229,7 +233,12 @@
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    width: min(880px, 92vw);
+    width: min(920px, 94vw);
+    padding: 24px 32px;
+    border-radius: 24px;
+    background: radial-gradient(ellipse at center, rgba(3, 7, 18, 0.76) 0%, rgba(3, 7, 18, 0.48) 65%, transparent 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     animation: titleRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both;
 }
 
@@ -274,18 +283,19 @@
 .title-sub {
     margin-top: 14px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(8.5px, 1.15vw, 12px);
-    font-weight: 600;
-    letter-spacing: 0.34em;
-    color: rgba(213, 240, 255, 0.92);
+    font-size: clamp(11px, 1.35vw, 15px);
+    font-weight: 800;
+    letter-spacing: 0.28em;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 20px rgba(0, 0, 0, 0.95);
 }
 
 .title-divider {
     position: relative;
     height: 1px;
     margin: 16px auto;
-    width: min(420px, 62vw);
-    background: linear-gradient(90deg, transparent, rgba(62, 230, 196, 0.75), transparent);
+    width: min(460px, 68vw);
+    background: linear-gradient(90deg, transparent, rgba(62, 230, 196, 0.85), transparent);
     overflow: hidden;
 }
 .title-divider i {
@@ -304,39 +314,40 @@
 }
 
 .title-dedication {
-    font-size: clamp(9px, 1.35vw, 14px);
+    font-size: clamp(12px, 1.6vw, 17px);
     font-weight: 800;
     letter-spacing: 0.16em;
-    color: #fde047;
-    text-shadow: 0 0 22px rgba(253, 224, 71, 0.45);
+    color: #fef08a;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.98), 0 0 22px rgba(253, 224, 71, 0.45);
 }
 
 .title-org {
-    margin-top: 7px;
-    font-size: clamp(8px, 1.05vw, 11.5px);
+    margin-top: 8px;
+    font-size: clamp(10px, 1.2vw, 14px);
     font-weight: 700;
-    letter-spacing: 0.14em;
-    color: rgba(186, 230, 253, 0.78);
+    letter-spacing: 0.15em;
+    color: #e0f2fe;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 16px rgba(0, 0, 0, 0.95);
 }
 
 /* --------------------------------------------------------------------------
-   Брифинг Беллы (слева внизу)
+   Брифинг Беллы (слева внизу) — максимальная чёткость и контраст
    -------------------------------------------------------------------------- */
 .warp-briefing {
     position: absolute;
     left: 4vw;
     bottom: 8.4vh;
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: flex-end;
-    width: min(430px, 52vw);
-    padding: 12px 14px;
-    background: linear-gradient(150deg, rgba(6, 12, 28, 0.74), rgba(12, 24, 46, 0.42));
-    border: 1px solid rgba(62, 230, 196, 0.24);
+    width: min(520px, 62vw);
+    padding: 16px 20px;
+    background: rgba(3, 7, 18, 0.92);
+    border: 1px solid rgba(62, 230, 196, 0.45);
     border-radius: 16px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.90), inset 0 0 20px rgba(62, 230, 196, 0.08);
     animation: warpSlideLeft 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
 }
 
@@ -375,14 +386,14 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.16em;
-    color: #bdf6ec;
+    color: #3ee6c4;
 }
 .briefing-dot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: #3ee6c4;
     box-shadow: 0 0 10px #3ee6c4;
@@ -395,7 +406,8 @@
 .briefing-live {
     margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: 9px;
+    font-weight: 700;
     color: #ff7a9c;
     letter-spacing: 0.14em;
 }
@@ -403,27 +415,38 @@
 .briefing-wave {
     display: block;
     width: 100%;
-    height: 44px;
-    margin: 6px 0 5px;
+    height: 38px;
+    margin: 6px 0 6px;
     opacity: 0.95;
 }
 
 .briefing-log {
     display: flex;
-    gap: 7px;
+    gap: 9px;
     align-items: baseline;
-    font-size: 10.5px;
-    line-height: 1.4;
-    color: rgba(226, 244, 255, 0.9);
+    font-size: 14px;
+    line-height: 1.55;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
 }
 .briefing-log-tag {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7.5px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: #7ee8ff;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #3ee6c4;
     white-space: nowrap;
-    padding-top: 2px;
+    padding: 2px 7px;
+    background: rgba(62, 230, 196, 0.16);
+    border: 1px solid rgba(62, 230, 196, 0.35);
+    border-radius: 4px;
+}
+.briefing-log-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.5;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 16px rgba(0, 0, 0, 0.95);
 }
 .briefing-log-text.log-in { animation: logIn 0.5s ease both; }
 @keyframes logIn {
