@@ -16,20 +16,20 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.1';
-import { SpaceAudio } from './space_audio.js?v=3.9.1';
-import { CelestialPlanets } from './celestial_planets.js?v=3.9.1';
-import { IssStation } from './iss_station.js?v=3.9.1';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.1';
-import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.1';
-import { Starfield } from './starfield.js?v=3.9.1';
-import { SunOptics } from './sun_optics.js?v=3.9.1';
-import { createQrSvg } from './qrcode.js?v=3.9.1';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.1';
-import { openPostModal } from './render.js?v=3.9.1';
-import { fetchHistory } from './subscribers.js?v=3.9.1';
-import { buildBranchAdvice } from './advice.js?v=3.9.1';
-import { Space3DGL } from './space3d_gl.js?v=3.9.1';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=3.9.2';
+import { SpaceAudio } from './space_audio.js?v=3.9.2';
+import { CelestialPlanets } from './celestial_planets.js?v=3.9.2';
+import { IssStation } from './iss_station.js?v=3.9.2';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=3.9.2';
+import { CosmonautRing } from './cosmonaut_ring.js?v=3.9.2';
+import { Starfield } from './starfield.js?v=3.9.2';
+import { SunOptics } from './sun_optics.js?v=3.9.2';
+import { createQrSvg } from './qrcode.js?v=3.9.2';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=3.9.2';
+import { openPostModal } from './render.js?v=3.9.2';
+import { fetchHistory } from './subscribers.js?v=3.9.2';
+import { buildBranchAdvice } from './advice.js?v=3.9.2';
+import { Space3DGL } from './space3d_gl.js?v=3.9.2';
 
 export class Space3DEngine {
     constructor() {
@@ -229,17 +229,8 @@ export class Space3DEngine {
             });
         }
 
-        // 4. Глубокие диффузные туманности и Галактическое Ядро (глубокий темный бархатный космос)
-        this.nebulae = [
-            // Ядро Млечного Пути (Sagittarius A* Core Glow)
-            { yaw: 68,  pitch: 22,  radius: 560, color: 'rgba(251, 146, 60, 0.08)',  coreColor: 'rgba(254, 215, 170, 0.16)' },
-            // Туманность Киля / Ориона (Ионизированный водород H-alpha)
-            { yaw: 185, pitch: -24, radius: 480, color: 'rgba(129, 140, 248, 0.08)', coreColor: 'rgba(56, 189, 248, 0.14)' },
-            // Вуаль Лебедя (Кислородная эмиссия O-III)
-            { yaw: 310, pitch: 35,  radius: 460, color: 'rgba(62, 230, 196, 0.07)',  coreColor: 'rgba(14, 165, 233, 0.12)' },
-            // Пылевой комплекс Змееносца
-            { yaw: 245, pitch: -14, radius: 420, color: 'rgba(244, 114, 182, 0.06)', coreColor: 'rgba(192, 132, 252, 0.12)' }
-        ];
+        // 4. Глубокий темный бархатный космос (без размытых пятен и искусственных полос)
+        this.nebulae = [];
 
         this.meteors = [];
     }
@@ -272,148 +263,12 @@ export class Space3DEngine {
     buildStations() {
         if (!this.world) return;
         this.world.innerHTML = '';
+        this.stations = [];
 
-        this.stations = [
-            {
-                id: 'station-search',
-                title: 'Командный Поиск',
-                code: 'SEARCH-01',
-                icon: 'search',
-                accent: '#3ee6c4',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderSearchStation()
-            },
-            {
-                id: 'station-analytics',
-                title: 'Аналитика & KPI',
-                code: 'ANALYTICS-02',
-                icon: 'analytics',
-                accent: '#38bdf8',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderAnalyticsStation()
-            },
-            {
-                id: 'station-radar',
-                title: 'Радар Филиалов',
-                code: 'RADAR-03',
-                icon: 'radar',
-                accent: '#818cf8',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderRadarStation()
-            },
-            {
-                id: 'station-showcase',
-                title: 'Стеллаж Постов',
-                code: 'FEED-04',
-                icon: 'auto_stories',
-                accent: '#a78bfa',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderShowcaseStation()
-            },
-            {
-                id: 'station-leaderboard',
-                title: 'Рейтинг Активности',
-                code: 'LEADERBOARD-05',
-                icon: 'leaderboard',
-                accent: '#f59e0b',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderLeaderboardStation()
-            },
-            {
-                id: 'station-promo',
-                title: 'QR Лаборатория',
-                code: 'PROMO-06',
-                icon: 'qr_code_2',
-                accent: '#10b981',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderPromoStation()
-            },
-            {
-                id: 'station-subs',
-                title: 'Динамика Читателей',
-                code: 'SUBS-07',
-                icon: 'group_add',
-                accent: '#ec4899',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderSubscribersStation()
-            },
-            {
-                id: 'station-advice',
-                title: 'Советник Филиалов',
-                code: 'ADVICE-08',
-                icon: 'tips_and_updates',
-                accent: '#06b6d4',
-                customOffset: { x: 0, y: 0, z: 0 },
-                isPinned: false,
-                renderContent: () => this.renderAdviceStation()
-            }
-        ];
-
-        this.stations.forEach(station => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'space-object-wrapper';
-            wrapper.id = `obj-${station.id}`;
-            wrapper.dataset.stationId = station.id;
-
-            wrapper.innerHTML = `
-                <div class="space-station-card" style="--station-accent: ${station.accent};">
-                    <!-- Laser cyber corners -->
-                    <div class="cyber-corner corner-tl"></div>
-                    <div class="cyber-corner corner-tr"></div>
-                    <div class="cyber-corner corner-bl"></div>
-                    <div class="cyber-corner corner-br"></div>
-                    <div class="space-scanline"></div>
-
-                    <!-- Station Header & 3D Drag Handle -->
-                    <div class="space-card-header space-card-handle" title="Зажмите и тяните для свободного 3D перемещения">
-                        <div class="space-header-left">
-                            <span class="material-symbols-outlined station-ico">${station.icon}</span>
-                            <div class="station-meta-txt">
-                                <span class="station-name">${escapeHtml(station.title)}</span>
-                                <span class="station-code">${station.code}</span>
-                            </div>
-                        </div>
-                        <div class="space-header-actions no-drag">
-                            <button type="button" class="station-action-btn btn-focus" title="Навести камеру на станцию" data-action="focus">
-                                <span class="material-symbols-outlined">center_focus_strong</span>
-                            </button>
-                            <button type="button" class="station-action-btn btn-expand" title="Развернуть/свернуть окно" data-action="expand">
-                                <span class="material-symbols-outlined">open_in_full</span>
-                            </button>
-                            <button type="button" class="station-action-btn btn-pin" title="Зафиксировать позицию" data-action="pin">
-                                <span class="material-symbols-outlined">push_pin</span>
-                            </button>
-                            <button type="button" class="station-action-btn btn-reset" title="Сбросить на орбиту" data-action="reset">
-                                <span class="material-symbols-outlined">replay</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Station Body Content -->
-                    <div class="space-card-body custom-scrollbar" id="body-${station.id}">
-                        ${station.renderContent()}
-                    </div>
-
-                    <!-- Station Bottom Telemetry Bar -->
-                    <div class="space-card-foot">
-                        <span class="foot-sys-state"><span class="pulse-dot"></span> LIVE 3D SYNC</span>
-                        <span class="foot-drag-hint">DRAG TO MOVE • 360° ORBIT</span>
-                    </div>
-                </div>
-            `;
-
-            this.bindStationEvents(wrapper, station);
-            this.world.appendChild(wrapper);
-        });
-
-        this.bindInternalStationActions();
+        // В 3D-пространстве остаются только окна с космонавтами (Кольцо 16 Героев Космоса)
+        if (typeof CosmonautRing !== 'undefined' && CosmonautRing.mount) {
+            CosmonautRing.mount(this);
+        }
     }
 
     /**
@@ -1210,6 +1065,7 @@ export class Space3DEngine {
         if (animated) {
             this.triggerMeteorShower(10);
         }
+        if (!this.stations || this.stations.length === 0) return;
         const total = this.stations.length;
         const radius = 940;
 
@@ -2421,6 +2277,11 @@ export class Space3DEngine {
         // Воспроизведение вступительной речи девушки Беллы (если открыто не из варп-перелёта)
         if (!opts || !opts.fromWarp) {
             SpaceAudio.playVoice('aurora_welcome', true);
+        }
+
+        // Автоматически открываем кольцо окон с космонавтами (единственные окна в 3D пространстве)
+        if (typeof CosmonautRing !== 'undefined' && CosmonautRing.show) {
+            CosmonautRing.show();
         }
 
         this.showSpatialToast('Космо-пространство AURORA 3D • Орбитальный комплекс активен');

@@ -548,29 +548,17 @@ body {
     font-weight: 800;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    background: linear-gradient(135deg,
-        #ffffff 0%,
-        #fff3d4 12%,
-        #FFD37A 28%,
-        #3EE6C4 58%,
-        #38BDF8 80%,
-        #8A6CFF 100%);
+    background: linear-gradient(135deg, #3EE6C4 0%, #38BDF8 48%, #8A6CFF 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter:
-        drop-shadow(0 0 8px rgba(255, 211, 122, 0.60))
-        drop-shadow(0 0 28px rgba(62, 230, 196, 0.40))
-        drop-shadow(0 0 54px rgba(56, 189, 248, 0.20));
+    filter: drop-shadow(0 0 16px rgba(62, 230, 196, 0.42));
     display: inline-block;
     line-height: 1.15;
     transition: filter var(--duration) var(--ease), letter-spacing var(--duration) var(--ease);
 }
 .brand-aurora:hover {
-    filter:
-        drop-shadow(0 0 12px rgba(255, 211, 122, 0.90))
-        drop-shadow(0 0 36px rgba(62, 230, 196, 0.70))
-        drop-shadow(0 0 70px rgba(56, 189, 248, 0.40));
+    filter: drop-shadow(0 0 24px rgba(62, 230, 196, 0.75)) drop-shadow(0 0 38px rgba(56, 189, 248, 0.45));
     letter-spacing: 0.17em;
 }
 
@@ -9376,24 +9364,9 @@ body.space-3d-active {
     margin-left: 2px;
 }
 
-/* HUD Bottom Dock (Control Center) */
+/* HUD Bottom Dock (Control Center) — скрыт, так как станции убраны и активны только окна космонавтов */
 .space-3d-hud-dock {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(11, 17, 34, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(62, 230, 196, 0.3);
-    border-radius: 14px;
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    z-index: 100;
-    pointer-events: auto;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 25px rgba(62, 230, 196, 0.15);
+    display: none !important;
 }
 
 .space-dock-group {

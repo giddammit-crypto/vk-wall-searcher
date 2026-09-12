@@ -50,8 +50,8 @@ export class CelestialPlanetsEngine {
         this.moonNormals = null;
 
         // Celestial coordinates in space (degrees & distance)
-        // Earth is situated UNDER the user (yaw: 0°, pitch: -48°, pushed 2.5× farther)
-        this.earthCoords = { yaw: 0, pitch: -48, dist: 3375 };
+        // Earth is situated UNDER the user (yaw: 0°, pitch: -48°, brought 1.1× closer)
+        this.earthCoords = { yaw: 0, pitch: -48, dist: 3068 };
         // Moon is much smaller and situated BEHIND the user (baseYaw: 180°, basePitch: 20°)
         this.moonCoords = { baseYaw: 180, basePitch: 20, dist: 1850 };
 
@@ -189,10 +189,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.1'),
-            loadImgBuffer('assets/textures/earth_night.png?v=3.9.1'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.1'),
-            loadImgBuffer('assets/textures/moon.jpg?v=3.9.1')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=3.9.2'),
+            loadImgBuffer('assets/textures/earth_night.png?v=3.9.2'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=3.9.2'),
+            loadImgBuffer('assets/textures/moon.jpg?v=3.9.2')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -570,8 +570,8 @@ export class CelestialPlanetsEngine {
             const px = cx + (ex1 / ez2) * fov;
             const py = cy - (ey2 / ez2) * fov;
 
-            // Увеличенная Земля — 2.5× дальше (радиус 336px, диаметр 672px в CPU-буфере)
-            const drawRadius = 336 * zoom;
+            // Земля — приближена в 1.1× раза (радиус 370px, диаметр 740px в CPU-буфере)
+            const drawRadius = 370 * zoom;
             const drawSize = drawRadius * 2;
 
             if (px > -drawSize && px < w + drawSize && py > -drawSize && py < h + drawSize) {
@@ -660,7 +660,7 @@ export class CelestialPlanetsEngine {
                 y: eDist * Math.sin(ePitch),
                 z: eDist * Math.cos(ePitch) * Math.cos(eYaw)
             },
-            radius: 336,
+            radius: 370,
             dist: eDist,
             coords: { ...this.earthCoords }
         };

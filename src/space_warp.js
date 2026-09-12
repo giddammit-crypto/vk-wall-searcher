@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=3.9.1';
-import { WarpGLRenderer } from './warp_gl.js?v=3.9.1';
-import { WarpHud } from './warp_hud.js?v=3.9.1';
+import { SpaceAudio } from './space_audio.js?v=3.9.2';
+import { WarpGLRenderer } from './warp_gl.js?v=3.9.2';
+import { WarpHud } from './warp_hud.js?v=3.9.2';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -419,28 +419,28 @@ export class SpaceWarpTransition {
         this.smoothEnergy = this.smoothEnergy === undefined ? energy : this.smoothEnergy * 0.82 + energy * 0.18;
         s.energy = this.smoothEnergy;
 
-        // --- Скорость полёта
+        // --- Скорость полёта (уменьшена ровно в 3 раза для комфортного входа)
         let speed;
         if (phase === 'ignition') {
-            speed = 40 + easeInCubic(p) * 90;
+            speed = (40 + easeInCubic(p) * 90) / 3;
         } else if (phase === 'spool') {
-            speed = 130 + easeInOutCubic(p) * 1520;
+            speed = (130 + easeInOutCubic(p) * 1520) / 3;
         } else if (phase === 'cruise') {
             const surge = Math.sin(elapsed * 0.71) * 0.14 + Math.sin(elapsed * 1.93 + 0.7) * 0.06;
-            speed = 1650 * (1 + surge) + this.pulse * 260 + s.energy * 90;
+            speed = (1650 * (1 + surge) + this.pulse * 260 + s.energy * 90) / 3;
         } else {
-            speed = 1650 * (1 - easeInCubic(p)) * (1 - 0.86 * easeOutCubic(p)) + 22;
+            speed = (1650 * (1 - easeInCubic(p)) * (1 - 0.86 * easeOutCubic(p)) + 22) / 3;
         }
-        speed = Math.max(6, speed);
+        speed = Math.max(2, speed);
         this.speed = speed;
         this.travel += speed * dt;
 
-        const speedNorm = clamp(speed / 1650, 0, 1.25);
+        const speedNorm = clamp(speed / 550, 0, 1.25);
         s.travel = this.travel;
         s.speedNorm = speedNorm;
         s.time = elapsed;
         s.dt = dt;
-        s.speedC = speed / 172;                 // условные «сверхсветовые» единицы для телеметрии
+        s.speedC = speed / 57.3;                 // условные «сверхсветовые» единицы для телеметрии
         s.reactor = clamp(100 - speedNorm * 9 - (phase === 'decel' ? -6 : 0), 82, 100);
         s.distanceAu = this.travel * 0.00042;
 
@@ -539,7 +539,7 @@ export class SpaceWarpTransition {
         ctx.fillStyle = `rgba(1, 2, 8, ${0.30 + (1 - s.fade) * 0.65})`;
         ctx.fillRect(0, 0, w, h);
 
-        const accel = 0.6 + s.speedNorm * 26;
+        const accel = (0.6 + s.speedNorm * 26) * 0.333;
         const maxR = Math.hypot(cx, cy) * 1.35;
 
         ctx.globalCompositeOperation = 'lighter';

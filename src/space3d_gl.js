@@ -40,100 +40,19 @@ precision highp float;
 in vec2 vUv;
 uniform float uTime;
 uniform vec3 uNebDir[6];
-uniform vec4 uNebParam[6];   // x = cos(радиус), y = яркость, z, w — резерв
+uniform vec4 uNebParam[6];
 uniform vec3 uNebColor[6];
 out vec4 outColor;
 
-float hash13(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.zyx + 31.32);
-    return fract((p.x + p.y) * p.z);
-}
-float vnoise(vec3 p) {
-    vec3 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float n000 = hash13(i);
-    float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
-    float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
-    float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
-    float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
-    float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
-    float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
-    float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
-    return mix(
-        mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
-        mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z);
-}
-float fbm(vec3 p, int oct) {
-    float sum = 0.0, amp = 0.5, norm = 0.0;
-    for (int i = 0; i < 6; i++) {
-        if (i >= oct) break;
-        sum += vnoise(p) * amp;
-        norm += amp;
-        p = p * 2.13 + vec3(5.2, 1.3, 9.1);
-        amp *= 0.5;
-    }
-    return sum / max(norm, 0.0001);
-}
-
 void main() {
-    // Экваториальные координаты направления
+    // Направление взгляда в экваториальных сферических координатах
     float theta = (vUv.x - 0.5) * 6.28318530718;
     float phi = (0.5 - vUv.y) * 3.14159265359;
     vec3 dir = vec3(cos(phi) * sin(theta), sin(phi), cos(phi) * cos(theta));
 
-    // --- Глубокий вакуум с холодным градиентом
-    float base = fbm(dir * 1.6 + 11.0, 4);
-    vec3 col = mix(vec3(0.004, 0.006, 0.020), vec3(0.012, 0.020, 0.052), base);
-
-    // --- Галактическая система координат (наклон плоскости ~62°)
-    const float mwTilt = 1.08;
-    float cm = cos(mwTilt), sm = sin(mwTilt);
-    float gy = dir.y * cm + dir.z * sm;
-    float gz = -dir.y * sm + dir.z * cm;
-    float gx = dir.x;
-    float lat = asin(clamp(gy, -1.0, 1.0));            // галактическая широта
-    float lon = atan(gz, gx);                          // галактическая долгота
-
-    // --- Диффузное свечение галактической плоскости (Млечный Путь)
-    float band = exp(-pow(abs(lat) / 0.135, 1.7));
-    float clumps = fbm(vec3(dir.x * 5.5, lat * 22.0, dir.z * 5.5), 5);
-    float fine = fbm(vec3(dir.x * 17.0, lat * 60.0, dir.z * 17.0), 4);
-    float milky = band * (0.34 + clumps * 0.85) * (0.55 + fine * 0.65);
-
-    // --- Галактическое ядро (Sagittarius A*): тёплое золотистое свечение
-    float coreMask = exp(-pow(abs(lon - 1.2) / 0.95, 2.0)) * exp(-pow(abs(lat) / 0.20, 2.0));
-    milky += coreMask * (0.9 + clumps * 0.7) * 0.85;
-
-    vec3 mwColor = mix(vec3(0.36, 0.55, 0.92), vec3(1.0, 0.86, 0.62), clamp(coreMask * 1.4, 0.0, 1.0));
-    mwColor = mix(mwColor, vec3(0.98, 0.80, 0.58), pow(clamp(clumps, 0.0, 1.0), 2.0) * 0.45);
-    col += mwColor * milky * 0.55;
-
-    // --- Великий Разлом: тёмные пылевые облака внутри полосы
-    float dustNoise = fbm(vec3(lon * 2.3, lat * 30.0, 4.0), 5);
-    float dust = smoothstep(0.42, 0.92, dustNoise) * exp(-pow(abs(lat) / 0.055, 2.0));
-    float dustLon = smoothstep(0.2, 0.9, fract((lon + 6.2831853) / 6.2831853 * 3.0));
-    col *= 1.0 - dust * dustLon * 0.85;
-
-    // --- Волокна ионизированного газа (H-alpha / O-III)
-    float filament = fbm(dir * 9.0 + 31.0, 5);
-    float filamentB = fbm(dir * 21.0 - 7.0, 4);
-    col += vec3(0.55, 0.14, 0.30) * pow(clamp(filament, 0.0, 1.0), 3.4) * band * 1.1;
-    col += vec3(0.10, 0.55, 0.55) * pow(clamp(filamentB, 0.0, 1.0), 4.2) * 0.55;
-
-    // --- Диффузные туманности (данные из 3D-движка)
-    for (int i = 0; i < 6; i++) {
-        float d = dot(dir, uNebDir[i]);
-        float falloff = smoothstep(uNebParam[i].x, 1.0, d);
-        if (falloff <= 0.0001) continue;
-        float structure = fbm(dir * 7.0 + float(i) * 13.0, 4);
-        float plume = pow(falloff, 1.6) * (0.55 + structure * 0.85) * uNebParam[i].y;
-        col += uNebColor[i] * plume;
-    }
-
-    // --- Межзвёздная пыль и микрозвёздная дымка (мягкая составляющая)
-    float dustHaze = pow(clamp(fbm(dir * 3.1 + 61.0, 4), 0.0, 1.0), 2.2);
-    col += vec3(0.05, 0.07, 0.12) * dustHaze * 0.55;
+    // Чистый, глубокий, кристально ясный космический вакуум (без искусственных полос и размытий)
+    // Звёздное поле рисуется физическим каталогом звёзд высокой чёткости
+    vec3 col = vec3(0.0006, 0.0008, 0.0016);
 
     outColor = vec4(col, 1.0);
 }`;
@@ -1248,10 +1167,10 @@ export class Space3DGLRenderer {
     _loadTextures() {
         const gl = this.gl;
         const sources = {
-            earthDay: 'assets/textures/earth_day.jpg?v=3.9.1',
-            earthNight: 'assets/textures/earth_night.png?v=3.9.1',
-            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.1',
-            moon: 'assets/textures/moon.jpg?v=3.9.1'
+            earthDay: 'assets/textures/earth_day.jpg?v=3.9.2',
+            earthNight: 'assets/textures/earth_night.png?v=3.9.2',
+            earthClouds: 'assets/textures/earth_clouds.png?v=3.9.2',
+            moon: 'assets/textures/moon.jpg?v=3.9.2'
         };
 
         const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
@@ -1424,15 +1343,15 @@ export class Space3DGLRenderer {
             this._earthCenter = new Float32Array(3);
             this._moonCenter = new Float32Array(3);
         }
-        const earthCenter = this._dirFromYawPitch(0, -48, 3375, this._earthCenter);
+        const earthCenter = this._dirFromYawPitch(0, -48, 3068, this._earthCenter);
         const moonYaw = 180 + Math.sin(this.moonOrbit) * 12;
         const moonPitch = 20 + Math.cos(this.moonOrbit) * 4;
         const moonCenter = this._dirFromYawPitch(moonYaw, moonPitch, 1850, this._moonCenter);
 
-        // 3.1 Земля (2.5× дальше, радиус 400)
+        // 3.1 Земля (приближена в 1.1× раза, радиус 440)
         this._drawSphere({
             center: earthCenter,
-            radius: 400,
+            radius: 440,
             bodyType: 0,
             texture: this.textures.earthDay,
             night: this.textures.earthNight,
@@ -1456,8 +1375,8 @@ export class Space3DGLRenderer {
         // 3.2 Атмосферная оболочка Земли (аналитическое рассеяние, 14 шагов)
         this._drawSphere({
             center: earthCenter,
-            radius: 400 * 1.025,
-            planetRadius: 400,
+            radius: 440 * 1.025,
+            planetRadius: 440,
             atmosphereOnly: true,
             strength: 0.88,   // компенсация тональной кривой ACES
             falloff: 3.6,
@@ -1560,7 +1479,7 @@ export class Space3DGLRenderer {
         gl.uniform3fv(u.uCenter, opts.center);
         gl.uniform1f(u.uRadius, opts.radius);
         gl.uniform3fv(u.uSunDir, opts.sunDir);
-        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 3375));
+        gl.uniform3fv(u.uEarthDir, opts.earthDir || this._dirFromYawPitch(0, -48, 3068));
         gl.uniform1f(u.uBodyType, opts.bodyType || 0);
         gl.uniform2f(u.uTexel, opts.texel ? opts.texel[0] : 1 / 2048, opts.texel ? opts.texel[1] : 1 / 1024);
         if (u.uGroundShift) gl.uniform1f(u.uGroundShift, opts.groundShift || 0);
