@@ -19,8 +19,8 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.5.1';
-import { EARTH_CONFIG, EARTH_CENTER } from './iss_station.js?v=4.5.1';
+import { SpaceAudio } from './space_audio.js?v=4.6.0';
+import { EARTH_CONFIG, EARTH_CENTER } from './iss_station.js?v=4.6.0';
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -35,6 +35,29 @@ const SUN_NORMALIZED = {
     y: SUN_DIR.y / SUN_LEN,
     z: SUN_DIR.z / SUN_LEN
 };
+
+/** Сравнение наборов стопов градиента (по значению, без аллокаций) */
+const _stopsSame = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+};
+
+/** Общие опции граней (read-only) — вместо литерала {} на каждый вызов */
+const EMPTY_OPTS = { shine: 0 };
+const OPT_SHINE_CHROME = { shine: 0.85 };
+const OPT_SHINE_FOIL = { shine: 0.3, foil: true };
+const OPT_SHINE_MATTE = { shine: 0.25 };
+const OPT_SHINE_NAV = { shine: 0.5 };
+const OPT_SHINE_TELESCOPE = { shine: 0.45 };
+const OPT_SHINE_MEGA = { shine: 0.35 };
+const OPT_CELLS3 = { cells: 3 };
+/** Локальные оси панелей-крыльев (read-only константы) */
+const D_X = [1, 0, 0];
+const D_Z = [0, 0, 1];
 
 /**
  * 6 подробных архетипов спутников с 3D параметрами
@@ -216,6 +239,12 @@ export class SatellitesSwarmEngine {
         this.time = 0;
         this.lastTimeMs = 0;
         this.audioCtx = null;
+
+        // Кэши рендера: градиенты (квантованные координаты), спрайты свечения
+        // и пул вершин/массивов/полигонов — ноль аллокаций в кадре
+        this._gradCache = new Map();
+        this._glowCache = new Map();
+        this._r3d = { v: [], vi: 0, a: [], ai: 0, p: [], pi: 0, pl: [] };
 
         this.onPointerMove = this.onPointerMove.bind(this);
         this.onClick = this.onClick.bind(this);
@@ -984,6 +1013,30 @@ export class SatellitesSwarmEngine {
         const s = scale * 1.8; // Базовый размер узлов
         const t = arch.type;
 
+        // Пул вершин/массивов/полигонов этого спутника (переиспользуется между
+        // кадрами): раньше каждый кадр аллоцировал ~50 вершин + ~25 массивов +
+        // ~25 полигонов на спутник → до 6 тысяч объектов/с на рой из 60 аппаратов
+        const pool = this._r3d;
+        pool.vi = 0; pool.ai = 0; pool.pi = 0;
+        const vGet = () => {
+            let o = pool.v[pool.vi];
+            if (!o) { o = { x: 0, y: 0, z: 0 }; pool.v[pool.vi] = o; }
+            pool.vi++;
+            return o;
+        };
+        const arrGet = (n) => {
+            let a = pool.a[pool.ai];
+            if (!a) { a = []; pool.a[pool.ai] = a; }
+            pool.ai++;
+            a.length = n;
+            return a;
+        };
+        const arr4 = (a, b, c, d) => {
+            const f = arrGet(4);
+            f[0] = a; f[1] = b; f[2] = c; f[3] = d;
+            return f;
+        };
+
         // Функция трансформации локальной вершины (T, U, R) в экранные координаты (px, py, z)
         const projectLocal = (lx, ly, lz) => {
             // Мировая координата: W = sat.worldPos + lx*Forward + ly*Up + lz*Right
@@ -997,12 +1050,11 @@ export class SatellitesSwarmEngine {
             const y2 = wy * cosPitch - z1 * sinPitch;
             const z2 = wy * sinPitch + z1 * cosPitch;
 
-            return {
-                x: cx + (x1 / z2) * fov,
-                y: cy - (y2 / z2) * fov,
-                z: z2,
-                wx, wy, wz
-            };
+            const o = vGet();
+            o.x = cx + (x1 / z2) * fov;
+            o.y = cy - (y2 / z2) * fov;
+            o.z = z2;
+            return o;
         };
 
         // Расчет ориентации панелей к Солнцу (Sun tracking)
@@ -1032,23 +1084,34 @@ export class SatellitesSwarmEngine {
         const sun2x = camSun.x;
         const sun2y = -camSun.y; // экранная ось Y инвертирована
 
-        // Локальная нормаль -> мировая (коэффициенты по базису Forward/Up/Right)
-        const worldNormal = (fx, fy, fz) => ({
-            x: fx * sat.forward.x + fy * sat.up.x + fz * sat.right.x,
-            y: fx * sat.forward.y + fy * sat.up.y + fz * sat.right.y,
-            z: fx * sat.forward.z + fy * sat.up.z + fz * sat.right.z
-        });
+        // Локальная нормаль -> мировая (коэффициенты по базису Forward/Up/Right).
+        // Пишет в переиспользуемый scratch: результат читается pushFace сразу.
+        const _nrm = this._nrm || (this._nrm = { x: 0, y: 0, z: 0 });
+        const worldNormal = (fx, fy, fz) => {
+            _nrm.x = fx * sat.forward.x + fy * sat.up.x + fz * sat.right.x;
+            _nrm.y = fx * sat.forward.y + fy * sat.up.y + fz * sat.right.y;
+            _nrm.z = fx * sat.forward.z + fy * sat.up.z + fz * sat.right.z;
+            return _nrm;
+        };
 
-        const polys = [];
+        const polys = pool.pl;
+        polys.length = 0;
         let foilCounter = 0;
+        let faceCounter = 0;
 
-        // Билинейная интерполяция по 4 углам квада (для декалей)
+        // Билинейная интерполяция по 4 углам квада (для декалей).
+        // До 4 живых результатов одновременно — 4 переиспользуемых слота.
+        const _qp = this._qp || (this._qp = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]);
+        let _qpI = 0;
         const quadPoint = (pts, u, v) => {
+            const q = _qp[_qpI++ & 3];
             const ax = pts[0].x + (pts[1].x - pts[0].x) * u;
             const ay = pts[0].y + (pts[1].y - pts[0].y) * u;
             const bx = pts[3].x + (pts[2].x - pts[3].x) * u;
             const by = pts[3].y + (pts[2].y - pts[3].y) * u;
-            return { x: ax + (bx - ax) * v, y: ay + (by - ay) * v };
+            q.x = ax + (bx - ax) * v;
+            q.y = ay + (by - ay) * v;
+            return q;
         };
 
         /**
@@ -1056,7 +1119,8 @@ export class SatellitesSwarmEngine {
          * + голубым rim-light от Земли на надирных гранях.
          * opts: { shine: 0..1 — контраст хрома, decal: fn(ctx) — отрисовка после заливки }
          */
-        const pushFace = (pts, col, normalWorld, opts = {}) => {
+        const pushFace = (pts, col, normalWorld, opts) => {
+            const o = opts || EMPTY_OPTS;
             const n = normalWorld;
             const nl = Math.hypot(n.x, n.y, n.z) || 1;
             // Минимальный ambient ~0.30: теневые грани не проваливаются в чёрный
@@ -1068,40 +1132,53 @@ export class SatellitesSwarmEngine {
             const inv = 1 / pts.length;
             cz *= inv; ccx *= inv; ccy *= inv;
 
-            const shine = opts.shine || 0;
-            const poly = {
-                pts,
-                z: cz,
-                // Тонкая светлая обводка ребра фасета — грань читается объёмом
-                borderColor: isHighlighted ? '#38bdf8' : 'rgba(255,255,255,0.35)',
-                decal: opts.decal || null
-            };
+            const shine = o.shine || 0;
+            let poly = pool.p[pool.pi];
+            if (!poly) { poly = { pts: null, z: 0, borderColor: '', decal: null, color: null }; pool.p[pool.pi] = poly; }
+            pool.pi++;
+            poly.pts = pts;
+            poly.z = cz;
+            // Тонкая светлая обводка ребра фасета — грань читается объёмом
+            poly.borderColor = isHighlighted ? '#38bdf8' : 'rgba(255,255,255,0.35)';
+            poly.decal = o.decal || null;
             // Gold-foil: крошечные морщины-штрихи на «горячих» гранях при крупном зуме
-            if (!poly.decal && opts.foil && scale >= 1.8 && !isHighlighted) {
+            if (!poly.decal && o.foil && scale >= 1.8 && !isHighlighted) {
                 const rng = this.makeRng(sat.index * 17 + foilCounter++ * 13 + 5);
                 poly.decal = (c, fp) => {
                     c.strokeStyle = 'rgba(120, 68, 8, 0.32)';
                     c.lineWidth = 0.7;
+                    // Все морщины — ОДИН путь и один stroke (батчинг линий)
+                    c.beginPath();
                     for (let i = 0; i < 4; i++) {
                         const u = 0.15 + rng() * 0.7, v = 0.15 + rng() * 0.7;
                         const du = (rng() - 0.5) * 0.16, dv = (rng() - 0.5) * 0.16;
                         const a = quadPoint(fp, u - du, v - dv);
                         const b = quadPoint(fp, u + du, v + dv);
-                        c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+                        c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
                     }
+                    c.stroke();
                 };
             }
             if (isHighlighted) {
                 poly.color = '#ffffff';
+            } else if (scale < 1.25) {
+                // Дальний/мелкий спутник: грань < ~5px на экране — градиент по ней
+                // неотличим от сплошного среднего тона. Экономит до ~1500
+                // createLinearGradient за кадр на рое (главный пожиратель FPS).
+                poly.color = this.faceColor(col, lambert * (0.925 + 0.225 * shine) + 0.17, rim * 0.8);
             } else {
-                const g = ctx.createLinearGradient(
+                // Крупный план: фасетный градиент по экранному Солнцу — из кэша
+                // (пересоздаётся только при смещении центра на >= 6px/смене цвета)
+                const c0 = this.faceColor(col, lambert * (1.3 + 0.45 * shine) + 0.18, rim);
+                const c1 = this.faceColor(col, lambert * 0.55 + 0.16, rim * 0.6);
+                poly.color = this._gradLin(
+                    ctx, 'sg' + sat.index + '_' + faceCounter,
                     ccx - sun2x * s, ccy - sun2y * s,
-                    ccx + sun2x * s, ccy + sun2y * s
+                    ccx + sun2x * s, ccy + sun2y * s,
+                    [0, c0, 1, c1]
                 );
-                g.addColorStop(0, this.faceColor(col, lambert * (1.3 + 0.45 * shine) + 0.18, rim));
-                g.addColorStop(1, this.faceColor(col, lambert * 0.55 + 0.16, rim * 0.6));
-                poly.color = g;
             }
+            faceCounter++;
             polys.push(poly);
             return poly;
         };
@@ -1109,25 +1186,24 @@ export class SatellitesSwarmEngine {
         /**
          * Корпус-параллелепипед: 6 граней с индивидуальным освещением.
          */
-        const pushBox = (bw, bh, bd, col, opts = {}) => {
-            const v = [
-                projectLocal(-bw, -bh, -bd), projectLocal(bw, -bh, -bd),
-                projectLocal(bw,  bh, -bd), projectLocal(-bw,  bh, -bd),
-                projectLocal(-bw, -bh,  bd), projectLocal(bw, -bh,  bd),
-                projectLocal(bw,  bh,  bd), projectLocal(-bw,  bh,  bd)
-            ];
-            pushFace([v[0], v[1], v[2], v[3]], col, worldNormal(0, 0, -1), opts); // Лево
-            pushFace([v[4], v[5], v[6], v[7]], col, worldNormal(0, 0, 1), opts);  // Право
-            pushFace([v[1], v[5], v[6], v[2]], col, worldNormal(1, 0, 0), opts);  // Нос
-            pushFace([v[0], v[4], v[7], v[3]], col, worldNormal(-1, 0, 0), opts); // Корма
-            pushFace([v[3], v[2], v[6], v[7]], col, worldNormal(0, 1, 0), opts);  // Зенит
-            pushFace([v[0], v[1], v[5], v[4]], col, worldNormal(0, -1, 0), opts); // Надир
+        const pushBox = (bw, bh, bd, col, opts) => {
+            const v = arrGet(8);
+            v[0] = projectLocal(-bw, -bh, -bd); v[1] = projectLocal(bw, -bh, -bd);
+            v[2] = projectLocal(bw,  bh, -bd); v[3] = projectLocal(-bw,  bh, -bd);
+            v[4] = projectLocal(-bw, -bh,  bd); v[5] = projectLocal(bw, -bh,  bd);
+            v[6] = projectLocal(bw,  bh,  bd); v[7] = projectLocal(-bw,  bh,  bd);
+            pushFace(arr4(v[0], v[1], v[2], v[3]), col, worldNormal(0, 0, -1), opts); // Лево
+            pushFace(arr4(v[4], v[5], v[6], v[7]), col, worldNormal(0, 0, 1), opts);  // Право
+            pushFace(arr4(v[1], v[5], v[6], v[2]), col, worldNormal(1, 0, 0), opts);  // Нос
+            pushFace(arr4(v[0], v[4], v[7], v[3]), col, worldNormal(-1, 0, 0), opts); // Корма
+            pushFace(arr4(v[3], v[2], v[6], v[7]), col, worldNormal(0, 1, 0), opts);  // Зенит
+            pushFace(arr4(v[0], v[1], v[5], v[4]), col, worldNormal(0, -1, 0), opts); // Надир
         };
 
         /**
          * Цилиндрический корпус (8-гранная призма) — метео/научные аппараты.
          */
-        const pushCylinder = (bw, rad, col, opts = {}) => {
+        const pushCylinder = (bw, rad, col, opts) => {
             const segs = 8;
             for (let k = 0; k < segs; k++) {
                 const a0 = (k / segs) * Math.PI * 2;
@@ -1136,16 +1212,16 @@ export class SatellitesSwarmEngine {
                 const y1 = Math.cos(a1) * rad, z1 = Math.sin(a1) * rad;
                 const am = (a0 + a1) * 0.5;
                 pushFace(
-                    [projectLocal(-bw, y0, z0), projectLocal(bw, y0, z0),
-                     projectLocal(bw, y1, z1), projectLocal(-bw, y1, z1)],
+                    arr4(projectLocal(-bw, y0, z0), projectLocal(bw, y0, z0),
+                        projectLocal(bw, y1, z1), projectLocal(-bw, y1, z1)),
                     col, worldNormal(0, Math.cos(am), Math.sin(am)), opts
                 );
             }
             // Носовая крышка
-            const cap = [];
+            const cap = arrGet(segs);
             for (let k = 0; k < segs; k++) {
                 const a = (k / segs) * Math.PI * 2;
-                cap.push(projectLocal(bw, Math.cos(a) * rad, Math.sin(a) * rad));
+                cap[k] = projectLocal(bw, Math.cos(a) * rad, Math.sin(a) * rad);
             }
             pushFace(cap, col, worldNormal(1, 0, 0), opts);
         };
@@ -1155,13 +1231,14 @@ export class SatellitesSwarmEngine {
          * тёмными ячейками (только при крупном экранном размере).
          */
         let wingCounter = 0;
-        const pushWing = (aLocal, bLocal, dLocal, halfChord, col, opts = {}) => {
+        const pushWing = (aLocal, bLocal, dLocal, halfChord, col, opts) => {
+            const o = opts || EMPTY_OPTS;
             const d = dLocal;
             const c0 = projectLocal(aLocal[0] + d[0] * halfChord, aLocal[1] + d[1] * halfChord, aLocal[2] + d[2] * halfChord);
             const c1 = projectLocal(bLocal[0] + d[0] * halfChord, bLocal[1] + d[1] * halfChord, bLocal[2] + d[2] * halfChord);
             const c2 = projectLocal(bLocal[0] - d[0] * halfChord, bLocal[1] - d[1] * halfChord, bLocal[2] - d[2] * halfChord);
             const c3 = projectLocal(aLocal[0] - d[0] * halfChord, aLocal[1] - d[1] * halfChord, aLocal[2] - d[2] * halfChord);
-            const pts = [c0, c1, c2, c3];
+            const pts = arr4(c0, c1, c2, c3);
 
             // Нормаль: cross(b-a, d) в локальном базисе
             const ex = bLocal[0] - aLocal[0], ey = bLocal[1] - aLocal[1], ez = bLocal[2] - aLocal[2];
@@ -1176,16 +1253,21 @@ export class SatellitesSwarmEngine {
 
             const decal = (scale >= 0.8) ? (() => {
                 const rng = this.makeRng(seed);
-                const cols = opts.cells || 4;
+                const cols = o.cells || 4;
                 return (c) => {
                     c.strokeStyle = 'rgba(10, 26, 52, 0.7)';
                     c.lineWidth = 0.7;
+                    // Все линии ячеек — ОДИН путь и один stroke (батчинг)
+                    c.beginPath();
                     for (let i = 1; i < cols; i++) {
                         const p0 = quadPoint(pts, i / cols, 0), p1 = quadPoint(pts, i / cols, 1);
-                        c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
+                        c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y);
                     }
-                    const p0 = quadPoint(pts, 0, 0.5), p1 = quadPoint(pts, 1, 0.5);
-                    c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
+                    {
+                        const p0 = quadPoint(pts, 0, 0.5), p1 = quadPoint(pts, 1, 0.5);
+                        c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y);
+                    }
+                    c.stroke();
                     // Случайные тёмные (деградировавшие) ячейки
                     c.fillStyle = 'rgba(8, 16, 34, 0.65)';
                     for (let k = 0; k < 2; k++) {
@@ -1210,10 +1292,10 @@ export class SatellitesSwarmEngine {
          */
         const pushDish = (mountY, radius) => {
             const dR = radius;
-            const rimPts = [];
+            const rimPts = arrGet(10);
             for (let k = 0; k < 10; k++) {
                 const a = (k / 10) * Math.PI * 2;
-                rimPts.push(projectLocal(Math.cos(a) * dR, mountY - s * 0.45, Math.sin(a) * dR));
+                rimPts[k] = projectLocal(Math.cos(a) * dR, mountY - s * 0.45, Math.sin(a) * dR);
             }
             const poly = pushFace(rimPts, '#dfe6ee', worldNormal(0, -1, 0), { shine: 0.4 });
             poly.borderColor = isHighlighted ? '#38bdf8' : '#9fb0c3';
@@ -1240,48 +1322,47 @@ export class SatellitesSwarmEngine {
         if (t === 'CUBESAT_RESEARCH') {
             // 1. Кубсат: хромированный бокс 3U с фасеточным блеском + панели-крылья
             const bw = s * 1.5, bh = s * 0.55, bd = s * 0.55;
-            pushBox(bw, bh, bd, '#d3dae3', { shine: 0.85 });
-            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 2.4], [1, 0, 0], s * 0.5, orbitPanelColor);
-            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 2.4], [1, 0, 0], s * 0.5, orbitPanelColor);
+            pushBox(bw, bh, bd, '#d3dae3', OPT_SHINE_CHROME);
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 2.4], D_X, s * 0.5, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 2.4], D_X, s * 0.5, orbitPanelColor);
             strobeTipLocal = [0, 0, bd + s * 2.4];
         } else if (t === 'COMMS_RELAY') {
             // 2. Связной GEO: золотой foil-корпус + 2 больших золотых панели + тарелка в надир
             const bw = s * 1.0, bh = s * 0.85, bd = s * 0.85;
-            const foilOpts = { shine: 0.3, foil: true };
-            pushBox(bw, bh, bd, GOLD_FOIL, foilOpts);
-            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 3.6], [1, 0, 0], s * 0.9, GOLD_FOIL, { cells: 3 });
-            pushWing([0, 0, -bd - s * 0.2], [0, 0, -bd - s * 3.6], [1, 0, 0], s * 0.9, GOLD_FOIL, { cells: 3 });
+            pushBox(bw, bh, bd, GOLD_FOIL, OPT_SHINE_FOIL);
+            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 3.6], D_X, s * 0.9, GOLD_FOIL, OPT_CELLS3);
+            pushWing([0, 0, -bd - s * 0.2], [0, 0, -bd - s * 3.6], D_X, s * 0.9, GOLD_FOIL, OPT_CELLS3);
             pushDish(-bh, s * 1.1);
             strobeTipLocal = [0, 0, bd + s * 3.6];
         } else if (t === 'EARTH_OBSERVATION') {
             // 3. Развед-/обзорный SSO: вытянутый корпус + объектив-телескоп в надир + панели-паруса
             const bw = s * 1.9, bh = s * 0.6, bd = s * 0.6;
-            pushBox(bw, bh, bd, '#3f4a58', { shine: 0.25 });
-            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.0], [1, 0, 0], s * 0.75, orbitPanelColor);
-            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.0], [1, 0, 0], s * 0.75, orbitPanelColor);
+            pushBox(bw, bh, bd, '#3f4a58', OPT_SHINE_MATTE);
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.0], D_X, s * 0.75, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.0], D_X, s * 0.75, orbitPanelColor);
             strobeTipLocal = [0, 0, bd + s * 3.0];
         } else if (t === 'NAVIGATION_GNSS') {
             // 4. Навигационный: корпус + 3 панели крест-накрест + антенны-решётки в надир
             const bw = s * 1.0, bh = s * 0.9, bd = s * 0.9;
-            pushBox(bw, bh, bd, '#aeb7c2', { shine: 0.5 });
-            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 2.6], [1, 0, 0], s * 0.6, orbitPanelColor);
-            pushWing([ bw + s * 0.2, 0, 0], [ bw + s * 2.6, 0, 0], [0, 0, 1], s * 0.6, orbitPanelColor);
-            pushWing([-bw - s * 0.2, 0, 0], [-bw - s * 2.6, 0, 0], [0, 0, 1], s * 0.6, orbitPanelColor);
+            pushBox(bw, bh, bd, '#aeb7c2', OPT_SHINE_NAV);
+            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 2.6], D_X, s * 0.6, orbitPanelColor);
+            pushWing([ bw + s * 0.2, 0, 0], [ bw + s * 2.6, 0, 0], D_Z, s * 0.6, orbitPanelColor);
+            pushWing([-bw - s * 0.2, 0, 0], [-bw - s * 2.6, 0, 0], D_Z, s * 0.6, orbitPanelColor);
             strobeTipLocal = [0, 0, bd + s * 2.6];
         } else if (t === 'SPACE_TELESCOPE') {
             // 5. Метео/научный: цилиндр с тарелкой и штангами приборов
             const bw = s * 1.1, rad = s * 0.55;
-            pushCylinder(bw, rad, '#8a94a2', { shine: 0.45 });
-            pushWing([0, 0,  rad + s * 0.15], [0, 0,  rad + s * 2.7], [1, 0, 0], s * 0.65, orbitPanelColor);
-            pushWing([0, 0, -rad - s * 0.15], [0, 0, -rad - s * 2.7], [1, 0, 0], s * 0.65, orbitPanelColor);
+            pushCylinder(bw, rad, '#8a94a2', OPT_SHINE_TELESCOPE);
+            pushWing([0, 0,  rad + s * 0.15], [0, 0,  rad + s * 2.7], D_X, s * 0.65, orbitPanelColor);
+            pushWing([0, 0, -rad - s * 0.15], [0, 0, -rad - s * 2.7], D_X, s * 0.65, orbitPanelColor);
             pushDish(-rad, s * 0.95);
             strobeTipLocal = [0, 0, rad + s * 2.7];
         } else {
             // MEGA_CONSTELLATION: плоская платформа с большими крыльями
             const bw = s * 1.5, bh = s * 0.25, bd = s * 0.95;
-            pushBox(bw, bh, bd, '#3a4656', { shine: 0.35 });
-            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.3], [1, 0, 0], s * 1.0, orbitPanelColor);
-            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.3], [1, 0, 0], s * 1.0, orbitPanelColor);
+            pushBox(bw, bh, bd, '#3a4656', OPT_SHINE_MEGA);
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.3], D_X, s * 1.0, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.3], D_X, s * 1.0, orbitPanelColor);
             strobeTipLocal = [0, 0, bd + s * 3.3];
         }
 
@@ -1289,11 +1370,19 @@ export class SatellitesSwarmEngine {
         polys.sort((a, b) => b.z - a.z);
 
         // Отрисовка отсортированных граней + декалей (ячейки, морщины, рог антенны)
+        // strokeStyle обводки почти у всех граней одинаков — выставляется один раз
+        // (переключается только для особых граней вроде обода тарелки)
+        const baseBorder = isHighlighted ? '#38bdf8' : 'rgba(255,255,255,0.35)';
+        let curBorder = baseBorder;
+        ctx.strokeStyle = curBorder;
+        ctx.lineWidth = 1;
         for (let p = 0; p < polys.length; p++) {
             const poly = polys[p];
             ctx.fillStyle = poly.color;
-            ctx.strokeStyle = poly.borderColor;
-            ctx.lineWidth = 1;
+            if (poly.borderColor !== curBorder) {
+                curBorder = poly.borderColor;
+                ctx.strokeStyle = curBorder;
+            }
             ctx.beginPath();
             ctx.moveTo(poly.pts[0].x, poly.pts[0].y);
             for (let k = 1; k < poly.pts.length; k++) {
@@ -1312,14 +1401,12 @@ export class SatellitesSwarmEngine {
             // Объектив-телескоп в надир: тёмное стекло со стеклянным блеском
             const lc = projectLocal(0, -s * 0.62, 0);
             const rl = Math.max(1.6, s * 0.42);
-            const lensGrad = ctx.createRadialGradient(
-                lc.x - rl * 0.35, lc.y - rl * 0.35, rl * 0.08,
-                lc.x, lc.y, rl
+            // Радиальный градиент стекла из кэша (смещённое внутреннее кольцо)
+            ctx.fillStyle = this._gradRadial(
+                ctx, 'lensR' + sat.index,
+                lc.x - rl * 0.35, lc.y - rl * 0.35, lc.x, lc.y, rl * 0.08, rl,
+                [0, '#2a3a55', 0.55, '#0a1020', 1, '#030509']
             );
-            lensGrad.addColorStop(0, '#2a3a55');
-            lensGrad.addColorStop(0.55, '#0a1020');
-            lensGrad.addColorStop(1, '#030509');
-            ctx.fillStyle = lensGrad;
             ctx.beginPath(); ctx.arc(lc.x, lc.y, rl, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = '#7c8aa0';
             ctx.lineWidth = Math.max(0.7, s * 0.1);
@@ -1334,16 +1421,26 @@ export class SatellitesSwarmEngine {
 
         if (t === 'NAVIGATION_GNSS') {
             // Тонкие антенны-решётки в надир (фазированная решётка)
+            // Батчинг: 3 штанги одним путём + 3 вершины одним путём
             const arrColor = isHighlighted ? 'rgba(191, 219, 254, 0.95)' : 'rgba(203, 213, 225, 0.85)';
+            const dotR = Math.max(0.8, s * 0.11);
+            ctx.strokeStyle = arrColor;
+            ctx.lineWidth = Math.max(0.6, s * 0.1);
+            ctx.fillStyle = '#7dd3fc';
+            ctx.beginPath();
             for (let k = -1; k <= 1; k++) {
                 const b = projectLocal(k * s * 0.45, -s * 0.9, 0);
                 const tp = projectLocal(k * s * 0.45, -s * 0.9 - s * 1.0, 0);
-                ctx.strokeStyle = arrColor;
-                ctx.lineWidth = Math.max(0.6, s * 0.1);
-                ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
-                ctx.fillStyle = '#7dd3fc';
-                ctx.beginPath(); ctx.arc(tp.x, tp.y, Math.max(0.8, s * 0.11), 0, Math.PI * 2); ctx.fill();
+                ctx.moveTo(b.x, b.y); ctx.lineTo(tp.x, tp.y);
             }
+            ctx.stroke();
+            ctx.beginPath();
+            for (let k = -1; k <= 1; k++) {
+                const tp = projectLocal(k * s * 0.45, -s * 0.9 - s * 1.0, 0);
+                ctx.moveTo(tp.x + dotR, tp.y);
+                ctx.arc(tp.x, tp.y, dotR, 0, Math.PI * 2);
+            }
+            ctx.fill();
         }
 
         if (t === 'SPACE_TELESCOPE') {
@@ -1353,18 +1450,28 @@ export class SatellitesSwarmEngine {
                 [s * 0.4, s * 0.35, s * 0.3, s * 1.5, s * 0.9],
                 [-s * 0.4, -s * 0.35, -s * 0.3, -s * 1.5, -s * 0.9]
             ];
+            const dotR = Math.max(0.8, s * 0.13);
+            ctx.strokeStyle = boomColor;
+            ctx.lineWidth = Math.max(0.6, s * 0.1);
+            ctx.fillStyle = arch.strobeColor;
+            ctx.globalAlpha = 0.75;
+            ctx.beginPath();
             for (let k = 0; k < booms.length; k++) {
                 const b = booms[k];
                 const p0 = projectLocal(b[0], b[1], b[2]);
                 const p1 = projectLocal(b[3], b[4] + s * 0.7, b[2]);
-                ctx.strokeStyle = boomColor;
-                ctx.lineWidth = Math.max(0.6, s * 0.1);
-                ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
-                ctx.fillStyle = arch.strobeColor;
-                ctx.globalAlpha = 0.75;
-                ctx.beginPath(); ctx.arc(p1.x, p1.y, Math.max(0.8, s * 0.13), 0, Math.PI * 2); ctx.fill();
-                ctx.globalAlpha = detailAlpha;
+                ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
             }
+            ctx.stroke();
+            ctx.beginPath();
+            for (let k = 0; k < booms.length; k++) {
+                const b = booms[k];
+                const p1 = projectLocal(b[3], b[4] + s * 0.7, b[2]);
+                ctx.moveTo(p1.x + dotR, p1.y);
+                ctx.arc(p1.x, p1.y, dotR, 0, Math.PI * 2);
+            }
+            ctx.fill();
+            ctx.globalAlpha = detailAlpha;
         }
 
         // Антенна-палочка (whip antenna) в зенит — для компактных платформ
@@ -1393,12 +1500,12 @@ export class SatellitesSwarmEngine {
             const plumeBase0 = projectLocal(-s * 1.5,  s * 0.3, 0);
             const plumeBase1 = projectLocal(-s * 1.5, -s * 0.3, 0);
 
-            const plumeGrad = ctx.createLinearGradient(plumeBase0.x, plumeBase0.y, plumeTip.x, plumeTip.y);
-            plumeGrad.addColorStop(0, 'rgba(56, 189, 248, 0.9)');
-            plumeGrad.addColorStop(0.6, 'rgba(14, 165, 233, 0.45)');
-            plumeGrad.addColorStop(1, 'rgba(2, 6, 23, 0)');
-
-            ctx.fillStyle = plumeGrad;
+            // Градиент факела из кэша (цвета стопов постоянны)
+            ctx.fillStyle = this._gradLin(
+                ctx, 'plume' + sat.index,
+                plumeBase0.x, plumeBase0.y, plumeTip.x, plumeTip.y,
+                [0, 'rgba(56, 189, 248, 0.9)', 0.6, 'rgba(14, 165, 233, 0.45)', 1, 'rgba(2, 6, 23, 0)']
+            );
             ctx.beginPath();
             ctx.moveTo(plumeBase0.x, plumeBase0.y);
             ctx.lineTo(plumeTip.x, plumeTip.y);
@@ -1439,15 +1546,11 @@ export class SatellitesSwarmEngine {
         if (alpha <= 0) return;
 
         const haloR = Math.max(3, s * (isHighlighted ? 5.5 : 3.5));
-        const haloGrad = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-        haloGrad.addColorStop(0, color);
-        haloGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
-        haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        // Спрайт свечения из кэша (точная копия прежнего радиального градиента):
+        // один drawImage вместо createRadialGradient на каждую вспышку
+        const sprite = this._glowSprite(color);
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = haloGrad;
-        ctx.beginPath();
-        ctx.arc(x, y, haloR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.drawImage(sprite, x - haloR, y - haloR, haloR * 2, haloR * 2);
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
@@ -1594,6 +1697,81 @@ export class SatellitesSwarmEngine {
             st = (st * 1664525 + 1013904223) >>> 0;
             return st / 4294967296;
         };
+    }
+
+    /* ====================================================================
+     * Кэши рендера (устранение аллокаций в кадре — главные пожиратели FPS)
+     * ================================================================== */
+
+    /**
+     * Кэш линейных градиентов с квантованными опорными точками.
+     * Градиент пересоздаётся ТОЛЬКО когда сменились квантованные координаты
+     * (сетка 6px) или цвета стопов — визуально идентичен per-frame градиенту,
+     * но в устойчивом режиме не аллоцирует ничего.
+     * stops — массив [offset, color, offset, color, ...].
+     */
+    _gradLin(ctx, key, x1, y1, x2, y2, stops) {
+        const q = 6;
+        const qx1 = Math.round(x1 / q), qy1 = Math.round(y1 / q);
+        const qx2 = Math.round(x2 / q), qy2 = Math.round(y2 / q);
+        let e = this._gradCache.get(key);
+        if (e && e.q0 === qx1 && e.q1 === qy1 && e.q2 === qx2 && e.q3 === qy2 &&
+            _stopsSame(e.stops, stops)) return e.g;
+        const g = ctx.createLinearGradient(qx1 * q, qy1 * q, qx2 * q, qy2 * q);
+        for (let i = 0; i < stops.length; i += 2) g.addColorStop(stops[i], stops[i + 1]);
+        if (!e) {
+            if (this._gradCache.size > 1600) this._gradCache.clear();
+            this._gradCache.set(key, e = { q0: 0, q1: 0, q2: 0, q3: 0, stops: null, g: null });
+        }
+        e.q0 = qx1; e.q1 = qy1; e.q2 = qx2; e.q3 = qy2; e.stops = stops; e.g = g;
+        return g;
+    }
+
+    /**
+     * Кэш радиальных градиентов с полными опорными окружностями
+     * (x0,y0,r0) → (x1,y1,r1); координаты квантуются сеткой 6px, радиусы — 1px.
+     */
+    _gradRadial(ctx, key, x0, y0, x1, y1, r0, r1, stops) {
+        const q = 6, qr = 1;
+        const qx0 = Math.round(x0 / q), qy0 = Math.round(y0 / q);
+        const qx1 = Math.round(x1 / q), qy1 = Math.round(y1 / q);
+        const n0 = Math.max(0, Math.round(r0 / qr)), n1 = Math.max(1, Math.round(r1 / qr));
+        let e = this._gradCache.get(key);
+        if (e && e.q0 === qx0 && e.q1 === qy0 && e.q2 === qx1 && e.q3 === qy1 &&
+            e.q4 === n0 && e.q5 === n1 && _stopsSame(e.stops, stops)) return e.g;
+        const g = ctx.createRadialGradient(qx0 * q, qy0 * q, n0 * qr, qx1 * q, qy1 * q, n1 * qr);
+        for (let i = 0; i < stops.length; i += 2) g.addColorStop(stops[i], stops[i + 1]);
+        if (!e) {
+            if (this._gradCache.size > 1600) this._gradCache.clear();
+            this._gradCache.set(key, e = { q0: 0, q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, stops: null, g: null });
+        }
+        e.q0 = qx0; e.q1 = qy0; e.q2 = qx1; e.q3 = qy1; e.q4 = n0; e.q5 = n1; e.stops = stops; e.g = g;
+        return g;
+    }
+
+    /**
+     * Оффскрин-спрайт радиального свечения (строб-глоу) — вместо
+     * createRadialGradient на каждую вспышку: один drawImage на кадр.
+     * Спрайт — точная копия прежнего градиента (0: color, 0.4: белый 0.5, 1: 0).
+     */
+    _glowSprite(color) {
+        let cv = this._glowCache.get(color);
+        if (!cv) {
+            const size = 96;
+            cv = document.createElement('canvas');
+            cv.width = size;
+            cv.height = size;
+            const c2 = cv.getContext('2d');
+            const half = size / 2;
+            const g = c2.createRadialGradient(half, half, 0, half, half, half);
+            g.addColorStop(0, color);
+            g.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            c2.fillStyle = g;
+            c2.fillRect(0, 0, size, size);
+            this._glowCache.set(color, cv);
+        }
+        return cv;
     }
 
     /**

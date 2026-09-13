@@ -1527,10 +1527,10 @@ export class Space3DGLRenderer {
      * ------------------------------------------------------------------- */
     _textureSources() {
         return {
-            earthDay: 'assets/textures/earth_day.jpg?v=4.5.0',
-            earthNight: 'assets/textures/earth_night.png?v=4.5.0',
-            earthClouds: 'assets/textures/earth_clouds.png?v=4.5.0',
-            moon: 'assets/textures/moon.jpg?v=4.5.0'
+            earthDay: 'assets/textures/earth_day.jpg?v=4.6.0',
+            earthNight: 'assets/textures/earth_night.png?v=4.6.0',
+            earthClouds: 'assets/textures/earth_clouds.png?v=4.6.0',
+            moon: 'assets/textures/moon.jpg?v=4.6.0'
         };
     }
 
@@ -1826,10 +1826,20 @@ export class Space3DGLRenderer {
         this.time += dt || 0.016;
 
         // Кинематика планет (скорость вращения уменьшена в 0.5 раза)
-        this.earthRot += 0.00023 * (dt * 60);
-        this.cloudsRot += 0.00031 * (dt * 60);
-        this.moonOrbit += 0.000035 * (dt * 60);
-        this.moonRot += 0.000035 * (dt * 60);
+        // === Реалистичная кинематика Земля-Луна ===
+        // Угловая скорость суточного вращения Земли в эмуляции:
+        //   ω_Земли = 0.00023 рад/кадр(60fps) × 60 = 0.0138 рад/с → оборот за ~7.6 мин
+        // Формула связи (как в реальности): сидерический месяц Луны равен
+        //   27.321661 сидерических суток → ω_Луны = ω_Земли / 27.321661.
+        // Приливный захват: Луна повёрнута к Земле всегда одной стороной,
+        //   поэтому её собственное вращение = орбитальному (moonRot ≡ moonOrbit).
+        const EARTH_OMEGA = 0.00023 * 60;              // рад/с (вращение Земли)
+        const MOON_SIDEREAL_RATIO = 27.321661;         // сидерич. месяц / сидерич. сутки
+        const moonOmega = EARTH_OMEGA / MOON_SIDEREAL_RATIO;
+        this.earthRot += EARTH_OMEGA * dt;
+        this.cloudsRot += 0.00031 * 60 * dt;           // атмосферный дрейф (не физический)
+        this.moonOrbit += moonOmega * dt;              // орбита: оборот за 27.32 «суток» эмуляции (~3.45 ч)
+        this.moonRot += moonOmega * dt;                // приливный захват
 
         // Bake НИКОГДА не начинается в кадрах кинематики: к прилёту скайдом уже
         // запечён (bake с init/preWarm), иначе beginCinematicHold дожал срезы

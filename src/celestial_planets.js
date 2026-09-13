@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=4.5.0'),
-            loadImgBuffer('assets/textures/earth_night.png?v=4.5.0'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=4.5.0'),
-            loadImgBuffer('assets/textures/moon.jpg?v=4.5.0')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=4.6.0'),
+            loadImgBuffer('assets/textures/earth_night.png?v=4.6.0'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=4.6.0'),
+            loadImgBuffer('assets/textures/moon.jpg?v=4.6.0')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -520,12 +520,17 @@ export class CelestialPlanetsEngine {
         this.tick = (this.tick || 0) + 1;
 
         // Постоянное плавное вращение Земли (уменьшено в 0.5 раза)
-        this.earthRot += 0.000252;
+        // Реалистичное соотношение Земля-Луна: ω_Луны = ω_Земли / 27.321661
+        // (сидерический месяц = 27.321661 сидерических суток), приливный захват.
+        const EARTH_OMEGA = 0.000252;            // рад/кадр(60fps) — вращение Земли
+        const MOON_SIDEREAL_RATIO = 27.321661;
+        const moonOmega = EARTH_OMEGA / MOON_SIDEREAL_RATIO;
+        this.earthRot += EARTH_OMEGA;
         this.cloudsRot += 0.00038;
 
         // Орбитальное движение Луны и синхронное вращение
-        this.moonOrbit += 0.000035;
-        this.moonRot += 0.000035;
+        this.moonOrbit += moonOmega;
+        this.moonRot += moonOmega;
 
         // Оффскрин-буфер перерисовываем раз в 4 кадра для максимального FPS
         if (this.tick % 4 === 0) {

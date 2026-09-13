@@ -18,7 +18,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.5.1';
+import { SpaceAudio } from './space_audio.js?v=4.6.0';
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;

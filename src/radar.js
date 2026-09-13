@@ -11,8 +11,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.5.1';
-import { extractNum } from './analytics.js?v=4.5.1';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.6.0';
+import { extractNum } from './analytics.js?v=4.6.0';
 
 export const RADAR_AXES = [
     { id: 'regularity', label: 'Регулярность', desc: 'Частота и ритмичность постов' },

@@ -24,8 +24,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.5.1';
-import { SpaceAudio } from './space_audio.js?v=4.5.1';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.6.0';
+import { SpaceAudio } from './space_audio.js?v=4.6.0';
 
 const DEG = Math.PI / 180;
 
@@ -726,26 +726,32 @@ class CosmonautRingEngine {
                 node.dataset.visible = visible ? '1' : '0';
                 node.classList.toggle('is-hidden', !visible);
             }
-            if (!visible) continue;
+            if (!visible) { card._lk = null; continue; }
 
             // Плавное затухание к краям конуса восприятия
             const edge = Math.min(1, Math.max(0, 1 - Math.pow(absA / cone, 3)));
-            node.style.opacity = (0.18 + 0.82 * edge).toFixed(3);
-            node.style.transform = `rotateY(${a.toFixed(2)}deg) translate3d(0px, 0px, ${-R}px)`;
-            node.style.zIndex = String(1000 - Math.round(absA));
-            // Blur дорог на transform-элементах: применяем только к боковым
-            // карточкам, заметно отклонившимся от фронта (и градиентно гасим)
-            if (edge > 0.9) {
-                if (node.dataset.blurred) { node.style.filter = 'none'; delete node.dataset.blurred; }
-            } else {
-                node.style.filter = `blur(${((1 - edge) * 1.6).toFixed(2)}px)`;
-                node.dataset.blurred = '1';
-            }
+            // Кэш DOM-записей: все стили карточки зависят только от её угла —
+            // в статичном кольце ни одной записи в кадр (раньше — до 5 на карточку)
+            const aStr = a.toFixed(2);
+            if (card._lk !== aStr) {
+                card._lk = aStr;
+                node.style.opacity = (0.18 + 0.82 * edge).toFixed(3);
+                node.style.transform = `rotateY(${aStr}deg) translate3d(0px, 0px, ${-R}px)`;
+                node.style.zIndex = String(1000 - Math.round(absA));
+                // Blur дорог на transform-элементах: применяем только к боковым
+                // карточкам, заметно отклонившимся от фронта (и градиентно гасим)
+                if (edge > 0.9) {
+                    if (node.dataset.blurred) { node.style.filter = 'none'; delete node.dataset.blurred; }
+                } else {
+                    node.style.filter = `blur(${((1 - edge) * 1.6).toFixed(2)}px)`;
+                    node.dataset.blurred = '1';
+                }
 
-            // Ленивое подключение фото: грузим только то, что реально видно
-            if (!card.loaded && edge > 0.35) {
-                card.loaded = true;
-                card.img.src = card.img.dataset.src;
+                // Ленивое подключение фото: грузим только то, что реально видно
+                if (!card.loaded && edge > 0.35) {
+                    card.loaded = true;
+                    card.img.src = card.img.dataset.src;
+                }
             }
 
             // Передняя карточка получает акцентную рамку
@@ -759,7 +765,11 @@ class CosmonautRingEngine {
         if (this.progressEl) {
             const base = typeof this.spinBase === 'number' ? this.spinBase : this.rotation;
             const turned = Math.abs(this.rotation - base) / 360;
-            this.progressEl.style.transform = `scaleX(${Math.min(1, Math.max(0, turned)).toFixed(3)})`;
+            const tf = `scaleX(${Math.min(1, Math.max(0, turned)).toFixed(3)})`;
+            if (this._lastProgressTf !== tf) {
+                this._lastProgressTf = tf;
+                this.progressEl.style.transform = tf;
+            }
         }
     }
 

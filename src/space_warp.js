@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.5.1';
-import { WarpGLRenderer } from './warp_gl.js?v=4.5.1';
-import { WarpHud } from './warp_hud.js?v=4.5.1';
+import { SpaceAudio } from './space_audio.js?v=4.6.0';
+import { WarpGLRenderer } from './warp_gl.js?v=4.6.0';
+import { WarpHud } from './warp_hud.js?v=4.6.0';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -658,6 +658,12 @@ export class SpaceWarpTransition {
         this.phase = 'idle';
         clearTimeout(this.speechTimer);
         cancelAnimationFrame(this.animId);
+
+        // Гарантия: если прилёт не открыл 3D-сцену (сбой onArrival, отмена),
+        // фоновая музыка варпа обязана остановиться — в 2D-режиме ей не место
+        if (!(window.Space3D && window.Space3D.isOpen)) {
+            try { SpaceAudio.stopAmbientMusic(400); } catch (e) { /* noop */ }
+        }
 
         window.removeEventListener('resize', this.onResize);
         document.removeEventListener('keydown', this.onKeyDown);

@@ -16,25 +16,25 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.5.1';
-import { SpaceAudio } from './space_audio.js?v=4.5.1';
-import { CelestialPlanets } from './celestial_planets.js?v=4.5.1';
-import { IssStation } from './iss_station.js?v=4.5.1';
-import { SatellitesSwarm } from './satellites_swarm.js?v=4.5.1';
-import { Constellations } from './constellations.js?v=4.5.1';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.5.1';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.6.0';
+import { SpaceAudio } from './space_audio.js?v=4.6.0';
+import { CelestialPlanets } from './celestial_planets.js?v=4.6.0';
+import { IssStation } from './iss_station.js?v=4.6.0';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.6.0';
+import { Constellations } from './constellations.js?v=4.6.0';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.6.0';
 // Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —
 // иначе два экземпляра модуля → два синглтона → рассинхрон DOM-узлов карточек.
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.5.1';
-import { Starfield } from './starfield.js?v=4.5.1';
-import { SunOptics } from './sun_optics.js?v=4.5.1';
-import { createQrSvg } from './qrcode.js?v=4.5.1';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.5.1';
-import { openPostModal } from './render.js?v=4.5.1';
-import { fetchHistory } from './subscribers.js?v=4.5.1';
-import { buildBranchAdvice } from './advice.js?v=4.5.1';
-import { Space3DGL } from './space3d_gl.js?v=4.5.1';
-import { SpaceCinematic } from './space_cinematic.js?v=4.5.1';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.6.0';
+import { Starfield } from './starfield.js?v=4.6.0';
+import { SunOptics } from './sun_optics.js?v=4.6.0';
+import { createQrSvg } from './qrcode.js?v=4.6.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.6.0';
+import { openPostModal } from './render.js?v=4.6.0';
+import { fetchHistory } from './subscribers.js?v=4.6.0';
+import { buildBranchAdvice } from './advice.js?v=4.6.0';
+import { Space3DGL } from './space3d_gl.js?v=4.6.0';
+import { SpaceCinematic } from './space_cinematic.js?v=4.6.0';
 
 export class Space3DEngine {
     constructor() {
@@ -1708,6 +1708,22 @@ export class Space3DEngine {
         this.lastDt = Math.min(0.05, Math.max(0.001, (t - (this.prevFrameTime || t)) / 1000));
         this.prevFrameTime = t;
 
+        // --- FPS-счётчик для замеров производительности (window.__fps —
+        // среднее за 1с, считается по НЕЗАЖАТОЙ дельте кадров) ---
+        {
+            const rawDt = (t - (this._fpsPrev || t)) / 1000;
+            this._fpsPrev = t;
+            if (rawDt > 0 && rawDt < 1) {
+                this._fpsAcc = (this._fpsAcc || 0) + rawDt;
+                this._fpsFrames = (this._fpsFrames || 0) + 1;
+            }
+            if ((this._fpsAcc || 0) >= 1) {
+                window.__fps = this._fpsFrames / this._fpsAcc;
+                this._fpsAcc = 0;
+                this._fpsFrames = 0;
+            }
+        }
+
         const dt = this.lastDt || 0.016;
 
         // --- Кинематографический контроллер прилёта (приоритет над всем) ---
@@ -1813,25 +1829,37 @@ export class Space3DEngine {
         if (this.world) {
             const eyeD = 1000;
             const zoomOffset = (this.zoom - 1.0) * 350;
+            // Строку transform обновляем ТОЛЬКО при изменении позы > 0.01
+            // (в неподвижной сцене 60 шаблонных строк в секунду не строятся).
             // Схема transform мира НЕ меняется (никаких дополнительных функций):
             // мир живёт на preserve-3d при perspective 960px и translateZ(1000px) —
             // любой grouping-свойство/лишняя 3D-функция на этом элементе или его
             // предках схлопывает сцену за камеру. Крен (roll) применяется к
             // .space-3d-stage (внутренний контейнер с перспективой), см. ниже.
-            this.world.style.transform = `
-                translateZ(${eyeD + zoomOffset}px)
-                rotateX(${effPitch}deg)
-                rotateY(${effYaw}deg)
-            `;
+            const yawQ = Math.round(effYaw * 100);
+            const pitchQ = Math.round(effPitch * 100);
+            const zoomQ = Math.round(zoomOffset * 100);
+            if (this._lastWorldTf === undefined ||
+                this._lastWorldTf.yaw !== yawQ || this._lastWorldTf.pitch !== pitchQ ||
+                this._lastWorldTf.zoom !== zoomQ) {
+                this._lastWorldTf = { yaw: yawQ, pitch: pitchQ, zoom: zoomQ };
+                this.world.style.transform = `
+                    translateZ(${eyeD + zoomOffset}px)
+                    rotateX(${effPitch}deg)
+                    rotateY(${effYaw}deg)
+                `;
+            }
 
             // Кинематографический крен камеры (roll): на stage-контейнере,
             // НЕ на world (stage — element с perspective, его собственный
             // rotateZ вокруг центра экрана не влияет на 3D-раскладку детей).
             if (this.stageEl) {
                 const roll = this.cineRoll || 0;
-                this.stageEl.style.transform = Math.abs(roll) > 0.01
-                    ? `rotateZ(${roll.toFixed(3)}deg)`
-                    : '';
+                const rollStr = Math.abs(roll) > 0.01 ? `rotateZ(${roll.toFixed(3)}deg)` : '';
+                if (this._lastRollTf !== rollStr) {
+                    this._lastRollTf = rollStr;
+                    this.stageEl.style.transform = rollStr;
+                }
             }
         }
 
@@ -2557,6 +2585,9 @@ export class Space3DEngine {
         this.parallaxPitch = 0;
         this.autoRotSpeed = 0;
         this.lastInteractionTime = performance.now();
+        // Сброс кэшей transform-строк: поза камеры вернулась к эталону open()
+        this._lastWorldTf = undefined;
+        this._lastRollTf = undefined;
 
         // Сброс любых кинематографических хвостов предыдущей сессии (защита от
         // close() во время прилёта и повторного open()): контроллер, крен,

@@ -235,7 +235,9 @@ export class SpaceAudioEngine {
         const finishVoice = () => {
             this.isSpeaking = false;
             this.currentPriority = 0;
-            if (this.ambientAudio && this.musicEnabled && restoreVolume !== null) {
+            // Не воскрешаем остановленную музыку: восстанавливаем громкость
+            // только если трек реально играет (не поставлен на паузу stop'ом)
+            if (this.ambientAudio && this.musicEnabled && !this.ambientAudio.paused && restoreVolume !== null) {
                 this.ambientAudio.volume = restoreVolume;
             }
         };
