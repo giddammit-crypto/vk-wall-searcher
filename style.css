@@ -1963,6 +1963,7 @@ textarea::placeholder {
 .tabs-container {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     background: var(--bg-card);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -11397,3 +11398,570 @@ body.space-3d-active {
 
 
 
+
+/* =============================================================================
+   AI Analyst tab (ИИ-аналитик) — src/ai.js
+   ============================================================================= */
+.ai-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 980px;
+    margin: 0 auto;
+    height: 100%;
+    min-height: 520px;
+}
+
+.ai-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-toolbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    color: var(--text-tertiary);
+}
+
+.ai-status-ok { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+.ai-status-err { background: var(--color-danger-bg); border-color: var(--color-danger); color: var(--color-danger); }
+.ai-status-busy { background: var(--color-warning-bg); border-color: var(--color-warning); color: var(--color-warning); }
+
+.ai-quick-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-quick-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.ai-quick-chip .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--accent);
+}
+
+.ai-quick-chip:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.ai-chat {
+    flex: 1;
+    min-height: 340px;
+    max-height: 560px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-page-gradient);
+    scroll-behavior: smooth;
+}
+
+.ai-msg {
+    display: flex;
+    gap: 10px;
+    max-width: 88%;
+    animation: aiMsgIn .25s ease;
+}
+
+@keyframes aiMsgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-msg-user { align-self: flex-end; flex-direction: row-reverse; }
+
+.ai-msg-avatar {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.ai-msg-user .ai-msg-avatar { background: var(--surface-glass); color: var(--text-secondary); }
+
+.ai-msg-body {
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    background: var(--surface-glass);
+    border: 1px solid var(--hairline);
+    overflow-wrap: break-word;
+}
+
+.ai-msg-user .ai-msg-body {
+    background: var(--accent-soft);
+    border-color: var(--accent-medium);
+}
+
+.ai-msg-body p { margin: 0 0 8px; }
+.ai-msg-body p:last-child { margin-bottom: 0; }
+.ai-msg-body strong { color: var(--text-primary); }
+.ai-msg-body code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.ai-md-h {
+    margin: 10px 0 6px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.ai-md-li { padding-left: 14px; text-indent: -10px; margin: 3px 0; }
+
+.ai-typing { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); }
+
+.ai-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: aiDot 1.2s infinite ease-in-out;
+}
+.ai-dot:nth-child(2) { animation-delay: .2s; }
+.ai-dot:nth-child(3) { animation-delay: .4s; }
+
+@keyframes aiDot {
+    0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.ai-error { color: var(--color-danger); display: flex; align-items: center; gap: 6px; margin: 0; }
+
+.ai-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.ai-input {
+    flex: 1;
+    resize: none;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    line-height: 1.5;
+    max-height: 120px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ai-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.ai-input::placeholder { color: var(--text-tertiary); opacity: .7; }
+
+.ai-send {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Светлая тема: приглушаем фон чата */
+[data-theme="light"] .ai-chat {
+    background: var(--bg-card);
+}
+
+/* =============================================================================
+   AI chat formatting v2 — цвета, акценты, таблицы, адаптивность (src/ai.js)
+   ============================================================================= */
+
+/* Сообщения: бот с акцентной левой гранью, пользователь — с правой */
+.ai-msg-bot .ai-msg-body {
+    border-left: 3px solid var(--accent);
+    background: linear-gradient(160deg, var(--surface-glass) 0%, var(--surface) 100%);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.ai-msg-user .ai-msg-body {
+    border-right: 3px solid var(--accent-purple);
+    background: var(--accent-purple-soft);
+}
+
+/* Первое сообщение приветствия — чуть тише */
+.ai-msg-body > p:first-child { margin-top: 0; }
+.ai-msg-body > *:last-child { margin-bottom: 0; }
+
+/* Жирный: ключевые выводы */
+.ai-strong { color: var(--text-primary); font-weight: 700; letter-spacing: .01em; }
+
+/* Ключевые цифры внутри жирного — цветной акцент */
+.ai-num {
+    color: var(--color-aurora-cyan);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ==Важнейшие инсайты== — золотая подложка + волнистое подчёркивание */
+.ai-hl {
+    background: rgba(251, 191, 36, 0.16);
+    color: var(--color-aurora-gold);
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    box-shadow: inset 0 -2px 0 rgba(251, 191, 36, 0.5);
+}
+
+/* __Подчёркнутые акценты__ — фиолетовое подчёркивание */
+.ai-u {
+    text-decoration: underline;
+    text-decoration-color: var(--color-aurora-purple);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+.ai-s { opacity: .65; }
+
+/* Инлайн-код */
+.ai-code {
+    font-family: var(--font-mono);
+    font-size: .88em;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(6, 9, 24, 0.55);
+    border: 1px solid var(--hairline);
+    color: #a5f3fc;
+}
+
+/* Блоки кода */
+.ai-codeblock {
+    margin: 10px 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(6, 9, 24, 0.82);
+    border: 1px solid var(--hairline);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: #d6e4ff;
+}
+.ai-codeblock code { background: none; border: none; padding: 0; color: inherit; }
+
+/* Заголовки разделов с градиентным подчёркиванием */
+.ai-md-h {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 700;
+    margin: 14px 0 7px;
+    padding-bottom: 5px;
+    line-height: 1.35;
+}
+.ai-h1 { font-size: 15.5px; border-bottom: 2px solid var(--accent); }
+.ai-h2 { font-size: 14.5px; border-bottom: 1.5px solid var(--color-aurora-blue); }
+.ai-h3 { font-size: 13.5px; color: var(--accent); padding-bottom: 0; }
+.ai-h4 { font-size: 13px; color: var(--color-aurora-blue); padding-bottom: 0; }
+
+/* Списки с цветными маркерами */
+.ai-list { margin: 7px 0; padding-left: 20px; }
+.ai-list li { margin: 4px 0; padding-left: 2px; }
+ul.ai-list li::marker { color: var(--accent); font-size: 1.05em; }
+ol.ai-list li::marker { color: var(--color-aurora-blue); font-weight: 700; }
+
+/* Цитаты — фиолетовая грань */
+.ai-quote {
+    margin: 10px 0;
+    padding: 9px 14px;
+    border-left: 3px solid var(--accent-purple);
+    border-radius: 8px;
+    background: var(--accent-purple-soft);
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Ссылки */
+.ai-link {
+    color: var(--color-aurora-blue);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2.5px;
+    word-break: break-all;
+}
+.ai-link:hover { color: var(--color-aurora-cyan); }
+
+/* Разделители */
+.ai-hr {
+    border: none;
+    height: 1px;
+    margin: 12px 0;
+    background: linear-gradient(90deg, transparent, var(--hairline) 20%, var(--hairline) 80%, transparent);
+}
+
+/* Таблицы сравнения филиалов */
+.ai-table-wrap {
+    margin: 10px 0;
+    overflow-x: auto;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+}
+.ai-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ai-table th {
+    position: sticky;
+    top: 0;
+    background: rgba(62, 230, 196, 0.12);
+    color: var(--accent);
+    text-align: left;
+    font-weight: 700;
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+.ai-table td {
+    padding: 7px 12px;
+    border-top: 1px solid var(--divider-color);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.ai-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.035); }
+.ai-table tbody tr:hover { background: var(--accent-soft); }
+
+/* Аккуратный скроллбар чата */
+.ai-chat::-webkit-scrollbar { width: 8px; }
+.ai-chat::-webkit-scrollbar-track { background: transparent; }
+.ai-chat::-webkit-scrollbar-thumb { background: var(--surface-glass-hover); border-radius: 8px; }
+.ai-chat::-webkit-scrollbar-thumb:hover { background: var(--accent-medium); }
+
+/* Светлая тема */
+[data-theme="light"] .ai-strong { color: #0b111e; }
+[data-theme="light"] .ai-msg-bot .ai-msg-body { background: #ffffff; box-shadow: 0 3px 14px rgba(11, 17, 30, 0.08); }
+[data-theme="light"] .ai-table tbody tr:nth-child(even) { background: rgba(11, 17, 30, 0.03); }
+[data-theme="light"] .ai-table th { background: rgba(62, 230, 196, 0.16); }
+[data-theme="light"] .ai-code { background: #eef2fb; color: #0e7490; }
+
+/* =============================================================================
+   Адаптивность вкладки ИИ
+   ============================================================================= */
+
+@media (max-width: 900px) {
+    .ai-wrap { min-height: 480px; gap: 12px; }
+    .ai-toolbar { flex-direction: column; align-items: stretch; }
+    .ai-status-chip { align-self: flex-start; }
+    .ai-quick-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ai-quick-chip { white-space: nowrap; flex: 0 0 auto; }
+}
+
+@media (max-width: 640px) {
+    .ai-wrap { min-height: 440px; gap: 10px; }
+    .ai-toolbar-actions { flex-wrap: wrap; }
+    .ai-toolbar-actions .btn { flex: 1 1 40%; justify-content: center; font-size: 12.5px; }
+    .ai-chat {
+        padding: 10px;
+        gap: 10px;
+        min-height: 260px;
+        max-height: 58vh;
+        border-radius: 14px;
+    }
+    .ai-msg { max-width: 100%; gap: 8px; }
+    .ai-msg-avatar { width: 28px; height: 28px; }
+    .ai-msg-avatar .material-symbols-outlined { font-size: 16px; }
+    .ai-msg-body { font-size: 13px; padding: 10px 12px; border-radius: 12px; }
+    .ai-h1 { font-size: 14.5px; }
+    .ai-h2 { font-size: 13.5px; }
+    .ai-table { font-size: 11.5px; }
+    .ai-input { font-size: 16px; /* блокируем авто-зум iOS */ padding: 10px 14px; }
+    .ai-send { width: 42px; height: 42px; border-radius: 12px; }
+}
+
+@media (max-width: 400px) {
+    .ai-toolbar-actions .btn { flex: 1 1 100%; }
+}
+
+/* =============================================================================
+   UI Polish v2 — общий дизайн, адаптивность, UX-детали
+   ============================================================================= */
+
+/* --- Фикс: иконка не должна наезжать на текст в полях с ведущей иконкой --- */
+.input-icon-wrap input { padding-left: 44px !important; }
+
+/* --- Плавный скролл с учётом липкой панели вкладок --- */
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+
+/* --- Системные скроллбары в стиле AURORA --- */
+* { scrollbar-width: thin; scrollbar-color: rgba(139, 147, 181, 0.45) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(139, 147, 181, 0.4);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--accent-medium); }
+
+/* --- Выделение текста и доступный фокус --- */
+::selection { background: rgba(62, 230, 196, 0.32); color: inherit; }
+[data-theme="light"] ::selection { background: rgba(56, 189, 248, 0.3); }
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+.btn:focus-visible,
+.tab-btn:focus-visible { outline-offset: 3px; }
+
+/* --- Уважение к reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --- Сглаживание шрифтов --- */
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* --- Вкладки: строки заполняются равномерно при переносе --- */
+.tabs-container { justify-content: center; }
+.tabs-container .tab-btn {
+    flex: 0 1 auto;
+    min-width: fit-content;
+    justify-content: center;
+}
+.tab-btn { position: relative; }
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    width: 22px;
+    height: 2.5px;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    background: var(--accent);
+}
+
+/* --- Главная кнопка «Начать поиск»: блик + подъём --- */
+.btn-primary { position: relative; overflow: hidden; }
+.btn-primary {
+    transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+    box-shadow: 0 6px 18px rgba(31, 90, 213, 0.28);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(31, 90, 213, 0.38); }
+.btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(31, 90, 213, 0.3); }
+
+/* --- Вторичные кнопки: аккуратный hover --- */
+.btn-secondary { transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease); }
+.btn-secondary:hover { transform: translateY(-1px); }
+.btn-secondary:active { transform: translateY(0); }
+
+/* --- Карточки записей: мягкий подъём при наведении --- */
+.post-card {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    will-change: transform;
+}
+.post-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 32px rgba(6, 9, 24, 0.22);
+    border-color: var(--accent-medium);
+}
+[data-theme="light"] .post-card:hover { box-shadow: 0 14px 30px rgba(11, 17, 30, 0.12); }
+
+/* --- Селекты: курсор и hover-грань --- */
+select { cursor: pointer; transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease); }
+select:hover { border-color: var(--accent-medium); }
+
+/* --- Футер: деликатная грань --- */
+.app-footer {
+    border-top: 1px solid var(--hairline);
+    margin-top: 1.25rem;
+    padding-top: 1.5rem;
+}
+
+/* --- Кнопки шапки: сетка 2 колонки на мобильных --- */
+@media (max-width: 600px) {
+    .header-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .header-actions .btn { width: 100%; justify-content: center; min-height: 42px; }
+    .header-actions .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+    /* Компактнее карточки и месяц-чипы */
+    .card { padding: 0.9rem 0.75rem; }
+    .section-sublabel { font-size: 0.78rem; }
+    .input-desc { font-size: 0.7rem; }
+
+    /* Липкая панель вкладок занимает меньше места */
+    .tabs-container { position: static; padding: 5px; gap: 4px; }
+    .tab-btn { padding: 9px 10px; font-size: 0.8rem; min-height: 42px; }
+
+    /* Кнопки результатов — на всю ширину строки по 2 в ряд */
+    .results-toolbar { flex-direction: column; align-items: stretch; }
+    .rt-left, .rt-right { flex-wrap: wrap; }
+    .rt-right .btn { flex: 1 1 40%; justify-content: center; }
+}
+
+/* --- Ультра-узкие экраны --- */
+@media (max-width: 360px) {
+    .header-actions { grid-template-columns: 1fr; }
+    .header-actions .btn:last-child:nth-child(odd) { grid-column: auto; }
+}
+
+/* --- Активная вкладка: сплошной цвет вместо градиента (Material-стиль) --- */
+[data-theme="light"] .tab-btn.active {
+    background: #1757a6 !important;
+}
