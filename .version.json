@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.7.0",
+    "version": "4.7.1",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-14T00:55:00+03:00",
-    "release_name": "AURORA 4.7.0 — Интеграция ИИ-аналитика (отчёты методиста, экспресс-инсайты, чат с LLM), прокси api/ai-proxy.php, UI Polish v2"
+    "commit_date": "2026-09-14T02:30:00+03:00",
+    "release_name": "AURORA 4.7.1 — фикс ИИ на хостинге: поддержка api/config.local.php в ai-proxy.php (ключ можно добавить одним файлом, не трогая защищённый config.php), диагностическое поле config_local_found в статусе"
 }

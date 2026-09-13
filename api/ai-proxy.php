@@ -20,14 +20,20 @@ ini_set('display_errors', '0');
 // ---------------------------------------------------------------------------
 // 0. Конфигурация
 // ---------------------------------------------------------------------------
+// Читаем config.php и опционально config.local.php (локальные переопределения
+// поверх основного конфига; config.local.php не коммитится в git — см. .gitignore).
+// Это позволяет добавить ИИ-ключи на хостинге одним файлом, не трогая config.php,
+// который защищён от перезаписи самообновлением (api/updater.php).
 $aiConfig = [];
-$aiConfigFile = __DIR__ . '/config.php';
-if (is_readable($aiConfigFile)) {
-    $aiLoaded = include $aiConfigFile;
-    if (is_array($aiLoaded)) {
-        $aiConfig = $aiLoaded;
+foreach ([__DIR__ . '/config.php', __DIR__ . '/config.local.php'] as $aiConfigFile) {
+    if (is_readable($aiConfigFile)) {
+        $aiLoaded = include $aiConfigFile;
+        if (is_array($aiLoaded)) {
+            $aiConfig = array_merge($aiConfig, $aiLoaded);
+        }
     }
 }
+$configLocalFound = is_readable(__DIR__ . '/config.local.php');
 
 $aiKey      = isset($aiConfig['ai_api_key'])  ? trim((string)$aiConfig['ai_api_key'])  : '';
 $aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
@@ -84,10 +90,11 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
 // ---------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     ai_json_response([
-        'status'        => 'ok',
-        'ai_configured' => $aiKey !== '',
-        'model'         => $aiModel,
-        'max_tokens'    => $aiMaxTok
+        'status'             => 'ok',
+        'ai_configured'      => $aiKey !== '',
+        'model'              => $aiModel,
+        'max_tokens'         => $aiMaxTok,
+        'config_local_found' => $configLocalFound
     ]);
 }
 
@@ -96,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if ($aiKey === '') {
-    ai_error('Ключ ИИ не настроен на сервере. Заполните ai_api_key в api/config.php.', 503);
+    ai_error('Ключ ИИ не настроен на сервере. Добавьте ai_api_key в api/config.php — или загрузите на сервер файл api/config.local.php с ключом (он не перезаписывается обновлениями).', 503);
 }
 
 // ---------------------------------------------------------------------------
