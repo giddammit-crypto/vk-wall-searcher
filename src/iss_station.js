@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.5.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.1';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)
@@ -70,7 +70,7 @@ export const ISS_CONFIG = {
     raanPrecessionAmpDeg: 12.0,  // Лёгкая синусоидальная прецессия RAAN (±12°): картина пролётов
                                  // медленно меняется и не зацикливается скучно
     raanPrecessionPeriodSec: 2400, // Период прецессии RAAN (40 минут — очень медленный дрейф)
-    stationScale: 1.9,           // Масштабный коэффициент геометрии (удвоен: 0.95 → 1.9)
+    stationScale: 4.28,          // Масштаб геометрии (4.5× от исходника 0.95)
     hitRadiusMultiplier: 1.35,   // Множитель экранного хитбокса
     realAltitudeKm: 418.4,       // Реальная высота орбиты (км)
     realSpeedKmS: 7.66,          // Реальная орбитальная скорость (км/с)
@@ -274,8 +274,10 @@ export class IssStationEngine {
         // 1. Текстура фотоэлектрических ячеек солнечных батарей (SAW)
         // Реальные панели МКС (Si-элементы с покрытием) на солнце выглядят
         // тёмно-золотистыми/янтарно-медными — ретининг в тёплый спектр.
-        const spW = 256;
-        const spH = 512;
+        // 2× разрешение (512×1024) + 2× finer pitch сетки (32×120 ячеек):
+        // на экране ячейка вдвое мельче при вдвое большем запасе пикселей.
+        const spW = 512;
+        const spH = 1024;
         this.solarPanelTex = document.createElement('canvas');
         this.solarPanelTex.width = spW;
         this.solarPanelTex.height = spH;
@@ -291,17 +293,17 @@ export class IssStationEngine {
 
         spCtx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
         spCtx.lineWidth = 1;
-        const cols = 8;
-        const rows = 30;
+        const cols = 32;
+        const rows = 120;
         const cw = spW / cols;
         const ch = spH / rows;
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                const px = c * cw + 1.5;
-                const py = r * ch + 1.5;
-                const w = cw - 3;
-                const h = ch - 3;
+                const px = c * cw + 0.75;
+                const py = r * ch + 0.75;
+                const w = cw - 1.5;
+                const h = ch - 1.5;
 
                 // Ячейка кремния: медно-золотой градиент + светлая шина в центре
                 const cellGrad = spCtx.createLinearGradient(px, py, px + w, py + h);
@@ -328,15 +330,15 @@ export class IssStationEngine {
                 spCtx.lineTo(px + w, py + h * 0.74);
                 spCtx.stroke();
 
-                // Металлический блик в верхнем углу ячейки (стеклянное покрытие)
-                const specX = px + w * 0.28;
-                const specY = py + h * 0.22;
-                const cellSpec = spCtx.createRadialGradient(specX, specY, 0, specX, specY, Math.min(w, h) * 0.6);
-                cellSpec.addColorStop(0, 'rgba(255, 252, 225, 0.30)');
-                cellSpec.addColorStop(0.55, 'rgba(255, 246, 200, 0.10)');
-                cellSpec.addColorStop(1, 'rgba(255, 246, 200, 0)');
-                spCtx.fillStyle = cellSpec;
-                spCtx.fillRect(px, py, w, h);
+                // Микро-блик на каждой ячейке: детерминированный короткий штрих
+                // (позиция и яркость из хеша индексов — без дрожания по кадрам)
+                const mgh = (r * 31 + c * 17) % 16;
+                spCtx.strokeStyle = `rgba(255, 252, 225, ${0.10 + (mgh % 5) * 0.045})`;
+                spCtx.lineWidth = 0.8;
+                spCtx.beginPath();
+                spCtx.moveTo(px + w * 0.18, py + h * (0.42 + (mgh % 3) * 0.16));
+                spCtx.lineTo(px + w * 0.66, py + h * 0.16);
+                spCtx.stroke();
 
                 // «Битые» ячейки: детерминированные тёмные деградировавшие элементы
                 const deadHash = (r * 73 + c * 151 + 37) % 211;
@@ -359,14 +361,22 @@ export class IssStationEngine {
 
         // Титановые токоведущие шины по краям крыла
         spCtx.fillStyle = '#78350f';
-        spCtx.fillRect(0, 0, 4, spH);
-        spCtx.fillRect(spW - 4, 0, 4, spH);
+        spCtx.fillRect(0, 0, 6, spH);
+        spCtx.fillRect(spW - 6, 0, 6, spH);
         spCtx.fillStyle = '#b45309';
-        spCtx.fillRect(spW / 2 - 2, 0, 4, spH);
+        spCtx.fillRect(spW / 2 - 2.5, 0, 5, spH);
 
-        // 2. Текстура тепловых радиаторов охлаждения (TCS)
-        const radW = 96;
-        const radH = 192;
+        // Лёгкая рамка панели: титановая окантовка по периметру крыла
+        spCtx.strokeStyle = 'rgba(226, 232, 240, 0.26)';
+        spCtx.lineWidth = 5;
+        spCtx.strokeRect(2.5, 2.5, spW - 5, spH - 5);
+        spCtx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+        spCtx.lineWidth = 1.5;
+        spCtx.strokeRect(7, 7, spW - 14, spH - 14);
+
+        // 2. Текстура тепловых радиаторов охлаждения (TCS) — 2× разрешение
+        const radW = 192;
+        const radH = 384;
         this.radiatorTex = document.createElement('canvas');
         this.radiatorTex.width = radW;
         this.radiatorTex.height = radH;
@@ -376,7 +386,7 @@ export class IssStationEngine {
         radCtx.fillRect(0, 0, radW, radH);
 
         radCtx.strokeStyle = 'rgba(100, 116, 139, 0.35)';
-        radCtx.lineWidth = 1.2;
+        radCtx.lineWidth = 2.2;
         const radPanels = 12;
         const rph = radH / radPanels;
         for (let i = 0; i <= radPanels; i++) {
@@ -396,18 +406,18 @@ export class IssStationEngine {
             }
         }
 
-        // Продольные теплообменные трубки по длине радиатора + холодный отлив
-        radCtx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
-        radCtx.lineWidth = 1.6;
-        for (let tx = 8; tx < radW; tx += 13) {
+        // Продольные теплообменные трубки по длине радиатора: чётче (2×) с блик-жилой
+        radCtx.strokeStyle = 'rgba(100, 116, 139, 0.60)';
+        radCtx.lineWidth = 3.2;
+        for (let tx = 16; tx < radW; tx += 26) {
             radCtx.beginPath();
             radCtx.moveTo(tx, 0);
             radCtx.lineTo(tx, radH);
             radCtx.stroke();
         }
-        radCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-        radCtx.lineWidth = 0.7;
-        for (let tx = 9; tx < radW; tx += 13) {
+        radCtx.strokeStyle = 'rgba(255, 255, 255, 0.62)';
+        radCtx.lineWidth = 1.2;
+        for (let tx = 16; tx < radW; tx += 26) {
             radCtx.beginPath();
             radCtx.moveTo(tx, 0);
             radCtx.lineTo(tx, radH);
@@ -423,9 +433,9 @@ export class IssStationEngine {
         radCtx.fillStyle = radBlue;
         radCtx.fillRect(0, 0, radW, radH);
 
-        // 3. Текстура обшивки модулей
-        const modW = 128;
-        const modH = 128;
+        // 3. Текстура обшивки модулей — 2× разрешение + детерминированный микрошум
+        const modW = 256;
+        const modH = 256;
         this.moduleTex = document.createElement('canvas');
         this.moduleTex.width = modW;
         this.moduleTex.height = modH;
@@ -440,19 +450,58 @@ export class IssStationEngine {
         modCtx.fillStyle = modGrad;
         modCtx.fillRect(0, 0, modW, modH);
 
-        modCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+        // Детерминированный микрошум (зерно металлизированной обшивки):
+        // позиции и яркость точек — из хеша, без Math.random и дрожания по кадрам
+        for (let n = 0; n < 1500; n++) {
+            const nh = (n * 2654435761) % 4294967296;
+            const nxp = nh % modW;
+            const nyp = (Math.floor(nh / modW) * 7919) % modH;
+            const bright = (n % 3) === 0;
+            modCtx.fillStyle = bright
+                ? `rgba(255, 255, 255, ${0.03 + (n % 5) * 0.012})`
+                : `rgba(15, 23, 42, ${0.025 + (n % 4) * 0.011})`;
+            modCtx.fillRect(nxp, nyp, 1.4, 1.4);
+        }
+
+        // Диагональная штриховка (brushed-metal) — едва заметная
+        modCtx.strokeStyle = 'rgba(255, 255, 255, 0.028)';
         modCtx.lineWidth = 1;
-        for (let x = 16; x < modW; x += 32) {
+        for (let hx = -modH; hx < modW; hx += 10) {
+            modCtx.beginPath();
+            modCtx.moveTo(hx, 0);
+            modCtx.lineTo(hx + modH, modH);
+            modCtx.stroke();
+        }
+
+        // Стыки-панели обечайки с винтами по краям (детерминированно)
+        modCtx.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+        modCtx.lineWidth = 1.4;
+        for (let x = 32; x < modW; x += 64) {
             modCtx.beginPath();
             modCtx.moveTo(x, 0);
             modCtx.lineTo(x, modH);
             modCtx.stroke();
         }
-        for (let y = 16; y < modH; y += 32) {
+        for (let y = 32; y < modH; y += 64) {
             modCtx.beginPath();
             modCtx.moveTo(0, y);
             modCtx.lineTo(modW, y);
             modCtx.stroke();
+        }
+        // Винты: точки в пересечениях стыков и по краям панелей
+        modCtx.fillStyle = 'rgba(30, 41, 59, 0.55)';
+        for (let x = 32; x < modW; x += 64) {
+            for (let y = 32; y < modH; y += 64) {
+                modCtx.beginPath();
+                modCtx.arc(x, y, 2, 0, Math.PI * 2);
+                modCtx.fill();
+                modCtx.beginPath();
+                modCtx.arc(x + 32, y, 1.6, 0, Math.PI * 2);
+                modCtx.fill();
+                modCtx.beginPath();
+                modCtx.arc(x, y + 32, 1.6, 0, Math.PI * 2);
+                modCtx.fill();
+            }
         }
 
         this.isTexturesReady = true;
@@ -1039,20 +1088,29 @@ export class IssStationEngine {
         const eRad = EARTH_CONFIG.radius;        // 700 px — радиус видимого диска (GL-сфера)
         const atmoRad = EARTH_CONFIG.atmoRadius; // 717.5 px — внешний радиус атмосферного ореола (x1.025)
 
+        // Поправка на размер станции: при крупном масштабе край фермы/крыльев
+        // начинает уходить за диск раньше центра — расширяем fade-полосу лимба
+        // на nadir-вынос станции (порядка 30 локальных единиц геометрии).
+        const stationBodyRadius = 30 * ISS_CONFIG.stationScale; // ~129 px при 4.28
+        const fadeStart = atmoRad + stationBodyRadius;          // начало затухания
+        const fadeEnd = eRad - stationBodyRadius * 0.5;         // полное скрытие
+
         let targetVisibility = 1.0;
         if (this.distToCamera < tca) {
             // МКС находится ПЕРЕД Землей (между наблюдателем и планетой)
             this.isOccluded = false;
         } else {
             // МКС находится за плоскостью центра Земли
-            if (dPerp <= eRad) {
+            if (dPerp <= fadeEnd) {
                 // Полная окклюзия за твердым телом планеты Земля
                 this.isOccluded = true;
                 targetVisibility = 0.0;
-            } else if (dPerp < atmoRad) {
-                // Переходная область: прохождение сквозь светящийся лимб атмосферы Земли
+            } else if (dPerp < fadeStart) {
+                // Переходная область: прохождение сквозь светящийся лимб атмосферы.
+                // Полоса расширена на радиус станции — силуэт гаснет целиком,
+                // край фермы не «торчит» из диска при формально видимой видимости.
                 this.isOccluded = false;
-                const atmoFrac = (dPerp - eRad) / (atmoRad - eRad);
+                const atmoFrac = (dPerp - fadeEnd) / (fadeStart - fadeEnd);
                 targetVisibility = Math.max(0.05, Math.min(1.0, atmoFrac));
             } else {
                 // На фоне открытого космоса рядом с планетой
@@ -2045,6 +2103,20 @@ export class IssStationEngine {
                             ctx.beginPath();
                             ctx.arc(ep.x, ep.y, screenR * 1.02, 0, Math.PI * 2);
                             ctx.fill();
+                            // Микротекстура обшивки на торцевой сфере (кэш-паттерн)
+                            if (this.moduleTex) {
+                                if (!this._modulePattern) {
+                                    this._modulePattern = ctx.createPattern(this.moduleTex, 'repeat');
+                                }
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.arc(ep.x, ep.y, screenR * 1.02, 0, Math.PI * 2);
+                                ctx.clip();
+                                ctx.fillStyle = this._modulePattern;
+                                ctx.globalAlpha *= 0.3;
+                                ctx.fill();
+                                ctx.restore();
+                            }
                             // Тёмный стык (ambient occlusion) в месте сочленения модулей
                             ctx.strokeStyle = 'rgba(10, 16, 30, 0.5)';
                             ctx.lineWidth = Math.max(0.6, 0.8 * this.screenScale);
@@ -2083,6 +2155,35 @@ export class IssStationEngine {
                             ctx.beginPath();
                             ctx.arc(wx, wy, Math.max(0.8, screenR * 0.14), 0, Math.PI * 2);
                             ctx.fill();
+                        }
+
+                        // Стыки-панели обечайки с винтами по краям (поперёк оси модуля)
+                        if (screenR > 5.5) {
+                            const seamCount = 2;
+                            ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
+                            for (let sm = 1; sm <= seamCount; sm++) {
+                                const st = sm / (seamCount + 1);
+                                const sx = p1.x + axX * st;
+                                const sy = p1.y + axY * st;
+                                const half = screenR * 0.92;
+                                ctx.strokeStyle = 'rgba(15, 23, 42, 0.30)';
+                                ctx.beginPath();
+                                ctx.moveTo(sx + nx * half, sy + ny * half);
+                                ctx.lineTo(sx - nx * half, sy - ny * half);
+                                ctx.stroke();
+                                // Винты по краям стыка
+                                ctx.fillStyle = 'rgba(71, 85, 105, 0.8)';
+                                for (const sgn of [1, -1]) {
+                                    ctx.beginPath();
+                                    ctx.arc(
+                                        sx + nx * half * sgn * 0.92,
+                                        sy + ny * half * sgn * 0.92,
+                                        Math.max(0.5, 0.7 * this.screenScale),
+                                        0, Math.PI * 2
+                                    );
+                                    ctx.fill();
+                                }
+                            }
                         }
 
                         // Английская маркировка-декаль (только при крупном размере на экране)
