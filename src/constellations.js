@@ -18,7 +18,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -333,6 +333,13 @@ export class ConstellationsEngine {
         this.audioCtx = null;
         this.animTime = 0;
 
+        // Каскадное появление созвездий при открытии сцены (fade-in со stagger)
+        this.revealClock = 0;
+        this.revealStarted = false;
+        this.prefersReducedMotion = (typeof window.matchMedia === 'function')
+            ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            : false;
+
         this.onPointerMove = this.onPointerMove.bind(this);
         this.onClick = this.onClick.bind(this);
     }
@@ -350,6 +357,7 @@ export class ConstellationsEngine {
         this.injectStyles();
         this.buildHudCard();
         this.setupEventListeners();
+        this.startReveal();
 
         console.log(`[Constellations] Initialized ${this.constellations.length} astronomical constellations.`);
     }
@@ -358,7 +366,7 @@ export class ConstellationsEngine {
      * Пересчет сферических координат звезд в 3D векторы небесного купола
      */
     buildConstellationCoords() {
-        this.constellations = CONSTELLATIONS_CATALOG.map(c => {
+        this.constellations = CONSTELLATIONS_CATALOG.map((c, cIndex) => {
             const starMap = new Map();
             let sumX = 0, sumY = 0, sumZ = 0;
 
@@ -408,7 +416,9 @@ export class ConstellationsEngine {
                 stars,
                 starMap,
                 centroid,
-                pulsePhase: Math.random() * Math.PI * 2
+                pulsePhase: Math.random() * Math.PI * 2,
+                // Каскадный stagger появления линий созвездия
+                revealDelay: 0.35 + cIndex * 0.14
             };
         });
     }
@@ -929,15 +939,54 @@ export class ConstellationsEngine {
     }
 
     /**
+     * Запуск каскадного fade-in созвездий (при инициализации / открытии сцены)
+     */
+    startReveal() {
+        this.revealClock = 0;
+        this.revealStarted = true;
+    }
+
+    /**
+     * Коэффициент появления созвездия (0..1) с каскадным stagger.
+     * При prefers-reduced-motion анимаций нет — созвездия видны сразу.
+     */
+    getReveal(constel) {
+        if (this.prefersReducedMotion) return 1;
+        const t = Math.max(0, this.revealClock - (constel.revealDelay || 0));
+        const dur = 1.1;
+        // ease-out по кривой, родственной --space-ease cubic-bezier(0.16,1,0.3,1)
+        const x = Math.min(1, t / dur);
+        return 1 - Math.pow(1 - x, 3);
+    }
+
+    /**
      * Отрисовка линий созвездий, звезд и интерактивных прицелов
      */
     render(ctx, w, h, yaw, pitch, zoom) {
         if (!ctx) return;
 
         this.animTime += 0.016;
+        if (this.revealStarted && !this.prefersReducedMotion) this.revealClock += 0.016;
 
-        const radYaw = (yaw * Math.PI) / 180;
-        const radPitch = (pitch * Math.PI) / 180;
+        const eng = this.spaceEngine;
+
+        // ФИКС БАГА «созвездия двигаются за мышкой»: параллакс мыши (±3°),
+        // который применяет space3d к GL-небу и 3D-миру (effYaw/effPitch),
+        // должен учитываться и здесь — иначе фигуры созвездий плывут
+        // относительно неподвижных звёзд при движении курсора.
+        // При CPU-фолбэке (GL выключен) звёзды рисуются на этом же canvas
+        // по «сырому» yaw/pitch — параллакс не добавляем.
+        let parallaxYaw = 0;
+        let parallaxPitch = 0;
+        if (eng && eng.glEnabled && !(eng.isDraggingWorld || eng.camTween)) {
+            parallaxYaw = eng.parallaxYaw || 0;
+            parallaxPitch = eng.parallaxPitch || 0;
+        }
+        const effYaw = yaw + parallaxYaw;
+        const effPitch = pitch + parallaxPitch;
+
+        const radYaw = (effYaw * Math.PI) / 180;
+        const radPitch = (effPitch * Math.PI) / 180;
         const cosYaw = Math.cos(radYaw);
         const sinYaw = Math.sin(radYaw);
         const cosPitch = Math.cos(radPitch);
@@ -983,17 +1032,28 @@ export class ConstellationsEngine {
 
         // 2. Отрисовка линий астеризмов
         ctx.save();
+        ctx.lineCap = 'round';
         for (let c = 0; c < this.constellations.length; c++) {
             const constel = this.constellations[c];
             const isHovered = (this.hoveredConstellation === constel);
             const isSelected = (this.selectedConstellation === constel);
+            const reveal = this.getReveal(constel);
+            if (reveal <= 0.01) continue;
 
-            const alpha = isSelected ? 0.85 : (isHovered ? 0.65 : 0.28);
-            const lineWidth = isSelected ? 1.8 : (isHovered ? 1.4 : 0.8);
+            const emphasize = isHovered || isSelected;
+
+            // Базовая тонкая линия; свечение (shadowBlur) — только при hover/выборе
+            const lineWidth = isSelected ? 1.6 : (isHovered ? 1.3 : 0.75);
+            const edgeAlpha = (isSelected ? 0.85 : (isHovered ? 0.7 : 0.5)) * reveal;
+            const midAlpha = (isSelected ? 0.38 : (isHovered ? 0.3 : 0.14)) * reveal;
 
             ctx.lineWidth = lineWidth;
-            ctx.strokeStyle = isSelected ? '#38bdf8' : (isHovered ? '#7dd3fc' : 'rgba(56, 189, 248, 0.45)');
-            ctx.globalAlpha = alpha;
+            if (emphasize) {
+                ctx.shadowColor = isSelected ? 'rgba(56, 189, 248, 0.85)' : 'rgba(62, 230, 196, 0.6)';
+                ctx.shadowBlur = 7;
+            } else {
+                ctx.shadowBlur = 0;
+            }
 
             for (let l = 0; l < constel.lines.length; l++) {
                 const [sId1, sId2] = constel.lines[l];
@@ -1001,34 +1061,57 @@ export class ConstellationsEngine {
                 const s2 = constel.starMap.get(sId2);
 
                 if (s1 && s2 && s1.isVisible && s2.isVisible) {
+                    // Градиент alpha по длине сегмента: ярче у звёзд-узлов,
+                    // тает в середине. Холодный голубой/бирюзовый в тон палитры.
+                    const grad = ctx.createLinearGradient(s1.screenX, s1.screenY, s2.screenX, s2.screenY);
+                    grad.addColorStop(0, `rgba(125, 211, 252, ${edgeAlpha.toFixed(3)})`);
+                    grad.addColorStop(0.5, `rgba(62, 230, 196, ${midAlpha.toFixed(3)})`);
+                    grad.addColorStop(1, `rgba(56, 189, 248, ${edgeAlpha.toFixed(3)})`);
+                    ctx.strokeStyle = grad;
+                    ctx.globalAlpha = 1;
+
                     ctx.beginPath();
                     ctx.moveTo(s1.screenX, s1.screenY);
                     ctx.lineTo(s2.screenX, s2.screenY);
                     ctx.stroke();
 
-                    // Неоновый энергетический импульс вдоль линии при наведении
-                    if (isHovered || isSelected) {
+                    // Энергетический импульс вдоль линии при наведении/выборе
+                    if (emphasize) {
                         const pulse = (this.animTime * 1.5 + l * 0.4) % 1.0;
                         const pulseX = s1.screenX + (s2.screenX - s1.screenX) * pulse;
                         const pulseY = s1.screenY + (s2.screenY - s1.screenY) * pulse;
 
                         ctx.fillStyle = '#ffffff';
+                        ctx.shadowBlur = 0;
                         ctx.beginPath();
-                        ctx.arc(pulseX, pulseY, 1.8, 0, Math.PI * 2);
+                        ctx.arc(pulseX, pulseY, 1.6, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.shadowBlur = 7;
                     }
                 }
             }
 
-            // Название созвездия у центроида (если видно)
-            if (constel.centroid.isVisible && (isHovered || isSelected)) {
-                ctx.font = '600 11px "JetBrains Mono", monospace';
-                ctx.fillStyle = isSelected ? '#38bdf8' : '#e0f2fe';
-                ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(56, 189, 248, 0.9)';
-                ctx.shadowBlur = 8;
-                ctx.fillText(`${constel.nameRu.toUpperCase()} [${constel.code}]`, constel.centroid.screenX, constel.centroid.screenY - 14);
-                ctx.shadowBlur = 0;
+            ctx.shadowBlur = 0;
+
+            // Название созвездия у центроида: тонкая типографика с fade-in
+            if (constel.centroid.isVisible) {
+                const nameAlpha = reveal * (isSelected ? 0.95 : (isHovered ? 0.8 : 0.34));
+                if (nameAlpha > 0.02) {
+                    ctx.font = '500 10px "JetBrains Mono", ui-monospace, monospace';
+                    // Плавная разрядка (letter-spacing), где поддерживается
+                    if ('letterSpacing' in ctx) ctx.letterSpacing = '2.5px';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = isSelected ? 'rgba(125, 211, 252, 1)' : 'rgba(224, 242, 254, 1)';
+                    ctx.globalAlpha = nameAlpha;
+                    if (emphasize) {
+                        ctx.shadowColor = 'rgba(56, 189, 248, 0.7)';
+                        ctx.shadowBlur = 6;
+                    }
+                    ctx.fillText(`${constel.nameLat.toUpperCase()} · ${constel.code}`, constel.centroid.screenX, constel.centroid.screenY - 16);
+                    ctx.shadowBlur = 0;
+                    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+                    ctx.globalAlpha = 1;
+                }
             }
         }
         ctx.restore();
@@ -1036,6 +1119,10 @@ export class ConstellationsEngine {
         // 3. Отрисовка звезд созвездий
         for (let c = 0; c < this.constellations.length; c++) {
             const constel = this.constellations[c];
+            const constelHovered = (this.hoveredConstellation === constel);
+            const constelSelected = (this.selectedConstellation === constel);
+            const reveal = this.getReveal(constel);
+            if (reveal <= 0.01) continue;
 
             for (let s = 0; s < constel.stars.length; s++) {
                 const star = constel.stars[s];
@@ -1043,20 +1130,26 @@ export class ConstellationsEngine {
 
                 const isHovered = (this.hoveredStar === star);
                 const isSelected = (this.selectedStar === star);
+                const emphasized = isHovered || isSelected;
+                // Подсветка всех узлов при hover/выборе созвездия
+                const nodeGlow = (constelHovered || constelSelected) && !emphasized;
 
-                // Базовый размер от видимой величины
-                const baseRadius = Math.max(1.5, (4.5 - star.mag) * 0.95);
-                const drawRadius = (isHovered || isSelected) ? baseRadius * 1.6 : baseRadius;
+                // Базовый размер от видимой величины (чуть крупнее фоновых звёзд)
+                const baseRadius = Math.max(1.9, (4.5 - star.mag) * 1.05);
+                const drawRadius = emphasized ? baseRadius * 1.5 : (nodeGlow ? baseRadius * 1.2 : baseRadius);
+                const starAlpha = reveal * (emphasized ? 1 : (nodeGlow ? 0.95 : 0.85));
 
                 // Ореол свечения
-                const haloGrad = ctx.createRadialGradient(star.screenX, star.screenY, 0, star.screenX, star.screenY, drawRadius * 3.5);
+                const haloR = drawRadius * (emphasized ? 4.2 : 3.2);
+                const haloGrad = ctx.createRadialGradient(star.screenX, star.screenY, 0, star.screenX, star.screenY, haloR);
                 haloGrad.addColorStop(0, star.color);
                 haloGrad.addColorStop(0.3, star.color + '66');
                 haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
+                ctx.globalAlpha = starAlpha;
                 ctx.fillStyle = haloGrad;
                 ctx.beginPath();
-                ctx.arc(star.screenX, star.screenY, drawRadius * 3.5, 0, Math.PI * 2);
+                ctx.arc(star.screenX, star.screenY, haloR, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Ядро звезды
@@ -1065,20 +1158,20 @@ export class ConstellationsEngine {
                 ctx.arc(star.screenX, star.screenY, drawRadius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Дифракционные 4-лучевые кресты для звезд ярче 1.5 величины
-                if (star.mag <= 1.5 || isHovered || isSelected) {
-                    const spikeLen = drawRadius * (isHovered ? 4.5 : 3.2);
+                // Дифракционный 4-лучевой крест у ярких звезд (как hero-звёзды сцены)
+                if (star.mag <= 2.2 || emphasized || nodeGlow) {
+                    const spikeLen = drawRadius * (emphasized ? 4.4 : (nodeGlow ? 3.4 : 3.0));
                     ctx.strokeStyle = star.color;
-                    ctx.lineWidth = isHovered ? 1.0 : 0.6;
-                    ctx.globalAlpha = 0.85;
+                    ctx.lineWidth = emphasized ? 0.9 : 0.55;
+                    ctx.globalAlpha = starAlpha * 0.85;
                     ctx.beginPath();
                     ctx.moveTo(star.screenX - spikeLen, star.screenY);
                     ctx.lineTo(star.screenX + spikeLen, star.screenY);
                     ctx.moveTo(star.screenX, star.screenY - spikeLen);
                     ctx.lineTo(star.screenX, star.screenY + spikeLen);
                     ctx.stroke();
-                    ctx.globalAlpha = 1.0;
                 }
+                ctx.globalAlpha = 1.0;
             }
         }
 

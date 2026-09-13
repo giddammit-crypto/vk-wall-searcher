@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
-import { WarpGLRenderer } from './warp_gl.js?v=4.1.0';
-import { WarpHud } from './warp_hud.js?v=4.1.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
+import { WarpGLRenderer } from './warp_gl.js?v=4.5.0';
+import { WarpHud } from './warp_hud.js?v=4.5.0';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -151,6 +151,11 @@ export class SpaceWarpTransition {
         this.frameAvg = 16.7;
         this.qualityCooldown = 0;
 
+        // Сигнал к прогреву будущей 3D-сцены: Space3D.prepareForWarpArrival()
+        // (текстуры 4K, bake скайдома, прогрев GPU-пайплайна, шрифт титра) —
+        // всё должно закончиться В варпе, а не в кадрах кинематического прилёта
+        try { window.dispatchEvent(new CustomEvent('aurora:warp-started')); } catch (e) { /* noop */ }
+
         const canvas = this.getCanvas();
         canvas.classList.remove('hidden');
         canvas.style.opacity = '1';
@@ -167,6 +172,26 @@ export class SpaceWarpTransition {
             SpaceAudio.playWarpWhoosh();
             SpaceAudio.startAmbientMusic(0.32, 1800);
             SpaceAudio.playVoice('aurora_welcome', true);
+
+            // Триггер кинематографического прилёта: событие 'ended' женской
+            // озвучки варпа (Белла). Слушатели: window 'aurora:warp-voice-ended'
+            // и window.SpaceCinematic.onWarpVoiceEnded(). Fallback для сцены
+            // прилёта — внутренний таймер титра (см. space_cinematic.js);
+            // сам варп при сбое НЕ растягивается (decel-страховка ниже).
+            const voiceEl = SpaceAudio.voiceAudio;
+            if (voiceEl && SpaceAudio.voiceEnabled !== false) {
+                const onVoiceEnded = () => {
+                    this.voiceEndedAt = performance.now();
+                    try {
+                        window.dispatchEvent(new CustomEvent('aurora:warp-voice-ended'));
+                        if (window.SpaceCinematic && window.SpaceCinematic.onWarpVoiceEnded) {
+                            window.SpaceCinematic.onWarpVoiceEnded();
+                        }
+                    } catch (e2) { /* noop */ }
+                };
+                voiceEl.addEventListener('ended', onVoiceEnded, { once: true });
+                voiceEl.addEventListener('error', onVoiceEnded, { once: true });
+            }
         } catch (e) {
             console.warn('[SpaceWarp] Аудио недоступно:', e);
         }

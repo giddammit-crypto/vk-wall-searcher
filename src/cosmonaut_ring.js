@@ -24,8 +24,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.1.0';
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.5.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
 
 const DEG = Math.PI / 180;
 
@@ -64,8 +64,13 @@ class CosmonautRingEngine {
         this._onPointerUp = this._onPointerUp.bind(this);
         this._onWheel = this._onWheel.bind(this);
         this._onKeyDown = this._onKeyDown.bind(this);
+        this._onExpKeydown = this._onExpKeydown.bind(this);
+        this._onExpCloseClick = this._onExpCloseClick.bind(this);
+        this._onExpBackdropClick = this._onExpBackdropClick.bind(this);
 
         this.dragState = null;
+        this._expanded = null;      // текущее FLIP-раскрытие карточки
+        this._prevFrameT = 0;       // для замедления вращения ×4 при раскрытии
     }
 
     /* =====================================================================
@@ -102,9 +107,34 @@ class CosmonautRingEngine {
             const cardsRoot = layer.querySelector('#cosmo-ring-cards') || layer;
             this._buildCards(cardsRoot);
             this._buildHud();
+            this._preloadPhotos();
             this.isMounted = true;
         }
         return true;
+    }
+
+    /**
+     * Тихая предзагрузка HD-портретов в кэш браузера (фоновыми срезами):
+     * к моменту поворота кольца фото уже в кэше — карточки не «моргают»
+     * при первом показе. Ленивое подключение <img> в update() сохранено.
+     */
+    _preloadPhotos() {
+        if (this._preloaded) return;
+        this._preloaded = true;
+        const queue = this.data
+            .map(p => (p.photo || '').replace('assets/cosmonauts/', 'assets/cosmonauts_hd/'))
+            .filter(src => src && !this.cards.some(c => c.img && c.img.src === src));
+        let i = 0;
+        const step = () => {
+            if (i >= queue.length) return;
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = queue[i++];
+            const idle = typeof requestIdleCallback === 'function'
+                ? requestIdleCallback : (cb) => setTimeout(cb, 120);
+            idle(step);
+        };
+        step();
     }
 
     /**
@@ -117,8 +147,10 @@ class CosmonautRingEngine {
 
         this.data.forEach((person, idx) => {
             const node = document.createElement('article');
-            node.className = 'cosmo-ring-card';
+            node.className = 'cosmo-ring-card is-entering';
             node.dataset.index = String(idx);
+            // Каскадный stagger-вход: 60 мс на карточку (см. cosmoCardEnter в CSS).
+            node.style.setProperty('--enter-delay', `${(idx * 60).toFixed(0)}ms`);
             node.style.setProperty('--cosmo-accent', person.badgeColor || '#3ee6c4');
             node.style.width = RING_CONFIG.cardWidth + 'px';
             node.style.height = RING_CONFIG.cardHeight + 'px';
@@ -155,7 +187,27 @@ class CosmonautRingEngine {
 
             node.addEventListener('pointerenter', () => this._focusFlow());
             root.appendChild(node);
-            this.cards.push({ node, img: node.querySelector('img'), loaded: false, person });
+
+            const img = node.querySelector('img');
+            // Lazy-fade портрета: placeholder shimmer → плавное проявление при load.
+            img.addEventListener('load', () => {
+                img.classList.add('is-loaded');
+                const fig = img.closest('.cosmo-ring-photo');
+                if (fig) fig.classList.add('has-photo');
+            }, { once: true });
+
+            // Нижняя mask-кромка гаснет, когда текст прокручен до конца
+            const body = node.querySelector('.cosmo-ring-body');
+            if (body) {
+                const syncFade = () => {
+                    body.classList.toggle('at-end',
+                        body.scrollTop + body.clientHeight >= body.scrollHeight - 4);
+                };
+                body.addEventListener('scroll', syncFade, { passive: true });
+                syncFade();
+            }
+
+            this.cards.push({ node, img, loaded: false, person });
         });
     }
 
@@ -264,6 +316,13 @@ class CosmonautRingEngine {
 
         try { SpaceAudio.playVoice('tour_start'); } catch (e) { /* noop */ }
 
+        // Снимаем класс каскадного входа после завершения stagger-анимации
+        // (по одному таймеру на показ; на кадры вращения не влияет).
+        if (this._enterTimer) clearTimeout(this._enterTimer);
+        this._enterTimer = setTimeout(() => {
+            this.cards.forEach(c => c.node.classList.remove('is-entering'));
+        }, this.data.length * 60 + 800);
+
         if (this.engine && this.engine.showSpatialToast) {
             this.engine.showSpatialToast('Бортовой реестр: 16 Героев Космоса • кольцо вращается');
         }
@@ -274,6 +333,7 @@ class CosmonautRingEngine {
         if (!this.isActive || !this.container) return;
         this.isActive = false;
         this.spinning = false;
+        if (this._expanded) this._closeExpanded(true);
         this.container.classList.add('hidden');
         this.container.setAttribute('aria-hidden', 'true');
         if (this.hud) this.hud.classList.add('hidden');
@@ -362,12 +422,17 @@ class CosmonautRingEngine {
      * Ввод
      * =================================================================== */
     _onPointerDown(e) {
+        if (e.button !== undefined && e.button !== 0) return;
         if (e.target.closest('.cosmo-ring-hud')) return;
         this.dragState = {
             x: e.clientX,
+            y: e.clientY,
             rotation: this.rotation,
             wasSpinning: this.spinning,
-            moved: false
+            moved: false,
+            // Карточка, на которой нажали: если это оказался клик (не драг) —
+            // открываем кинематографичное раскрытие.
+            cardNode: e.target.closest('.cosmo-ring-card')
         };
         this.spinning = false;
         this._setToggleIcon(false);
@@ -377,7 +442,9 @@ class CosmonautRingEngine {
     _onPointerMove(e) {
         if (!this.dragState) return;
         const dx = e.clientX - this.dragState.x;
-        if (Math.abs(dx) > 3) this.dragState.moved = true;
+        const dy = e.clientY - this.dragState.y;
+        // Порог различения «клик vs драг» — 6 px (по любой оси)
+        if (Math.hypot(dx, dy) > 6) this.dragState.moved = true;
         // 250 px драга ≈ 22.5° (один сектор)
         this.rotation = this.dragState.rotation - dx * (360 / this.data.length) / 250;
     }
@@ -385,7 +452,17 @@ class CosmonautRingEngine {
     _onPointerUp() {
         if (!this.dragState) return;
         const moved = this.dragState.moved;
+        const cardNode = this.dragState.cardNode;
         this.dragState = null;
+        if (!moved && cardNode) {
+            // Это клик, а не драг кольца — раскрываем карточку
+            const card = this.cards[Number(cardNode.dataset.index)];
+            if (card && !cardNode.classList.contains('is-hidden')) {
+                this._openExpanded(card);
+                this.lastUserAction = performance.now();
+                return;
+            }
+        }
         // Магнитим к ближайшей карточке и ждём возврата автопрокрутки
         const stepDeg = 360 / this.data.length;
         this.rotation = Math.round(this.rotation / stepDeg) * stepDeg;
@@ -420,12 +497,185 @@ class CosmonautRingEngine {
     }
 
     /* =====================================================================
+     * Кинематографичное раскрытие карточки (FLIP-клон)
+     * =================================================================== */
+
+    _prefersReducedMotion() {
+        return !!(window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    /**
+     * Клик по карточке → «вылет» к зрителю. Реализация — FLIP-клон:
+     * замеряем экранный прямоугольник карточки, строим fixed-оверлей
+     * с полным содержимым (биография целиком), стартуем из прямоугольника
+     * оригинала и анимируем к центру экрана. Вращение кольца продолжается,
+     * но замедляется (см. update), оригинал приглушается классом .is-dimmed.
+     */
+    _openExpanded(card) {
+        if (this._expanded || !card || !card.person) return;
+        const person = card.person;
+        const sourceNode = card.node;
+        const rect = sourceNode.getBoundingClientRect();
+        if (!rect || rect.width < 4) return;
+        const idx = this.cards.indexOf(card);
+        const reduce = this._prefersReducedMotion();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'cosmo-expanded-backdrop';
+        overlay.innerHTML = `
+            <section class="cosmo-expanded" role="dialog" aria-modal="true"
+                     aria-label="${this._esc(person.name)}"
+                     style="--cosmo-accent:${person.badgeColor || '#3ee6c4'}">
+                <div class="cosmo-ring-card-inner">
+                    <header class="cosmo-ring-head">
+                        <span class="cosmo-ring-index">${String(idx + 1).padStart(2, '0')} / ${String(this.data.length).padStart(2, '0')}</span>
+                        <span class="cosmo-ring-callsign">${this._esc(person.callsign || '')}</span>
+                    </header>
+                    <figure class="cosmo-ring-photo exp-st" style="--stagger-i:0">
+                        <img class="is-loaded" src="${(person.photo || '').replace('assets/cosmonauts/', 'assets/cosmonauts_hd/')}" alt="${this._esc(person.name)}" decoding="async">
+                        <figcaption class="cosmo-ring-photo-meta">
+                            <span class="cosmo-ring-agency">${this._esc(person.agency || '')}</span>
+                            <span class="cosmo-ring-date">${this._esc(person.dates || '')}</span>
+                        </figcaption>
+                    </figure>
+                    <div class="cosmo-ring-body cosmo-expanded-body">
+                        <h3 class="cosmo-ring-name exp-st" style="--stagger-i:1">${this._esc(person.name)}</h3>
+                        <p class="cosmo-ring-title exp-st" style="--stagger-i:1">${this._esc(person.title || '')}</p>
+                        <blockquote class="cosmo-ring-quote exp-st" style="--stagger-i:2">${this._esc(person.quote || '')}</blockquote>
+                        <p class="cosmo-ring-fact exp-st" style="--stagger-i:3">${this._esc(person.fact || '')}</p>
+                        <div class="cosmo-ring-stats exp-st" style="--stagger-i:4">${this._statsMarkup(person)}</div>
+                    </div>
+                </div>
+                <button type="button" class="cosmo-expanded-close" aria-label="Свернуть карточку (Esc)">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </section>
+        `;
+        document.body.appendChild(overlay);
+
+        const panel = overlay.querySelector('.cosmo-expanded');
+        const closeBtn = overlay.querySelector('.cosmo-expanded-close');
+
+        this._expanded = { overlay, panel, sourceNode, reduce, timer: null };
+        sourceNode.classList.add('is-dimmed');
+
+        closeBtn.addEventListener('click', this._onExpCloseClick);
+        overlay.addEventListener('click', this._onExpBackdropClick);
+        // Capture-фаза: перехватываем Esc раньше обработчика space3d.js,
+        // пока раскрытие открыто.
+        document.addEventListener('keydown', this._onExpKeydown, true);
+
+        // FLIP: старт из текущего экранного прямоугольника карточки.
+        const final = panel.getBoundingClientRect();
+        const dx = (rect.left + rect.width / 2) - (final.left + final.width / 2);
+        const dy = (rect.top + rect.height / 2) - (final.top + final.height / 2);
+        const sx = rect.width / final.width;
+        const sy = rect.height / final.height;
+        panel.style.setProperty('--fx', `${dx.toFixed(1)}px`);
+        panel.style.setProperty('--fy', `${dy.toFixed(1)}px`);
+        panel.style.setProperty('--fsx', sx.toFixed(4));
+        panel.style.setProperty('--fsy', sy.toFixed(4));
+        panel.classList.add(reduce ? 'is-opening-simple' : 'is-opening');
+
+        // Фокус на кнопку закрытия (доступность)
+        try { closeBtn.focus({ preventScroll: true }); } catch (e) { closeBtn.focus(); }
+    }
+
+    _onExpCloseClick(e) {
+        e.stopPropagation();
+        this._closeExpanded();
+    }
+
+    _onExpBackdropClick(e) {
+        if (e.target === e.currentTarget) this._closeExpanded();
+    }
+
+    _onExpKeydown(e) {
+        if (!this._expanded) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation(); // не даём space3d.js закрыть сцену
+            this._closeExpanded();
+        }
+    }
+
+    /**
+     * Сворачивание: раскрытая карточка летит ОБРАТНО к актуальному экранному
+     * прямоугольнику исходной карточки (она могла сместиться — вращение
+     * кольца продолжалось), фон-блюр растворяется, затем клон удаляется
+     * и фокус возвращается на карточку в кольце.
+     */
+    _closeExpanded(immediate = false) {
+        const exp = this._expanded;
+        if (!exp) return;
+        this._expanded = null;
+        this._prevFrameT = 0;
+
+        document.removeEventListener('keydown', this._onExpKeydown, true);
+        exp.overlay.querySelector('.cosmo-expanded-close')
+            .removeEventListener('click', this._onExpCloseClick);
+        exp.overlay.removeEventListener('click', this._onExpBackdropClick);
+        if (exp.timer) clearTimeout(exp.timer);
+
+        const finish = () => {
+            exp.overlay.remove();
+            exp.sourceNode.classList.remove('is-dimmed');
+            // Возврат фокуса на карточку в кольце
+            try {
+                exp.sourceNode.setAttribute('tabindex', '-1');
+                exp.sourceNode.focus({ preventScroll: true });
+                exp.sourceNode.removeAttribute('tabindex');
+            } catch (e) { /* noop */ }
+        };
+
+        if (immediate || exp.reduce) {
+            finish();
+            return;
+        }
+
+        // Актуальный прямоугольник исходной карточки на момент закрытия
+        const r = exp.sourceNode.getBoundingClientRect();
+        const f = exp.panel.getBoundingClientRect();
+        const gone = exp.sourceNode.classList.contains('is-hidden') ||
+            r.width < 4 || r.bottom < -80 || r.top > innerHeight + 80;
+        const panel = exp.panel;
+        if (gone) {
+            // Карточка ушла из конуса видимости — просто растворяем клон
+            panel.style.setProperty('--fx', '0px');
+            panel.style.setProperty('--fy', `${Math.round(innerHeight / 6)}px`);
+            panel.style.setProperty('--fsx', '0.6');
+            panel.style.setProperty('--fsy', '0.6');
+        } else {
+            const dx = (r.left + r.width / 2) - (f.left + f.width / 2);
+            const dy = (r.top + r.height / 2) - (f.top + f.height / 2);
+            panel.style.setProperty('--fx', `${dx.toFixed(1)}px`);
+            panel.style.setProperty('--fy', `${dy.toFixed(1)}px`);
+            panel.style.setProperty('--fsx', (r.width / f.width).toFixed(4));
+            panel.style.setProperty('--fsy', (r.height / f.height).toFixed(4));
+        }
+        panel.classList.remove('is-opening', 'is-opening-simple');
+        panel.classList.add('is-closing');
+        exp.overlay.classList.add('is-closing');
+        exp.sourceNode.classList.remove('is-dimmed'); // оригинал проявляется сразу
+        exp.timer = setTimeout(finish, 520);
+    }
+
+    /* =====================================================================
      * Кадр: вращение и раскладка карточек
      * =================================================================== */
     update(now) {
         if (!this.isActive || !this.container) return;
 
         const t = typeof now === 'number' ? now : performance.now();
+
+        // Пока карточка раскрыта — вращение кольца замедляется в 4 раза
+        // (эффектно, но не останавливается): сдвигаем точку старта оборота.
+        if (this._expanded && this.spinning) {
+            this.spinStart += (t - (this._prevFrameT || t)) * 0.75;
+        }
+        this._prevFrameT = t;
 
         // 1. Автопрокрутка: ровно один полный оборот с разгоном и торможением
         if (this.spinning) {
@@ -483,7 +733,14 @@ class CosmonautRingEngine {
             node.style.opacity = (0.18 + 0.82 * edge).toFixed(3);
             node.style.transform = `rotateY(${a.toFixed(2)}deg) translate3d(0px, 0px, ${-R}px)`;
             node.style.zIndex = String(1000 - Math.round(absA));
-            node.style.filter = edge > 0.75 ? 'none' : `blur(${((1 - edge) * 2.2).toFixed(2)}px)`;
+            // Blur дорог на transform-элементах: применяем только к боковым
+            // карточкам, заметно отклонившимся от фронта (и градиентно гасим)
+            if (edge > 0.9) {
+                if (node.dataset.blurred) { node.style.filter = 'none'; delete node.dataset.blurred; }
+            } else {
+                node.style.filter = `blur(${((1 - edge) * 1.6).toFixed(2)}px)`;
+                node.dataset.blurred = '1';
+            }
 
             // Ленивое подключение фото: грузим только то, что реально видно
             if (!card.loaded && edge > 0.35) {

@@ -5,9 +5,9 @@
  *
  * Архитектура и функционал:
  * - Физическая орбита вокруг Земли: МКС физически огибает сферу Земли
- *   (центр Земли: eCoords = { yaw: 0, pitch: -48, dist: 1350 }, R_земли = 840 px,
- *   R_орбиты = 930 px, высота полета 90 px над поверхностью планеты).
- * - Наклонение орбиты 51.64°: станция совершает величественный 3D-полет вокруг глобуса
+ *   (центр Земли: eCoords = { yaw: 0, pitch: -44, dist: 1470 }, R_земли = 700 px,
+ *   R_орбиты = 900 px — безопасный запас 1.29x у лимба).
+ * - Наклонение орбиты 150° (оптимизировано численной симуляцией видимости):
  *   с периодом ~3.75 мин (225 с).
  * - Проградная ориентация (LVLH - Local Vertical Local Horizontal):
  *   продольная ось модулей выровнена по вектору скорости (полет носом вперед),
@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)
@@ -55,12 +55,22 @@ export const EARTH_CONFIG = {
 };
 
 export const ISS_CONFIG = {
-    orbitAltitudePx: 60,         // Высота орбиты над поверхностью Земли (px)
-    orbitRadiusPx: 760,          // 700 + 60 = 760 px от центра Земли
+    orbitAltitudePx: 200,        // Высота орбиты над поверхностью Земли (px)
+    orbitRadiusPx: 900,          // 700 + 200 = 900 px от центра Земли (запас 1.29x радиуса Земли —
+                                 // безопасный пролёт у лимба; компактная орбита не вылетает
+                                 // за края экрана при широких ракурсах, в отличие от 1150 px)
     orbitPeriodSec: 45,          // Увеличенная в 5 раз скорость (полный виток за 45 сек)
-    inclinationDeg: 51.64,       // Реальное наклонение орбиты МКС к экватору Земли (градусы)
-    raanDeg: 35.0,               // Долгота восходящего узла (RAAN) орбиты
-    stationScale: 0.95,          // Масштабный коэффициент геометрии
+    inclinationDeg: 150.0,       // Наклонение орбиты МКС к экватору Земли (градусы).
+                                 // 150° (ретроградная, почти полярная) разворачивает ПЛОСКОСТЬ
+                                 // орбиты почти ребром к оси камера->Земля: node-симуляция даёт
+                                 // ~68% среднего времени видимости против 38% при 66°, а в рабочих
+                                 // ракурсах на Землю (pitch -35..-44) станция видна 100% витка,
+                                 // долго и эффектно проходя ПЕРЕД диском планеты
+    raanDeg: 10.0,               // Долгота восходящего узла (RAAN) орбиты (оптимизирована симуляцией)
+    raanPrecessionAmpDeg: 12.0,  // Лёгкая синусоидальная прецессия RAAN (±12°): картина пролётов
+                                 // медленно меняется и не зацикливается скучно
+    raanPrecessionPeriodSec: 2400, // Период прецессии RAAN (40 минут — очень медленный дрейф)
+    stationScale: 1.9,           // Масштабный коэффициент геометрии (удвоен: 0.95 → 1.9)
     hitRadiusMultiplier: 1.35,   // Множитель экранного хитбокса
     realAltitudeKm: 418.4,       // Реальная высота орбиты (км)
     realSpeedKmS: 7.66,          // Реальная орбитальная скорость (км/с)
@@ -118,6 +128,9 @@ export class IssStationEngine {
         this.limbVisibility = 1.0;   // Плавный коэффициент видимости (0..1)
         this.distToCamera = 1350;    // Расстояние от камеры до станции
 
+        // Плавный переход радиуса орбиты (ease за ~0.6с при смене конфига)
+        this.orbitRadiusCurrent = ISS_CONFIG.orbitRadiusPx;
+
         // Слежение за Солнцем (BGA - Beta Gimbal Assembly)
         this.betaAngle = 0;          // Текущий угол поворота солнечных батарей (радианы)
         this.targetBeta = 0;         // Оптимальный угол направления на Солнце
@@ -162,12 +175,22 @@ export class IssStationEngine {
     }
 
     /**
-     * Вычисление базиса Кеплеровой орбитальной плоскости с наклонением 51.64° вокруг Земли
+     * Вычисление базиса Кеплеровой орбитальной плоскости (вызывается при init
+     * и каждый кадр — для лёгкой прецессии RAAN)
      */
     initOrbitalBasis() {
+        this.setOrbitalBasis(ISS_CONFIG.raanDeg);
+    }
+
+    /**
+     * Построение ортонормированного базиса орбитальной плоскости (P_node, Q_node, W)
+     * для заданной долготы восходящего узла (RAAN). Используется и для статического
+     * базиса, и для медленной синусоидальной прецессии узла.
+     */
+    setOrbitalBasis(raanDeg) {
         const tilt = EARTH_CONFIG.axialTiltDeg * DEG_TO_RAD;
         const inc = ISS_CONFIG.inclinationDeg * DEG_TO_RAD;
-        const raan = ISS_CONFIG.raanDeg * DEG_TO_RAD;
+        const raan = raanDeg * DEG_TO_RAD;
 
         // Ось вращения Земли (Северный полюс с наклоном 23.44°)
         const nE = { x: 0, y: Math.cos(tilt), z: -Math.sin(tilt) };
@@ -249,6 +272,8 @@ export class IssStationEngine {
         if (this.isTexturesReady) return;
 
         // 1. Текстура фотоэлектрических ячеек солнечных батарей (SAW)
+        // Реальные панели МКС (Si-элементы с покрытием) на солнце выглядят
+        // тёмно-золотистыми/янтарно-медными — ретининг в тёплый спектр.
         const spW = 256;
         const spH = 512;
         this.solarPanelTex = document.createElement('canvas');
@@ -257,14 +282,14 @@ export class IssStationEngine {
         const spCtx = this.solarPanelTex.getContext('2d');
 
         const spGrad = spCtx.createLinearGradient(0, 0, spW, spH);
-        spGrad.addColorStop(0, '#0d1e3d');
-        spGrad.addColorStop(0.35, '#132c54');
-        spGrad.addColorStop(0.7, '#0f2445');
-        spGrad.addColorStop(1, '#09152b');
+        spGrad.addColorStop(0, '#2d1a05');
+        spGrad.addColorStop(0.35, '#4a2c0a');
+        spGrad.addColorStop(0.7, '#3a2210');
+        spGrad.addColorStop(1, '#241404');
         spCtx.fillStyle = spGrad;
         spCtx.fillRect(0, 0, spW, spH);
 
-        spCtx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+        spCtx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
         spCtx.lineWidth = 1;
         const cols = 8;
         const rows = 30;
@@ -278,16 +303,16 @@ export class IssStationEngine {
                 const w = cw - 3;
                 const h = ch - 3;
 
-                // Ячейка кремния: затемнение к краям + серебристая шина в центре
+                // Ячейка кремния: медно-золотой градиент + светлая шина в центре
                 const cellGrad = spCtx.createLinearGradient(px, py, px + w, py + h);
                 const odd = (r + c) % 2 === 0;
-                cellGrad.addColorStop(0.00, odd ? '#17335d' : '#0c1f3d');
-                cellGrad.addColorStop(0.45, odd ? '#1b3f70' : '#112a52');
-                cellGrad.addColorStop(1.00, odd ? '#081426' : '#060f1f');
+                cellGrad.addColorStop(0.00, odd ? '#5c3a0e' : '#3b2407');
+                cellGrad.addColorStop(0.45, odd ? '#7a4f14' : '#553310');
+                cellGrad.addColorStop(1.00, odd ? '#38210a' : '#2a1704');
                 spCtx.fillStyle = cellGrad;
                 spCtx.fillRect(px, py, w, h);
 
-                spCtx.strokeStyle = 'rgba(125, 211, 252, 0.20)';
+                spCtx.strokeStyle = 'rgba(253, 230, 138, 0.26)';
                 spCtx.lineWidth = 1;
                 spCtx.beginPath();
                 spCtx.moveTo(px, py + h * 0.5);
@@ -295,20 +320,48 @@ export class IssStationEngine {
                 spCtx.stroke();
 
                 // Тонкие токосъёмные полосы (по 2 на ячейку) — «силиконовый» микрорельеф
-                spCtx.strokeStyle = 'rgba(186, 230, 253, 0.13)';
+                spCtx.strokeStyle = 'rgba(254, 240, 138, 0.16)';
                 spCtx.beginPath();
                 spCtx.moveTo(px, py + h * 0.26);
                 spCtx.lineTo(px + w, py + h * 0.26);
                 spCtx.moveTo(px, py + h * 0.74);
                 spCtx.lineTo(px + w, py + h * 0.74);
                 spCtx.stroke();
+
+                // Металлический блик в верхнем углу ячейки (стеклянное покрытие)
+                const specX = px + w * 0.28;
+                const specY = py + h * 0.22;
+                const cellSpec = spCtx.createRadialGradient(specX, specY, 0, specX, specY, Math.min(w, h) * 0.6);
+                cellSpec.addColorStop(0, 'rgba(255, 252, 225, 0.30)');
+                cellSpec.addColorStop(0.55, 'rgba(255, 246, 200, 0.10)');
+                cellSpec.addColorStop(1, 'rgba(255, 246, 200, 0)');
+                spCtx.fillStyle = cellSpec;
+                spCtx.fillRect(px, py, w, h);
+
+                // «Битые» ячейки: детерминированные тёмные деградировавшие элементы
+                const deadHash = (r * 73 + c * 151 + 37) % 211;
+                if (deadHash < 5) {
+                    spCtx.fillStyle = 'rgba(12, 8, 3, 0.82)';
+                    spCtx.fillRect(px, py, w, h);
+                    spCtx.strokeStyle = 'rgba(120, 53, 15, 0.55)';
+                    spCtx.beginPath();
+                    spCtx.moveTo(px + 1, py + h * 0.3);
+                    spCtx.lineTo(px + w * 0.45, py + h * 0.62);
+                    spCtx.lineTo(px + w - 1, py + h * 0.38);
+                    spCtx.stroke();
+                } else if (deadHash < 9) {
+                    // Полудеградировавшая ячейка (потемнение)
+                    spCtx.fillStyle = 'rgba(20, 12, 4, 0.45)';
+                    spCtx.fillRect(px, py, w, h);
+                }
             }
         }
 
-        spCtx.fillStyle = '#d97706';
+        // Титановые токоведущие шины по краям крыла
+        spCtx.fillStyle = '#78350f';
         spCtx.fillRect(0, 0, 4, spH);
         spCtx.fillRect(spW - 4, 0, 4, spH);
-        spCtx.fillStyle = '#f59e0b';
+        spCtx.fillStyle = '#b45309';
         spCtx.fillRect(spW / 2 - 2, 0, 4, spH);
 
         // 2. Текстура тепловых радиаторов охлаждения (TCS)
@@ -342,6 +395,33 @@ export class IssStationEngine {
                 radCtx.fillRect(0, y, radW, rph);
             }
         }
+
+        // Продольные теплообменные трубки по длине радиатора + холодный отлив
+        radCtx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
+        radCtx.lineWidth = 1.6;
+        for (let tx = 8; tx < radW; tx += 13) {
+            radCtx.beginPath();
+            radCtx.moveTo(tx, 0);
+            radCtx.lineTo(tx, radH);
+            radCtx.stroke();
+        }
+        radCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        radCtx.lineWidth = 0.7;
+        for (let tx = 9; tx < radW; tx += 13) {
+            radCtx.beginPath();
+            radCtx.moveTo(tx, 0);
+            radCtx.lineTo(tx, radH);
+            radCtx.stroke();
+        }
+        // Деликатный голубоватый отлив (отражение Земли на белых панелях)
+        radCtx.fillStyle = 'rgba(191, 219, 254, 0.10)';
+        radCtx.fillRect(0, 0, radW, radH);
+        const radBlue = radCtx.createLinearGradient(0, 0, radW, 0);
+        radBlue.addColorStop(0, 'rgba(147, 197, 253, 0.14)');
+        radBlue.addColorStop(0.5, 'rgba(191, 219, 254, 0.02)');
+        radBlue.addColorStop(1, 'rgba(147, 197, 253, 0.14)');
+        radCtx.fillStyle = radBlue;
+        radCtx.fillRect(0, 0, radW, radH);
 
         // 3. Текстура обшивки модулей
         const modW = 128;
@@ -641,7 +721,7 @@ export class IssStationEngine {
                 </div>
                 <div class="iss-tele-tile">
                     <div class="iss-tile-label">Наклонение к экватору</div>
-                    <div class="iss-tile-val" id="iss-tele-inc">51.64°</div>
+                            <div class="iss-tile-val" id="iss-tele-inc">150.0°</div>
                 </div>
                 <div class="iss-tele-tile">
                     <div class="iss-tile-label">BGA Угол Солнца</div>
@@ -884,10 +964,25 @@ export class IssStationEngine {
         const omega = (2 * Math.PI) / ISS_CONFIG.orbitPeriodSec; // ~0.0279 рад/с
         this.orbitPhase = (this.orbitPhase + omega * dt) % (2 * Math.PI);
 
+        // 1.5 Лёгкая прецессия восходящего узла (медленный синусоидальный дрейф RAAN
+        // ±raanPrecessionAmpDeg за raanPrecessionPeriodSec): плоскость орбиты живёт,
+        // картина пролётов не повторяется скучно. Базис пересчитывается за O(1).
+        if (ISS_CONFIG.raanPrecessionAmpDeg) {
+            const raanEff = ISS_CONFIG.raanDeg +
+                ISS_CONFIG.raanPrecessionAmpDeg *
+                Math.sin(2 * Math.PI * this.time / ISS_CONFIG.raanPrecessionPeriodSec);
+            this.setOrbitalBasis(raanEff);
+        }
+
         // 2. Положение МКС относительно центра Земли: r_rel = R * [cos(θ)*P_node + sin(θ)*Q_node]
         const cosTh = Math.cos(this.orbitPhase);
         const sinTh = Math.sin(this.orbitPhase);
-        const R_iss = ISS_CONFIG.orbitRadiusPx; // 930 px вокруг центра Земли
+
+        // Плавный переход радиуса орбиты (экспоненциальное сглаживание, tau ~ 0.4с):
+        // если конфиг меняется на лету — станция дрейфует на новую орбиту без рывка
+        const radiusLerp = Math.min(1.0, dt / 0.15);
+        this.orbitRadiusCurrent += (ISS_CONFIG.orbitRadiusPx - this.orbitRadiusCurrent) * radiusLerp;
+        const R_iss = this.orbitRadiusCurrent;
 
         this.relPos.x = R_iss * (cosTh * this.pNode.x + sinTh * this.qNode.x);
         this.relPos.y = R_iss * (cosTh * this.pNode.y + sinTh * this.qNode.y);
@@ -941,30 +1036,35 @@ export class IssStationEngine {
         const dSq = eDistSq - tca * tca;
         const dPerp = Math.sqrt(Math.max(0, dSq));
 
-        const eRad = EARTH_CONFIG.radius;        // 840 px
-        const atmoRad = EARTH_CONFIG.atmoRadius; // 907.2 px
+        const eRad = EARTH_CONFIG.radius;        // 700 px — радиус видимого диска (GL-сфера)
+        const atmoRad = EARTH_CONFIG.atmoRadius; // 717.5 px — внешний радиус атмосферного ореола (x1.025)
 
+        let targetVisibility = 1.0;
         if (this.distToCamera < tca) {
             // МКС находится ПЕРЕД Землей (между наблюдателем и планетой)
             this.isOccluded = false;
-            this.limbVisibility = 1.0;
         } else {
             // МКС находится за плоскостью центра Земли
             if (dPerp <= eRad) {
                 // Полная окклюзия за твердым телом планеты Земля
                 this.isOccluded = true;
-                this.limbVisibility = 0.0;
+                targetVisibility = 0.0;
             } else if (dPerp < atmoRad) {
                 // Переходная область: прохождение сквозь светящийся лимб атмосферы Земли
                 this.isOccluded = false;
                 const atmoFrac = (dPerp - eRad) / (atmoRad - eRad);
-                this.limbVisibility = Math.max(0.05, Math.min(1.0, atmoFrac));
+                targetVisibility = Math.max(0.05, Math.min(1.0, atmoFrac));
             } else {
                 // На фоне открытого космоса рядом с планетой
                 this.isOccluded = false;
-                this.limbVisibility = 1.0;
             }
         }
+
+        // Временное сглаживание видимости у лимба (~0.15с): силуэт мягко гаснет
+        // при уходе за планету и мягко проявляется при выходе из-за диска
+        const visLerp = Math.min(1.0, dt / 0.15);
+        this.limbVisibility += (targetVisibility - this.limbVisibility) * visLerp;
+        if (this.limbVisibility < 0.004) this.limbVisibility = 0;
 
         // 7. Проверка орбитального затмения (Eclipse) в тени Земли от Солнца
         const sProj = this.relPos.x * SUN_VECTOR.x + this.relPos.y * SUN_VECTOR.y + this.relPos.z * SUN_VECTOR.z;
@@ -1040,12 +1140,6 @@ export class IssStationEngine {
         // Автоматическое обновление орбиты перед кадром
         this.update();
 
-        // Если МКС полностью скрыта за глобусом Земли — не отрисовывать
-        if (this.isOccluded) {
-            this.isVisible = false;
-            return;
-        }
-
         this.camYaw = camYaw;
         this.camPitch = camPitch;
         this.camZoom = zoom;
@@ -1079,6 +1173,17 @@ export class IssStationEngine {
             return;
         }
 
+        // Орбитальная трасса МКС: пунктирная дуга орбиты («живая карта»).
+        // Рисуется до проверки окклюзии корпуса: сегменты за диском Земли
+        // гаснут той же ray-sphere окклюзией, у атмосферного лимба — затухание.
+        this.drawOrbitTrace(ctx, cosCY, sinCY, cosCP, sinCP, fov, cx, cy);
+
+        // Корпус станции полностью скрыт глобусом (с учётом 0.15с fade у лимба)
+        if (this.limbVisibility <= 0.02) {
+            this.isVisible = false;
+            return;
+        }
+
         // Проекция центра станции на экран
         const px = cx + (x1 / z2) * fov;
         const py = cy - (y2 / z2) * fov;
@@ -1090,6 +1195,10 @@ export class IssStationEngine {
         const baseScale = (fov / z2) * ISS_CONFIG.stationScale;
         this.screenScale = baseScale;
         this.screenRadius = 135 * baseScale;
+
+        // LOD: 0 — крупный план (все детали), 1 — средний (без мелкого декора),
+        // 2 — дистанция (только силуэтные формы, как в satellites_swarm.js)
+        this.lodLevel = baseScale > 1.05 ? 0 : (baseScale > 0.5 ? 1 : 2);
 
         // Проверка выхода за экран
         const margin = this.screenRadius * 2;
@@ -1144,7 +1253,7 @@ export class IssStationEngine {
         this.queueTrussStructure(projectLocalPoint, camSun, x1, y2, z2, camRight);
 
         // 2. 8 Солнечных батарей (SAW) с BGA-вращением
-        this.queueSolarPanels(projectLocalPoint, camSun, panelNormL, panelSpanL);
+        this.queueSolarPanels(projectLocalPoint, camSun, panelNormL, panelSpanL, camFwd, camUp);
 
         // 3. 3 Тепловых радиатора охлаждения (TCS)
         this.queueRadiators(projectLocalPoint, camSun);
@@ -1176,10 +1285,97 @@ export class IssStationEngine {
         // 7. Навигационные стробоскопы
         this.renderNavigationBeacons(ctx, projectLocalPoint);
 
+        // 7.1 Деликатный specular-glint при развороте панелей к Солнцу/камере
+        this.renderSolarSpecularGlint(ctx, projectLocalPoint);
+
         ctx.restore();
 
         // 8. Интерактивный голографический прицел
         this.renderHolographicReticle(ctx, px, py);
+    }
+
+    /**
+     * Орбитальная трасса МКС: тонкая пунктирная дуга эллипса орбиты (alpha ~0.10) —
+     * эффект «живой карты». Сегменты за диском Земли скрываются той же
+     * ray-sphere окклюзией, что и корпус; у атмосферного лимба — плавное затухание.
+     * Сегменты батчатся в непрерывные пути (1-3 stroke на кадр) — без просадки FPS.
+     */
+    drawOrbitTrace(ctx, cosCY, sinCY, cosCP, sinCP, fov, cx, cy) {
+        const segments = 96;
+        const twoPi = Math.PI * 2;
+        const R = this.orbitRadiusCurrent;
+        const eRad = EARTH_CONFIG.radius;
+        const atmoRad = EARTH_CONFIG.atmoRadius;
+        const eDistSq = EARTH_CENTER.x * EARTH_CENTER.x + EARTH_CENTER.y * EARTH_CENTER.y + EARTH_CENTER.z * EARTH_CENTER.z;
+
+        // Видимость каждой точки трассы: 1 — открыто, 0 — за диском,
+        // (0..1) — полоса атмосферного лимба
+        const pts = [];
+        for (let s = 0; s <= segments; s++) {
+            const th = (s % segments) * (twoPi / segments);
+            const cTh = Math.cos(th);
+            const sTh = Math.sin(th);
+
+            const wx = EARTH_CENTER.x + R * (cTh * this.pNode.x + sTh * this.qNode.x);
+            const wy = EARTH_CENTER.y + R * (cTh * this.pNode.y + sTh * this.qNode.y);
+            const wz = EARTH_CENTER.z + R * (cTh * this.pNode.z + sTh * this.qNode.z);
+
+            const x1 = wx * cosCY - wz * sinCY;
+            const z1 = wx * sinCY + wz * cosCY;
+            const y2 = wy * cosCP - z1 * sinCP;
+            const z2 = wy * sinCP + z1 * cosCP;
+
+            if (z2 <= 0.1) {
+                pts.push(null);
+                continue;
+            }
+
+            const d = Math.hypot(wx, wy, wz) || 1;
+            const tca = (EARTH_CENTER.x * wx + EARTH_CENTER.y * wy + EARTH_CENTER.z * wz) / d;
+            const dPerp = Math.sqrt(Math.max(0, eDistSq - tca * tca));
+
+            let vis;
+            if (d < tca || dPerp >= atmoRad) {
+                vis = 1;                                   // перед планетой / открытый космос
+            } else if (dPerp > eRad) {
+                vis = (dPerp - eRad) / (atmoRad - eRad);   // лимб: плавное затухание
+            } else {
+                vis = 0;                                   // за твердым диском
+            }
+
+            pts.push({ x: cx + (x1 / z2) * fov, y: cy - (y2 / z2) * fov, vis });
+        }
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 1.1;
+        ctx.setLineDash([3, 9]);
+        ctx.strokeStyle = 'rgba(125, 211, 252, 0.10)';
+
+        // Батчинг: непрерывные участки с vis >= 1 — одним путём;
+        // лимбовые участки (0 < vis < 1) — отдельными путями с затуханием
+        let run = false;
+        for (let s = 0; s <= segments; s++) {
+            const p = pts[s];
+            if (p && p.vis >= 1) {
+                if (!run) { ctx.beginPath(); ctx.moveTo(p.x, p.y); run = true; }
+                else ctx.lineTo(p.x, p.y);
+            } else {
+                if (run) { ctx.stroke(); run = false; }
+                if (p && p.vis > 0) {
+                    ctx.globalAlpha = p.vis;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    const q = pts[s + 1];
+                    if (q && q.vis > 0) ctx.lineTo(q.x, q.y);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+        if (run) ctx.stroke();
+
+        ctx.restore();
     }
 
     /**
@@ -1198,6 +1394,8 @@ export class IssStationEngine {
             { name: 'S4_sarj', z1: 65, z2: 105, color: '#cbd5e1' },
             { name: 'S6_tip', z1: 105, z2: 135, color: '#94a3b8' }
         ];
+
+        const fine = this.lodLevel <= 1;
 
         for (const seg of segments) {
             const pStart = project(0, 0, seg.z1);
@@ -1222,22 +1420,119 @@ export class IssStationEngine {
                     ctx.lineTo(pEnd.x, pEnd.y);
                     ctx.stroke();
 
-                    // Треугольные ферменные раскосы
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-                    ctx.lineWidth = Math.max(0.7, 0.8 * this.screenScale);
-                    const steps = 4;
-                    const dz = (seg.z2 - seg.z1) / steps;
-                    for (let s = 0; s < steps; s++) {
-                        const zA = seg.z1 + s * dz;
-                        const zB = seg.z1 + (s + 1) * dz;
-                        const ptA = project(trussRadius, trussRadius, zA);
-                        const ptB = project(-trussRadius, -trussRadius, zB);
-                        if (ptA && ptB) {
+                    if (fine) {
+                        // Продольные стрингеры: 4 угловые балки — объём фермы
+                        const stringers = [
+                            { y: trussRadius, z: trussRadius },
+                            { y: -trussRadius, z: trussRadius },
+                            { y: trussRadius, z: -trussRadius },
+                            { y: -trussRadius, z: -trussRadius }
+                        ];
+                        ctx.lineWidth = Math.max(0.55, 0.9 * this.screenScale);
+                        for (const st of stringers) {
+                            const a = project(st.y, st.z * 0.02, seg.z1);
+                            const b = project(st.y, st.z, seg.z2);
+                            if (!a || !b) continue;
+                            // Освещённая сторона — светлее, теневая — темнее
+                            const lit = (st.y > 0) === (camSun ? camSun.y > 0 : true);
+                            ctx.strokeStyle = lit ? 'rgba(226, 232, 240, 0.75)' : 'rgba(51, 65, 85, 0.75)';
                             ctx.beginPath();
-                            ctx.moveTo(ptA.x, ptA.y);
-                            ctx.lineTo(ptB.x, ptB.y);
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
                             ctx.stroke();
                         }
+
+                        // Кабель-трассы вдоль фермы: две тонкие тёмные линии поверх стрингеров
+                        ctx.lineWidth = Math.max(0.45, 0.55 * this.screenScale);
+                        for (const cTray of [
+                            { y: trussRadius * 0.82, dy: 0.35 },
+                            { y: -trussRadius * 0.82, dy: -0.35 }
+                        ]) {
+                            const cA = project(cTray.y, cTray.dy * trussRadius * 0.02, seg.z1);
+                            const cB = project(cTray.y, cTray.dy, seg.z2);
+                            if (cA && cB) {
+                                ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
+                                ctx.beginPath();
+                                ctx.moveTo(cA.x, cA.y);
+                                ctx.lineTo(cB.x, cB.y);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // Поперечные крепления (прогон-«перекладины» лестницы)
+                        const steps = 4;
+                        const dz = (seg.z2 - seg.z1) / steps;
+                        ctx.lineWidth = Math.max(0.5, 0.7 * this.screenScale);
+                        for (let s = 0; s <= steps; s++) {
+                            const zR = seg.z1 + s * dz;
+                            const qA = project(trussRadius, 0, zR);
+                            const qB = project(-trussRadius, 0, zR);
+                            if (qA && qB) {
+                                ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+                                ctx.beginPath();
+                                ctx.moveTo(qA.x, qA.y);
+                                ctx.lineTo(qB.x, qB.y);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // Треугольные X-ферменные раскосы (обе диагонали)
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                        ctx.lineWidth = Math.max(0.7, 0.8 * this.screenScale);
+                        for (let s = 0; s < steps; s++) {
+                            const zA = seg.z1 + s * dz;
+                            const zB = seg.z1 + (s + 1) * dz;
+                            const ptA = project(trussRadius, trussRadius, zA);
+                            const ptB = project(-trussRadius, -trussRadius, zB);
+                            if (ptA && ptB) {
+                                ctx.beginPath();
+                                ctx.moveTo(ptA.x, ptA.y);
+                                ctx.lineTo(ptB.x, ptB.y);
+                                ctx.stroke();
+                            }
+                            const ptC = project(-trussRadius, trussRadius, zA);
+                            const ptD = project(trussRadius, -trussRadius, zB);
+                            if (ptC && ptD) {
+                                ctx.beginPath();
+                                ctx.moveTo(ptC.x, ptC.y);
+                                ctx.lineTo(ptD.x, ptD.y);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // Блоки оборудования на ферме: детерминированные боксы в узлах
+                        const segHash = Math.abs(seg.z1) * 7 + Math.abs(seg.z2) * 3;
+                        const boxSteps = 4;
+                        const boxDz = (seg.z2 - seg.z1) / boxSteps;
+                        for (let s = 0; s < boxSteps; s++) {
+                            if ((Math.floor(segHash) + s * 31) % 3 !== 0) continue;
+                            const zR = seg.z1 + (s + 0.5) * boxDz;
+                            const side = (s % 2 === 0) ? 1 : -1;
+                            const bp = project(side * trussRadius * 0.5, trussRadius * 1.05, zR);
+                            if (!bp) continue;
+                            const bw = Math.max(1.2, 2.2 * this.screenScale);
+                            const bh = Math.max(0.8, 1.4 * this.screenScale);
+                            // Корпус блока: тёмный металл + светлый верх (sun-side edge)
+                            ctx.fillStyle = '#3f4a5c';
+                            ctx.fillRect(bp.x - bw * 0.5, bp.y - bh * 0.5, bw, bh);
+                            ctx.fillStyle = 'rgba(226, 232, 240, 0.65)';
+                            ctx.fillRect(bp.x - bw * 0.5, bp.y - bh * 0.5, bw, Math.max(0.4, bh * 0.28));
+                            ctx.strokeStyle = 'rgba(10, 16, 30, 0.5)';
+                            ctx.lineWidth = Math.max(0.4, 0.5 * this.screenScale);
+                            ctx.strokeRect(bp.x - bw * 0.5, bp.y - bh * 0.5, bw, bh);
+                        }
+                    }
+
+                    // Солнечный терминатор: световая кромка со стороны Солнца сцены
+                    if (camSun && (Math.abs(camSun.x) + Math.abs(camSun.y)) > 0.05) {
+                        const sunLen = Math.hypot(camSun.x, camSun.y) || 1;
+                        const off = ctx.lineWidth;
+                        ctx.strokeStyle = 'rgba(255, 252, 240, 0.55)';
+                        ctx.lineWidth = Math.max(0.8, off * 0.28);
+                        ctx.beginPath();
+                        ctx.moveTo(pStart.x + (camSun.x / sunLen) * off, pStart.y - (camSun.y / sunLen) * off);
+                        ctx.lineTo(pEnd.x + (camSun.x / sunLen) * off, pEnd.y - (camSun.y / sunLen) * off);
+                        ctx.stroke();
                     }
 
                     // Поворотные шарниры SARJ
@@ -1245,21 +1540,78 @@ export class IssStationEngine {
                         const sarjZ = (seg.z1 + seg.z2) * 0.5;
                         const ptSarj = project(0, 0, sarjZ);
                         if (ptSarj) {
-                            ctx.fillStyle = '#f59e0b';
+                            const sarjR = Math.max(2, 4.2 * this.screenScale);
+                            const sarjGrad = ctx.createRadialGradient(
+                                ptSarj.x - sarjR * 0.3, ptSarj.y - sarjR * 0.3, sarjR * 0.1,
+                                ptSarj.x, ptSarj.y, sarjR
+                            );
+                            sarjGrad.addColorStop(0, '#fde68a');
+                            sarjGrad.addColorStop(0.5, '#f59e0b');
+                            sarjGrad.addColorStop(1, '#78350f');
+                            ctx.fillStyle = sarjGrad;
                             ctx.beginPath();
-                            ctx.arc(ptSarj.x, ptSarj.y, Math.max(2, 4.2 * this.screenScale), 0, Math.PI * 2);
+                            ctx.arc(ptSarj.x, ptSarj.y, sarjR, 0, Math.PI * 2);
                             ctx.fill();
                         }
                     }
                 }
             });
         }
+
+        if (fine) {
+            // BGA gimbal-цилиндры в узлах крепления панелей (S4/S6, P4/P6)
+            const bgaAnchors = [-122, -82, 82, 122];
+            for (const gz of bgaAnchors) {
+                const gp = project(0, 0, gz);
+                if (!gp) continue;
+                this.renderQueue.push({
+                    depth: gp.z + 0.01,
+                    render: (ctx) => {
+                        const gr = Math.max(1.6, 3.0 * this.screenScale);
+                        const cyl = ctx.createLinearGradient(gp.x - gr, gp.y - gr, gp.x + gr, gp.y + gr);
+                        cyl.addColorStop(0, '#cbd5e1');
+                        cyl.addColorStop(0.5, '#f1f5f9');
+                        cyl.addColorStop(1, '#475569');
+                        ctx.fillStyle = cyl;
+                        ctx.beginPath();
+                        ctx.arc(gp.x, gp.y, gr, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Тёмный стык (ambient occlusion) вокруг гимбала
+                        ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
+                        ctx.lineWidth = Math.max(0.5, 0.7 * this.screenScale);
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // Стыковочные ободы на законцовках фермы (P6/S6)
+            for (const tipZ of [-135, 135]) {
+                const tp = project(0, 0, tipZ);
+                if (!tp) continue;
+                this.renderQueue.push({
+                    depth: tp.z,
+                    render: (ctx) => {
+                        const tr2 = Math.max(1.4, 2.6 * this.screenScale);
+                        ctx.strokeStyle = '#f8fafc';
+                        ctx.lineWidth = Math.max(0.7, 1.0 * this.screenScale);
+                        ctx.beginPath();
+                        ctx.arc(tp.x, tp.y, tr2, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+                        ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
+                        ctx.beginPath();
+                        ctx.arc(tp.x, tp.y, tr2 * 0.55, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                });
+            }
+        }
     }
 
     /**
      * Построение 8 Солнечных батарей (Solar Array Wings) с BGA-слежением
      */
-    queueSolarPanels(project, camSun, panelNormL, panelSpanL) {
+    queueSolarPanels(project, camSun, panelNormL, panelSpanL, camFwd, camUp) {
         const wingLength = 58;
         const wingWidth = 18;
         const mastGap = 3.5;
@@ -1313,6 +1665,17 @@ export class IssStationEngine {
 
             const avgDepth = (pt1.z + pt2.z + pt3.z + pt4.z) * 0.25;
 
+            // Нормаль панели в системе камеры: panelNormL живёт в базисе (Forward, Up)
+            const nrm = camFwd && camUp ? {
+                x: camFwd.x * panelNormL.x + camUp.x * panelNormL.y,
+                y: camFwd.y * panelNormL.x + camUp.y * panelNormL.y,
+                z: camFwd.z * panelNormL.x + camUp.z * panelNormL.y
+            } : { x: 0, y: 0, z: -1 };
+            // nrm.z > 0 — камера видит тыльную (графитовую) сторону крыла
+            const isBackside = nrm.z > 0;
+            const litDot = camSun ? (nrm.x * camSun.x + nrm.y * camSun.y + nrm.z * camSun.z) : 1;
+            const isLit = !this.inEclipse && litDot > 0.05;
+
             this.renderQueue.push({
                 depth: avgDepth,
                 render: (ctx) => {
@@ -1324,10 +1687,20 @@ export class IssStationEngine {
                     ctx.lineTo(pt4.x, pt4.y);
                     ctx.closePath();
 
-                    const isSunFacing = !this.inEclipse && this.sunDotProduct > 0.15;
+                    const isSunFacing = isLit && !isBackside && this.sunDotProduct > 0.15;
                     const baseAlpha = 0.92;
 
-                    if (this.isTexturesReady && this.solarPanelTex) {
+                    if (isBackside) {
+                        // Тыльная сторона: серо-графитовое покрытие с гофром
+                        const backGrad = ctx.createLinearGradient(pt1.x, pt1.y, pt3.x, pt3.y);
+                        backGrad.addColorStop(0, '#3f4652');
+                        backGrad.addColorStop(0.45, '#565f6d');
+                        backGrad.addColorStop(0.75, '#454d59');
+                        backGrad.addColorStop(1, '#333a45');
+                        ctx.fillStyle = backGrad;
+                        ctx.globalAlpha = baseAlpha;
+                        ctx.fill();
+                    } else if (this.isTexturesReady && this.solarPanelTex) {
                         // Паттерн кэшируется: createPattern на каждый кадр для 8 крыльев
                         // давал ~480 аллокаций в секунду и заметные просадки FPS.
                         if (!this._solarPattern) {
@@ -1337,21 +1710,59 @@ export class IssStationEngine {
                         ctx.globalAlpha = baseAlpha;
                         ctx.fill();
                     } else {
-                        ctx.fillStyle = isSunFacing ? '#0f274a' : '#1e293b';
+                        ctx.fillStyle = isSunFacing ? '#4a2c0a' : '#29211a';
                         ctx.fill();
+                    }
+
+                    if (isBackside) {
+                        // Гофр тыльной стороны: полосы вдоль мачты
+                        ctx.save();
+                        ctx.clip();
+                        ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+                        ctx.lineWidth = Math.max(0.5, 0.8 * this.screenScale);
+                        const ribSteps = 7;
+                        for (let r = 1; r < ribSteps; r++) {
+                            const t = r / ribSteps;
+                            const rX1 = pt1.x + (pt4.x - pt1.x) * t;
+                            const rY1 = pt1.y + (pt4.y - pt1.y) * t;
+                            const rX2 = pt2.x + (pt3.x - pt2.x) * t;
+                            const rY2 = pt2.y + (pt3.y - pt2.y) * t;
+                            ctx.beginPath();
+                            ctx.moveTo(rX1, rY1);
+                            ctx.lineTo(rX2, rY2);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
                     }
 
                     if (isSunFacing) {
+                        // Солнечный терминатор: блик по вектору Солнца в экранных координатах
                         const sunGlint = ctx.createLinearGradient(pt1.x, pt1.y, pt3.x, pt3.y);
-                        sunGlint.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
-                        sunGlint.addColorStop(0.5, 'rgba(251, 191, 36, 0.45)');
-                        sunGlint.addColorStop(1, 'rgba(14, 165, 233, 0.2)');
+                        sunGlint.addColorStop(0, 'rgba(254, 240, 138, 0.42)');
+                        sunGlint.addColorStop(0.5, 'rgba(251, 191, 36, 0.5)');
+                        sunGlint.addColorStop(1, 'rgba(217, 119, 6, 0.16)');
                         ctx.fillStyle = sunGlint;
                         ctx.globalAlpha = 0.65;
                         ctx.fill();
+
+                        // Деликатный specular-glint: полоса вдоль направления Солнца на экране
+                        const glintAxisX = camSun.x * wingLength * this.screenScale * 0.5;
+                        const glintAxisY = camSun.y * wingLength * this.screenScale * 0.5;
+                        const midX = (pt1.x + pt3.x) * 0.5;
+                        const midY = (pt1.y + pt3.y) * 0.5;
+                        const glintGrad = ctx.createLinearGradient(
+                            midX - glintAxisX * 0.4, midY - glintAxisY * 0.4,
+                            midX + glintAxisX * 0.4, midY + glintAxisY * 0.4
+                        );
+                        glintGrad.addColorStop(0, 'rgba(255, 255, 240, 0)');
+                        glintGrad.addColorStop(0.5, `rgba(255, 253, 235, ${0.18 + this.sunDotProduct * 0.22})`);
+                        glintGrad.addColorStop(1, 'rgba(255, 255, 240, 0)');
+                        ctx.fillStyle = glintGrad;
+                        ctx.globalAlpha = 0.8;
+                        ctx.fill();
                     }
 
-                    ctx.strokeStyle = isSunFacing ? 'rgba(245, 158, 11, 0.85)' : 'rgba(100, 116, 139, 0.6)';
+                    ctx.strokeStyle = isSunFacing ? 'rgba(217, 119, 6, 0.9)' : 'rgba(100, 116, 139, 0.6)';
                     ctx.lineWidth = Math.max(0.8, 1.2 * this.screenScale);
                     ctx.stroke();
 
@@ -1417,6 +1828,22 @@ export class IssStationEngine {
                         ctx.fillStyle = '#f1f5f9';
                     }
                     ctx.fill();
+
+                    // Солнечный шейдинг: освещённый край + голубой земляной отсвет снизу
+                    if (camSun && (Math.abs(camSun.x) + Math.abs(camSun.y)) > 0.05) {
+                        const cxm = (p1.x + p3.x) * 0.5;
+                        const cym = (p1.y + p3.y) * 0.5;
+                        const sunLen = Math.hypot(camSun.x, camSun.y) || 1;
+                        const shadeGrad = ctx.createLinearGradient(
+                            cxm - (camSun.x / sunLen) * 18, cym + (camSun.y / sunLen) * 18,
+                            cxm + (camSun.x / sunLen) * 18, cym - (camSun.y / sunLen) * 18
+                        );
+                        shadeGrad.addColorStop(0, 'rgba(255, 255, 250, 0.22)');
+                        shadeGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+                        shadeGrad.addColorStop(1, 'rgba(96, 130, 180, 0.20)');
+                        ctx.fillStyle = shadeGrad;
+                        ctx.fill();
+                    }
 
                     ctx.strokeStyle = '#94a3b8';
                     ctx.lineWidth = Math.max(0.6, 1.0 * this.screenScale);
@@ -1526,19 +1953,38 @@ export class IssStationEngine {
                 depth: midZ,
                 render: (ctx) => {
                     const screenR = Math.max(2.2, mod.radius * this.screenScale);
+                    const fineMod = this.lodLevel <= 1 && screenR > 4.5;
 
-                    const modGrad = ctx.createLinearGradient(p1.x, p1.y - screenR, p1.x, p1.y + screenR);
+                    // Цилиндрический шейдинг: градиент по нормали, развёрнутый к Солнцу сцены
+                    const axX = p2.x - p1.x;
+                    const axY = p2.y - p1.y;
+                    const axLen = Math.hypot(axX, axY) || 1;
+                    let nx = -axY / axLen;
+                    let ny = axX / axLen;
+                    if (camSun && (nx * camSun.x + ny * camSun.y) < 0) {
+                        nx = -nx; ny = -ny; // нормаль — к освещённой стороне
+                    }
+                    const midX = (p1.x + p2.x) * 0.5;
+                    const midY = (p1.y + p2.y) * 0.5;
+
+                    const modGrad = ctx.createLinearGradient(
+                        midX - nx * screenR, midY - ny * screenR,
+                        midX + nx * screenR, midY + ny * screenR
+                    );
                     if (mod.hasGoldMLI) {
-                        modGrad.addColorStop(0, '#d97706');
-                        modGrad.addColorStop(0.35, '#fde68a');
-                        modGrad.addColorStop(0.7, '#b45309');
-                        modGrad.addColorStop(1, '#78350f');
+                        modGrad.addColorStop(0, '#78350f');
+                        modGrad.addColorStop(0.28, '#b45309');
+                        modGrad.addColorStop(0.46, mod.isDestiny ? '#ffffff' : '#fde68a');
+                        modGrad.addColorStop(0.62, '#d97706');
+                        modGrad.addColorStop(1, '#451a03');
                     } else {
-                        modGrad.addColorStop(0, '#64748b');
-                        modGrad.addColorStop(0.3, mod.color || '#e2e8f0');
-                        modGrad.addColorStop(0.5, '#ffffff');
-                        modGrad.addColorStop(0.85, '#94a3b8');
-                        modGrad.addColorStop(1, '#334155');
+                        const dark = '#334155';
+                        modGrad.addColorStop(0, dark);
+                        modGrad.addColorStop(0.26, mod.color || '#e2e8f0');
+                        modGrad.addColorStop(0.46, '#ffffff');
+                        modGrad.addColorStop(0.58, '#dbe3ec');
+                        modGrad.addColorStop(0.85, '#7c8ba1');
+                        modGrad.addColorStop(1, '#1e293b');
                     }
 
                     ctx.strokeStyle = modGrad;
@@ -1549,13 +1995,214 @@ export class IssStationEngine {
                     ctx.lineTo(p2.x, p2.y);
                     ctx.stroke();
 
-                    // Швы обшивки
-                    ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
-                    ctx.lineWidth = Math.max(0.6, 0.8 * this.screenScale);
+                    // Пер-модульное варьирование оттенка обшивки (детерминированное):
+                    // лёгкий белый/чёрный оверлей — модули не выглядят клонами
+                    let nameHash = 0;
+                    for (let ci = 0; ci < (mod.name || '').length; ci++) {
+                        nameHash += mod.name.charCodeAt(ci) * (ci + 3);
+                    }
+                    const tint = (nameHash % 7) - 3; // -3..+3
+                    if (tint !== 0) {
+                        ctx.strokeStyle = tint > 0
+                            ? `rgba(255, 255, 255, ${tint * 0.028})`
+                            : `rgba(4, 10, 22, ${-tint * 0.032})`;
+                        ctx.lineWidth = screenR * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+
+                    if (fineMod) {
+                        // Продольные стрингеры обечайки: тонкие тёмные линии вдоль оси
+                        ctx.save();
+                        ctx.lineWidth = Math.max(0.5, 0.65 * this.screenScale);
+                        const strOffsets = [-0.62, -0.32, 0.32, 0.62];
+                        for (const t of strOffsets) {
+                            const ox = nx * screenR * t;
+                            const oy = ny * screenR * t;
+                            // теневая сторона (t>0 → от Солнца), освещённая (t<0)
+                            ctx.strokeStyle = t > 0
+                                ? 'rgba(15, 23, 42, 0.38)'
+                                : 'rgba(255, 255, 255, 0.30)';
+                            ctx.beginPath();
+                            ctx.moveTo(p1.x + ox, p1.y + oy);
+                            ctx.lineTo(p2.x + ox, p2.y + oy);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+
+                        // Стыковочные ободы-переходы (торцевые сферы стыков)
+                        for (const ep of [p1, p2]) {
+                            const capGrad = ctx.createRadialGradient(
+                                ep.x - nx * screenR * 0.25, ep.y - ny * screenR * 0.25, screenR * 0.1,
+                                ep.x, ep.y, screenR * 1.02
+                            );
+                            capGrad.addColorStop(0, '#f8fafc');
+                            capGrad.addColorStop(0.6, '#cbd5e1');
+                            capGrad.addColorStop(1, '#475569');
+                            ctx.fillStyle = capGrad;
+                            ctx.beginPath();
+                            ctx.arc(ep.x, ep.y, screenR * 1.02, 0, Math.PI * 2);
+                            ctx.fill();
+                            // Тёмный стык (ambient occlusion) в месте сочленения модулей
+                            ctx.strokeStyle = 'rgba(10, 16, 30, 0.5)';
+                            ctx.lineWidth = Math.max(0.6, 0.8 * this.screenScale);
+                            ctx.stroke();
+                            // Внутренний обод стыковочного адаптера
+                            ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+                            ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
+                            ctx.beginPath();
+                            ctx.arc(ep.x, ep.y, screenR * 0.55, 0, Math.PI * 2);
+                            ctx.stroke();
+                            // Заклёпки по окружности стыковочного кольца
+                            if (screenR > 7) {
+                                ctx.fillStyle = 'rgba(226, 232, 240, 0.7)';
+                                const rivets = 10;
+                                for (let rv = 0; rv < rivets; rv++) {
+                                    const ra = (rv / rivets) * Math.PI * 2;
+                                    ctx.beginPath();
+                                    ctx.arc(
+                                        ep.x + Math.cos(ra) * screenR * 0.78,
+                                        ep.y + Math.sin(ra) * screenR * 0.78,
+                                        Math.max(0.4, screenR * 0.055),
+                                        0, Math.PI * 2
+                                    );
+                                    ctx.fill();
+                                }
+                            }
+                        }
+
+                        // Тёмные иллюминаторы (окна на освещённо-боковой стороне)
+                        const winCount = Math.max(2, Math.min(4, Math.round(axLen / (screenR * 2.4))));
+                        ctx.fillStyle = 'rgba(10, 18, 34, 0.85)';
+                        for (let wi = 0; wi < winCount; wi++) {
+                            const wt = (wi + 1) / (winCount + 1);
+                            const wx = p1.x + axX * wt + nx * screenR * 0.28;
+                            const wy = p1.y + axY * wt + ny * screenR * 0.28;
+                            ctx.beginPath();
+                            ctx.arc(wx, wy, Math.max(0.8, screenR * 0.14), 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+
+                        // Английская маркировка-декаль (только при крупном размере на экране)
+                        if (screenR > 11 && mod.name) {
+                            const decal = mod.name.split('_')[0].toUpperCase();
+                            ctx.save();
+                            ctx.translate(midX, midY);
+                            ctx.rotate(Math.atan2(axY, axX));
+                            ctx.font = `${Math.max(5, screenR * 0.55)}px "JetBrains Mono", monospace`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = 'rgba(30, 41, 59, 0.55)';
+                            ctx.fillText(decal, 0, 0);
+                            ctx.restore();
+                        }
+
+                        // Солнечные «жалюзи» на российских модулях (Звезда / Заря):
+                        // чередующиеся светлые/тёмные полоски поперёк обечайки
+                        if (mod.hasSolar || mod.hasGoldMLI) {
+                            const lvCount = 5;
+                            ctx.lineWidth = Math.max(0.5, 0.7 * this.screenScale);
+                            for (let lv = 0; lv < lvCount; lv++) {
+                                const lt = 0.2 + (lv / (lvCount - 1)) * 0.58;
+                                const lx = p1.x + axX * lt;
+                                const ly = p1.y + axY * lt;
+                                const half = screenR * 0.85;
+                                ctx.strokeStyle = lv % 2 === 0
+                                    ? 'rgba(180, 140, 60, 0.5)'
+                                    : 'rgba(30, 41, 59, 0.5)';
+                                ctx.beginPath();
+                                ctx.moveTo(lx + nx * half, ly + ny * half);
+                                ctx.lineTo(lx - nx * half, ly - ny * half);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // Малые антенные тарелки (Звезда и Destiny)
+                        if (mod.name === 'Zvezda' || mod.name === 'Destiny_Lab') {
+                            const dishT = mod.name === 'Zvezda' ? 0.72 : 0.42;
+                            const dishBase = project(
+                                mod.x1 + (mod.x2 - mod.x1) * dishT, offY, offZ
+                            );
+                            const dishTop = project(
+                                mod.x1 + (mod.x2 - mod.x1) * dishT,
+                                offY + mod.radius + 2.4, offZ
+                            );
+                            if (dishBase && dishTop) {
+                                ctx.strokeStyle = '#94a3b8';
+                                ctx.lineWidth = Math.max(0.5, 0.7 * this.screenScale);
+                                ctx.beginPath();
+                                ctx.moveTo(dishBase.x, dishBase.y);
+                                ctx.lineTo(dishTop.x, dishTop.y);
+                                ctx.stroke();
+                                // Зеркало тарелки: наклонный эллипс с тёмной кромкой
+                                const dishR = Math.max(1.2, 2.0 * this.screenScale);
+                                ctx.fillStyle = '#cbd5e1';
+                                ctx.beginPath();
+                                ctx.ellipse(dishTop.x, dishTop.y, dishR, dishR * 0.55, 0.5, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.strokeStyle = 'rgba(15, 23, 42, 0.5)';
+                                ctx.lineWidth = Math.max(0.4, 0.5 * this.screenScale);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // Активный Курс-антенный комплекс на кормовом стыковочном узле
+                        // Звезды (штурмовой порт Прогресса): торчащие штыревые антенны
+                        if (mod.name === 'Zvezda') {
+                            const kursBase = project(mod.x1 + 1.2, offY, offZ);
+                            if (kursBase) {
+                                const kursProngs = [
+                                    { dy: 2.6, dz: 1.6 },
+                                    { dy: 1.6, dz: -2.4 },
+                                    { dy: 0.3, dz: 3.2 }
+                                ];
+                                ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
+                                for (const pr of kursProngs) {
+                                    const kp = project(mod.x1 - 2.4, offY + pr.dy, offZ + pr.dz);
+                                    if (!kp) continue;
+                                    ctx.strokeStyle = '#e2e8f0';
+                                    ctx.beginPath();
+                                    ctx.moveTo(kursBase.x, kursBase.y);
+                                    ctx.lineTo(kp.x, kp.y);
+                                    ctx.stroke();
+                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                                    ctx.beginPath();
+                                    ctx.arc(kp.x, kp.y, Math.max(0.5, 0.8 * this.screenScale), 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    }
+
+                    // Земной rim-light: холодный голубой отблеск снизу (отражение от Земли)
+                    const rimGrad = ctx.createLinearGradient(
+                        midX, midY + screenR * 0.55, midX, midY + screenR * 1.15
+                    );
+                    rimGrad.addColorStop(0, 'rgba(147, 197, 253, 0.22)');
+                    rimGrad.addColorStop(1, 'rgba(147, 197, 253, 0)');
+                    ctx.strokeStyle = rimGrad;
+                    ctx.lineWidth = screenR * 0.6;
                     ctx.beginPath();
-                    ctx.moveTo((p1.x + p2.x) * 0.5, (p1.y + p2.y) * 0.5 - screenR);
-                    ctx.lineTo((p1.x + p2.x) * 0.5, (p1.y + p2.y) * 0.5 + screenR);
+                    ctx.moveTo(p1.x, p1.y + screenR * 0.82);
+                    ctx.lineTo(p2.x, p2.y + screenR * 0.82);
                     ctx.stroke();
+
+                    // Солнечный терминатор: бликовая дуга на освещённой стороне цилиндра
+                    if (camSun && (Math.abs(camSun.x) + Math.abs(camSun.y)) > 0.05) {
+                        const sunLen = Math.hypot(camSun.x, camSun.y) || 1;
+                        const hx = (p1.x + p2.x) * 0.5 + (camSun.x / sunLen) * screenR * 0.55;
+                        const hy = (p1.y + p2.y) * 0.5 - (camSun.y / sunLen) * screenR * 0.55;
+                        const termGlow = ctx.createRadialGradient(hx, hy, 0, hx, hy, screenR * 0.9);
+                        termGlow.addColorStop(0, 'rgba(255, 253, 245, 0.55)');
+                        termGlow.addColorStop(0.6, 'rgba(255, 248, 230, 0.18)');
+                        termGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                        ctx.fillStyle = termGlow;
+                        ctx.beginPath();
+                        ctx.arc(hx, hy, screenR * 0.9, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
 
                     // Модуль Cupola: иллюминаторы смотрят прямо на Землю в надир
                     if (mod.isCupola) {
@@ -1681,42 +2328,127 @@ export class IssStationEngine {
      * Построение манипулятора Canadarm2 (SSRMS)
      */
     queueCanadarm2(project, camSun) {
-        const base = project(18, 6.5, -3.5);
-        const elbow = project(24, 14.5, -9.5);
-        const tip = project(30, 8.0, -14.0);
+        // Сегментированный SSRMS: база → плечо → локоть → предплечье → кисть → захваты LEE
+        const joints = [
+            project(18, 6.5, -3.5),   // основание (Payload Orbital Replacement Unit)
+            project(20.5, 10.5, -6.5), // верхнее плечо (shoulder pitch/yaw)
+            project(24, 14.5, -9.5),  // локоть (elbow joint)
+            project(27.5, 11.0, -12.0), // нижняя рука
+            project(30, 8.0, -14.0),  // кисть (wrist) + LEE tip
+            project(32, 5.5, -15.5)   // наконечник-захват (orbiter LEE)
+        ].filter(Boolean);
 
-        if (base && elbow && tip) {
-            this.renderQueue.push({
-                depth: elbow.z,
-                render: (ctx) => {
-                    ctx.strokeStyle = '#f8fafc';
-                    ctx.lineWidth = Math.max(1.0, 1.6 * this.screenScale);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
+        if (joints.length < 2) return;
 
+        this.renderQueue.push({
+            depth: joints[2].z,
+            render: (ctx) => {
+                const segW = Math.max(1.2, 1.9 * this.screenScale);
+                const jointR = Math.max(1.3, 2.1 * this.screenScale);
+
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Сегменты: тёмно-серый титановый корпус со светлой световой гранью
+                for (let s = 0; s < joints.length - 1; s++) {
+                    const a = joints[s];
+                    const b = joints[s + 1];
+
+                    // Основной корпус сегмента
+                    ctx.strokeStyle = '#4b5563';
+                    ctx.lineWidth = segW;
                     ctx.beginPath();
-                    ctx.moveTo(base.x, base.y);
-                    ctx.lineTo(elbow.x, elbow.y);
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
                     ctx.stroke();
 
-                    ctx.fillStyle = '#38bdf8';
-                    ctx.beginPath();
-                    ctx.arc(elbow.x, elbow.y, Math.max(1.2, 2.0 * this.screenScale), 0, Math.PI * 2);
-                    ctx.fill();
+                    // Солнечная грань (rim-light от camSun) — тонкая светлая линия
+                    if (camSun && (Math.abs(camSun.x) + Math.abs(camSun.y)) > 0.05) {
+                        const segLen = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                        const pnx = -(b.y - a.y) / segLen;
+                        const pny = (b.x - a.x) / segLen;
+                        const side = (pnx * camSun.x + pny * camSun.y) < 0 ? 1 : -1;
+                        ctx.strokeStyle = 'rgba(226, 232, 240, 0.65)';
+                        ctx.lineWidth = Math.max(0.5, segW * 0.32);
+                        ctx.beginPath();
+                        ctx.moveTo(a.x + pnx * side * segW * 0.45, a.y + pny * side * segW * 0.45);
+                        ctx.lineTo(b.x + pnx * side * segW * 0.45, b.y + pny * side * segW * 0.45);
+                        ctx.stroke();
+                    }
 
-                    ctx.strokeStyle = '#e2e8f0';
+                    // Сочленение: цилиндр-шарнир со светлыми торцами
+                    const jg = ctx.createRadialGradient(
+                        b.x - jointR * 0.3, b.y - jointR * 0.3, jointR * 0.1,
+                        b.x, b.y, jointR
+                    );
+                    jg.addColorStop(0, '#e2e8f0');
+                    jg.addColorStop(0.55, '#94a3b8');
+                    jg.addColorStop(1, '#334155');
+                    ctx.fillStyle = jg;
                     ctx.beginPath();
-                    ctx.moveTo(elbow.x, elbow.y);
-                    ctx.lineTo(tip.x, tip.y);
+                    ctx.arc(b.x, b.y, jointR, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(10, 16, 30, 0.55)';
+                    ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
                     ctx.stroke();
-
-                    ctx.fillStyle = '#f59e0b';
-                    ctx.beginPath();
-                    ctx.arc(tip.x, tip.y, Math.max(1.0, 1.5 * this.screenScale), 0, Math.PI * 2);
-                    ctx.fill();
                 }
-            });
-        }
+
+                // Кисть (wrist joint) — акцентный шарнир
+                const wrist = joints[4];
+                if (wrist) {
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.beginPath();
+                    ctx.arc(wrist.x, wrist.y, jointR * 1.15, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(10, 16, 30, 0.6)';
+                    ctx.lineWidth = Math.max(0.5, 0.6 * this.screenScale);
+                    ctx.stroke();
+                }
+
+                // Наконечник-захват LEE
+                const tip = joints[joints.length - 1];
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(tip.x, tip.y, Math.max(1.0, 1.5 * this.screenScale), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+
+    /**
+     * Деликатный specular-glint (аниморфный блик) при повороте панелей
+     * к Солнцу и камере — вспыхивает дважды за орбитальный виток.
+     */
+    renderSolarSpecularGlint(ctx, project) {
+        if (this.inEclipse) return;
+
+        // Фаза блика: максимум при зеркальном выравнивании панелей (дважды за виток)
+        const glintPhase = Math.pow(Math.max(0, Math.cos(this.betaAngle * 2.0)), 6.0);
+        if (glintPhase < 0.12) return;
+
+        const intensity = (glintPhase - 0.12) / 0.88;
+        const glintPt = project(0, this.betaAngle > 0 ? 22 : -22, 96);
+        if (!glintPt) return;
+
+        const streak = 14 * intensity * this.screenScale * 6;
+
+        // Аниморфная горизонтальная полоса
+        const streakGrad = ctx.createLinearGradient(glintPt.x - streak, glintPt.y, glintPt.x + streak, glintPt.y);
+        streakGrad.addColorStop(0, 'rgba(254, 240, 138, 0)');
+        streakGrad.addColorStop(0.5, `rgba(255, 255, 250, ${intensity * 0.75})`);
+        streakGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = streakGrad;
+        ctx.fillRect(glintPt.x - streak, glintPt.y - 1.2, streak * 2, 2.4);
+
+        // Ядро блика
+        const core = ctx.createRadialGradient(glintPt.x, glintPt.y, 0, glintPt.x, glintPt.y, 7 * intensity * this.screenScale * 4);
+        core.addColorStop(0, `rgba(255, 255, 255, ${intensity * 0.95})`);
+        core.addColorStop(0.35, `rgba(254, 240, 138, ${intensity * 0.6})`);
+        core.addColorStop(1, 'rgba(217, 119, 6, 0)');
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(glintPt.x, glintPt.y, 7 * intensity * this.screenScale * 4, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     /**

@@ -188,10 +188,10 @@ export class CelestialPlanetsEngine {
         };
 
         Promise.all([
-            loadImgBuffer('assets/textures/earth_day.jpg?v=4.1.0'),
-            loadImgBuffer('assets/textures/earth_night.png?v=4.1.0'),
-            loadImgBuffer('assets/textures/earth_clouds.png?v=4.1.0'),
-            loadImgBuffer('assets/textures/moon.jpg?v=4.1.0')
+            loadImgBuffer('assets/textures/earth_day.jpg?v=4.5.0'),
+            loadImgBuffer('assets/textures/earth_night.png?v=4.5.0'),
+            loadImgBuffer('assets/textures/earth_clouds.png?v=4.5.0'),
+            loadImgBuffer('assets/textures/moon.jpg?v=4.5.0')
         ]).then(([day, night, clouds, moon]) => {
             this.dayBuffer = day;
             this.nightBuffer = night;
@@ -659,7 +659,8 @@ export class CelestialPlanetsEngine {
                 y: eDist * Math.sin(ePitch),
                 z: eDist * Math.cos(ePitch) * Math.cos(eYaw)
             },
-            radius: 370,
+            radius: 700,   // синхронизировано с GL-сферой (space3d_gl.js) и EARTH_CONFIG
+            atmoRadius: 700 * 1.025,
             dist: eDist,
             coords: { ...this.earthCoords }
         };

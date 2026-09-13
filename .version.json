@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.1.0",
+    "version": "4.5.0",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-12T23:25:00+03:00",
-    "release_name": "AURORA 4.1.0 — Высокодетализированные 3D-модели спутников Земли, снижение скорости в 2 раза, физические орбитальные треки"
+    "commit_date": "2026-09-13T07:35:00+03:00",
+    "release_name": "AURORA 4.5.0 — Кинематографический прилет в 3D, космические шрифты с кириллицей (Tektur, Unbounded, Exo 2), гарантия печати буквы «Ю» и синхронизация roll камеры"
 }

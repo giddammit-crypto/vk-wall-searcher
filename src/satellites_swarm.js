@@ -19,8 +19,8 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
-import { EARTH_CONFIG, EARTH_CENTER } from './iss_station.js?v=4.1.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
+import { EARTH_CONFIG, EARTH_CENTER } from './iss_station.js?v=4.5.0';
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -246,20 +246,35 @@ export class SatellitesSwarmEngine {
         this.satellites = [];
         const count = 60;
 
-        // Базовый радиус: 730 px (над поверхностью Земли R=700 px)
+        // Кэш осей экваториальной системы (для пересчёта базиса при прецессии RAAN)
+        const tiltAx = EARTH_CONFIG.axialTiltDeg * DEG_TO_RAD;
+        this._axisBasis = {
+            nE: { x: 0, y: Math.cos(tiltAx), z: -Math.sin(tiltAx) },
+            xE: { x: 1, y: 0, z: 0 },
+            yE: { x: 0, y: -Math.sin(tiltAx), z: -Math.cos(tiltAx) }
+        };
+
+        // Базовый радиус: 790 px (запас 1.13x над поверхностью Земли R=700 px —
+        // спутники не цепляют диск и атмосферный лимб у горизонта)
         // Шаг разделения: 7.5 px между соседними сферическими оболочками
         // Скорость уменьшена ровно в 2 раза: 72 секунды на виток для низкой орбиты вместо 36 с!
-        const baseRadius = 730;
+        const baseRadius = 790;
         const deltaRadius = 7.5;
         const baseOmega = (2 * Math.PI) / 72.0;
 
+        // Наклонения, оптимизированные node-симуляцией видимости: 5 полярно-тяжёлых
+        // группировок (82-99°) + две средне-наклонные ленты (63-72°, 74-83°).
+        // Нормали полярных плоскостей близки к оси камера->Земля (22.5°) — спутники
+        // постоянно кружат над «верхним» полюсом орбиты, между камерой и планетой,
+        // и почти не выпадают за экран. Средняя видимость худших аппаратов растёт,
+        // а экстремальные экранные вылеты сокращаются в ~4 раза.
         const inclinationSets = [
-            51.6, 97.8, 63.4, 28.5, 82.5, 98.2, 53.0, 74.0, 45.0, 15.0,
-            90.0, 55.0, 64.8, 98.6, 35.0, 85.0, 51.6, 97.5, 63.4, 20.0,
-            56.0, 64.8, 55.0, 56.0, 55.0, 64.8, 55.0, 56.0, 40.0, 29.0,
-            51.6, 28.5, 98.0, 63.4, 82.5, 25.6, 97.5, 28.5, 51.6, 98.2,
-            53.2, 53.0, 87.9, 82.5, 53.0, 82.5, 87.9, 42.0, 86.4, 98.0,
-            97.6, 97.6, 97.4, 97.4, 64.8, 97.5, 97.4, 97.4, 97.5, 97.4
+            88, 99, 84, 64, 76, 93, 94, 89, 69, 81,
+            88, 97, 84, 64, 76, 93, 92, 89, 69, 81,
+            88, 95, 84, 64, 76, 93, 98, 89, 69, 81,
+            88, 93, 84, 64, 76, 93, 96, 89, 69, 81,
+            88, 99, 84, 64, 76, 93, 94, 89, 69, 81,
+            88, 97, 84, 64, 76, 93, 92, 89, 69, 81
         ];
 
         for (let i = 0; i < count; i++) {
@@ -323,6 +338,9 @@ export class SatellitesSwarmEngine {
                 omega,
                 incDeg,
                 raanDeg,
+                // Лёгкая прецессия RAAN (медленный дрейф узла, 0.02-0.06 °/с, знакопеременный):
+                // картина роя постепенно перетасовывается и не зацикливается скучно
+                raanDriftDegPerSec: (i % 2 === 0 ? 1 : -1) * (0.02 + ((i * 7) % 5) * 0.01),
                 phase: initialPhase,
                 pNode,
                 qNode,
@@ -748,7 +766,29 @@ export class SatellitesSwarmEngine {
 
             // Прирост фазы (строго по Кеплеровской орбите)
             sat.phase = (sat.phase + sat.omega * dt) % (2 * Math.PI);
-            sat.strobePulse = (sat.strobePulse + dt * sat.archetype.strobeRate * 4.0) % (Math.PI * 2);
+            // Период маячка ~2 с (короткая вспышка, 2π / (strobeRate * π))
+            sat.strobePulse = (sat.strobePulse + dt * sat.archetype.strobeRate * Math.PI) % (Math.PI * 2);
+
+            // Лёгкая прецессия узла: медленный дрейф RAAN + пересчёт орбитального базиса.
+            // 60 аппаратов * ~8 тригопераций — копейки для 60-120 FPS.
+            if (sat.raanDriftDegPerSec) {
+                sat.raanDeg = (sat.raanDeg + sat.raanDriftDegPerSec * dt + 360) % 360;
+                const ax = this._axisBasis;
+                const rr = sat.raanDeg * DEG_TO_RAD;
+                const ir = sat.incDeg * DEG_TO_RAD;
+                const cR = Math.cos(rr), sR = Math.sin(rr);
+                const cI = Math.cos(ir), sI = Math.sin(ir);
+                sat.pNode = {
+                    x: cR * ax.xE.x + sR * ax.yE.x,
+                    y: cR * ax.xE.y + sR * ax.yE.y,
+                    z: cR * ax.xE.z + sR * ax.yE.z
+                };
+                sat.qNode = {
+                    x: -sR * cI * ax.xE.x + cR * cI * ax.yE.x + sI * ax.nE.x,
+                    y: -sR * cI * ax.xE.y + cR * cI * ax.yE.y + sI * ax.nE.y,
+                    z: -sR * cI * ax.xE.z + cR * cI * ax.yE.z + sI * ax.nE.z
+                };
+            }
 
             const cosTh = Math.cos(sat.phase);
             const sinTh = Math.sin(sat.phase);
@@ -787,7 +827,9 @@ export class SatellitesSwarmEngine {
             sat.right.y /= rLen;
             sat.right.z /= rLen;
 
-            // Окклюзия сферой Земли
+            // Окклюзия сферой Земли: строго по ВИДИМОМУ диску (радиус 700, без
+            // коэффициента 0.98 — иначе спутники «прорастали» сквозь край диска
+            // в полосе 686..700 px позади планеты)
             const distToCam = Math.hypot(sat.worldPos.x, sat.worldPos.y, sat.worldPos.z) || 1;
             const rayDirX = sat.worldPos.x / distToCam;
             const rayDirY = sat.worldPos.y / distToCam;
@@ -796,7 +838,7 @@ export class SatellitesSwarmEngine {
             const tca = eCenter.x * rayDirX + eCenter.y * rayDirY + eCenter.z * rayDirZ;
             const eDistSq = eCenter.x * eCenter.x + eCenter.y * eCenter.y + eCenter.z * eCenter.z;
             const d2 = eDistSq - tca * tca;
-            const rEarthSq = (eRadius * 0.98) * (eRadius * 0.98);
+            const rEarthSq = eRadius * eRadius;
 
             sat.isOccluded = (tca > 0 && d2 < rEarthSq && distToCam > tca);
         }
@@ -840,6 +882,15 @@ export class SatellitesSwarmEngine {
             sat.screenX = cx + (x1 / z2) * fov;
             sat.screenY = cy - (y2 / z2) * fov;
             sat.screenScale = (fov / z2) * sat.archetype.scale;
+
+            // Экранный апогей-гвард: аппарат, пролетевший практически вплотную к камере
+            // (z2 < ~60 px), проецируется за тысячи пикселей от экрана и «улетает»
+            // с бешеной скоростью. Отсекаем такие сверхкрупные проходы — спутник
+            // честно скрыт Землёй или вне экрана, а не моргает гигантской тушей.
+            if (sat.screenScale > 14) {
+                sat.isVisible = false;
+                continue;
+            }
 
             if (sat.screenX < -100 || sat.screenX > w + 100 || sat.screenY < -100 || sat.screenY > h + 100) {
                 sat.isVisible = false;
@@ -922,11 +973,16 @@ export class SatellitesSwarmEngine {
     }
 
     /**
-     * Полноценный полигональный 3D рендерер спутника с затенением и ориентацией
+     * Полноценный полигональный 3D рендерер спутника с затенением и ориентацией.
+     * Материалы: фасеточный металлический шейдинг (градиент по граням вдоль
+     * экранного вектора Солнца), gold-foil с морщинами, ячеистые панели,
+     * голубой rim-light снизу (отражение Земли).
      */
     render3DSatellite(ctx, sat, cosYaw, sinYaw, cosPitch, sinPitch, fov, cx, cy, isHighlighted) {
         const arch = sat.archetype;
         const scale = Math.max(0.65, sat.screenScale);
+        const s = scale * 1.8; // Базовый размер узлов
+        const t = arch.type;
 
         // Функция трансформации локальной вершины (T, U, R) в экранные координаты (px, py, z)
         const projectLocal = (lx, ly, lz) => {
@@ -952,114 +1008,292 @@ export class SatellitesSwarmEngine {
         // Расчет ориентации панелей к Солнцу (Sun tracking)
         const sunDot = Math.max(0.2, (sat.forward.x * SUN_NORMALIZED.x + sat.forward.y * SUN_NORMALIZED.y + sat.forward.z * SUN_NORMALIZED.z));
 
+        // ================================================================
+        // LOD (Level of Detail) с плавным cross-fade: между 0.55 и 0.95
+        // screenScale силуэт LOD растворяется, detail-модель проявляется.
+        // ================================================================
+        let detailAlpha = 1;
+        if (!isHighlighted) {
+            if (sat.screenScale < 0.55) {
+                this.renderSatelliteLOD(ctx, sat, projectLocal, 0, sunDot, 1);
+                return;
+            }
+            if (sat.screenScale < 0.95) {
+                detailAlpha = Math.max(0, Math.min(1, (sat.screenScale - 0.55) / 0.4));
+                this.renderSatelliteLOD(ctx, sat, projectLocal, 1, sunDot, 1 - detailAlpha);
+            }
+        }
+
         ctx.save();
+        ctx.globalAlpha = detailAlpha;
 
-        // 1. Отрисовка 3D граней корпуса в зависимости от архетипа
-        const s = scale * 1.8; // Базовый размер узлов
+        // Экранный вектор Солнца (согласован с камерой сцены, как camSun в iss_station)
+        const camSun = this.sunToCam(cosYaw, sinYaw, cosPitch, sinPitch);
+        const sun2x = camSun.x;
+        const sun2y = -camSun.y; // экранная ось Y инвертирована
+
+        // Локальная нормаль -> мировая (коэффициенты по базису Forward/Up/Right)
+        const worldNormal = (fx, fy, fz) => ({
+            x: fx * sat.forward.x + fy * sat.up.x + fz * sat.right.x,
+            y: fx * sat.forward.y + fy * sat.up.y + fz * sat.right.y,
+            z: fx * sat.forward.z + fy * sat.up.z + fz * sat.right.z
+        });
+
         const polys = [];
+        let foilCounter = 0;
 
-        // Базовые размеры корпуса
-        const bw = s * 1.2;  // Длина по Forward
-        const bh = s * 1.0;  // Высота по Up
-        const bd = s * 1.0;  // Ширина по Right
-
-        // Геометрия параллелепипеда корпуса (6 граней)
-        const v = [
-            projectLocal(-bw, -bh, -bd), // 0
-            projectLocal( bw, -bh, -bd), // 1
-            projectLocal( bw,  bh, -bd), // 2
-            projectLocal(-bw,  bh, -bd), // 3
-            projectLocal(-bw, -bh,  bd), // 4
-            projectLocal( bw, -bh,  bd), // 5
-            projectLocal( bw,  bh,  bd), // 6
-            projectLocal(-bw,  bh,  bd)  // 7
-        ];
-
-        // Грани с расчетом освещения
-        const addFace = (idxArr, colBase, normalWorld) => {
-            let avgZ = 0;
-            for (let i = 0; i < idxArr.length; i++) avgZ += v[idxArr[i]].z;
-            avgZ /= idxArr.length;
-
-            // Диффузное освещение граней по закону Ламберта
-            const nDotL = Math.max(0.18, normalWorld.x * SUN_NORMALIZED.x + normalWorld.y * SUN_NORMALIZED.y + normalWorld.z * SUN_NORMALIZED.z);
-            polys.push({
-                pts: idxArr.map(i => v[i]),
-                color: isHighlighted ? '#ffffff' : this.shadeColor(colBase, nDotL),
-                borderColor: isHighlighted ? '#38bdf8' : 'rgba(255,255,255,0.25)',
-                z: avgZ
-            });
+        // Билинейная интерполяция по 4 углам квада (для декалей)
+        const quadPoint = (pts, u, v) => {
+            const ax = pts[0].x + (pts[1].x - pts[0].x) * u;
+            const ay = pts[0].y + (pts[1].y - pts[0].y) * u;
+            const bx = pts[3].x + (pts[2].x - pts[3].x) * u;
+            const by = pts[3].y + (pts[2].y - pts[3].y) * u;
+            return { x: ax + (bx - ax) * v, y: ay + (by - ay) * v };
         };
 
-        // Корпус: передняя, задняя, верхняя, нижняя, левая, правая грани
-        const busColor = isHighlighted ? '#ffffff' : (arch.type === 'COMMS_RELAY' || arch.type === 'NAVIGATION_GNSS' ? arch.goldFoil : arch.baseColor);
+        /**
+         * Добавить грань с фасеточным градиентным шейдингом по Солнцу
+         * + голубым rim-light от Земли на надирных гранях.
+         * opts: { shine: 0..1 — контраст хрома, decal: fn(ctx) — отрисовка после заливки }
+         */
+        const pushFace = (pts, col, normalWorld, opts = {}) => {
+            const n = normalWorld;
+            const nl = Math.hypot(n.x, n.y, n.z) || 1;
+            // Минимальный ambient ~0.30: теневые грани не проваливаются в чёрный
+            const lambert = Math.max(0.30, (n.x * SUN_NORMALIZED.x + n.y * SUN_NORMALIZED.y + n.z * SUN_NORMALIZED.z) / nl);
+            const rim = Math.max(0, -(n.x * sat.up.x + n.y * sat.up.y + n.z * sat.up.z));
 
-        addFace([0, 1, 2, 3], busColor, { x: -sat.right.x, y: -sat.right.y, z: -sat.right.z }); // Лево
-        addFace([4, 5, 6, 7], busColor, { x:  sat.right.x, y:  sat.right.y, z:  sat.right.z }); // Право
-        addFace([1, 5, 6, 2], busColor, sat.forward);                                           // Перед (нос)
-        addFace([0, 4, 7, 3], busColor, { x: -sat.forward.x, y: -sat.forward.y, z: -sat.forward.z }); // Зад
-        addFace([3, 2, 6, 7], busColor, sat.up);                                                // Верх (зенит)
-        addFace([0, 1, 5, 4], busColor, { x: -sat.up.x, y: -sat.up.y, z: -sat.up.z });         // Низ (надир к Земле)
+            let cz = 0, ccx = 0, ccy = 0;
+            for (let i = 0; i < pts.length; i++) { cz += pts[i].z; ccx += pts[i].x; ccy += pts[i].y; }
+            const inv = 1 / pts.length;
+            cz *= inv; ccx *= inv; ccy *= inv;
 
-        // 2. 3D Солнечные панели (SAW wings)
-        const wingSpan = s * 4.2;
-        const wingChord = s * 1.6;
-        const wingYOffset = 0;
-
-        // Правое крыло (по +Right)
-        const pw0 = projectLocal(-wingChord * 0.5, wingYOffset - s * 0.1,  bd + s * 0.4);
-        const pw1 = projectLocal( wingChord * 0.5, wingYOffset - s * 0.1,  bd + s * 0.4);
-        const pw2 = projectLocal( wingChord * 0.5, wingYOffset + s * 0.1,  bd + wingSpan);
-        const pw3 = projectLocal(-wingChord * 0.5, wingYOffset + s * 0.1,  bd + wingSpan);
-
-        polys.push({
-            pts: [pw0, pw1, pw2, pw3],
-            color: arch.panelColor,
-            borderColor: '#38bdf8',
-            z: (pw0.z + pw1.z + pw2.z + pw3.z) * 0.25
-        });
-
-        // Левое крыло (по -Right)
-        const lw0 = projectLocal(-wingChord * 0.5, wingYOffset - s * 0.1, -bd - s * 0.4);
-        const lw1 = projectLocal( wingChord * 0.5, wingYOffset - s * 0.1, -bd - s * 0.4);
-        const lw2 = projectLocal( wingChord * 0.5, wingYOffset + s * 0.1, -bd - wingSpan);
-        const lw3 = projectLocal(-wingChord * 0.5, wingYOffset + s * 0.1, -bd - wingSpan);
-
-        polys.push({
-            pts: [lw0, lw1, lw2, lw3],
-            color: arch.panelColor,
-            borderColor: '#38bdf8',
-            z: (lw0.z + lw1.z + lw2.z + lw3.z) * 0.25
-        });
-
-        // 3. Специфические элементы архетипов (Антенны, радары, оптические тубусы)
-        if (arch.hasDish) {
-            // Параболическое зеркало антенны, смотрящее в сторону Земли (надир)
-            const dishCenter = projectLocal(0, -bh - s * 0.7, 0);
-            const dR = s * 1.2;
-            const dPts = [];
-            const dSegments = 8;
-            for (let k = 0; k < dSegments; k++) {
-                const ang = (k / dSegments) * Math.PI * 2;
-                dPts.push(projectLocal(Math.cos(ang) * dR, -bh - s * 0.9, Math.sin(ang) * dR));
+            const shine = opts.shine || 0;
+            const poly = {
+                pts,
+                z: cz,
+                // Тонкая светлая обводка ребра фасета — грань читается объёмом
+                borderColor: isHighlighted ? '#38bdf8' : 'rgba(255,255,255,0.35)',
+                decal: opts.decal || null
+            };
+            // Gold-foil: крошечные морщины-штрихи на «горячих» гранях при крупном зуме
+            if (!poly.decal && opts.foil && scale >= 1.8 && !isHighlighted) {
+                const rng = this.makeRng(sat.index * 17 + foilCounter++ * 13 + 5);
+                poly.decal = (c, fp) => {
+                    c.strokeStyle = 'rgba(120, 68, 8, 0.32)';
+                    c.lineWidth = 0.7;
+                    for (let i = 0; i < 4; i++) {
+                        const u = 0.15 + rng() * 0.7, v = 0.15 + rng() * 0.7;
+                        const du = (rng() - 0.5) * 0.16, dv = (rng() - 0.5) * 0.16;
+                        const a = quadPoint(fp, u - du, v - dv);
+                        const b = quadPoint(fp, u + du, v + dv);
+                        c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+                    }
+                };
             }
-            polys.push({
-                pts: dPts,
-                color: '#ffffff',
-                borderColor: '#cbd5e1',
-                z: dishCenter.z
-            });
+            if (isHighlighted) {
+                poly.color = '#ffffff';
+            } else {
+                const g = ctx.createLinearGradient(
+                    ccx - sun2x * s, ccy - sun2y * s,
+                    ccx + sun2x * s, ccy + sun2y * s
+                );
+                g.addColorStop(0, this.faceColor(col, lambert * (1.3 + 0.45 * shine) + 0.18, rim));
+                g.addColorStop(1, this.faceColor(col, lambert * 0.55 + 0.16, rim * 0.6));
+                poly.color = g;
+            }
+            polys.push(poly);
+            return poly;
+        };
+
+        /**
+         * Корпус-параллелепипед: 6 граней с индивидуальным освещением.
+         */
+        const pushBox = (bw, bh, bd, col, opts = {}) => {
+            const v = [
+                projectLocal(-bw, -bh, -bd), projectLocal(bw, -bh, -bd),
+                projectLocal(bw,  bh, -bd), projectLocal(-bw,  bh, -bd),
+                projectLocal(-bw, -bh,  bd), projectLocal(bw, -bh,  bd),
+                projectLocal(bw,  bh,  bd), projectLocal(-bw,  bh,  bd)
+            ];
+            pushFace([v[0], v[1], v[2], v[3]], col, worldNormal(0, 0, -1), opts); // Лево
+            pushFace([v[4], v[5], v[6], v[7]], col, worldNormal(0, 0, 1), opts);  // Право
+            pushFace([v[1], v[5], v[6], v[2]], col, worldNormal(1, 0, 0), opts);  // Нос
+            pushFace([v[0], v[4], v[7], v[3]], col, worldNormal(-1, 0, 0), opts); // Корма
+            pushFace([v[3], v[2], v[6], v[7]], col, worldNormal(0, 1, 0), opts);  // Зенит
+            pushFace([v[0], v[1], v[5], v[4]], col, worldNormal(0, -1, 0), opts); // Надир
+        };
+
+        /**
+         * Цилиндрический корпус (8-гранная призма) — метео/научные аппараты.
+         */
+        const pushCylinder = (bw, rad, col, opts = {}) => {
+            const segs = 8;
+            for (let k = 0; k < segs; k++) {
+                const a0 = (k / segs) * Math.PI * 2;
+                const a1 = ((k + 1) / segs) * Math.PI * 2;
+                const y0 = Math.cos(a0) * rad, z0 = Math.sin(a0) * rad;
+                const y1 = Math.cos(a1) * rad, z1 = Math.sin(a1) * rad;
+                const am = (a0 + a1) * 0.5;
+                pushFace(
+                    [projectLocal(-bw, y0, z0), projectLocal(bw, y0, z0),
+                     projectLocal(bw, y1, z1), projectLocal(-bw, y1, z1)],
+                    col, worldNormal(0, Math.cos(am), Math.sin(am)), opts
+                );
+            }
+            // Носовая крышка
+            const cap = [];
+            for (let k = 0; k < segs; k++) {
+                const a = (k / segs) * Math.PI * 2;
+                cap.push(projectLocal(bw, Math.cos(a) * rad, Math.sin(a) * rad));
+            }
+            pushFace(cap, col, worldNormal(1, 0, 0), opts);
+        };
+
+        /**
+         * Солнечная панель-крыло: градиент + ячеистая текстура со случайными
+         * тёмными ячейками (только при крупном экранном размере).
+         */
+        let wingCounter = 0;
+        const pushWing = (aLocal, bLocal, dLocal, halfChord, col, opts = {}) => {
+            const d = dLocal;
+            const c0 = projectLocal(aLocal[0] + d[0] * halfChord, aLocal[1] + d[1] * halfChord, aLocal[2] + d[2] * halfChord);
+            const c1 = projectLocal(bLocal[0] + d[0] * halfChord, bLocal[1] + d[1] * halfChord, bLocal[2] + d[2] * halfChord);
+            const c2 = projectLocal(bLocal[0] - d[0] * halfChord, bLocal[1] - d[1] * halfChord, bLocal[2] - d[2] * halfChord);
+            const c3 = projectLocal(aLocal[0] - d[0] * halfChord, aLocal[1] - d[1] * halfChord, aLocal[2] - d[2] * halfChord);
+            const pts = [c0, c1, c2, c3];
+
+            // Нормаль: cross(b-a, d) в локальном базисе
+            const ex = bLocal[0] - aLocal[0], ey = bLocal[1] - aLocal[1], ez = bLocal[2] - aLocal[2];
+            const nx = ey * d[2] - ez * d[1];
+            const ny = ez * d[0] - ex * d[2];
+            const nz = ex * d[1] - ey * d[0];
+            const nLen = Math.hypot(nx, ny, nz) || 1;
+            const n = worldNormal(nx / nLen, ny / nLen, nz / nLen);
+
+            const seed = sat.index * 31 + wingCounter * 7 + 3;
+            wingCounter++;
+
+            const decal = (scale >= 0.8) ? (() => {
+                const rng = this.makeRng(seed);
+                const cols = opts.cells || 4;
+                return (c) => {
+                    c.strokeStyle = 'rgba(10, 26, 52, 0.7)';
+                    c.lineWidth = 0.7;
+                    for (let i = 1; i < cols; i++) {
+                        const p0 = quadPoint(pts, i / cols, 0), p1 = quadPoint(pts, i / cols, 1);
+                        c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
+                    }
+                    const p0 = quadPoint(pts, 0, 0.5), p1 = quadPoint(pts, 1, 0.5);
+                    c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
+                    // Случайные тёмные (деградировавшие) ячейки
+                    c.fillStyle = 'rgba(8, 16, 34, 0.65)';
+                    for (let k = 0; k < 2; k++) {
+                        const u0 = rng() * 0.75, v0 = rng() * 0.75;
+                        const du = 1 / cols, dv = 0.5;
+                        const q0 = quadPoint(pts, u0, v0), q1 = quadPoint(pts, u0 + du, v0);
+                        const q2 = quadPoint(pts, u0 + du, v0 + dv), q3 = quadPoint(pts, u0, v0 + dv);
+                        c.beginPath();
+                        c.moveTo(q0.x, q0.y); c.lineTo(q1.x, q1.y);
+                        c.lineTo(q2.x, q2.y); c.lineTo(q3.x, q3.y);
+                        c.closePath(); c.fill();
+                    }
+                };
+            })() : null;
+
+            return pushFace(pts, col, n, { decal });
+        };
+
+        /**
+         * Параболическая антенна-тарелка: эллипс с ободом, направлена в надир,
+         * с «рогом» облучателя на штанге.
+         */
+        const pushDish = (mountY, radius) => {
+            const dR = radius;
+            const rimPts = [];
+            for (let k = 0; k < 10; k++) {
+                const a = (k / 10) * Math.PI * 2;
+                rimPts.push(projectLocal(Math.cos(a) * dR, mountY - s * 0.45, Math.sin(a) * dR));
+            }
+            const poly = pushFace(rimPts, '#dfe6ee', worldNormal(0, -1, 0), { shine: 0.4 });
+            poly.borderColor = isHighlighted ? '#38bdf8' : '#9fb0c3';
+            poly.decal = (c) => {
+                // Рог облучателя: штанга от центра зеркала в надир + рупор
+                const f0 = projectLocal(0, mountY - s * 0.2, 0);
+                const f1 = projectLocal(0, mountY - s * 1.15, 0);
+                c.strokeStyle = isHighlighted ? 'rgba(191, 219, 254, 0.95)' : 'rgba(148, 163, 184, 0.9)';
+                c.lineWidth = Math.max(0.8, s * 0.13);
+                c.beginPath(); c.moveTo(f0.x, f0.y); c.lineTo(f1.x, f1.y); c.stroke();
+                c.fillStyle = '#e2e8f0';
+                c.beginPath(); c.arc(f1.x, f1.y, Math.max(1.0, s * 0.16), 0, Math.PI * 2); c.fill();
+            };
+            return poly;
+        };
+
+        // ================================================================
+        // ГЕОМЕТРИЯ ПО АРХЕТИПАМ
+        // ================================================================
+        const orbitPanelColor = this.panelColorForOrbit(sat.incDeg, arch.panelColor);
+        const GOLD_FOIL = '#d99a26';
+        let strobeTipLocal = [0, 0, s * 3.0];
+
+        if (t === 'CUBESAT_RESEARCH') {
+            // 1. Кубсат: хромированный бокс 3U с фасеточным блеском + панели-крылья
+            const bw = s * 1.5, bh = s * 0.55, bd = s * 0.55;
+            pushBox(bw, bh, bd, '#d3dae3', { shine: 0.85 });
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 2.4], [1, 0, 0], s * 0.5, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 2.4], [1, 0, 0], s * 0.5, orbitPanelColor);
+            strobeTipLocal = [0, 0, bd + s * 2.4];
+        } else if (t === 'COMMS_RELAY') {
+            // 2. Связной GEO: золотой foil-корпус + 2 больших золотых панели + тарелка в надир
+            const bw = s * 1.0, bh = s * 0.85, bd = s * 0.85;
+            const foilOpts = { shine: 0.3, foil: true };
+            pushBox(bw, bh, bd, GOLD_FOIL, foilOpts);
+            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 3.6], [1, 0, 0], s * 0.9, GOLD_FOIL, { cells: 3 });
+            pushWing([0, 0, -bd - s * 0.2], [0, 0, -bd - s * 3.6], [1, 0, 0], s * 0.9, GOLD_FOIL, { cells: 3 });
+            pushDish(-bh, s * 1.1);
+            strobeTipLocal = [0, 0, bd + s * 3.6];
+        } else if (t === 'EARTH_OBSERVATION') {
+            // 3. Развед-/обзорный SSO: вытянутый корпус + объектив-телескоп в надир + панели-паруса
+            const bw = s * 1.9, bh = s * 0.6, bd = s * 0.6;
+            pushBox(bw, bh, bd, '#3f4a58', { shine: 0.25 });
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.0], [1, 0, 0], s * 0.75, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.0], [1, 0, 0], s * 0.75, orbitPanelColor);
+            strobeTipLocal = [0, 0, bd + s * 3.0];
+        } else if (t === 'NAVIGATION_GNSS') {
+            // 4. Навигационный: корпус + 3 панели крест-накрест + антенны-решётки в надир
+            const bw = s * 1.0, bh = s * 0.9, bd = s * 0.9;
+            pushBox(bw, bh, bd, '#aeb7c2', { shine: 0.5 });
+            pushWing([0, 0,  bd + s * 0.2], [0, 0,  bd + s * 2.6], [1, 0, 0], s * 0.6, orbitPanelColor);
+            pushWing([ bw + s * 0.2, 0, 0], [ bw + s * 2.6, 0, 0], [0, 0, 1], s * 0.6, orbitPanelColor);
+            pushWing([-bw - s * 0.2, 0, 0], [-bw - s * 2.6, 0, 0], [0, 0, 1], s * 0.6, orbitPanelColor);
+            strobeTipLocal = [0, 0, bd + s * 2.6];
+        } else if (t === 'SPACE_TELESCOPE') {
+            // 5. Метео/научный: цилиндр с тарелкой и штангами приборов
+            const bw = s * 1.1, rad = s * 0.55;
+            pushCylinder(bw, rad, '#8a94a2', { shine: 0.45 });
+            pushWing([0, 0,  rad + s * 0.15], [0, 0,  rad + s * 2.7], [1, 0, 0], s * 0.65, orbitPanelColor);
+            pushWing([0, 0, -rad - s * 0.15], [0, 0, -rad - s * 2.7], [1, 0, 0], s * 0.65, orbitPanelColor);
+            pushDish(-rad, s * 0.95);
+            strobeTipLocal = [0, 0, rad + s * 2.7];
+        } else {
+            // MEGA_CONSTELLATION: плоская платформа с большими крыльями
+            const bw = s * 1.5, bh = s * 0.25, bd = s * 0.95;
+            pushBox(bw, bh, bd, '#3a4656', { shine: 0.35 });
+            pushWing([0, 0,  bd + s * 0.15], [0, 0,  bd + s * 3.3], [1, 0, 0], s * 1.0, orbitPanelColor);
+            pushWing([0, 0, -bd - s * 0.15], [0, 0, -bd - s * 3.3], [1, 0, 0], s * 1.0, orbitPanelColor);
+            strobeTipLocal = [0, 0, bd + s * 3.3];
         }
 
         // Глубинная сортировка граней (Painter's algorithm: дальше -> ближе)
         polys.sort((a, b) => b.z - a.z);
 
-        // Отрисовка отсортированных граней
+        // Отрисовка отсортированных граней + декалей (ячейки, морщины, рог антенны)
         for (let p = 0; p < polys.length; p++) {
             const poly = polys[p];
             ctx.fillStyle = poly.color;
             ctx.strokeStyle = poly.borderColor;
-            ctx.lineWidth = 0.8;
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(poly.pts[0].x, poly.pts[0].y);
             for (let k = 1; k < poly.pts.length; k++) {
@@ -1068,13 +1302,96 @@ export class SatellitesSwarmEngine {
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
+            if (poly.decal) poly.decal(ctx, poly.pts);
         }
 
-        // 4. Плазменный факел ионного двигателя (для группировок типа Starlink / Сфера)
+        // ================================================================
+        // Специфические надстройки архетипов (поверх граней)
+        // ================================================================
+        if (t === 'EARTH_OBSERVATION') {
+            // Объектив-телескоп в надир: тёмное стекло со стеклянным блеском
+            const lc = projectLocal(0, -s * 0.62, 0);
+            const rl = Math.max(1.6, s * 0.42);
+            const lensGrad = ctx.createRadialGradient(
+                lc.x - rl * 0.35, lc.y - rl * 0.35, rl * 0.08,
+                lc.x, lc.y, rl
+            );
+            lensGrad.addColorStop(0, '#2a3a55');
+            lensGrad.addColorStop(0.55, '#0a1020');
+            lensGrad.addColorStop(1, '#030509');
+            ctx.fillStyle = lensGrad;
+            ctx.beginPath(); ctx.arc(lc.x, lc.y, rl, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#7c8aa0';
+            ctx.lineWidth = Math.max(0.7, s * 0.1);
+            ctx.stroke();
+            // Блик на стекле
+            ctx.strokeStyle = 'rgba(220, 235, 255, 0.7)';
+            ctx.lineWidth = Math.max(0.6, rl * 0.16);
+            ctx.beginPath();
+            ctx.arc(lc.x, lc.y, rl * 0.55, Math.PI * 1.05, Math.PI * 1.55);
+            ctx.stroke();
+        }
+
+        if (t === 'NAVIGATION_GNSS') {
+            // Тонкие антенны-решётки в надир (фазированная решётка)
+            const arrColor = isHighlighted ? 'rgba(191, 219, 254, 0.95)' : 'rgba(203, 213, 225, 0.85)';
+            for (let k = -1; k <= 1; k++) {
+                const b = projectLocal(k * s * 0.45, -s * 0.9, 0);
+                const tp = projectLocal(k * s * 0.45, -s * 0.9 - s * 1.0, 0);
+                ctx.strokeStyle = arrColor;
+                ctx.lineWidth = Math.max(0.6, s * 0.1);
+                ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
+                ctx.fillStyle = '#7dd3fc';
+                ctx.beginPath(); ctx.arc(tp.x, tp.y, Math.max(0.8, s * 0.11), 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        if (t === 'SPACE_TELESCOPE') {
+            // Штанги приборов по диагоналям с сенсорами на концах
+            const boomColor = isHighlighted ? 'rgba(191, 219, 254, 0.95)' : 'rgba(148, 163, 184, 0.85)';
+            const booms = [
+                [s * 0.4, s * 0.35, s * 0.3, s * 1.5, s * 0.9],
+                [-s * 0.4, -s * 0.35, -s * 0.3, -s * 1.5, -s * 0.9]
+            ];
+            for (let k = 0; k < booms.length; k++) {
+                const b = booms[k];
+                const p0 = projectLocal(b[0], b[1], b[2]);
+                const p1 = projectLocal(b[3], b[4] + s * 0.7, b[2]);
+                ctx.strokeStyle = boomColor;
+                ctx.lineWidth = Math.max(0.6, s * 0.1);
+                ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+                ctx.fillStyle = arch.strobeColor;
+                ctx.globalAlpha = 0.75;
+                ctx.beginPath(); ctx.arc(p1.x, p1.y, Math.max(0.8, s * 0.13), 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = detailAlpha;
+            }
+        }
+
+        // Антенна-палочка (whip antenna) в зенит — для компактных платформ
+        if (t === 'CUBESAT_RESEARCH' || t === 'MEGA_CONSTELLATION') {
+            const antBase = projectLocal(0, s * 0.6, 0);
+            const antTip = projectLocal(0, s * 0.6 + s * 2.0, 0);
+            if (antBase && antTip) {
+                ctx.strokeStyle = isHighlighted ? 'rgba(191, 219, 254, 0.95)' : 'rgba(203, 213, 225, 0.8)';
+                ctx.lineWidth = Math.max(0.7, s * 0.22);
+                ctx.beginPath();
+                ctx.moveTo(antBase.x, antBase.y);
+                ctx.lineTo(antTip.x, antTip.y);
+                ctx.stroke();
+                ctx.fillStyle = arch.strobeColor;
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(antTip.x, antTip.y, Math.max(0.9, s * 0.2), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = detailAlpha;
+            }
+        }
+
+        // Плазменный факел ионного двигателя (для группировок типа Starlink / Сфера)
         if (arch.hasIonPlume) {
-            const plumeTip = projectLocal(-bw - s * 2.4, 0, 0);
-            const plumeBase0 = projectLocal(-bw,  s * 0.3, 0);
-            const plumeBase1 = projectLocal(-bw, -s * 0.3, 0);
+            const plumeTip = projectLocal(-s * 1.5 - s * 2.4, 0, 0);
+            const plumeBase0 = projectLocal(-s * 1.5,  s * 0.3, 0);
+            const plumeBase1 = projectLocal(-s * 1.5, -s * 0.3, 0);
 
             const plumeGrad = ctx.createLinearGradient(plumeBase0.x, plumeBase0.y, plumeTip.x, plumeTip.y);
             plumeGrad.addColorStop(0, 'rgba(56, 189, 248, 0.9)');
@@ -1090,28 +1407,120 @@ export class SatellitesSwarmEngine {
             ctx.fill();
         }
 
-        // 5. Навигационный импульсный стробоскоп на конце крыла
-        const strobePos = pw2;
-        const pulse = Math.sin(sat.strobePulse);
-        if (pulse > 0.4 || isHighlighted) {
-            const strobeAlpha = isHighlighted ? 1.0 : (pulse - 0.4) / 0.6;
-            ctx.fillStyle = arch.strobeColor;
-            ctx.globalAlpha = strobeAlpha;
-            ctx.beginPath();
-            ctx.arc(strobePos.x, strobePos.y, s * 0.65 * (isHighlighted ? 2.2 : 1.3), 0, Math.PI * 2);
-            ctx.fill();
+        ctx.globalAlpha = 1.0;
 
-            const haloGrad = ctx.createRadialGradient(strobePos.x, strobePos.y, 0, strobePos.x, strobePos.y, s * 3.5);
-            haloGrad.addColorStop(0, arch.strobeColor);
-            haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = haloGrad;
-            ctx.beginPath();
-            ctx.arc(strobePos.x, strobePos.y, s * 3.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-        }
+        // Навигационный маячок: короткая вспышка раз в ~2 с, красный/зелёный
+        // габарит по чётности индекса (Port red / Starboard green), с glow
+        const strobePos = projectLocal(strobeTipLocal[0], strobeTipLocal[1], strobeTipLocal[2]);
+        const strobeColor = this.strobeColorForSatellite(sat, arch);
+        this.drawSatelliteStrobe(ctx, strobePos.x, strobePos.y, sat, strobeColor, s, isHighlighted);
 
         ctx.restore();
+    }
+
+    /**
+     * Цвет габаритного огня: красный/зелёный по чётности, архетипный для телескопов
+     */
+    strobeColorForSatellite(sat, arch) {
+        if (arch.type === 'SPACE_TELESCOPE') return arch.strobeColor;
+        return (sat.index % 2 === 0) ? '#22c55e' : '#ef4444';
+    }
+
+    /**
+     * Отрисовка маячка: короткая вспышка (~0.2 c) с радиальным glow,
+     * период ~2 c (задаётся strobePulse в update)
+     */
+    drawSatelliteStrobe(ctx, x, y, sat, color, s, isHighlighted) {
+        const cycleFrac = sat.strobePulse / (Math.PI * 2); // 0..1 за ~2 с
+        const flash = cycleFrac < 0.11;                    // короткая вспышка ~0.2 с
+        if (!flash && !isHighlighted) return;
+
+        const alpha = isHighlighted ? 1.0 : (flash ? Math.min(1, (0.11 - cycleFrac) / 0.06) : 0);
+        if (alpha <= 0) return;
+
+        const haloR = Math.max(3, s * (isHighlighted ? 5.5 : 3.5));
+        const haloGrad = ctx.createRadialGradient(x, y, 0, x, y, haloR);
+        haloGrad.addColorStop(0, color);
+        haloGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
+        haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = haloGrad;
+        ctx.beginPath();
+        ctx.arc(x, y, haloR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.8, s * 0.35), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    /**
+     * Цвет солнечных панелей по типу орбиты (наклонению):
+     * солнечно-синхронные (~97°) — глубокий синий,
+     * средне-наклонные LEO (50–96°) — васильковый,
+     * GEO/навигационные (<50°) — золотистый (GaAs-подложка).
+     */
+    panelColorForOrbit(incDeg, fallback) {
+        // Стальной тёмно-синий (не чёрный): читается на фоне космоса
+        if (incDeg >= 95) return '#1e3a5f';
+        if (incDeg >= 50) return '#0a5c94';
+        return '#c9861a';
+    }
+
+    /**
+     * LOD-спрайты: дешёвая отрисовка дальних/мелких спутников вместо
+     * полигональной модели (детали видны только при увеличении).
+     * lodLevel 0 — точка с блеском; 1 — точка + силуэт панелей.
+     */
+    renderSatelliteLOD(ctx, sat, projectLocal, lodLevel, sunDot, lodAlpha = 1) {
+        if (lodAlpha <= 0.01) return;
+        const arch = sat.archetype;
+        const s = Math.max(0.65, sat.screenScale) * 1.8;
+        const c = projectLocal(0, 0, 0);
+        if (!c) return;
+
+        // Точка с блеском: ядро + дифракционный крест по фазе блеска
+        const r = Math.max(1.1, s * 0.55);
+        const glint = 0.55 + 0.45 * Math.sin(sat.strobePulse * 2.0 + sat.index);
+        ctx.fillStyle = this.shadeColor(
+            arch.type === 'COMMS_RELAY' || arch.type === 'NAVIGATION_GNSS' ? arch.goldFoil : arch.baseColor,
+            0.7 + sunDot * 0.5
+        );
+        ctx.globalAlpha = Math.min(1, 0.75 + glint * 0.25) * lodAlpha;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Блеск-искра
+        ctx.globalAlpha = glint * 0.55 * lodAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Уровень 1: силуэт панелей (две линии) — cheap, без полигонов
+        if (lodLevel >= 1) {
+            const panelColor = this.panelColorForOrbit(sat.incDeg, arch.panelColor);
+            const pL = projectLocal(0, 0, -s * 3.2);
+            const pR = projectLocal(0, 0, s * 3.2);
+            if (pL && pR) {
+                ctx.strokeStyle = panelColor;
+                ctx.globalAlpha = 0.85 * lodAlpha;
+                ctx.lineWidth = Math.max(1.0, r * 1.1);
+                ctx.beginPath();
+                ctx.moveTo(pL.x, pL.y);
+                ctx.lineTo(pR.x, pR.y);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // Маячок работает и в LOD-режиме
+        const strobeColor = this.strobeColorForSatellite(sat, arch);
+        this.drawSatelliteStrobe(ctx, c.x, c.y - r * 2, sat, strobeColor, s, false);
     }
 
     /**
@@ -1134,6 +1543,57 @@ export class SatellitesSwarmEngine {
         b = Math.min(255, Math.floor(b * f));
 
         return `rgb(${r},${g},${b})`;
+    }
+
+    /**
+     * Разбор hex-цвета в [r, g, b]
+     */
+    parseHexColor(col) {
+        let c = col || '#888888';
+        if (c.charAt(0) === '#') c = c.slice(1);
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        const num = parseInt(c, 16);
+        return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
+    /**
+     * Матовый/металлический цвет грани: диффузный фактор + голубой rim-light
+     * снизу (отражение Земли на надирных гранях).
+     */
+    faceColor(col, factor, rim = 0) {
+        const rgb = this.parseHexColor(col);
+        const f = Math.max(0.16, Math.min(1.5, factor));
+        let r = rgb[0] * f, g = rgb[1] * f, b = rgb[2] * f;
+        if (rim > 0) {
+            const k = Math.min(0.5, rim * 0.55);
+            r += (150 - r) * k;
+            g += (190 - g) * k;
+            b += (255 - b) * k;
+        }
+        return `rgb(${Math.min(255, r) | 0},${Math.min(255, g) | 0},${Math.min(255, b) | 0})`;
+    }
+
+    /**
+     * Экранная проекция вектора Солнца (согласована с камерой сцены,
+     * аналог camSun в iss_station.js) — для градиентов по граням.
+     */
+    sunToCam(cosYaw, sinYaw, cosPitch, sinPitch) {
+        const v = SUN_NORMALIZED;
+        const x1 = v.x * cosYaw - v.z * sinYaw;
+        const z1 = v.x * sinYaw + v.z * cosYaw;
+        const y2 = v.y * cosPitch - z1 * sinPitch;
+        return { x: x1, y: y2, z: v.y * sinPitch + z1 * cosPitch };
+    }
+
+    /**
+     * Детерминированный ГПСЧ (LCH) для стабильных декалей (ячейки, морщины)
+     */
+    makeRng(seed) {
+        let st = (seed >>> 0) || 1;
+        return () => {
+            st = (st * 1664525 + 1013904223) >>> 0;
+            return st / 4294967296;
+        };
     }
 
     /**

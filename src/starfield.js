@@ -133,9 +133,22 @@ export const Starfield = {
             // Поток: у ярких классов дополнительный подъём (светимость ∝ массам)
             const flux = this.sampleFlux(fluxGain) * spec.fluxBoost;
 
-            // Температура слегка разбросана внутри класса
-            const temp = spec.temp * (0.88 + Math.random() * 0.24);
-            const lin = blackbodyLinear(temp);
+            // Температура сильнее разбросана внутри класса — на краях спектра
+            // (голубые гиганты / красные карлики) даёт заметный оттенок
+            const temp = spec.temp * (0.80 + Math.random() * 0.40);
+            let lin = blackbodyLinear(temp);
+
+            // Цветовой акцент крайних классов: холодные голубые O/B и тёплые
+            // оранжево-красные M — небо перестаёт быть «все звёзды одинаковые»
+            if (spec.type === 'B') {
+                lin = [lin[0] * 0.70, lin[1] * 0.90, lin[2]];
+            } else if (spec.type === 'M') {
+                lin = [lin[0], lin[1] * 0.80, lin[2] * 0.58];
+            } else if (spec.type === 'K') {
+                lin = [lin[0], lin[1] * 0.93, lin[2] * 0.85];
+            }
+            const linMax = Math.max(lin[0], lin[1], lin[2]) || 1;
+            lin = [lin[0] / linMax, lin[1] / linMax, lin[2] / linMax];
 
             // PSF: слабые звёзды — почти точки, яркие — заметные диски
             const size = 0.95 + Math.pow(Math.min(flux, 60) / 60, 0.42) * 2.9;

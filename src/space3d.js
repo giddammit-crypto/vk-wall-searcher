@@ -16,22 +16,25 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.1.0';
-import { SpaceAudio } from './space_audio.js?v=4.1.0';
-import { CelestialPlanets } from './celestial_planets.js?v=4.1.0';
-import { IssStation } from './iss_station.js?v=4.1.0';
-import { SatellitesSwarm } from './satellites_swarm.js?v=4.1.0';
-import { Constellations } from './constellations.js?v=4.1.0';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.1.0';
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.1.0';
-import { Starfield } from './starfield.js?v=4.1.0';
-import { SunOptics } from './sun_optics.js?v=4.1.0';
-import { createQrSvg } from './qrcode.js?v=4.1.0';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.1.0';
-import { openPostModal } from './render.js?v=4.1.0';
-import { fetchHistory } from './subscribers.js?v=4.1.0';
-import { buildBranchAdvice } from './advice.js?v=4.1.0';
-import { Space3DGL } from './space3d_gl.js?v=4.1.0';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.5.0';
+import { SpaceAudio } from './space_audio.js?v=4.5.0';
+import { CelestialPlanets } from './celestial_planets.js?v=4.5.0';
+import { IssStation } from './iss_station.js?v=4.5.0';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.5.0';
+import { Constellations } from './constellations.js?v=4.5.0';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.5.0';
+// Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —
+// иначе два экземпляра модуля → два синглтона → рассинхрон DOM-узлов карточек.
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.5.0';
+import { Starfield } from './starfield.js?v=4.5.0';
+import { SunOptics } from './sun_optics.js?v=4.5.0';
+import { createQrSvg } from './qrcode.js?v=4.5.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.5.0';
+import { openPostModal } from './render.js?v=4.5.0';
+import { fetchHistory } from './subscribers.js?v=4.5.0';
+import { buildBranchAdvice } from './advice.js?v=4.5.0';
+import { Space3DGL } from './space3d_gl.js?v=4.5.0';
+import { SpaceCinematic } from './space_cinematic.js?v=4.5.0';
 
 export class Space3DEngine {
     constructor() {
@@ -76,6 +79,31 @@ export class Space3DEngine {
         this.camVelPitch = 0;
         this.camVelZoom = 0;
 
+        // Cinematic camera limits & auto-rotation (variable speed, idle ramp)
+        this.zoomMin = 0.35;
+        this.zoomMax = 2.6;
+        this.pitchSoftLimit = 72;          // мягкий предел при драге (градусы)
+        this.autoRotBaseSpeed = 4.5;       // °/с базовая скорость облёта
+        this.autoRotSpeed = 0;             // текущая (после ramp-up) скорость
+        this.lastInteractionTime = 0;      // idle-timer для авто-вращения
+        this.breathPhase = 0;              // синусоидальный дрейф pitch (период ~40с)
+        this.breathOffset = 0;             // текущее добавочное значение дрейфа
+
+        // Универсальный камерный tween (easeInOutCubic долли-фокус)
+        this.camTween = null;
+
+        // Кинематографический контроллер прилёта (src/space_cinematic.js):
+        // пока активен, renderLoop берёт targetYaw/Pitch/Zoom из него,
+        // а любой пользовательский ввод его сбрасывает.
+        this.cinematicController = null;
+        this.cineRoll = 0;               // крен камеры в кинорежиме (градусы)
+
+        // Параллакс мыши (±1.5°, сильное сглаживание)
+        this.mouseNX = 0;                  // нормализованный курсор [-0.5..0.5]
+        this.mouseNY = 0;
+        this.parallaxYaw = 0;
+        this.parallaxPitch = 0;
+
         // Procedural Starfield & Celestial Skybox
         this.stars = [];
         this.milkyWayStars = [];
@@ -115,6 +143,7 @@ export class Space3DEngine {
         this.viewport = document.getElementById('space-3d-viewport');
         this.canvas = document.getElementById('space-3d-canvas');
         this.world = document.getElementById('space-3d-world');
+        this.stageEl = document.getElementById('space-3d-stage'); // контейнер крена (roll)
 
         if (!this.viewport || !this.canvas || !this.world) {
             console.warn('[Space3D] Required DOM elements not found.');
@@ -346,11 +375,14 @@ export class Space3DEngine {
             const expBtn = wrapper.querySelector('.btn-expand span');
             if (expBtn) expBtn.textContent = 'close_fullscreen';
 
-            // Rotate camera towards this station
+            // Rotate camera towards this station (плавный tween)
             if (station.baseTransform) {
-                this.targetYaw = -station.baseTransform.rotY;
-                this.targetPitch = -station.baseTransform.rotX;
-                this.targetZoom = 1.0;
+                this.tweenCameraTo(
+                    -station.baseTransform.rotY,
+                    -station.baseTransform.rotX,
+                    1.0,
+                    1400
+                );
             }
 
             this.updateObjectTransform(station, true);
@@ -379,9 +411,8 @@ export class Space3DEngine {
         }
 
         if (!this.is360Mode) {
-            // 360° ВЫКЛ: мягко центрируем камеру и переводим станции в панорамную дугу спереди
-            this.targetYaw = 0;
-            this.targetPitch = 0;
+            // 360° ВЫКЛ: мягко центрируем камеру (tween) и переводим станции в панорамную дугу спереди
+            this.tweenCameraTo(0, 0, this.zoom, 1500);
             this.applyLayout('arc', true);
             SpaceAudio.playVoice('mode_360_off');
             this.showSpatialToast('Режим 360° выключен. Активирована фронтальная командная консоль');
@@ -1197,6 +1228,117 @@ export class Space3DEngine {
     }
 
     /**
+     * Универсальный tween-хелпер камеры: плавный долли/фокус вместо телепорта.
+     * easeInOutCubic, дуга по yaw выбирается по кратчайшему пути.
+     */
+    tweenCameraTo(targetYaw, targetPitch, targetZoom, duration = 1400) {
+        const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+        const fromYaw = this.yaw;
+        // Кратчайшая дуга по азимуту
+        let dYaw = ((targetYaw - fromYaw + 180) % 360 + 360) % 360 - 180;
+        this.camTween = {
+            start: performance.now(),
+            duration: Math.max(200, duration),
+            fromYaw,
+            dYaw,
+            fromPitch: this.pitch,
+            dPitch: targetPitch - this.pitch,
+            fromZoom: this.zoom,
+            dZoom: targetZoom - this.zoom,
+            toYaw: fromYaw + dYaw,
+            toPitch: targetPitch,
+            toZoom: targetZoom,
+            ease
+        };
+        // Обнуляем пружинную скорость, чтобы не было рывка в конце
+        this.camVelYaw = 0;
+        this.camVelPitch = 0;
+        this.camVelZoom = 0;
+    }
+
+    /**
+     * Кинематографический контроллер прилёта (SpaceCinematic).
+     * Пока контроллер активен, renderLoop берёт целевые yaw/pitch/zoom из него
+     * вместо авто-тура/tween. Контроллер сбрасывается при любом пользовательском
+     * вводе (pointerdown/wheel/keydown — слушает сам) или при close().
+     */
+    setCinematicController(controller) {
+        this.cinematicController = controller || null;
+        if (controller) {
+            // Авто-тур и tween уступают кинематографике
+            this.isAutoTour = false;
+            this.camTween = null;
+            const btn = document.getElementById('space-dock-auto-tour');
+            if (btn) btn.classList.remove('active');
+        } else {
+            this.cineRoll = 0;
+            // Кинематика закончилась — снимаем холд адаптивного разрешения
+            if (this.glEnabled && Space3DGL.ok) {
+                try { Space3DGL.endCinematicHold(); } catch (e) { /* noop */ }
+            }
+        }
+    }
+
+    /**
+     * Прогрев тяжёлых ресурсов к кинематографическому прилёту.
+     * Вызывается по событию 'aurora:warp-started' (space_warp.js): у варпа есть
+     * 9-22с запаса — ВСЯ дорогая подготовка (декодирование 4K-текстур, bake
+     * скайдома, компиляция GPU-пайплайна, загрузка шрифта титра) обязана
+     * закончиться В варпе, чтобы фазы A/B прилёта шли без хичей.
+     */
+    prepareForWarpArrival() {
+        if (!this.viewport) {
+            try { this.init(); } catch (e) { /* noop */ }
+        }
+        // 1. GPU-ядро: текстуры + bake + resize + один скрытый кадр рендера
+        if (this.glEnabled && Space3DGL.ok) {
+            try { Space3DGL.preWarm(this); } catch (e) {
+                console.warn('[Space3D] Прогрев GPU-ядра не удался:', e);
+            }
+        }
+        // 2. Шрифт титра (Unbounded используется ТОЛЬКО прилётом — иначе его
+        // woff2 качается в момент монтирования титра: первый кадр печатается
+        // fallback-шрифтом и перерисовывается). Запрашиваем фактические
+        // начертания (600/800; CSS 700 мэпится на ближайшее) + кириллицу.
+        try {
+            if (document.fonts && document.fonts.load) {
+                const sample = 'Галактика Млечный Путь. Планета Земля. 2026 ▍';
+                document.fonts.load('700 32px Unbounded', sample);
+                document.fonts.load('800 32px Unbounded', sample);
+                document.fonts.load('600 32px Unbounded', sample);
+            }
+        } catch (e) { /* noop */ }
+    }
+
+    /**
+     * Мягкое сопротивление pitch у границ (вместо жёсткого clamp):
+     * за пределом движение сильно демпфируется, а пружина в renderLoop
+     * плавно возвращает цель в допустимый диапазон.
+     */
+    softPitchLimit(p) {
+        const L = this.pitchSoftLimit;
+        if (p > L) return L + (p - L) * 0.22;
+        if (p < -L) return -L + (p + L) * 0.22;
+        return p;
+    }
+
+    /**
+     * Каскадное появление карточек-станций при open() (stagger 60мс)
+     */
+    playOpenStagger() {
+        if (!this.world) return;
+        const cards = this.world.querySelectorAll('.space-station-card');
+        cards.forEach((card, i) => {
+            card.style.transition = 'none';
+            card.style.opacity = '0';
+            requestAnimationFrame(() => {
+                card.style.transition = `opacity 0.7s ease ${i * 60}ms`;
+                card.style.opacity = '1';
+            });
+        });
+    }
+
+    /**
      * Фокусировка камеры прямо на станции
      */
     focusOnStation(station) {
@@ -1207,9 +1349,13 @@ export class Space3DEngine {
 
         // Конвенция DOM: rotateX(pitch) rotateY(yaw) → для центрирования
         // объекта с собственной ориентацией нужны обратные углы.
-        this.targetYaw = -station.baseTransform.rotY;
-        this.targetPitch = -station.baseTransform.rotX;
-        this.targetZoom = 1.15;
+        // Кинематографический tween вместо мгновенного телепорта.
+        this.tweenCameraTo(
+            -station.baseTransform.rotY,
+            -station.baseTransform.rotX,
+            1.15,
+            1400
+        );
 
         this.triggerGravitationalWave(station.baseTransform.rotY, -station.baseTransform.rotX);
         SpaceAudio.playVoice('focus');
@@ -1237,6 +1383,8 @@ export class Space3DEngine {
         }
 
         this.isDraggingWorld = true;
+        this.lastInteractionTime = performance.now();
+        this.camTween = null; // пользователь перехватывает камеру — tween отменяется
         this.dragStartX = e.clientX;
         this.dragStartY = e.clientY;
         this.dragStartYaw = this.yaw;
@@ -1253,6 +1401,13 @@ export class Space3DEngine {
     }
 
     onPointerMove(e) {
+        // Параллакс мыши: лёгкое смещение взгляда от позиции курсора
+        // (отключается во время драга мира/объекта)
+        if (this.isOpen && !this.isDraggingWorld) {
+            this.mouseNX = e.clientX / Math.max(1, window.innerWidth) - 0.5;
+            this.mouseNY = e.clientY / Math.max(1, window.innerHeight) - 0.5;
+        }
+
         if (!this.isDraggingWorld) return;
 
         const deltaX = e.clientX - this.lastPointerX;
@@ -1262,15 +1417,16 @@ export class Space3DEngine {
         this.lastPointerY = e.clientY;
 
         const sensitivity = 0.28;
+        this.lastInteractionTime = performance.now();
         this.targetYaw -= deltaX * sensitivity;
-        this.targetPitch += deltaY * sensitivity;
+        // Мягкое сопротивление вместо жёсткого clamp: за границей движение
+        // сильно демпфируется, пружина в renderLoop дотягивает назад.
+        this.targetPitch = this.softPitchLimit(this.targetPitch + deltaY * sensitivity);
 
         // Если режим 360° выключен — удерживаем взгляд строго в передней командной дуге
         if (!this.is360Mode) {
             this.targetYaw = Math.max(-38, Math.min(38, this.targetYaw));
             this.targetPitch = Math.max(-18, Math.min(18, this.targetPitch));
-        } else {
-            this.targetPitch = Math.max(-65, Math.min(65, this.targetPitch));
         }
     }
 
@@ -1290,8 +1446,10 @@ export class Space3DEngine {
         if (e.target.closest('.space-card-body')) return;
 
         e.preventDefault();
+        this.lastInteractionTime = performance.now();
+        this.camTween = null;
         const zoomDelta = e.deltaY * -0.0012;
-        this.targetZoom = Math.max(0.45, Math.min(1.75, this.targetZoom + zoomDelta));
+        this.targetZoom = Math.max(this.zoomMin, Math.min(this.zoomMax, this.targetZoom + zoomDelta));
         this.updateHudTelemetry();
 
         if (zoomDelta > 0.04) {
@@ -1303,6 +1461,7 @@ export class Space3DEngine {
 
     onKeyDown(e) {
         if (!this.isOpen) return;
+        this.lastInteractionTime = performance.now();
 
         if (e.key === 'Escape') {
             // Если развернуто отдельное окно — сворачиваем его
@@ -1473,6 +1632,7 @@ export class Space3DEngine {
 
     toggleAutoTour() {
         this.isAutoTour = !this.isAutoTour;
+        this.lastInteractionTime = performance.now(); // ramp-up заново после включения
         const btn = document.getElementById('space-dock-auto-tour');
         if (btn) btn.classList.toggle('active', this.isAutoTour);
         SpaceAudio.playVoice(this.isAutoTour ? 'tour_start' : 'tour_stop');
@@ -1480,9 +1640,7 @@ export class Space3DEngine {
     }
 
     resetCamera() {
-        this.targetYaw = 0;
-        this.targetPitch = 0;
-        this.targetZoom = 1.0;
+        this.tweenCameraTo(0, 0, 1.0, 1400);
         SpaceAudio.playVoice('cam_reset');
         this.showSpatialToast('Камера центрирована');
     }
@@ -1533,18 +1691,105 @@ export class Space3DEngine {
     renderLoop(now) {
         if (!this.isOpen) return;
 
+        // Страховка: сбой в одном кадре не должен убивать всю rAF-цепочку сцены
+        try {
+            this._renderFrame(now);
+        } catch (e) {
+            console.error('[Space3D] Ошибка кадра (цикл продолжается):', e);
+        }
+        this.animId = requestAnimationFrame(this.renderLoop);
+    }
+
+    _renderFrame(now) {
+        if (!this.isOpen) return;
+
         // Дельта времени кадра (для физики неба и планет на GPU)
         const t = typeof now === 'number' ? now : performance.now();
         this.lastDt = Math.min(0.05, Math.max(0.001, (t - (this.prevFrameTime || t)) / 1000));
         this.prevFrameTime = t;
 
-        if (this.isAutoTour) {
-            this.targetYaw += 0.16;
+        const dt = this.lastDt || 0.016;
+
+        // --- Кинематографический контроллер прилёта (приоритет над всем) ---
+        // Покадрово задаёт targetYaw/Pitch/Zoom; пружина обнуляется, т.к. поза
+        // уже гладкая. Любой пользовательский ввод сбрасывает контроллер извне.
+        if (this.cinematicController && typeof this.cinematicController.getPose === 'function') {
+            const pose = this.cinematicController.getPose(t);
+            if (pose && this.cinematicController) {
+                this.targetYaw = pose.yaw;
+                this.targetPitch = pose.pitch;
+                this.targetZoom = pose.zoom;
+                this.yaw = pose.yaw;
+                this.pitch = pose.pitch;
+                this.zoom = pose.zoom;
+                this.camVelYaw = 0;
+                this.camVelPitch = 0;
+                this.camVelZoom = 0;
+                this.camTween = null;
+                this.cineRoll = pose.roll || 0;
+            } else {
+                this.cinematicController = null;
+                this.cineRoll = 0;
+            }
+        } else if (this.cineRoll) {
+            // Мягкий спад крена после завершения кинематики
+            this.cineRoll *= Math.pow(0.02, dt);
+            if (Math.abs(this.cineRoll) < 0.02) this.cineRoll = 0;
         }
 
-        // Rockstar Games Cinematic Camera Physics (Damped Spring-Mass Inertia)
-        const damping = 0.86;
-        const stiffness = 0.088;
+        // --- Кинематографический tween камеры (easeInOutCubic) ---
+        if (this.camTween) {
+            const tw = this.camTween;
+            const raw = (t - tw.start) / tw.duration;
+            const k = Math.min(1, Math.max(0, raw));
+            const e = tw.ease(k);
+            this.yaw = tw.fromYaw + tw.dYaw * e;
+            this.pitch = tw.fromPitch + tw.dPitch * e;
+            this.zoom = tw.fromZoom + tw.dZoom * e;
+            // Держим цель синхронно, чтобы после завершения пружина не дёргала камеру
+            this.targetYaw = this.yaw;
+            this.targetPitch = this.pitch;
+            this.targetZoom = this.zoom;
+            if (k >= 1) this.camTween = null;
+        }
+
+        // --- Авто-вращение с переменной скоростью ---
+        // idle ~4с → плавный smoothstep ramp-up ~3с к базовым 4.5°/с;
+        // любое взаимодействие гасит скорость (idle-timer перезапускается).
+        if (this.isAutoTour && !this.camTween) {
+            const idleSec = (t - (this.lastInteractionTime || 0)) / 1000;
+            const rampT = Math.min(1, Math.max(0, (idleSec - 4) / 3));
+            const ramp = rampT * rampT * (3 - 2 * rampT); // smoothstep
+            this.autoRotSpeed = this.autoRotBaseSpeed * ramp;
+            this.targetYaw += this.autoRotSpeed * dt;
+
+            // «Дыхание» сцены: медленный синусоидальный дрейф pitch ±3°, период ~40с
+            const prevBreath = this.breathOffset || 0;
+            this.breathPhase = (this.breathPhase || 0) + dt * (Math.PI * 2 / 40);
+            this.breathOffset = 3 * Math.sin(this.breathPhase) * ramp;
+            this.targetPitch += this.breathOffset - prevBreath;
+        } else {
+            this.autoRotSpeed = 0;
+            this.breathPhase = 0;
+            const prevBreath = this.breathOffset || 0;
+            this.breathOffset = 0;
+            this.targetPitch += this.breathOffset - prevBreath;
+        }
+
+        // --- Пружинная физика камеры (тяжёлая киношная инерция) ---
+        // Коэффициенты нормированы на dt через экспоненциальное затухание:
+        // камера ведёт себя одинаково на 60/120/144 Гц и при просадках.
+        // damping 0.90 / stiffness 0.075 → массивнее и с мягким overshoot
+        // после быстрого свайпа (недодемпфированная пружина).
+        const dtF = dt * 60;                             // эквивалент кадров при 60 FPS
+        const damping = Math.pow(0.90, dtF);
+        const stiffness = 1 - Math.pow(1 - 0.075, dtF);
+
+        // Мягкое пружинное сопротивление pitch у границ (±72°):
+        // цель за пределом плавно подтягивается обратно внутрь диапазона.
+        const pLimit = this.pitchSoftLimit;
+        if (this.targetPitch > pLimit) this.targetPitch += (pLimit - this.targetPitch) * 0.06 * dtF;
+        else if (this.targetPitch < -pLimit) this.targetPitch += (-pLimit - this.targetPitch) * 0.06 * dtF;
 
         this.camVelYaw = (this.camVelYaw || 0) * damping + (this.targetYaw - this.yaw) * stiffness;
         this.camVelPitch = (this.camVelPitch || 0) * damping + (this.targetPitch - this.pitch) * stiffness;
@@ -1554,19 +1799,44 @@ export class Space3DEngine {
         this.pitch += this.camVelPitch;
         this.zoom += this.camVelZoom;
 
+        // --- Параллакс мыши (±1.5°, сильное сглаживание lerp 0.03) ---
+        // Отключён при драге и во время tween. Не влияет на состояние камеры.
+        const parTargetYaw = this.isDraggingWorld || this.camTween ? 0 : this.mouseNX * -3.0;
+        const parTargetPitch = this.isDraggingWorld || this.camTween ? 0 : this.mouseNY * 3.0;
+        const parLerp = 1 - Math.pow(1 - 0.03, dtF);
+        this.parallaxYaw = (this.parallaxYaw || 0) + (parTargetYaw - (this.parallaxYaw || 0)) * parLerp;
+        this.parallaxPitch = (this.parallaxPitch || 0) + (parTargetPitch - (this.parallaxPitch || 0)) * parLerp;
+        const effYaw = this.yaw + (this.parallaxYaw || 0);
+        const effPitch = this.pitch + (this.parallaxPitch || 0);
+
         // Применяем 3D трансформацию мира
         if (this.world) {
             const eyeD = 1000;
             const zoomOffset = (this.zoom - 1.0) * 350;
+            // Схема transform мира НЕ меняется (никаких дополнительных функций):
+            // мир живёт на preserve-3d при perspective 960px и translateZ(1000px) —
+            // любой grouping-свойство/лишняя 3D-функция на этом элементе или его
+            // предках схлопывает сцену за камеру. Крен (roll) применяется к
+            // .space-3d-stage (внутренний контейнер с перспективой), см. ниже.
             this.world.style.transform = `
                 translateZ(${eyeD + zoomOffset}px)
-                rotateX(${this.pitch}deg)
-                rotateY(${this.yaw}deg)
+                rotateX(${effPitch}deg)
+                rotateY(${effYaw}deg)
             `;
+
+            // Кинематографический крен камеры (roll): на stage-контейнере,
+            // НЕ на world (stage — element с perspective, его собственный
+            // rotateZ вокруг центра экрана не влияет на 3D-раскладку детей).
+            if (this.stageEl) {
+                const roll = this.cineRoll || 0;
+                this.stageEl.style.transform = Math.abs(roll) > 0.01
+                    ? `rotateZ(${roll.toFixed(3)}deg)`
+                    : '';
+            }
         }
 
-        // Обновляем кинематику вращения Земли и Луны
-        if (this.glEnabled) Space3DGL.render(this.yaw, this.pitch, this.zoom, this.lastDt || 0.016);
+        // Обновляем кинематику вращения Земли и Луны (с синхронизацией крена камеры roll)
+        if (this.glEnabled) Space3DGL.render(effYaw, effPitch, this.zoom, dt, this.cineRoll || 0);
         CelestialPlanets.update();
         IssStation.update();
         SatellitesSwarm.update();
@@ -1579,8 +1849,6 @@ export class Space3DEngine {
 
         // Кольцо Героев Космоса: вращение и раскладка карточек в 3D-мире
         CosmonautRing.update(t);
-
-        this.animId = requestAnimationFrame(this.renderLoop);
     }
 
     /**
@@ -1917,8 +2185,9 @@ export class Space3DEngine {
             bodies.push({
                 yaw: metrics.coords.yaw,
                 pitch: metrics.coords.pitch,
-                radius: this.glEnabled ? 1000 : 840,
-                dist: this.glEnabled ? 1350 : 750 / Math.max(this.zoom, 0.2),
+                // Синхронизировано с видимым диском: GL-сфера R=700 на dist=1470
+                radius: this.glEnabled ? 700 : 840,
+                dist: this.glEnabled ? 1470 : 750 / Math.max(this.zoom, 0.2),
                 soften: 0.035
             });
         }
@@ -2278,22 +2547,76 @@ export class Space3DEngine {
         this.yaw = 0;
         this.pitch = 0;
         this.zoom = 1.0;
+        this.camTween = null;
+        this.camVelYaw = 0;
+        this.camVelPitch = 0;
+        this.camVelZoom = 0;
+        this.breathPhase = 0;
+        this.breathOffset = 0;
+        this.parallaxYaw = 0;
+        this.parallaxPitch = 0;
+        this.autoRotSpeed = 0;
+        this.lastInteractionTime = performance.now();
+
+        // Сброс любых кинематографических хвостов предыдущей сессии (защита от
+        // close() во время прилёта и повторного open()): контроллер, крен,
+        // blur-фильтры world-слоя, классы body. SpaceCinematic.end() идемпотентен.
+        this.cinematicController = null;
+        this.cineRoll = 0;
+        // Холд DRS предыдущего прилёта больше не актуален (поставим заново ниже)
+        if (this.glEnabled && Space3DGL.ok) {
+            try { Space3DGL.endCinematicHold(); } catch (e) { /* noop */ }
+        }
+        document.body.classList.remove('space-cinematic-active');
+        try { SpaceCinematic.end('close'); } catch (e) { /* noop */ }
+        if (this.world) { this.world.style.filter = ''; this.world.style.transition = ''; }
+        if (this.stageEl) this.stageEl.style.transform = ''; // сброс крена
+        [this.canvas, document.getElementById('space-3d-gl')].forEach(el => {
+            if (el) { el.style.filter = ''; el.style.transition = ''; el.style.transform = ''; }
+        });
 
         cancelAnimationFrame(this.animId);
         this.animId = requestAnimationFrame(this.renderLoop);
 
+        // Фоновая музыка должна звучать сразу после прилёта: если в localStorage
+        // остался выключенный флаг — включаем принудительно и стартуем без долгого фейда
+        if (!SpaceAudio.musicEnabled) {
+            SpaceAudio.musicEnabled = true;
+            try { localStorage.setItem('space3d_music_enabled', 'true'); } catch (e) { /* noop */ }
+        }
         this.syncAudioButtons();
-        SpaceAudio.startAmbientMusic();
+        SpaceAudio.startAmbientMusic(SpaceAudio.musicVolume, 600);
 
         // Воспроизведение вступительной речи девушки Беллы (если открыто не из варп-перелёта)
         if (!opts || !opts.fromWarp) {
             SpaceAudio.playVoice('aurora_welcome', true);
         }
 
+        // Кинематографический прилёт после варпа (15-18с): Approach → Orbit → Transition.
+        // Кольцо космонавтов в этом случае каскадно показывается в фазе C.
+        let cinematicStarted = false;
+        if (opts && opts.fromWarp) {
+            // Холд тяжёлых перестроек GPU-ядра на всё прилёта (+запас):
+            // renderScale заморожен, bake в кадрах фаз A/B запрещён; если bake
+            // не успел за варп — дожимается здесь, под шторкой варпа
+            if (this.glEnabled && Space3DGL.ok) {
+                try { Space3DGL.beginCinematicHold(20000); } catch (e) { /* noop */ }
+            }
+            try {
+                cinematicStarted = SpaceCinematic.start(this);
+            } catch (e) {
+                console.warn('[Space3D] Кинематографический прилёт недоступен:', e);
+                cinematicStarted = false;
+            }
+        }
+
         // Автоматически открываем кольцо окон с космонавтами (единственные окна в 3D пространстве)
-        if (typeof CosmonautRing !== 'undefined' && CosmonautRing.show) {
+        if (!cinematicStarted && typeof CosmonautRing !== 'undefined' && CosmonautRing.show) {
             CosmonautRing.show();
         }
+
+        // Каскадное появление карточек-станций (stagger 60мс)
+        this.playOpenStagger();
 
         this.showSpatialToast('Космо-пространство AURORA 3D • Орбитальный комплекс активен');
     }
@@ -2304,6 +2627,13 @@ export class Space3DEngine {
     close() {
         if (!this.isOpen) return;
         this.isOpen = false;
+
+        // Останавливаем кинематографику прилёта (без показа кольца — сцена закрывается)
+        if (this.cinematicController && typeof this.cinematicController.end === 'function') {
+            try { this.cinematicController.end('close'); } catch (e) { /* noop */ }
+        } else {
+            try { SpaceCinematic.end('close'); } catch (e) { /* noop */ }
+        }
 
         SpaceAudio.stopAmbientMusic();
         SpaceAudio.playVoice('exit_2d');
@@ -2317,6 +2647,7 @@ export class Space3DEngine {
 
         // Приостанавливаем GPU-ядро: ресурсы сохраняются, кадры не тратятся впустую
         if (this.glEnabled && Space3DGL.ok) {
+            try { Space3DGL.endCinematicHold(); } catch (e) { /* noop */ }
             Space3DGL.suspend();
         }
         if (CosmonautsTerminal && CosmonautsTerminal.isOpen) {
@@ -2346,5 +2677,11 @@ export class Space3DEngine {
 export const Space3D = new Space3DEngine();
 if (typeof window !== 'undefined') {
     window.Space3D = Space3D;
+    // Старт варпа = сигнал к прогреву: 4K-текстуры, bake скайдома, один скрытый
+    // кадр GPU-пайплайна и шрифт титра готовятся ЗАРАНЕЕ (у варпа 9-22с запаса),
+    // чтобы кинематический прилёт (фазы A/B/C) шёл без хичей
+    window.addEventListener('aurora:warp-started', () => {
+        try { Space3D.prepareForWarpArrival(); } catch (e) { /* noop */ }
+    }, { passive: true });
 }
 export default Space3D;

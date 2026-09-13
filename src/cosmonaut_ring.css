@@ -41,6 +41,31 @@
     pointer-events: none;
 }
 
+/* Каскадный вход: fade + slide-up 24px + scale 0.96→1 + blur 6→0.
+   Класс .is-entering ставится при построении, снимается через stagger+0.8с
+   после show(); display:none слоя гарантирует старт анимации только на показе.
+   Анимация живёт на .cosmo-ring-card-inner: на самом узле JS каждый кадр
+   задаёт inline-transform вращения, который keyframes перебили бы.
+   fill: backwards — после конца кадра свойства возвращаются обычным правилам
+   (hover/focus-transforms работают как прежде). */
+.cosmo-ring-card.is-entering .cosmo-ring-card-inner {
+    animation: cosmoCardEnter 0.7s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)) backwards;
+    animation-delay: var(--enter-delay, 0ms);
+}
+
+@keyframes cosmoCardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+        filter: blur(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
 .cosmo-ring-card-inner {
     position: relative;
     width: 100%;
@@ -52,31 +77,55 @@
     background:
         linear-gradient(168deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.015) 38%, rgba(0, 0, 0, 0.35) 100%),
         rgba(8, 16, 36, 0.82);
-    border: 1px solid color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 42%, rgba(255, 255, 255, 0.16));
+    border: 1px solid transparent;
+    /* Многослойная тень: ambient (мягкий ореол) + directional (сцепка с полом) */
     box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.45),
         0 34px 90px rgba(0, 0, 0, 0.90),
+        0 60px 140px rgba(0, 0, 0, 0.55),
         0 0 50px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 20%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.28),
         inset 0 -1px 0 rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
     -webkit-backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
-    transition: box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: box-shadow 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+                transform 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
-/* Верхняя акцентная кромка - хромированный молдинг */
+/* Градиентный борд 1px через mask-композит: хром сверху → стекло → акцент */
+.cosmo-ring-card-inner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.10) 26%,
+        rgba(148, 197, 253, 0.08) 52%,
+        color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 55%, transparent) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: opacity 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
+    z-index: 3;
+}
+
+/* Верхний блик-глинт: хромовый sheen, тающий в акцент по краям */
 .cosmo-ring-card-inner::before {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--cosmo-accent, #3ee6c4), transparent);
+    background:
+        linear-gradient(90deg, transparent, var(--cosmo-accent, #3ee6c4) 30%, rgba(255, 255, 255, 0.85) 50%, var(--cosmo-accent, #3ee6c4) 70%, transparent);
     opacity: 0.90;
+    z-index: 3;
 }
 
 .cosmo-ring-card.is-front .cosmo-ring-card-inner {
-    border-color: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 86%, transparent);
     box-shadow:
         0 46px 120px rgba(0, 0, 0, 0.95),
         0 0 75px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 36%, transparent),
@@ -84,13 +133,23 @@
     transform: scale(1.035);
 }
 
+.cosmo-ring-card.is-front .cosmo-ring-card-inner::after { opacity: 1; }
+
 .cosmo-ring-card:hover .cosmo-ring-card-inner {
-    border-color: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 96%, transparent);
     box-shadow:
         0 42px 115px rgba(0, 0, 0, 0.94),
         0 0 65px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 32%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.30);
-    transform: translateY(-4px) scale(1.02);
+    transform: translateY(-4px) scale(1.03);
+}
+
+.cosmo-ring-card:hover .cosmo-ring-card-inner::after { opacity: 1; }
+
+/* Ховер: бейдж миссии (позывной) подсвечивается */
+.cosmo-ring-card:hover .cosmo-ring-callsign {
+    border-color: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 90%, transparent);
+    background: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 24%, transparent);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 45%, transparent);
 }
 
 .cosmo-ring-card.is-focused .cosmo-ring-card-inner {
@@ -165,17 +224,48 @@
     background: linear-gradient(200deg, #101a30, #060a16);
 }
 
+/* Placeholder-shimmer, пока HD-портрет едет по сети */
+.cosmo-ring-photo:not(.has-photo)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg,
+        rgba(62, 230, 196, 0.04) 0%,
+        rgba(148, 197, 253, 0.10) 38%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(148, 197, 253, 0.10) 62%,
+        rgba(62, 230, 196, 0.04) 100%);
+    background-size: 220% 100%;
+    animation: cosmoShimmer 1.6s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@keyframes cosmoShimmer {
+    from { background-position: 120% 0; }
+    to { background-position: -120% 0; }
+}
+
+/* Lazy-fade: фото проявляется (opacity 0→1, scale 1.06→1) при load */
 .cosmo-ring-photo img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: 50% 18%;
     display: block;
+    opacity: 0;
+    transform: scale(1.06);
     filter: saturate(1.06) contrast(1.04);
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.9s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+                opacity 0.7s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
-.cosmo-ring-card:hover .cosmo-ring-photo img { transform: scale(1.04); }
+.cosmo-ring-photo img.is-loaded {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.cosmo-ring-card:hover .cosmo-ring-photo img.is-loaded { transform: scale(1.04); }
 
 /* Плёночный переход фото → текст + подсветка акцентом */
 .cosmo-ring-photo::after {
@@ -230,6 +320,15 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 60%, transparent) transparent;
+    /* Мягкое затухание текста у нижней кромки вместо жёсткого среза;
+       .at-end ставится из JS, когда прокрутка дошла до низа */
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 30px), transparent 100%);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 30px), transparent 100%);
+}
+
+.cosmo-ring-body.at-end {
+    -webkit-mask-image: none;
+    mask-image: none;
 }
 
 .cosmo-ring-body::-webkit-scrollbar { width: 5px; }
@@ -241,26 +340,27 @@
 
 .cosmo-ring-name {
     margin: 0;
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 900;
-    line-height: 1.12;
-    letter-spacing: -0.015em;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
     color: #ffffff;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
 }
 
 .cosmo-ring-title {
     margin: 0;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.35;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.4;
     color: var(--cosmo-accent, #3ee6c4);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.14em;
 }
 
 .cosmo-ring-quote {
     margin: 3px 0 0;
-    padding: 9px 12px 9px 14px;
+    padding: 9px 12px 9px 26px;
     position: relative;
     font-size: 11.5px;
     font-style: italic;
@@ -271,6 +371,39 @@
     border: 1px solid rgba(148, 197, 253, 0.16);
     border-left: 3px solid var(--cosmo-accent, #3ee6c4);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: background 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+                border-color 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Кавычка-акцент цвета --space-accent */
+.cosmo-ring-quote::before {
+    content: '\00AB';
+    position: absolute;
+    left: 9px;
+    top: 5px;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--cosmo-accent, #3ee6c4);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 60%, transparent);
+    pointer-events: none;
+    transition: text-shadow 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Ховер: плавная подсветка левой полосы цитаты */
+.cosmo-ring-card:hover .cosmo-ring-quote {
+    background: rgba(3, 7, 18, 0.75);
+    border-left-color: color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 100%, transparent);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 18px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 18%, transparent),
+        inset 3px 0 10px -4px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 55%, transparent);
+}
+
+.cosmo-ring-card:hover .cosmo-ring-quote::before {
+    text-shadow: 0 0 16px var(--cosmo-accent, #3ee6c4), 0 0 4px var(--cosmo-accent, #3ee6c4);
 }
 
 .cosmo-ring-fact {
@@ -464,4 +597,206 @@ body.cosmo-ring-active .space-object-wrapper {
     .cosmo-ring-card-inner,
     .cosmo-ring-photo img { transition-duration: 0.01ms !important; }
     .cosmo-ring-card.is-focused .cosmo-ring-card-inner { animation: none; }
+    .cosmo-ring-card.is-entering .cosmo-ring-card-inner { animation: none; }
+    .cosmo-ring-photo:not(.has-photo)::before { animation: none; }
+}
+
+/* ==========================================================================
+   КИНЕМАТОГРАФИЧНОЕ РАСКРЫТИЕ КАРТОЧКИ (FLIP-клон)
+   Оверлей живёт на <body>, вне 3D-мира — position: fixed ведёт себя
+   предсказуемо. z-index 100200 — выше HUD кольца (100001) и всего HUD.
+   ========================================================================== */
+
+/* Затемнение + прогрев блюра фона */
+.cosmo-expanded-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100200;
+    display: grid;
+    place-items: center;
+    background: rgba(2, 6, 16, 0.58);
+    animation: cosmoBackdropIn 0.5s ease both;
+}
+
+@keyframes cosmoBackdropIn {
+    from { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+    to   { opacity: 1; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+}
+
+.cosmo-expanded-backdrop.is-closing {
+    animation: cosmoBackdropOut 0.5s ease both;
+    pointer-events: none;
+}
+
+@keyframes cosmoBackdropOut {
+    from { opacity: 1; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+    to   { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+}
+
+/* Приглушение исходной карточки: !important перекрывает inline-стили
+   opacity/filter, которые JS задаёт каждый кадр вращения */
+.cosmo-ring-card.is-dimmed {
+    opacity: 0.25 !important;
+    filter: blur(3px) saturate(0.7) !important;
+    pointer-events: none !important;
+    transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+/* Панель раскрытия: центр экрана через inset:0 + margin:auto
+   (transform остаётся свободным для FLIP-анимации) */
+.cosmo-expanded {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(420px, 92vw);
+    height: min(600px, 86vh);
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+    border-radius: 22px;
+    filter: drop-shadow(0 60px 130px rgba(0, 0, 0, 0.85));
+}
+
+/* Раскрытие: полёт из прямоугольника карточки (через CSS-переменные),
+   92% — лёгкий overshoot 1.01 («отскок» в конце) */
+.cosmo-expanded.is-opening {
+    animation: cosmoExpandIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cosmoExpandIn {
+    0%   { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fsx, 1), var(--fsy, 1)); opacity: 0.4; }
+    12%  { opacity: 1; }
+    92%  { transform: translate(0, 0) scale(1.01); }
+    100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Сворачивание: обратный полёт к актуальному прямоугольнику карточки */
+.cosmo-expanded.is-closing {
+    animation: cosmoExpandOut 0.5s cubic-bezier(0.5, 0, 0.75, 0.4) both;
+}
+
+@keyframes cosmoExpandOut {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(var(--fsx, 1), var(--fsy, 1)); opacity: 0.25; }
+}
+
+/* prefers-reduced-motion: без полёта — простой fade + micro-scale */
+.cosmo-expanded.is-opening-simple { animation: cosmoExpandFade 0.25s ease both; }
+
+@keyframes cosmoExpandFade {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* Переиспользуем визуал .cosmo-ring-card-inner — масштабируем типографику */
+.cosmo-expanded .cosmo-ring-card-inner {
+    border-radius: 22px;
+    transform: none !important;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.5),
+        0 44px 120px rgba(0, 0, 0, 0.95),
+        0 0 90px color-mix(in srgb, var(--cosmo-accent, #3ee6c4) 30%, transparent),
+        inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    cursor: default;
+}
+
+.cosmo-expanded .cosmo-ring-head { padding: 14px 18px 12px; }
+.cosmo-expanded .cosmo-ring-index { font-size: 11px; }
+.cosmo-expanded .cosmo-ring-callsign { font-size: 11.5px; }
+
+.cosmo-expanded .cosmo-ring-photo { height: 42%; }
+
+/* Мягкий Ken-Burns дрейф портрета: 12s loop scale 1.0 → 1.05 */
+.cosmo-expanded .cosmo-ring-photo img.is-loaded {
+    animation: cosmoKenBurns 12s ease-in-out 0.9s infinite alternate;
+}
+
+@keyframes cosmoKenBurns {
+    from { transform: scale(1) translate(0, 0); }
+    to   { transform: scale(1.05) translate(1.4%, -1.6%); }
+}
+
+.cosmo-expanded .cosmo-ring-photo-meta { font-size: 10.5px; left: 16px; right: 16px; bottom: 11px; }
+
+.cosmo-expanded .cosmo-ring-body {
+    padding: 17px 19px 19px;
+    gap: 10px;
+    /* биография полностью доступна прокруткой */
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent 100%);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 34px), transparent 100%);
+}
+
+.cosmo-expanded .cosmo-ring-name { font-size: 24px; }
+.cosmo-expanded .cosmo-ring-title { font-size: 11px; }
+.cosmo-expanded .cosmo-ring-quote { font-size: 13px; padding: 11px 14px 11px 30px; border-radius: 13px; }
+.cosmo-expanded .cosmo-ring-quote::before { font-size: 19px; top: 7px; left: 11px; }
+.cosmo-expanded .cosmo-ring-fact { font-size: 12.5px; line-height: 1.62; }
+
+.cosmo-expanded .cosmo-ring-stats { grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; }
+.cosmo-expanded .cosmo-ring-stat { padding: 8px 10px; border-radius: 11px; }
+.cosmo-expanded .cosmo-ring-stat-lbl { font-size: 8.5px; }
+.cosmo-expanded .cosmo-ring-stat-val { font-size: 12.5px; }
+
+/* Каскадное разворачивание содержимого: photo → name → quote → bio → stats
+   (stagger 50 мс, см. --stagger-i в разметке) */
+.cosmo-expanded .exp-st {
+    animation: cosmoExpStagger 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(140ms + var(--stagger-i, 0) * 50ms);
+}
+
+@keyframes cosmoExpStagger {
+    from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+    to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* Кнопка-крестик поверх карточки */
+.cosmo-expanded-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 6;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #e6eef8;
+    background: rgba(6, 12, 26, 0.72);
+    border: 1px solid rgba(148, 197, 253, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease,
+                box-shadow 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cosmo-expanded-close .material-symbols-outlined { font-size: 20px; }
+
+/* Бейдж позывного не залезает под крестик раскрытой карточки */
+.cosmo-expanded .cosmo-ring-callsign {
+    margin-right: 44px;
+    max-width: calc(100% - 44px);
+}
+
+.cosmo-expanded-close:hover {
+    color: #ffe4e6;
+    background: rgba(244, 63, 94, 0.24);
+    border-color: rgba(244, 63, 94, 0.6);
+    box-shadow: 0 0 18px rgba(244, 63, 94, 0.35);
+    transform: scale(1.08);
+}
+
+.cosmo-expanded-close:focus-visible {
+    outline: 2px solid #3ee6c4;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmo-expanded .cosmo-ring-photo img.is-loaded { animation: none; }
+    .cosmo-expanded .exp-st { animation: none; }
+    .cosmo-expanded-backdrop,
+    .cosmo-expanded.is-opening,
+    .cosmo-expanded.is-closing,
+    .cosmo-expanded-backdrop.is-closing { animation-duration: 0.01ms !important; }
 }
