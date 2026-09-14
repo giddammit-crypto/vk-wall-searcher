@@ -38,8 +38,8 @@ $configLocalFound = is_readable(__DIR__ . '/config.local.php');
 $aiKey      = isset($aiConfig['ai_api_key'])  ? trim((string)$aiConfig['ai_api_key'])  : '';
 $aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
 $aiModel    = isset($aiConfig['ai_model'])    ? trim((string)$aiConfig['ai_model'])    : 'mistralai/mistral-large-2512';
-$aiMaxTok   = isset($aiConfig['ai_max_tokens']) ? max(200, (int)$aiConfig['ai_max_tokens']) : 1600;
-$aiTimeout  = isset($aiConfig['ai_timeout'])    ? max(30,  (int)$aiConfig['ai_timeout'])    : 120;
+$aiMaxTok   = isset($aiConfig['ai_max_tokens']) ? max(200, (int)$aiConfig['ai_max_tokens']) : 8192;
+$aiTimeout  = isset($aiConfig['ai_timeout'])    ? max(30,  (int)$aiConfig['ai_timeout'])    : 180;
 
 $aiBaseUrl = rtrim($aiBaseUrl, '/');
 
@@ -152,8 +152,9 @@ if (count($clean) === 0) {
     ai_error('После санитизации не осталось валидных сообщений.', 400);
 }
 
+$maxAllowed   = max(8192, $aiMaxTok);
 $reqMaxTokens = isset($data['max_tokens']) ? (int)$data['max_tokens'] : $aiMaxTok;
-$reqMaxTokens = min(max(200, $reqMaxTokens), $aiMaxTok);
+$reqMaxTokens = min(max(200, $reqMaxTokens), $maxAllowed);
 $temperature  = isset($data['temperature']) ? (float)$data['temperature'] : 0.4;
 $temperature  = min(max(0.0, $temperature), 1.5);
 

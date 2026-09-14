@@ -33,8 +33,8 @@ return [
     'ai_base_url' => 'https://api.xkiro.com/v1',
     'ai_model'    => 'mistralai/mistral-large-2512',
     // Ограничения прокси (защита от перерасхода токенов)
-    'ai_max_tokens' => 1600,
-    'ai_timeout'    => 120,
+    'ai_max_tokens' => 8192,
+    'ai_timeout'    => 180,
 
     // ---------------------------------------------------------------------
     // Самообновление с GitHub (вкладка «Настройки»)

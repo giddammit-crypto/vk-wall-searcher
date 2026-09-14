@@ -134,7 +134,8 @@ const SYSTEM_PROMPT = `
 ## 7. ФОРМАТИРОВАНИЕ ОТВЕТОВ
 
 Язык: русский, деловой, конкретный.
-Длина: отчёты до 450 слов, чат-ответы до 220 слов (если не попросили подробнее).
+Длина: пиши ёмко, структурированно, без лишней воды. При этом отчёты и инсайты должны быть исчерпывающими и полностью охватывать все запрошенные филиалы, метрики и разделы.
+КРИТИЧЕСКИ ВАЖНО: ВСЕГДА завершай ответ до конца! Полностью доводи до логического завершения начатые мысли, предложения, таблицы и пункты рекомендаций. НИКОГДА не обрывай ответ на полуслове.
 Эмодзи: ЗАПРЕЩЕНЫ полностью — ни в заголовках, ни в списках.
 
 Разметка (рендерится в интерфейсе):
@@ -214,7 +215,12 @@ async function aiChatRequest(messages, opts = {}) {
     if (!json || !json.choices || !json.choices[0] || !json.choices[0].message) {
         throw new Error('ИИ вернул пустой ответ');
     }
-    return json.choices[0].message.content;
+    const choice = json.choices[0];
+    let content = (choice.message && choice.message.content) || '';
+    if (choice.finish_reason === 'length') {
+        content += '\n\n*(Внимание: ответ достиг предела длины токенов)*';
+    }
+    return content;
 }
 
 // ---------------------------------------------------------------------------
@@ -532,7 +538,7 @@ function renderBusy(text) {
     return b;
 }
 
-async function sendPrompt(userText, { isAction = false, maxTokens, temperature = 0.4 } = {}) {
+async function sendPrompt(userText, { isAction = false, maxTokens = 4000, temperature = 0.4 } = {}) {
     if (aiBusy) return;
     const snapshotFn = chatDom.getSnapshot;
     if (!snapshotFn) return;
@@ -666,7 +672,7 @@ export async function initAiTab(opts) {
             + 'Только то, что подтверждено данными снимка.\n'
             + '### Рекомендации\n'
             + '3–5 рекомендаций. Каждая начинается с цифры-основания из данных.',
-            { isAction: true, maxTokens: 2000, temperature: 0.15 }
+            { isAction: true, maxTokens: 6000, temperature: 0.15 }
         );
     });
 
@@ -695,7 +701,7 @@ export async function initAiTab(opts) {
             + 'Неожиданные паттерны: большой разрыв между views и likes, резкие перепады активности.\n'
             + '### 5 рекомендаций\n'
             + 'Каждая с указанием филиала/метрики-основания из снимка.',
-            { isAction: true, maxTokens: 1600, temperature: 0.35 }
+            { isAction: true, maxTokens: 4500, temperature: 0.35 }
         );
     });
 
@@ -711,7 +717,7 @@ export async function initAiTab(opts) {
         const text = (chatDom.input.value || '').trim();
         if (!text || aiBusy) return;
         chatDom.input.value = '';
-        sendPrompt(text, { temperature: 0.4 });
+        sendPrompt(text, { maxTokens: 4000, temperature: 0.4 });
     };
     chatDom.sendBtn.addEventListener('click', submit);
     chatDom.input.addEventListener('keydown', e => {

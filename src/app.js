@@ -23,7 +23,7 @@ import {
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.8.5';
+} from './ai.js?v=4.8.6';
 
 import {
     fetchHistory,
