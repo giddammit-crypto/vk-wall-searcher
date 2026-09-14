@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.8.7",
+    "version": "4.8.8",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-14T16:50:00+03:00",
-    "release_name": "AURORA 4.8.7 — шрифт Shoptronic SP на заставке 3D пространства (Галактика Млечный Путь, Планета Земля)"
+    "commit_date": "2026-09-14T16:55:00+03:00",
+    "release_name": "AURORA 4.8.8 — 10 спутников на околоземной орбите (скорость 0.25x), шрифт Arial для цифр на заставке"
 }

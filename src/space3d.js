@@ -20,7 +20,7 @@ import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.
 import { SpaceAudio } from './space_audio.js?v=4.8.5';
 import { CelestialPlanets } from './celestial_planets.js?v=4.8.5';
 import { IssStation } from './iss_station.js?v=4.8.5';
-import { SatellitesSwarm } from './satellites_swarm.js?v=4.8.5';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.8.8';
 import { Constellations } from './constellations.js?v=4.8.5';
 import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.8.5';
 // Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —

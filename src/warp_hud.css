@@ -16,15 +16,42 @@
     font-display: swap;
 }
 @font-face {
-    font-family: 'Shoptronic';
-    src: url('../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
-         url('../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
-         url('../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype'),
-         url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
-         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-family: 'Arial';
+    src: local('Arial'),
+         url('../assets/fonts/arial.woff2') format('woff2'),
+         url('../assets/fonts/arial.woff') format('woff'),
+         url('../assets/fonts/arial.ttf') format('truetype'),
+         url('assets/fonts/arial.woff2') format('woff2'),
+         url('assets/fonts/arial.ttf') format('truetype');
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
+}
+
+/* Перенаправление цифр (0-9) на Arial при использовании Shoptronic SP на заставке */
+@font-face {
+    font-family: 'Shoptronic SP';
+    src: local('Arial'),
+         url('../assets/fonts/arial.woff2') format('woff2'),
+         url('../assets/fonts/arial.woff') format('woff'),
+         url('../assets/fonts/arial.ttf') format('truetype'),
+         url('assets/fonts/arial.woff2') format('woff2'),
+         url('assets/fonts/arial.ttf') format('truetype');
+    unicode-range: U+0030-0039;
+    font-weight: 100 900;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Shoptronic';
+    src: local('Arial'),
+         url('../assets/fonts/arial.woff2') format('woff2'),
+         url('../assets/fonts/arial.woff') format('woff'),
+         url('../assets/fonts/arial.ttf') format('truetype'),
+         url('assets/fonts/arial.woff2') format('woff2'),
+         url('assets/fonts/arial.ttf') format('truetype');
+    unicode-range: U+0030-0039;
+    font-weight: 100 900;
+    font-style: normal;
 }
 
 /* Холст варпа — поверх 3D-пространства: прибытие идёт кроссфейдом,
@@ -227,8 +254,8 @@
     letter-spacing: 0.09em;
     padding: 3px 0;
 }
-.tele-key { color: rgba(148, 197, 253, 0.7); font-weight: 600; }
-.tele-num { color: #eafcff; font-weight: 700; font-size: 12px; }
+.tele-key { color: rgba(148, 197, 253, 0.7); font-weight: 600; font-family: 'Shoptronic SP', Arial, sans-serif; }
+.tele-num { color: #eafcff; font-weight: 700; font-size: 12px; font-family: Arial, 'Helvetica Neue', sans-serif !important; font-variant-numeric: tabular-nums; }
 .tele-ok { color: #f9a8d4; }
 
 .tele-bar {
