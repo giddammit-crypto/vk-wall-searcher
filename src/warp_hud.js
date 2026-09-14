@@ -144,7 +144,7 @@ export class WarpHud {
                 <div class="title-org">ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ • МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</div>
             </div>
 
-            <!-- Футуристический HUD Бэлы в правой части экрана в 3D проекции -->
+            <!-- Футуристический HUD Бэлы в левой части экрана в 3D проекции -->
             <div class="warp-bela-hud hidden" data-bela-hud>
                 <div class="bela-hud-frame">
                     <span class="bh-corner bh-tl"></span>
@@ -181,7 +181,7 @@ export class WarpHud {
                             <span class="bela-callsign">AURORA-AI</span>
                         </div>
                         <div class="bela-role">ГОЛОСОВОЙ ОПЕРАТОР • АССИСТЕНТ</div>
-                        <canvas class="bela-voice-wave" width="280" height="38"></canvas>
+                        <canvas class="bela-voice-wave" width="320" height="34"></canvas>
                     </div>
                 </div>
 
@@ -200,19 +200,6 @@ export class WarpHud {
                 <div class="bela-hud-footer">
                     <span class="bh-sector">ВЕКТОР: МЛЕЧНЫЙ ПУТЬ • ЗЕМЛЯ</span>
                     <span class="bh-codec">NEURAL VOICE // 24-BIT</span>
-                </div>
-            </div>
-
-            <!-- Компактный системный лог полета (слева внизу) -->
-            <div class="warp-mission-log">
-                <div class="briefing-head">
-                    <span class="briefing-dot"></span>
-                    <span>СИСТЕМНЫЙ ЖУРНАЛ ПОЛЁТА</span>
-                    <span class="briefing-live">В ЭФИРЕ</span>
-                </div>
-                <div class="briefing-log">
-                    <span class="briefing-log-tag">МИССИЯ</span>
-                    <span class="briefing-log-text" data-log>Связь с орбитальным комплексом установлена…</span>
                 </div>
             </div>
 
@@ -261,7 +248,7 @@ export class WarpHud {
         this.belaWaveCtx = this.belaWaveCanvas ? this.belaWaveCanvas.getContext('2d') : null;
 
         // Начальная надпись AURORA и текст под ней пропадают через 5 секунд,
-        // после чего в правой части эффектно появляется футуристический HUD Бэлы
+        // после чего в левой части эффектно появляется футуристический HUD Бэлы
         clearTimeout(this.titleHideTimer);
         this.titleHideTimer = setTimeout(() => {
             const title = this.root?.querySelector('.warp-title');

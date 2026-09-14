@@ -390,17 +390,18 @@
 }
 
 /* --------------------------------------------------------------------------
-   Футуристический 3D HUD Бэлы (справа) — Голографическая проекция
+   Футуристический 3D HUD Бэлы (слева) — Голографическая проекция
    -------------------------------------------------------------------------- */
 .warp-bela-hud {
     position: absolute;
-    top: calc(7.6vh + 155px);
-    right: 3.5vw;
-    width: clamp(340px, 28vw, 440px);
+    top: calc(7.6vh + 72px);
+    left: 4vw;
+    right: auto;
+    width: clamp(360px, 24vw, 420px);
     padding: 16px 18px;
-    background: linear-gradient(145deg, rgba(6, 14, 30, 0.88) 0%, rgba(10, 24, 52, 0.72) 60%, rgba(20, 14, 40, 0.80) 100%);
+    background: linear-gradient(145deg, rgba(6, 14, 30, 0.90) 0%, rgba(10, 24, 52, 0.80) 60%, rgba(20, 14, 40, 0.85) 100%);
     border: 1px solid rgba(56, 189, 248, 0.45);
-    border-radius: 18px;
+    border-radius: 20px;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85),
@@ -409,8 +410,8 @@
                 inset 0 0 24px rgba(236, 72, 153, 0.10);
     perspective: 1200px;
     transform-style: preserve-3d;
-    transform: perspective(1000px) rotateY(-12deg) rotateX(3deg);
-    transform-origin: right center;
+    transform: perspective(1000px) rotateY(12deg) rotateX(3deg);
+    transform-origin: left center;
     opacity: 0;
     pointer-events: none;
     z-index: 100010;
@@ -430,7 +431,7 @@
 @keyframes belaHudEnter {
     0% {
         opacity: 0;
-        transform: perspective(1000px) rotateY(-35deg) rotateX(12deg) translate3d(90px, 30px, -140px) scale(0.78);
+        transform: perspective(1000px) rotateY(35deg) rotateX(12deg) translate3d(-90px, 30px, -140px) scale(0.78);
         filter: blur(16px) brightness(2.4);
     }
     50% {
@@ -439,7 +440,7 @@
     }
     100% {
         opacity: 1;
-        transform: perspective(1000px) rotateY(-12deg) rotateX(3deg) translate3d(0, 0, 0) scale(1);
+        transform: perspective(1000px) rotateY(12deg) rotateX(3deg) translate3d(0, 0, 0) scale(1);
         filter: blur(0px) brightness(1);
     }
 }
@@ -458,12 +459,12 @@
 @keyframes belaHudCollapse {
     0% {
         opacity: 1;
-        transform: perspective(1000px) rotateY(-12deg) rotateX(3deg) scale(1);
+        transform: perspective(1000px) rotateY(12deg) rotateX(3deg) scale(1);
         filter: brightness(1);
     }
     25% {
         opacity: 1;
-        transform: perspective(1000px) rotateY(-6deg) rotateX(1.5deg) scale(1.03);
+        transform: perspective(1000px) rotateY(6deg) rotateX(1.5deg) scale(1.03);
         filter: brightness(2.5) drop-shadow(0 0 35px #38bdf8);
     }
     60% {
@@ -481,7 +482,7 @@
 @keyframes belaHudCollapseFast {
     0% {
         opacity: 1;
-        transform: perspective(1000px) rotateY(-12deg) rotateX(3deg) scale(1);
+        transform: perspective(1000px) rotateY(12deg) rotateX(3deg) scale(1);
         filter: brightness(1.2);
     }
     50% {
@@ -571,50 +572,54 @@
     border-radius: 5px;
 }
 
-/* Основное содержимое: Аватарка и Мета-информация */
+/* Основное содержимое: Аватарка 3x (246px) и Мета-информация */
 .bela-hud-content {
     display: flex;
-    gap: 14px;
+    flex-direction: column;
     align-items: center;
+    gap: 10px;
 }
 
 .bela-avatar-wrap {
     position: relative;
-    width: 82px;
-    height: 82px;
+    width: 246px;
+    height: 246px;
     flex-shrink: 0;
-    border-radius: 16px;
+    border-radius: 22px;
     display: grid;
     place-items: center;
+    margin: 0 auto 4px;
 }
 
 .bela-avatar-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center top;
-    border-radius: 16px;
-    border: 2px solid rgba(56, 189, 248, 0.75);
-    box-shadow: 0 0 22px rgba(56, 189, 248, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2);
+    object-position: center 15%;
+    border-radius: 20px;
+    border: 2px solid rgba(56, 189, 248, 0.85);
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.45),
+                0 0 60px rgba(56, 189, 248, 0.15),
+                inset 0 0 14px rgba(255, 255, 255, 0.2);
     position: relative;
     z-index: 2;
 }
 
 .bela-avatar-ring {
     position: absolute;
-    border-radius: 20px;
+    border-radius: 26px;
     pointer-events: none;
 }
 
 .bela-avatar-ring.ring-outer {
-    inset: -6px;
-    border: 1px dashed rgba(56, 189, 248, 0.55);
-    animation: belaRingSpin 18s linear infinite;
+    inset: -8px;
+    border: 1.5px dashed rgba(56, 189, 248, 0.6);
+    animation: belaRingSpin 20s linear infinite;
 }
 
 .bela-avatar-ring.ring-middle {
-    inset: -3px;
-    border: 1px solid rgba(236, 72, 153, 0.45);
+    inset: -4px;
+    border: 1px solid rgba(236, 72, 153, 0.5);
 }
 
 @keyframes belaRingSpin {
@@ -624,82 +629,89 @@
 
 .bela-avatar-glow {
     position: absolute;
-    inset: -12px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%);
+    inset: -16px;
+    border-radius: 34px;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, rgba(236, 72, 153, 0.12) 50%, transparent 75%);
     pointer-events: none;
     z-index: 1;
 }
 
 .bela-avatar-badge {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
-    width: 24px;
-    height: 24px;
+    bottom: -5px;
+    right: -5px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #020617;
-    border: 1.5px solid #38bdf8;
+    border: 2px solid #38bdf8;
     display: grid;
     place-items: center;
     z-index: 3;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.85);
 }
 .bela-avatar-badge .material-symbols-outlined {
-    font-size: 14px;
+    font-size: 18px;
     color: #38bdf8;
 }
 
 .bela-meta {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    text-align: center;
+    gap: 3px;
 }
 
 .bela-name-row {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 .bela-name {
     font-family: 'Shoptronic SP', 'Shoptronic', 'Montserrat', sans-serif;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 900;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.18em;
     color: #ffffff;
-    text-shadow: 0 0 16px rgba(255, 255, 255, 0.95), 0 0 28px rgba(56, 189, 248, 0.65);
+    text-shadow: 0 0 16px rgba(255, 255, 255, 0.95), 0 0 30px rgba(56, 189, 248, 0.7);
     line-height: 1.1;
 }
 
 .bela-callsign {
     font-family: 'Shoptronic SP', Arial, sans-serif;
-    font-size: 7.5px;
-    font-weight: 700;
+    font-size: 8px;
+    font-weight: 800;
     color: #ff7a9c;
-    border: 1px solid rgba(236, 72, 153, 0.45);
-    border-radius: 4px;
-    padding: 1px 5px;
-    letter-spacing: 0.12em;
+    border: 1px solid rgba(236, 72, 153, 0.5);
+    border-radius: 5px;
+    padding: 2px 7px;
+    letter-spacing: 0.14em;
+    background: rgba(236, 72, 153, 0.08);
 }
 
 .bela-role {
     font-family: 'Shoptronic SP', 'Shoptronic', sans-serif;
-    font-size: 9px;
+    font-size: 9.5px;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     color: #7ee8ff;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
 
 .bela-voice-wave {
     display: block;
     width: 100%;
-    height: 32px;
+    max-width: 320px;
+    height: 34px;
     opacity: 0.95;
-    border-radius: 6px;
+    border-radius: 8px;
+    background: rgba(2, 6, 18, 0.5);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* Разделитель */
@@ -727,41 +739,54 @@
     100% { left: 108%; }
 }
 
-/* Область машинописи речи */
+/* Область машинописи речи — адаптивная, с переносами и отступами */
 .bela-speech-area {
-    padding: 11px 13px;
-    background: rgba(2, 6, 18, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    border-radius: 13px;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 14px rgba(56, 189, 248, 0.08);
+    padding: 14px 16px;
+    background: rgba(2, 6, 18, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    border-radius: 14px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.65), 0 0 16px rgba(56, 189, 248, 0.08);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .bela-speech-tag {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     font-family: 'Shoptronic SP', Arial, sans-serif;
-    font-size: 8px;
+    font-size: 8.5px;
     font-weight: 800;
     letter-spacing: 0.14em;
     color: #38bdf8;
-    margin-bottom: 7px;
+    margin-bottom: 9px;
     text-transform: uppercase;
 }
 .bela-speech-tag .material-symbols-outlined {
-    font-size: 12px;
+    font-size: 13px;
     color: #38bdf8;
 }
 
 .bela-speech-text {
     font-family: 'Shoptronic SP', 'Shoptronic', 'Montserrat', sans-serif;
-    font-size: 13.5px;
-    line-height: 1.55;
+    font-size: clamp(12.5px, 1.05vw, 14px);
+    line-height: 1.65;
     color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 14px rgba(56, 189, 248, 0.25);
-    min-height: 68px;
-    word-break: break-word;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 16px rgba(56, 189, 248, 0.25);
+    min-height: 84px;
+    text-indent: 1.4em; /* Красная строка / абзацный отступ */
+    text-align: justify;
+    text-justify: inter-word;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    -ms-hyphens: auto;
+    hyphens: auto;
     letter-spacing: 0.02em;
+    margin: 0;
 }
 
 .bela-typed-content {
@@ -775,6 +800,7 @@
     margin-left: 2px;
     animation: belaCursorBlink 0.75s step-start infinite;
     text-shadow: 0 0 10px #38bdf8;
+    text-indent: 0;
 }
 
 @keyframes belaCursorBlink {
@@ -790,87 +816,6 @@
     font-size: 7.5px;
     color: rgba(148, 197, 253, 0.55);
     letter-spacing: 0.08em;
-}
-
-/* Компактный системный лог полёта (слева внизу) */
-.warp-mission-log {
-    position: absolute;
-    left: 4vw;
-    bottom: 8.4vh;
-    width: min(440px, 50vw);
-    padding: 12px 16px;
-    background: rgba(3, 7, 18, 0.88);
-    border: 1px solid rgba(56, 189, 248, 0.32);
-    border-radius: 14px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    animation: warpSlideLeft 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
-}
-
-.briefing-head {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    color: #38bdf8;
-}
-.briefing-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #38bdf8;
-    box-shadow: 0 0 10px #38bdf8;
-    animation: briefDot 1.4s ease-in-out infinite;
-}
-@keyframes briefDot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.35; transform: scale(0.7); }
-}
-.briefing-live {
-    margin-left: auto;
-    font-family: 'Shoptronic SP', Arial, sans-serif;
-    font-size: 8.5px;
-    font-weight: 700;
-    color: #ff7a9c;
-    letter-spacing: 0.14em;
-}
-
-.briefing-log {
-    display: flex;
-    gap: 9px;
-    align-items: baseline;
-    font-size: 13.5px;
-    line-height: 1.5;
-    color: #ffffff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
-    margin-top: 6px;
-}
-.briefing-log-tag {
-    font-family: 'Shoptronic SP', Arial, sans-serif;
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    color: #38bdf8;
-    white-space: nowrap;
-    padding: 2px 7px;
-    background: rgba(56, 189, 248, 0.15);
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    border-radius: 4px;
-}
-.briefing-log-text {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #ffffff;
-    line-height: 1.45;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 16px rgba(0, 0, 0, 0.95);
-}
-.briefing-log-text.log-in { animation: logIn 0.5s ease both; }
-@keyframes logIn {
-    from { opacity: 0; transform: translateY(5px); filter: blur(3px); }
-    to { opacity: 1; transform: none; filter: none; }
 }
 
 /* --------------------------------------------------------------------------
@@ -1051,7 +996,6 @@
 }
 
 .warp-hud.phase-arrived .warp-bela-hud,
-.warp-hud.phase-arrived .warp-mission-log,
 .warp-hud.phase-arrived .warp-patch,
 .warp-hud.phase-arrived .warp-telemetry,
 .warp-hud.phase-arrived .warp-phase {
@@ -1066,8 +1010,12 @@
    -------------------------------------------------------------------------- */
 @media (max-width: 1100px) {
     .warp-telemetry { width: 208px; }
-    .warp-bela-hud { width: clamp(320px, 34vw, 400px); right: 2.5vw; }
-    .warp-mission-log { width: min(380px, 50vw); }
+    .warp-bela-hud {
+        width: clamp(340px, 32vw, 400px);
+        left: 3vw;
+        right: auto;
+    }
+    .bela-avatar-wrap { width: 200px; height: 200px; }
     .warp-phase { width: min(340px, 46vw); }
 }
 
@@ -1084,17 +1032,15 @@
         right: 4vw;
         left: 4vw;
         width: auto;
+        max-width: 460px;
+        margin: 0 auto;
         transform: perspective(1000px) rotateX(4deg);
         transform-origin: center bottom;
         padding: 12px 14px;
     }
-    .bela-avatar-wrap { width: 62px; height: 62px; }
-    .bela-name { font-size: 16px; }
-    .bela-speech-text { font-size: 12px; min-height: 52px; }
-
-    .warp-mission-log {
-        display: none;
-    }
+    .bela-avatar-wrap { width: 120px; height: 120px; }
+    .bela-name { font-size: 18px; }
+    .bela-speech-text { font-size: 12px; min-height: 58px; text-indent: 1.2em; }
 
     .warp-phase {
         right: 4vw;
@@ -1116,16 +1062,23 @@
     .patch-badge { width: 32px; height: 32px; }
     .patch-title { font-size: 12.5px; }
     .patch-sub { font-size: 7.5px; }
-    .bela-avatar-wrap { width: 50px; height: 50px; }
-    .bela-name { font-size: 14px; }
-    .bela-speech-text { font-size: 11px; min-height: 46px; }
+    .bela-avatar-wrap { width: 90px; height: 90px; }
+    .bela-name { font-size: 15px; }
+    .bela-speech-text { font-size: 11px; min-height: 50px; text-indent: 1em; }
     .phase-name { font-size: 9px; }
     .warp-skip-btn .skip-hint { display: none; }
 }
 
+@media (max-height: 750px) {
+    .bela-avatar-wrap { width: 170px; height: 170px; }
+    .bela-speech-text { font-size: 12px; min-height: 64px; }
+    .warp-bela-hud { top: calc(7.6vh + 58px); padding: 12px 14px; }
+}
+
 @media (max-height: 620px) {
-    .warp-telemetry, .warp-controls-hint, .warp-mission-log { display: none; }
+    .warp-telemetry, .warp-controls-hint { display: none; }
     .warp-bela-hud { top: auto; bottom: 8.6vh; padding: 10px 12px; }
+    .bela-avatar-wrap { width: 100px; height: 100px; }
     .title-letters { font-size: clamp(38px, 9vh, 78px); }
 }
 
