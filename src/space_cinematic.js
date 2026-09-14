@@ -152,7 +152,7 @@ export const CINEMATIC_CONFIG = {
 // ВАЖНО: версия запроса ДОЛЖНА совпадать с импортом в space3d.js — иначе браузер
 // загрузит cosmonaut_ring.js дважды (два синглтона), и show()/update() начнут
 // работать с разными DOM-узлами карточек (карточки «разлетаются» после reopen).
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.9.2';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.10.0';
 
 /* Заголовок прилёта — ровно три строки с гарантированной печатью буквы «Ю» */
 const TITLE_LINES = [

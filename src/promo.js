@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.9.2';
-import { createQrSvg } from './qrcode.js?v=4.9.2';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.10.0';
+import { createQrSvg } from './qrcode.js?v=4.10.0';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',

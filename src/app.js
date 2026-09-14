@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.9.2';
+} from './api.js?v=4.10.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.9.2';
+} from './advice.js?v=4.10.0';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.9.2';
+} from './ai.js?v=4.10.0';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.9.2';
+} from './subscribers.js?v=4.10.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.9.2';
+} from './updater.js?v=4.10.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.9.2';
+} from './branches.js?v=4.10.0';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.9.2';
+} from './analytics.js?v=4.10.0';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.9.2';
+} from './render.js?v=4.10.0';
 
 import {
     exportToCsv,
@@ -84,27 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.9.2';
+} from './export.js?v=4.10.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.9.2';
-import { CosmicUniverse } from './cosmic.js?v=4.9.2';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.10.0';
+import { CosmicUniverse } from './cosmic.js?v=4.10.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.9.2';
+} from './promo.js?v=4.10.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.9.2';
+} from './radar.js?v=4.10.0';
 
-import { Space3D } from './space3d.js?v=4.9.2';
-import { SpaceWarp } from './space_warp.js?v=4.9.2';
-import { SpaceAudio } from './space_audio.js?v=4.9.2';
+import { Space3D } from './space3d.js?v=4.10.0';
+import { SpaceWarp } from './space_warp.js?v=4.10.0';
+import { SpaceAudio } from './space_audio.js?v=4.10.0';
+import { Mascot } from './mascot.js?v=4.10.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.9.2';
+export const APP_VERSION = '4.10.0';
 
 function initApp() {
 
@@ -1024,6 +1025,8 @@ function initApp() {
             if (btnText) btnText.textContent = 'Сканирование...';
         }
 
+        try { Mascot.onScanStart(keyword); } catch (e) {}
+
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('hidden');
             // Trigger reflow for CSS transition
@@ -1443,6 +1446,7 @@ function initApp() {
             CosmicUniverse.setWarp(false);
             CosmicUniverse.stop();
             console.error('Search error:', err);
+            try { Mascot.onScanError(err.message); } catch (e) {}
             alert(`Ошибка при выполнении поиска: ${err.message}`);
             if (elements.progressTitle) elements.progressTitle.textContent = 'Ошибка поиска';
             if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = err.message;
@@ -1494,6 +1498,22 @@ function initApp() {
 
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
         updateAdviceAndSubscribers(stats);
+
+        // Информирование робота-ассистента о результатах сканирования
+        if (state.matchedPosts.length > 0) {
+            const topBranch = stats && stats[0] ? (stats[0].canonicalName || stats[0].name) : '';
+            try {
+                Mascot.onScanSuccess({
+                    count: state.matchedPosts.length,
+                    topBranch,
+                    totalViews: kpis.totalViews
+                });
+            } catch (e) {}
+        } else {
+            try {
+                Mascot.onScanEmpty(elements.keywordInput ? elements.keywordInput.value : '');
+            } catch (e) {}
+        }
 
         // Resolve any remaining missing repost author names/avatars across all tabs and reports
         resolveMissingAuthors(state.matchedPosts, state.token).catch(() => {});
@@ -3574,6 +3594,13 @@ function initApp() {
         console.warn('[AI] Tab init error:', err);
     }
 
+    // Инициализация интерактивного 2D робота-ассистента в нижнем левом углу
+    try {
+        Mascot.init();
+    } catch (err) {
+        console.warn('[Mascot] Init error:', err);
+    }
+
     // Expose for testing/debugging
     window.__VK_APP__ = {
         state,
@@ -3595,7 +3622,8 @@ function initApp() {
         Space3D,
         openSpace3D: () => Space3D.open(),
         closeSpace3D: () => Space3D.close(),
-        toggleSpace3D: () => Space3D.toggle()
+        toggleSpace3D: () => Space3D.toggle(),
+        Mascot
     };
 }
 

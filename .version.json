@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.9.2",
+    "version": "4.10.0",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-14T18:48:00+03:00",
-    "release_name": "AURORA 4.9.2 — фиксация постоянного размера HUD-окна и зоны трансляции речи Бэлы (предотвращение растягивания окна при наборе текста)"
+    "commit_date": "2026-09-14T21:30:00+03:00",
+    "release_name": "AURORA 4.10.0 — интерактивный 2D робот-ассистент в нижнем левом углу: чистые прозрачные PNG спрайты (idle, smile, thinking, yawn, tired, sleep, angry), 2.5D трекинг курсора, диалоговое облачко и анализ сканирования"
 }
