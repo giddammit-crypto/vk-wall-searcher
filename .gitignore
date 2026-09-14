@@ -37,3 +37,8 @@ api/config.local.php
 data/*
 !data/.gitkeep
 !data/subscribers.json
+
+# Cache (TTS, temporary responses)
+cache/*
+!cache/.gitkeep
+!cache/tts/.gitkeep

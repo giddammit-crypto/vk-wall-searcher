@@ -1,5 +1,5 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.15.0)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.16.0)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
@@ -28,103 +28,104 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.15.0';
+import { resolveApiUrl } from './api.js?v=4.16.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
+const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.15.0',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.15.0',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.15.0',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.15.0',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.15.0',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.15.0',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.15.0'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.16.0',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.16.0',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.16.0',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.16.0',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.16.0',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.16.0',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.16.0'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.15.0',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.15.0',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.15.0',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.15.0',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.15.0',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.15.0',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.15.0',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.15.0',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.15.0',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.15.0',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.16.0',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.16.0',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.16.0',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.16.0',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.16.0',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.16.0',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.16.0',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.16.0',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.16.0',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.16.0',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.15.0',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.15.0',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.15.0',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.15.0',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.15.0',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.15.0',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.15.0',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.15.0',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.15.0',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.16.0',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.16.0',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.16.0',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.16.0',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.16.0',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.16.0',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.16.0',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.16.0',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.16.0',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.15.0',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.15.0',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.15.0',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.15.0',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.16.0',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.16.0',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.16.0',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.16.0',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.15.0',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.15.0',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.15.0',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.16.0',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.16.0',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.16.0',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.15.0',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.15.0',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.15.0',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.16.0',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.16.0',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.16.0',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.15.0',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.15.0',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.15.0',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.15.0',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.15.0',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.15.0',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.15.0',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.15.0',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.15.0',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.15.0',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.15.0',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.15.0',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.15.0',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.15.0',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.15.0',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.15.0',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.15.0',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.15.0',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.15.0',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.15.0',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.16.0',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.16.0',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.16.0',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.16.0',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.16.0',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.16.0',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.16.0',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.16.0',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.16.0',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.16.0',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.16.0',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.16.0',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.16.0',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.16.0',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.16.0',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.16.0',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.16.0',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.16.0',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.16.0',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.16.0',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.15.0',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.15.0',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.15.0',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.16.0',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.16.0',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.16.0',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.15.0',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.15.0',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.15.0',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.16.0',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.16.0',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.16.0',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.15.0',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.15.0',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.16.0',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.16.0',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.15.0',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.15.0',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.15.0',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.15.0'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.16.0',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.16.0',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.16.0',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.16.0'
 };
 
 const MOOD_EMOJIS = {
@@ -163,6 +164,514 @@ function formatViews(num) {
     if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
     return n.toLocaleString('ru-RU');
 }
+
+const TAB_SPEECH_VARIANTS = {
+    'visual-tab': [
+        {
+            voice: 'critique_10',
+            activity: 'inspect_screen',
+            text: (s) => s?.count
+                ? `## Лента постов 🖼️📰\nСобрано **${s.count}** записей! Лидер по просмотрам — **${escapeHtml(s.topBranch || 'Лидер')}**. Изучай визуальный стиль!`
+                : `## Карточки публикаций 🖼️\nЗдесь живая лента постов. Запусти поиск сверху, и я найду лучшие публикации!`
+        },
+        {
+            voice: 'critique_3',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Визуальный ряд 🎨\nКачественные иллюстрации привлекают на 40% больше внимания. Оцени снимки в этой ленте!`
+                : `## Визуальная витрина 🎨\nУмная лента обожает сочные фотографии и живые кадры. Скоро здесь будут все посты!`
+        },
+        {
+            voice: 'post_scan_1',
+            activity: 'inspect_screen',
+            text: (s) => s?.count
+                ? `## Анализ публикаций 🧐\nВсе посты перед глазами! Обрати внимание на соотношение текста и иллюстраций у лидеров.`
+                : `## Обзор стены 🚀\nГотов разложить публикации по полочкам! Нажимай сканирование, полетели!`
+        },
+        {
+            voice: 'critique_7',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Структура текстов 📜\nКороткие абзацы и лёгкий слог выигрывают у полотен текста. Лидеры знают этот секрет!`
+                : `## Формат контента 📜\nВ этой вкладке удобно сравнивать подачу материала и оформление постов.`
+        },
+        {
+            voice: 'critique_14',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Эмоции и акценты ✨\nУмеренные эмодзи оживляют текст. Главное — не перегружать пост знаками!`
+                : `## Эстетика ленты ✨\nПосле сканирования здесь появятся карточки с полными метриками вовлечённости.`
+        },
+        {
+            voice: 'surprise_1',
+            activity: 'inspect_screen',
+            text: (s) => s?.count
+                ? `## Отличные охваты! 🚀\nТоповые записи набрали внушительное число просмотров! Берём лучшие приёмы на вооружение.`
+                : `## Поиск шедевров 🔍\nИщу публикации, которые покорили сердца читателей. Запустим сканирование?`
+        },
+        {
+            voice: 'critique_16',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Спектр вовлечённости 🔬\nПроверь реакцию аудитории на каждый пост: лайки, репосты и комментарии на виду!`
+                : `## Глубокий просмотр 🔬\nЗдесь можно детально изучить каждый пост с прямыми ссылками во ВКонтакте.`
+        },
+        {
+            voice: 'sarcasm_2',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Секреты алгоритма 🤖\nУмная лента благоволит оригинальным публикациям с живыми фотографиями читателей.`
+                : `## Умный показ 🤖\nПосмотрим, кого алгоритм продвигает охотнее всего! Включай поиск!`
+        },
+        {
+            voice: 'critique_4',
+            activity: 'inspect_screen',
+            text: (s) => s?.count
+                ? `## Хэштеги и навигация #️⃣\nГрамотные тематические теги помогают читателям находить нужные книги и события.`
+                : `## Навигация по записям #️⃣\nФильтруй публикации по рубрикам и хэштегам прямо в этой ленте.`
+        },
+        {
+            voice: 'post_scan_10',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Галерея вдохновения 🌟\nИзучай опыт коллег и внедряй самые удачные форматы в свои публикации!`
+                : `## Визуальная галерея 🌟\nКосмо готов к инспекции контента! Жду твою команду на старт!`
+        }
+    ],
+    'report-tab': [
+        {
+            voice: 'critique_19',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Табличный отчёт 📊📋\nВсе ссылки и цифры по филиалам как на ладони! Идеально для методических отчётов.`
+                : `## Табличный отчёт 📋\nСводная таблица с кликабельными ссылками на посты. Отсканируй стену для заполнения!`
+        },
+        {
+            voice: 'post_scan_3',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Точные цифры 🔢\nСтатистика просмотров, лайков и репостов сведена в строгий реестр.`
+                : `## Реестр показателей 🔢\nЗдесь формируется точная ведомость для руководства. Запусти сбор данных!`
+        },
+        {
+            voice: 'critique_1',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Анализ обратной связи 💬\nТаблица показывает активность аудитории по каждому филиалу без прикрас.`
+                : `## Учёт активности 💬\nВсе ключевые метрики будут структурированы по столбцам и датам.`
+        },
+        {
+            voice: 'critique_12',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Лидеры таблицы 🥇\nВверху списка — самые результативные публикации периода. Заслуженное признание!`
+                : `## Ранжирование постов 🥇\nПосле поиска ты сможешь отсортировать отчёт по любому столбцу.`
+        },
+        {
+            voice: 'post_scan_6',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Готово к экспорту 📑\nДанные проверены и готовы к выгрузке в Excel или печати.`
+                : `## Экспорт и печать 📑\nУдобный формат для сохранения сводок и подготовки официальных справок.`
+        },
+        {
+            voice: 'critique_17',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Методический порядок 📁\nКосмо обожает структуру: каждый филиал на своём месте, все показатели сходятся!`
+                : `## Структурирование данных 📁\nАвтоматическое сведение сотен постов в единую наглядную таблицу.`
+        },
+        {
+            voice: 'critique_5',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Хронология записей ⏳\nОбрати внимание на даты и время публикаций: есть ли закономерность в успехе?`
+                : `## Временные интервалы ⏳\nТаблица поможет выявить наиболее удачные часы для выхода анонсов.`
+        },
+        {
+            voice: 'surprise_3',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Впечатляющий массив 📈\nСводка заполнена до отказа! С такими данными любой отчёт пишется за пару минут.`
+                : `## База показателей 📈\nЖду результатов сканирования, чтобы сформировать полную ведомость!`
+        },
+        {
+            voice: 'critique_18',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Внимание на экран 🚀\nДанные говорят сами за себя. Пора делать выводы и планировать контент-план!`
+                : `## Аналитическая ведомость 🚀\nЗдесь нет лишней графики — только сухие факты и ссылки для проверки.`
+        },
+        {
+            voice: 'post_scan_4',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Полный контроль 🎯\nВся библиотечная сеть перед глазами. С Космо ни один показатель не потеряется!`
+                : `## Контроль показателей 🎯\nЗапусти сканирование, и сводный отчёт будет сформирован мгновенно!`
+        }
+    ],
+    'analytics-tab': [
+        {
+            voice: 'critique_2',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Рейтинг активности 📈👑\nВот они, графики славы! На первом месте **${escapeHtml(s.topBranch || 'Лидер')}**. Изучаем диаграммы!`
+                : `## Рейтинг активности 📈\nЗдесь появятся сравнительные диаграммы охватов и вовлечённости филиалов.`
+        },
+        {
+            voice: 'critique_13',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Коэффициент вовлечённости 💡\nВысокий ER доказывает, что искренний контент привлекает больше, чем формальный!`
+                : `## Вовлечённость аудитории 💡\nГрафики покажут процент читателей, которые активно реагируют на посты.`
+        },
+        {
+            voice: 'surprise_2',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Прорывные результаты! ⚡\nНекоторые филиалы показали потрясающую динамику по охватам!`
+                : `## Потенциал роста ⚡\nСравним показатели библиотек в едином наглядном масштабе.`
+        },
+        {
+            voice: 'critique_8',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Авторский контент 💎\nОригинальные посты всегда приносят втрое больше просмотров, чем простые репосты.`
+                : `## Сравнение форматов 💎\nУзнаем, какие публикации дают максимальный прирост внимания читателей.`
+        },
+        {
+            voice: 'critique_12',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Чемпионский отрыв 🥇\nЛидер уверенно держит планку! Остальным филиалам есть на кого равняться.`
+                : `## Определение лидеров 🥇\nДиаграммы наглядно продемонстрируют распределение читательского внимания.`
+        },
+        {
+            voice: 'critique_16',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Глубокий анализ 🔬\nСравниваем средний охват на один пост: это самый честный показатель качества контента.`
+                : `## Оценка эффективности 🔬\nАлгоритмы рассчитают удельные метрики по каждому подразделению сети.`
+        },
+        {
+            voice: 'sarcasm_3',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Борьба за охваты 🔥\nКонкуренция в умной ленте растёт! Пора обновить визуальный стиль отстающим.`
+                : `## Тренды умной ленты 🔥\nПосмотрим, кто сумел покорить рекомендательную ленту ВКонтакте!`
+        },
+        {
+            voice: 'disappoint_2',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Резервы для роста 📉\nЕсли показатели просели — не опускайте руки. Регулярность быстро вернёт охваты!`
+                : `## Точки роста 📉\nГрафики сразу подсветят направления, требующие методической поддержки.`
+        },
+        {
+            voice: 'post_scan_2',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Стратегический обзор 🗺️\nКартина ясна: баланс между анонсами и обзорами книг даёт лучший отклик.`
+                : `## Стратегия продвижения 🗺️\nЗапусти поиск, и диаграммы нарисуют полную карту активности сети!`
+        },
+        {
+            voice: 'critique_20',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Вершина мастерства 💅\nГрамотная SMM-стратегия видна невооружённым глазом на этих графиках!`
+                : `## Профессиональный аудит 💅\nКосмо готов разложить всю аналитику по полочкам на высшем уровне!`
+        }
+    ],
+    'summary-tab': [
+        {
+            voice: 'critique_17',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Пояснительная записка 📜🧐\nГотовая сводка для руководства с формулировками и цифрами. Только суть!`
+                : `## Пояснительная записка 📜\nЗдесь автоматически сформируется аналитическая записка по итогам поиска.`
+        },
+        {
+            voice: 'post_scan_6',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Официальная справка 🏛️\nСформулированы ключевые тенденции и итоги периода. Можно сразу вставлять в отчёт!`
+                : `## Методический синтез 🏛️\nАвтоматическая подготовка текста аналитического отчёта для методистов.`
+        },
+        {
+            voice: 'critique_19',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Выводы и заключения 📑\nВсе основные цифры подтверждены ссылками на первоисточники.`
+                : `## Сводные заключения 📑\nПозволь алгоритмам обобщить массив данных в стройный связный текст.`
+        },
+        {
+            voice: 'post_scan_3',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Лаконичность и точность 🎯\nНичего лишнего: объём контента, лидеры просмотров и главные показатели периода.`
+                : `## Итоговый конспект 🎯\nЭкономит часы методической работы. Нажми поиск для генерации!`
+        },
+        {
+            voice: 'critique_15',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Взвешенная оценка ⚖️\nОбъективный взгляд на общую динамику публикационной активности библиотечной системы.`
+                : `## Объективная оценка ⚖️\nЗдесь формируется резюме эффективности информационной работы филиалов.`
+        },
+        {
+            voice: 'surprise_3',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Впечатляющий объём 📚\nБиблиотеки проделали огромную работу за этот период! Все достижения зафиксированы.`
+                : `## Фиксация результатов 📚\nОтсканируй стену, чтобы получить подробную пояснительную записку.`
+        },
+        {
+            voice: 'critique_10',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Качественные ориентиры 🏆\nОтмечены лучшие практики, которые стоит тиражировать на всю сеть.`
+                : `## Лучшие практики 🏆\nСправка выделит самые результативные решения для масштабирования.`
+        },
+        {
+            voice: 'disappoint_3',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Зоны внимания ⚠️\nВ записке корректно указаны слабые места, требующие своевременной корректировки.`
+                : `## Выявление недочётов ⚠️\nСистема деликатно подскажет, где показатели отстают от средних.`
+        },
+        {
+            voice: 'critique_18',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Внимание на экран 🚀\nТекст вычитан, цифры проверены. Документ готов к отправке!`
+                : `## Финальный отчёт 🚀\nКосмо подготовит безупречную аналитическую записку сразу после поиска!`
+        },
+        {
+            voice: 'post_scan_8',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Высший пилотаж 🌟\nПрофессионально оформленная пояснительная записка — гордость любого методиста!`
+                : `## Экспертная записка 🌟\nЗапусти сканирование, и сводный документ будет составлен автоматически!`
+        }
+    ],
+    'advice-tab': [
+        {
+            voice: 'critique_11',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Советы филиалам 💡🚀\nИндивидуальные рекомендации! Добавляйте живые фото читателей и открытые вопросы.`
+                : `## Советы филиалам 💡\nЗдесь собраны умные советы для каждого филиала. Запусти сканирование!`
+        },
+        {
+            voice: 'critique_3',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Сила иллюстраций 📸\nНикогда не публикуйте сухой текст без качественного изображения или обложки книги!`
+                : `## Визуальные подсказки 📸\nПодробные советы по улучшению оформления постов для каждого филиала.`
+        },
+        {
+            voice: 'critique_7',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Лёгкость восприятия 📖\nРазбивайте длинные мысли на абзацы и списки. Читателям проще воспринимать ритмичный текст.`
+                : `## Работа со словом 📖\nРекомендации по структуре текстов и созданию цепляющих вступлений.`
+        },
+        {
+            voice: 'critique_4',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Умеренность в тегах #️⃣\nИспользуйте от трёх до пяти целевых хэштегов. Избыток тегов снижает приоритет в ленте.`
+                : `## Рубрикация записей #️⃣\nСоветы по грамотному тегированию и созданию узнаваемых постоянных рубрик.`
+        },
+        {
+            voice: 'critique_5',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Своевременность анонсов ⏰\nПубликуйте анонсы мероприятий за три-четыре дня до события, а не за пару часов!`
+                : `## Планирование времени ⏰\nМетодические ориентиры по составлению эффективного графика публикаций.`
+        },
+        {
+            voice: 'critique_1',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Диалог с читателем 💬\nЗадавайте вопрос в конце поста и обязательно отвечайте на каждый комментарий!`
+                : `## Вовлечение читателей 💬\nПроверенные механики для оживления обсуждений под публикациями.`
+        },
+        {
+            voice: 'sarcasm_1',
+            activity: 'tablet_study',
+            text: (s) => s?.count
+                ? `## Время выхода 🦉\nЛучшие часы для библиотечных групп — утро (с 9 до 11) и вечер (с 18 до 20). Не постите в полночь!`
+                : `## Прайм-тайм группы 🦉\nПодсказки по выбору оптимального времени публикации для максимального охвата.`
+        },
+        {
+            voice: 'critique_8',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Свой уникальный голос ✍️\nЧитатели ценят авторский взгляд библиотекаря. Делитесь личными впечатлениями о книгах!`
+                : `## Индивидуальный почерк ✍️\nКак выделиться на фоне сотен однотипных новостных сообщений.`
+        },
+        {
+            voice: 'critique_extra_2',
+            activity: 'magnifier_scan',
+            text: (s) => s?.count
+                ? `## Призыв к действию 🎯\nПриглашайте читателей прийти за книгой или оставить мнение: прямой призыв повышает отклик.`
+                : `## Мотивация аудитории 🎯\nПрактические советы по формулированию ясных призывов к действию.`
+        },
+        {
+            voice: 'post_scan_10',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Секрет успеха от Космо ✨\nЛюбите своих читателей, делайте душевные фото, а Космо поможет с цифрами!`
+                : `## Космические секреты ✨\nСканируй стену, и я выдам персональный рецепт успеха для каждого филиала!`
+        }
+    ],
+    'subscribers-tab': [
+        {
+            voice: 'critique_13',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Аудитория и подписчики 👥📈\nДинамика сообществ! Помни: читатели подписываются на искренность, а не на сухие отчёты.`
+                : `## Аудитория и подписчики 👥\nЗдесь отображаются данные о подписчиках и активности филиальных групп.`
+        },
+        {
+            voice: 'post_scan_4',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Ядро сообщества ❤️\nГлавная ценность — преданные постоянные читатели, которые регулярно комментируют записи.`
+                : `## Читательское сообщество ❤️\nОтслеживай рост лояльной аудитории и постоянных посетителей библиотек.`
+        },
+        {
+            voice: 'critique_2',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Лидеры по охвату аудитории 👑\nКрупные филиалы собирают тысячи читателей. Учимся масштабировать опыт!`
+                : `## Масштаб аудитории 👑\nСравнение численности и динамики подписчиков по всем филиалам города.`
+        },
+        {
+            voice: 'surprise_1',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Прирост читателей 🚀\nИнтересные посты и фотоотчёты привлекают новых подписчиков быстрее любой рекламы!`
+                : `## Рост сообществ 🚀\nУзнай, какие темы вызывают наибольший приток новых читателей.`
+        },
+        {
+            voice: 'critique_16',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Плотность взаимодействия 🔬\nИногда группа на 500 человек активнее многотысячного паблика. Всё дело в душевности!`
+                : `## Активность на подписчика 🔬\nОцениваем реальное качество контакта с каждым читателем.`
+        },
+        {
+            voice: 'disappoint_1',
+            activity: 'check_watch',
+            text: (s) => s?.count
+                ? `## Удержание внимания 🧲\nЕсли подписчики молчат, запустите книжную викторину или интерактивный опрос!`
+                : `## Вовлечение молчунов 🧲\nПодсказки по превращению пассивных читателей в активных участников бесед.`
+        },
+        {
+            voice: 'sarcasm_4',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Не числом, а умением! 💅\nКачество контакта с аудиторией важнее пустых цифр в счётчике!`
+                : `## Настоящие читатели 💅\nОриентируемся на живых людей, а не на накрученные цифры.`
+        },
+        {
+            voice: 'critique_10',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Читательский отклик 💬\nБлагодарите читателей за комментарии: личное внимание превращает подписчиков в друзей библиотеки.`
+                : `## Культура общения 💬\nРазвиваем доброжелательное общение в комментариях под публикациями.`
+        },
+        {
+            voice: 'post_scan_1',
+            activity: 'telescope_look',
+            text: (s) => s?.count
+                ? `## Горизонт охвата 🔭\nВместе наши библиотеки формируют огромное культурное сообщество города Владимира!`
+                : `## Культурный охват 🔭\nУзнай суммарную читательскую аудиторию всей централизованной системы.`
+        },
+        {
+            voice: 'post_scan_10',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Вдохновляй аудиторию! ✨\nКаждый новый подписчик — это потенциальный гость в читальном зале!`
+                : `## Центр притяжения ✨\nБиблиотечная группа ВКонтакте — это виртуальный читальный зал 24/7.`
+        }
+    ],
+    'ai-tab': [
+        {
+            voice: 'critique_15',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## ИИ-Аналитик AURORA 🤖⚡\nКвантовый процессор готов к работе! Сгенерируем глубокий разбор или пост-релиз?`
+                : `## ИИ-Аналитик AURORA 🤖\nМой нейросетевой процессор готов к анализу. Запусти поиск для обработки данных!`
+        },
+        {
+            voice: 'surprise_3',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Нейросетевой синтез 🧠\nМодели искусственного интеллекта готовы выявить скрытые тренды в собранных записях!`
+                : `## Интеллектуальный помощник 🧠\nПодключённая языковая модель поможет сформулировать выводы и идеи для постов.`
+        },
+        {
+            voice: 'critique_16',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Семантический анализ 🔍\nАнализирую тональность и лексику самых успешных публикаций этого периода.`
+                : `## Анализ смыслов 🔍\nИИ оценит содержательную сторону контента и подскажет выигрышные темы.`
+        },
+        {
+            voice: 'critique_18',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Внимание на экран 🚀\nНейросеть готова составить подробный пост-релиз или пресс-сводку по итогам недели!`
+                : `## Генерация релизов 🚀\nСоздание готовых текстов для прессы и социальных сетей в один клик.`
+        },
+        {
+            voice: 'critique_20',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Экспертный уровень 💎\nРекомендации построены на объективной статистике и глубоком анализе!`
+                : `## Экспертный уровень 💎\nПрофессиональная обработка больших массивов данных без траты твоего времени.`
+        },
+        {
+            voice: 'post_scan_2',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Генератор идей 💡\nНе знаете, о чём написать завтра? Спросите меня, и я предложу пять свежих тем!`
+                : `## Банк контент-идей 💡\nИИ сгенерирует варианты интерактивных постов и книжных викторин.`
+        },
+        {
+            voice: 'critique_11',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Оптимизация текстов ✍️\nЗагрузи черновик анонса, и я сделаю его коротким, ёмким и привлекательным!`
+                : `## Редактор анонсов ✍️\nПомощь в доработке заголовков и структуры текста для соцсетей.`
+        },
+        {
+            voice: 'sarcasm_2',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Нейросети на службе книг 📚\nКто сказал, что роботы не читают книги? Мы читаем их со скоростью терабайт в секунду!`
+                : `## Цифровая эра 📚\nСовременные технологии на страже популяризации классического чтения.`
+        },
+        {
+            voice: 'post_scan_8',
+            activity: 'antenna_tune',
+            text: (s) => s?.count
+                ? `## Высокая скорость анализа ⚡\nМгновенная обработка сотен показателей без усталости и человеческого фактора.`
+                : `## Квантовая скорость ⚡\nАвтоматизация рутинных аналитических задач в считанные секунды.`
+        },
+        {
+            voice: 'post_scan_10',
+            activity: 'smm_guru_pose',
+            text: (s) => s?.count
+                ? `## Твой верный напарник 🤖✨\nКосмо всегда готов подсказать лучшую стратегию и поднять настроение!`
+                : `## Цифровой коллега 🤖✨\nВсегда на связи, чтобы сделать работу владимирских библиотек ещё ярче!`
+        }
+    ]
+};
+
 
 // Быстрые чипы для диалога
 const QUICK_CHIPS = [
@@ -258,6 +767,11 @@ export class AuroraMascot {
         this.lastTeaseCommentTime = 0;
         this.teaseCooldownMs = 14000;
         this.lastTabSwitchTime = 0;
+        this.tabSpeechHistory = {};
+        this.lastTabVoiceTime = 0;
+        this.tabVoiceCooldownMs = 12000;
+        this.analyzedTop3Signatures = new Set();
+        this.analyzedTop3AudioCache = new Map();
         this.chipsContainer = null;
 
         // Кэш и сканирование
@@ -436,8 +950,12 @@ export class AuroraMascot {
     /* ---------------------------------------------------------------------
      * 3. Аудио-движок голоса Бэлы (ElevenLabs)
      * ------------------------------------------------------------------- */
-    playVoice(key) {
+    playVoice(key, isUserAction = false) {
         if (this.isMuted || !AUDIO_CLIPS[key]) return;
+        // Защита от перебивания: если уже говорит и это фоновый вызов, не перебиваем речь!
+        if (!isUserAction && this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {
+            return;
+        }
         try {
             if (this.currentAudio) {
                 try { this.currentAudio.pause(); } catch (e) {}
@@ -618,6 +1136,8 @@ export class AuroraMascot {
                     this.triggerSearchFromMascot();
                 } else if (action === 'leader') {
                     this.showLeaderReport();
+                } else if (action === 'analyze-top3') {
+                    this.analyzeTop3Leaders(true);
                 } else if (action === 'patrol') {
                     this.startContinuousPatrol(30000);
                 } else if (action === 'custom') {
@@ -643,6 +1163,10 @@ export class AuroraMascot {
                     e.preventDefault();
                     e.stopPropagation();
                     this.triggerSearchFromMascot();
+                } else if (action === 'analyze-top3') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.analyzeTop3Leaders(true);
                 } else if (action === 'stay-here' || action === 'confirm-stay') {
                     e.preventDefault();
                     e.stopPropagation();
@@ -932,7 +1456,7 @@ export class AuroraMascot {
                     if (!this.isDragging && !this.isIn3D && !this.isCollapsed && !this.isPatrolling) {
                         this.navigateBackHome(homeX);
                     }
-                }, 6500);
+                }, 13000);
             }
         } else {
             this.say(pick.text, 7500, pick.sprite, pick.key);
@@ -1356,14 +1880,16 @@ export class AuroraMascot {
             if (tabId === 'analytics-tab') {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '🏆 Анализ победы лидера', query: 'Проанализируй победу лидера по просмотрам. За счёт чего он обогнал всех остальных?' },
                     { label: '📈 Как спасти отстающих?', query: 'Как спасти филиалы с низкими охватами? Дай 3 конкретных шага.' },
-                    { label: '⚡ Аудит ER', query: 'Проанализируй вовлечённость (ER) лидеров и отстающих, дай краткий дерзкий вердикт.' },
+                    { label: '⚡ Аудит ER', query: 'Проанализируй вовлечённость (ER) лидеров и отстающих, дай краткий и ёмкий разбор.' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'visual-tab') {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '🕒 Время для постов', query: 'В какое время лучше выкладывать посты библиотекам для максимального охвата?' },
                     { label: '🖼️ Ошибки картинок', query: 'Назови главные визуальные ошибки оформления постов в библиотеках.' },
                     { label: '🔥 Топ-3 ошибки ленты', query: 'Какие 3 ошибки убивают охваты постов во ВКонтакте?' },
@@ -1371,6 +1897,7 @@ export class AuroraMascot {
                 ];
             } else if (tabId === 'advice-tab') {
                 chips = [
+                    { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '✍️ Идея вирусного поста', query: 'Придумай одну взрывную идею вирусного поста для библиотеки, чтобы залететь в рекомендации.' },
                     { label: '🚀 Как залететь в топ?', query: 'Как библиотеке сделать виральный пост во Владимире?' },
                     { label: '💡 Идеи интерактива', query: 'Предложи 2 крутые темы интерактива для читателей библиотек.' },
@@ -1379,6 +1906,7 @@ export class AuroraMascot {
                 ];
             } else if (tabId === 'subscribers-tab') {
                 chips = [
+                    { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '👥 Удержание читателей', query: 'Как превратить случайных посетителей в постоянных читателей паблика?' },
                     { label: '📈 Секрет роста', query: 'Что привлекает новых читателей в библиотечные соцсети?' },
                     { label: '🏆 Кто лидер?', action: 'leader' },
@@ -1387,6 +1915,7 @@ export class AuroraMascot {
             } else {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '🛸 Патруль 30 сек', action: 'patrol' },
                     { label: '💡 Совет по контенту', query: 'Дай один острый совет для роста активности читателей.' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
@@ -1412,88 +1941,204 @@ export class AuroraMascot {
         if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
 
         const now = Date.now();
-        if (this.lastTabSwitchTime && now - this.lastTabSwitchTime < 900) {
+        // Защита от частых кликов: если вкладку переключили быстрее чем через 12 секунд,
+        // обновляем только фишки и контекст, но НЕ говорим и не перебиваем голос!
+        if (now - this.lastTabVoiceTime < this.tabVoiceCooldownMs) {
+            this.updateDynamicChips(tabId);
             return;
         }
-        this.lastTabSwitchTime = now;
+
+        // Если сейчас играет звук и это фоновое переключение, не перебиваем
+        if (this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {
+            this.updateDynamicChips(tabId);
+            return;
+        }
+
+        const variants = TAB_SPEECH_VARIANTS[tabId];
+        if (!variants || variants.length === 0) {
+            this.updateDynamicChips(tabId);
+            return;
+        }
+
+        if (!this.tabSpeechHistory[tabId]) {
+            this.tabSpeechHistory[tabId] = 0;
+        }
+
+        const idx = this.tabSpeechHistory[tabId] % variants.length;
+        this.tabSpeechHistory[tabId] = (idx + 1) % variants.length;
+        this.lastTabVoiceTime = now;
 
         const liveStats = this.getLiveScanStats();
-        const hasStats = Boolean(liveStats && liveStats.count > 0);
-        const topName = liveStats?.topBranch || 'Лидер';
-        const topViews = liveStats?.topByViews ? formatViews(liveStats.topByViews.views) : '';
+        const chosen = variants[idx];
+        const msg = chosen.text(liveStats);
 
-        switch (tabId) {
-            case 'visual-tab': {
-                const voice = hasStats ? 'critique_10' : 'post_scan_1';
-                const msg = hasStats
-                    ? `## Лента записей 🖼️📰\nИзучаем карточки постов! Собрано **${liveStats.count}** записей. Лидер по охватам: **${escapeHtml(topName)}**! Ищи посты с яркими картинками!`
-                    : `## Карточки записей 🖼️\nЗдесь будет живая лента постов. Запусти сканирование сверху, и я найду лучшие публикации! 🚀`;
-                this.say(msg, 7000, 'smile', voice);
-                this.setMoodBadge('📰', 3500);
-                this.playActivity('inspect_screen', false, 3500);
-                break;
-            }
-            case 'report-tab': {
-                const voice = hasStats ? 'critique_19' : 'post_scan_3';
-                const msg = hasStats
-                    ? `## Табличный отчёт 📊📋\nВсе ссылки и цифры по филиалам как на ладони! Идеально для отчётов методистам. Космо одобряет порядок!`
-                    : `## Табличный отчёт 📋\nСводная таблица с кликабельными ссылками на посты. Отсканируй стену, чтобы заполнить отчёт! ✨`;
-                this.say(msg, 7000, 'smile', voice);
-                this.setMoodBadge('📋', 3500);
-                this.playActivity('tablet_study', false, 3500);
-                break;
-            }
-            case 'analytics-tab': {
-                const voice = hasStats ? 'critique_2' : 'post_scan_2';
-                const msg = hasStats
-                    ? `## Рейтинг активности 📈👑\nВот они, графики славы! На 1-м месте **${escapeHtml(topName)}** (${topViews} просм.). А отстающим филиалам пора объявить мозговой штурм!`
-                    : `## Рейтинг активности 📈\nЗдесь появятся сравнительные диаграммы охватов и ER филиалов. Сделай поиск, и я покажу, кто тут босс SMM! 😎💅`;
-                this.say(msg, 7500, 'smile', voice);
-                this.setMoodBadge('📈', 4000);
-                this.playActivity('smm_guru_pose', false, 4000);
-                break;
-            }
-            case 'summary-tab': {
-                const voice = hasStats ? 'critique_17' : 'post_scan_6';
-                const msg = hasStats
-                    ? `## Пояснительная записка 📜🧐\nГотовая сводка для руководства с формулировками и цифрами. Никакой воды, только чистый аналитический сок!`
-                    : `## Пояснительная записка 📜\nЗдесь автоматически сформируется аналитическая записка по итогам поиска. Запусти сканирование!`;
-                this.say(msg, 7000, 'smile', voice);
-                this.setMoodBadge('📜', 3500);
-                this.playActivity('check_watch', false, 3500);
-                break;
-            }
-            case 'advice-tab': {
-                const voice = 'critique_11';
-                const msg = hasStats
-                    ? `## Советы филиалам 💡🚀\nИндивидуальные рекомендации по контенту! Если охват падает — добавляйте душевные фото и интерактив с читателями!`
-                    : `## Советы филиалам 💡\nЗдесь собраны умные советы для каждого филиала. Сканируй стену, и алгоритм рассчитает персональные точки роста!`;
-                this.say(msg, 7500, 'smile', voice);
-                this.setMoodBadge('💡', 3500);
-                this.playActivity('magnifier_scan', false, 3500);
-                break;
-            }
-            case 'subscribers-tab': {
-                const voice = 'critique_13';
-                const msg = `## Аудитория и подписчики 👥📈\nДинамика подписчиков по филиалам! Помни: читатели подписываются на искренность, а не на сухие отчёты!`;
-                this.say(msg, 7000, 'smile', voice);
-                this.setMoodBadge('👥', 3500);
-                this.playActivity('telescope_look', false, 3500);
-                break;
-            }
-            case 'ai-tab': {
-                const voice = 'critique_15';
-                const msg = `## ИИ-Аналитик AURORA 🤖⚡\nМой квантовый нейросетевой процессор к твоим услугам! Сгенерируем глубокий разбор или пост-релиз?`;
-                this.say(msg, 7500, 'smile', voice);
-                this.setMoodBadge('⚡', 4000);
-                this.playActivity('antenna_tune', false, 4000);
-                break;
-            }
-            default:
-                break;
+        this.say(msg, 7500, 'smile', chosen.voice, false);
+        if (chosen.activity) {
+            this.playActivity(chosen.activity, false, 3500);
         }
 
         this.updateDynamicChips(tabId);
+    }
+
+    playDynamicAudio(audioUrl, text, spriteMood = 'smile', isUserAction = true) {
+        if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
+
+        if (this.currentAudio) {
+            try { this.currentAudio.pause(); } catch (e) {}
+            this.currentAudio = null;
+        }
+
+        this.bubbleTextEl.innerHTML = this.parseMarkdown(text);
+        this.bubbleEl.classList.add('is-active');
+
+        try {
+            const activeTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab') || 'visual-tab';
+            this.updateDynamicChips(activeTab);
+        } catch (e) {}
+
+        if (spriteMood) this.setState(spriteMood, 14000);
+
+        if (this.isMuted) {
+            clearTimeout(this.speechTimer);
+            this.speechTimer = setTimeout(() => this.hideBubble(false), 9000);
+            return;
+        }
+
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.9;
+        this.currentAudio = audio;
+        this.isSpeakingAudio = true;
+        this.bubbleEl.classList.add('is-speaking');
+
+        audio.onplay = () => {
+            this.isSpeakingAudio = true;
+            this.bubbleEl?.classList.add('is-speaking');
+        };
+        audio.onended = () => {
+            this.isSpeakingAudio = false;
+            this.bubbleEl?.classList.remove('is-speaking');
+            this.currentAudio = null;
+            clearTimeout(this.speechTimer);
+            this.speechTimer = setTimeout(() => this.hideBubble(false), 2000);
+        };
+        audio.onerror = () => {
+            this.isSpeakingAudio = false;
+            this.bubbleEl?.classList.remove('is-speaking');
+            this.currentAudio = null;
+            clearTimeout(this.speechTimer);
+            this.speechTimer = setTimeout(() => this.hideBubble(false), 3000);
+        };
+        audio.addEventListener('loadedmetadata', () => {
+            if (audio.duration && !isNaN(audio.duration)) {
+                const audioMs = (audio.duration * 1000) + 2200;
+                clearTimeout(this.speechTimer);
+                this.speechTimer = setTimeout(() => this.hideBubble(false), audioMs);
+            }
+        });
+
+        audio.play().catch(e => {
+            console.debug('[Cosmo Dynamic Voice] Playback blocked:', e.message);
+        });
+    }
+
+    async analyzeTop3Leaders(isUserAction = false) {
+        if (this.isAiLoading) return;
+        const stats = this.getLiveScanStats();
+        if (!stats || !stats.count || !stats.topByViews) {
+            this.say(`Сначала запустим сканирование стены, чтобы было кого разбирать! 🚀`, 5000, 'smile', 'scan_wait_7', isUserAction);
+            return;
+        }
+
+        const b1 = stats.topByViews;
+        const b2 = stats.secondByViews || stats.rankedBranches?.[1] || null;
+        const b3 = stats.thirdByViews || stats.rankedBranches?.[2] || null;
+
+        const sig = `${b1?.name || ''}_${b1?.views || 0}_${b2?.name || ''}_${b2?.views || 0}_${b3?.name || ''}_${b3?.views || 0}`;
+
+        // Если уже озвучивали эту тройку лидеров — не генерируем повторно в ElevenLabs!
+        if (this.analyzedTop3Signatures.has(sig)) {
+            const cached = this.analyzedTop3AudioCache.get(sig);
+            if (cached) {
+                if (isUserAction) {
+                    this.playDynamicAudio(cached.audioUrl, cached.text, 'smile', true);
+                }
+                return;
+            }
+        }
+
+        this.isAiLoading = true;
+        this.setState('thinking', 15000);
+        this.setMoodBadge('⚡', 10000);
+        this.say(`## Анализирую тройку лидеров... 🎙️\nПодключаюсь к ИИ и квантовому синтезатору речи Бэлы!`, 10000, 'thinking', 'scan_wait_3', isUserAction);
+
+        try {
+            const leadersInfo = [
+                `1 место: «${b1.name}» (${formatViews(b1.views)} просмотров, ${b1.postsCount || 0} постов, ER: ${b1.er || 0}%)`,
+                b2 ? `2 место: «${b2.name}» (${formatViews(b2.views)} просмотров, ${b2.postsCount || 0} постов, ER: ${b2.er || 0}%)` : null,
+                b3 ? `3 место: «${b3.name}» (${formatViews(b3.views)} просмотров, ${b3.postsCount || 0} постов, ER: ${b3.er || 0}%)` : null
+            ].filter(Boolean).join('\n');
+
+            const systemPrompt = `Ты — Космо, робот-маскот AURORA, величайший SMM-гуру галактики. Твоя задача — едко, с тонкой иронией и юмором прокомментировать статистику топ-3 лидеров библиотечной сети.
+ПРАВИЛА:
+1. Пиши безупречно грамотно, строго соблюдая орфографию и пунктуацию русского языка (по правилам Дитмара Розенталя). Без ошибок и опечаток.
+2. Не используй штампы и клише (запрещено писать «Мой вердикт»).
+3. Объём строго 2-3 коротких предложения (до 30-35 слов), чтобы речь звучала бодро.
+4. Похвали лидера за охваты, с иронией подколи второе и третье места за отставание. Добавь 1-2 эмодзи.`;
+
+            const userPrompt = `Вот тройка лидеров библиотечной сети по просмотрам:\n${leadersInfo}\nДай едкий мультяшный комментарий для озвучки.`;
+
+            const aiResponse = await fetch('api/ai-proxy.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 120,
+                    temperature: 0.72
+                })
+            });
+
+            if (!aiResponse.ok) throw new Error(`AI proxy HTTP ${aiResponse.status}`);
+            const aiData = await aiResponse.json();
+            const commentary = (aiData?.choices?.[0]?.message?.content || aiData?.reply || '').trim();
+
+            if (!commentary) throw new Error('Empty AI commentary');
+
+            // Синтезируем аудио через ElevenLabs TTS proxy
+            const ttsResponse = await fetch(TTS_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: commentary })
+            });
+
+            if (!ttsResponse.ok) {
+                const errBody = await ttsResponse.text();
+                throw new Error(`TTS proxy HTTP ${ttsResponse.status}: ${errBody}`);
+            }
+            const ttsData = await ttsResponse.json();
+
+            if ((!ttsData.success && ttsData.status !== 'success') || !ttsData.audio_url) {
+                throw new Error(ttsData.error || 'TTS generation failed');
+            }
+
+            const formattedText = `## Разбор тройки лидеров 🎙️🔥\n${commentary}`;
+            this.analyzedTop3Signatures.add(sig);
+            this.analyzedTop3AudioCache.set(sig, {
+                audioUrl: ttsData.audio_url,
+                text: formattedText
+            });
+
+            this.playDynamicAudio(ttsData.audio_url, formattedText, 'smile', true);
+            this.spawnSparkles(10);
+        } catch (err) {
+            console.warn('[Cosmo Top-3 AI/TTS] Error:', err);
+            const fallbackText = `## Тройка лидеров 🏆\nПервое место держит **${escapeHtml(b1.name)}**! А остальным филиалам пора поднажать и добавить ярких фото!`;
+            this.say(fallbackText, 8000, 'smile', 'critique_2', isUserAction);
+        } finally {
+            this.isAiLoading = false;
+        }
     }
 
     onBranchFiltered(branchName, branchData = null) {
@@ -1564,7 +2209,7 @@ export class AuroraMascot {
         if (stats.topByEr && stats.topByEr.name && stats.topByEr.name !== top1?.name) {
             resHtml += `\n⚡ **Лидер по вовлечённости (ER)**: **${escapeHtml(stats.topByEr.name)}** (${stats.topByEr.er}%)! Красавчики!`;
         }
-        resHtml += `\n*Космо в восторге! Все цифры строго из результатов сканирования филиалов!* 🕶️✨`;
+        resHtml += `\n*Космо в восторге! Все цифры строго из результатов сканирования филиалов!* 🕶️✨<br><br><button type="button" class="mascot-action-btn" data-mascot-action="analyze-top3">🎙️ Озвучить едкий разбор топ-3</button>`;
 
         this.say(resHtml, 16000, 'smile');
         this.setMoodBadge('🏆', 4000);
@@ -1597,7 +2242,7 @@ export class AuroraMascot {
      * ------------------------------------------------------------------- */
     startAutonomousCycle() {
         const scheduleNext = () => {
-            const delay = 22000 + Math.random() * 16000;
+            const delay = 48000 + Math.random() * 30000;
             this.activityCycleTimer = setTimeout(() => {
                 if (!this.isSleeping && !this.isIn3D && !this.isCollapsed && !this.isAiLoading && !this.isPerformingActivity && !this.isDragging && !this.isPatrolling && !this.isReturningHome && !this.isSpeakingAudio && (!this.currentAudio || this.currentAudio.paused)) {
                     this.executeRandomActivity();
@@ -1619,7 +2264,7 @@ export class AuroraMascot {
             'tablet_study', 'inspect_screen', 'magnifier_scan',
             'visor_wipe', 'antenna_tune', 'joy_dance', 'upside_down', 'energy_drink',
             'laser_pointer', 'shrug_confused', 'flex_muscles', 'check_watch',
-            'dizzy_spin', 'cursor_dodge', 'telescope_look', 'excited_wave',
+            'dizzy_spin', 'telescope_look', 'excited_wave',
             'easter_flip', 'sleep_snooze', 'smm_guru_pose'
         ];
 
@@ -1836,24 +2481,7 @@ export class AuroraMascot {
         this.targetRotY = Math.max(-18, Math.min(18, relX * 34));
         this.targetRotX = Math.max(-14, Math.min(14, -relY * 24));
 
-        // Интерактивный уворот при приближении курсора ближе 85px
-        if (distToCosmo < 85 && !this.isPerformingActivity && !this.isPatrolling && Math.random() < 0.22) {
-            this.playActivity('cursor_dodge', `Ой, щекотно! Мои датчики не любят прикосновений курсора! 🤖⚡`, 2400);
-            return;
-        }
-
-        // Подколы над мышью (голосом Бэлы)
-        if (now - this.lastTeaseCommentTime > this.teaseCooldownMs && !this.isPerformingActivity && !this.isPatrolling) {
-            if (this.mouseVelocity > 1.9 && distToCosmo < 380) {
-                this.lastTeaseCommentTime = now;
-                this.say(`Ого, какая скорость курсора! Тренируешься ставить лайки на сверхзвуке? ⚡🖱️`, 4500, 'smile', 'critique_18');
-                this.setMoodBadge('⚡', 2500);
-            } else if (distToCosmo < 140 && this.mouseVelocity < 0.05) {
-                this.lastTeaseCommentTime = now;
-                this.say(`Чего замер? Любуешься моим титановым корпусом? Я фотогеничен! 😎💅`, 4500, 'smile', 'post_scan_10');
-                this.setMoodBadge('✨', 2500);
-            }
-        }
+        // Спокойный 2.5D трекинг без возмущений и без обрыва аудио при движении мыши
     }
 
     updateParallaxAndMotion() {
@@ -1992,8 +2620,13 @@ export class AuroraMascot {
     /* ---------------------------------------------------------------------
      * 12. Речь и диалоговое облачко (с Markdown и речью Бэлы)
      * ------------------------------------------------------------------- */
-    say(text, duration = 6000, spriteMood = 'smile', voiceKey = null) {
+    say(text, duration = 6000, spriteMood = 'smile', voiceKey = null, isUserAction = false) {
         if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
+
+        // Если сейчас уже играет голосовая фраза, и это не действие пользователя, НЕ перебиваем речь!
+        if (!isUserAction && this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {
+            return;
+        }
 
         this.bubbleTextEl.innerHTML = this.parseMarkdown(text);
         this.bubbleEl.classList.add('is-active');
@@ -2123,7 +2756,13 @@ export class AuroraMascot {
 
         try {
             const pageCtx = this.buildAiPageContext();
-            const systemPrompt = `Ты — Космо, робот-маскот AURORA, величайший SMM-гуру галактики ВКонтакте. Ты добрый, озорной, любишь ехидно критиковать, язвить и шутить над ошибками в библиотечных пабликах (сорок хештегов, посты в 4 утра, посты без картинок, слабый ER, репосты репостов), но даёшь меткие практические советы. Текущий контекст страницы: ${pageCtx}. Отвечай супер-кратко (2-3 предложения, до 35-40 слов, 1-2 эмодзи), дерзко, весело, опираясь на реальные цифры и открытую вкладку!`;
+            const systemPrompt = `Ты — Космо, робот-маскот AURORA, величайший SMM-гуру галактики ВКонтакте.
+ПРАВИЛА ОТВЕТА:
+1. Пиши безукоризненно грамотно, соблюдая все правила русской орфографии и пунктуации (по академическим правилам Дитмара Розенталя). Никаких грамматических или орфографических ошибок, дефисы и тире на своих местах.
+2. Не используй штампы и клише (не пиши «Мой вердикт»).
+3. Ты добрый, озорной, любишь ехидно шутить над ошибками в библиотечных пабликах (сорок хештегов, посты в 4 утра, посты без картинок, слабый ER), но даёшь меткие практические советы.
+4. Текущий контекст страницы: ${pageCtx}.
+5. Отвечай кратко (2-3 предложения, до 35 слов, 1-2 эмодзи), дерзко, весело, опираясь на реальные цифры и открытую вкладку!`;
 
             const response = await fetch(AI_PROXY_URL, {
                 method: 'POST',
@@ -2205,7 +2844,7 @@ export class AuroraMascot {
                 this.say(joke.t, 5000, 'smile', joke.k);
                 this.spawnSparkles(5);
             }
-        }, 6500);
+        }, 13000);
     }
 
     onScanProgress(percent, count) {
@@ -2328,7 +2967,7 @@ export class AuroraMascot {
                     { k: 'critique_15', t: '## Умная лента 🤖\nЕсли бы алгоритм ВК был человеком, он бы поставил этому посту твердую троечку с плюсом!' },
                     { k: 'critique_16', t: '## Спектральный анализ 🔬\nЯ провёл спектральный анализ активности: потенциал виральности обнаружен, но глубоко зарыт!' },
                     { k: 'critique_17', t: '## Разбор полётов 📊\nЛидеры ликуют, отстающие делают вид, что им просто некогда писать посты!' },
-                    { k: 'critique_18', t: '## Вердикт Космо 🚀\nМой вердикт: потенциал космический, осталось научиться писать цепляющие заголовки!' },
+                    { k: 'critique_18', t: '## Внимание на экран 🚀\nПотенциал отличный, осталось научиться писать цепляющие заголовки!' },
                     { k: 'critique_19', t: '## Репосты в топе 📢\nТакое количество репостов говорит об одном: методичка удалась на славу!' },
                     { k: 'critique_20', t: '## Оценка SMM-гуру 💅\nВ целом неплохо для простых смертных, но с Космо ваши охваты улетят на Альфа Центавра!' }
                 ];
@@ -2350,7 +2989,7 @@ export class AuroraMascot {
                 this.say(p.t, 7000, 'smile', p.k);
                 this.setMoodBadge('✨', 3000);
             }
-        }, 16000);
+        }, 38000);
     }
 
     resetIdleTimer() {

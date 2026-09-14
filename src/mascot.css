@@ -358,6 +358,44 @@
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
+/* Кнопки действий внутри облачка (Запустить поиск, Закрепить, Разбор топ-3) */
+.mascot-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 0.84rem;
+    font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.38);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-top: 6px;
+    user-select: none;
+}
+
+.mascot-action-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.48);
+}
+
+.mascot-action-btn:active {
+    transform: translateY(0.5px);
+}
+
+[data-theme="light"] .mascot-action-btn {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+}
+
 /* Стили для кинематического форсажа и частиц патрулирования */
 .aurora-mascot-container.is-patrol-flying .mascot-thruster-flame {
     opacity: 1 !important;
@@ -1545,7 +1583,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.15.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.16.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
