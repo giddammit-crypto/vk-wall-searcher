@@ -323,15 +323,28 @@
     width: 132px;
     height: 132px;
     pointer-events: auto;
-    cursor: pointer;
+    cursor: grab;
     perspective: 800px;
     transform-style: preserve-3d;
     transition: filter 0.3s ease;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+}
+
+.mascot-body-wrapper img,
+.mascot-sprite-img {
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
 }
 
 .mascot-body-wrapper:hover {
     filter: brightness(1.08);
 }
+
 
 /* Реакция на одиночный клик/тычок (Squash and Stretch) */
 .mascot-body-wrapper.is-poked {

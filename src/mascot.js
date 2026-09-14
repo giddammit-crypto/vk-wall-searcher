@@ -411,6 +411,19 @@ export class AuroraMascot {
      * 4. Привязка событий интерфейса
      * ------------------------------------------------------------------- */
     bindEvents() {
+        // Разблокировка аудио при первом взаимодействии с экраном
+        const unlockAudio = () => {
+            try {
+                const a = new Audio();
+                a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+                a.play().catch(() => {});
+            } catch (e) {}
+            window.removeEventListener('pointerdown', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+        };
+        window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
+        window.addEventListener('keydown', unlockAudio, { once: true, passive: true });
+
         window.addEventListener('mousemove', this.onMouseMove, { passive: true });
 
         ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
@@ -447,14 +460,18 @@ export class AuroraMascot {
             });
         }
 
-        // Переключатель звука
+        // Переключатель звука: при включении сразу воспроизводит тестовую реплику
         if (this.soundToggleBtn) {
             this.soundToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.isMuted = !this.isMuted;
                 this.soundToggleBtn.textContent = this.isMuted ? '🔇' : '🔊';
                 this.soundToggleBtn.classList.toggle('is-muted', this.isMuted);
-                if (this.isMuted) this.stopVoice();
+                if (this.isMuted) {
+                    this.stopVoice();
+                } else {
+                    this.say(`## Голос ElevenLabs включён! 🔊✨\nЯ звучу в звонком мультяшном качестве Бэлы!`, 4500, 'smile', 'post_scan_10');
+                }
             });
         }
 
@@ -548,21 +565,29 @@ export class AuroraMascot {
         let preBottom = 0;
         let hasMoved = false;
 
-        const onMouseDown = (e) => {
-            if (e.button !== 0) return; // Только ЛКМ
+        const onStart = (e) => {
+            if (e.button !== undefined && e.button !== 0) return; // Только ЛКМ
             if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-bubble-close]') || e.target.closest('[data-mascot-sound]')) return;
 
-            startX = e.clientX;
-            startY = e.clientY;
-            preLeft = this.currentPosX;
-            preBottom = this.currentPosY || 24;
+            // Блокируем нативный драг картинок браузером и выделение текста!
+            e.preventDefault();
+
+            const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+            const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+
+            startX = clientX;
+            startY = clientY;
+            preLeft = parseFloat(this.container.style.left) || this.currentPosX;
+            preBottom = parseFloat(this.container.style.bottom) || 24;
             hasMoved = false;
 
-            const onMouseMove = (moveEvent) => {
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
+            const onMove = (moveEvent) => {
+                const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+                const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
+                const dx = currentX - startX;
+                const dy = currentY - startY;
 
-                if (!hasMoved && Math.hypot(dx, dy) > 6) {
+                if (!hasMoved && Math.hypot(dx, dy) > 4) {
                     hasMoved = true;
                     this.isDragging = true;
                     if (this.isPatrolling) this.stopContinuousPatrol(false);
@@ -574,6 +599,7 @@ export class AuroraMascot {
                 }
 
                 if (this.isDragging) {
+                    moveEvent.preventDefault();
                     const newLeft = Math.max(10, Math.min(window.innerWidth - 130, preLeft + dx));
                     const newBottom = Math.max(10, Math.min(window.innerHeight - 150, preBottom - dy));
                     this.currentPosX = newLeft;
@@ -583,12 +609,14 @@ export class AuroraMascot {
                 }
             };
 
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
+            const onEnd = () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onEnd);
+                window.removeEventListener('touchmove', onMove);
+                window.removeEventListener('touchend', onEnd);
 
                 if (this.isDragging) {
-                    this.isDragging = false;
+                    const landingHomeX = preLeft;
                     this.container.classList.remove('is-dragging');
                     this.bodyEl.classList.remove('is-dragged');
 
@@ -599,16 +627,23 @@ export class AuroraMascot {
 
                     setTimeout(() => {
                         this.container.style.transition = '';
-                        this.triggerPlopLanding(preLeft);
+                        this.triggerPlopLanding(landingHomeX);
                     }, 460);
+
+                    setTimeout(() => {
+                        this.isDragging = false;
+                    }, 250);
                 }
             };
 
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('mousemove', onMove, { passive: false });
+            window.addEventListener('mouseup', onEnd);
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
         };
 
-        this.bodyEl.addEventListener('mousedown', onMouseDown);
+        this.bodyEl.addEventListener('mousedown', onStart);
+        this.bodyEl.addEventListener('touchstart', onStart, { passive: false });
     }
 
     triggerPlopLanding(originalHomeX) {
