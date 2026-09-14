@@ -11,7 +11,7 @@ export function linkifyText(text) {
     if (!text) return '';
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
     return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #3ee6c4 !important; text-decoration: underline !important; font-weight: 600;">${url}</a>`;
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #ec4899 !important; text-decoration: underline !important; font-weight: 600;">${url}</a>`;
     });
 }
 
@@ -227,7 +227,7 @@ export async function copyPostToClipboard(url, btnElement) {
     if (btnElement) {
         const originalContent = btnElement.innerHTML;
         btnElement.classList.add('copy-success');
-        btnElement.innerHTML = `<span class="material-symbols-outlined icon" style="color:var(--accent,#3EE6C4); font-size:16px;">check</span><span>Скопировано!</span>`;
+        btnElement.innerHTML = `<span class="material-symbols-outlined icon" style="color:var(--accent,#ec4899); font-size:16px;">check</span><span>Скопировано!</span>`;
         setTimeout(() => {
             btnElement.classList.remove('copy-success');
             btnElement.innerHTML = originalContent;

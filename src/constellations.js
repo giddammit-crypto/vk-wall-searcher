@@ -1049,7 +1049,7 @@ export class ConstellationsEngine {
 
             ctx.lineWidth = lineWidth;
             if (emphasize) {
-                ctx.shadowColor = isSelected ? 'rgba(56, 189, 248, 0.85)' : 'rgba(62, 230, 196, 0.6)';
+                ctx.shadowColor = isSelected ? 'rgba(56, 189, 248, 0.85)' : 'rgba(236, 72, 153, 0.6)';
                 ctx.shadowBlur = 7;
             } else {
                 ctx.shadowBlur = 0;
@@ -1065,7 +1065,7 @@ export class ConstellationsEngine {
                     // тает в середине. Холодный голубой/бирюзовый в тон палитры.
                     const grad = ctx.createLinearGradient(s1.screenX, s1.screenY, s2.screenX, s2.screenY);
                     grad.addColorStop(0, `rgba(125, 211, 252, ${edgeAlpha.toFixed(3)})`);
-                    grad.addColorStop(0.5, `rgba(62, 230, 196, ${midAlpha.toFixed(3)})`);
+                    grad.addColorStop(0.5, `rgba(236, 72, 153, ${midAlpha.toFixed(3)})`);
                     grad.addColorStop(1, `rgba(56, 189, 248, ${edgeAlpha.toFixed(3)})`);
                     ctx.strokeStyle = grad;
                     ctx.globalAlpha = 1;

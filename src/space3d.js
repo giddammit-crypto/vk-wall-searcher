@@ -2269,7 +2269,7 @@ export class Space3DEngine {
                 angle: Math.PI / 4 + (Math.random() * 0.2 - 0.1),
                 life: 1.0,
                 fade: Math.random() * 0.025 + 0.018,
-                color: '#3ee6c4'
+                color: '#ec4899'
             });
         }
 
@@ -2279,7 +2279,7 @@ export class Space3DEngine {
             const tailY = met.y - Math.sin(met.angle) * met.len;
 
             const grad = ctx.createLinearGradient(tailX, tailY, met.x, met.y);
-            grad.addColorStop(0, 'rgba(62, 230, 196, 0)');
+            grad.addColorStop(0, 'rgba(236, 72, 153, 0)');
             grad.addColorStop(1, `rgba(255, 255, 255, ${met.life})`);
 
             ctx.strokeStyle = grad;
@@ -2308,7 +2308,7 @@ export class Space3DEngine {
 
         const particleCount = 110;
         const particles = [];
-        const colors = ['#ffffff', '#ffffff', '#3ee6c4', '#38bdf8', '#818cf8', '#c084fc', '#f59e0b', '#fb7185'];
+        const colors = ['#ffffff', '#ffffff', '#ec4899', '#38bdf8', '#818cf8', '#c084fc', '#f59e0b', '#fb7185'];
 
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -2335,7 +2335,7 @@ export class Space3DEngine {
             durationMs: 4400,
             particles,
             maxRadius: 280,
-            coreColor: options.coreColor || '#3ee6c4',
+            coreColor: options.coreColor || '#ec4899',
             label: options.label || 'СВЕРХНОВАЯ'
         });
 
@@ -2358,7 +2358,7 @@ export class Space3DEngine {
                 angle: Math.PI / 4 + (Math.random() * 0.4 - 0.2),
                 life: 1.0,
                 fade: Math.random() * 0.02 + 0.012,
-                color: Math.random() > 0.5 ? '#3ee6c4' : '#38bdf8'
+                color: Math.random() > 0.5 ? '#ec4899' : '#38bdf8'
             });
         }
     }
@@ -2435,7 +2435,7 @@ export class Space3DEngine {
             const shockRadius = (sn.maxRadius * Math.pow(progress, 0.72) * 1.8) * (this.zoom / z2);
             const shockAlpha = Math.max(0, 1 - progress * 1.1);
 
-            ctx.strokeStyle = `rgba(62, 230, 196, ${shockAlpha * 0.85})`;
+            ctx.strokeStyle = `rgba(236, 72, 153, ${shockAlpha * 0.85})`;
             ctx.lineWidth = Math.max(1, 4 * (1 - progress));
             ctx.beginPath();
             ctx.arc(px, py, shockRadius, 0, Math.PI * 2);
@@ -2533,7 +2533,7 @@ export class Space3DEngine {
             ctx.stroke();
 
             // Внутреннее гармоническое кольцо
-            ctx.strokeStyle = `rgba(62, 230, 196, ${alpha * 0.6})`;
+            ctx.strokeStyle = `rgba(236, 72, 153, ${alpha * 0.6})`;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(px, py, radius * 0.72, 0, Math.PI * 2);

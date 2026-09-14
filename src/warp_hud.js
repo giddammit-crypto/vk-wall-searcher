@@ -328,8 +328,8 @@ export class WarpHud {
         ctx.clearRect(0, 0, w, h);
 
         const grad = ctx.createLinearGradient(0, 0, w, 0);
-        grad.addColorStop(0, 'rgba(62, 230, 196, 0.15)');
-        grad.addColorStop(0.4, 'rgba(62, 230, 196, 0.9)');
+        grad.addColorStop(0, 'rgba(236, 72, 153, 0.15)');
+        grad.addColorStop(0.4, 'rgba(236, 72, 153, 0.9)');
         grad.addColorStop(1, 'rgba(56, 189, 248, 0.95)');
         ctx.fillStyle = grad;
 

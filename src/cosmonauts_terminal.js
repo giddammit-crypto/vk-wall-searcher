@@ -421,8 +421,8 @@ export class CosmonautsTerminalEngine {
         }
         if (callsignEl) {
             callsignEl.textContent = `ПОЗЫВНОЙ: ${c.callsign}`;
-            callsignEl.style.borderColor = c.badgeColor || '#3ee6c4';
-            callsignEl.style.color = c.badgeColor || '#3ee6c4';
+            callsignEl.style.borderColor = c.badgeColor || '#ec4899';
+            callsignEl.style.color = c.badgeColor || '#ec4899';
         }
 
         // 2. Фотография и агентство

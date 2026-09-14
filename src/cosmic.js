@@ -16,7 +16,7 @@
 export const COSMIC_PALETTE = {
     void: '#050714',                      // Ultra-deep cosmic void base
     voidRgb: [5, 7, 20],
-    nebulaCyan: 'rgba(62, 230, 196, ',    // Signature Aurora Cyan (#3EE6C4)
+    nebulaCyan: 'rgba(236, 72, 153, ',    // Signature Aurora Cyan (#ec4899)
     nebulaPurple: 'rgba(138, 108, 255, ', // Galactic Violet (#8A6CFF)
     nebulaPink: 'rgba(244, 114, 182, ',   // Electric Magenta (#F472B6)
     nebulaBlue: 'rgba(56, 189, 248, ',    // Deep Galactic Blue (#38BDF8)
@@ -24,7 +24,7 @@ export const COSMIC_PALETTE = {
     starIcyBlue: '#E0F2FE',
     starLavender: '#C4B5FD',
     starGold: '#FBBF24',
-    starCyan: '#3EE6C4'
+    starCyan: '#ec4899'
 };
 
 /**
@@ -245,10 +245,10 @@ export class CosmicUniverseEngine {
      */
     _initSprites() {
         this.sprites.cyan = createGlowSprite([
-            [0.0, 'rgba(62, 230, 196, 0.65)'],
-            [0.35, 'rgba(62, 230, 196, 0.28)'],
-            [0.70, 'rgba(62, 230, 196, 0.08)'],
-            [1.0, 'rgba(62, 230, 196, 0.0)']
+            [0.0, 'rgba(236, 72, 153, 0.65)'],
+            [0.35, 'rgba(236, 72, 153, 0.28)'],
+            [0.70, 'rgba(236, 72, 153, 0.08)'],
+            [1.0, 'rgba(236, 72, 153, 0.0)']
         ]);
 
         this.sprites.violet = createGlowSprite([
@@ -379,8 +379,8 @@ export class CosmicUniverseEngine {
                 orbitRadius: 42,
                 orbitSpeed: 0.00045,
                 pulseSpeed: 0.00075,
-                colorInner: 'rgba(62, 230, 196, 0.15)',
-                colorMid: 'rgba(32, 188, 160, 0.07)',
+                colorInner: 'rgba(236, 72, 153, 0.15)',
+                colorMid: 'rgba(219, 39, 119, 0.07)',
                 colorOuter: 'rgba(5, 7, 20, 0)'
             },
             {
@@ -1097,8 +1097,8 @@ export class CosmicUniverseEngine {
                 const glowRadius = r * 3.6;
                 const glowGrad = ctx.createRadialGradient(px, py, r * 0.5, px, py, glowRadius);
                 glowGrad.addColorStop(0, s.color);
-                glowGrad.addColorStop(0.5, 'rgba(62, 230, 196, 0.25)');
-                glowGrad.addColorStop(1, 'rgba(62, 230, 196, 0)');
+                glowGrad.addColorStop(0.5, 'rgba(236, 72, 153, 0.25)');
+                glowGrad.addColorStop(1, 'rgba(236, 72, 153, 0)');
 
                 ctx.fillStyle = glowGrad;
                 ctx.beginPath();
@@ -1184,8 +1184,8 @@ export class CosmicUniverseEngine {
                     // Linear gradient streak from tail to head
                     const streakGrad = ctx.createLinearGradient(tailEndX, tailEndY, px, py);
                     if (s.streakHue === 'cyan') {
-                        streakGrad.addColorStop(0.0, 'rgba(62, 230, 196, 0.0)');
-                        streakGrad.addColorStop(0.4, 'rgba(62, 230, 196, 0.35)');
+                        streakGrad.addColorStop(0.0, 'rgba(236, 72, 153, 0.0)');
+                        streakGrad.addColorStop(0.4, 'rgba(236, 72, 153, 0.35)');
                         streakGrad.addColorStop(0.8, 'rgba(224, 242, 254, 0.75)');
                         streakGrad.addColorStop(1.0, '#FFFFFF');
                     } else {
@@ -1267,15 +1267,15 @@ export class CosmicUniverseEngine {
             // Tapered radiant linear gradient trail
             const trailGrad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
             if (m.isBolide) {
-                trailGrad.addColorStop(0.0, 'rgba(62, 230, 196, 0.0)');
+                trailGrad.addColorStop(0.0, 'rgba(236, 72, 153, 0.0)');
                 trailGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.45 * flareAlpha})`);
                 trailGrad.addColorStop(0.70, `rgba(138, 108, 255, ${0.75 * flareAlpha})`);
-                trailGrad.addColorStop(0.90, `rgba(62, 230, 196, ${0.95 * flareAlpha})`);
+                trailGrad.addColorStop(0.90, `rgba(236, 72, 153, ${0.95 * flareAlpha})`);
                 trailGrad.addColorStop(1.0, '#FFFFFF');
             } else {
                 trailGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.0)');
                 trailGrad.addColorStop(0.40, 'rgba(56, 189, 248, 0.40)');
-                trailGrad.addColorStop(0.80, 'rgba(62, 230, 196, 0.85)');
+                trailGrad.addColorStop(0.80, 'rgba(236, 72, 153, 0.85)');
                 trailGrad.addColorStop(1.0, '#FFFFFF');
             }
 

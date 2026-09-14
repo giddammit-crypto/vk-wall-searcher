@@ -47,8 +47,8 @@
 }
 
 .iss-hud-reticle.locked .reticle-bracket {
-    border-color: #3ee6c4;
-    filter: drop-shadow(0 0 8px rgba(62, 230, 196, 0.9));
+    border-color: #ec4899;
+    filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.9));
 }
 
 .iss-hud-reticle .bracket-tl {
@@ -86,7 +86,7 @@
 }
 
 .iss-hud-reticle.locked .reticle-compass-ring {
-    border-color: rgba(62, 230, 196, 0.7);
+    border-color: rgba(236, 72, 153, 0.7);
     animation-duration: 6s;
 }
 
@@ -129,8 +129,8 @@
     left: 8px;
     right: 8px;
     height: 1.5px;
-    background: linear-gradient(90deg, transparent, #3ee6c4, #38bdf8, transparent);
-    box-shadow: 0 0 8px #3ee6c4;
+    background: linear-gradient(90deg, transparent, #ec4899, #38bdf8, transparent);
+    box-shadow: 0 0 8px #ec4899;
     animation: issLaserScan 2s ease-in-out infinite alternate;
     pointer-events: none;
 }
@@ -156,7 +156,7 @@
 
 .iss-hud-reticle .vector-arrow {
     font-size: 10px;
-    color: #3ee6c4;
+    color: #ec4899;
     animation: issArrowPulse 1s ease-in-out infinite alternate;
 }
 
@@ -188,13 +188,13 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 6px #22c55e;
+    background: #ec4899;
+    box-shadow: 0 0 6px #ec4899;
     animation: issBeaconGlow 1.2s infinite ease-in-out;
 }
 
 .iss-hud-reticle .tag-range {
-    color: #3ee6c4;
+    color: #ec4899;
 }
 
 /* ==========================================================================
@@ -309,15 +309,15 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #22c55e;
+    color: #ec4899;
 }
 
 .iss-card-live-bar .live-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 8px #22c55e;
+    background: #ec4899;
+    box-shadow: 0 0 8px #ec4899;
     animation: issBeaconGlow 1s infinite alternate;
 }
 
@@ -402,7 +402,7 @@
 }
 
 .iss-card-systems .sys-item .sys-val {
-    color: #3ee6c4;
+    color: #ec4899;
     font-weight: 700;
 }
 
@@ -415,14 +415,14 @@
 
 .iss-card-systems .sys-bar {
     height: 100%;
-    background: linear-gradient(90deg, #0284c7, #38bdf8, #3ee6c4);
+    background: linear-gradient(90deg, #0284c7, #38bdf8, #ec4899);
     border-radius: 3px;
-    box-shadow: 0 0 6px rgba(62, 230, 196, 0.6);
+    box-shadow: 0 0 6px rgba(236, 72, 153, 0.6);
 }
 
 .iss-card-systems .sys-bar.bar-green {
-    background: linear-gradient(90deg, #059669, #10b981, #34d399);
-    box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+    background: linear-gradient(90deg, #a81a5e, #be185d, #ec4899);
+    box-shadow: 0 0 6px rgba(236, 72, 153, 0.6);
 }
 
 /* Docked Craft Chips */
@@ -529,16 +529,16 @@
 }
 
 .iss-action-btn.btn-view {
-    background: rgba(62, 230, 196, 0.16);
-    border-color: rgba(62, 230, 196, 0.4);
-    color: #3ee6c4;
+    background: rgba(236, 72, 153, 0.16);
+    border-color: rgba(236, 72, 153, 0.4);
+    color: #ec4899;
 }
 
 .iss-action-btn.btn-view:hover {
-    background: rgba(62, 230, 196, 0.28);
-    border-color: #3ee6c4;
+    background: rgba(236, 72, 153, 0.28);
+    border-color: #ec4899;
     color: #ffffff;
-    box-shadow: 0 0 12px rgba(62, 230, 196, 0.5);
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
 }
 
 /* ==========================================================================

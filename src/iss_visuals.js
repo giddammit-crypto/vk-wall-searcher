@@ -11,7 +11,7 @@
  * - Pressurized modules with multi-layer insulation (MLI) blankets (aluminized mylar, gold kapton)
  * - Cupola nadir dome with Earth atmospheric blue limb reflection
  * - Docked spacecraft: SpaceX Crew Dragon (matte white + black trunk) and Soyuz MS (tri-module)
- * - Aerospace navigation strobes: Port red (#ef4444), Starboard green (#22c55e), Dual-pulse white beacons (#ffffff)
+ * - Aerospace navigation strobes: Port red (#ef4444), Starboard green (#ec4899), Dual-pulse white beacons (#ffffff)
  * - Cybernetic holographic HUD telemetry reticle, tracking, and Expedition 71 telemetry card
  * =========================================================================================
  */
@@ -757,9 +757,9 @@ export class ISSVisualEngine {
 
         // Orbital Module (BO - Spherical habitation/docking module)
         const boGrad = ctx.createRadialGradient(cx - 4, cy - 50, 4, cx, cy - 50, 16);
-        boGrad.addColorStop(0, '#15803d'); // Olive thermal blanket
-        boGrad.addColorStop(0.6, '#166534');
-        boGrad.addColorStop(1, '#14532d');
+        boGrad.addColorStop(0, '#9d174d'); // Olive thermal blanket
+        boGrad.addColorStop(0.6, '#9d174d');
+        boGrad.addColorStop(1, '#86198f');
         ctx.fillStyle = boGrad;
         ctx.beginPath();
         ctx.arc(cx, cy - 52, 15, 0, Math.PI * 2);
@@ -1343,7 +1343,7 @@ export class ISSVisualEngine {
 
     /**
      * Renders Aviation Navigation Lighting & Dual-Pulse Anti-Collision Beacons
-     * Port Red (#ef4444), Starboard Green (#22c55e), Anti-collision White (#ffffff)
+     * Port Red (#ef4444), Starboard Green (#ec4899), Anti-collision White (#ffffff)
      */
     renderNavigationStrobes(ctx, sz) {
         const time = this.strobeCycle;
@@ -1360,9 +1360,9 @@ export class ISSVisualEngine {
         const p6X = -sz * 1.08;
         this.drawStrobeBeacon(ctx, p6X, 0, '#ef4444', 'rgba(239, 68, 68, 0.95)', isNavFlash, 5.0);
 
-        // Starboard Tip Green Strobe (#22c55e at S6 truss tip)
+        // Starboard Tip Green Strobe (#ec4899 at S6 truss tip)
         const s6X = sz * 1.08;
-        this.drawStrobeBeacon(ctx, s6X, 0, '#22c55e', 'rgba(34, 197, 94, 0.95)', isNavFlash, 5.0);
+        this.drawStrobeBeacon(ctx, s6X, 0, '#ec4899', 'rgba(236, 72, 153, 0.95)', isNavFlash, 5.0);
 
         // Central Truss White Anti-Collision Beacon (#ffffff at Z1 truss peak)
         this.drawStrobeBeacon(ctx, 0, -sz * 0.16, '#ffffff', 'rgba(255, 255, 255, 1.0)', isWhiteFlash, 7.5);

@@ -61,7 +61,7 @@ export const CANONICAL_BRANCHES = [
         screenName: 'club145883298',
         rawId: -145883298,
         branch_url: 'https://biblioteka33.ru/?p=5612',
-        gradient: 'linear-gradient(135deg, #047857 0%, #10b981 100%)',
+        gradient: 'linear-gradient(135deg, #9d174d 0%, #be185d 100%)',
         avatar: 'https://sun9-49.userapi.com/s/v1/ig1/2SLh-4qBdFu9wqyevWWWTmcZ0KgNyydnHuEzVR2vyp7VenpD9NZctfxdFJHV7ffoNiwqq3Up.jpg?quality=96&crop=45,32,362,362&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360&ava=1&cs=100x100',
         canonicalMembers: 183,
         sortOrder: 3
@@ -181,7 +181,7 @@ export const CANONICAL_BRANCHES = [
         screenName: 'dobrolit',
         rawId: -184449519,
         branch_url: 'https://biblioteka33.ru/?p=189',
-        gradient: 'linear-gradient(135deg, #4d7c0f 0%, #84cc16 100%)',
+        gradient: 'linear-gradient(135deg, #9d174d 0%, #ec4899 100%)',
         avatar: 'https://sun1-28.userapi.com/s/v1/ig1/aWqSGyJ1JMV9pp2ax3rz9Ix3hwa7HuZR5b1D6kPsT4z78gE7RTTKDttmLTn4hJ1_dBGRt9sZ.jpg?quality=96&crop=0,0,200,200&as=32x32,48x48,72x72,108x108,160x160&ava=1&cs=100x100',
         canonicalMembers: 596,
         sortOrder: 11
@@ -195,7 +195,7 @@ export const CANONICAL_BRANCHES = [
         vkLink: '',
         screenName: '',
         branch_url: 'https://biblioteka33.ru/?p=195',
-        gradient: 'linear-gradient(135deg, #15803d 0%, #22c55e 100%)',
+        gradient: 'linear-gradient(135deg, #9d174d 0%, #ec4899 100%)',
         avatar: '',
         canonicalMembers: 0,
         sortOrder: 12
@@ -210,7 +210,7 @@ export const CANONICAL_BRANCHES = [
         screenName: 'club193785811',
         rawId: -193785811,
         branch_url: 'https://biblioteka33.ru/?p=30098',
-        gradient: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
+        gradient: 'linear-gradient(135deg, #0f766e 0%, #db2777 100%)',
         avatar: 'https://sun9-80.userapi.com/s/v1/ig1/4Yv2AqGkBFWrd63ydM1oRsR3q-58Iux_y5N1EZO8W-URk8UYh19Y6fTF8UAbKmA8W2OpLEn2.jpg?quality=96&crop=55,29,674,674&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&ava=1&cs=100x100',
         canonicalMembers: 3068,
         sortOrder: 13

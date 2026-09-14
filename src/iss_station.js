@@ -707,8 +707,8 @@ export class IssStationEngine {
                 right: 32px;
                 width: 390px;
                 background: linear-gradient(135deg, rgba(6, 13, 27, 0.94) 0%, rgba(15, 23, 42, 0.96) 100%);
-                border: 1px solid rgba(62, 230, 196, 0.45);
-                box-shadow: 0 0 35px rgba(62, 230, 196, 0.18), inset 0 0 20px rgba(56, 189, 248, 0.08);
+                border: 1px solid rgba(236, 72, 153, 0.45);
+                box-shadow: 0 0 35px rgba(236, 72, 153, 0.18), inset 0 0 20px rgba(56, 189, 248, 0.08);
                 backdrop-filter: blur(14px);
                 -webkit-backdrop-filter: blur(14px);
                 border-radius: 14px;
@@ -733,7 +733,7 @@ export class IssStationEngine {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                border-bottom: 1px solid rgba(62, 230, 196, 0.25);
+                border-bottom: 1px solid rgba(236, 72, 153, 0.25);
                 padding-bottom: 12px;
                 margin-bottom: 14px;
             }
@@ -747,9 +747,9 @@ export class IssStationEngine {
             .iss-hud-status-dot {
                 width: 10px;
                 height: 10px;
-                background: #3ee6c4;
+                background: #ec4899;
                 border-radius: 50%;
-                box-shadow: 0 0 10px #3ee6c4;
+                box-shadow: 0 0 10px #ec4899;
                 animation: iss-pulse 2s infinite;
             }
 
@@ -762,7 +762,7 @@ export class IssStationEngine {
                 font-size: 13px;
                 font-weight: 700;
                 letter-spacing: 0.12em;
-                color: #3ee6c4;
+                color: #ec4899;
                 text-transform: uppercase;
             }
 
@@ -827,7 +827,7 @@ export class IssStationEngine {
             }
 
             .iss-tile-val.emerald {
-                color: #34d399;
+                color: #ec4899;
             }
 
             .iss-docked-list {
@@ -864,9 +864,9 @@ export class IssStationEngine {
                 font-size: 9px;
                 padding: 1px 6px;
                 border-radius: 4px;
-                background: rgba(52, 211, 153, 0.15);
-                color: #34d399;
-                border: 1px solid rgba(52, 211, 153, 0.3);
+                background: rgba(236, 72, 153, 0.15);
+                color: #ec4899;
+                border: 1px solid rgba(236, 72, 153, 0.3);
             }
 
             .iss-hud-actions {
@@ -876,9 +876,9 @@ export class IssStationEngine {
 
             .iss-hud-btn {
                 flex: 1;
-                background: rgba(62, 230, 196, 0.12);
-                border: 1px solid rgba(62, 230, 196, 0.35);
-                color: #3ee6c4;
+                background: rgba(236, 72, 153, 0.12);
+                border: 1px solid rgba(236, 72, 153, 0.35);
+                color: #ec4899;
                 font-family: inherit;
                 font-size: 11px;
                 font-weight: 600;
@@ -893,10 +893,10 @@ export class IssStationEngine {
             }
 
             .iss-hud-btn:hover {
-                background: rgba(62, 230, 196, 0.25);
-                border-color: #3ee6c4;
+                background: rgba(236, 72, 153, 0.25);
+                border-color: #ec4899;
                 color: #ffffff;
-                box-shadow: 0 0 14px rgba(62, 230, 196, 0.3);
+                box-shadow: 0 0 14px rgba(236, 72, 153, 0.3);
             }
 
             .iss-hud-btn.sec {
@@ -2920,7 +2920,7 @@ export class IssStationEngine {
         // Правый габаритный огонь (Starboard tip: Зеленый)
         const stbdTip = project(0, 0, 135);
         if (stbdTip) {
-            ctx.fillStyle = `rgba(34, 197, 94, ${flashAlpha})`;
+            ctx.fillStyle = `rgba(236, 72, 153, ${flashAlpha})`;
             ctx.beginPath();
             ctx.arc(stbdTip.x, stbdTip.y, isFlash ? 3.8 : 1.8, 0, Math.PI * 2);
             ctx.fill();
@@ -2956,7 +2956,7 @@ export class IssStationEngine {
         const reticleR = Math.max(36, this.screenRadius * 1.15);
         const angle = this.lockReticleAngle;
 
-        ctx.strokeStyle = '#3ee6c4';
+        ctx.strokeStyle = '#ec4899';
         ctx.lineWidth = 1.5;
 
         const numBrackets = 4;
@@ -2970,7 +2970,7 @@ export class IssStationEngine {
         }
 
         const crossLen = 6;
-        ctx.strokeStyle = 'rgba(62, 230, 196, 0.75)';
+        ctx.strokeStyle = 'rgba(236, 72, 153, 0.75)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(px - reticleR - crossLen, py);
@@ -2984,7 +2984,7 @@ export class IssStationEngine {
         ctx.stroke();
 
         ctx.font = '10px "JetBrains Mono", monospace';
-        ctx.fillStyle = '#3ee6c4';
+        ctx.fillStyle = '#ec4899';
         ctx.fillText(`[ ISS-ZARYA // EXP-71 ]`, px + reticleR + 10, py - 6);
 
         ctx.font = '9px "JetBrains Mono", monospace';
@@ -3015,7 +3015,7 @@ export class IssStationEngine {
             const targetX = cardRect.left;
             const targetY = cardRect.top + 25;
 
-            ctx.strokeStyle = 'rgba(62, 230, 196, 0.45)';
+            ctx.strokeStyle = 'rgba(236, 72, 153, 0.45)';
             ctx.setLineDash([4, 4]);
             ctx.beginPath();
             ctx.moveTo(px + reticleR, py);

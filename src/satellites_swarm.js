@@ -84,7 +84,7 @@ export const SATELLITE_ARCHETYPES = [
         baseColor: '#475569',
         goldFoil: '#e2e8f0',
         panelColor: '#0369a1',
-        strobeColor: '#22c55e',
+        strobeColor: '#ec4899',
         strobeRate: 1.0,
         hasDish: false,
         hasIonPlume: false
@@ -97,7 +97,7 @@ export const SATELLITE_ARCHETYPES = [
         baseColor: '#b45309',
         goldFoil: '#f59e0b',
         panelColor: '#0ea5e9',
-        strobeColor: '#10b981',
+        strobeColor: '#be185d',
         strobeRate: 1.4,
         hasDish: true,
         hasIonPlume: false
@@ -1530,7 +1530,7 @@ export class SatellitesSwarmEngine {
      */
     strobeColorForSatellite(sat, arch) {
         if (arch.type === 'SPACE_TELESCOPE') return arch.strobeColor;
-        return (sat.index % 2 === 0) ? '#22c55e' : '#ef4444';
+        return (sat.index % 2 === 0) ? '#ec4899' : '#ef4444';
     }
 
     /**

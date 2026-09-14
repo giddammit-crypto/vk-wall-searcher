@@ -616,7 +616,7 @@ export class SpaceWarpTransition {
         const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 4);
         core.addColorStop(0, `rgba(255, 252, 230, ${0.65 + s.energy * 0.30})`);
         core.addColorStop(0.12, `rgba(255, 211, 122, ${0.55 + s.warpLevel * 0.25})`);
-        core.addColorStop(0.28, `rgba(62, 230, 196, ${0.38 * s.warpLevel + 0.12})`);
+        core.addColorStop(0.28, `rgba(236, 72, 153, ${0.38 * s.warpLevel + 0.12})`);
         core.addColorStop(0.60, `rgba(56, 189, 248, ${0.16 * s.warpLevel})`);
         core.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = core;

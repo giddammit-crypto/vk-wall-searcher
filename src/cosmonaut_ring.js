@@ -151,7 +151,7 @@ class CosmonautRingEngine {
             node.dataset.index = String(idx);
             // Каскадный stagger-вход: 60 мс на карточку (см. cosmoCardEnter в CSS).
             node.style.setProperty('--enter-delay', `${(idx * 60).toFixed(0)}ms`);
-            node.style.setProperty('--cosmo-accent', person.badgeColor || '#3ee6c4');
+            node.style.setProperty('--cosmo-accent', person.badgeColor || '#ec4899');
             node.style.width = RING_CONFIG.cardWidth + 'px';
             node.style.height = RING_CONFIG.cardHeight + 'px';
             node.style.marginLeft = (-RING_CONFIG.cardWidth / 2) + 'px';
@@ -526,7 +526,7 @@ class CosmonautRingEngine {
         overlay.innerHTML = `
             <section class="cosmo-expanded" role="dialog" aria-modal="true"
                      aria-label="${this._esc(person.name)}"
-                     style="--cosmo-accent:${person.badgeColor || '#3ee6c4'}">
+                     style="--cosmo-accent:${person.badgeColor || '#ec4899'}">
                 <div class="cosmo-ring-card-inner">
                     <header class="cosmo-ring-head">
                         <span class="cosmo-ring-index">${String(idx + 1).padStart(2, '0')} / ${String(this.data.length).padStart(2, '0')}</span>

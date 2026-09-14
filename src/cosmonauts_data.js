@@ -26,7 +26,7 @@ export const COSMONAUTS_DATA = [
             spacewalks: 0,
             orbitAltitude: '327 км'
         },
-        badgeColor: '#3ee6c4'
+        badgeColor: '#ec4899'
     },
     {
         id: 'leonov',
@@ -121,7 +121,7 @@ export const COSMONAUTS_DATA = [
             continuousRecord: '437 суток 18 ч',
             role: 'Космонавт-врач'
         },
-        badgeColor: '#10b981'
+        badgeColor: '#be185d'
     },
     {
         id: 'savitskaya',
@@ -235,7 +235,7 @@ export const COSMONAUTS_DATA = [
             recordAge: '77 лет на орбите',
             missions: 'Friendship 7, STS-95'
         },
-        badgeColor: '#14b8a6'
+        badgeColor: '#db2777'
     },
     {
         id: 'kononenko',

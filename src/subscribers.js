@@ -440,8 +440,8 @@ function renderChart(points) {
     return `<svg viewBox="0 0 ${W} ${H}" class="subs-chart" preserveAspectRatio="none" role="img" aria-label="Динамика суммарной аудитории">
         <defs>
             <linearGradient id="subsAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#36d4b4" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#36d4b4" stop-opacity="0.02"/>
+                <stop offset="0%" stop-color="#ec4899" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#ec4899" stop-opacity="0.02"/>
             </linearGradient>
         </defs>
         ${grid}

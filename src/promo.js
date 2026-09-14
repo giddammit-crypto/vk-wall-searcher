@@ -64,10 +64,10 @@ export const PROMO_TEMPLATES = [
         qrForeground: '#1c1917',
         qrBackground: '#ffffff',
         bookmarkThemes: [
-            { name: 'eucalyptus', accent: '#0f766e', accentSoft: '#f0fdfa', accentBorder: '#99f6e4', tagBg: '#0f766e', tagColor: '#ffffff' },
-            { name: 'sage', accent: '#115e59', accentSoft: '#f2fbf9', accentBorder: '#5eead4', tagBg: '#134e4a', tagColor: '#ffffff' },
+            { name: 'eucalyptus', accent: '#0f766e', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#0f766e', tagColor: '#ffffff' },
+            { name: 'sage', accent: '#115e59', accentSoft: '#f2fbf9', accentBorder: '#f9a8d4', tagBg: '#134e4a', tagColor: '#ffffff' },
             { name: 'stone', accent: '#44403c', accentSoft: '#fafaf9', accentBorder: '#d6d3d1', tagBg: '#292524', tagColor: '#ffffff' },
-            { name: 'spruce', accent: '#14532d', accentSoft: '#f0fdf4', accentBorder: '#bbf7d0', tagBg: '#166534', tagColor: '#ffffff' }
+            { name: 'spruce', accent: '#86198f', accentSoft: '#f0fdf4', accentBorder: '#fbcfe8', tagBg: '#9d174d', tagColor: '#ffffff' }
         ]
     },
     {
@@ -91,15 +91,15 @@ export const PROMO_TEMPLATES = [
         name: 'Эко-библиотека & Природа',
         category: 'Экология',
         description: 'Биофильный дизайн: чистый белый фон, хвоя, лесной мох и гармония природного чтения',
-        swatches: ['#ffffff', '#15803d', '#142e1b'],
+        swatches: ['#ffffff', '#9d174d', '#3b0a24'],
         dark: false,
-        qrForeground: '#142e1b',
+        qrForeground: '#3b0a24',
         qrBackground: '#ffffff',
         bookmarkThemes: [
-            { name: 'emerald', accent: '#15803d', accentSoft: '#f0fdf4', accentBorder: '#bbf7d0', tagBg: '#166534', tagColor: '#ffffff' },
-            { name: 'moss', accent: '#3f6212', accentSoft: '#f7fee7', accentBorder: '#d9f99d', tagBg: '#365314', tagColor: '#ffffff' },
-            { name: 'forest', accent: '#14532d', accentSoft: '#ecfdf5', accentBorder: '#a7f3d0', tagBg: '#064e3b', tagColor: '#ffffff' },
-            { name: 'fern', accent: '#047857', accentSoft: '#f0fdf4', accentBorder: '#6ee7b7', tagBg: '#065f46', tagColor: '#ffffff' }
+            { name: 'emerald', accent: '#9d174d', accentSoft: '#f0fdf4', accentBorder: '#fbcfe8', tagBg: '#9d174d', tagColor: '#ffffff' },
+            { name: 'moss', accent: '#581c87', accentSoft: '#f7fee7', accentBorder: '#fbcfe8', tagBg: '#4a044e', tagColor: '#ffffff' },
+            { name: 'forest', accent: '#86198f', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#86198f', tagColor: '#ffffff' },
+            { name: 'fern', accent: '#9d174d', accentSoft: '#f0fdf4', accentBorder: '#f9a8d4', tagBg: '#9d174d', tagColor: '#ffffff' }
         ]
     },
     {
@@ -146,7 +146,7 @@ export const PROMO_TEMPLATES = [
         bookmarkThemes: [
             { name: 'sunshine', accent: '#ea580c', accentSoft: '#fff7ed', accentBorder: '#fed7aa', tagBg: '#ea580c', tagColor: '#ffffff' },
             { name: 'cerulean', accent: '#0284c7', accentSoft: '#f0f9ff', accentBorder: '#bae6fd', tagBg: '#0284c7', tagColor: '#ffffff' },
-            { name: 'emerald-kids', accent: '#16a34a', accentSoft: '#f0fdf4', accentBorder: '#bbf7d0', tagBg: '#16a34a', tagColor: '#ffffff' },
+            { name: 'emerald-kids', accent: '#be185d', accentSoft: '#f0fdf4', accentBorder: '#fbcfe8', tagBg: '#be185d', tagColor: '#ffffff' },
             { name: 'berry', accent: '#db2777', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#db2777', tagColor: '#ffffff' }
         ]
     },
@@ -162,7 +162,7 @@ export const PROMO_TEMPLATES = [
         bookmarkThemes: [
             { name: 'neo-blue', accent: '#2563eb', accentSoft: '#eff6ff', accentBorder: '#bfdbfe', tagBg: '#2563eb', tagColor: '#ffffff' },
             { name: 'neo-cyan', accent: '#0284c7', accentSoft: '#f0f9ff', accentBorder: '#bae6fd', tagBg: '#0284c7', tagColor: '#ffffff' },
-            { name: 'neo-teal', accent: '#0d9488', accentSoft: '#f0fdfa', accentBorder: '#99f6e4', tagBg: '#0f766e', tagColor: '#ffffff' },
+            { name: 'neo-teal', accent: '#be185d', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#0f766e', tagColor: '#ffffff' },
             { name: 'neo-indigo', accent: '#4f46e5', accentSoft: '#eef2ff', accentBorder: '#c7d2fe', tagBg: '#4338ca', tagColor: '#ffffff' }
         ]
     },
@@ -179,7 +179,7 @@ export const PROMO_TEMPLATES = [
             { name: 'art-magenta', accent: '#be185d', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#be185d', tagColor: '#ffffff' },
             { name: 'art-indigo', accent: '#3730a3', accentSoft: '#eef2ff', accentBorder: '#c7d2fe', tagBg: '#312e81', tagColor: '#ffffff' },
             { name: 'art-saffron', accent: '#d97706', accentSoft: '#fefce8', accentBorder: '#fde047', tagBg: '#b45309', tagColor: '#ffffff' },
-            { name: 'art-emerald', accent: '#059669', accentSoft: '#ecfdf5', accentBorder: '#a7f3d0', tagBg: '#047857', tagColor: '#ffffff' }
+            { name: 'art-emerald', accent: '#a81a5e', accentSoft: '#fdf2f8', accentBorder: '#fbcfe8', tagBg: '#9d174d', tagColor: '#ffffff' }
         ]
     }
 ];
@@ -707,8 +707,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
 
         .print-theme-scandi { background: #fcfbfa; color: #1c1917; }
         .print-theme-scandi .a5-cta, .print-theme-scandi .a4-slogan-box, .print-theme-scandi .a4-qr-prompt, .print-theme-scandi .a4-qr-link, .print-theme-scandi .a4-card-num { color: #0f766e; }
-        .print-theme-scandi .a4-slogan-box { border-left-color: #0f766e; background: #f0fdfa; border-radius: 3mm; }
-        .print-theme-scandi .a4-card, .print-theme-scandi .a5-right, .print-theme-scandi .a4-qr-block { border-radius: 3.5mm; border-color: #99f6e4; background: #f0fdfa; }
+        .print-theme-scandi .a4-slogan-box { border-left-color: #0f766e; background: #fdf2f8; border-radius: 3mm; }
+        .print-theme-scandi .a4-card, .print-theme-scandi .a5-right, .print-theme-scandi .a4-qr-block { border-radius: 3.5mm; border-color: #fbcfe8; background: #fdf2f8; }
         .print-theme-scandi .a4-frame .corner, .print-theme-scandi .a5-frame .corner { border-color: #0f766e; }
 
         .print-theme-editorial { background: #fdfbf7; color: #1c1917; }
@@ -719,12 +719,12 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         .print-theme-editorial .a4-card, .print-theme-editorial .a5-right, .print-theme-editorial .a4-qr-block { border-color: #fbcfe8; background: #fdf2f8; }
         .print-theme-editorial .a4-frame .corner, .print-theme-editorial .a5-frame .corner { border-color: #831843; }
 
-        .print-theme-botanical { background: #f6f8f5; color: #142e1b; }
-        .print-theme-botanical .a4-top, .print-theme-botanical .a5-top { border-bottom-color: #166534; }
-        .print-theme-botanical .a5-cta, .print-theme-botanical .a4-kicker, .print-theme-botanical .a4-qr-prompt, .print-theme-botanical .a4-qr-link, .print-theme-botanical .a4-card-num { color: #15803d; }
-        .print-theme-botanical .a4-slogan-box { border-left-color: #15803d; background: #f0fdf4; border-radius: 2.5mm; }
-        .print-theme-botanical .a4-card, .print-theme-botanical .a5-right, .print-theme-botanical .a4-qr-block { border-color: #bbf7d0; background: #f0fdf4; }
-        .print-theme-botanical .a4-frame .corner, .print-theme-botanical .a5-frame .corner { border-color: #15803d; }
+        .print-theme-botanical { background: #f6f8f5; color: #3b0a24; }
+        .print-theme-botanical .a4-top, .print-theme-botanical .a5-top { border-bottom-color: #9d174d; }
+        .print-theme-botanical .a5-cta, .print-theme-botanical .a4-kicker, .print-theme-botanical .a4-qr-prompt, .print-theme-botanical .a4-qr-link, .print-theme-botanical .a4-card-num { color: #9d174d; }
+        .print-theme-botanical .a4-slogan-box { border-left-color: #9d174d; background: #f0fdf4; border-radius: 2.5mm; }
+        .print-theme-botanical .a4-card, .print-theme-botanical .a5-right, .print-theme-botanical .a4-qr-block { border-color: #fbcfe8; background: #f0fdf4; }
+        .print-theme-botanical .a4-frame .corner, .print-theme-botanical .a5-frame .corner { border-color: #9d174d; }
 
         .print-theme-craft { background: #f6f0e6; color: #292524; }
         .print-theme-craft .a4-top, .print-theme-craft .a5-top { border-bottom-color: #574e44; }
@@ -747,7 +747,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         .print-theme-kids .a4-slogan-box { border-left-color: #ea580c; background: #fff7ed; border-radius: 3mm; }
         .print-theme-kids .a4-card, .print-theme-kids .a5-right, .print-theme-kids .a4-qr-block { border-radius: 3.5mm; border-color: #fed7aa; background: #fff7ed; }
         .print-theme-kids .a4-card:nth-child(2) { background: #f0f9ff; border-color: #bae6fd; }
-        .print-theme-kids .a4-card:nth-child(3) { background: #f0fdf4; border-color: #bbf7d0; }
+        .print-theme-kids .a4-card:nth-child(3) { background: #f0fdf4; border-color: #fbcfe8; }
         .print-theme-kids .a4-frame .corner, .print-theme-kids .a5-frame .corner { border-color: #ea580c; }
 
         .print-theme-neo, .print-theme-cyber { background: #ffffff; color: #0f172a; }
@@ -1177,7 +1177,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 gap: 2mm;
             }
             .a5-check {
-                color: #15803d;
+                color: #9d174d;
                 font-weight: 800;
             }
             .a5-right {
