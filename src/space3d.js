@@ -16,25 +16,25 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.8.4';
-import { SpaceAudio } from './space_audio.js?v=4.8.4';
-import { CelestialPlanets } from './celestial_planets.js?v=4.8.4';
-import { IssStation } from './iss_station.js?v=4.8.4';
-import { SatellitesSwarm } from './satellites_swarm.js?v=4.8.4';
-import { Constellations } from './constellations.js?v=4.8.4';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.8.4';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.8.5';
+import { SpaceAudio } from './space_audio.js?v=4.8.5';
+import { CelestialPlanets } from './celestial_planets.js?v=4.8.5';
+import { IssStation } from './iss_station.js?v=4.8.5';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.8.5';
+import { Constellations } from './constellations.js?v=4.8.5';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.8.5';
 // Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —
 // иначе два экземпляра модуля → два синглтона → рассинхрон DOM-узлов карточек.
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.8.4';
-import { Starfield } from './starfield.js?v=4.8.4';
-import { SunOptics } from './sun_optics.js?v=4.8.4';
-import { createQrSvg } from './qrcode.js?v=4.8.4';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.8.4';
-import { openPostModal } from './render.js?v=4.8.4';
-import { fetchHistory } from './subscribers.js?v=4.8.4';
-import { buildBranchAdvice } from './advice.js?v=4.8.4';
-import { Space3DGL } from './space3d_gl.js?v=4.8.4';
-import { SpaceCinematic } from './space_cinematic.js?v=4.8.4';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.8.5';
+import { Starfield } from './starfield.js?v=4.8.5';
+import { SunOptics } from './sun_optics.js?v=4.8.5';
+import { createQrSvg } from './qrcode.js?v=4.8.5';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.8.5';
+import { openPostModal } from './render.js?v=4.8.5';
+import { fetchHistory } from './subscribers.js?v=4.8.5';
+import { buildBranchAdvice } from './advice.js?v=4.8.5';
+import { Space3DGL } from './space3d_gl.js?v=4.8.5';
+import { SpaceCinematic } from './space_cinematic.js?v=4.8.5';
 
 export class Space3DEngine {
     constructor() {
@@ -2616,11 +2616,11 @@ export class Space3DEngine {
             try { localStorage.setItem('space3d_music_enabled', 'true'); } catch (e) { /* noop */ }
         }
         this.syncAudioButtons();
-        SpaceAudio.startAmbientMusic(SpaceAudio.musicVolume, 600);
-
-        // Воспроизведение вступительной речи девушки Беллы (если открыто не из варп-перелёта)
         if (!opts || !opts.fromWarp) {
+            SpaceAudio.startAmbientMusic(SpaceAudio.musicVolume, 600, true);
             SpaceAudio.playVoice('aurora_welcome', true);
+        } else {
+            SpaceAudio.startAmbientMusic(SpaceAudio.musicVolume, 600, false);
         }
 
         // Кинематографический прилёт после варпа (15-18с): Approach → Orbit → Transition.
@@ -2666,7 +2666,8 @@ export class Space3DEngine {
             try { SpaceCinematic.end('close'); } catch (e) { /* noop */ }
         }
 
-        SpaceAudio.stopAmbientMusic();
+        SpaceAudio.stopAmbientMusic(300, true);
+        SpaceAudio.stopVoice();
         SpaceAudio.playVoice('exit_2d');
 
         cancelAnimationFrame(this.animId);
@@ -2691,6 +2692,7 @@ export class Space3DEngine {
         SatellitesSwarm.hideOverlays();
         Constellations.hideOverlays();
         document.body.classList.remove('space-3d-active');
+        try { window.dispatchEvent(new CustomEvent('aurora:space3d-closed')); } catch (e) { /* noop */ }
     }
 
     /**

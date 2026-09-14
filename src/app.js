@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.8.4';
+} from './api.js?v=4.8.5';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.8.4';
+} from './advice.js?v=4.8.5';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.8.4';
+} from './ai.js?v=4.8.5';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.8.4';
+} from './subscribers.js?v=4.8.5';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.8.4';
+} from './updater.js?v=4.8.5';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.8.4';
+} from './branches.js?v=4.8.5';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.8.4';
+} from './analytics.js?v=4.8.5';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.8.4';
+} from './render.js?v=4.8.5';
 
 import {
     exportToCsv,
@@ -84,27 +84,27 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.8.4';
+} from './export.js?v=4.8.5';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.8.4';
-import { CosmicUniverse } from './cosmic.js?v=4.8.4';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.8.5';
+import { CosmicUniverse } from './cosmic.js?v=4.8.5';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.8.4';
+} from './promo.js?v=4.8.5';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.8.4';
+} from './radar.js?v=4.8.5';
 
-import { Space3D } from './space3d.js?v=4.8.4';
-import { SpaceWarp } from './space_warp.js?v=4.8.4';
-import { SpaceAudio } from './space_audio.js?v=4.8.4';
+import { Space3D } from './space3d.js?v=4.8.5';
+import { SpaceWarp } from './space_warp.js?v=4.8.5';
+import { SpaceAudio } from './space_audio.js?v=4.8.5';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.8.4';
+export const APP_VERSION = '4.8.5';
 
 function initApp() {
 
@@ -577,17 +577,10 @@ function initApp() {
         elements.settingsPanel?.classList.toggle('collapsed');
     }
 
-    // Строгий тройной клик для входа в 3D Космо-пространство (Только по 3 быстрым кликам подряд!)
-    let spaceClickCount = 0;
-    let spaceClickTimer = null;
+    // Запуск 3D Космо-пространства по одинарному клику на кнопку «Пространство 3D»
     const spaceBadge = elements.space3dBtn?.querySelector('.space-badge-pulse');
 
-    const resetSpaceClicks = () => {
-        spaceClickCount = 0;
-        if (spaceClickTimer) {
-            clearTimeout(spaceClickTimer);
-            spaceClickTimer = null;
-        }
+    const resetSpaceBtn = () => {
         if (elements.space3dBtn) {
             elements.space3dBtn.classList.remove('click-step-1', 'click-step-2', 'warp-arming');
         }
@@ -596,46 +589,31 @@ function initApp() {
         }
     };
 
+    window.addEventListener('aurora:space3d-closed', resetSpaceBtn);
+    window.addEventListener('aurora:warp-finished', resetSpaceBtn);
+
     if (elements.space3dBtn) {
         elements.space3dBtn.addEventListener('click', (e) => {
             e.preventDefault();
             // Если 3D уже открыто — закрываем его сразу
             if (Space3D.isOpen) {
                 Space3D.close();
-                resetSpaceClicks();
+                resetSpaceBtn();
                 return;
             }
 
-            spaceClickCount++;
-            if (spaceClickTimer) clearTimeout(spaceClickTimer);
+            // Если уже идёт гиперпереход — предотвращаем повторные срабатывания
+            if (SpaceWarp.isWarping) return;
 
-            if (spaceClickCount === 1) {
-                elements.space3dBtn.classList.add('click-step-1');
-                elements.space3dBtn.classList.remove('click-step-2', 'warp-arming');
-                if (spaceBadge) spaceBadge.textContent = '1/3';
-                SpaceAudio.playVoice('click_1');
-                showToast('Требуется 3 быстрых клика подряд для запуска 3D (1/3)', 'touch_app');
-                spaceClickTimer = setTimeout(resetSpaceClicks, 950);
-            } else if (spaceClickCount === 2) {
-                elements.space3dBtn.classList.remove('click-step-1');
-                elements.space3dBtn.classList.add('click-step-2');
-                elements.space3dBtn.classList.remove('warp-arming');
-                if (spaceBadge) spaceBadge.textContent = '2/3';
-                SpaceAudio.playVoice('click_2');
-                showToast('Подтверждение 2/3... Еще один клик!', 'bolt');
-                spaceClickTimer = setTimeout(resetSpaceClicks, 950);
-            } else if (spaceClickCount >= 3) {
-                // 3-й быстрый клик подряд! Запуск моушен-варпа со средней скоростью и заполнение экрана
-                elements.space3dBtn.classList.remove('click-step-1', 'click-step-2');
-                elements.space3dBtn.classList.add('warp-arming');
-                if (spaceBadge) spaceBadge.textContent = 'WARP!';
-                showToast('Вход в гиперпространство!', 'rocket_launch');
+            // Одинарный клик: немедленный вход в гиперпространство
+            elements.space3dBtn.classList.add('warp-arming');
+            if (spaceBadge) spaceBadge.textContent = 'WARP!';
+            showToast('Вход в гиперпространство!', 'rocket_launch');
 
-                SpaceWarp.start(() => {
-                    Space3D.open({ fromWarp: true });
-                    resetSpaceClicks();
-                });
-            }
+            SpaceWarp.start(() => {
+                Space3D.open({ fromWarp: true });
+                resetSpaceBtn();
+            });
         });
     }
 
@@ -645,11 +623,15 @@ function initApp() {
             e.preventDefault();
             if (Space3D.isOpen) {
                 Space3D.close();
-                resetSpaceClicks();
+                resetSpaceBtn();
             } else {
+                if (SpaceWarp.isWarping) return;
+                elements.space3dBtn?.classList.add('warp-arming');
+                if (spaceBadge) spaceBadge.textContent = 'WARP!';
+                showToast('Вход в гиперпространство!', 'rocket_launch');
                 SpaceWarp.start(() => {
                     Space3D.open({ fromWarp: true });
-                    resetSpaceClicks();
+                    resetSpaceBtn();
                 });
             }
         }

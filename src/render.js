@@ -3,9 +3,9 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { enrichTargetWithCanonical, renderBranchAvatarHtml, escapeHtml, findCanonicalBranch } from './branches.js?v=4.8.4';
-import { extractNum, formatViews } from './analytics.js?v=4.8.4';
-import { authorCache, getAuthorFromCache } from './api.js?v=4.8.4';
+import { enrichTargetWithCanonical, renderBranchAvatarHtml, escapeHtml, findCanonicalBranch } from './branches.js?v=4.8.5';
+import { extractNum, formatViews } from './analytics.js?v=4.8.5';
+import { authorCache, getAuthorFromCache } from './api.js?v=4.8.5';
 
 export function linkifyText(text) {
     if (!text) return '';

@@ -112,12 +112,20 @@ export class SpaceAudioEngine {
 
     /**
      * Плавный старт амбиент-музыки
+     * @param {number} targetVol
+     * @param {number} durationMs
+     * @param {boolean} resetToStart - сбросить позицию трека на 0:00
      */
-    startAmbientMusic(targetVol = this.musicVolume, durationMs = 1500) {
+    startAmbientMusic(targetVol = this.musicVolume, durationMs = 1500, resetToStart = false) {
         if (!this.musicEnabled) return;
         this.initAmbientMusic();
 
         clearInterval(this.fadeInterval);
+        if (resetToStart && this.ambientAudio) {
+            try {
+                this.ambientAudio.currentTime = 0;
+            } catch (e) {}
+        }
         this.ambientAudio.play().catch(e => {
             console.warn('[SpaceAudio] Ambient autoplay prevented by browser policy:', e);
         });
@@ -142,14 +150,26 @@ export class SpaceAudioEngine {
     }
 
     /**
-     * Плавная остановка музыки
+     * Плавная остановка музыки с обязательным сбросом позиции на 0:00
+     * @param {number} durationMs
+     * @param {boolean} resetToStart
      */
-    stopAmbientMusic(durationMs = 900) {
+    stopAmbientMusic(durationMs = 900, resetToStart = true) {
         if (!this.ambientAudio) return;
         clearInterval(this.fadeInterval);
 
         const stepTime = 50;
-        const totalSteps = durationMs / stepTime;
+        const totalSteps = durationMs > 0 ? durationMs / stepTime : 0;
+
+        if (totalSteps <= 0) {
+            try {
+                this.ambientAudio.pause();
+                if (resetToStart) this.ambientAudio.currentTime = 0;
+                this.ambientAudio.volume = 0;
+            } catch (e) {}
+            return;
+        }
+
         let step = 0;
         const startVol = this.ambientAudio.volume;
 
@@ -163,11 +183,45 @@ export class SpaceAudioEngine {
             if (step >= totalSteps) {
                 clearInterval(this.fadeInterval);
                 if (this.ambientAudio) {
-                    this.ambientAudio.pause();
-                    this.ambientAudio.volume = 0;
+                    try {
+                        this.ambientAudio.pause();
+                        if (resetToStart) this.ambientAudio.currentTime = 0;
+                        this.ambientAudio.volume = 0;
+                    } catch (e) {}
                 }
             }
         }, stepTime);
+    }
+
+    /**
+     * Полная остановка воспроизведения голоса и сброс состояния в 0
+     */
+    stopVoice() {
+        if (this.voiceAudio) {
+            try {
+                this.voiceAudio.pause();
+                this.voiceAudio.currentTime = 0;
+            } catch (e) {}
+            this.voiceAudio = null;
+        }
+        this.isSpeaking = false;
+        this.currentPriority = 0;
+        this.currentVoiceId = null;
+    }
+
+    /**
+     * Немедленный полный сброс музыки и голоса в начало (0:00)
+     */
+    resetAllAudio() {
+        clearInterval(this.fadeInterval);
+        if (this.ambientAudio) {
+            try {
+                this.ambientAudio.pause();
+                this.ambientAudio.currentTime = 0;
+                this.ambientAudio.volume = 0;
+            } catch (e) {}
+        }
+        this.stopVoice();
     }
 
     /**
@@ -186,7 +240,7 @@ export class SpaceAudioEngine {
     /**
      * Воспроизведение реплики голосового ассистента без прерываний
      * @param {string} phraseKey
-     * @param {boolean} force - игнорировать кулдаун
+     * @param {boolean} force - игнорировать кулдаун и приоритет
      */
     playVoice(phraseKey, force = false) {
         if (!this.voiceEnabled) return;
@@ -195,12 +249,12 @@ export class SpaceAudioEngine {
 
         const newPriority = this.voicePriorities[phraseKey] || 3;
 
-        // Если прямо сейчас звучит речь более высокого приоритета — НЕ ПРЕРЫВАТЬ!
+        // Если прямо сейчас звучит речь более высокого приоритета — НЕ ПРЕРЫВАТЬ (если не задан force)!
         if (this.isSpeaking && this.voiceAudio && !this.voiceAudio.paused) {
-            if (newPriority < this.currentPriority) {
-                return; // Младший приоритет (поворот, зум, клик) не может перебить приветствие или переключение режима!
+            if (!force && newPriority < this.currentPriority) {
+                return; // Младший приоритет не может перебить
             }
-            // Если приоритет равен или выше — плавно гасим предыдущую реплику
+            // Если задан force или приоритет равен/выше — останавливаем предыдущую реплику
             try {
                 this.voiceAudio.pause();
                 this.voiceAudio.currentTime = 0;

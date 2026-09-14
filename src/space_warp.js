@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.8.4';
-import { WarpGLRenderer } from './warp_gl.js?v=4.8.4';
-import { WarpHud } from './warp_hud.js?v=4.8.4';
+import { SpaceAudio } from './space_audio.js?v=4.8.5';
+import { WarpGLRenderer } from './warp_gl.js?v=4.8.5';
+import { WarpHud } from './warp_hud.js?v=4.8.5';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -169,8 +169,9 @@ export class SpaceWarpTransition {
 
         // Озвучка и звуковой дизайн гиперпрыжка
         try {
+            SpaceAudio.stopVoice();
             SpaceAudio.playWarpWhoosh();
-            SpaceAudio.startAmbientMusic(0.32, 1800);
+            SpaceAudio.startAmbientMusic(0.32, 1800, true);
             SpaceAudio.playVoice('aurora_welcome', true);
 
             // Триггер кинематографического прилёта: событие 'ended' женской
@@ -660,9 +661,12 @@ export class SpaceWarpTransition {
         cancelAnimationFrame(this.animId);
 
         // Гарантия: если прилёт не открыл 3D-сцену (сбой onArrival, отмена),
-        // фоновая музыка варпа обязана остановиться — в 2D-режиме ей не место
+        // фоновая музыка и голос варпа обязаны остановиться и сброситься на начало — в 2D-режиме им не место
         if (!(window.Space3D && window.Space3D.isOpen)) {
-            try { SpaceAudio.stopAmbientMusic(400); } catch (e) { /* noop */ }
+            try {
+                SpaceAudio.stopAmbientMusic(400, true);
+                SpaceAudio.stopVoice();
+            } catch (e) { /* noop */ }
         }
 
         window.removeEventListener('resize', this.onResize);
