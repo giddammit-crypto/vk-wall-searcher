@@ -25,9 +25,9 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.8.5';
-import { WarpGLRenderer } from './warp_gl.js?v=4.8.5';
-import { WarpHud } from './warp_hud.js?v=4.8.7';
+import { SpaceAudio } from './space_audio.js?v=4.8.9';
+import { WarpGLRenderer } from './warp_gl.js?v=4.8.9';
+import { WarpHud } from './warp_hud.js?v=4.8.9';
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const smoothstep = (e0, e1, x) => {
@@ -64,6 +64,7 @@ export class SpaceWarpTransition {
 
         this.onArrivalCallback = null;
         this.hasTriggeredArrival = false;
+        this.hasTriggeredBelaDismiss = false;
         this.speechTimer = null;
         this.voiceStartMs = 0;
         this.voiceDurationMs = 20820;
@@ -142,6 +143,7 @@ export class SpaceWarpTransition {
         if (this.isWarping) return;
         this.isWarping = true;
         this.hasTriggeredArrival = false;
+        this.hasTriggeredBelaDismiss = false;
         this.onArrivalCallback = onArrival;
         this.phase = 'ignition';
         this.startTime = performance.now();
@@ -235,6 +237,8 @@ export class SpaceWarpTransition {
         this.phaseStart = performance.now();
         this.decelStartTime = performance.now();
         this.hud.setPhase('decel');
+        // Гарантированное скрытие HUD Бэлы при переходе к торможению
+        this.hud.dismissBelaHud(true);
         try { SpaceAudio.playWarpWhoosh(); } catch (e) { /* noop */ }
     }
 
@@ -355,6 +359,18 @@ export class SpaceWarpTransition {
         const elapsed = (now - this.startTime) / 1000;
         const state = this.buildRenderState(elapsed, now, dt);
 
+        // Ровно за 1 секунду до прилёта к Земле / торможения — эффектно скрываем HUD Бэлы
+        if (!this.hasTriggeredBelaDismiss && this.phase === 'cruise') {
+            const voiceEl = SpaceAudio.voiceAudio;
+            const voiceRemaining = (voiceEl && !voiceEl.paused && isFinite(voiceEl.duration) && isFinite(voiceEl.currentTime))
+                ? (voiceEl.duration - voiceEl.currentTime)
+                : ((this.warpTotalMs / 1000) - elapsed);
+            if (voiceRemaining <= 1.05) {
+                this.hasTriggeredBelaDismiss = true;
+                this.hud.dismissBelaHud();
+            }
+        }
+
         // Проверка завершения речи Беллы → автоматическое торможение
         if (this.phase === 'cruise' && SpaceAudio.voiceEnabled !== false) {
             const voiceEl = SpaceAudio.voiceAudio;
@@ -374,6 +390,7 @@ export class SpaceWarpTransition {
 
         // HUD
         this.hud.drawWave(state.energy, SpaceAudio.getVoiceSpectrum ? SpaceAudio.getVoiceSpectrum() : null);
+        this.hud.updateBelaTypewriter(elapsed);
         this.hud.setTelemetry({
             speedC: state.speedC,
             reactor: state.reactor,

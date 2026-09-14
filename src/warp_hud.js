@@ -40,6 +40,8 @@ const PHASE_TEXT = {
     }
 };
 
+export const BELA_SPEECH_FULL = 'Добро пожаловать в космическое пространство Аврора 3D! Это наш исследовательский эксперимент по реализации трёхмерного интерактивного пространства на веб-сайте. Проект посвящён будущему Дню космонавтики и международному Дню космоса. Орбитальный комплекс библиотек города Владимира готов к работе. Приятного полёта!';
+
 const LETTERS = ['A', 'U', 'R', 'O', 'R', 'A'];
 
 export class WarpHud {
@@ -47,6 +49,10 @@ export class WarpHud {
         this.root = null;
         this.waveCanvas = null;
         this.waveCtx = null;
+        this.belaWaveCanvas = null;
+        this.belaWaveCtx = null;
+        this.belaHudEl = null;
+        this.belaTextEl = null;
         this.phaseName = null;
         this.phaseFill = null;
         this.phaseTicks = null;
@@ -58,6 +64,9 @@ export class WarpHud {
         this.currentPhase = null;
         this.onSkip = null;
         this.onAbort = null;
+        this.titleHideTimer = null;
+        this.lastCharCount = -1;
+        this.isBelaDismissed = false;
     }
 
     /* ---------------------------------------------------------------------
@@ -69,6 +78,8 @@ export class WarpHud {
             return;
         }
         this.onSkip = onSkip;
+        this.isBelaDismissed = false;
+        this.lastCharCount = -1;
 
         const root = document.createElement('div');
         root.className = 'warp-hud';
@@ -133,23 +144,75 @@ export class WarpHud {
                 <div class="title-org">ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ • МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</div>
             </div>
 
-            <div class="warp-briefing">
-                <div class="briefing-avatar">
-                    <span class="briefing-ring ring-1"></span>
-                    <span class="briefing-ring ring-2"></span>
-                    <span class="material-symbols-outlined">record_voice_over</span>
+            <!-- Футуристический HUD Бэлы в правой части экрана в 3D проекции -->
+            <div class="warp-bela-hud hidden" data-bela-hud>
+                <div class="bela-hud-frame">
+                    <span class="bh-corner bh-tl"></span>
+                    <span class="bh-corner bh-tr"></span>
+                    <span class="bh-corner bh-bl"></span>
+                    <span class="bh-corner bh-br"></span>
+                    <div class="bela-scanline"></div>
                 </div>
-                <div class="briefing-body">
-                    <div class="briefing-head">
-                        <span class="briefing-dot"></span>
-                        <span>БЭЛА • ГОЛОСОВОЙ БРИФИНГ</span>
-                        <span class="briefing-live">В ЭФИРЕ</span>
+
+                <div class="bela-hud-header">
+                    <div class="bela-status-pill">
+                        <span class="bela-dot"></span>
+                        <span class="bela-status-txt">ГОЛОСОВОЙ КАНАЛ СВЯЗИ</span>
                     </div>
-                    <canvas class="briefing-wave" width="520" height="88"></canvas>
-                    <div class="briefing-log">
-                        <span class="briefing-log-tag">ЛОГ МИССИИ</span>
-                        <span class="briefing-log-text" data-log>Связь с орбитальным комплексом установлена…</span>
+                    <div class="bela-channel-tag">SEC-01 • 1420.4 MHz</div>
+                </div>
+
+                <div class="bela-hud-content">
+                    <div class="bela-avatar-wrap">
+                        <div class="bela-avatar-ring ring-outer"></div>
+                        <div class="bela-avatar-ring ring-middle"></div>
+                        <div class="bela-avatar-glow"></div>
+                        <img src="assets/images/bela_avatar.webp"
+                             onerror="this.onerror=null;this.src='assets/images/bela_avatar.jpg';"
+                             alt="Оператор Бэла"
+                             class="bela-avatar-img" />
+                        <span class="bela-avatar-badge" title="Оператор на связи">
+                            <span class="material-symbols-outlined">headset_mic</span>
+                        </span>
                     </div>
+                    <div class="bela-meta">
+                        <div class="bela-name-row">
+                            <span class="bela-name">БЭЛА</span>
+                            <span class="bela-callsign">AURORA-AI</span>
+                        </div>
+                        <div class="bela-role">ГОЛОСОВОЙ ОПЕРАТОР • АССИСТЕНТ</div>
+                        <canvas class="bela-voice-wave" width="280" height="38"></canvas>
+                    </div>
+                </div>
+
+                <div class="bela-divider"><i></i></div>
+
+                <div class="bela-speech-area">
+                    <div class="bela-speech-tag">
+                        <span class="material-symbols-outlined">record_voice_over</span>
+                        <span>ТРАНСЛЯЦИЯ СООБЩЕНИЯ</span>
+                    </div>
+                    <div class="bela-speech-text">
+                        <span class="bela-typed-content" data-bela-text></span><span class="bela-cursor">▋</span>
+                    </div>
+                </div>
+
+                <div class="bela-hud-footer">
+                    <span class="bh-sector">ВЕКТОР: МЛЕЧНЫЙ ПУТЬ • ЗЕМЛЯ</span>
+                    <span class="bh-codec">NEURAL VOICE // 24-BIT</span>
+                </div>
+            </div>
+
+            <!-- Компактный системный лог полета (слева внизу) -->
+            <div class="warp-mission-log">
+                <div class="briefing-head">
+                    <span class="briefing-dot"></span>
+                    <span>СИСТЕМНЫЙ ЖУРНАЛ ПОЛЁТА</span>
+                    <span class="briefing-live">В ЭФИРЕ</span>
+                </div>
+                <div class="briefing-log">
+                    <span class="briefing-log-tag">МИССИЯ</span>
+                    <span class="briefing-log-text" data-log>Связь с орбитальным комплексом установлена…</span>
                 </div>
             </div>
 
@@ -192,6 +255,20 @@ export class WarpHud {
         this.waveCanvas = root.querySelector('.briefing-wave');
         this.waveCtx = this.waveCanvas ? this.waveCanvas.getContext('2d') : null;
 
+        this.belaHudEl = root.querySelector('[data-bela-hud]');
+        this.belaTextEl = root.querySelector('[data-bela-text]');
+        this.belaWaveCanvas = root.querySelector('.bela-voice-wave');
+        this.belaWaveCtx = this.belaWaveCanvas ? this.belaWaveCanvas.getContext('2d') : null;
+
+        // Начальная надпись AURORA и текст под ней пропадают через 5 секунд,
+        // после чего в правой части эффектно появляется футуристический HUD Бэлы
+        clearTimeout(this.titleHideTimer);
+        this.titleHideTimer = setTimeout(() => {
+            const title = this.root?.querySelector('.warp-title');
+            if (title) title.classList.add('title-fade-out');
+            this.showBelaHud();
+        }, 5000);
+
         root.querySelectorAll('[data-tele]').forEach(el => {
             this.teleEls[el.dataset.tele] = el;
         });
@@ -214,15 +291,23 @@ export class WarpHud {
     }
 
     unmount() {
+        clearTimeout(this.titleHideTimer);
+        this.titleHideTimer = null;
         if (this.root && this.root.parentNode) {
             this.root.parentNode.removeChild(this.root);
         }
         this.root = null;
         this.waveCtx = null;
         this.waveCanvas = null;
+        this.belaWaveCtx = null;
+        this.belaWaveCanvas = null;
+        this.belaHudEl = null;
+        this.belaTextEl = null;
         this.teleEls = {};
         this.barEls = {};
         this.currentPhase = null;
+        this.lastCharCount = -1;
+        this.isBelaDismissed = false;
     }
 
     hide() {
@@ -231,6 +316,48 @@ export class WarpHud {
 
     show() {
         if (this.root) this.root.classList.remove('hidden');
+    }
+
+    /* ---------------------------------------------------------------------
+     * Футуристический 3D HUD Бэлы: появление, печать речи, эффектное скрытие
+     * ------------------------------------------------------------------- */
+    showBelaHud() {
+        if (!this.belaHudEl || this.isBelaDismissed) return;
+        this.belaHudEl.classList.remove('hidden');
+        void this.belaHudEl.offsetWidth; // reflow для гарантированного перезапуска CSS-анимации
+        this.belaHudEl.classList.add('is-active');
+    }
+
+    updateBelaTypewriter(elapsedSeconds) {
+        if (!this.belaTextEl || this.isBelaDismissed) return;
+        // Начинаем печать с 5.0с (момент появления HUD) до 19.6с
+        const startT = 5.0;
+        const endT = 19.6;
+        if (elapsedSeconds < startT) {
+            this.belaTextEl.textContent = '';
+            return;
+        }
+        const ratio = Math.max(0, Math.min(1, (elapsedSeconds - startT) / (endT - startT)));
+        const targetChars = Math.floor(ratio * BELA_SPEECH_FULL.length);
+        if (targetChars !== this.lastCharCount) {
+            this.lastCharCount = targetChars;
+            this.belaTextEl.textContent = BELA_SPEECH_FULL.slice(0, targetChars);
+        }
+    }
+
+    dismissBelaHud(immediate = false) {
+        if (this.isBelaDismissed || !this.belaHudEl) return;
+        this.isBelaDismissed = true;
+        if (immediate) {
+            this.belaHudEl.classList.add('bela-hud-collapsing-fast');
+        } else {
+            this.belaHudEl.classList.add('bela-hud-collapsing');
+        }
+        setTimeout(() => {
+            if (this.belaHudEl) {
+                this.belaHudEl.classList.add('hidden');
+            }
+        }, immediate ? 450 : 900);
     }
 
     /* ---------------------------------------------------------------------
@@ -292,18 +419,20 @@ export class WarpHud {
     }
 
     /* ---------------------------------------------------------------------
-     * Живой осциллограф голоса Беллы
+     * Живой осциллограф голоса Бэлы
      * ------------------------------------------------------------------- */
     drawWave(energy, spectrum) {
-        const ctx = this.waveCtx;
-        if (!ctx || !this.waveCanvas) return;
+        // Отрисовка волны в мини-осциллографе карточки Бэлы
+        const ctx = this.belaWaveCtx || this.waveCtx;
+        const canvas = this.belaWaveCanvas || this.waveCanvas;
+        if (!ctx || !canvas) return;
 
-        const w = this.waveCanvas.width;
-        const h = this.waveCanvas.height;
+        const w = canvas.width;
+        const h = canvas.height;
         const mid = h / 2;
 
         // Запись истории в кольцевой буфер (для скролла справа налево)
-        const bars = 48;
+        const bars = 36;
         if (spectrum && spectrum.length) {
             const step = Math.floor(spectrum.length / bars) || 1;
             for (let i = 0; i < bars; i++) {
@@ -318,7 +447,7 @@ export class WarpHud {
             const t = performance.now() * 0.001;
             for (let i = 0; i < 2; i++) {
                 const v = Math.max(0, Math.min(1,
-                    (Math.sin(t * 9.1 + i * 1.7) * 0.32 + Math.sin(t * 3.3 + i) * 0.28 + 0.42) * energy
+                    (Math.sin(t * 9.1 + i * 1.7) * 0.35 + Math.sin(t * 3.3 + i) * 0.28 + 0.38) * energy
                 ));
                 this.waveHistory[(this.waveHead + i) % this.waveHistory.length] = v;
             }
@@ -328,22 +457,23 @@ export class WarpHud {
         ctx.clearRect(0, 0, w, h);
 
         const grad = ctx.createLinearGradient(0, 0, w, 0);
-        grad.addColorStop(0, 'rgba(236, 72, 153, 0.15)');
-        grad.addColorStop(0.4, 'rgba(236, 72, 153, 0.9)');
-        grad.addColorStop(1, 'rgba(56, 189, 248, 0.95)');
+        grad.addColorStop(0, 'rgba(56, 189, 248, 0.3)');
+        grad.addColorStop(0.4, 'rgba(56, 189, 248, 0.95)');
+        grad.addColorStop(0.8, 'rgba(236, 72, 153, 0.95)');
+        grad.addColorStop(1, 'rgba(138, 108, 255, 0.9)');
         ctx.fillStyle = grad;
 
         const bw = w / this.waveHistory.length;
         for (let i = 0; i < this.waveHistory.length; i++) {
             const v = this.waveHistory[(this.waveHead + i) % this.waveHistory.length];
-            const bh = Math.max(1.5, v * (h * 0.86));
-            ctx.globalAlpha = 0.35 + v * 0.65;
-            ctx.fillRect(i * bw, mid - bh / 2, Math.max(1, bw - 1.6), bh);
+            const bh = Math.max(2, v * (h * 0.86));
+            ctx.globalAlpha = 0.3 + v * 0.7;
+            ctx.fillRect(i * bw, mid - bh / 2, Math.max(1, bw - 1.4), bh);
         }
         ctx.globalAlpha = 1;
 
         // Центральная осевая линия
-        ctx.strokeStyle = 'rgba(148, 197, 253, 0.25)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, mid + 0.5);

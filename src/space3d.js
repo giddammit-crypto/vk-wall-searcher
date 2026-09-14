@@ -25,7 +25,7 @@ import { Constellations } from './constellations.js?v=4.8.5';
 import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.8.5';
 // Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —
 // иначе два экземпляра модуля → два синглтона → рассинхрон DOM-узлов карточек.
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.8.5';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.8.9';
 import { Starfield } from './starfield.js?v=4.8.5';
 import { SunOptics } from './sun_optics.js?v=4.8.5';
 import { createQrSvg } from './qrcode.js?v=4.8.5';
@@ -34,7 +34,7 @@ import { openPostModal } from './render.js?v=4.8.5';
 import { fetchHistory } from './subscribers.js?v=4.8.5';
 import { buildBranchAdvice } from './advice.js?v=4.8.5';
 import { Space3DGL } from './space3d_gl.js?v=4.8.5';
-import { SpaceCinematic } from './space_cinematic.js?v=4.8.7';
+import { SpaceCinematic } from './space_cinematic.js?v=4.8.9';
 
 export class Space3DEngine {
     constructor() {
