@@ -21,7 +21,7 @@
     position: fixed;
     bottom: 24px;
     left: 24px;
-    z-index: 900;
+    z-index: 100000 !important;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1416,19 +1416,19 @@
 
 
 /* ==========================================================================
-   COSMO v4.12.0 — DRAG & DROP, 30S PATROL, MARKDOWN & AUDIO MOTION
+   COSMO v4.13.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
-/* 1. Повышенный z-index, чтобы Космо был виден во время модального сканирования */
+/* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
 .aurora-mascot-container {
-    z-index: 1100 !important;
+    z-index: 100000 !important;
 }
 
 /* 2. Drag & Drop механика перетаскивания */
 .aurora-mascot-container.is-dragging {
     transition: none !important;
     user-select: none !important;
-    z-index: 1200 !important;
+    z-index: 100001 !important;
 }
 
 .aurora-mascot-container.is-dragging .mascot-floater {
@@ -1443,6 +1443,29 @@
     cursor: grabbing !important;
     animation: cosmoDangleWiggle 0.45s ease-in-out infinite alternate !important;
     filter: drop-shadow(0 15px 25px rgba(0, 240, 255, 0.45));
+}
+
+/* Паника при высокой высоте подъёма («Спасите! Помогите!») */
+.mascot-body-wrapper.is-high-altitude {
+    animation: cosmoHighAltitudeScream 0.15s ease-in-out infinite alternate !important;
+    filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.8)) !important;
+}
+
+@keyframes cosmoHighAltitudeScream {
+    0%   { transform: scale(1.15, 0.88) rotate(-14deg) translateY(-4px); }
+    100% { transform: scale(0.88, 1.15) rotate(14deg) translateY(4px); }
+}
+
+/* Сверхзвуковой полёт при броске/швырянии («Уи-и-и-и! Я лечу-у-у-у!») */
+.mascot-body-wrapper.is-flung {
+    animation: cosmoFlingSpin 0.35s linear infinite !important;
+    filter: drop-shadow(0 0 30px rgba(56, 189, 248, 0.95)) brightness(1.25) !important;
+}
+
+@keyframes cosmoFlingSpin {
+    0%   { transform: rotate(0deg) scale(1.1, 0.9); }
+    50%  { transform: rotate(180deg) scale(0.9, 1.1); }
+    100% { transform: rotate(360deg) scale(1.1, 0.9); }
 }
 
 @keyframes cosmoDangleWiggle {
