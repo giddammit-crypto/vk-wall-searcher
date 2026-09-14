@@ -264,15 +264,27 @@ function mdLite(text) {
     let code = null;      // {lines: []}
     let table = [];       // [rows][cells]
     let quote = [];
+    let olCounter = 0;    // сквозной счётчик ol — не сбрасывается от вложенных ul
 
     const flushPara = () => {
         if (para.length) { out.push('<p>' + mdInline(para.join('<br>')) + '</p>'); para = []; }
     };
     const flushList = () => {
         if (list) {
-            out.push('<' + list.type + ' class="ai-list">' +
-                list.items.map(it => '<li>' + mdInline(it.join('<br>')) + '</li>').join('') +
-                '</' + list.type + '>');
+            if (list.type === 'ol') {
+                // ol-пункты рендерим как кастомные div с badge-номером
+                out.push('<div class="ai-ol">' +
+                    list.items.map((it, idx) => {
+                        const n = (list.startFrom || 1) + idx;
+                        return '<div class="ai-ol-item"><span class="ai-ol-num">' + n + '</span>'
+                            + '<span class="ai-ol-text">' + mdInline(it.join('<br>')) + '</span></div>';
+                    }).join('') +
+                    '</div>');
+            } else {
+                out.push('<ul class="ai-list">' +
+                    list.items.map(it => '<li>' + mdInline(it.join('<br>')) + '</li>').join('') +
+                    '</ul>');
+            }
             list = null;
         }
     };
@@ -301,7 +313,10 @@ function mdLite(text) {
     const flushQuote = () => {
         if (quote.length) { out.push('<blockquote class="ai-quote">' + mdInline(quote.join('<br>')) + '</blockquote>'); quote = []; }
     };
-    const flushAll = () => { flushPara(); flushList(); flushCode(); flushTable(); flushQuote(); };
+    const flushAll = () => {
+        flushPara(); flushList(); flushCode(); flushTable(); flushQuote();
+        olCounter = 0;  // сбрасываем счётчик только на пустой строке / смене блока
+    };
 
     for (const raw of lines) {
         const t = raw.trim();
@@ -346,10 +361,20 @@ function mdLite(text) {
         const ol = t.match(/^(\d{1,2})[.)]\s+(.+)$/);
         if (ul || ol) {
             flushPara(); flushQuote(); flushTable();
-            const type = ul ? 'ul' : 'ol';
-            const content = ul ? ul[1] : ol[2];
-            if (!list || list.type !== type) { flushList(); list = { type, items: [] }; }
-            list.items.push([content]);
+            if (ol) {
+                // ol: если текущий список — ul, сбрасываем его, но счётчик сохраняем
+                if (list && list.type === 'ul') { flushList(); }
+                olCounter++;
+                if (!list || list.type !== 'ol') {
+                    list = { type: 'ol', items: [], startFrom: olCounter };
+                }
+                list.items.push([ol[2]]);
+            } else {
+                // ul: сбрасываем ol-список в HTML (счётчик olCounter НЕ трогаем)
+                if (list && list.type === 'ol') { flushList(); }
+                if (!list || list.type !== 'ul') { list = { type: 'ul', items: [] }; }
+                list.items.push([ul[1]]);
+            }
             continue;
         }
 
@@ -360,6 +385,7 @@ function mdLite(text) {
     flushAll();
     return out.join('');
 }
+
 
 // ---------------------------------------------------------------------------
 // DOM вкладки
