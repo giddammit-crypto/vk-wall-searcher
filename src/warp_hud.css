@@ -1,7 +1,7 @@
 /* ==========================================================================
    AURORA AAA HYPERDRIVE — Кинематографический HUD варп-прыжка
    Роль: UI/UX Lead • Motion Designer • 3D Art Director
-   Палитра: deep space / aurora cyan #ec4899 · sky #38bdf8 · violet #8a6cff
+   Палитра: deep space / aurora cyan #38bdf8 · sky #38bdf8 · violet #8a6cff
    ========================================================================== */
 
 /* Холст варпа — поверх 3D-пространства: прибытие идёт кроссфейдом,
@@ -218,7 +218,7 @@
     height: 100%;
     width: 0;
     border-radius: 999px;
-    background: linear-gradient(90deg, #ec4899, #38bdf8, #8a6cff);
+    background: linear-gradient(90deg, #38bdf8, #38bdf8, #8a6cff);
     box-shadow: 0 0 12px rgba(236, 72, 153, 0.75);
     transition: width 0.25s linear;
 }
@@ -384,14 +384,14 @@
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.16em;
-    color: #ec4899;
+    color: #38bdf8;
 }
 .briefing-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ec4899;
-    box-shadow: 0 0 10px #ec4899;
+    background: #38bdf8;
+    box-shadow: 0 0 10px #38bdf8;
     animation: briefDot 1.4s ease-in-out infinite;
 }
 @keyframes briefDot {
@@ -429,7 +429,7 @@
     font-size: 9px;
     font-weight: 800;
     letter-spacing: 0.14em;
-    color: #ec4899;
+    color: #38bdf8;
     white-space: nowrap;
     padding: 2px 7px;
     background: rgba(236, 72, 153, 0.16);
@@ -490,7 +490,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 8.5px;
     font-weight: 700;
-    color: #ec4899;
+    color: #38bdf8;
     border: 1px solid rgba(236, 72, 153, 0.4);
     border-radius: 5px;
     padding: 1px 5px;
@@ -508,7 +508,7 @@
     height: 100%;
     width: 0;
     border-radius: 999px;
-    background: linear-gradient(90deg, #ec4899, #38bdf8 55%, #8a6cff);
+    background: linear-gradient(90deg, #38bdf8, #38bdf8 55%, #8a6cff);
     box-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
     transition: width 0.3s linear;
 }

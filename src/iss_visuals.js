@@ -15,7 +15,7 @@
  * - Cybernetic holographic HUD telemetry reticle, tracking, and Expedition 71 telemetry card
  * =========================================================================================
  */
-import { SpaceAudio } from './space_audio.js?v=4.8.3';
+import { SpaceAudio } from './space_audio.js?v=4.8.4';
 
 export class ISSVisualEngine {
     constructor() {

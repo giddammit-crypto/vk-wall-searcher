@@ -83,7 +83,7 @@
         0 2px 6px rgba(0, 0, 0, 0.45),
         0 34px 90px rgba(0, 0, 0, 0.90),
         0 60px 140px rgba(0, 0, 0, 0.55),
-        0 0 50px color-mix(in srgb, var(--cosmo-accent, #ec4899) 20%, transparent),
+        0 0 50px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 20%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.28),
         inset 0 -1px 0 rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(28px) saturate(160%) contrast(1.05);
@@ -103,7 +103,7 @@
         rgba(255, 255, 255, 0.55) 0%,
         rgba(255, 255, 255, 0.10) 26%,
         rgba(148, 197, 253, 0.08) 52%,
-        color-mix(in srgb, var(--cosmo-accent, #ec4899) 55%, transparent) 100%);
+        color-mix(in srgb, var(--cosmo-accent, #38bdf8) 55%, transparent) 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -120,7 +120,7 @@
     inset: 0 0 auto 0;
     height: 2px;
     background:
-        linear-gradient(90deg, transparent, var(--cosmo-accent, #ec4899) 30%, rgba(255, 255, 255, 0.85) 50%, var(--cosmo-accent, #ec4899) 70%, transparent);
+        linear-gradient(90deg, transparent, var(--cosmo-accent, #38bdf8) 30%, rgba(255, 255, 255, 0.85) 50%, var(--cosmo-accent, #38bdf8) 70%, transparent);
     opacity: 0.90;
     z-index: 3;
 }
@@ -128,7 +128,7 @@
 .cosmo-ring-card.is-front .cosmo-ring-card-inner {
     box-shadow:
         0 46px 120px rgba(0, 0, 0, 0.95),
-        0 0 75px color-mix(in srgb, var(--cosmo-accent, #ec4899) 36%, transparent),
+        0 0 75px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 36%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.32);
     transform: scale(1.035);
 }
@@ -138,7 +138,7 @@
 .cosmo-ring-card:hover .cosmo-ring-card-inner {
     box-shadow:
         0 42px 115px rgba(0, 0, 0, 0.94),
-        0 0 65px color-mix(in srgb, var(--cosmo-accent, #ec4899) 32%, transparent),
+        0 0 65px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 32%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.30);
     transform: translateY(-4px) scale(1.03);
 }
@@ -147,9 +147,9 @@
 
 /* Ховер: бейдж миссии (позывной) подсвечивается */
 .cosmo-ring-card:hover .cosmo-ring-callsign {
-    border-color: color-mix(in srgb, var(--cosmo-accent, #ec4899) 90%, transparent);
-    background: color-mix(in srgb, var(--cosmo-accent, #ec4899) 24%, transparent);
-    box-shadow: 0 0 20px color-mix(in srgb, var(--cosmo-accent, #ec4899) 45%, transparent);
+    border-color: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 90%, transparent);
+    background: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 24%, transparent);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 45%, transparent);
 }
 
 .cosmo-ring-card.is-focused .cosmo-ring-card-inner {
@@ -157,9 +157,9 @@
 }
 
 @keyframes cosmoRingFocus {
-    0% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 0 0 color-mix(in srgb, var(--cosmo-accent, #ec4899) 70%, transparent); }
-    55% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 0 16px color-mix(in srgb, var(--cosmo-accent, #ec4899) 0%, transparent); }
-    100% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 46px color-mix(in srgb, var(--cosmo-accent, #ec4899) 20%, transparent); }
+    0% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 0 0 color-mix(in srgb, var(--cosmo-accent, #38bdf8) 70%, transparent); }
+    55% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 0 16px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 0%, transparent); }
+    100% { box-shadow: 0 44px 110px rgba(0, 0, 0, 0.9), 0 0 46px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 20%, transparent); }
 }
 
 /* --- Шапка: номер и позывной --- */
@@ -192,10 +192,10 @@
     letter-spacing: 0.1em;
     padding: 3px 10px 3px 8px;
     border-radius: 999px;
-    color: var(--cosmo-accent, #ec4899);
-    border: 1px solid color-mix(in srgb, var(--cosmo-accent, #ec4899) 48%, transparent);
-    background: color-mix(in srgb, var(--cosmo-accent, #ec4899) 14%, transparent);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--cosmo-accent, #ec4899) 20%, transparent);
+    color: var(--cosmo-accent, #38bdf8);
+    border: 1px solid color-mix(in srgb, var(--cosmo-accent, #38bdf8) 48%, transparent);
+    background: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 14%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 20%, transparent);
     white-space: nowrap;
 }
 
@@ -204,8 +204,8 @@
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: var(--cosmo-accent, #ec4899);
-    box-shadow: 0 0 8px var(--cosmo-accent, #ec4899);
+    background: var(--cosmo-accent, #38bdf8);
+    box-shadow: 0 0 8px var(--cosmo-accent, #38bdf8);
     animation: cosmoBeaconPulse 2s infinite ease-in-out;
 }
 
@@ -274,7 +274,7 @@
     inset: 0;
     background:
         linear-gradient(180deg, rgba(6, 10, 22, 0.12) 0%, rgba(6, 10, 22, 0.02) 42%, rgba(6, 10, 22, 0.92) 100%),
-        linear-gradient(120deg, color-mix(in srgb, var(--cosmo-accent, #ec4899) 12%, transparent), transparent 52%);
+        linear-gradient(120deg, color-mix(in srgb, var(--cosmo-accent, #38bdf8) 12%, transparent), transparent 52%);
     pointer-events: none;
 }
 
@@ -295,7 +295,7 @@
 
 .cosmo-ring-agency {
     font-weight: 800;
-    color: var(--cosmo-accent, #ec4899);
+    color: var(--cosmo-accent, #38bdf8);
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
     white-space: nowrap;
     overflow: hidden;
@@ -319,7 +319,7 @@
     padding: 13px 15px 15px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--cosmo-accent, #ec4899) 60%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 60%, transparent) transparent;
     /* Мягкое затухание текста у нижней кромки вместо жёсткого среза;
        .at-end ставится из JS, когда прокрутка дошла до низа */
     -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 30px), transparent 100%);
@@ -333,7 +333,7 @@
 
 .cosmo-ring-body::-webkit-scrollbar { width: 5px; }
 .cosmo-ring-body::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--cosmo-accent, #ec4899) 55%, transparent);
+    background: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 55%, transparent);
     border-radius: 999px;
 }
 .cosmo-ring-body::-webkit-scrollbar-track { background: transparent; }
@@ -353,7 +353,7 @@
     font-size: 10px;
     font-weight: 800;
     line-height: 1.4;
-    color: var(--cosmo-accent, #ec4899);
+    color: var(--cosmo-accent, #38bdf8);
     text-transform: uppercase;
     letter-spacing: 0.14em;
 }
@@ -369,7 +369,7 @@
     background: rgba(3, 7, 18, 0.55);
     border-radius: 11px;
     border: 1px solid rgba(148, 197, 253, 0.16);
-    border-left: 3px solid var(--cosmo-accent, #ec4899);
+    border-left: 3px solid var(--cosmo-accent, #38bdf8);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     transition: background 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
                 border-color 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1)),
@@ -386,8 +386,8 @@
     font-style: normal;
     font-weight: 900;
     line-height: 1;
-    color: var(--cosmo-accent, #ec4899);
-    text-shadow: 0 0 10px color-mix(in srgb, var(--cosmo-accent, #ec4899) 60%, transparent);
+    color: var(--cosmo-accent, #38bdf8);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 60%, transparent);
     pointer-events: none;
     transition: text-shadow 0.45s var(--space-ease, cubic-bezier(0.16, 1, 0.3, 1));
 }
@@ -395,15 +395,15 @@
 /* Ховер: плавная подсветка левой полосы цитаты */
 .cosmo-ring-card:hover .cosmo-ring-quote {
     background: rgba(3, 7, 18, 0.75);
-    border-left-color: color-mix(in srgb, var(--cosmo-accent, #ec4899) 100%, transparent);
+    border-left-color: color-mix(in srgb, var(--cosmo-accent, #38bdf8) 100%, transparent);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 0 18px color-mix(in srgb, var(--cosmo-accent, #ec4899) 18%, transparent),
-        inset 3px 0 10px -4px color-mix(in srgb, var(--cosmo-accent, #ec4899) 55%, transparent);
+        0 0 18px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 18%, transparent),
+        inset 3px 0 10px -4px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 55%, transparent);
 }
 
 .cosmo-ring-card:hover .cosmo-ring-quote::before {
-    text-shadow: 0 0 16px var(--cosmo-accent, #ec4899), 0 0 4px var(--cosmo-accent, #ec4899);
+    text-shadow: 0 0 16px var(--cosmo-accent, #38bdf8), 0 0 4px var(--cosmo-accent, #38bdf8);
 }
 
 .cosmo-ring-fact {
@@ -480,7 +480,7 @@
     height: 100%;
     transform-origin: left center;
     transform: scaleX(0);
-    background: linear-gradient(90deg, #ec4899, #38bdf8 60%, #a78bfa);
+    background: linear-gradient(90deg, #38bdf8, #38bdf8 60%, #a78bfa);
     box-shadow: 0 0 12px rgba(236, 72, 153, 0.7);
     transition: transform 0.2s linear;
 }
@@ -536,7 +536,7 @@
 }
 
 .cosmo-ring-btn:focus-visible {
-    outline: 2px solid #ec4899;
+    outline: 2px solid #38bdf8;
     outline-offset: 2px;
 }
 
@@ -694,7 +694,7 @@ body.cosmo-ring-active .space-object-wrapper {
     box-shadow:
         0 2px 8px rgba(0, 0, 0, 0.5),
         0 44px 120px rgba(0, 0, 0, 0.95),
-        0 0 90px color-mix(in srgb, var(--cosmo-accent, #ec4899) 30%, transparent),
+        0 0 90px color-mix(in srgb, var(--cosmo-accent, #38bdf8) 30%, transparent),
         inset 0 1px 1px rgba(255, 255, 255, 0.3);
     cursor: default;
 }
@@ -788,7 +788,7 @@ body.cosmo-ring-active .space-object-wrapper {
 }
 
 .cosmo-expanded-close:focus-visible {
-    outline: 2px solid #ec4899;
+    outline: 2px solid #38bdf8;
     outline-offset: 2px;
 }
 

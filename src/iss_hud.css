@@ -47,7 +47,7 @@
 }
 
 .iss-hud-reticle.locked .reticle-bracket {
-    border-color: #ec4899;
+    border-color: #38bdf8;
     filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.9));
 }
 
@@ -129,8 +129,8 @@
     left: 8px;
     right: 8px;
     height: 1.5px;
-    background: linear-gradient(90deg, transparent, #ec4899, #38bdf8, transparent);
-    box-shadow: 0 0 8px #ec4899;
+    background: linear-gradient(90deg, transparent, #38bdf8, #38bdf8, transparent);
+    box-shadow: 0 0 8px #38bdf8;
     animation: issLaserScan 2s ease-in-out infinite alternate;
     pointer-events: none;
 }
@@ -156,7 +156,7 @@
 
 .iss-hud-reticle .vector-arrow {
     font-size: 10px;
-    color: #ec4899;
+    color: #38bdf8;
     animation: issArrowPulse 1s ease-in-out infinite alternate;
 }
 
@@ -188,13 +188,13 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #ec4899;
-    box-shadow: 0 0 6px #ec4899;
+    background: #38bdf8;
+    box-shadow: 0 0 6px #38bdf8;
     animation: issBeaconGlow 1.2s infinite ease-in-out;
 }
 
 .iss-hud-reticle .tag-range {
-    color: #ec4899;
+    color: #38bdf8;
 }
 
 /* ==========================================================================
@@ -309,15 +309,15 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #ec4899;
+    color: #38bdf8;
 }
 
 .iss-card-live-bar .live-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #ec4899;
-    box-shadow: 0 0 8px #ec4899;
+    background: #38bdf8;
+    box-shadow: 0 0 8px #38bdf8;
     animation: issBeaconGlow 1s infinite alternate;
 }
 
@@ -402,7 +402,7 @@
 }
 
 .iss-card-systems .sys-item .sys-val {
-    color: #ec4899;
+    color: #38bdf8;
     font-weight: 700;
 }
 
@@ -415,13 +415,13 @@
 
 .iss-card-systems .sys-bar {
     height: 100%;
-    background: linear-gradient(90deg, #0284c7, #38bdf8, #ec4899);
+    background: linear-gradient(90deg, #0284c7, #38bdf8, #38bdf8);
     border-radius: 3px;
     box-shadow: 0 0 6px rgba(236, 72, 153, 0.6);
 }
 
 .iss-card-systems .sys-bar.bar-green {
-    background: linear-gradient(90deg, #a81a5e, #be185d, #ec4899);
+    background: linear-gradient(90deg, #a81a5e, #be185d, #38bdf8);
     box-shadow: 0 0 6px rgba(236, 72, 153, 0.6);
 }
 
@@ -531,12 +531,12 @@
 .iss-action-btn.btn-view {
     background: rgba(236, 72, 153, 0.16);
     border-color: rgba(236, 72, 153, 0.4);
-    color: #ec4899;
+    color: #38bdf8;
 }
 
 .iss-action-btn.btn-view:hover {
     background: rgba(236, 72, 153, 0.28);
-    border-color: #ec4899;
+    border-color: #38bdf8;
     color: #ffffff;
     box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
 }
