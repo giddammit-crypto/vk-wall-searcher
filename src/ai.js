@@ -175,7 +175,7 @@ export function buildAiSnapshot(opts) {
             engagement: num(p.likes) + num(p.comments) + num(p.reposts)
         }))
         .sort((a, b) => b.engagement - a.engagement)
-        .slice(0, 15)
+        .slice(0, 10)   // 10 постов × ~500 символов — разумный баланс токен/полнота
         .map(({ i }) => {
             const p  = posts[i];
             const d  = p.date ? new Date(p.date * 1000).toISOString().slice(0, 10) : '';
@@ -189,7 +189,7 @@ export function buildAiSnapshot(opts) {
                 comments: num(p.comments),
                 reposts:  num(p.reposts),
                 views:    num(p.views),
-                text:     trimText(p.text, 180)
+                text:     trimText(p.text, 500)  // увеличено с 180 до 500 — полный контекст поста
             };
         });
 
