@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.11.0';
+} from './api.js?v=4.12.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.11.0';
+} from './advice.js?v=4.12.0';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.11.0';
+} from './ai.js?v=4.12.0';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.11.0';
+} from './subscribers.js?v=4.12.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.11.0';
+} from './updater.js?v=4.12.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.11.0';
+} from './branches.js?v=4.12.0';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.11.0';
+} from './analytics.js?v=4.12.0';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.11.0';
+} from './render.js?v=4.12.0';
 
 import {
     exportToCsv,
@@ -84,28 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.11.0';
+} from './export.js?v=4.12.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.11.0';
-import { CosmicUniverse } from './cosmic.js?v=4.11.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.12.0';
+import { CosmicUniverse } from './cosmic.js?v=4.12.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.11.0';
+} from './promo.js?v=4.12.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.11.0';
+} from './radar.js?v=4.12.0';
 
-import { Space3D } from './space3d.js?v=4.11.0';
-import { SpaceWarp } from './space_warp.js?v=4.11.0';
-import { SpaceAudio } from './space_audio.js?v=4.11.0';
-import { Mascot } from './mascot.js?v=4.11.0';
+import { Space3D } from './space3d.js?v=4.12.0';
+import { SpaceWarp } from './space_warp.js?v=4.12.0';
+import { SpaceAudio } from './space_audio.js?v=4.12.0';
+import { Mascot } from './mascot.js?v=4.12.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.11.0';
+export const APP_VERSION = '4.12.0';
 
 function initApp() {
 
@@ -1501,15 +1501,73 @@ function initApp() {
 
         // Информирование робота-ассистента о результатах сканирования
         if (state.matchedPosts.length > 0) {
-            const topBranch = stats && stats[0] ? (stats[0].canonicalName || stats[0].name) : '';
+            const validStats = (stats || []).filter(s => (s.postsCount || 0) > 0);
+            const sortedByViews = [...validStats].sort((a, b) => (b.views || 0) - (a.views || 0));
+            const sortedByReactions = [...validStats].sort((a, b) => (b.totalInteractions || 0) - (a.totalInteractions || 0));
+            const sortedByEr = [...validStats].filter(s => (s.views || 0) >= 40).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
+
+            const topByViews = sortedByViews[0] ? {
+                name: sortedByViews[0].info?.canonicalName || sortedByViews[0].info?.name || 'ЦГБ',
+                shortCode: sortedByViews[0].info?.shortCode || '',
+                views: sortedByViews[0].views || 0,
+                postsCount: sortedByViews[0].postsCount || 0,
+                interactions: sortedByViews[0].totalInteractions || 0
+            } : null;
+
+            const secondByViews = sortedByViews[1] ? {
+                name: sortedByViews[1].info?.canonicalName || sortedByViews[1].info?.name || '',
+                shortCode: sortedByViews[1].info?.shortCode || '',
+                views: sortedByViews[1].views || 0,
+                postsCount: sortedByViews[1].postsCount || 0,
+                interactions: sortedByViews[1].totalInteractions || 0
+            } : null;
+
+            const thirdByViews = sortedByViews[2] ? {
+                name: sortedByViews[2].info?.canonicalName || sortedByViews[2].info?.name || '',
+                shortCode: sortedByViews[2].info?.shortCode || '',
+                views: sortedByViews[2].views || 0,
+                postsCount: sortedByViews[2].postsCount || 0,
+                interactions: sortedByViews[2].totalInteractions || 0
+            } : null;
+
+            const topByReactions = sortedByReactions[0] ? {
+                name: sortedByReactions[0].info?.canonicalName || sortedByReactions[0].info?.name || '',
+                shortCode: sortedByReactions[0].info?.shortCode || '',
+                interactions: sortedByReactions[0].totalInteractions || 0,
+                likes: sortedByReactions[0].likes || 0
+            } : null;
+
+            const topByEr = sortedByEr[0] ? {
+                name: sortedByEr[0].info?.canonicalName || sortedByEr[0].info?.name || '',
+                shortCode: sortedByEr[0].info?.shortCode || '',
+                er: sortedByEr[0].erViews || 0
+            } : null;
+
+            const rankedBranches = sortedByViews.map(s => ({
+                name: s.info?.canonicalName || s.info?.name || '',
+                shortCode: s.info?.shortCode || '',
+                views: s.views || 0,
+                interactions: s.totalInteractions || 0,
+                postsCount: s.postsCount || 0,
+                er: s.erViews || 0
+            }));
+
             try {
                 Mascot.onScanSuccess({
                     count: state.matchedPosts.length,
-                    topBranch,
+                    topBranch: topByViews?.name || '',
+                    topByViews,
+                    secondByViews,
+                    thirdByViews,
+                    topByReactions,
+                    topByEr,
+                    rankedBranches,
                     totalViews: kpis.totalViews,
                     query: elements.keywordInput ? elements.keywordInput.value.trim() : ''
                 });
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[Mascot] onScanSuccess error:', e);
+            }
         } else {
             try {
                 Mascot.onScanEmpty(elements.keywordInput ? elements.keywordInput.value : '');

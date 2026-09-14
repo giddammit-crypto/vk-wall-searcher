@@ -28,7 +28,7 @@
     pointer-events: none;
     user-select: none;
     contain: layout style;
-    transition: transform 0.45s var(--mascot-smooth-easing), opacity 0.45s ease;
+    transition: left 2.2s cubic-bezier(0.25, 1, 0.5, 1), transform 0.45s var(--mascot-smooth-easing), opacity 0.45s ease;
 }
 
 /* Скрытие в 3D-пространстве или при сворачивании */
@@ -881,3 +881,523 @@
         padding: 2px 6px;
     }
 }
+
+/* ==========================================================================
+   AURORA MASCOT — COSMO 20 CARTOON ACTIVITIES (GPU-ACCELERATED CSS)
+   100% Pure PNG Compatible + Zero SVG Rule
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Базовые переменные и слой оверлеев/реквизита
+   -------------------------------------------------------------------------- */
+:root {
+    --cosmo-neon-blue: #00f0ff;
+    --cosmo-neon-purple: #a855f7;
+    --cosmo-neon-gold: #fbbf24;
+    --cosmo-neon-pink: #ec4899;
+    --cosmo-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --cosmo-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.mascot-props-layer {
+    position: absolute;
+    inset: -20px;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 15;
+}
+
+/* --------------------------------------------------------------------------
+   1. TABLET STUDY (Голографический планшет с графиками)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="tablet_study"] .mascot-floater {
+    animation: cosmoTabletBody 4.8s ease-in-out infinite;
+}
+@keyframes cosmoTabletBody {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    20%, 80% { transform: translateY(-4px) rotateX(10deg) rotateY(-8deg); }
+    50%      { transform: translateY(-7px) rotateX(14deg) rotateY(-12deg); }
+}
+
+.mascot-holo-tablet {
+    display: none;
+    position: absolute;
+    top: 52px;
+    left: 18px;
+    width: 64px;
+    height: 44px;
+    background: rgba(15, 23, 42, 0.82);
+    border: 1.5px solid var(--cosmo-neon-blue);
+    border-radius: 6px;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.6), inset 0 0 8px rgba(0, 240, 255, 0.3);
+    backdrop-filter: blur(4px);
+    transform: rotateX(25deg) rotateY(-15deg);
+    padding: 4px;
+    box-sizing: border-box;
+}
+.mascot-body-wrapper[data-activity="tablet_study"] .mascot-holo-tablet {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    animation: holoTabletGlow 2.4s ease-in-out infinite alternate;
+}
+.holo-tablet-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 24px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.5);
+    padding-bottom: 2px;
+}
+.holo-bar {
+    flex: 1;
+    background: linear-gradient(to top, var(--cosmo-neon-blue), var(--cosmo-neon-purple));
+    border-radius: 2px 2px 0 0;
+    box-shadow: 0 0 6px var(--cosmo-neon-blue);
+    animation: holoBarBounce 1.2s ease-in-out infinite alternate;
+}
+.holo-bar:nth-child(2) { animation-delay: 0.2s; height: 75%; }
+.holo-bar:nth-child(3) { animation-delay: 0.4s; height: 90%; }
+.holo-bar:nth-child(4) { animation-delay: 0.1s; height: 45%; }
+@keyframes holoBarBounce {
+    0%   { transform: scaleY(0.4); }
+    100% { transform: scaleY(1); }
+}
+@keyframes holoTabletGlow {
+    0%   { opacity: 0.85; transform: rotateX(25deg) rotateY(-15deg) translateY(0); }
+    100% { opacity: 1; transform: rotateX(22deg) rotateY(-12deg) translateY(-3px); }
+}
+
+/* --------------------------------------------------------------------------
+   2. INSPECT SCREEN (Разворот на 180° спиной к пользователю)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="inspect_screen"] .mascot-floater {
+    animation: cosmoInspectScreen 5.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes cosmoInspectScreen {
+    0%   { transform: perspective(800px) rotateY(0deg) scale(1); }
+    25%  { transform: perspective(800px) rotateY(180deg) scale(1.08) translate3d(0, -10px, 40px); }
+    75%  { transform: perspective(800px) rotateY(180deg) scale(1.08) translate3d(8px, -14px, 40px); }
+    100% { transform: perspective(800px) rotateY(360deg) scale(1) translate3d(0, 0, 0); }
+}
+.mascot-scan-cone {
+    display: none;
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    width: 220px;
+    height: 180px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at bottom center, rgba(0, 240, 255, 0.45) 0%, rgba(56, 189, 248, 0.15) 50%, transparent 80%);
+    clip-path: polygon(40% 100%, 60% 100%, 100% 0%, 0% 0%);
+    pointer-events: none;
+    filter: blur(2px);
+}
+.mascot-body-wrapper[data-activity="inspect_screen"] .mascot-scan-cone {
+    display: block;
+    animation: scanConeSweep 5.2s ease-in-out infinite;
+}
+@keyframes scanConeSweep {
+    0%, 100% { opacity: 0; transform: translateX(-50%) rotate(0deg); }
+    30%      { opacity: 0.9; transform: translateX(-50%) rotate(-12deg); }
+    60%      { opacity: 0.9; transform: translateX(-50%) rotate(14deg); }
+    85%      { opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   3. HORIZONTAL PATROL (Плавный облет нижней кромки экрана)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="horizontal_patrol"] {
+    animation: cosmoPatrolFlight 6.5s ease-in-out forwards;
+}
+@keyframes cosmoPatrolFlight {
+    0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+    20%  { transform: translate3d(120px, -18px, 0) rotate(10deg); }
+    45%  { transform: translate3d(240px, -12px, 0) rotate(6deg) scaleX(1); }
+    50%  { transform: translate3d(250px, -10px, 0) rotate(0deg) scaleX(-1); }
+    75%  { transform: translate3d(110px, -20px, 0) rotate(-8deg) scaleX(-1); }
+    95%  { transform: translate3d(10px, -4px, 0) rotate(-2deg) scaleX(-1); }
+    100% { transform: translate3d(0, 0, 0) rotate(0deg) scaleX(1); }
+}
+
+/* --------------------------------------------------------------------------
+   4. MAGNIFIER SCAN (Кибер-лупа с прицелом)
+   -------------------------------------------------------------------------- */
+.mascot-holo-magnifier {
+    display: none;
+    position: absolute;
+    top: 25px;
+    left: 45px;
+    width: 52px;
+    height: 52px;
+    border: 3px solid var(--cosmo-neon-blue);
+    border-radius: 50%;
+    box-shadow: 0 0 14px var(--cosmo-neon-blue), inset 0 0 10px rgba(0, 240, 255, 0.4);
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.25) 0%, transparent 70%);
+}
+.mascot-holo-magnifier::after {
+    content: '';
+    position: absolute;
+    bottom: -18px;
+    right: -10px;
+    width: 6px;
+    height: 24px;
+    background: linear-gradient(to bottom, var(--cosmo-neon-blue), #0369a1);
+    transform: rotate(-45deg);
+    border-radius: 3px;
+}
+.mascot-body-wrapper[data-activity="magnifier_scan"] .mascot-holo-magnifier {
+    display: block;
+    animation: cosmoMagnifierMove 4.2s ease-in-out infinite;
+}
+@keyframes cosmoMagnifierMove {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    30%      { transform: translate(16px, 12px) scale(1.15); }
+    60%      { transform: translate(-14px, 8px) scale(1.1); }
+}
+
+/* --------------------------------------------------------------------------
+   5. VISOR WIPE (Полировка визора салфеткой до блеска)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="visor_wipe"] .mascot-floater {
+    animation: cosmoVisorWipeBody 3.8s ease-in-out forwards;
+}
+@keyframes cosmoVisorWipeBody {
+    0%, 100% { transform: rotate(0deg); }
+    20%, 60% { transform: rotate(4deg) translateY(-2px); }
+    40%, 80% { transform: rotate(-4deg) translateY(-2px); }
+}
+.mascot-wipe-cloth {
+    display: none;
+    position: absolute;
+    top: 36px;
+    left: 40px;
+    width: 32px;
+    height: 24px;
+    background: #fde047;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    opacity: 0.9;
+}
+.mascot-body-wrapper[data-activity="visor_wipe"] .mascot-wipe-cloth {
+    display: block;
+    animation: clothWipeMotion 2.4s ease-in-out 3;
+}
+@keyframes clothWipeMotion {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(24px, -6px) rotate(15deg); }
+    50%  { transform: translate(32px, 8px) rotate(-10deg); }
+    75%  { transform: translate(8px, 6px) rotate(8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+.mascot-body-wrapper[data-activity="visor_wipe"] .mascot-screen-overlay::after {
+    animation: visorGleamDing 0.8s ease-out 2.8s forwards !important;
+}
+@keyframes visorGleamDing {
+    0%   { left: -100%; opacity: 0; }
+    50%  { opacity: 1; filter: brightness(2); }
+    100% { left: 200%; opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   6. ANTENNA TUNE (Твист антенны + искры + помехи)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="antenna_tune"] .mascot-antenna-beacon {
+    animation: antennaSparksBurst 0.4s linear infinite !important;
+    background: #f43f5e !important;
+    box-shadow: 0 0 20px #f43f5e, 0 0 35px #fb7185 !important;
+}
+@keyframes antennaSparksBurst {
+    0%, 100% { transform: translateX(-50%) scale(1.6); filter: hue-rotate(0deg); }
+    50%      { transform: translateX(-50%) scale(0.6) rotate(15deg); filter: hue-rotate(180deg); }
+}
+.mascot-body-wrapper[data-activity="antenna_tune"] .mascot-sprite-img {
+    animation: cosmoGlitchJitter 0.15s steps(2) infinite;
+}
+@keyframes cosmoGlitchJitter {
+    0%   { transform: translate(0, 0); filter: drop-shadow(2px 0 red); }
+    50%  { transform: translate(-2px, 1px); filter: drop-shadow(-2px 0 cyan); }
+    100% { transform: translate(1px, -1px); filter: none; }
+}
+
+/* --------------------------------------------------------------------------
+   7. JOY DANCE (Победный мультяшный хип-хоп)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="joy_dance"] .mascot-floater {
+    animation: cosmoJoyDance 0.85s var(--cosmo-bounce) infinite;
+}
+@keyframes cosmoJoyDance {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(1, 1); }
+    25%      { transform: translateY(-16px) rotate(-8deg) scale(0.92, 1.12); }
+    50%      { transform: translateY(4px) rotate(0deg) scale(1.15, 0.88); }
+    75%      { transform: translateY(-16px) rotate(8deg) scale(0.92, 1.12); }
+}
+
+/* --------------------------------------------------------------------------
+   8. UPSIDE DOWN (Зависание вверх ногами)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="upside_down"] .mascot-floater {
+    animation: cosmoUpsideDown 4.5s var(--cosmo-spring) forwards;
+}
+@keyframes cosmoUpsideDown {
+    0%   { transform: translateY(0) rotate(0deg); }
+    20%  { transform: translateY(-20px) rotate(190deg); }
+    30%  { transform: translateY(-15px) rotate(180deg); }
+    80%  { transform: translateY(-18px) rotate(180deg); }
+    100% { transform: translateY(0) rotate(360deg); }
+}
+.mascot-body-wrapper[data-activity="upside_down"] .mascot-thruster-glow {
+    top: 4px;
+    bottom: auto;
+    transform: translateX(-50%) rotate(180deg);
+}
+
+/* --------------------------------------------------------------------------
+   9. ENERGY DRINK (Батареечный сок через трубочку)
+   -------------------------------------------------------------------------- */
+.mascot-drink-box {
+    display: none;
+    position: absolute;
+    bottom: 22px;
+    right: 18px;
+    width: 26px;
+    height: 38px;
+    background: linear-gradient(135deg, #0284c7, #0f172a);
+    border: 1.5px solid var(--cosmo-neon-blue);
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+.mascot-drink-box::before {
+    content: '⚡';
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+}
+.mascot-drink-straw {
+    position: absolute;
+    top: -16px;
+    left: 8px;
+    width: 4px;
+    height: 20px;
+    background: #f43f5e;
+    border-radius: 2px;
+    transform: rotate(20deg);
+}
+.mascot-body-wrapper[data-activity="energy_drink"] .mascot-drink-box {
+    display: block;
+    animation: cosmoDrinkSip 4.2s ease-in-out forwards;
+}
+@keyframes cosmoDrinkSip {
+    0%, 100% { transform: translateY(40px) opacity(0); }
+    20%, 80% { transform: translateY(0) opacity(1); }
+    50%      { transform: translateY(-4px) scale(0.92, 1.05); }
+}
+
+/* --------------------------------------------------------------------------
+   10. LASER POINTER (Красная лазерная указка по странице)
+   -------------------------------------------------------------------------- */
+.mascot-laser-dot {
+    display: none;
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    background: #ff0055;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ff0055, 0 0 24px #ff0055;
+    z-index: 9999;
+}
+.mascot-body-wrapper[data-activity="laser_pointer"] .mascot-laser-dot {
+    display: block;
+    animation: laserDancePath 4.6s ease-in-out forwards;
+}
+@keyframes laserDancePath {
+    0%   { bottom: 60px; left: 140px; opacity: 0; }
+    15%  { opacity: 1; }
+    30%  { bottom: 220px; left: 340px; }
+    50%  { bottom: 140px; left: 520px; }
+    70%  { bottom: 310px; left: 210px; }
+    90%  { bottom: 80px; left: 160px; opacity: 1; }
+    100% { bottom: 60px; left: 140px; opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   11. SHRUG CONFUSED (Пожимание плечами + ❓)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="shrug_confused"] .mascot-floater {
+    animation: cosmoShrug 3.5s var(--cosmo-spring) forwards;
+}
+@keyframes cosmoShrug {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%, 75% { transform: translateY(-10px) rotate(-10deg) scale(1.08, 0.95); }
+    50%      { transform: translateY(-12px) rotate(10deg) scale(1.08, 0.95); }
+}
+
+/* --------------------------------------------------------------------------
+   12. FLEX MUSCLES (Надувание бицепсов супергероя)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="flex_muscles"] .mascot-floater {
+    animation: cosmoFlexHero 3.8s var(--cosmo-spring) forwards;
+}
+@keyframes cosmoFlexHero {
+    0%, 100% { transform: scale(1); }
+    20%      { transform: scale(0.9, 1.1) translateY(4px); }
+    35%, 75% { transform: scale(1.22, 1.18) translateY(-14px); filter: drop-shadow(0 0 16px var(--cosmo-neon-blue)); }
+    40%, 70% { transform: scale(1.24, 1.16) translateY(-12px); }
+}
+
+/* --------------------------------------------------------------------------
+   13. CHECK WATCH (Взгляд на часы + тап ногой)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="check_watch"] .mascot-floater {
+    animation: cosmoCheckWatch 4.0s ease-in-out forwards;
+}
+@keyframes cosmoCheckWatch {
+    0%, 100% { transform: rotate(0deg); }
+    25%, 75% { transform: rotate(14deg) translateY(-6px); }
+}
+.mascot-body-wrapper[data-activity="check_watch"] .mascot-shadow {
+    animation: footTapShadow 0.5s ease-in-out infinite alternate;
+}
+@keyframes footTapShadow {
+    0%   { transform: translateX(-50%) scale(1); }
+    100% { transform: translateX(-46%) scale(0.85); }
+}
+
+/* --------------------------------------------------------------------------
+   14. DIZZY SPIN (Торнадо-вращение со звездочками)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="dizzy_spin"] .mascot-floater {
+    animation: cosmoDizzySpin 4.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+@keyframes cosmoDizzySpin {
+    0%   { transform: rotate(0deg) scale(1); }
+    30%  { transform: rotate(1080deg) scale(0.92); }
+    50%  { transform: rotate(1095deg) translateY(-8px); }
+    65%  { transform: rotate(1065deg) translateY(4px); }
+    80%  { transform: rotate(1085deg) translateY(-4px); }
+    100% { transform: rotate(1080deg) scale(1); }
+}
+.mascot-orbit-stars {
+    display: none;
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 24px;
+    border-radius: 50%;
+}
+.mascot-body-wrapper[data-activity="dizzy_spin"] .mascot-orbit-stars {
+    display: block;
+    animation: orbitStarsRotate 1.2s linear infinite;
+}
+@keyframes orbitStarsRotate {
+    0%   { transform: translateX(-50%) rotateX(65deg) rotateZ(0deg); }
+    100% { transform: translateX(-50%) rotateX(65deg) rotateZ(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   15. CURSOR DODGE (Игривый уворот от курсора)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="cursor_dodge"] {
+    animation: cosmoDodge 3.2s var(--cosmo-spring) forwards;
+}
+@keyframes cosmoDodge {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    20%      { transform: translate3d(-45px, -18px, 0) rotate(-16deg); }
+    45%      { transform: translate3d(-35px, 6px, 0) rotate(-8deg); }
+    75%      { transform: translate3d(-10px, -4px, 0) rotate(4deg); }
+}
+
+/* --------------------------------------------------------------------------
+   16. TELESCOPE LOOK (Выдвижной кибер-телескоп)
+   -------------------------------------------------------------------------- */
+.mascot-telescope {
+    display: none;
+    position: absolute;
+    top: 24px;
+    right: -10px;
+    width: 58px;
+    height: 14px;
+    background: linear-gradient(to right, #d97706, #f59e0b, #fbbf24);
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    transform-origin: left center;
+    transform: rotate(-30deg);
+}
+.mascot-body-wrapper[data-activity="telescope_look"] .mascot-telescope {
+    display: block;
+    animation: cosmoTelescopeExtend 4.8s ease-in-out forwards;
+}
+@keyframes cosmoTelescopeExtend {
+    0%, 100% { transform: rotate(-30deg) scaleX(0); opacity: 0; }
+    20%, 80% { transform: rotate(-30deg) scaleX(1); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   17. EXCITED WAVE (Махание двумя ручками)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="excited_wave"] .mascot-floater {
+    animation: cosmoExcitedWave 0.7s ease-in-out infinite alternate;
+}
+@keyframes cosmoExcitedWave {
+    0%   { transform: translateY(-12px) rotate(-8deg) scale(1.05, 0.95); }
+    100% { transform: translateY(-22px) rotate(8deg) scale(0.95, 1.05); }
+}
+
+/* --------------------------------------------------------------------------
+   18. EASTER FLIP (Полное сальто 360° с салютом)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="easter_flip"] {
+    animation: cosmoMasterFlip 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes cosmoMasterFlip {
+    0%   { transform: translateY(0) scale(1) rotate(0deg); }
+    18%  { transform: translateY(12px) scale(1.22, 0.8) rotate(0deg); }
+    45%  { transform: translateY(-56px) scale(0.95, 1.1) rotate(-180deg); }
+    75%  { transform: translateY(-8px) scale(1.1, 0.9) rotate(-360deg); }
+    90%  { transform: translateY(3px) scale(1.03, 0.97) rotate(-360deg); }
+    100% { transform: translateY(0) scale(1) rotate(-360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   19. SLEEP SNOOZE (Глубокий сон с пузырями)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="sleep_snooze"] .mascot-floater {
+    animation: cosmoDeepSleep 5.4s ease-in-out infinite;
+}
+@keyframes cosmoDeepSleep {
+    0%, 100% { transform: translateY(6px) rotate(-6deg) scale(1, 0.95); }
+    50%      { transform: translateY(12px) rotate(-4deg) scale(1.04, 0.92); }
+}
+
+/* --------------------------------------------------------------------------
+   20. SMM GURU POSE (Гордая поза чемпиона с золотой звездой VK #1)
+   -------------------------------------------------------------------------- */
+.mascot-body-wrapper[data-activity="smm_guru_pose"] .mascot-floater {
+    animation: cosmoGuruStance 4.5s var(--cosmo-spring) forwards;
+}
+@keyframes cosmoGuruStance {
+    0%, 100% { transform: scale(1); }
+    20%, 80% { transform: scale(1.18) translateY(-14px); }
+}
+.mascot-guru-crown {
+    display: none;
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 26px;
+    filter: drop-shadow(0 0 14px #fbbf24);
+}
+.mascot-body-wrapper[data-activity="smm_guru_pose"] .mascot-guru-crown {
+    display: block;
+    animation: guruCrownFloat 1.8s ease-in-out infinite alternate;
+}
+@keyframes guruCrownFloat {
+    0%   { transform: translateX(-50%) translateY(0) rotate(-6deg) scale(1); }
+    100% { transform: translateX(-50%) translateY(-8px) rotate(6deg) scale(1.15); }
+}
+
