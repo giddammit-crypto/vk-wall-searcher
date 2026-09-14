@@ -207,21 +207,29 @@ export async function sendProxyRequest(payload) {
 
     for (let i = 0; i < urlsToTry.length; i++) {
         const targetUrl = urlsToTry[i];
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 25000) : null;
         try {
             const resp = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: controller ? controller.signal : undefined
             });
+            if (timeoutId) clearTimeout(timeoutId);
 
-            // If we got a valid response (200 OK or VK API json response), remember working URL
-            if (resp && resp.status !== 404 && resp.status !== 405 && resp.status !== 502) {
+            // If we got any HTTP response from the proxy server (even 500/502/504), the endpoint exists!
+            if (resp && resp.status !== 404 && resp.status !== 405) {
                 currentProxyUrl = targetUrl;
                 isServerProxyAvailable = true;
                 return resp;
             }
         } catch (netErr) {
-            // Try next candidate URL
+            if (timeoutId) clearTimeout(timeoutId);
+            // If the verified working URL timed out or had network error, avoid wasting 25s x 4 retrying exact aliases
+            if (currentProxyUrl && targetUrl === currentProxyUrl) {
+                break;
+            }
         }
     }
 
@@ -319,23 +327,36 @@ export async function callVkApi(method, params = {}, token = '') {
                 payload.token = token;
             }
             const response = await sendProxyRequest(payload);
-            if (response && response.ok) {
-                const data = await response.json();
-                if (data.error) {
-                    const code = data.error.error_code;
-                    const msg = data.error.error_msg || 'Неизвестная ошибка';
-                    if (code === 6 || code === 29) {
-                        throw new Error('Превышен лимит запросов VK API. Подождите несколько секунд и попробуйте снова.');
+            if (response) {
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.error) {
+                        const code = data.error.error_code;
+                        const msg = data.error.error_msg || 'Неизвестная ошибка';
+                        if (code === 6 || code === 29) {
+                            throw new Error('Превышен лимит запросов VK API. Подождите несколько секунд и попробуйте снова.');
+                        }
+                        if (code === 15 || code === 200 || code === 201 || code === 203) {
+                            throw new Error(`Доступ запрещён: ${msg}. Проверьте права токена.`);
+                        }
+                        throw new Error(`Ошибка VK API [${code}]: ${msg}`);
                     }
-                    if (code === 15 || code === 200 || code === 201 || code === 203) {
-                        throw new Error(`Доступ запрещён: ${msg}. Проверьте права токена.`);
+                    return data.response;
+                } else {
+                    // Сервер вернул ошибку (например 502/504) с JSON-ответом
+                    try {
+                        const errData = await response.json();
+                        if (errData && errData.error) {
+                            throw new Error(`Ошибка VK API [${errData.error.error_code}]: ${errData.error.error_msg}`);
+                        }
+                    } catch (parseErr) {
+                        if (parseErr.message && parseErr.message.includes('VK API')) throw parseErr;
                     }
-                    throw new Error(`Ошибка VK API [${code}]: ${msg}`);
+                    throw new Error(`Ошибка VK API (HTTP ${response.status})`);
                 }
-                return data.response;
             }
         } catch (error) {
-            // Если ошибка VK API, а не сетевой сбой — пробрасываем
+            // Если ошибка VK API, а не сетевой сбой — пробрасываем, чтобы не маскировать под сбой прокси
             if (error && error.message && error.message.includes('VK API')) {
                 throw error;
             }
@@ -353,15 +374,15 @@ export async function callVkApi(method, params = {}, token = '') {
  * Returns posts, profiles, groups and has_more flag.
  * Supports early-break on server when min_time boundary is crossed.
  *
- * v3.4.1: адаптивные комбинации «порция × число вызовов» — при ошибке VK 13
- * («response size is too big») автоматический повтор с меньшим объёмом вместо
- * медленного последовательного fallback.
+ * v3.4.1+: адаптивные комбинации «порция × число вызовов» — при ошибке VK 13
+ * («response size is too big») или таймауте (504) автоматический повтор с меньшим объёмом
+ * вместо медленного последовательного fallback.
  */
 export async function callVkExecuteBatch(ownerId, offset = 0, minTime = 0, token = '', maxCalls = 10) {
     const attempts = [
         { perPage: 100, calls: Math.min(maxCalls, 5) },
-        { perPage: 50,  calls: Math.min(maxCalls, 5) },
-        { perPage: 25,  calls: Math.min(maxCalls, 5) }
+        { perPage: 50,  calls: Math.min(maxCalls, 4) },
+        { perPage: 25,  calls: Math.min(maxCalls, 4) }
     ];
     let lastErr = null;
     for (let a = 0; a < attempts.length; a++) {
@@ -370,11 +391,11 @@ export async function callVkExecuteBatch(ownerId, offset = 0, minTime = 0, token
         } catch (e) {
             lastErr = e;
             const msg = String((e && e.message) || '');
-            const isSizeOverflow = /too big|error_code.{0,4}13|\[13\]/i.test(msg);
+            const isSizeOverflow = /too big|error_code.{0,4}13|\[13\]|504|timeout|таймаут/i.test(msg);
             if (!isSizeOverflow || a === attempts.length - 1) {
                 throw e;
             }
-            console.warn(`execute: ответ превышает лимит VK — уменьшаю объём до ${attempts[a + 1].perPage}×${attempts[a + 1].calls}`);
+            console.warn(`execute: ответ превышает лимит VK или таймаут — уменьшаю объём до ${attempts[a + 1].perPage}×${attempts[a + 1].calls}`);
         }
     }
     throw lastErr;

@@ -2916,6 +2916,7 @@ export class AuroraMascot {
 
     onScanSuccess(data) {
         clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
         this.lastScanStats = data;
         window.__AURORA_LAST_SCAN_SNAPSHOT__ = data;
 
@@ -2948,11 +2949,13 @@ export class AuroraMascot {
 
     onScanComplete(count, topBranch, stats = null) {
         clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
         this.onScanSuccess({ count, topBranch, stats });
     }
 
     onScanEmpty(query = '') {
         clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
         this.lastScanStats = null;
         window.__AURORA_LAST_SCAN_SNAPSHOT__ = null;
         this.say(
@@ -2964,8 +2967,21 @@ export class AuroraMascot {
         );
     }
 
+    onScanCancel() {
+        clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
+        this.say(
+            `## Поиск остановлен! 🛑\nСканирование прервано. Открываю собранные материалы!`,
+            8000,
+            'tired'
+        );
+        this.setState('tired', 6000);
+        this.setMoodBadge('🛑', 4000);
+    }
+
     onScanError() {
         clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
         this.say(
             `## Ошибка связи! ⚠️\nСбой подключения к ВКонтакте. Проверь токен или интернет!`,
             10000,
@@ -2977,6 +2993,7 @@ export class AuroraMascot {
 
     onScanReset() {
         clearInterval(this.scanBanterTimer);
+        this.scanBanterTimer = null;
         this.lastScanStats = null;
         window.__AURORA_LAST_SCAN_SNAPSHOT__ = null;
     }

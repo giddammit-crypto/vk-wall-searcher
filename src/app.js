@@ -105,7 +105,7 @@ import { SpaceAudio } from './space_audio.js?v=4.17.0';
 import { Mascot } from './mascot.js?v=4.17.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.17.0';
+export const APP_VERSION = '4.17.1';
 
 function initApp() {
 
@@ -1025,7 +1025,8 @@ function initApp() {
             if (btnText) btnText.textContent = 'Сканирование...';
         }
 
-        try { Mascot.onScanStart(keyword); } catch (e) {}
+        const searchKeywordStr = keywords.join(' ');
+        try { Mascot.onScanStart(searchKeywordStr); } catch (e) { console.warn('[Mascot] onScanStart error:', e); }
 
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('hidden');
@@ -1232,12 +1233,14 @@ function initApp() {
                 let finished = false;
                 let wallTotalCount = 0;
                 let groupPostCount = 0;
+                let executeFailedForGroup = false;
+                let emptyBatchStreak = 0;
 
                 if (elements.progressTitle) {
                     elements.progressTitle.textContent = `Сканирование (${targetIndex}/${resolvedTargets.length}): ${targetInfo.canonicalName || targetInfo.name}`;
                 }
                 if (elements.progressStatusMsg) {
-                    elements.progressStatusMsg.textContent = 'Пакетная выгрузка через execute (порциями по 1000)...';
+                    elements.progressStatusMsg.textContent = 'Пакетная выгрузка через execute...';
                 }
                 if (elements.statGroups) {
                     elements.statGroups.textContent = `${targetIndex} / ${resolvedTargets.length}`;
@@ -1245,11 +1248,20 @@ function initApp() {
 
                 while (!finished && !state.shouldCancel) {
                     let res;
-                    try {
-                        // Batch request: executes up to 10 x wall.get(100) inside VK server
-                        res = await callVkExecuteBatch(targetInfo.id, offset, minTime, state.token, 10);
-                    } catch (batchErr) {
-                        console.warn(`Execute call failed for ${targetInfo.name}, fallback to sequential wall.get:`, batchErr.message);
+                    if (!executeFailedForGroup) {
+                        try {
+                            // Batch request: executes up to 10 x wall.get inside VK server
+                            res = await callVkExecuteBatch(targetInfo.id, offset, minTime, state.token, 10);
+                        } catch (batchErr) {
+                            console.warn(`Execute call failed for ${targetInfo.name}, fallback to sequential wall.get:`, batchErr.message);
+                            executeFailedForGroup = true;
+                        }
+                    }
+
+                    if (executeFailedForGroup) {
+                        if (elements.progressStatusMsg) {
+                            elements.progressStatusMsg.textContent = `Выгрузка записей ${targetInfo.canonicalName || targetInfo.name} (смещение ${offset})...`;
+                        }
                         try {
                             res = await callVkApi('wall.get', {
                                 owner_id: targetInfo.id,
@@ -1269,8 +1281,13 @@ function initApp() {
                     }
 
                     if (!res || !res.items || res.items.length === 0) {
-                        finished = true;
-                        break;
+                        emptyBatchStreak++;
+                        if (emptyBatchStreak >= 2 || !res || !res.items) {
+                            finished = true;
+                            break;
+                        }
+                    } else {
+                        emptyBatchStreak = 0;
                     }
 
                     CosmicUniverse.pulse(6.5);
@@ -1374,10 +1391,17 @@ function initApp() {
                         groupPostCount++;
                     }
 
-                    // Progress display
+                    // Progress display: accurately compute overall progress without jumping to 100% prematurely
+                    let groupRatio = 0;
+                    if (wallTotalCount > 0) {
+                        groupRatio = Math.min(0.95, offset / wallTotalCount);
+                    } else if (posts && posts.length > 0) {
+                        groupRatio = 0.5;
+                    }
+                    const overallRatio = (targetIndex - 1 + groupRatio) / resolvedTargets.length;
                     const pct = resolvedTargets.length > 1
-                        ? Math.round((targetIndex / resolvedTargets.length) * 100)
-                        : (wallTotalCount > 0 ? Math.min(100, Math.round((offset / wallTotalCount) * 100)) : 50);
+                        ? Math.min(98, Math.max(1, Math.round(overallRatio * 100)))
+                        : (wallTotalCount > 0 ? Math.min(99, Math.round((offset / wallTotalCount) * 100)) : 50);
 
                     if (elements.progressBar) elements.progressBar.style.width = `${pct}%`;
                     if (elements.progressPercent) elements.progressPercent.textContent = `${pct}%`;
@@ -1390,7 +1414,12 @@ function initApp() {
                     } catch (e) {}
 
                     // Check if more posts available on wall
-                    if (res.has_more === 0 || posts.length === 0) {
+                    if (finished || res.has_more === 0 || posts.length === 0) {
+                        finished = true;
+                        break;
+                    }
+
+                    if (wallTotalCount > 0 && offset + posts.length >= wallTotalCount) {
                         finished = true;
                         break;
                     }
@@ -1414,6 +1443,7 @@ function initApp() {
                 if (elements.progressTitle) elements.progressTitle.textContent = 'Поиск остановлен';
                 if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `Поиск прерван пользователем. Найдено записей: ${state.matchedCount}`;
                 showToast('Поиск остановлен пользователем', 'warning');
+                try { Mascot.onScanCancel(); } catch (e) {}
             } else {
                 if (elements.progressTitle) elements.progressTitle.textContent = 'Поиск успешно завершён';
                 if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `Просканировано ${resolvedTargets.length} сообществ, найдено ${state.matchedCount} записей за ${elapsedSec}с.`;
@@ -1451,10 +1481,33 @@ function initApp() {
             CosmicUniverse.stop();
             console.error('Search error:', err);
             try { Mascot.onScanError(err.message); } catch (e) {}
-            alert(`Ошибка при выполнении поиска: ${err.message}`);
-            if (elements.progressTitle) elements.progressTitle.textContent = 'Ошибка поиска';
-            if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = err.message;
-            if (elements.modalSearchCloseBtn) elements.modalSearchCloseBtn.classList.remove('hidden');
+
+            if (elements.progressTitle) elements.progressTitle.textContent = state.matchedPosts.length > 0 ? 'Сканирование частично завершено' : 'Ошибка поиска';
+            if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `${err.message || 'Сбой сети'}. Найдено записей: ${state.matchedCount}`;
+            if (elements.cancelSearchBtn) {
+                elements.cancelSearchBtn.style.display = 'none';
+            }
+            if (elements.modalSearchCloseBtn) {
+                elements.modalSearchCloseBtn.style.display = '';
+                elements.modalSearchCloseBtn.classList.remove('hidden');
+            }
+
+            // If any posts were matched, always allow user to view results!
+            if (state.matchedPosts.length > 0) {
+                if (elements.searchCompletedActions) {
+                    elements.searchCompletedActions.classList.remove('hidden');
+                }
+                if (elements.modalMatchedBadge) {
+                    elements.modalMatchedBadge.textContent = state.matchedCount.toLocaleString('ru-RU');
+                }
+                try {
+                    renderAllResults();
+                } catch (rErr) {
+                    console.warn('renderAllResults on partial error failed:', rErr);
+                }
+            } else {
+                alert(`Ошибка при выполнении поиска: ${err.message}`);
+            }
         } finally {
             CosmicUniverse.setWarp(false);
             CosmicUniverse.stop();
