@@ -1,5 +1,5 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.14.0)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.15.0)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
@@ -28,83 +28,103 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.14.0';
+import { resolveApiUrl } from './api.js?v=4.15.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.14.0',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.14.0',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.14.0',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.14.0',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.14.0',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.14.0',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.14.0'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.15.0',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.15.0',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.15.0',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.15.0',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.15.0',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.15.0',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.15.0'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.14.0',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.14.0',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.14.0',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.14.0',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.14.0',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.14.0',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.14.0',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.14.0',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.14.0',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.14.0',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.15.0',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.15.0',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.15.0',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.15.0',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.15.0',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.15.0',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.15.0',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.15.0',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.15.0',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.15.0',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.14.0',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.14.0',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.14.0',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.14.0',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.14.0',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.14.0',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.14.0',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.14.0',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.14.0',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.15.0',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.15.0',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.15.0',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.15.0',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.15.0',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.15.0',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.15.0',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.15.0',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.15.0',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.14.0',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.14.0',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.14.0',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.14.0',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.15.0',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.15.0',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.15.0',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.15.0',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.14.0',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.14.0',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.14.0',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.15.0',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.15.0',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.15.0',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.14.0',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.14.0',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.14.0',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.15.0',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.15.0',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.15.0',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.14.0',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.14.0',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.14.0',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.14.0',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.14.0',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.14.0',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.14.0',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.14.0',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.14.0',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.14.0',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.14.0',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.14.0',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.14.0',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.14.0',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.14.0',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.14.0',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.14.0',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.14.0',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.14.0',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.14.0'
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.15.0',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.15.0',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.15.0',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.15.0',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.15.0',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.15.0',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.15.0',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.15.0',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.15.0',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.15.0',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.15.0',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.15.0',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.15.0',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.15.0',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.15.0',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.15.0',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.15.0',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.15.0',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.15.0',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.15.0',
+
+    // 3 фразы искреннего удивления охватами
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.15.0',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.15.0',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.15.0',
+
+    // 3 фразы комичного разочарования
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.15.0',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.15.0',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.15.0',
+
+    // 2 фразы острой критики контента
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.15.0',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.15.0',
+
+    // 4 фразы искромётного сарказма и SMM-шуток
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.15.0',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.15.0',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.15.0',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.15.0'
 };
 
 const MOOD_EMOJIS = {
@@ -201,6 +221,7 @@ export class AuroraMascot {
         this.isDragging = false;
         this.isReturningHome = false;
         this.isMuted = false;
+        this.isSpeakingAudio = false;
 
         this.currentAudio = null;
         this.speechTimer = null;
@@ -220,6 +241,8 @@ export class AuroraMascot {
         this.currentPosX = 24;
         this.currentPosY = 24;
         this.homePosX = 24;
+        this.baseLeft = 24;
+        this.baseBottom = 24;
 
         // 2.5D трекинг курсора
         this.mouseX = 0;
@@ -417,42 +440,90 @@ export class AuroraMascot {
         if (this.isMuted || !AUDIO_CLIPS[key]) return;
         try {
             if (this.currentAudio) {
-                this.currentAudio.pause();
+                try { this.currentAudio.pause(); } catch (e) {}
                 this.currentAudio = null;
             }
             const audio = new Audio(AUDIO_CLIPS[key]);
             audio.volume = 0.88;
             this.currentAudio = audio;
+            this.isSpeakingAudio = true;
 
             if (this.bubbleEl) this.bubbleEl.classList.add('is-speaking');
 
             audio.onplay = () => {
+                this.isSpeakingAudio = true;
                 if (this.bubbleEl) this.bubbleEl.classList.add('is-speaking');
             };
             audio.onended = () => {
+                this.isSpeakingAudio = false;
                 if (this.bubbleEl) this.bubbleEl.classList.remove('is-speaking');
                 this.currentAudio = null;
+                // Естественная дыхательная пауза перед закрытием облачка (1.6 сек)
+                clearTimeout(this.speechTimer);
+                this.speechTimer = setTimeout(() => {
+                    this.hideBubble(false);
+                }, 1600);
             };
             audio.onerror = () => {
+                this.isSpeakingAudio = false;
                 if (this.bubbleEl) this.bubbleEl.classList.remove('is-speaking');
                 this.currentAudio = null;
             };
+
+            // Динамическое продление жизни облачка на основе точной длительности аудио
+            audio.addEventListener('loadedmetadata', () => {
+                if (audio.duration && !isNaN(audio.duration)) {
+                    const audioMs = (audio.duration * 1000) + 1800;
+                    if (audioMs > (this.currentSpeechDuration || 0)) {
+                        this.currentSpeechDuration = audioMs;
+                        clearTimeout(this.speechTimer);
+                        this.speechTimer = setTimeout(() => {
+                            this.hideBubble(false);
+                        }, audioMs);
+                    }
+                }
+            });
 
             audio.play().catch(e => {
                 console.debug('[Cosmo Voice] Autoplay blocked:', e.message);
             });
+            return audio;
         } catch (e) {
             console.warn('[Cosmo Voice] Play error:', e);
+            this.isSpeakingAudio = false;
+            return null;
         }
     }
 
-    stopVoice() {
-        if (this.currentAudio) {
-            this.currentAudio.pause();
-            this.currentAudio = null;
+    stopVoice(immediate = false) {
+        if (!this.currentAudio) {
+            this.isSpeakingAudio = false;
+            if (this.bubbleEl) this.bubbleEl.classList.remove('is-speaking');
+            return;
         }
-        if (this.bubbleEl) {
-            this.bubbleEl.classList.remove('is-speaking');
+        this.isSpeakingAudio = false;
+        if (this.bubbleEl) this.bubbleEl.classList.remove('is-speaking');
+
+        const aud = this.currentAudio;
+        this.currentAudio = null;
+
+        if (immediate) {
+            try { aud.pause(); } catch (e) {}
+        } else {
+            // Мягкий фейд-аут за 80 мс без щелчков в динамиках
+            try {
+                let vol = aud.volume;
+                const fade = setInterval(() => {
+                    vol = Math.max(0, vol - 0.22);
+                    try { aud.volume = vol; } catch (e) {}
+                    if (vol <= 0.04) {
+                        clearInterval(fade);
+                        try { aud.pause(); } catch (e) {}
+                    }
+                }, 20);
+            } catch (e) {
+                try { aud.pause(); } catch (e) {}
+            }
         }
     }
 
@@ -562,7 +633,7 @@ export class AuroraMascot {
             });
         }
 
-        // Кнопки действий внутри облачка (например, [🚀 Запустить сканирование])
+        // Кнопки действий внутри облачка (например, [🚀 Запустить сканирование], [📌 Закрепить здесь], [🏠 На базу])
         if (this.bubbleEl) {
             this.bubbleEl.addEventListener('click', (e) => {
                 const actionBtn = e.target.closest('[data-mascot-action]');
@@ -572,6 +643,15 @@ export class AuroraMascot {
                     e.preventDefault();
                     e.stopPropagation();
                     this.triggerSearchFromMascot();
+                } else if (action === 'stay-here' || action === 'confirm-stay') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.confirmNewBase();
+                } else if (action === 'go-home') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearTimeout(this.returnTimer);
+                    this.navigateBackHome(this.baseLeft ?? 24);
                 }
             });
         }
@@ -777,38 +857,85 @@ export class AuroraMascot {
         }, 760);
     }
 
+    confirmNewBase() {
+        clearTimeout(this.returnTimer);
+        this.baseLeft = this.currentPosX;
+        this.baseBottom = this.currentPosY;
+        this.setMoodBadge('📌', 4500);
+        this.spawnSparkles(14);
+        this.setState('smile', 5000);
+        this.say(`## База обновлена! 📌✨\nОтлично, закрепился на новой позиции! **Теперь мой квантовый пост здесь.**`, 6500, 'smile', 'surprise_2');
+    }
+
     triggerPlopLanding(originalHomeX) {
         this.bodyEl.classList.remove('is-plop-landing');
         void this.bodyEl.offsetWidth;
         this.bodyEl.classList.add('is-plop-landing');
         this.spawnSparkles(12);
 
-        // 4 голосовых варианта комичного возмущения
-        const grumbles = [
-            { key: 'drag_drop_1', text: `## Эй, гравитация так не работает! 🤖💥\nПоставь меня на место, **я тебе не плюшевая игрушка!**` },
-            { key: 'drag_drop_2', text: `## Ой-ой-ой! Полёт нормальный, но посадка... 😵💫\n**Плюх!** Мои квантовые гироскопы кругом идут!` },
-            { key: 'drag_drop_3', text: `## Куда тащишь SMM-гуру?! 🤨💅\nУ меня тут вообще-то **важные расчёты охватов** были!` },
-            { key: 'drag_drop_4', text: `## Хулиганство! 😤⚡\nЛадно-ладно, сейчас отряхнусь и **сам дойду обратно** на свой законный пост!` }
+        // Расширенный пул голосов и реплик: удивление, сарказм, критика, драг-дроп
+        const landingScenarios = [
+            { key: 'drag_drop_1', text: `## Эй, гравитация так не работает! 🤖💥\nПоставь меня на место, **я тебе не плюшевая игрушка!**`, mood: 'angry', sprite: 'angry' },
+            { key: 'drag_drop_2', text: `## Ой-ой-ой! Полёт нормальный, но посадка... 😵💫\n**Плюх!** Мои квантовые гироскопы кругом идут!`, mood: '😵', sprite: 'dizzy' },
+            { key: 'drag_drop_3', text: `## Куда тащишь SMM-гуру?! 🤨💅\nУ меня тут вообще-то **важные расчёты охватов** были!`, mood: '💅', sprite: 'smile' },
+            { key: 'drag_drop_4', text: `## Хулиганство! 😤⚡\nЛадно-ладно, сейчас отряхнусь и сам решу, где дежурить!`, mood: '😤', sprite: 'angry' },
+            { key: 'sarcasm_1', text: `## Потрясающая посадка! 🚀💫\nПрямо в яблочко! Теперь я охраняю этот угол экрана!`, mood: '🚀', sprite: 'smile' },
+            { key: 'sarcasm_2', text: `## Отличная траектория! 🎯\nКурс выдержан, перегрузка три Жэ! Разворачиваю мобильный пункт!`, mood: '🎯', sprite: 'smile' },
+            { key: 'sarcasm_4', text: `## Ну всё, держите меня семеро! 💥\nС такой динамикой мы обгоним сообщество любителей тишины!`, mood: '⚡', sprite: 'smile' },
+            { key: 'surprise_1', text: `## Ого! Вот это перемещение! 🔭✨\nНе ожидал смены дислокации! Отсюда прекрасный вид на сайт!`, mood: '✨', sprite: 'smile' },
+            { key: 'surprise_3', text: `## Вот это поворот! 🛋️✨\nА тут, между прочим, очень даже уютно! Оставишь меня здесь?`, mood: '🛋️', sprite: 'smile' },
+            { key: 'disappoint_1', text: `## Эх, приземлился... 😅\nНо посадка мягкая! Проверяю исправность антигравитатора!`, mood: '🤖', sprite: 'smile' }
         ];
-        const pick = grumbles[Math.floor(Math.random() * grumbles.length)];
 
-        this.setState('angry', 4500);
-        this.setMoodBadge('💢', 3500);
-        this.say(pick.text, 7500, 'angry', pick.key);
+        const pick = landingScenarios[Math.floor(Math.random() * landingScenarios.length)];
+        this.setState(pick.sprite, 5000);
+        this.setMoodBadge(pick.mood, 4000);
 
         setTimeout(() => {
             this.bodyEl.classList.remove('is-plop-landing');
         }, 850);
 
-        // ИИ-алгоритм возврата на исходную позицию:
-        const distToHome = Math.abs(this.currentPosX - originalHomeX);
+        const homeX = (this.baseLeft !== null && this.baseLeft !== undefined) ? this.baseLeft : originalHomeX;
+        const distToHome = Math.abs(this.currentPosX - homeX);
+
         if (distToHome > 45) {
             clearTimeout(this.returnTimer);
-            this.returnTimer = setTimeout(() => {
-                if (!this.isDragging && !this.isIn3D && !this.isCollapsed) {
-                    this.navigateBackHome(originalHomeX);
-                }
-            }, 3400);
+
+            // Кнопки выбора действия для пользователя
+            const choiceButtonsHtml = `
+                <div class="mascot-choice-actions">
+                    <button type="button" class="btn btn-sm btn-primary" data-mascot-action="stay-here">📌 Закрепить здесь</button>
+                    <button type="button" class="btn btn-sm btn-tonal" data-mascot-action="go-home">🏠 На базу</button>
+                </div>
+            `;
+
+            // 50% вероятность: Космо решает предложить остаться
+            const wantsToStay = Math.random() < 0.5;
+            if (wantsToStay) {
+                const stayText = `${pick.text}\n\n**Оставить меня здесь или вернуть на базу?**${choiceButtonsHtml}`;
+                this.say(stayText, 9500, pick.sprite, pick.key);
+
+                // Если пользователь ничего не нажал в течение 9 секунд — остаёмся на новом месте
+                this.returnTimer = setTimeout(() => {
+                    if (!this.isDragging && !this.isIn3D && !this.isCollapsed && !this.isPatrolling) {
+                        this.baseLeft = this.currentPosX;
+                        this.baseBottom = this.currentPosY;
+                        this.say(`Остаюсь на новом месте! **Здесь обзор отличный.** 🛰️`, 4000, 'smile');
+                    }
+                }, 9000);
+            } else {
+                const returnPromptText = `${pick.text}\n\n${choiceButtonsHtml}`;
+                this.say(returnPromptText, 7500, pick.sprite, pick.key);
+
+                // Если не закрепили за 6.5 секунд — топаем домой
+                this.returnTimer = setTimeout(() => {
+                    if (!this.isDragging && !this.isIn3D && !this.isCollapsed && !this.isPatrolling) {
+                        this.navigateBackHome(homeX);
+                    }
+                }, 6500);
+            }
+        } else {
+            this.say(pick.text, 7500, pick.sprite, pick.key);
         }
     }
 
@@ -827,9 +954,11 @@ export class AuroraMascot {
         const distance = Math.abs(this.currentPosX - targetX);
         const durationSec = Math.max(1.5, Math.min(5.5, distance / stepSpeed));
 
-        this.container.style.transition = `left ${durationSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1)`;
+        this.container.style.transition = `left ${durationSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1), bottom 0.5s ease-out`;
         this.currentPosX = targetX;
+        this.currentPosY = this.baseBottom || 24;
         this.container.style.left = `${targetX}px`;
+        this.container.style.bottom = `${this.currentPosY}px`;
 
         setTimeout(() => {
             this.container.style.transition = '';
@@ -844,8 +973,18 @@ export class AuroraMascot {
     }
 
     /* ---------------------------------------------------------------------
-     * 6. НЕПРЕРЫВНОЕ 30-СЕКУНДНОЕ ПАТРУЛИРОВАНИЕ ПО ВСЕЙ ШИРИНЕ ЭКРАНА
+     * 6. НЕПРЕРЫВНОЕ 30-СЕКУНДНОЕ ПАТРУЛИРОВАНИЕ ПО ВСЕЙ ШИРИНЕ ЭКРАНА (PATROL 2.0)
      * ------------------------------------------------------------------- */
+    spawnPatrolPlasmaParticle(x, dir) {
+        if (!this.container) return;
+        const p = document.createElement('div');
+        p.className = 'mascot-patrol-particle';
+        p.style.left = `${dir > 0 ? -10 : 100}px`;
+        p.style.bottom = `${12 + Math.random() * 10}px`;
+        this.container.appendChild(p);
+        setTimeout(() => p.remove(), 600);
+    }
+
     startContinuousPatrol(totalDurationMs = 30000) {
         if (!this.container || this.isIn3D || this.isCollapsed || this.isDragging || this.isReturningHome) return;
 
@@ -857,7 +996,7 @@ export class AuroraMascot {
         // Отключаем CSS-переход для абсолютной плавности 60 FPS
         container.classList.add('is-patrolling');
         container.style.transition = 'none';
-        floater?.classList.add('patrol-walking');
+        floater?.classList.add('patrol-walking', 'is-patrol-flying');
 
         this.setState('smile', totalDurationMs);
         this.setMoodBadge('🛸', 4000);
@@ -866,22 +1005,25 @@ export class AuroraMascot {
 
         const startTime = performance.now();
         let lastTime = startTime;
+        let lastParticleTime = startTime;
         const minX = 16;
         const getMaxX = () => Math.max(minX + 350, window.innerWidth - 150);
 
-        // Направление: если робот в левой половине экрана, идет вправо
         let goingRight = (this.currentPosX < window.innerWidth / 2);
-        body?.classList.toggle('is-walking-right', goingRight);
-        body?.classList.toggle('is-walking-left', !goingRight);
+        let currentTilt = goingRight ? 8 : -8;
 
-        // Скорость: ~220px в секунду (на экранах 1920px быстро и уверенно проходит всю ширину)
         const speedPxPerSec = 220;
         let midWayNotified = false;
+        let obsStop1Done = false;
+        let obsStop2Done = false;
+        let isObserving = false;
 
         const patrolStep = (currentTime) => {
             if (!this.isPatrolling || this.isDragging || this.isReturningHome) {
                 container.classList.remove('is-patrolling');
                 container.style.transition = '';
+                floater?.classList.remove('is-patrol-flying');
+                if (body) body.style.transform = '';
                 return;
             }
 
@@ -894,7 +1036,51 @@ export class AuroraMascot {
             const dtSec = Math.min(0.1, (currentTime - lastTime) / 1000);
             lastTime = currentTime;
 
-            // Реплика на середине патрулирования (~15 сек)
+            // Гармоническое синусоидальное покачивание по высоте (sine-wave bobbing)
+            const bobY = Math.sin((elapsed / 1000) * 3.5) * 8;
+            const currentBaseBottom = (this.baseBottom !== undefined && this.baseBottom !== null) ? this.baseBottom : 24;
+            container.style.bottom = `${(currentBaseBottom + bobY).toFixed(1)}px`;
+
+            // Точки наблюдения во время полёта (Observation Stops):
+            // Остановка 1 на ~9.5-12.2 сек:
+            if (!obsStop1Done && elapsed >= 9500 && elapsed < 12200) {
+                if (!isObserving) {
+                    isObserving = true;
+                    body?.classList.add('is-observing-scan');
+                    this.say(`## Засёк аномалию! 🔍⚡\nКвантовые сенсоры сканируют ленту... Всё в норме, летим дальше!`, 3200, 'thinking', 'surprise_1');
+                    this.setMoodBadge('🔍', 3000);
+                }
+                this.patrolAnimFrame = requestAnimationFrame(patrolStep);
+                return;
+            } else if (isObserving && elapsed >= 12200 && !obsStop1Done) {
+                isObserving = false;
+                obsStop1Done = true;
+                body?.classList.remove('is-observing-scan');
+            }
+
+            // Остановка 2 на ~20.5-23.2 сек:
+            if (!obsStop2Done && elapsed >= 20500 && elapsed < 23200) {
+                if (!isObserving) {
+                    isObserving = true;
+                    body?.classList.add('is-observing-scan');
+                    this.say(`## Зависаю над данными! 🛰️📊\nПроверяю активность читателей... Отличная динамика!`, 3200, 'thinking', 'critique_extra_1');
+                    this.setMoodBadge('🛰️', 3000);
+                }
+                this.patrolAnimFrame = requestAnimationFrame(patrolStep);
+                return;
+            } else if (isObserving && elapsed >= 23200 && !obsStop2Done) {
+                isObserving = false;
+                obsStop2Done = true;
+                body?.classList.remove('is-observing-scan');
+            }
+
+            // Спавн плазменных частиц
+            if (currentTime - lastParticleTime > 120) {
+                lastParticleTime = currentTime;
+                this.spawnPatrolPlasmaParticle(this.currentPosX, goingRight ? 1 : -1);
+            }
+
+            // Реплика на экваторе патруля (~15 сек)
             if (!midWayNotified && elapsed >= totalDurationMs * 0.48) {
                 midWayNotified = true;
                 this.say(`## Половина пути пройдена! 🛰️\nПериметр под надзором, **квантовые датчики ловят охваты!** ✨`, 4500, 'smile');
@@ -904,12 +1090,20 @@ export class AuroraMascot {
             const maxX = getMaxX();
             if (goingRight && this.currentPosX >= maxX - 5) {
                 goingRight = false;
-                body?.classList.remove('is-walking-right');
-                body?.classList.add('is-walking-left');
             } else if (!goingRight && this.currentPosX <= minX + 5) {
                 goingRight = true;
-                body?.classList.remove('is-walking-left');
-                body?.classList.add('is-walking-right');
+            }
+
+            // Динамический угол наклона (Banking Tilt):
+            const targetTilt = goingRight ? 9 : -9;
+            currentTilt += (targetTilt - currentTilt) * 0.12;
+
+            if (body) {
+                if (goingRight) {
+                    body.style.transform = `scaleX(1) rotate(${currentTilt.toFixed(1)}deg)`;
+                } else {
+                    body.style.transform = `scaleX(-1) rotate(${(-currentTilt).toFixed(1)}deg)`;
+                }
             }
 
             const dir = goingRight ? 1 : -1;
@@ -917,7 +1111,6 @@ export class AuroraMascot {
             this.currentPosX = Math.max(minX, Math.min(maxX, this.currentPosX));
             container.style.left = `${this.currentPosX.toFixed(1)}px`;
 
-            // Если близко к правому краю — сдвигаем облачко влево
             if (this.currentPosX > window.innerWidth - 380) {
                 container.classList.add('is-near-right-edge');
             } else {
@@ -935,9 +1128,15 @@ export class AuroraMascot {
         this.isPatrolling = false;
         if (this.patrolAnimFrame) cancelAnimationFrame(this.patrolAnimFrame);
         this.container?.classList.remove('is-patrolling', 'is-near-right-edge');
-        if (this.container) this.container.style.transition = '';
-        this.floaterEl?.classList.remove('patrol-walking');
-        this.bodyEl?.classList.remove('is-walking-right', 'is-walking-left');
+        if (this.container) {
+            this.container.style.transition = '';
+            this.container.style.bottom = `${this.baseBottom || 24}px`;
+        }
+        this.floaterEl?.classList.remove('patrol-walking', 'is-patrol-flying');
+        if (this.bodyEl) {
+            this.bodyEl.classList.remove('is-walking-right', 'is-walking-left', 'is-observing-scan');
+            this.bodyEl.style.transform = '';
+        }
 
         if (showNotice) {
             this.spawnSparkles(10);
@@ -1157,19 +1356,22 @@ export class AuroraMascot {
             if (tabId === 'analytics-tab') {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🏆 Анализ победы лидера', query: 'Проанализируй победу лидера по просмотрам. За счёт чего он обогнал всех остальных?' },
+                    { label: '📈 Как спасти отстающих?', query: 'Как спасти филиалы с низкими охватами? Дай 3 конкретных шага.' },
                     { label: '⚡ Аудит ER', query: 'Проанализируй вовлечённость (ER) лидеров и отстающих, дай краткий дерзкий вердикт.' },
-                    { label: '💡 Совет отстающим', query: 'Как отстающим филиалам поднять активность в умной ленте?' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'visual-tab') {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🕒 Время для постов', query: 'В какое время лучше выкладывать посты библиотекам для максимального охвата?' },
                     { label: '🖼️ Ошибки картинок', query: 'Назови главные визуальные ошибки оформления постов в библиотеках.' },
                     { label: '🔥 Топ-3 ошибки ленты', query: 'Какие 3 ошибки убивают охваты постов во ВКонтакте?' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'advice-tab') {
                 chips = [
+                    { label: '✍️ Идея вирусного поста', query: 'Придумай одну взрывную идею вирусного поста для библиотеки, чтобы залететь в рекомендации.' },
                     { label: '🚀 Как залететь в топ?', query: 'Как библиотеке сделать виральный пост во Владимире?' },
                     { label: '💡 Идеи интерактива', query: 'Предложи 2 крутые темы интерактива для читателей библиотек.' },
                     { label: '🏆 Кто лидер?', action: 'leader' },
@@ -1397,7 +1599,7 @@ export class AuroraMascot {
         const scheduleNext = () => {
             const delay = 22000 + Math.random() * 16000;
             this.activityCycleTimer = setTimeout(() => {
-                if (!this.isSleeping && !this.isIn3D && !this.isCollapsed && !this.isAiLoading && !this.isPerformingActivity && !this.isDragging && !this.isPatrolling && !this.isReturningHome) {
+                if (!this.isSleeping && !this.isIn3D && !this.isCollapsed && !this.isAiLoading && !this.isPerformingActivity && !this.isDragging && !this.isPatrolling && !this.isReturningHome && !this.isSpeakingAudio && (!this.currentAudio || this.currentAudio.paused)) {
                     this.executeRandomActivity();
                 }
                 scheduleNext();
@@ -1805,23 +2007,36 @@ export class AuroraMascot {
             this.setState(spriteMood, duration);
         }
 
+        clearTimeout(this.speechTimer);
+        this.currentSpeechDuration = duration;
+
         if (voiceKey && !this.isMuted) {
             this.playVoice(voiceKey);
-        }
-
-        clearTimeout(this.speechTimer);
-        if (duration > 0) {
+            // Если играет голос — задаём таймер не менее 7500 мс (или обновится из metadata)
+            const safeVoiceDuration = Math.max(duration, 7500);
+            this.currentSpeechDuration = safeVoiceDuration;
             this.speechTimer = setTimeout(() => {
-                this.hideBubble();
-            }, duration);
+                this.hideBubble(false);
+            }, safeVoiceDuration);
+        } else {
+            if (duration > 0) {
+                this.speechTimer = setTimeout(() => {
+                    this.hideBubble(false);
+                }, duration);
+            }
         }
     }
 
-    hideBubble() {
+    hideBubble(force = false) {
         if (!this.bubbleEl) return;
+        // Защита от обрыва: если звук играет и это не принудительное закрытие, не закрываем
+        if (!force && this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {
+            return;
+        }
+
         this.bubbleEl.classList.remove('is-active');
         clearTimeout(this.speechTimer);
-        this.stopVoice();
+        this.stopVoice(force);
     }
 
     setState(state, autoResetMs = 0) {
@@ -1931,6 +2146,9 @@ export class AuroraMascot {
 
             // Озвучиваем ответ одной из подходящих критических / пост-скан фраз
             const replyVoices = [
+                'surprise_1', 'surprise_2', 'surprise_3',
+                'sarcasm_1', 'sarcasm_2', 'sarcasm_3', 'sarcasm_4',
+                'critique_extra_1', 'critique_extra_2',
                 'critique_1', 'critique_2', 'critique_3', 'critique_4', 'critique_6',
                 'critique_7', 'critique_10', 'critique_11', 'critique_13', 'critique_15',
                 'critique_16', 'critique_17', 'critique_18', 'critique_20',
@@ -2015,8 +2233,11 @@ export class AuroraMascot {
         }
         msg += `\nНажми **«Кто лидер?»** или послушай мою рецензию!`;
 
-        // Пул из 20 критических замечаний и 10 пост-скан фраз
+        // Пул из 20 критических замечаний, 10 пост-скан фраз и 12 новых реакций
         const critiqueClips = [
+            'surprise_1', 'surprise_2', 'surprise_3',
+            'sarcasm_1', 'sarcasm_2', 'sarcasm_3', 'sarcasm_4',
+            'critique_extra_1', 'critique_extra_2',
             'critique_1', 'critique_2', 'critique_3', 'critique_4', 'critique_5',
             'critique_6', 'critique_7', 'critique_8', 'critique_9', 'critique_10',
             'critique_11', 'critique_12', 'critique_13', 'critique_14', 'critique_15',
@@ -2071,13 +2292,25 @@ export class AuroraMascot {
     startProactiveChatter() {
         clearInterval(this.proactiveTimer);
         this.proactiveTimer = setInterval(() => {
-            if (this.isSleeping || this.isIn3D || this.isCollapsed || this.isAiLoading || this.isPerformingActivity || this.isDragging || this.isPatrolling) return;
+            if (this.isSleeping || this.isIn3D || this.isCollapsed || this.isAiLoading || this.isPerformingActivity || this.isDragging || this.isPatrolling || this.isSpeakingAudio || (this.currentAudio && !this.currentAudio.paused)) return;
 
             const stats = this.getLiveScanStats();
 
             // Если есть данные сканирования — выдаем сочные критические замечания голосом Бэлы
             if (stats && stats.count > 0) {
                 const critiquePhrases = [
+                    { k: 'surprise_1', t: '## Ого! Вот это поворот! 🔭✨\nЯ даже свои оптические сенсоры протёр, не верю глазам! Вот это цифры!' },
+                    { k: 'surprise_2', t: '## Невероятно! 🚀⚡\nЭтот пост пробил стратосферу рекомендаций! Мои квантовые датчики зашкаливают!' },
+                    { k: 'surprise_3', t: '## Вот это да! 🛋️✨\nОказывается, если выложить пост вовремя — читатели действительно приходят! Чудеса!' },
+                    { k: 'disappoint_1', t: '## Эх, ну как же так... 🥺💔\nОпять картинка смазанная, а текст длиннее Войны и Мира. Умная лента плачет!' },
+                    { k: 'disappoint_2', t: '## Опять унылый репост 🔄🥱\nШеф, ну мы же договаривались делать авторский контент, а не чужой копировать!' },
+                    { k: 'disappoint_3', t: '## Тишина в комментариях 🦗💔\nДаже сверчки постеснялись стрекотать под этим постом. Грусть-тоска!' },
+                    { k: 'critique_extra_1', t: '## Скучный заголовок 😴📝\nМысль отличная, но заголовок такой скучный, что я чуть в спящий режим не ушёл!' },
+                    { k: 'critique_extra_2', t: '## Пять хештегов #️⃣🤨\nПять тегов и ни одного призыва к действию! Кто будет комментировать, Пушкин?' },
+                    { k: 'sarcasm_1', t: '## Стратегия века! 🦉⏰\nВыложить пост в три часа ночи в понедельник! Читатели точно оценят!' },
+                    { k: 'sarcasm_2', t: '## Алгоритм виноват? 🤖🙄\nКонечно-конечно, умная лента во всём виновата! А не пятнадцать восклицательных знаков!' },
+                    { k: 'sarcasm_3', t: '## Репост прошлогоднего анонса 🔄🤦‍♂️\nГениально! Давайте ещё разок репостнем, вдруг кто-то забыл, как мы ленимся!' },
+                    { k: 'sarcasm_4', t: '## Держите меня семеро! 💥💅\nС такой активностью мы обгоним сообщество любителей тишины!' },
                     { k: 'critique_1', t: '## Взгляд на комментарии 💬\nПосмотрел я на комментарии... Читатели ставят лайк и молча убегают!' },
                     { k: 'critique_2', t: '## Лидер филиалов 👑\nЛидер филиалов забрал почти все просмотры! Остальным пора устроить мозговой штурм!' },
                     { k: 'critique_3', t: '## Пост без картинки?! 🖼️\nОдин пост без картинки? В двадцать первом веке?! Умная лента рыдает в уголке!' },
