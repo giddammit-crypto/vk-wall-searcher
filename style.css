@@ -135,13 +135,13 @@
     --surface-glass: rgba(54, 64, 88, 0.85);
     --surface-glass-hover: rgba(66, 78, 108, 0.95);
 
-    --accent: #ec4899;
-    --accent-hover: #db2777;
-    --accent-soft: rgba(236, 72, 153, 0.12);
-    --accent-medium: rgba(236, 72, 153, 0.22);
+    --accent: #4d8dff;
+    --accent-hover: #70a3ff;
+    --accent-soft: rgba(77, 141, 255, 0.14);
+    --accent-medium: rgba(77, 141, 255, 0.26);
     --accent-purple: #8A6CFF;
     --accent-purple-soft: rgba(138, 108, 255, 0.14);
-    --accent-gradient: linear-gradient(135deg, #ec4899 0%, #38BDF8 50%, #8A6CFF 100%);
+    --accent-gradient: linear-gradient(135deg, #38BDF8 0%, #4d8dff 50%, #8A6CFF 100%);
 
     --muted: #cbd5e1;
     --hairline: rgba(220, 230, 255, 0.16);
@@ -154,8 +154,8 @@
     --text-on-accent: #0b111e;
 
     /* Semantic Diagnostic Luminescence */
-    --color-success: #ec4899;
-    --color-success-bg: rgba(236, 72, 153, 0.13);
+    --color-success: #10b981;
+    --color-success-bg: rgba(16, 185, 129, 0.14);
     --color-danger: #f06060;
     --color-danger-bg: rgba(240, 96, 96, 0.13);
     --color-warning: #f5c040;
@@ -164,19 +164,19 @@
     --color-purple-bg: rgba(138, 108, 255, 0.13);
 
     /* Gradients & Specular Highlights */
-    --btn-primary-bg: linear-gradient(135deg, #be185d 0%, #2563eb 50%, #7c3aed 100%);
+    --btn-primary-bg: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%);
     --btn-primary-text: #ffffff;
     --btn-primary-shadow: 0 6px 20px rgba(37, 99, 235, 0.35), 0 2px 4px rgba(0, 0, 0, 0.20);
     --btn-primary-hover-shadow: 0 10px 28px rgba(37, 99, 235, 0.50), 0 0 24px rgba(124, 58, 237, 0.40);
-    --card-border-top: linear-gradient(90deg, rgba(236, 72, 153, 0.40) 0%, rgba(56, 189, 248, 0.20) 50%, rgba(138, 108, 255, 0.40) 100%);
-    --aurora-card-border-top: linear-gradient(90deg, rgba(236, 72, 153, 0.40) 0%, rgba(56, 189, 248, 0.20) 50%, rgba(138, 108, 255, 0.40) 100%);
-    --switch-active-bg: linear-gradient(135deg, #ec4899, #8A6CFF);
-    --switch-active-shadow: 0 0 12px rgba(236, 72, 153, 0.40);
-    --badge-selected-bg: linear-gradient(135deg, #ec4899 0%, #38BDF8 50%, #8A6CFF 100%);
-    --badge-selected-text: #0b111e;
-    --badge-selected-shadow: 0 4px 15px rgba(236, 72, 153, 0.40);
-    --logo-gradient: linear-gradient(135deg, #ffffff 0%, #ec4899 45%, #8A6CFF 90%);
-    --logo-shadow: 0 0 20px rgba(236, 72, 153, 0.25);
+    --card-border-top: linear-gradient(90deg, rgba(56, 189, 248, 0.40) 0%, rgba(77, 141, 255, 0.25) 50%, rgba(138, 108, 255, 0.40) 100%);
+    --aurora-card-border-top: linear-gradient(90deg, rgba(56, 189, 248, 0.40) 0%, rgba(77, 141, 255, 0.25) 50%, rgba(138, 108, 255, 0.40) 100%);
+    --switch-active-bg: #4d8dff;
+    --switch-active-shadow: 0 0 12px rgba(77, 141, 255, 0.40);
+    --badge-selected-bg: linear-gradient(135deg, #0284c7 0%, #38BDF8 50%, #4f46e5 100%);
+    --badge-selected-text: #ffffff;
+    --badge-selected-shadow: 0 4px 15px rgba(37, 99, 235, 0.40);
+    --logo-gradient: linear-gradient(135deg, #ffffff 0%, #38BDF8 45%, #8A6CFF 90%);
+    --logo-shadow: 0 0 20px rgba(77, 141, 255, 0.25);
 
     --glass-card-border-top: rgba(220, 230, 255, 0.25);
     --surface-border-top: rgba(220, 230, 255, 0.22);
@@ -548,17 +548,17 @@ body {
     font-weight: 800;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #ec4899 0%, #38BDF8 48%, #8A6CFF 100%);
+    background: linear-gradient(135deg, #38BDF8 0%, #4d8dff 48%, #8A6CFF 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 16px rgba(236, 72, 153, 0.42));
+    filter: drop-shadow(0 0 16px rgba(77, 141, 255, 0.45));
     display: inline-block;
     line-height: 1.15;
     transition: filter var(--duration) var(--ease), letter-spacing var(--duration) var(--ease);
 }
 .brand-aurora:hover {
-    filter: drop-shadow(0 0 24px rgba(236, 72, 153, 0.75)) drop-shadow(0 0 38px rgba(56, 189, 248, 0.45));
+    filter: drop-shadow(0 0 24px rgba(77, 141, 255, 0.75)) drop-shadow(0 0 38px rgba(56, 189, 248, 0.55));
     letter-spacing: 0.17em;
 }
 
@@ -5106,28 +5106,163 @@ select:focus {
 }
 .advice-score-num { font-size: 1.15rem; font-weight: 700; line-height: 1; }
 .advice-score-label { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
-.score-good { color: var(--color-success, #ec4899); background: rgba(236, 72, 153, 0.08); }
-.score-mid  { color: #b91c1c; background: rgba(185, 28, 28, 0.08); }
-[data-theme="dark"] .score-mid { color: #f87171; background: rgba(248, 113, 113, 0.08); }
-.score-bad  { color: var(--color-danger, #f87171); background: rgba(248, 113, 113, 0.08); }
-
-.advice-items { display: flex; flex-direction: column; padding: 10px 12px 14px; gap: 4px; }
-.advice-item {
-    display: flex; gap: 12px; padding: 10px 10px; border-radius: 12px; align-items: flex-start;
+.score-good {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.20);
 }
-.advice-item-icon { font-size: 20px; margin-top: 1px; flex: 0 0 auto; }
-.advice-item-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 3px; }
-.advice-item-text { font-size: 0.8rem; color: var(--muted); line-height: 1.45; }
-.adv-success { background: rgba(236, 72, 153, 0.07); }
-.adv-success .advice-item-icon, .adv-success .advice-item-title { color: var(--color-success, #ec4899); }
-.adv-info { background: var(--accent-soft); }
-.adv-info .advice-item-icon, .adv-info .advice-item-title { color: var(--accent); }
-.adv-warn { background: rgba(185, 28, 28, 0.08); }
-.adv-warn .advice-item-icon, .adv-warn .advice-item-title { color: #b91c1c !important; }
-[data-theme="dark"] .adv-warn { background: rgba(239, 68, 68, 0.12); }
-[data-theme="dark"] .adv-warn .advice-item-icon, [data-theme="dark"] .adv-warn .advice-item-title { color: #f87171 !important; }
-.adv-danger { background: rgba(248, 113, 113, 0.09); }
-.adv-danger .advice-item-icon, .adv-danger .advice-item-title { color: var(--color-danger, #f87171); }
+[data-theme="dark"] .score-good {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.16);
+    border-color: #34d399;
+    box-shadow: 0 0 14px rgba(52, 211, 153, 0.28);
+}
+.score-mid {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+[data-theme="dark"] .score-mid {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.16);
+    border-color: #fbbf24;
+}
+.score-bad {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+[data-theme="dark"] .score-bad {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.16);
+    border-color: #f87171;
+}
+
+/* Выделение карточек филиалов с высоким индексом здоровья */
+.card-score-good {
+    border-color: rgba(16, 185, 129, 0.38) !important;
+}
+.card-score-good .advice-branch-head {
+    background: linear-gradient(90deg, rgba(236, 253, 245, 0.85) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+[data-theme="dark"] .card-score-good {
+    border-color: rgba(52, 211, 153, 0.35) !important;
+}
+[data-theme="dark"] .card-score-good .advice-branch-head {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, var(--surface) 100%);
+}
+
+.advice-items {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px 16px;
+    gap: 8px;
+}
+.advice-item {
+    display: flex;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    align-items: flex-start;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.advice-item:hover {
+    transform: translateX(2px);
+}
+.advice-item-icon {
+    font-size: 20px;
+    margin-top: 2px;
+    flex: 0 0 auto;
+}
+.advice-item-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.35;
+}
+.advice-item-text {
+    font-size: 0.8125rem;
+    line-height: 1.48;
+}
+
+/* Уровень: ХОРОШО / ОТЛИЧНО (adv-success) — выразительный зелёный/изумрудный фон */
+.adv-success {
+    background: #ecfdf5;
+    border: 1px solid rgba(16, 185, 129, 0.38);
+    border-left: 4px solid #10b981;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.08);
+}
+.adv-success .advice-item-icon { color: #059669; }
+.adv-success .advice-item-title { color: #065f46; font-weight: 700; }
+.adv-success .advice-item-text { color: #166534; }
+
+[data-theme="dark"] .adv-success {
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.32);
+    border-left: 4px solid #34d399;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+[data-theme="dark"] .adv-success .advice-item-icon { color: #34d399; }
+[data-theme="dark"] .adv-success .advice-item-title { color: #6ee7b7; }
+[data-theme="dark"] .adv-success .advice-item-text { color: #d1fae5; }
+
+/* Уровень: К СВЕДЕНИЮ (adv-info) — лазурно-синий фон */
+.adv-info {
+    background: #eff6ff;
+    border: 1px solid rgba(59, 130, 246, 0.30);
+    border-left: 4px solid #3b82f6;
+}
+.adv-info .advice-item-icon { color: #2563eb; }
+.adv-info .advice-item-title { color: #1e40af; font-weight: 700; }
+.adv-info .advice-item-text { color: #1e3a8a; }
+
+[data-theme="dark"] .adv-info {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    border-left: 4px solid #60a5fa;
+}
+[data-theme="dark"] .adv-info .advice-item-icon { color: #60a5fa; }
+[data-theme="dark"] .adv-info .advice-item-title { color: #93c5fd; }
+[data-theme="dark"] .adv-info .advice-item-text { color: #e0f2fe; }
+
+/* Уровень: ВНИМАНИЕ (adv-warn) — янтарный / тёплый фон */
+.adv-warn {
+    background: #fffbeb;
+    border: 1px solid rgba(245, 158, 11, 0.38);
+    border-left: 4px solid #f59e0b;
+}
+.adv-warn .advice-item-icon { color: #d97706; }
+.adv-warn .advice-item-title { color: #92400e; font-weight: 700; }
+.adv-warn .advice-item-text { color: #78350f; }
+
+[data-theme="dark"] .adv-warn {
+    background: rgba(245, 158, 11, 0.13);
+    border: 1px solid rgba(245, 158, 11, 0.30);
+    border-left: 4px solid #fbbf24;
+}
+[data-theme="dark"] .adv-warn .advice-item-icon { color: #fbbf24; }
+[data-theme="dark"] .adv-warn .advice-item-title { color: #fde68a; }
+[data-theme="dark"] .adv-warn .advice-item-text { color: #fef3c7; }
+
+/* Уровень: ПРОБЛЕМА (adv-danger) — кораллово-красный фон */
+.adv-danger {
+    background: #fef2f2;
+    border: 1px solid rgba(239, 68, 68, 0.38);
+    border-left: 4px solid #ef4444;
+}
+.adv-danger .advice-item-icon { color: #dc2626; }
+.adv-danger .advice-item-title { color: #991b1b; font-weight: 700; }
+.adv-danger .advice-item-text { color: #7f1d1d; }
+
+[data-theme="dark"] .adv-danger {
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(239, 68, 68, 0.32);
+    border-left: 4px solid #f87171;
+}
+[data-theme="dark"] .adv-danger .advice-item-icon { color: #f87171; }
+[data-theme="dark"] .adv-danger .advice-item-title { color: #fca5a5; }
+[data-theme="dark"] .adv-danger .advice-item-text { color: #fee2e2; }
 
 /* ==========================================================================
    Sortable Tables Engine (All tables in app)
@@ -12309,23 +12444,23 @@ textarea,
     --border-color: rgba(255, 255, 255, 0.09);
     --divider-color: rgba(255, 255, 255, 0.06);
 
-    --accent: #ec4899;
-    --accent-hover: #f472b6;
-    --accent-soft: rgba(236, 72, 153, 0.14);
-    --accent-medium: rgba(236, 72, 153, 0.26);
-    --accent-gradient: linear-gradient(180deg, #ec4899 0%, #ec4899 100%);
-    --color-aurora-cyan: #ec4899;
-    --color-aurora-blue: #ec4899;
+    --accent: #4d8dff;
+    --accent-hover: #70a3ff;
+    --accent-soft: rgba(77, 141, 255, 0.14);
+    --accent-medium: rgba(77, 141, 255, 0.28);
+    --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #4d8dff 50%, #6366f1 100%);
+    --color-aurora-cyan: #38bdf8;
+    --color-aurora-blue: #4d8dff;
 
-    --btn-primary-bg: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
-    --btn-primary-border-color: #db2777;
-    --btn-primary-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    --btn-primary-hover-shadow: 0 4px 14px rgba(219, 39, 119, 0.35);
-    --switch-active-bg: #ec4899;
-    --badge-selected-bg: #ec4899;
+    --btn-primary-bg: linear-gradient(180deg, #3d7ef7 0%, #2563eb 100%);
+    --btn-primary-border-color: #2563eb;
+    --btn-primary-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    --btn-primary-hover-shadow: 0 4px 14px rgba(77, 141, 255, 0.40);
+    --switch-active-bg: #4d8dff;
+    --badge-selected-bg: #4d8dff;
     --logo-gradient: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
-    --elevation-focus: 0 0 0 3px rgba(236, 72, 153, 0.3);
-    --input-focus-halo: 0 0 0 3px rgba(236, 72, 153, 0.22);
+    --elevation-focus: 0 0 0 3px rgba(77, 141, 255, 0.32);
+    --input-focus-halo: 0 0 0 3px rgba(77, 141, 255, 0.22);
 }
 
 /* --- Токены: светлая тема --- */
@@ -12414,10 +12549,10 @@ textarea:focus {
     background: var(--switch-active-bg) !important;
 }
 
-/* --- Графики в розовой гамме --- */
-.chart-bar-fill.bar-posts { background: #f9a8d4 !important; }
-.chart-bar-fill.bar-views { background: #ec4899 !important; }
-.chart-bar-fill.bar-er { background: #be185d !important; }
+/* --- Графики: гармоничная космическая гамма (тёмная тема) --- */
+.chart-bar-fill.bar-posts { background: #7dd3fc !important; }
+.chart-bar-fill.bar-views { background: #38bdf8 !important; }
+.chart-bar-fill.bar-er { background: #4d8dff !important; }
 [data-theme="light"] .chart-bar-fill.bar-posts { background: #f6a8d4 !important; }
 [data-theme="light"] .chart-bar-fill.bar-views { background: #e2529f !important; }
 [data-theme="light"] .chart-bar-fill.bar-er { background: #b01d6f !important; }

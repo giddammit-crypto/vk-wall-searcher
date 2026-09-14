@@ -8,7 +8,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=4.8.2';
+import { escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=4.8.3';
 
 const LEVEL_META = {
     success: { icon: 'check_circle', label: 'Отлично', cls: 'adv-success' },
@@ -406,7 +406,7 @@ export function renderAdviceTab(container, adviceData, opts = {}) {
         const trend = ctxTrendNote(branch);
 
         return `
-        <div class="advice-branch-card card">
+        <div class="advice-branch-card card card-${scoreCls}">
             <div class="advice-branch-head">
                 <div class="advice-branch-id">
                     ${renderBranchAvatarHtml(info, 'md', 'advice-avatar')}

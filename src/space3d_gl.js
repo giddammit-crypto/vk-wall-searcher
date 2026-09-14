@@ -1527,10 +1527,10 @@ export class Space3DGLRenderer {
      * ------------------------------------------------------------------- */
     _textureSources() {
         return {
-            earthDay: 'assets/textures/earth_day.jpg?v=4.8.2',
-            earthNight: 'assets/textures/earth_night.png?v=4.8.2',
-            earthClouds: 'assets/textures/earth_clouds.png?v=4.8.2',
-            moon: 'assets/textures/moon.jpg?v=4.8.2'
+            earthDay: 'assets/textures/earth_day.jpg?v=4.8.3',
+            earthNight: 'assets/textures/earth_night.png?v=4.8.3',
+            earthClouds: 'assets/textures/earth_clouds.png?v=4.8.3',
+            moon: 'assets/textures/moon.jpg?v=4.8.3'
         };
     }
 
