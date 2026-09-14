@@ -1426,10 +1426,11 @@ export class AuroraMascot {
             console.warn('[Cosmo] Failed to persist base in localStorage:', e);
         }
 
-        this.setMoodBadge('📌', 5000);
+        this.stopVoice(true);
+        this.setMoodBadge('📌', 4500);
         this.spawnSparkles(16);
-        this.setState('smile', 6000);
-        this.say(`## База обновлена! 📌✨\nОтлично, закрепился на новой позиции! **Теперь мой квантовый пост здесь.**`, 6500, 'smile', 'surprise_2', true);
+        this.setState('smile', 5000);
+        this.say(`## База закреплена! 📌✨\nОтлично, закрепился на новой позиции! **Теперь мой квантовый пост здесь.**`, 4500, 'smile', null, true);
     }
 
     triggerPlopLanding(originalHomeX) {
