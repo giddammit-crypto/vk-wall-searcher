@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.9.0",
+    "version": "4.9.1",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-14T17:25:00+03:00",
-    "release_name": "AURORA 4.9.0 — Перенос 3D HUD Бэлы в левую часть экрана, увеличение аватара в 3 раза (246px), адаптивный текст с переносами и отступами"
+    "commit_date": "2026-09-14T18:30:00+03:00",
+    "release_name": "AURORA 4.9.1 — устранение дублирования музыки (window singleton SpaceAudio), удаление плашки галактического сектора, улучшение кинематографичности и моушен-камеры при прилёте к Земле"
 }

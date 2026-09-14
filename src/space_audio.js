@@ -100,11 +100,17 @@ export class SpaceAudioEngine {
      * Инициализация фоновой амбиент-музыки (David Bowie - Space Oddity)
      */
     initAmbientMusic(src = 'audio/ambient/david_bowie_space_oddity.mp3') {
+        if (typeof window !== 'undefined' && window.__AURORA_AMBIENT_AUDIO__) {
+            this.ambientAudio = window.__AURORA_AMBIENT_AUDIO__;
+        }
         if (!this.ambientAudio) {
             this.ambientAudio = new Audio(src);
             this.ambientAudio.loop = true;
             this.ambientAudio.preload = 'auto';
             this.ambientAudio.volume = 0;
+            if (typeof window !== 'undefined') {
+                window.__AURORA_AMBIENT_AUDIO__ = this.ambientAudio;
+            }
         } else if (src && this.ambientAudio.src && !this.ambientAudio.src.includes(src)) {
             this.ambientAudio.src = src;
         }
@@ -126,9 +132,11 @@ export class SpaceAudioEngine {
                 this.ambientAudio.currentTime = 0;
             } catch (e) {}
         }
-        this.ambientAudio.play().catch(e => {
-            console.warn('[SpaceAudio] Ambient autoplay prevented by browser policy:', e);
-        });
+        if (this.ambientAudio && this.ambientAudio.paused) {
+            this.ambientAudio.play().catch(e => {
+                console.warn('[SpaceAudio] Ambient autoplay prevented by browser policy:', e);
+            });
+        }
 
         const stepTime = 50;
         const totalSteps = durationMs / stepTime;
@@ -551,8 +559,12 @@ export class SpaceAudioEngine {
     }
 }
 
-export const SpaceAudio = new SpaceAudioEngine();
+export const SpaceAudio = (typeof window !== 'undefined' && window.__AURORA_SPACE_AUDIO__)
+    ? window.__AURORA_SPACE_AUDIO__
+    : new SpaceAudioEngine();
+
 if (typeof window !== 'undefined') {
+    window.__AURORA_SPACE_AUDIO__ = SpaceAudio;
     window.SpaceAudio = SpaceAudio;
 }
 export default SpaceAudio;

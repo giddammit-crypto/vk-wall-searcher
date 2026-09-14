@@ -67,49 +67,49 @@ export const CINEMATIC_CONFIG = {
     },
     // Фаза A «Approach»
     approach: {
-        pitchFrom: 0,
-        pitchTo: -42,          // наклон вниз к Земле (Земля на pitch -44 в GL-ядре)
-        zoomFrom: 1.0,
-        zoomTo: 1.9,
-        zoomDecayRate: 3.1,    // скорость экспоненциального замедления зума
-        yawFrom: 0,
-        yawTo: -14,            // сдвиг влево: подготовка к Ракурсу 1 у терминатора
-        rollAmp: 2.0,          // амплитуда крена, градусы
-        rollPeriod: 7.0,       // период синусоиды крена, секунды
-        // Motion-полиш: «выход из гиперпространства» + инерционный наезд
-        hyperNoiseAmp: 0.15,   // амплитуда микровибрации камеры, градусы
-        hyperNoiseDur: 1.5,    // длительность микровибрации после варпа, секунды
-        pushInFrac: 0.03,      // инерционный наезд: +3% к зуму с возвратом
-        pushInWindow: 1.2      // окно наезда в конце фазы, секунды
+        pitchFrom: -16,        // мягкий панорамный обзор горизонта планеты и космоса
+        pitchTo: -42,          // глубокий наклон камеры к терминатору и океану планеты
+        zoomFrom: 1.05,        // от лёгкого общего плана
+        zoomTo: 1.88,          // плавное приближение к планете
+        zoomDecayRate: 2.8,    // кинематографическое экспоненциальное замедление
+        yawFrom: 4.0,          // правый заход по орбитальной дуге
+        yawTo: -16.0,          // скольжение к терминатору
+        rollAmp: 2.2,          // кинематографический наклон камеры (Dutch angle)
+        rollEnd: 1.2,          // крен на выходе из фазы для бесшовной стыковки с Phase B
+        // Инерционная стабилизация подвеса камеры космического челнока
+        hyperNoiseAmp: 0.12,   // амплитуда микро-волн стабилизации
+        hyperNoiseDur: 2.5,    // плавное успокоение подвеса
+        pushInFrac: 0.025,     // инерционный наезд
+        pushInWindow: 1.4      // окно наезда в конце фазы
     },
     // Фаза B «Cinematic orbit» (22.5 сек, многоракурсный кинематографический облёт Земли)
     orbit: {
-        yawStart: -14.0,
+        yawStart: -16.0,
         yawEnd: 0.0,
         pitchFrom: -42.0,
-        pitchTo: -3.0,
-        zoomFrom: 1.90,
-        zoomTo: 1.12,
+        pitchTo: -2.5,
+        zoomFrom: 1.88,
+        zoomTo: 1.10,
         pitchDriftAmp: 0.8,    // остаточная невесомая плавучесть камеры, градусы
         // 4 ключевых ракурса облёта (без изломов скорости, C1-эрмитова сплайн-склейка):
-        // 1. Терминатор и ночные огни городов (u: 0.00 -> 0.25, t: 0..5.6с)
-        // 2. Панорама горизонта, лимб, МКС и спутники (u: 0.25 -> 0.55, t: 5.6..12.4с)
-        // 3. Кинематографический наклон с выходом Луны в кадр (u: 0.55 -> 0.80, t: 12.4..18.0с)
-        // 4. Стабилизация и подъём к орбите карточек (u: 0.80 -> 1.00, t: 18.0..22.5с)
+        // 1. Терминатор и ночные огни городов (u: 0.00 -> 0.25)
+        // 2. Панорама горизонта, лимб, МКС и спутники (u: 0.25 -> 0.55)
+        // 3. Кинематографический наклон с выходом Луны в кадр (u: 0.55 -> 0.80)
+        // 4. Стабилизация и подъём к орбите карточек (u: 0.80 -> 1.00)
         waypoints: [
-            { u: 0.00, yaw: -14.0, pitch: -42.0, zoom: 1.90, roll: 0.0 },
-            { u: 0.25, yaw: -22.5, pitch: -38.0, zoom: 1.80, roll: 1.4 },
-            { u: 0.55, yaw:  16.0, pitch: -28.5, zoom: 1.58, roll: -1.2 },
-            { u: 0.80, yaw: -25.0, pitch: -14.0, zoom: 1.36, roll: -0.3 },
-            { u: 1.00, yaw:   0.0, pitch:  -3.0, zoom: 1.12, roll: 0.0 }
+            { u: 0.00, yaw: -16.0, pitch: -42.0, zoom: 1.88, roll: 1.2 },
+            { u: 0.25, yaw: -26.0, pitch: -36.5, zoom: 1.76, roll: 2.2 },
+            { u: 0.55, yaw:  18.0, pitch: -25.0, zoom: 1.54, roll: -1.6 },
+            { u: 0.80, yaw: -18.0, pitch: -13.0, zoom: 1.32, roll: -0.4 },
+            { u: 1.00, yaw:   0.0, pitch:  -2.5, zoom: 1.10, roll: 0.0 }
         ],
-        // Согласованные касательные Hermite-сплайна (нулевые на входе и выходе, C1-склейка)
+        // Согласованные касательные Hermite-сплайна (C1-склейка)
         tangents: [
-            { yaw: 0, pitch: 0, zoom: 0, roll: 0 },
-            { yaw: 54.545, pitch: 24.545, zoom: -0.582, roll: -2.182 },
-            { yaw: 0, pitch: 43.636, zoom: -0.800, roll: -3.091 },
-            { yaw: 0, pitch: 56.667, zoom: -1.022, roll: 2.667 },
-            { yaw: 0, pitch: 0, zoom: 0, roll: 0 }
+            { yaw: -20.0, pitch: 11.0, zoom: -0.24, roll: 2.0 },
+            { yaw: 61.818, pitch: 30.909, zoom: -0.618, roll: -5.091 },
+            { yaw: 14.545, pitch: 42.727, zoom: -0.800, roll: -4.727 },
+            { yaw: -40.0, pitch: 50.0, zoom: -0.978, roll: 3.556 },
+            { yaw: 0.0, pitch: 0.0, zoom: 0.0, roll: 0.0 }
         ]
     },
     // Фаза C «Transition to cards»: плавный отвод взгляда к эталонной позе
@@ -152,7 +152,7 @@ export const CINEMATIC_CONFIG = {
 // ВАЖНО: версия запроса ДОЛЖНА совпадать с импортом в space3d.js — иначе браузер
 // загрузит cosmonaut_ring.js дважды (два синглтона), и show()/update() начнут
 // работать с разными DOM-узлами карточек (карточки «разлетаются» после reopen).
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.9.0';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.9.1';
 
 /* Заголовок прилёта — ровно три строки с гарантированной печатью буквы «Ю» */
 const TITLE_LINES = [
@@ -322,31 +322,27 @@ class SpaceCinematicController {
             const k = clamp(t / tA, 0, 1);
             pitch = lerp(A.pitchFrom, A.pitchTo, easeOutQuart(k));
             zoom = lerp(A.zoomFrom, A.zoomTo, expApproach(k, A.zoomDecayRate));
-            yaw = lerp(A.yawFrom, A.yawTo, easeOutQuart(k));
-            // Крен: синусоида с мягким нарастанием и гашением к краям фазы
-            const rollEnv = smooth01(k * 4) * smooth01((1 - k) * 4);
-            roll = A.rollAmp * Math.sin((t / A.rollPeriod) * Math.PI * 2) * rollEnv;
+            yaw = lerp(A.yawFrom, A.yawTo, easeInOutSine(k));
+            // Плавный кинематографический крен: мягкий заход в вираж и сведение к rollEnd
+            const rollWave = Math.sin(k * Math.PI) * A.rollAmp;
+            roll = lerp(0, A.rollEnd, smooth01(k)) + rollWave;
 
-            // «Выход из гиперпространства»: микровибрация камеры (0.15°),
-            // затухающая за первые hyperNoiseDur секунды (гладкая огибающая —
-            // без щелчка на старте и без утечки в фазу B)
+            // Мягкая инерционная стабилизация подвеса камеры космического челнока
             if (t < A.hyperNoiseDur) {
                 const nEnv = 1 - smooth01(t / A.hyperNoiseDur);
                 yaw += A.hyperNoiseAmp * nEnv
-                    * (Math.sin(t * 43.7) * 0.62 + Math.sin(t * 29.3 + 1.7) * 0.38);
+                    * (Math.sin(t * 3.1) * 0.7 + Math.sin(t * 1.7 + 0.9) * 0.3);
                 pitch += A.hyperNoiseAmp * nEnv
-                    * (Math.sin(t * 37.1 + 0.6) * 0.62 + Math.sin(t * 51.9 + 2.4) * 0.38);
-                roll += A.hyperNoiseAmp * 0.5 * nEnv * Math.sin(t * 31.4 + 1.1);
+                    * (Math.sin(t * 2.5 + 0.6) * 0.7 + Math.sin(t * 3.9 + 1.4) * 0.3);
+                roll += A.hyperNoiseAmp * 0.6 * nEnv * Math.sin(t * 2.1 + 1.1);
             }
 
             // Инерционный наезд: в последние pushInWindow секунды — лёгкий
-            // push-in +3% с возвратом (атака easeOutBack, спад smooth01,
-            // мягкий onset — производная импульса на краях окна нулевая,
-            // стык с фазой B без излома скорости)
+            // push-in с возвратом
             const winStart = tA - A.pushInWindow;
             if (t >= winStart) {
                 const u = clamp((t - winStart) / A.pushInWindow, 0, 1);
-                const attack = easeOutBack(clamp(u / 0.58, 0, 1), 1.0);
+                const attack = easeOutBack(clamp(u / 0.58, 0, 1), 0.8);
                 const release = 1 - smooth01(clamp((u - 0.58) / 0.42, 0, 1));
                 const onset = smooth01(clamp(u / 0.14, 0, 1));
                 zoom *= 1 + A.pushInFrac * (u < 0.58 ? attack : release) * onset;
@@ -447,10 +443,6 @@ class SpaceCinematicController {
             el.style.zIndex = String(CINEMATIC_CONFIG.zIndex);
             el.setAttribute('aria-live', 'polite');
             el.innerHTML = `
-                <div class="cine-tele-badge" aria-hidden="true">
-                    <span class="cine-tele-pulse"></span>
-                    <span class="cine-tele-txt">// ГАЛАКТИКА МЛЕЧНЫЙ ПУТЬ // ПЛАНЕТА ЗЕМЛЯ // ОРБИТАЛЬНЫЙ СЕКТОР //</span>
-                </div>
                 <div class="cine-lines-wrap">
                     ${TITLE_LINES.map((_, i) => `<span class="cine-line" data-line="${i}"></span>`).join('')}
                 </div>
