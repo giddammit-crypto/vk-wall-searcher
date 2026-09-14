@@ -4,6 +4,29 @@
    Палитра: deep space / aurora cyan #38bdf8 · sky #38bdf8 · violet #8a6cff
    ========================================================================== */
 
+@font-face {
+    font-family: 'Shoptronic SP';
+    src: url('../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype'),
+         url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Shoptronic';
+    src: url('../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype'),
+         url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Холст варпа — поверх 3D-пространства: прибытие идёт кроссфейдом,
    а не «жёсткой склейкой» (AAA-практика непрерывной сцены). */
 .space-warp-canvas {
@@ -152,25 +175,27 @@
 
 .patch-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
 .patch-title {
-    font-family: 'Orbitron', 'Montserrat', sans-serif;
+    font-family: 'Shoptronic SP', 'Shoptronic', 'Orbitron', 'Montserrat', sans-serif;
     font-size: 15px;
     font-weight: 800;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.16em;
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
     background: none;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.85);
 }
 .patch-sub {
+    font-family: 'Shoptronic SP', 'Shoptronic', sans-serif;
     font-size: 8.5px;
     font-weight: 700;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;
     color: #7ee8ff;
 }
 .patch-ver {
+    font-family: 'Shoptronic SP', 'Shoptronic', sans-serif;
     font-size: 8px;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.10em;
     color: rgba(186, 230, 253, 0.62);
 }
 
@@ -241,11 +266,11 @@
     display: flex;
     justify-content: center;
     gap: clamp(6px, 1.6vw, 20px);
-    font-family: 'Orbitron', 'Montserrat', sans-serif;
+    font-family: 'Shoptronic SP', 'Shoptronic', 'Orbitron', 'Montserrat', sans-serif;
     font-weight: 900;
     font-size: clamp(52px, 11vw, 132px);
     line-height: 1;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
 }
 
 .title-letters span,
@@ -277,10 +302,10 @@
 
 .title-sub {
     margin-top: 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(11px, 1.35vw, 15px);
+    font-family: 'Shoptronic SP', 'Shoptronic', 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 1.5vw, 17px);
     font-weight: 800;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.16em;
     color: #ffffff;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 20px rgba(0, 0, 0, 0.95);
 }
@@ -309,18 +334,20 @@
 }
 
 .title-dedication {
-    font-size: clamp(12px, 1.6vw, 17px);
+    font-family: 'Shoptronic SP', 'Shoptronic', sans-serif;
+    font-size: clamp(12px, 1.5vw, 16px);
     font-weight: 800;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
     color: #fef08a;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.98), 0 0 22px rgba(253, 224, 71, 0.45);
 }
 
 .title-org {
     margin-top: 8px;
+    font-family: 'Shoptronic SP', 'Shoptronic', sans-serif;
     font-size: clamp(10px, 1.2vw, 14px);
     font-weight: 700;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     color: #e0f2fe;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.98), 0 0 16px rgba(0, 0, 0, 0.95);
 }

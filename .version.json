@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.8.6",
+    "version": "4.8.7",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-14T16:15:00+03:00",
-    "release_name": "AURORA 4.8.6 — устранение обрыва ответов ИИ-аналитика (увеличение лимита max_tokens до 8192, полный вывод таблиц и отчётов)"
+    "commit_date": "2026-09-14T16:50:00+03:00",
+    "release_name": "AURORA 4.8.7 — шрифт Shoptronic SP на заставке 3D пространства (Галактика Млечный Путь, Планета Земля)"
 }

@@ -99,12 +99,12 @@ import {
     renderRadarSection
 } from './radar.js?v=4.8.5';
 
-import { Space3D } from './space3d.js?v=4.8.5';
-import { SpaceWarp } from './space_warp.js?v=4.8.5';
-import { SpaceAudio } from './space_audio.js?v=4.8.5';
+import { Space3D } from './space3d.js?v=4.8.7';
+import { SpaceWarp } from './space_warp.js?v=4.8.7';
+import { SpaceAudio } from './space_audio.js?v=4.8.7';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.8.5';
+export const APP_VERSION = '4.8.7';
 
 function initApp() {
 

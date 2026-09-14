@@ -1,8 +1,8 @@
 /**
  * src/space_cinematic.css — Кинематографическая сцена прилёта (после варпа)
  * ============================================================================
- * • Титр прилёта: три строки, печать по буквам, футуристичный шрифт Unbounded 700
- *   (кириллица), letter-spacing 0.14em, teal-glow, курсор «▍».
+ * • Титр прилёта: три строки, печать по буквам, футуристичный шрифт Shoptronic SP
+ *   (кириллица, ofont.ru/view/6037), letter-spacing 0.12em, teal-glow, курсор «▍».
  * • Финал титра: hold 3с после печати → рассыпание на светящиеся частицы
  *   (canvas-оверлей .space-cine-particles, создаётся лениво из JS и удаляет
  *   сам себя; blend screen поверх космоса). Fallback (reduced-motion / сбой):
@@ -13,6 +13,29 @@
  *   здесь только базовые transition для мягкого снятия фильтра).
  * ============================================================================
  */
+
+@font-face {
+    font-family: 'Shoptronic SP';
+    src: url('../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype'),
+         url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Shoptronic';
+    src: url('../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype'),
+         url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* ВАЖНО: НИКАКИХ grouping-свойств (filter, will-change: filter, opacity < 1,
    overflow: hidden) на .space-3d-world и его предках!
@@ -44,7 +67,7 @@ body.space-cinematic-active .space-3d-hint {
     gap: 0.55em;
     pointer-events: none;
     z-index: 100050; /* выше #space-3d-viewport (99999); HUD внутри вьюпорта остаётся поверх */
-    font-family: 'Unbounded', 'Tektur', 'Exo 2', 'Montserrat', sans-serif;
+    font-family: 'Shoptronic SP', 'Shoptronic', 'Unbounded', 'Tektur', 'Exo 2', 'Montserrat', sans-serif;
     font-weight: 700;
     font-size: clamp(20px, 2.9vw, 38px);
     letter-spacing: 0.14em;
@@ -68,10 +91,10 @@ body.space-cinematic-active .space-3d-hint {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: 'Tektur', 'JetBrains Mono', monospace;
+    font-family: 'Shoptronic SP', 'Shoptronic', 'Tektur', 'JetBrains Mono', monospace;
     font-size: clamp(10px, 1.0vw, 12px);
     font-weight: 600;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.16em;
     color: #67e8f9;
     background: rgba(3, 10, 24, 0.70);
     border: 1px solid rgba(103, 232, 249, 0.35);

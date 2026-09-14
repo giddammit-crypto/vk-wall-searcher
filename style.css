@@ -2,7 +2,27 @@
    Статистика групп ВК (Разработка: Амброзиев О.А.)
    Дизайн-система: AURORA — Glassmorphism (2020s Digital Era)
    Версия: alpha | Density: 5/10 | Variance: 6/10 | Motion: 8/10 Animated
+/* ==========================================================================
+   Космический акцидентный шрифт Shoptronic SP (ofont.ru/view/6037)
    ========================================================================== */
+@font-face {
+    font-family: 'Shoptronic SP';
+    src: url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Shoptronic';
+    src: url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+         url('assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+         url('assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* ==========================================================================
    Motion Keyframes & Aurora Waves

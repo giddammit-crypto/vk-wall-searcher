@@ -15,27 +15,27 @@
 const PHASE_TEXT = {
     ignition: {
         label: 'ЗАПУСК ГИПЕРПРИВОДА',
-        log: 'Гиперпривод заряжается. Все системы орбитального комплекса — в норме.',
+        log: 'Гиперпривод заряжается. Вектор: Галактика Млечный Путь, Планета Земля.',
         short: 'IGNITION'
     },
     spool: {
-        label: 'РАЗГОН • ВЕКТОР: НИЗКАЯ ОРБИТА 418 КМ',
-        log: 'Разгон до крейсерской скорости. Курс — низкая околоземная орбита.',
+        label: 'РАЗГОН • ГАЛАКТИКА МЛЕЧНЫЙ ПУТЬ, ПЛАНЕТА ЗЕМЛЯ',
+        log: 'Разгон до крейсерской скорости. Курс — Галактика Млечный Путь, Планета Земля.',
         short: 'SPOOL-UP'
     },
     cruise: {
         label: 'КРЕЙСЕРСКИЙ ПОЛЁТ СВЕРХСВЕТОВОЙ СКОРОСТИ',
-        log: 'Эксперимент AURORA: 18 библиотек Владимира в едином 3D-пространстве.',
+        log: 'Галактика Млечный Путь. Планета Земля. 18 библиотек Владимира в едином 3D-пространстве.',
         short: 'CRUISE'
     },
     decel: {
-        label: 'ТОРМОЖЕНИЕ • СТЫКОВКА С ОРБИТАЛЬНЫМ КОМПЛЕКСОМ',
-        log: 'Торможение. Прибываем на орбитальную станцию. Приготовьтесь к осмотру.',
+        label: 'ТОРМОЖЕНИЕ • ПЛАНЕТА ЗЕМЛЯ, СТЫКОВКА',
+        log: 'Торможение. Прибываем на орбиту планеты Земля. Приготовьтесь к осмотру.',
         short: 'DECEL'
     },
     arrived: {
         label: 'СТЫКОВКА ЗАВЕРШЕНА • ДОБРО ПОЖАЛОВАТЬ',
-        log: 'Стыковка завершена. Добро пожаловать на борт космо-пространства AURORA.',
+        log: 'Стыковка завершена. Добро пожаловать на орбиту планеты Земля в космо-пространство AURORA.',
         short: 'DOCKED'
     }
 };
@@ -95,8 +95,8 @@ export class WarpHud {
                 </div>
                 <div class="patch-text">
                     <span class="patch-title">AURORA</span>
-                    <span class="patch-sub">HYPERDRIVE • ORBITAL EXPRESS</span>
-                    <span class="patch-ver">ЭКСПЕРИМЕНТ КО ДНЮ КОСМОНАВТИКИ</span>
+                    <span class="patch-sub">ГАЛАКТИКА МЛЕЧНЫЙ ПУТЬ • ПЛАНЕТА ЗЕМЛЯ</span>
+                    <span class="patch-ver">ОРБИТАЛЬНЫЙ СЕКТОР • ВЛАДИМИР</span>
                 </div>
             </div>
 
@@ -117,7 +117,7 @@ export class WarpHud {
                 </div>
                 <div class="tele-row">
                     <span class="tele-key">КУРС</span>
-                    <span class="tele-num" data-tele="heading">LEO • 418 КМ</span>
+                    <span class="tele-num" data-tele="heading">МЛЕЧНЫЙ ПУТЬ • ЗЕМЛЯ</span>
                 </div>
                 <div class="tele-row tele-row-sys">
                     <span class="tele-key">СИСТЕМЫ</span>
@@ -127,10 +127,10 @@ export class WarpHud {
 
             <div class="warp-title">
                 <div class="title-letters">${LETTERS.map(l => `<span class="white-letter" style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; background: none !important; text-shadow: 0 0 20px #ffffff, 0 0 45px rgba(255, 255, 255, 0.9), 0 0 70px rgba(56, 189, 248, 0.6);">${l}</span>`).join('')}</div>
-                <div class="title-sub">3D ИССЛЕДОВАТЕЛЬСКИЙ ЭКСПЕРИМЕНТ • КОСМО-ПРОСТРАНСТВО 360°</div>
+                <div class="title-sub">ГАЛАКТИКА МЛЕЧНЫЙ ПУТЬ • ПЛАНЕТА ЗЕМЛЯ</div>
                 <div class="title-divider"><i></i></div>
-                <div class="title-dedication">ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ И ДНЮ КОСМОСА</div>
-                <div class="title-org">ОРБИТАЛЬНЫЙ КОМПЛЕКС • МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</div>
+                <div class="title-dedication">ОРБИТАЛЬНЫЙ КОМПЛЕКС • КОСМО-ПРОСТРАНСТВО 360°</div>
+                <div class="title-org">ПОСВЯЩАЕТСЯ ДНЮ КОСМОНАВТИКИ • МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</div>
             </div>
 
             <div class="warp-briefing">

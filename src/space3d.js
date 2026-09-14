@@ -34,7 +34,7 @@ import { openPostModal } from './render.js?v=4.8.5';
 import { fetchHistory } from './subscribers.js?v=4.8.5';
 import { buildBranchAdvice } from './advice.js?v=4.8.5';
 import { Space3DGL } from './space3d_gl.js?v=4.8.5';
-import { SpaceCinematic } from './space_cinematic.js?v=4.8.5';
+import { SpaceCinematic } from './space_cinematic.js?v=4.8.7';
 
 export class Space3DEngine {
     constructor() {
@@ -1296,16 +1296,14 @@ export class Space3DEngine {
                 console.warn('[Space3D] Прогрев GPU-ядра не удался:', e);
             }
         }
-        // 2. Шрифт титра (Unbounded используется ТОЛЬКО прилётом — иначе его
-        // woff2 качается в момент монтирования титра: первый кадр печатается
-        // fallback-шрифтом и перерисовывается). Запрашиваем фактические
-        // начертания (600/800; CSS 700 мэпится на ближайшее) + кириллицу.
+        // 2. Шрифт титра и заставки: прогреваем Shoptronic SP (ofont.ru/view/6037)
+        // и Unbounded, чтобы первый кадр не мерцал системным шрифтом.
         try {
             if (document.fonts && document.fonts.load) {
-                const sample = 'Галактика Млечный Путь. Планета Земля. 2026 ▍';
+                const sample = 'Галактика Млечный Путь. Планета Земля. 2026 ▍ AURORA';
+                document.fonts.load('32px "Shoptronic SP"', sample);
+                document.fonts.load('700 32px "Shoptronic SP"', sample);
                 document.fonts.load('700 32px Unbounded', sample);
-                document.fonts.load('800 32px Unbounded', sample);
-                document.fonts.load('600 32px Unbounded', sample);
             }
         } catch (e) { /* noop */ }
     }

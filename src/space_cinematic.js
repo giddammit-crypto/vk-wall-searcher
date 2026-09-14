@@ -408,7 +408,7 @@ class SpaceCinematicController {
             el.innerHTML = `
                 <div class="cine-tele-badge" aria-hidden="true">
                     <span class="cine-tele-pulse"></span>
-                    <span class="cine-tele-txt">// ОРБИТАЛЬНЫЙ СЕКТОР // СОЛНЕЧНАЯ СИСТЕМА // SOL-3 //</span>
+                    <span class="cine-tele-txt">// ГАЛАКТИКА МЛЕЧНЫЙ ПУТЬ // ПЛАНЕТА ЗЕМЛЯ // ОРБИТАЛЬНЫЙ СЕКТОР //</span>
                 </div>
                 <div class="cine-lines-wrap">
                     ${TITLE_LINES.map((_, i) => `<span class="cine-line" data-line="${i}"></span>`).join('')}
