@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.13.0';
+} from './api.js?v=4.14.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.13.0';
+} from './advice.js?v=4.14.0';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.13.0';
+} from './ai.js?v=4.14.0';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.13.0';
+} from './subscribers.js?v=4.14.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.13.0';
+} from './updater.js?v=4.14.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.13.0';
+} from './branches.js?v=4.14.0';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.13.0';
+} from './analytics.js?v=4.14.0';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.13.0';
+} from './render.js?v=4.14.0';
 
 import {
     exportToCsv,
@@ -84,28 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.13.0';
+} from './export.js?v=4.14.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.13.0';
-import { CosmicUniverse } from './cosmic.js?v=4.13.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.14.0';
+import { CosmicUniverse } from './cosmic.js?v=4.14.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.13.0';
+} from './promo.js?v=4.14.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.13.0';
+} from './radar.js?v=4.14.0';
 
-import { Space3D } from './space3d.js?v=4.13.0';
-import { SpaceWarp } from './space_warp.js?v=4.13.0';
-import { SpaceAudio } from './space_audio.js?v=4.13.0';
-import { Mascot } from './mascot.js?v=4.13.0';
+import { Space3D } from './space3d.js?v=4.14.0';
+import { SpaceWarp } from './space_warp.js?v=4.14.0';
+import { SpaceAudio } from './space_audio.js?v=4.14.0';
+import { Mascot } from './mascot.js?v=4.14.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.13.0';
+export const APP_VERSION = '4.14.0';
 
 function initApp() {
 
@@ -1567,6 +1567,14 @@ function initApp() {
                     topByEr,
                     rankedBranches,
                     totalViews: kpis.totalViews,
+                    totalLikes: kpis.totalLikes,
+                    totalReposts: kpis.totalReposts,
+                    totalComments: kpis.totalComments,
+                    avgEr: kpis.avgEr,
+                    kpis,
+                    rawStats: stats,
+                    byBranch: stats.byBranch,
+                    matchedPosts: state.matchedPosts,
                     query: elements.keywordInput ? elements.keywordInput.value.trim() : ''
                 });
             } catch (e) {
@@ -1830,6 +1838,10 @@ function initApp() {
         elements.cardsSortSelect.addEventListener('change', () => {
             state.sortBy = elements.cardsSortSelect.value;
             applySortAndFilterFeed();
+            try {
+                const sortLabel = elements.cardsSortSelect.options[elements.cardsSortSelect.selectedIndex]?.text || state.sortBy;
+                Mascot.onSortChanged(sortLabel);
+            } catch (e) {}
         });
     }
 
@@ -1914,10 +1926,12 @@ function initApp() {
                 if (state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter)) {
                     state.activeBranchFilter = null;
                     showToast('Фильтр по филиалу сброшен', 'info');
+                    try { Mascot.onBranchReset(); } catch (e) {}
                 } else {
                     state.activeBranchFilter = t.id || t.rawId || t.canonicalName;
                     state.activeHashtagFilter = null;
                     showToast(`Показаны записи: ${t.canonicalName || t.name}`, 'filter_alt');
+                    try { Mascot.onBranchFiltered(t.canonicalName || t.name, t); } catch (e) {}
                     // Switch to visual feed tab when filtering to a branch
                     const visualTabBtn = document.querySelector('.tab-btn[data-tab="visual-tab"]');
                     if (visualTabBtn) {
@@ -2533,6 +2547,7 @@ function initApp() {
                     pill.addEventListener('click', () => {
                         state.activeBranchFilter = null;
                         state.activeHashtagFilter = item.tag;
+                        try { Mascot.onHashtagFiltered(item.tag, item.count); } catch (e) {}
                         if (elements.tabBtns) {
                             elements.tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === 'visual-tab'));
                         }
@@ -2572,6 +2587,7 @@ function initApp() {
                     tr.querySelector('button').addEventListener('click', () => {
                         state.activeBranchFilter = null;
                         state.activeHashtagFilter = item.tag;
+                        try { Mascot.onHashtagFiltered(item.tag, item.count); } catch (e) {}
                         if (elements.tabBtns) {
                             elements.tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === 'visual-tab'));
                         }
@@ -2775,6 +2791,13 @@ function initApp() {
                 if (targetContent) {
                     targetContent.classList.add('active');
                     targetContent.classList.add('active-content');
+                }
+
+                // Уведомляем Космо о смене вкладки, чтобы он комментировал голосом и обновлял чипы ИИ
+                try {
+                    Mascot.onTabSwitched(targetTabId, state);
+                } catch (e) {
+                    console.warn('[Mascot] onTabSwitched error:', e);
                 }
 
                 // При переключении на вкладку «Рейтинг активности» перезапускаем плавную анимацию графиков
