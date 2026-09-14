@@ -1401,3 +1401,186 @@
     100% { transform: translateX(-50%) translateY(-8px) rotate(6deg) scale(1.15); }
 }
 
+
+/* ==========================================================================
+   COSMO v4.12.0 — DRAG & DROP, 30S PATROL, MARKDOWN & AUDIO MOTION
+   ========================================================================== */
+
+/* 1. Повышенный z-index, чтобы Космо был виден во время модального сканирования */
+.aurora-mascot-container {
+    z-index: 1100 !important;
+}
+
+/* 2. Drag & Drop механика перетаскивания */
+.aurora-mascot-container.is-dragging {
+    transition: none !important;
+    user-select: none !important;
+    z-index: 1200 !important;
+}
+
+.aurora-mascot-container.is-dragging .mascot-floater {
+    animation: none !important;
+}
+
+.mascot-body-wrapper {
+    cursor: grab;
+}
+
+.mascot-body-wrapper.is-dragged {
+    cursor: grabbing !important;
+    animation: cosmoDangleWiggle 0.45s ease-in-out infinite alternate !important;
+    filter: drop-shadow(0 15px 25px rgba(0, 240, 255, 0.45));
+}
+
+@keyframes cosmoDangleWiggle {
+    0%   { transform: scale(1.08, 0.92) rotate(-8deg); }
+    100% { transform: scale(0.92, 1.08) rotate(8deg); }
+}
+
+/* 3. Физический "Плюх" на пол (Landing squash & stretch) */
+.mascot-body-wrapper.is-plop-landing {
+    animation: cosmoPlopLanding 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards !important;
+}
+
+@keyframes cosmoPlopLanding {
+    0% {
+        transform: translateY(-26px) scale(0.85, 1.2);
+    }
+    30% {
+        transform: translateY(6px) scale(1.45, 0.62); /* Глубокое сплющивание об пол */
+    }
+    55% {
+        transform: translateY(-14px) scale(0.92, 1.12); /* Пружинный отскок */
+    }
+    75% {
+        transform: translateY(2px) scale(1.08, 0.94);
+    }
+    90% {
+        transform: translateY(-3px) scale(0.98, 1.02);
+    }
+    100% {
+        transform: translateY(0) scale(1, 1);
+    }
+}
+
+/* 4. Непрерывное 30-секундное патрулирование по всей горизонтали */
+.mascot-body-wrapper.is-walking-right {
+    transform: scaleX(1);
+    transition: transform 0.35s ease;
+}
+
+.mascot-body-wrapper.is-walking-left {
+    transform: scaleX(-1);
+    transition: transform 0.35s ease;
+}
+
+/* При развороте влево бейдж настроения и шапка облачка не должны быть зеркальными */
+.mascot-body-wrapper.is-walking-left .mascot-mood-badge,
+.mascot-body-wrapper.is-walking-left .mascot-props-layer {
+    transform: scaleX(-1);
+}
+
+.mascot-floater.patrol-walking {
+    animation: cosmoPatrolStride 0.65s ease-in-out infinite alternate !important;
+}
+
+@keyframes cosmoPatrolStride {
+    0% {
+        transform: translateY(0px) rotate(-4deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(0deg);
+    }
+    100% {
+        transform: translateY(0px) rotate(4deg);
+    }
+}
+
+/* 5. Поддержка Markdown в облачке реплик (##, ###, **, *, `) */
+.mascot-md-h2 {
+    font-size: 0.94rem;
+    font-weight: 800;
+    color: var(--mascot-glow-accent, #00f0ff);
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mascot-md-h3 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 4px 0 4px 0;
+}
+
+.mascot-md-code {
+    font-family: var(--font-mono, monospace);
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.82em;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+[data-theme="light"] .mascot-md-h2 {
+    color: #0284c7;
+}
+
+[data-theme="light"] .mascot-md-h3 {
+    color: #0f172a;
+}
+
+[data-theme="light"] .mascot-md-code {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+    border-color: rgba(2, 132, 199, 0.3);
+}
+
+/* 6. Кнопка звука Космо в шапке облачка */
+.mascot-sound-toggle {
+    background: transparent;
+    border: none;
+    color: rgba(241, 245, 249, 0.6);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-left: auto;
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.mascot-sound-toggle:hover {
+    color: #00f0ff;
+    background: rgba(0, 240, 255, 0.15);
+}
+
+.mascot-sound-toggle.is-muted {
+    color: #ef4444;
+    opacity: 0.7;
+}
+
+/* 7. Плавный патруль без задержек CSS-переходов */
+.aurora-mascot-container.is-patrolling {
+    transition: none !important;
+}
+
+/* 8. Адаптация облачка у правого края экрана */
+.aurora-mascot-container.is-near-right-edge .mascot-bubble {
+    transform-origin: bottom right;
+    margin-left: -190px;
+}
+
+.aurora-mascot-container.is-near-right-edge .mascot-bubble::after {
+    left: auto;
+    right: 36px;
+}
+
+
+
