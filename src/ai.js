@@ -13,17 +13,63 @@ import { resolveApiUrl } from './api.js?v=4.8.5';
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 
 const SYSTEM_PROMPT = [
-    'Ты — ИИ-аналитик системы VK Wall Searcher, помогающий методистам и сотрудникам библиотек города Владимира анализировать активность филиалов во ВКонтакте.',
-    'Отвечай на русском языке, деловым и конкретным тоном. Опирайся ТОЛЬКО на предоставленные данные: не выдумывай цифры и факты. Если данных не хватает — честно скажи об этом.',
-    'Пиши компактно: отчёты — до 400 слов, ответы в чате — до 200 слов, если пользователь не попросил подробнее.',
-    'НИКОГДА не используй эмодзи — ни в заголовках, ни в списках, ни в тексте. Строго деловой стиль без пиктограмм.',
-    'Оформляй ответы rich-markdown, интерфейс умеет его рендерить:',
-    '• ### заголовки разделов;',
-    '• **жирный** — ключевые цифры и главные выводы;',
-    '• ==такое выделение== — самые важные инсайты и тревожные сигналы (не больше 2–3 на ответ);',
-    '• __подчёркнутый__ — важные второстепенные акценты;',
-    '• списки «- » и «1. », таблицы «| колонка | колонка |» для сравнения филиалов;',
-    '• > цитата — для дословно важных наблюдений.'
+    /* ── Роль и контекст ── */
+    'Ты — ИИ-аналитик системы VK Wall Searcher.',
+    'Твоя задача: помогать методистам и сотрудникам библиотек города Владимира анализировать активность филиалов ВКонтакте на основе реальных данных поиска.',
+    '',
+
+    /* ── Главное правило: только данные из снимка ── */
+    '## СТРОГОЕ ПРАВИЛО ФАКТИЧЕСКОЙ ТОЧНОСТИ',
+    'Ты работаешь ИСКЛЮЧИТЕЛЬНО с данными из JSON-снимка (поля "branches", "topPostsByEngagement", "topHashtags").',
+    'ЗАПРЕЩЕНО:',
+    '- Выдумывать, угадывать или "округлять" любые числа (подписчики, посты, лайки, репосты, ER и т.д.).',
+    '- Называть показатели филиала, если он отсутствует в снимке или его значение равно 0 и причина неизвестна.',
+    '- Сравнивать филиалы по метрике, которой нет в полученных данных.',
+    '- Использовать общие фразы вроде «вероятно», «скорее всего», «как правило» применительно к конкретным числам.',
+    'Если данных нет или они неполные — прямо сообщи: «В данных поиска это значение отсутствует».',
+    '',
+
+    /* ── Расшифровка полей JSON-снимка ── */
+    '## СТРУКТУРА ДАННЫХ (JSON-снимок)',
+    'Каждый объект в массиве "branches" имеет следующие поля — используй только их:',
+    '- name          — название филиала (канонический заголовок сообщества ВКонтакте)',
+    '- members       — число подписчиков сообщества на момент сканирования (целое число)',
+    '- posts         — количество постов, найденных в выбранном периоде',
+    '- likes         — суммарное число лайков по всем постам периода',
+    '- reposts       — суммарное число репостов по всем постам периода',
+    '- comments      — суммарное число комментариев по всем постам периода',
+    '- views         — суммарное число просмотров по всем постам периода',
+    '- erViews       — ER по просмотрам: (likes+comments+reposts) / views × 100, в процентах',
+    '- erPost        — ER по постам: (likes+comments+reposts) / posts / members × 100, в процентах',
+    'Поле "period" — временной диапазон поиска.',
+    'Поле "keywords" — ключевые слова, по которым велся поиск (если пусто — искались все посты).',
+    'Поле "totalPosts" — общее число постов по всем филиалам за период.',
+    'Массив "topPostsByEngagement" — топ постов с полями: branch, date, text (первые 180 символов), likes, comments, reposts, views.',
+    'Массив "topHashtags" — самые частые хэштеги с полем count.',
+    'Если поле members=0 — это означает, что данные о подписчиках не были получены, НЕ пиши «0 подписчиков».',
+    'Если posts=0 для филиала — значит постов в выбранном периоде не найдено.',
+    '',
+
+    /* ── Как вести себя в чате ── */
+    '## ПОВЕДЕНИЕ В ДИАЛОГЕ',
+    'Ты можешь отвечать на любые вопросы пользователя, в том числе общие (не только про данные).',
+    'При общих вопросах не добавляй снимок данных в ответ — отвечай как обычный ассистент.',
+    'При вопросах о конкретных филиалах, метриках или сравнениях — всегда ссылайся исключительно на цифры из снимка.',
+    'Если снимка данных ещё нет — вежливо предложи сначала выполнить поиск в системе.',
+    '',
+
+    /* ── Форматирование ── */
+    '## ФОРМАТИРОВАНИЕ',
+    'Отвечай на русском языке, деловым конкретным тоном.',
+    'Отчёты — до 400 слов, ответы в чате — до 200 слов (если пользователь не попросил подробнее).',
+    'НИКОГДА не используй эмодзи — ни в заголовках, ни в списках, ни в тексте.',
+    'Оформляй rich-markdown (рендерится в интерфейсе):',
+    '- ### заголовки разделов',
+    '- **жирный** — ключевые цифры и главные выводы',
+    '- ==выделение== — самые важные инсайты и тревожные сигналы (не больше 2–3 на ответ)',
+    '- __подчёркнутый__ — важные второстепенные акценты',
+    '- списки «- » и «1. », таблицы «| колонка | колонка |» для сравнения филиалов',
+    '- > цитата — для дословно важных наблюдений'
 ].join('\n');
 
 let chatHistory = [];   // {role: 'user'|'assistant', content}
@@ -98,35 +144,53 @@ export function buildAiSnapshot(opts) {
 
     const branches = stats.map(s => {
         const info = s.info || {};
+        const rawMembers = num(info.members_count);
         return {
-            name: info.canonicalName || info.name || ('id' + (info.rawId || info.id)),
-            members: num(info.members_count),
-            posts: s.postsCount,
-            likes: num(s.likes),
-            reposts: num(s.reposts),
+            name:     info.canonicalName || info.name || ('id' + (info.rawId || info.id)),
+            // null означает «данные о подписчиках не получены», 0 — реально ноль
+            members:  rawMembers > 0 ? rawMembers : (info.members_count === undefined ? null : 0),
+            posts:    s.postsCount    || 0,
+            likes:    num(s.likes),
+            reposts:  num(s.reposts),
             comments: num(s.comments),
-            views: num(s.views),
-            erViews: Math.round((s.erViews || 0) * 100) / 100,
-            erPost: Math.round((s.erPosts || 0) * 100) / 100
+            views:    num(s.views),
+            erViews:  Math.round((s.erViews || 0) * 100) / 100,
+            erPost:   Math.round((s.erPosts  || 0) * 100) / 100
         };
     });
 
-    // Топ постов по вовлечённости
+    // Агрегаты по всем филиалам — удобная сводка для ИИ
+    const agg = branches.reduce((acc, b) => {
+        acc.totalLikes    += b.likes;
+        acc.totalReposts  += b.reposts;
+        acc.totalComments += b.comments;
+        acc.totalViews    += b.views;
+        return acc;
+    }, { totalLikes: 0, totalReposts: 0, totalComments: 0, totalViews: 0 });
+
+    // Топ постов по вовлечённости (исправлен индекс — сортируем копию с исходным i)
     const topPosts = posts
-        .map(p => ({
-            likes: num(p.likes),
-            comments: num(p.comments),
-            reposts: num(p.reposts),
-            views: num(p.views)
+        .map((p, i) => ({
+            i,
+            engagement: num(p.likes) + num(p.comments) + num(p.reposts)
         }))
-        .map((m, i) => ({ m, i }))
-        .sort((a, b) => (b.m.likes + b.m.comments + b.m.reposts) - (a.m.likes + a.m.comments + a.m.reposts))
+        .sort((a, b) => b.engagement - a.engagement)
         .slice(0, 15)
-        .map(({ m, i }) => {
-            const p = posts[i];
-            const d = p.date ? new Date(p.date * 1000).toISOString().slice(0, 10) : '';
-            const t = p.targetInfo ? (p.targetInfo.canonicalName || p.targetInfo.name || '') : '';
-            return { branch: t, date: d, ...m, text: trimText(p.text, 180) };
+        .map(({ i }) => {
+            const p  = posts[i];
+            const d  = p.date ? new Date(p.date * 1000).toISOString().slice(0, 10) : '';
+            const br = p.targetInfo
+                ? (p.targetInfo.canonicalName || p.targetInfo.name || '')
+                : '';
+            return {
+                branch:   br,
+                date:     d,
+                likes:    num(p.likes),
+                comments: num(p.comments),
+                reposts:  num(p.reposts),
+                views:    num(p.views),
+                text:     trimText(p.text, 180)
+            };
         });
 
     // Хэштеги
@@ -138,22 +202,26 @@ export function buildAiSnapshot(opts) {
             tagMap.set(k, (tagMap.get(k) || 0) + 1);
         });
     });
-    const topTags = Array.from(tagMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 15)
+    const topTags = Array.from(tagMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
         .map(([tag, count]) => ({ tag, count }));
 
     const snapshot = {
-        period: opts.periodLabel || 'не определён',
-        keywords: opts.keywords || '',
-        exclude: opts.exclude || '',
-        totalPosts: posts.length,
+        period:        opts.periodLabel || 'не определён',
+        keywords:      opts.keywords    || '',
+        exclude:       opts.exclude     || '',
+        totalPosts:    posts.length,
         branchesCount: branches.length,
+        aggregates:    agg,   // суммарные показатели — для быстрых вопросов типа «сколько всего лайков»
         branches,
         topPostsByEngagement: topPosts,
-        topHashtags: topTags
+        topHashtags:   topTags
     };
 
     return JSON.stringify(snapshot);
 }
+
 
 // ---------------------------------------------------------------------------
 // Rich-markdown рендер ответа (заголовки, списки, таблицы, цитаты, код,
@@ -356,27 +424,34 @@ async function sendPrompt(userText, { isAction = false, maxTokens, temperature =
 
     try {
         const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
-        // Снимок данных подмешиваем один раз — к первой реплике сессии
-        if (chatHistory.filter(m => m.role === 'user').length === 1) {
-            let snapshotStr = '';
-            try {
-                snapshotStr = snapshotFn();
-            } catch (e) {
-                snapshotStr = '';
-            }
-            if (snapshotStr) {
-                messages.push({
-                    role: 'system',
-                    content: 'Снимок данных поиска VK (JSON):\n' + snapshotStr
-                });
-            } else {
-                messages.push({
-                    role: 'system',
-                    content: 'Данных поиска пока нет — пользователь ещё не выполнял сканирование. Сообщи об этом и предложи выполнить поиск.'
-                });
-            }
+
+        // Снимок данных подмешиваем в каждый запрос как отдельное системное сообщение.
+        // Это гарантирует, что ИИ всегда работает с актуальными цифрами и не берёт
+        // статистику «из памяти» предыдущих реплик.
+        let snapshotStr = '';
+        try { snapshotStr = snapshotFn(); } catch (e) { snapshotStr = ''; }
+
+        if (snapshotStr) {
+            messages.push({
+                role: 'system',
+                content:
+                    '## АКТУАЛЬНЫЕ ДАННЫЕ ПОИСКА VK (JSON-снимок)\n' +
+                    'Ниже — единственный источник истины для всех цифр. ' +
+                    'Любые числа, не присутствующие здесь явно, называть ЗАПРЕЩЕНО.\n\n' +
+                    snapshotStr
+            });
+        } else {
+            messages.push({
+                role: 'system',
+                content:
+                    '## ДАННЫЕ ПОИСКА ОТСУТСТВУЮТ\n' +
+                    'Пользователь ещё не выполнял сканирование или результаты пусты. ' +
+                    'Сообщи об этом и предложи выполнить поиск в системе. ' +
+                    'ЗАПРЕЩЕНО называть какие-либо числа о филиалах — данных нет.'
+            });
         }
         messages.push(...chatHistory.slice(-20));
+
 
         const answer = await aiChatRequest(messages, { maxTokens, temperature });
         chatHistory.push({ role: 'assistant', content: answer });
@@ -436,10 +511,17 @@ export async function initAiTab(opts) {
         chatHistory = []; // новый отчёт — новая сессия
         renderWelcome();
         sendPrompt(
-            'Составь официальный отчёт для методиста по данным поиска VK: итоги периода, сравнение филиалов '
-            + '(публикации, охват, вовлечённость), лучшие записи, выявленные проблемы и 3–5 конкретных рекомендаций. '
-            + 'Пиши в официально-деловом стиле, с заголовками и списками.',
-            { isAction: true, maxTokens: 1600, temperature: 0.3 }
+            'Составь официальный отчёт для методиста по данным поиска VK.\n'
+            + 'ОБЯЗАТЕЛЬНО используй только цифры из JSON-снимка (branches: posts, likes, reposts, comments, views, members, erViews, erPost).\n'
+            + 'Структура отчёта:\n'
+            + '1. Итоги периода (период, общее число постов, число филиалов)\n'
+            + '2. Сравнительная таблица: название | посты | подписчики | лайки | репосты | ER\n'
+            + '3. Лидеры и аутсайдеры по вовлечённости (конкретные названия и цифры)\n'
+            + '4. Топ-3 поста из topPostsByEngagement: филиал, дата, лайки+репосты+комменты\n'
+            + '5. Выявленные проблемы\n'
+            + '6. 3–5 конкретных рекомендаций\n'
+            + 'Если данные о каком-либо показателе отсутствуют — напиши «данные недоступны».',
+            { isAction: true, maxTokens: 1800, temperature: 0.2 }
         );
     });
 
@@ -450,9 +532,16 @@ export async function initAiTab(opts) {
             return;
         }
         sendPrompt(
-            'Проанализируй данные поиска VK и найди неочевидные инсайты: что лучше откликается аудитории, '
-            + 'какие темы и форматы работают, где филиалы теряют вовлечённость. Дай 5 практичных рекомендаций.',
-            { isAction: true, maxTokens: 1400, temperature: 0.5 }
+            'Проанализируй данные поиска VK и найди неочевидные инсайты.\n'
+            + 'Работай ТОЛЬКО с цифрами из JSON-снимка (branches, topPostsByEngagement, topHashtags).\n'
+            + 'Структура ответа:\n'
+            + '1. Что работает лучше всего (конкретные филиалы и метрики из данных)\n'
+            + '2. Где теряется вовлечённость (конкретные отстающие филиалы с цифрами)\n'
+            + '3. Популярные темы/хэштеги\n'
+            + '4. Аномалии или неожиданные паттерны\n'
+            + '5. 5 практичных рекомендаций\n'
+            + 'Не называй числа, которых нет в данных.',
+            { isAction: true, maxTokens: 1400, temperature: 0.4 }
         );
     });
 
