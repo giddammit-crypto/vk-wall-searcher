@@ -9,6 +9,7 @@ video_production/new_voiceover/
 video_production/*.mp3
 video_production/final_previews/
 video_production/promo_previews/
+video_production/trailer_aurora/
 
 # Python cache & temp
 __pycache__/
@@ -29,7 +30,9 @@ Thumbs.db
 *.log
 
 # Server-side secrets (VK service keys)
-# api/config.php содержит базовые проверенные ключи; локальные переопределения можно хранить в api/config.local.php
+# api/config.php содержит ключи и НЕ должен коммититься (риск утечки — не трекаем,
+# при необходимости ротировать ключи); локальные переопределения — в api/config.local.php
+api/config.php
 api/config.local.php
 .vk_wall_searcher_rate.lock
 

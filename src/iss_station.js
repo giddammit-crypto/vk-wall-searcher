@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.17.1';
+import { SpaceAudio } from './space_audio.js?v=4.18.0';
 
 /**
  * Вектор направления на Солнце (синхронизирован с celestial_planets.js)

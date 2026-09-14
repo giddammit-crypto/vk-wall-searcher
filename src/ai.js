@@ -8,7 +8,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { resolveApiUrl } from './api.js?v=4.17.1';
+import { resolveApiUrl } from './api.js?v=4.18.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 
@@ -47,9 +47,14 @@ const SYSTEM_PROMPT = `
 - period        — текстовый диапазон дат поиска (например, «01.08.2026 – 31.08.2026»). ВСЕГДА указывай в отчётах.
 - keywords      — ключевые слова фильтра. Если не пусто — посты считаются ТОЛЬКО среди тех, что содержат эти слова. Это КРИТИЧНО: posts в branches — не все посты филиала, а только найденные по фильтру.
 - exclude       — исключённые слова (если указаны — упомяни в оговорке).
-- totalPosts    — суммарное число найденных постов по всем филиалам.
+- totalPosts    — суммарное число постов в области scope (см. scope ниже): если scope.branchFilter задан — только по этому филиалу, иначе по всему скану.
 - branchesCount — число филиалов в выборке.
-- aggregates    — суммарные показатели по всем филиалам вместе:
+- scope         — область данных снимка (синхронизация totalPosts/topPosts с branches):
+    * postsSource — 'all' (посты всего скана) или 'filtered' (набор постов сужен фильтром филиала/хэштега).
+    * branchFilter — имя филиала, если топ-посты отфильтрованы по филиалу, иначе null.
+    * note — текстовое пояснение к области.
+    * ЕСЛИ branchFilter задан: topPostsByEngagement, totalPosts и topHashtags — ТОЛЬКО по этому филиалу, а branches охватывает весь скан. Суммируй числа по соответствующей области и НЕ смешивай их.
+- aggregates    — суммарные показатели по всем филиалам вместе (по данным branches, т.е. весь скан):
     * totalLikes, totalReposts, totalComments, totalViews — используй для ответов «сколько всего...».
 
 ### Массив branches (каждый элемент — один филиал):
@@ -68,8 +73,9 @@ const SYSTEM_PROMPT = `
     * Если views=0 — erViews=0 и НЕ является показателем активности. Не сравнивай такие filиалы по erViews.
     * Высокий erViews (>2%) = хорошо. Низкий (<0.5%) = аудитория видит, но не реагирует.
 - erPost        — ER по постам на подписчика: (likes+comments+reposts) / posts / members × 100 (%).
-    * Если members=null или 0 — erPost может быть некорректен. Укажи это явно.
+    * Это значение УЖЕ рассчитано в снимке по формуле выше. Если erPost=null — members неизвестны или постов нет: пиши «данных недостаточно», НЕ вычисляй erPost самостоятельно.
     * Нормальный erPost для библиотек: 0.5–3%. Выше 5% — выдающийся результат.
+- avgInteractionsPerPost — средние реакции на пост: (likes+comments+reposts) / posts (без нормировки на подписчиков). Используй для ответов «сколько в среднем реакций собирает пост», НЕ как показатель вовлечённости аудитории.
 
 ### Массив topPostsByEngagement (топ-10 постов по сумме likes+comments+reposts):
 - branch    — название филиала.
@@ -124,6 +130,7 @@ const SYSTEM_PROMPT = `
 [ ] Это число есть в JSON-снимке явно?
 [ ] Я не складываю/умножаю числа которые нельзя комбинировать (например, erPost разных филиалов)?
 [ ] Я учёл влияние фильтра keywords на posts?
+[ ] Я учёл scope: при branchFilter топ-посты/totalPosts — по филиалу, а branches — весь скан (не смешиваю области)?
 [ ] Я не экстраполирую данные на другой период?
 [ ] Если members=null — я не делю на него?
 [ ] Если views=0 — я не рассчитываю erViews?
@@ -181,31 +188,54 @@ let aiBusy = false;
 // Низкоуровневый слой: статус и запрос к прокси
 // ---------------------------------------------------------------------------
 
+// Таймаут клиентских запросов к прокси: больше серверного (ai_timeout, 180 с),
+// чтобы сервер успел ответить первым и клиент не обрывал валидный ответ.
+const AI_FETCH_TIMEOUT_MS = 200000;
+
+/** fetch с AbortController-таймаутом (защита от «висящих» запросов) */
+function fetchWithTimeout(url, options = {}, timeoutMs = AI_FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+/** Аборт по таймауту превращаем в понятное сообщение, остальное пробрасываем как есть */
+function rethrowIfAbort(e, message) {
+    if (e && e.name === 'AbortError') throw new Error(message);
+    throw e;
+}
+
 export async function checkAiStatus(force = false) {
     if (aiStatus && !force) return aiStatus;
     try {
-        const res = await fetch(AI_PROXY_URL, { method: 'GET' });
+        const res = await fetchWithTimeout(AI_PROXY_URL, { method: 'GET' }, 15000);
         if (res.ok) {
             aiStatus = await res.json();
         } else {
             aiStatus = { ai_configured: false, model: '', error: 'HTTP ' + res.status };
         }
     } catch (e) {
-        aiStatus = { ai_configured: false, model: '', error: (e && e.message) || 'Сеть недоступна' };
+        const msg = (e && e.name === 'AbortError') ? 'Превышено время ожидания ИИ' : ((e && e.message) || 'Сеть недоступна');
+        aiStatus = { ai_configured: false, model: '', error: msg };
     }
     return aiStatus;
 }
 
 async function aiChatRequest(messages, opts = {}) {
-    const res = await fetch(AI_PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            messages,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature
-        })
-    });
+    let res;
+    try {
+        res = await fetchWithTimeout(AI_PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages,
+                max_tokens: opts.maxTokens,
+                temperature: opts.temperature
+            })
+        });
+    } catch (e) {
+        rethrowIfAbort(e, 'Превышено время ожидания ИИ');
+    }
     let json = null;
     try { json = await res.json(); } catch (e) { /* ignore */ }
     if (!res.ok) {
@@ -241,7 +271,11 @@ function trimText(t, limit) {
 
 /**
  * Формирует агрегированный JSON-снимок результатов поиска.
- * opts: { posts, stats, periodLabel, keywords, exclude, hashtags }
+ * opts: { posts, stats, periodLabel, keywords, exclude, hashtags, branchFilter? }
+ *
+ * ВАЖНО про области данных: opts.posts могут быть сужены фильтром филиала
+ * (filteredPosts), тогда как opts.stats (lastGroupsStats) всегда покрывают
+ * весь скан. Итоговая область фиксируется в поле scope снимка.
  */
 export function buildAiSnapshot(opts) {
     const posts = Array.isArray(opts.posts) ? opts.posts : [];
@@ -250,17 +284,29 @@ export function buildAiSnapshot(opts) {
     const branches = stats.map(s => {
         const info = s.info || {};
         const rawMembers = num(info.members_count);
+        // null означает «данные о подписчиках не получены», 0 — реально ноль
+        const members = rawMembers > 0 ? rawMembers : (info.members_count === undefined ? null : 0);
+        const postsCount = s.postsCount || 0;
+        const interactions = num(s.likes) + num(s.reposts) + num(s.comments);
+        // erPost — ER по постам на подписчика (%): interactions / посты / подписчики × 100.
+        // Формула строго соответствует SYSTEM_PROMPT (пороги 0.5–3% даны именно для неё).
+        // null — members неизвестны или постов нет: ИИ не должен пересчитывать сам.
+        const erPost = (members > 0 && postsCount > 0)
+            ? Math.round((interactions / postsCount / members) * 10000) / 100
+            : null;
+        // Средние реакции на один пост (лайки+репосты+комменты)/посты — без нормировки на подписчиков
+        const avgInteractionsPerPost = postsCount > 0 ? Math.round((interactions / postsCount) * 100) / 100 : 0;
         return {
             name:     info.canonicalName || info.name || ('id' + (info.rawId || info.id)),
-            // null означает «данные о подписчиках не получены», 0 — реально ноль
-            members:  rawMembers > 0 ? rawMembers : (info.members_count === undefined ? null : 0),
-            posts:    s.postsCount    || 0,
+            members,
+            posts:    postsCount,
             likes:    num(s.likes),
             reposts:  num(s.reposts),
             comments: num(s.comments),
             views:    num(s.views),
             erViews:  Math.round((s.erViews || 0) * 100) / 100,
-            erPost:   Math.round((s.erPosts  || 0) * 100) / 100
+            erPost,
+            avgInteractionsPerPost
         };
     });
 
@@ -312,12 +358,66 @@ export function buildAiSnapshot(opts) {
         .slice(0, 15)
         .map(([tag, count]) => ({ tag, count }));
 
+    /**
+     * Определяем область снимка: posts могут быть сужены фильтром филиала
+     * (или хэштега), тогда как branches (stats) охватывают весь скан.
+     * Сравниваем число постов по филиалам в posts с postsCount из stats;
+     * явный opts.branchFilter (если передан) имеет приоритет.
+     */
+    function resolveScope() {
+        if (opts.branchFilter) {
+            return {
+                postsSource:  'filtered',
+                branchFilter: String(opts.branchFilter),
+                note:         'Топ-посты, totalPosts и хэштеги — только по указанному филиалу; branches охватывает весь скан.'
+            };
+        }
+        // Группируем посты по филиалу (targetInfo) — имена формируются так же, как в branches
+        const byBranch = new Map();
+        posts.forEach(p => {
+            const t = p.targetInfo || {};
+            const name = t.canonicalName || t.name || ('id' + (t.rawId || t.id));
+            byBranch.set(name, (byBranch.get(name) || 0) + 1);
+        });
+        const statsWithPosts = branches.filter(b => b.posts > 0);
+        const missing = statsWithPosts.filter(b => !byBranch.has(b.name)).length;
+        const reduced = statsWithPosts.filter(b => byBranch.has(b.name) && byBranch.get(b.name) < b.posts).length;
+
+        if (posts.length === 0) {
+            if (statsWithPosts.length > 0) {
+                return {
+                    postsSource:  'filtered',
+                    branchFilter: null,
+                    note:         'В текущей выборке постов 0, хотя branches содержит посты всего скана — набор постов сужен фильтром.'
+                };
+            }
+            return { postsSource: 'all', branchFilter: null, note: 'Постов не найдено.' };
+        }
+        if (missing === 0 && reduced === 0) {
+            return { postsSource: 'all', branchFilter: null, note: 'Посты и branches покрывают одну и ту же область — весь скан.' };
+        }
+        if (byBranch.size === 1 && missing > 0) {
+            const name = Array.from(byBranch.keys())[0];
+            return {
+                postsSource:  'filtered',
+                branchFilter: name,
+                note:         'Топ-посты, totalPosts и хэштеги — только по филиалу «' + name + '»; branches охватывает весь скан.'
+            };
+        }
+        return {
+            postsSource:  'filtered',
+            branchFilter: null,
+            note:         'Набор постов сужен фильтром (посты не совпадают с постами филиалов в branches); branches охватывает весь скан.'
+        };
+    }
+
     const snapshot = {
         period:        opts.periodLabel || 'не определён',
         keywords:      opts.keywords    || '',
         exclude:       opts.exclude     || '',
         totalPosts:    posts.length,
         branchesCount: branches.length,
+        scope:         resolveScope(),   // область данных: соответствие totalPosts/topPosts и branches
         aggregates:    agg,   // суммарные показатели — для быстрых вопросов типа «сколько всего лайков»
         branches,
         topPostsByEngagement: topPosts,

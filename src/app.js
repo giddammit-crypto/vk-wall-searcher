@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.17.1';
+} from './api.js?v=4.18.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.17.1';
+} from './advice.js?v=4.18.0';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.17.1';
+} from './ai.js?v=4.18.0';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.17.1';
+} from './subscribers.js?v=4.18.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.17.1';
+} from './updater.js?v=4.18.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.17.1';
+} from './branches.js?v=4.18.0';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.17.1';
+} from './analytics.js?v=4.18.0';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.17.1';
+} from './render.js?v=4.18.0';
 
 import {
     exportToCsv,
@@ -84,28 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.17.1';
+} from './export.js?v=4.18.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.17.1';
-import { CosmicUniverse } from './cosmic.js?v=4.17.1';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.18.0';
+import { CosmicUniverse } from './cosmic.js?v=4.18.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.17.1';
+} from './promo.js?v=4.18.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.17.1';
+} from './radar.js?v=4.18.0';
 
-import { Space3D } from './space3d.js?v=4.17.1';
-import { SpaceWarp } from './space_warp.js?v=4.17.1';
-import { SpaceAudio } from './space_audio.js?v=4.17.1';
-import { Mascot } from './mascot.js?v=4.17.1';
+import { Space3D } from './space3d.js?v=4.18.0';
+import { SpaceWarp } from './space_warp.js?v=4.18.0';
+import { SpaceAudio } from './space_audio.js?v=4.18.0';
+import { Mascot } from './mascot.js?v=4.18.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.17.1';
+export const APP_VERSION = '4.18.0';
 
 function initApp() {
 
@@ -1563,12 +1563,16 @@ function initApp() {
             const sortedByReactions = [...validStats].sort((a, b) => (b.totalInteractions || 0) - (a.totalInteractions || 0));
             const sortedByEr = [...validStats].filter(s => (s.views || 0) >= 40).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
 
+            // Средний ER считаем на месте: calculateKPIs() не возвращает avgEr (только erViews со знаком %)
+            const avgErValue = kpis.totalViews > 0 ? ((kpis.totalInteractions / kpis.totalViews) * 100).toFixed(2) : '0.00';
+
             const topByViews = sortedByViews[0] ? {
                 name: sortedByViews[0].info?.canonicalName || sortedByViews[0].info?.name || 'ЦГБ',
                 shortCode: sortedByViews[0].info?.shortCode || '',
                 views: sortedByViews[0].views || 0,
                 postsCount: sortedByViews[0].postsCount || 0,
-                interactions: sortedByViews[0].totalInteractions || 0
+                interactions: sortedByViews[0].totalInteractions || 0,
+                er: (Number(sortedByViews[0].erViews) || 0).toFixed(2)
             } : null;
 
             const secondByViews = sortedByViews[1] ? {
@@ -1576,7 +1580,8 @@ function initApp() {
                 shortCode: sortedByViews[1].info?.shortCode || '',
                 views: sortedByViews[1].views || 0,
                 postsCount: sortedByViews[1].postsCount || 0,
-                interactions: sortedByViews[1].totalInteractions || 0
+                interactions: sortedByViews[1].totalInteractions || 0,
+                er: (Number(sortedByViews[1].erViews) || 0).toFixed(2)
             } : null;
 
             const thirdByViews = sortedByViews[2] ? {
@@ -1584,7 +1589,8 @@ function initApp() {
                 shortCode: sortedByViews[2].info?.shortCode || '',
                 views: sortedByViews[2].views || 0,
                 postsCount: sortedByViews[2].postsCount || 0,
-                interactions: sortedByViews[2].totalInteractions || 0
+                interactions: sortedByViews[2].totalInteractions || 0,
+                er: (Number(sortedByViews[2].erViews) || 0).toFixed(2)
             } : null;
 
             const topByReactions = sortedByReactions[0] ? {
@@ -1623,7 +1629,7 @@ function initApp() {
                     totalLikes: kpis.totalLikes,
                     totalReposts: kpis.totalReposts,
                     totalComments: kpis.totalComments,
-                    avgEr: kpis.avgEr,
+                    avgEr: avgErValue,
                     kpis,
                     rawStats: stats,
                     byBranch: stats.byBranch,
@@ -1979,7 +1985,7 @@ function initApp() {
                 if (state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter)) {
                     state.activeBranchFilter = null;
                     showToast('Фильтр по филиалу сброшен', 'info');
-                    try { Mascot.onBranchReset(); } catch (e) {}
+                    try { Mascot.onBranchFilterCleared(); } catch (e) {}
                 } else {
                     state.activeBranchFilter = t.id || t.rawId || t.canonicalName;
                     state.activeHashtagFilter = null;

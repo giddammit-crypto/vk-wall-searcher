@@ -86,6 +86,64 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
 }
 
 // ---------------------------------------------------------------------------
+// 0a. Простой файловый rate-limit (cache/ai_rate.json, часовые интервалы)
+// ---------------------------------------------------------------------------
+/** IP клиента: учитываем прокси (X-Forwarded-For), иначе REMOTE_ADDR */
+function ai_client_ip()
+{
+    $fwd = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? (string)$_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+    if ($fwd !== '') {
+        $parts = explode(',', $fwd);
+        $ip = trim($parts[0]);
+        if ($ip !== '') return $ip;
+    }
+    return isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : 'unknown';
+}
+
+/**
+ * Фиксированное окно 1 час: счётчик на IP + глобальный.
+ * Файловая блокировка flock защищает от потери счётчиков при параллельных запросах.
+ * $maxPerIp — лимит запросов на IP в час, $maxGlobal — суммарный лимит в час.
+ */
+function ai_rate_limit($maxPerIp = 30, $maxGlobal = 200)
+{
+    $dir = dirname(__DIR__) . '/cache';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $file   = $dir . '/ai_rate.json';
+    $ip     = ai_client_ip();
+    $bucket = (int)floor(time() / 3600); // номер часового интервала
+
+    $fh = @fopen($file, 'c+');
+    if (!$fh) {
+        return; // счётчик недоступен — не блокируем сервис
+    }
+    @flock($fh, LOCK_EX);
+    $data = json_decode((string)stream_get_contents($fh), true);
+    if (!is_array($data) || !isset($data['bucket']) || (int)$data['bucket'] !== $bucket) {
+        $data = ['bucket' => $bucket, 'global' => 0, 'ips' => []];
+    }
+
+    $ipCount = isset($data['ips'][$ip]) ? (int)$data['ips'][$ip] : 0;
+    $global  = isset($data['global']) ? (int)$data['global'] : 0;
+
+    if ($ipCount >= $maxPerIp || $global >= $maxGlobal) {
+        @flock($fh, LOCK_UN);
+        fclose($fh);
+        ai_error('Превышен лимит запросов к ИИ (не более ' . $maxPerIp . ' в час с одного адреса). Попробуйте позже.', 429);
+    }
+
+    $data['ips'][$ip] = $ipCount + 1;
+    $data['global']   = $global + 1;
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, json_encode($data));
+    @flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
+// ---------------------------------------------------------------------------
 // 1. GET → статус доступности ИИ (без раскрытия ключа)
 // ---------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -105,6 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 if ($aiKey === '') {
     ai_error('Ключ ИИ не настроен на сервере. Добавьте ai_api_key в api/config.php — или загрузите на сервер файл api/config.local.php с ключом (он не перезаписывается обновлениями).', 503);
 }
+
+// Rate-limit считаем только для реальных обращений к ИИ (после проверки ключа)
+ai_rate_limit(30, 200);
 
 // ---------------------------------------------------------------------------
 // 2. Разбор тела запроса
@@ -152,9 +213,10 @@ if (count($clean) === 0) {
     ai_error('После санитизации не осталось валидных сообщений.', 400);
 }
 
-$maxAllowed   = max(8192, $aiMaxTok);
+$maxAllowed   = max(200, $aiMaxTok);   // потолок задаётся настройкой ai_max_tokens, а не минимумом 8192
 $reqMaxTokens = isset($data['max_tokens']) ? (int)$data['max_tokens'] : $aiMaxTok;
-$reqMaxTokens = min(max(200, $reqMaxTokens), $maxAllowed);
+// Нижняя граница 64 — не поднимаем маленькие значения молча, просто отсекаем абсурдно малые
+$reqMaxTokens = min(max(64, $reqMaxTokens), $maxAllowed);
 $temperature  = isset($data['temperature']) ? (float)$data['temperature'] : 0.4;
 $temperature  = min(max(0.0, $temperature), 1.5);
 
@@ -187,8 +249,11 @@ $curlErr  = curl_error($ch);
 $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 curl_close($ch);
 
-if ($response === false) {
-    ai_error('Не удалось связаться с ИИ-шлюзом: ' . $curlErr, 502);
+// Сетевой сбой (DNS, таймаут, обрыв соединения): ответа нет или HTTP-код 0.
+// Отличаем curl_error() (проблема сети) от HTTP-кода (ответ шлюза).
+if ($response === false || $httpCode === 0) {
+    $detail = $curlErr !== '' ? $curlErr : 'нет ответа от ИИ-шлюза (HTTP 0)';
+    ai_error('Сеть: не удалось связаться с ИИ-шлюзом (' . $detail . ').', 502);
 }
 
 $json = json_decode($response, true);

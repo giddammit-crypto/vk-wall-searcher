@@ -49,6 +49,75 @@ function tts_error($msg, $code = 400, $extra = [])
     tts_json_response(array_merge(['error' => ['error_code' => $code, 'error_msg' => $msg]], $extra), $code);
 }
 
+// CORS не нужен: эндпоинт вызывается с того же происхождения.
+// Защита от прямого встраивания: только GET/POST без сторонних Origin
+// (аналогично api/ai-proxy.php).
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    $origin = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
+    $self   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
+    if ($origin && $self && strcasecmp($origin, (string)$self) !== 0) {
+        tts_error('Запросы с чужих доменов запрещены.', 403);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1a. Простой файловый rate-limit (cache/tts_rate.json, часовые интервалы)
+// ---------------------------------------------------------------------------
+/** IP клиента: учитываем прокси (X-Forwarded-For), иначе REMOTE_ADDR */
+function tts_client_ip()
+{
+    $fwd = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? (string)$_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+    if ($fwd !== '') {
+        $parts = explode(',', $fwd);
+        $ip = trim($parts[0]);
+        if ($ip !== '') return $ip;
+    }
+    return isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : 'unknown';
+}
+
+/**
+ * Фиксированное окно 1 час: счётчик на IP (+ глобальный предохранитель).
+ * Файловая блокировка flock защищает счётчики при параллельных запросах.
+ * Считаем только запросы, проходящие к ElevenLabs (кэш-попадания бесплатны).
+ */
+function tts_rate_limit($maxPerIp = 60, $maxGlobal = 300)
+{
+    $dir = dirname(__DIR__) . '/cache';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $file   = $dir . '/tts_rate.json';
+    $ip     = tts_client_ip();
+    $bucket = (int)floor(time() / 3600);
+
+    $fh = @fopen($file, 'c+');
+    if (!$fh) {
+        return; // счётчик недоступен — не блокируем сервис
+    }
+    @flock($fh, LOCK_EX);
+    $data = json_decode((string)stream_get_contents($fh), true);
+    if (!is_array($data) || !isset($data['bucket']) || (int)$data['bucket'] !== $bucket) {
+        $data = ['bucket' => $bucket, 'global' => 0, 'ips' => []];
+    }
+
+    $ipCount = isset($data['ips'][$ip]) ? (int)$data['ips'][$ip] : 0;
+    $global  = isset($data['global']) ? (int)$data['global'] : 0;
+
+    if ($ipCount >= $maxPerIp || $global >= $maxGlobal) {
+        @flock($fh, LOCK_UN);
+        fclose($fh);
+        tts_error('Превышен лимит озвучки (не более ' . $maxPerIp . ' в час с одного адреса). Попробуйте позже.', 429);
+    }
+
+    $data['ips'][$ip] = $ipCount + 1;
+    $data['global']   = $global + 1;
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, json_encode($data));
+    @flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
 // ---------------------------------------------------------------------------
 // 2. GET-запрос: статус сервиса
 // ---------------------------------------------------------------------------
@@ -140,6 +209,9 @@ if (empty($apiKey)) {
     tts_error('API-ключ ElevenLabs не настроен на сервере.', 503);
 }
 
+// Rate-limit считаем только для реальных обращений к ElevenLabs (кэш-попадания не считаются)
+tts_rate_limit(60, 300);
+
 // ---------------------------------------------------------------------------
 // 5. Запрос к ElevenLabs API
 // ---------------------------------------------------------------------------
@@ -184,18 +256,20 @@ curl_setopt_array($ch, [
 ]);
 
 $audioData = curl_exec($ch);
-$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
 curl_close($ch);
 
-if ($curlError) {
-    tts_error('Сбой сети при запросе к ElevenLabs: ' . $curlError, 502);
+// Сетевой сбой: ошибка cURL либо пустой HTTP-код (нет ответа, HTTP 0)
+if ($curlError || $httpCode === 0) {
+    $detail = $curlError !== '' ? $curlError : 'нет ответа от сервера ElevenLabs (HTTP 0)';
+    tts_error('Сбой сети при запросе к ElevenLabs: ' . $detail, 502);
 }
 
 if ($httpCode !== 200) {
     $errJson = json_decode($audioData, true);
-    $errDetail = isset($errJson['detail']['message']) ? $errJson['detail']['message'] : (is_string($audioData) ? substr($audioData, 0, 150) : "HTTP {$httpCode}");
-    tts_error('Ошибка ElevenLabs API: ' . $errDetail, 502);
+    $errDetail = isset($errJson['detail']['message']) ? $errJson['detail']['message'] : (is_string($audioData) && $audioData !== '' ? substr($audioData, 0, 150) : "HTTP {$httpCode}");
+    tts_error('Ошибка ElevenLabs API (HTTP ' . $httpCode . '): ' . $errDetail, 502);
 }
 
 // Временный файл для обработки
@@ -215,6 +289,14 @@ $execRet = 0;
 if ($execRet !== 0 || !file_exists($cacheFilePath) || filesize($cacheFilePath) < 1024) {
     // Если ffmpeg недоступен или выдал ошибку, сохраняем исходный raw звук
     file_put_contents($cacheFilePath, $audioData);
+}
+
+// Дешёвая уборка кэша при записи: удаляем mp3 старше 14 дней
+$ttsGcThreshold = time() - 14 * 86400;
+foreach (glob($cacheDir . '/*.mp3') as $oldMp3) {
+    if (is_string($oldMp3) && $oldMp3 !== $cacheFilePath && @filemtime($oldMp3) < $ttsGcThreshold) {
+        @unlink($oldMp3);
+    }
 }
 
     tts_json_response([

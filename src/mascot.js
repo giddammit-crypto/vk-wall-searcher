@@ -1,11 +1,11 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.17.1)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.0)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
  *
  * Ключевые возможности:
- *   1. Озвучка ElevenLabs (49 аудиофайлов, голос Бэлы + Cartoon Pitch-Shift):
+ *   1. Озвучка ElevenLabs (61 аудиофайл, голос Бэлы + Cartoon Pitch-Shift):
  *      - 9 шуток во время сканирования для развлечения пользователя (scan_wait_1..9)
  *      - 3 панических вопля при высокой высоте подъема («Спасите-помогите!») (high_altitude_1..3)
  *      - 3 крика радостного полета при броске/швырянии («Уи-и-и-и! Я лечу-у-у-у!») (throw_fling_1..3)
@@ -28,104 +28,106 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.17.1';
+import { resolveApiUrl } from './api.js?v=4.18.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
+const BRANCHES_CACHE_URL = resolveApiUrl('branches_cache.json');
+const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.17.1',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.17.1',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.17.1',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.17.1',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.17.1',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.17.1',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.17.1'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.18.0',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.18.0',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.0',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.0',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.18.0',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.0',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.18.0'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.17.1',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.17.1',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.17.1',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.17.1',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.17.1',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.17.1',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.17.1',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.17.1',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.17.1',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.17.1',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.0',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.0',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.0',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.0',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.0',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.0',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.0',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.0',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.0',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.0',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.17.1',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.17.1',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.17.1',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.17.1',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.17.1',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.17.1',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.17.1',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.17.1',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.17.1',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.0',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.0',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.0',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.0',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.0',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.0',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.0',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.0',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.0',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.17.1',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.17.1',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.17.1',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.17.1',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.0',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.0',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.0',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.0',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.17.1',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.17.1',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.17.1',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.0',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.0',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.0',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.17.1',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.17.1',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.17.1',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.0',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.0',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.0',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.17.1',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.17.1',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.17.1',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.17.1',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.17.1',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.17.1',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.17.1',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.17.1',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.17.1',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.17.1',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.17.1',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.17.1',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.17.1',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.17.1',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.17.1',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.17.1',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.17.1',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.17.1',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.17.1',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.17.1',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.0',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.0',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.0',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.0',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.0',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.0',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.0',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.0',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.0',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.0',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.0',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.0',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.0',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.0',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.0',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.0',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.0',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.0',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.0',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.0',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.17.1',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.17.1',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.17.1',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.0',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.0',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.0',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.17.1',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.17.1',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.17.1',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.0',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.0',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.0',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.17.1',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.17.1',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.0',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.0',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.17.1',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.17.1',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.17.1',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.17.1'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.0',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.0',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.0',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.0'
 };
 
 const MOOD_EMOJIS = {
@@ -715,6 +717,7 @@ export class AuroraMascot {
         this.collapsedPill = null;
         this.particlesLayerEl = null;
         this.propsLayerEl = null;
+        this.fxLayerEl = null;
         this.aiInputWrapEl = null;
         this.aiInputEl = null;
         this.aiSendBtnEl = null;
@@ -729,6 +732,7 @@ export class AuroraMascot {
         this.isPatrolling = false;
         this.isDragging = false;
         this.isReturningHome = false;
+        this.dragSessionId = 0;
         this.isMuted = false;
         this.isSpeakingAudio = false;
 
@@ -780,6 +784,13 @@ export class AuroraMascot {
         this.aiQueryCooldownMs = 10000;
         this.lastScanStats = null;
         this.currentActivity = null;
+
+        // База знаний проекта: справочник филиалов и динамика подписчиков
+        this.branchesRef = null;
+        this.subscribersData = null;
+        this.knowledgeLoaded = false;
+        // Короткая память диалога для уточняющих вопросов ИИ
+        this.aiConversationMemory = [];
 
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onUserActivity = this.onUserActivity.bind(this);
@@ -865,6 +876,12 @@ export class AuroraMascot {
                 <button type="button" class="mascot-toggle-btn" title="Свернуть Космо" data-mascot-collapse>&minus;</button>
                 
                 <div class="mascot-floater" data-mascot-floater>
+                    <!-- Энергетическая аура за корпусом -->
+                    <div class="mascot-aura"></div>
+
+                    <!-- Орбитальные точки размышлений -->
+                    <div class="mascot-think-orbit"><span></span><span></span><span></span></div>
+
                     <!-- Неоновый маячок антенны -->
                     <div class="mascot-antenna-beacon"></div>
 
@@ -885,7 +902,15 @@ export class AuroraMascot {
 
                     <!-- Частицы и искры -->
                     <div class="mascot-particles-layer" data-mascot-particles></div>
+
+                    <!-- Частицы сна (Zzz) -->
+                    <div class="mascot-sleep-particles">
+                        <span class="sleep-z z-1">z</span><span class="sleep-z z-2">Z</span><span class="sleep-z z-3">Z</span>
+                    </div>
                 </div>
+
+                <!-- Слой ударных эффектов (шок-волна приземления) -->
+                <div class="mascot-fx-layer" data-mascot-fx></div>
 
                 <!-- Динамическая тень на полу -->
                 <div class="mascot-shadow"></div>
@@ -915,6 +940,8 @@ export class AuroraMascot {
         this.moodBadgeEl = container.querySelector('[data-mascot-mood-badge]');
         this.particlesLayerEl = container.querySelector('[data-mascot-particles]');
         this.propsLayerEl = container.querySelector('[data-mascot-props]');
+        this.buildActivityProps();
+        this.fxLayerEl = container.querySelector('[data-mascot-fx]');
         this.aiInputWrapEl = container.querySelector('[data-mascot-ai-wrap]');
         this.aiInputEl = container.querySelector('[data-mascot-ai-input]');
         this.aiSendBtnEl = container.querySelector('[data-mascot-ai-send]');
@@ -946,7 +973,57 @@ export class AuroraMascot {
             }
         }, 8500);
 
+        this.loadProjectKnowledge();
+
         window.__AURORA_MASCOT__ = this;
+    }
+
+    /* ---------------------------------------------------------------------
+     * 1a. База знаний Космо: branches_cache.json + data/subscribers.json
+     * Космо знает адреса, телефоны, VK-ссылки и динамику подписчиков.
+     * ------------------------------------------------------------------- */
+    async loadProjectKnowledge() {
+        try {
+            const res = await fetch(BRANCHES_CACHE_URL, { cache: 'no-cache' });
+            if (res.ok) this.branchesRef = await res.json();
+        } catch (e) {
+            console.debug('[Cosmo] branches_cache.json unavailable:', e.message);
+        }
+        try {
+            const res = await fetch(SUBSCRIBERS_URL, { cache: 'no-cache' });
+            if (res.ok) this.subscribersData = await res.json();
+        } catch (e) {
+            console.debug('[Cosmo] subscribers.json unavailable:', e.message);
+        }
+        this.knowledgeLoaded = true;
+    }
+
+    /* Компактная сводка подписчиков для контекста ИИ (топ по members, тренд если есть история) */
+    buildSubscribersSummary() {
+        const snaps = this.subscribersData?.snapshots;
+        if (!Array.isArray(snaps) || snaps.length === 0) return '';
+        const latest = snaps.reduce((acc, s) => {
+            if (!acc || (s.ts || 0) >= (acc.ts || 0)) acc = s;
+            return acc;
+        }, null);
+        const rows = snaps.filter(s => !latest || s.ts === latest.ts);
+        if (rows.length === 0) return '';
+        const total = rows.reduce((sum, s) => sum + (Number(s.members) || 0), 0);
+        const top = [...rows].sort((a, b) => (b.members || 0) - (a.members || 0)).slice(0, 3)
+            .map(s => `${s.name || s.branch}: ${s.members}`)
+            .join('; ');
+        return ` Справочник подписчиков: всего в сетях ${total} человек. Топ-3 по подписчикам: ${top}. Дата снимка: ${latest?.ts ? new Date(latest.ts * 1000).toLocaleDateString('ru-RU') : 'неизвестна'}.`;
+    }
+
+    /* Поиск филиала в справочнике по части названия (для ответа «что за филиал») */
+    findBranchInfo(nameFragment) {
+        if (!Array.isArray(this.branchesRef) || !nameFragment) return null;
+        const q = String(nameFragment).toLowerCase();
+        return this.branchesRef.find(b =>
+            (b.branch_name || '').toLowerCase().includes(q) ||
+            (b.branch_num || '').toLowerCase() === q ||
+            (b.branch_num || '').toLowerCase() === `ф-${q.replace(/^ф-?/,'')}`
+        ) || null;
     }
 
     /* ---------------------------------------------------------------------
@@ -954,13 +1031,30 @@ export class AuroraMascot {
      * ------------------------------------------------------------------- */
     parseMarkdown(text) {
         if (!text) return '';
-        let html = String(text)
+        let src = String(text);
+
+        // Защита от XSS (ответ ИИ идёт в innerHTML): сначала прячем собственные
+        // безопасные теги Космо (<br> и кнопки действий) в плейсхолдеры,
+        // затем экранируем весь остальной HTML, и только после этого
+        // применяем Markdown-замены (как в src/ai.js mdLite).
+        const safeHtml = [];
+        const stash = (tag) => `\u0001${safeHtml.push(tag) - 1}\u0001`;
+        src = src
+            .replace(/<br\s*\/?>/gi, (m) => stash('<br>'))
+            .replace(/<div class="mascot-choice-actions">/gi, (m) => stash(m))
+            .replace(/<button type="button" class="mascot-action-btn[^"]*" data-mascot-action="[\w-]+">/gi, (m) => stash(m))
+            .replace(/<\/(?:div|button)>/gi, (m) => stash(m));
+
+        let html = escapeHtml(src)
             .replace(/^##\s+(.*$)/gim, '<div class="mascot-md-h2">$1</div>')
             .replace(/^###\s+(.*$)/gim, '<div class="mascot-md-h3">$1</div>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/`([^`]+)`/g, '<code class="mascot-md-code">$1</code>')
-            .replace(/\n/g, '<br>');
+            .replace(/\n/g, stash('<br>'));
+
+        // Возвращаем заранее разрешённые безопасные теги из плейсхолдеров
+        html = html.replace(/\u0001(\d+)\u0001/g, (_, i) => safeHtml[Number(i)] ?? '');
         return html;
     }
 
@@ -1257,6 +1351,11 @@ export class AuroraMascot {
             // Блокируем нативный драг картинок браузером и выделение текста!
             e.preventDefault();
 
+            // Новая сессия драга: гасим активный CSS-переход (например, возврат на базу),
+            // чтобы контейнер не «уезжал» из-под курсора во время перетаскивания
+            this.dragSessionId += 1;
+            this.container.style.transition = 'none';
+
             const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
             const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
 
@@ -1270,7 +1369,7 @@ export class AuroraMascot {
             altitudeScreamPlayed = false;
 
             preLeft = parseFloat(this.container.style.left) || this.currentPosX;
-            preBottom = parseFloat(this.container.style.bottom) || 24;
+            preBottom = parseFloat(this.container.style.bottom) || this.baseBottom || 24;
             hasMoved = false;
 
             const onMove = (moveEvent) => {
@@ -1294,6 +1393,13 @@ export class AuroraMascot {
                     this.isDragging = true;
                     if (this.isPatrolling) this.stopContinuousPatrol(false);
                     clearTimeout(this.returnTimer);
+                    // Если прервали возврат на базу — сбрасываем флаг и классы ходьбы,
+                    // иначе isReturningHome зависнет (таймер финала уже отменён)
+                    if (this.isReturningHome) {
+                        this.isReturningHome = false;
+                        this.bodyEl.classList.remove('is-walking-left', 'is-walking-right');
+                        this.floaterEl?.classList.remove('patrol-walking');
+                    }
                     this.container.classList.add('is-dragging');
                     this.bodyEl.classList.add('is-dragged');
                     this.setState('thinking');
@@ -1333,6 +1439,7 @@ export class AuroraMascot {
                 window.removeEventListener('mouseup', onEnd);
                 window.removeEventListener('touchmove', onMove);
                 window.removeEventListener('touchend', onEnd);
+                window.removeEventListener('touchcancel', onEnd);
 
                 if (this.isDragging) {
                     const landingHomeX = preLeft;
@@ -1344,20 +1451,28 @@ export class AuroraMascot {
                     if (speed > 0.85 || Math.abs(velocityX) > 0.75) {
                         this.triggerThrowFling(velocityX, velocityY, landingHomeX);
                     } else {
-                        // Мягкое физическое падение на пол (bottom: 24px)
+                        // Мягкое физическое падение на пол (на высоту закреплённой базы)
                         this.container.style.transition = 'bottom 0.45s cubic-bezier(0.55, 0.055, 0.675, 0.19)';
-                        this.currentPosY = 24;
-                        this.container.style.bottom = '24px';
+                        this.currentPosY = this.baseBottom || 24;
+                        this.container.style.bottom = `${this.currentPosY}px`;
+
+                        // Синхронный сброс флага драга — новый драг не должен блокироваться
+                        this.isDragging = false;
+                        const session = this.dragSessionId;
 
                         setTimeout(() => {
                             this.container.style.transition = '';
                             this.triggerPlopLanding(landingHomeX);
                         }, 460);
 
+                        // Защита от гонки: таймер сбрасывает флаг только если не начался новый драг
                         setTimeout(() => {
-                            this.isDragging = false;
+                            if (this.dragSessionId === session) this.isDragging = false;
                         }, 250);
                     }
+                } else {
+                    // Простой клик без переноса: возвращаем CSS-переходы, сброшенные в onStart
+                    this.container.style.transition = '';
                 }
             };
 
@@ -1365,6 +1480,7 @@ export class AuroraMascot {
             window.addEventListener('mouseup', onEnd);
             window.addEventListener('touchmove', onMove, { passive: false });
             window.addEventListener('touchend', onEnd);
+            window.addEventListener('touchcancel', onEnd);
         };
 
         this.bodyEl.addEventListener('mousedown', onStart);
@@ -1389,12 +1505,12 @@ export class AuroraMascot {
         const throwDistX = vx * 420;
         let targetX = Math.max(16, Math.min(window.innerWidth - 150, this.currentPosX + throwDistX));
 
-        // Полёт по дуге: перелет по X и падение на Y = 24px
+        // Полёт по дуге: перелет по X и падение на высоту закреплённой базы (baseBottom)
         this.container.style.transition = 'left 0.75s cubic-bezier(0.22, 1, 0.36, 1), bottom 0.75s cubic-bezier(0.55, 0.055, 0.675, 0.19)';
         this.currentPosX = targetX;
-        this.currentPosY = 24;
+        this.currentPosY = this.baseBottom || 24;
         this.container.style.left = `${targetX}px`;
-        this.container.style.bottom = '24px';
+        this.container.style.bottom = `${this.currentPosY}px`;
 
         setTimeout(() => {
             this.container.style.transition = '';
@@ -1438,11 +1554,12 @@ export class AuroraMascot {
         void this.bodyEl.offsetWidth;
         this.bodyEl.classList.add('is-plop-landing');
         this.spawnSparkles(12);
+        this.spawnLandingFx();
 
         // Расширенный пул голосов и реплик: удивление, сарказм, критика, драг-дроп
         const landingScenarios = [
-            { key: 'drag_drop_1', text: `## Эй, гравитация так не работает! 🤖💥\nПоставь меня на место, **я тебе не плюшевая игрушка!**`, mood: 'angry', sprite: 'angry' },
-            { key: 'drag_drop_2', text: `## Ой-ой-ой! Полёт нормальный, но посадка... 😵💫\n**Плюх!** Мои квантовые гироскопы кругом идут!`, mood: '😵', sprite: 'dizzy' },
+            { key: 'drag_drop_1', text: `## Эй, гравитация так не работает! 🤖💥\nПоставь меня на место, **я тебе не плюшевая игрушка!**`, mood: '💢', sprite: 'angry' },
+            { key: 'drag_drop_2', text: `## Ой-ой-ой! Полёт нормальный, но посадка... 😵💫\n**Плюх!** Мои квантовые гироскопы кругом идут!`, mood: '😵', sprite: 'yawn' },
             { key: 'drag_drop_3', text: `## Куда тащишь SMM-гуру?! 🤨💅\nУ меня тут вообще-то **важные расчёты охватов** были!`, mood: '💅', sprite: 'smile' },
             { key: 'drag_drop_4', text: `## Хулиганство! 😤⚡\nЛадно-ладно, сейчас отряхнусь и сам решу, где дежурить!`, mood: '😤', sprite: 'angry' },
             { key: 'sarcasm_1', text: `## Потрясающая посадка! 🚀💫\nПрямо в яблочко! Теперь я охраняю этот угол экрана!`, mood: '🚀', sprite: 'smile' },
@@ -1531,7 +1648,9 @@ export class AuroraMascot {
         this.container.style.left = `${targetX}px`;
         this.container.style.bottom = `${this.currentPosY}px`;
 
-        setTimeout(() => {
+        // Финал возврата храним в returnTimer: драг/новая команда должны уметь его отменить
+        clearTimeout(this.returnTimer);
+        this.returnTimer = setTimeout(() => {
             this.container.style.transition = '';
             this.floaterEl?.classList.remove('patrol-walking');
             this.bodyEl?.classList.remove('is-walking-left', 'is-walking-right');
@@ -1894,8 +2013,15 @@ export class AuroraMascot {
         const hashtagFilter = window.__VK_APP__?.state?.activeHashtagFilter || null;
 
         let ctx = `Текущая открытая вкладка: «${activeTabTitle}».`;
-        if (branchFilter) ctx += ` Выбран фильтр по филиалу: «${branchFilter}».`;
+        if (branchFilter) {
+            ctx += ` Выбран фильтр по филиалу: «${branchFilter}».`;
+            const branchInfo = this.findBranchInfo(branchFilter);
+            if (branchInfo) {
+                ctx += ` Справка: ${branchInfo.branch_num} — ${branchInfo.branch_name}, адрес: ${branchInfo.address}${branchInfo.phone ? `, тел.: ${branchInfo.phone}` : ''}${Array.isArray(branchInfo.vk_links) && branchInfo.vk_links[0] ? `, VK: ${branchInfo.vk_links[0]}` : ''}.`;
+            }
+        }
         if (hashtagFilter) ctx += ` Активен фильтр по хэштегу: «#${hashtagFilter}».`;
+        ctx += this.buildSubscribersSummary();
 
         if (stats && stats.count > 0) {
             const avgViewsPerPost = stats.count > 0 ? Math.round(stats.totalViews / stats.count) : 0;
@@ -1955,6 +2081,7 @@ export class AuroraMascot {
             } else if (tabId === 'subscribers-tab') {
                 chips = [
                     { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
+                    { label: '👥 Топ по подписчикам', query: 'Опираясь на данные о подписчиках из контекста, назови топ-3 филиала по числу подписчиков и дай аутсайдеру один конкретный шаг для роста.' },
                     { label: '👥 Удержание читателей', query: 'Как превратить случайных посетителей в постоянных читателей паблика?' },
                     { label: '📈 Секрет роста', query: 'Что привлекает новых читателей в библиотечные соцсети?' },
                     { label: '🏆 Кто лидер?', action: 'leader' },
@@ -1978,8 +2105,10 @@ export class AuroraMascot {
             ];
         }
 
-        // Если Космо смещён от стандартной базы в нижнем углу — даём чип быстрого закрепления
-        const isDisplaced = Math.abs(this.currentPosX - 24) > 45 || Math.abs(this.currentPosY - 24) > 45;
+        // Если Космо смещён от закреплённой базы — даём чип быстрого закрепления
+        const baseX = (this.baseLeft !== undefined && this.baseLeft !== null) ? this.baseLeft : 24;
+        const baseY = (this.baseBottom !== undefined && this.baseBottom !== null) ? this.baseBottom : 24;
+        const isDisplaced = Math.abs(this.currentPosX - baseX) > 45 || Math.abs(this.currentPosY - baseY) > 45;
         if (isDisplaced) {
             chips.unshift({ label: '📌 Закрепить базу', action: 'stay-here' });
         }
@@ -2141,7 +2270,8 @@ export class AuroraMascot {
 
             const userPrompt = `Вот тройка лидеров библиотечной сети по просмотрам:\n${leadersInfo}\nДай едкий мультяшный комментарий для озвучки.`;
 
-            const aiResponse = await fetch('api/ai-proxy.php', {
+            // Используем резолвенный AI_PROXY_URL (как в askAiThrifty), а не относительный путь
+            const aiResponse = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2359,6 +2489,14 @@ export class AuroraMascot {
                 emoji = '🛸';
                 duration = 30000;
                 this.startContinuousPatrol(30000);
+                // Патруль управляет своим завершением, но нужно снять флаг активности
+                setTimeout(() => {
+                    if (this.currentActivity === activityName) {
+                        this.bodyEl?.removeAttribute('data-activity');
+                        this.currentActivity = null;
+                        this.isPerformingActivity = false;
+                    }
+                }, duration);
                 return;
 
             case 'magnifier_scan':
@@ -2730,11 +2868,19 @@ export class AuroraMascot {
 
     setState(state, autoResetMs = 0) {
         if (!this.container || !this.spriteImg) return;
+        const emotionChanged = this.currentState !== state;
         this.currentState = state;
         this.container.setAttribute('data-state', state);
 
         if (SPRITES[state]) {
             this.spriteImg.src = SPRITES[state];
+        }
+
+        // Пружинный «поп» спрайта при каждой смене эмоции
+        if (emotionChanged && state !== 'idle') {
+            this.spriteImg.classList.remove('emotion-pop');
+            void this.spriteImg.offsetWidth;
+            this.spriteImg.classList.add('emotion-pop');
         }
 
         if (MOOD_EMOJIS[state] !== undefined) {
@@ -2767,6 +2913,75 @@ export class AuroraMascot {
         }
     }
 
+    /* Реквизит 20 активностей: создаётся один раз, CSS показывает его по [data-activity] */
+    buildActivityProps() {
+        if (!this.propsLayerEl || this.propsLayerEl.childElementCount > 0) return;
+        const layer = this.propsLayerEl;
+
+        const tablet = document.createElement('div');
+        tablet.className = 'mascot-holo-tablet';
+        const bars = document.createElement('div');
+        bars.className = 'holo-tablet-bars';
+        bars.innerHTML = '<span></span><span></span><span></span><span></span>';
+        tablet.appendChild(bars);
+        layer.appendChild(tablet);
+
+        const cone = document.createElement('div');
+        cone.className = 'mascot-scan-cone';
+        layer.appendChild(cone);
+
+        const magnifier = document.createElement('div');
+        magnifier.className = 'mascot-holo-magnifier';
+        layer.appendChild(magnifier);
+
+        const cloth = document.createElement('div');
+        cloth.className = 'mascot-wipe-cloth';
+        layer.appendChild(cloth);
+
+        const drink = document.createElement('div');
+        drink.className = 'mascot-drink-box';
+        const straw = document.createElement('div');
+        straw.className = 'mascot-drink-straw';
+        drink.appendChild(straw);
+        layer.appendChild(drink);
+
+        const laser = document.createElement('div');
+        laser.className = 'mascot-laser-dot';
+        layer.appendChild(laser);
+
+        const orbit = document.createElement('div');
+        orbit.className = 'mascot-orbit-stars';
+        orbit.textContent = '💫⭐💫';
+        layer.appendChild(orbit);
+
+        const telescope = document.createElement('div');
+        telescope.className = 'mascot-telescope';
+        layer.appendChild(telescope);
+
+        const crown = document.createElement('div');
+        crown.className = 'mascot-guru-crown';
+        crown.textContent = '👑';
+        layer.appendChild(crown);
+    }
+
+    /* Шок-волна и пыль при приземлении после броска/падения */
+    spawnLandingFx() {
+        if (!this.fxLayerEl) return;
+        const ring = document.createElement('div');
+        ring.className = 'mascot-landing-ring';
+        this.fxLayerEl.appendChild(ring);
+        setTimeout(() => ring.remove(), 650);
+
+        for (let i = 0; i < 6; i++) {
+            const dust = document.createElement('div');
+            dust.className = 'mascot-landing-dust';
+            dust.style.setProperty('--ddx', `${(Math.random() * 90 - 45).toFixed(0)}px`);
+            dust.style.animationDelay = `${(Math.random() * 0.08).toFixed(2)}s`;
+            this.fxLayerEl.appendChild(dust);
+            setTimeout(() => dust.remove(), 720);
+        }
+    }
+
     spawnSparkles(count = 6) {
         if (!this.particlesLayerEl) return;
         for (let i = 0; i < count; i++) {
@@ -2777,6 +2992,10 @@ export class AuroraMascot {
             sp.style.height = `${size}px`;
             sp.style.left = `${20 + Math.random() * 60}%`;
             sp.style.top = `${20 + Math.random() * 60}%`;
+            // Вектор разлёта для keyframe sparkleFlyOut (без них искры не анимируются)
+            sp.style.setProperty('--dx', `${(Math.random() * 120 - 60).toFixed(0)}px`);
+            sp.style.setProperty('--dy', `${(-30 - Math.random() * 70).toFixed(0)}px`);
+            sp.style.setProperty('--rot', `${(Math.random() * 360 - 180).toFixed(0)}deg`);
             this.particlesLayerEl.appendChild(sp);
 
             setTimeout(() => sp.remove(), 800);
@@ -2796,12 +3015,20 @@ export class AuroraMascot {
             return;
         }
 
-        const normalizedKey = userQuestion.toLowerCase().trim();
+        // Ключ кэша включает сигнатуру статистики: после нового скана ответы обновятся
+        const stats = this.getLiveScanStats();
+        const statsSig = stats && stats.count > 0 ? `${stats.count}_${stats.topByViews?.name || ''}` : 'noscan';
+        const normalizedKey = `${userQuestion.toLowerCase().trim()}||${statsSig}`;
         if (this.aiResponseCache.has(normalizedKey)) {
             const cached = this.aiResponseCache.get(normalizedKey);
             this.say(cached, 9000, 'smile', 'post_scan_8');
             this.spawnSparkles(8);
             return;
+        }
+        // Ограничение размера кэша (не более 40 записей)
+        if (this.aiResponseCache.size >= 40) {
+            const firstKey = this.aiResponseCache.keys().next().value;
+            this.aiResponseCache.delete(firstKey);
         }
 
         this.isAiLoading = true;
@@ -2820,12 +3047,16 @@ export class AuroraMascot {
 4. Текущий контекст страницы: ${pageCtx}.
 5. Отвечай кратко (2-3 предложения, до 35 слов, 1-2 эмодзи), дерзко, весело, опираясь на реальные цифры и открытую вкладку!`;
 
+            // Память диалога: последние реплики уходят в Mistral, чтобы Космо
+            // понимал уточняющие вопросы («а теперь сравни со вторым местом»)
+            const history = this.aiConversationMemory.slice(-4);
             const response = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: systemPrompt },
+                        ...history,
                         { role: 'user', content: userQuestion }
                     ],
                     max_tokens: 180,
@@ -2838,6 +3069,12 @@ export class AuroraMascot {
             const reply = data?.choices?.[0]?.message?.content || data?.reply || 'Умная лента любит смелых! Делай упор на яркие фото и искренние заголовки! ✨';
 
             this.aiResponseCache.set(normalizedKey, reply);
+
+            this.aiConversationMemory.push({ role: 'user', content: userQuestion });
+            this.aiConversationMemory.push({ role: 'assistant', content: reply });
+            if (this.aiConversationMemory.length > 8) {
+                this.aiConversationMemory = this.aiConversationMemory.slice(-8);
+            }
 
             // Озвучиваем ответ одной из подходящих критических / пост-скан фраз
             const replyVoices = [
@@ -2942,7 +3179,7 @@ export class AuroraMascot {
         ];
         const chosenVoice = critiqueClips[Math.floor(Math.random() * critiqueClips.length)];
 
-        this.say(msg, 12000, 'smile', chosenVoice);
+        this.say(msg, 12000, 'smile', chosenVoice, true);
         this.setMoodBadge('🏆', 4000);
         this.spawnSparkles(10);
     }
@@ -2958,12 +3195,15 @@ export class AuroraMascot {
         this.scanBanterTimer = null;
         this.lastScanStats = null;
         window.__AURORA_LAST_SCAN_SNAPSHOT__ = null;
+        // Итог скана — важный статус: показываем всегда, даже поверх играющего аудио
         this.say(
             query
                 ? `По запросу **«${escapeHtml(query)}»** ничего не нашлось. Попробуй изменить слово!`
                 : 'За указанный период постов не обнаружено. Попробуй выбрать другой год или месяц!',
             9000,
-            'tired'
+            'tired',
+            null,
+            true
         );
     }
 
@@ -2973,7 +3213,9 @@ export class AuroraMascot {
         this.say(
             `## Поиск остановлен! 🛑\nСканирование прервано. Открываю собранные материалы!`,
             8000,
-            'tired'
+            'tired',
+            null,
+            true
         );
         this.setState('tired', 6000);
         this.setMoodBadge('🛑', 4000);
@@ -2985,7 +3227,9 @@ export class AuroraMascot {
         this.say(
             `## Ошибка связи! ⚠️\nСбой подключения к ВКонтакте. Проверь токен или интернет!`,
             10000,
-            'angry'
+            'angry',
+            null,
+            true
         );
         this.setState('angry', 8000);
         this.setMoodBadge('💢', 6000);
@@ -3090,6 +3334,8 @@ export class AuroraMascot {
 
     collapse() {
         this.isCollapsed = true;
+        // Сворачивание прерывает патрулирование — иначе rAF-цикл зависает без видимого робота
+        if (this.isPatrolling) this.stopContinuousPatrol(false);
         this.stopVoice();
         this.container?.classList.add('mascot-hidden');
         this.collapsedPill?.classList.add('is-visible');
@@ -3107,6 +3353,8 @@ export class AuroraMascot {
     setIn3D(in3D) {
         this.isIn3D = Boolean(in3D);
         if (this.isIn3D) {
+            // Вход в 3D прерывает патрулирование — робот скрыт, rAF-цикл не нужен
+            if (this.isPatrolling) this.stopContinuousPatrol(false);
             this.stopVoice();
             this.container?.classList.add('mascot-hidden');
             this.collapsedPill?.classList.remove('is-visible');
@@ -3130,6 +3378,10 @@ export class AuroraMascot {
         clearTimeout(this.returnTimer);
         clearTimeout(this.greetingTimer);
         clearTimeout(this.initialPatrolTimer);
+        clearTimeout(this.speechTimer);
+        clearTimeout(this.stateResetTimer);
+        clearTimeout(this.badgeResetTimer);
+        clearTimeout(this.clickTimeout);
         this.container?.remove();
         this.collapsedPill?.remove();
     }
