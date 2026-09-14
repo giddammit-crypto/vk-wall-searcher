@@ -396,6 +396,40 @@
     box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
 }
 
+.mascot-choice-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.mascot-action-btn.btn-secondary {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--text-primary, #e2e8f0);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.mascot-action-btn.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transform: translateY(-1.5px);
+}
+
+[data-theme="light"] .mascot-action-btn.btn-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    color: #334155;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .mascot-action-btn.btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.09);
+    border-color: rgba(0, 0, 0, 0.22);
+}
+
 /* Стили для кинематического форсажа и частиц патрулирования */
 .aurora-mascot-container.is-patrol-flying .mascot-thruster-flame {
     opacity: 1 !important;
@@ -1583,7 +1617,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.16.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.17.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
