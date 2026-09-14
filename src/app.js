@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.10.0';
+} from './api.js?v=4.11.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.10.0';
+} from './advice.js?v=4.11.0';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.10.0';
+} from './ai.js?v=4.11.0';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.10.0';
+} from './subscribers.js?v=4.11.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.10.0';
+} from './updater.js?v=4.11.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.10.0';
+} from './branches.js?v=4.11.0';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.10.0';
+} from './analytics.js?v=4.11.0';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.10.0';
+} from './render.js?v=4.11.0';
 
 import {
     exportToCsv,
@@ -84,28 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.10.0';
+} from './export.js?v=4.11.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.10.0';
-import { CosmicUniverse } from './cosmic.js?v=4.10.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.11.0';
+import { CosmicUniverse } from './cosmic.js?v=4.11.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.10.0';
+} from './promo.js?v=4.11.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.10.0';
+} from './radar.js?v=4.11.0';
 
-import { Space3D } from './space3d.js?v=4.10.0';
-import { SpaceWarp } from './space_warp.js?v=4.10.0';
-import { SpaceAudio } from './space_audio.js?v=4.10.0';
-import { Mascot } from './mascot.js?v=4.10.0';
+import { Space3D } from './space3d.js?v=4.11.0';
+import { SpaceWarp } from './space_warp.js?v=4.11.0';
+import { SpaceAudio } from './space_audio.js?v=4.11.0';
+import { Mascot } from './mascot.js?v=4.11.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.10.0';
+export const APP_VERSION = '4.11.0';
 
 function initApp() {
 
@@ -1506,7 +1506,8 @@ function initApp() {
                 Mascot.onScanSuccess({
                     count: state.matchedPosts.length,
                     topBranch,
-                    totalViews: kpis.totalViews
+                    totalViews: kpis.totalViews,
+                    query: elements.keywordInput ? elements.keywordInput.value.trim() : ''
                 });
             } catch (e) {}
         } else {

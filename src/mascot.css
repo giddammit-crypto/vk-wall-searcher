@@ -1,10 +1,22 @@
 /* ==========================================================================
-   AURORA 2D — Интерактивный робот-ассистент (Mascot Assistant)
+   AURORA 2D — Интерактивный робот-ассистент (Motion Design System v2.0)
    Позиционирование: Левый нижний угол (2D режим)
    Эмоции: idle, smile, thinking, yawn, tired, sleep, angry
-   Спецификация: 100% чистый PNG без SVG, прозрачный фон, 2.5D параллакс
+   Спецификация: 100% чистый PNG без SVG, прозрачный фон, 2.5D параллакс,
+                 сложные гармоники парения, интерактивный моушен, микро-ИИ.
    ========================================================================== */
 
+:root {
+    --mascot-glow-primary: #38bdf8;
+    --mascot-glow-accent: #00f0ff;
+    --mascot-glow-energy: #818cf8;
+    --mascot-spring-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --mascot-smooth-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Контейнер маскота
+   -------------------------------------------------------------------------- */
 .aurora-mascot-container {
     position: fixed;
     bottom: 24px;
@@ -16,44 +28,44 @@
     pointer-events: none;
     user-select: none;
     contain: layout style;
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    transition: transform 0.45s var(--mascot-smooth-easing), opacity 0.45s ease;
 }
 
 /* Скрытие в 3D-пространстве или при сворачивании */
 .aurora-mascot-container.mascot-hidden {
     opacity: 0 !important;
     pointer-events: none !important;
-    transform: translateY(30px) scale(0.85);
+    transform: translateY(36px) scale(0.8);
     visibility: hidden;
 }
 
 /* --------------------------------------------------------------------------
-   Диалоговое облачко подсказок (Speech Bubble)
+   Диалоговое облачко подсказок (Speech Bubble) со Spring Overshoot
    -------------------------------------------------------------------------- */
 .mascot-bubble {
     position: relative;
-    max-width: 320px;
-    min-width: 200px;
-    margin-bottom: 12px;
-    padding: 12px 14px 12px 14px;
+    max-width: 330px;
+    min-width: 220px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
     background: rgba(10, 16, 32, 0.88);
     border: 1px solid rgba(56, 189, 248, 0.35);
     border-radius: 18px 18px 18px 4px;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45),
-                0 0 20px rgba(56, 189, 248, 0.15),
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5),
+                0 0 24px rgba(56, 189, 248, 0.16),
                 inset 0 1px 0 rgba(255, 255, 255, 0.15);
     color: #f1f5f9;
     font-family: var(--font-body, system-ui, sans-serif);
-    font-size: 0.825rem;
+    font-size: 0.835rem;
     line-height: 1.5;
     pointer-events: auto;
     opacity: 0;
-    transform: translateY(10px) scale(0.92);
-    transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(14px) scale(0.7);
     transform-origin: bottom left;
+    transition: opacity 0.3s var(--mascot-smooth-easing),
+                transform 0.4s var(--mascot-spring-easing);
 }
 
 /* Хвостик облачка, указывающий на антенну/голову робота */
@@ -73,13 +85,13 @@
 
 /* Светлая тема */
 [data-theme="light"] .mascot-bubble {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.94);
     border-color: rgba(16, 185, 129, 0.4);
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 0 16px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 0 16px rgba(16, 185, 129, 0.15);
     color: #1e293b;
 }
 [data-theme="light"] .mascot-bubble::after {
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.95);
     border-right-color: rgba(16, 185, 129, 0.4);
     border-bottom-color: rgba(16, 185, 129, 0.4);
 }
@@ -87,6 +99,14 @@
 .mascot-bubble.is-active {
     opacity: 1;
     transform: translateY(0) scale(1);
+    animation: mascotBubblePopSpring 0.42s var(--mascot-spring-easing) forwards;
+}
+
+@keyframes mascotBubblePopSpring {
+    0%   { opacity: 0; transform: translateY(14px) scale(0.7); }
+    65%  { opacity: 1; transform: translateY(-4px) scale(1.05); }
+    85%  { transform: translateY(1px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .mascot-bubble-header {
@@ -109,7 +129,7 @@
 .mascot-status-tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .mascot-status-dot {
@@ -126,20 +146,53 @@
     50% { opacity: 0.4; transform: scale(0.75); }
 }
 
+/* Анимированный 4-полосный эквалайзер речи */
+.mascot-voice-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 10px;
+}
+
+.voice-bar {
+    width: 2.5px;
+    height: 3px;
+    background: #00f0ff;
+    border-radius: 1px;
+    box-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+    transition: height 0.1s ease;
+}
+
+[data-theme="light"] .voice-bar {
+    background: #059669;
+    box-shadow: 0 0 6px rgba(5, 150, 105, 0.4);
+}
+
+.mascot-bubble.is-speaking .voice-bar:nth-child(1) { animation: voiceEqualizer 0.5s ease-in-out infinite alternate; }
+.mascot-bubble.is-speaking .voice-bar:nth-child(2) { animation: voiceEqualizer 0.7s ease-in-out 0.15s infinite alternate; }
+.mascot-bubble.is-speaking .voice-bar:nth-child(3) { animation: voiceEqualizer 0.4s ease-in-out 0.3s infinite alternate; }
+.mascot-bubble.is-speaking .voice-bar:nth-child(4) { animation: voiceEqualizer 0.6s ease-in-out 0.05s infinite alternate; }
+
+@keyframes voiceEqualizer {
+    0%   { height: 3px; opacity: 0.4; }
+    50%  { height: 10px; opacity: 1; }
+    100% { height: 5px; opacity: 0.8; }
+}
+
 .mascot-bubble-close {
     background: transparent;
     border: none;
     color: rgba(148, 163, 184, 0.8);
     cursor: pointer;
-    padding: 0 2px;
-    font-size: 14px;
+    padding: 0 4px;
+    font-size: 15px;
     line-height: 1;
     border-radius: 4px;
-    transition: color 0.15s, transform 0.15s;
+    transition: color 0.15s, transform 0.2s;
 }
 .mascot-bubble-close:hover {
     color: #f87171;
-    transform: scale(1.15);
+    transform: scale(1.2) rotate(90deg);
 }
 
 .mascot-bubble-text {
@@ -156,113 +209,489 @@
 }
 
 /* --------------------------------------------------------------------------
-   Сам персонаж-робот (Тело, спрайты, парение, трекинг)
+   Микро-ИИ чипы и быстрые вопросы (Токено-экономные)
+   -------------------------------------------------------------------------- */
+.mascot-ai-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .mascot-ai-chip-row {
+    border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.mascot-ai-chip {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #bae6fd;
+    font-size: 0.72rem;
+    font-family: var(--font-body, system-ui, sans-serif);
+    padding: 3px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.mascot-ai-chip:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(56, 189, 248, 0.28);
+}
+
+[data-theme="light"] .mascot-ai-chip {
+    background: rgba(5, 150, 105, 0.1);
+    border-color: rgba(5, 150, 105, 0.3);
+    color: #065f46;
+}
+[data-theme="light"] .mascot-ai-chip:hover {
+    background: rgba(5, 150, 105, 0.2);
+    border-color: #059669;
+    color: #044e39;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
+}
+
+/* Компактный инпут для вопроса роботу */
+.mascot-ai-input-wrap {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mascot-ai-input-wrap.is-visible {
+    display: flex;
+}
+
+.mascot-ai-input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 8px;
+    padding: 4px 8px;
+    color: #ffffff;
+    font-size: 0.75rem;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+[data-theme="light"] .mascot-ai-input {
+    background: rgba(241, 245, 249, 0.9);
+    border-color: rgba(5, 150, 105, 0.35);
+    color: #0f172a;
+}
+
+.mascot-ai-input:focus {
+    border-color: #38bdf8;
+}
+
+.mascot-ai-send-btn {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+}
+
+.mascot-ai-send-btn:hover {
+    transform: scale(1.05);
+}
+
+.mascot-ai-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Тело робота, 2.5D вращение и пружинная физика
    -------------------------------------------------------------------------- */
 .mascot-body-wrapper {
     position: relative;
-    width: 130px;
-    height: 130px;
+    width: 132px;
+    height: 132px;
     pointer-events: auto;
     cursor: pointer;
-    perspective: 600px;
+    perspective: 800px;
     transform-style: preserve-3d;
-    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    transition: filter 0.3s ease;
 }
 
 .mascot-body-wrapper:hover {
-    transform: scale(1.04);
+    filter: brightness(1.08);
 }
 
-.mascot-body-wrapper:active {
-    transform: scale(0.96);
+/* Реакция на одиночный клик/тычок (Squash and Stretch) */
+.mascot-body-wrapper.is-poked {
+    animation: mascotPokeBounce 0.65s var(--mascot-spring-easing) forwards;
 }
 
-/* Эффект парения (Floating Idle) */
+@keyframes mascotPokeBounce {
+    0%   { transform: scale(1, 1); }
+    18%  { transform: scale(1.18, 0.82) translateY(6px); }
+    45%  { transform: scale(0.88, 1.14) translateY(-14px); }
+    72%  { transform: scale(1.05, 0.96) translateY(-2px); }
+    88%  { transform: scale(0.98, 1.01); }
+    100% { transform: scale(1, 1) translateY(0); }
+}
+
+/* Пасхалка: 360° сальто назад при двойном клике */
+.mascot-body-wrapper.is-backflipping {
+    animation: mascotEasterBackflip 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes mascotEasterBackflip {
+    0% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+    20% {
+        transform: translateY(8px) scale(1.15, 0.85);
+    }
+    50% {
+        transform: translateY(-44px) rotate(-180deg) scale(1.08);
+    }
+    80% {
+        transform: translateY(-4px) rotate(-360deg) scale(0.92, 1.08);
+    }
+    92% {
+        transform: translateY(2px) rotate(-360deg) scale(1.04, 0.96);
+    }
+    100% {
+        transform: translateY(0) rotate(-360deg) scale(1);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   LIVING IDLE: Составные гармоники парения робота (Compound Harmonics)
+   -------------------------------------------------------------------------- */
 .mascot-floater {
     width: 100%;
     height: 100%;
     position: relative;
     transform-origin: center bottom;
-    animation: mascotFloat 3.8s ease-in-out infinite;
+    animation: mascotLivingFloat 4.2s ease-in-out infinite;
+    will-change: transform;
 }
 
-@keyframes mascotFloat {
-    0%, 100% {
-        transform: translateY(0) rotate(0deg);
+@keyframes mascotLivingFloat {
+    0% {
+        transform: translateY(0px) rotate(0deg) scale(1, 1);
+    }
+    25% {
+        transform: translateY(-6px) rotate(1.4deg) scale(0.99, 1.01);
     }
     50% {
-        transform: translateY(-8px) rotate(-1.5deg);
+        transform: translateY(-13px) rotate(-1.8deg) scale(1.02, 0.98);
+    }
+    75% {
+        transform: translateY(-5px) rotate(0.8deg) scale(0.99, 1.01);
+    }
+    100% {
+        transform: translateY(0px) rotate(0deg) scale(1, 1);
     }
 }
 
-/* В режиме сна — лежачее дыхание */
+/* Сон: глубокое лежачее дыхание */
 .aurora-mascot-container[data-state="sleep"] .mascot-floater {
-    animation: mascotSleepBreath 4s ease-in-out infinite;
+    animation: mascotSleepFloat 4.6s ease-in-out infinite;
 }
 
-@keyframes mascotSleepBreath {
-    0%, 100% {
-        transform: translateY(2px) scaleY(1);
-    }
-    50% {
-        transform: translateY(5px) scaleY(0.97);
-    }
+@keyframes mascotSleepFloat {
+    0%, 100% { transform: translateY(4px) rotate(-3deg) scale(1, 0.96); }
+    50%      { transform: translateY(8px) rotate(-2deg) scale(1.03, 0.93); }
 }
 
-/* В режиме злости — вибрация */
+/* Злость/Ошибка: мелкая вибрация */
 .aurora-mascot-container[data-state="angry"] .mascot-floater {
-    animation: mascotAngryTremble 0.25s linear infinite;
+    animation: mascotAngryJitter 0.22s linear infinite;
 }
 
-@keyframes mascotAngryTremble {
-    0% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(-2px, 1px) rotate(-2deg); }
-    50% { transform: translate(1px, -1px) rotate(1deg); }
-    75% { transform: translate(-1px, -1px) rotate(2deg); }
+@keyframes mascotAngryJitter {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(-2px, 1px) rotate(-2.5deg); }
+    50%  { transform: translate(2px, -1px) rotate(1.5deg); }
+    75%  { transform: translate(-1px, -2px) rotate(2deg); }
     100% { transform: translate(1px, 1px) rotate(0deg); }
 }
 
-/* Изображение спрайта (Строго PNG без фона) */
+/* --------------------------------------------------------------------------
+   Изображение PNG-спрайта и сглаженный кросс-поп эмоций
+   -------------------------------------------------------------------------- */
 .mascot-sprite-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
     display: block;
-    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.35));
-    transition: filter 0.25s ease;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.42));
+    transition: filter 0.3s ease, transform 0.25s var(--mascot-spring-easing);
     will-change: transform;
+    pointer-events: none;
 }
 
 [data-theme="light"] .mascot-sprite-img {
-    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.18));
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.2));
 }
 
-/* Мягкая тень под роботом */
-.mascot-shadow {
+.mascot-sprite-img.emotion-pop {
+    animation: mascotEmotionPop 0.38s var(--mascot-spring-easing) forwards;
+}
+
+@keyframes mascotEmotionPop {
+    0%   { transform: scale(0.92); opacity: 0.85; }
+    50%  { transform: scale(1.06); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   Эффект CRT сканлайнов и голографического блика визора
+   -------------------------------------------------------------------------- */
+.mascot-screen-overlay {
     position: absolute;
-    bottom: -6px;
+    top: 24%;
+    left: 28%;
+    width: 44%;
+    height: 26%;
+    border-radius: 12px;
+    pointer-events: none;
+    overflow: hidden;
+    mix-blend-mode: screen;
+    opacity: 0.75;
+}
+
+.mascot-screen-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(56, 189, 248, 0.12) 0px,
+        rgba(56, 189, 248, 0.12) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    opacity: 0.8;
+}
+
+.mascot-screen-overlay::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -120%;
+    width: 60%;
+    height: 200%;
+    background: linear-gradient(
+        60deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 40%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(56, 189, 248, 0.2) 60%,
+        transparent 100%
+    );
+    transform: rotate(25deg);
+    animation: mascotVisorGlint 4.8s ease-in-out infinite;
+}
+
+@keyframes mascotVisorGlint {
+    0%, 70%   { left: -120%; opacity: 0; }
+    75%       { opacity: 0.9; }
+    85%       { left: 160%; opacity: 0.9; }
+    90%, 100% { left: 160%; opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Маячок на антенне (Antenna Beacon Glow)
+   -------------------------------------------------------------------------- */
+.mascot-antenna-beacon {
+    position: absolute;
+    top: 6px;
+    left: 49%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00f0ff;
+    box-shadow: 0 0 10px #00f0ff, 0 0 18px rgba(0, 240, 255, 0.7);
+    animation: mascotBeaconPulse 2.2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes mascotBeaconPulse {
+    0%, 100% {
+        opacity: 0.9;
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 0 8px #00f0ff, 0 0 16px rgba(0, 240, 255, 0.5);
+    }
+    50% {
+        opacity: 0.4;
+        transform: translateX(-50%) scale(0.75);
+        box-shadow: 0 0 3px #00f0ff;
+    }
+}
+
+.aurora-mascot-container[data-state="thinking"] .mascot-antenna-beacon {
+    background: #c084fc;
+    box-shadow: 0 0 12px #c084fc, 0 0 20px #a855f7;
+    animation: mascotBeaconPulseFast 0.6s ease-in-out infinite;
+}
+
+.aurora-mascot-container[data-state="angry"] .mascot-antenna-beacon {
+    background: #ef4444;
+    box-shadow: 0 0 12px #ef4444, 0 0 20px #dc2626;
+    animation: mascotBeaconPulseFast 0.3s ease-in-out infinite;
+}
+
+@keyframes mascotBeaconPulseFast {
+    0%, 100% { opacity: 1; transform: translateX(-50%) scale(1.25); }
+    50%      { opacity: 0.3; transform: translateX(-50%) scale(0.7); }
+}
+
+/* --------------------------------------------------------------------------
+   Плазменный антигравитационный факел снизу (Thruster Glow)
+   -------------------------------------------------------------------------- */
+.mascot-thruster-glow {
+    position: absolute;
+    bottom: 4px;
     left: 50%;
     transform: translateX(-50%);
-    width: 72px;
-    height: 14px;
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0) 70%);
+    width: 46px;
+    height: 18px;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(0, 240, 255, 0.85) 0%,
+        rgba(56, 189, 248, 0.45) 45%,
+        rgba(129, 140, 248, 0.15) 70%,
+        transparent 85%
+    );
+    border-radius: 50%;
+    filter: blur(4px);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    animation: mascotThrusterPulse 4.2s ease-in-out infinite;
+}
+
+@keyframes mascotThrusterPulse {
+    0%, 100% {
+        transform: translateX(-50%) scale(0.85, 0.7);
+        opacity: 0.6;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.25, 1.15);
+        opacity: 0.95;
+        filter: blur(5px);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Адаптивная эллиптическая тень под роботом
+   -------------------------------------------------------------------------- */
+.mascot-shadow {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 74px;
+    height: 15px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 72%);
     border-radius: 50%;
     pointer-events: none;
-    animation: mascotShadowScale 3.8s ease-in-out infinite;
+    animation: mascotDynamicShadow 4.2s ease-in-out infinite;
 }
 
 [data-theme="light"] .mascot-shadow {
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 72%);
 }
 
-@keyframes mascotShadowScale {
+@keyframes mascotDynamicShadow {
     0%, 100% {
         transform: translateX(-50%) scale(1);
         opacity: 0.85;
+        filter: blur(0px);
     }
     50% {
-        transform: translateX(-50%) scale(0.78);
-        opacity: 0.55;
+        transform: translateX(-50%) scale(0.68) translateY(2px);
+        opacity: 0.4;
+        filter: blur(2.5px);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Всплывающий эмодзи-бейдж настроения (Mood Badges)
+   -------------------------------------------------------------------------- */
+.mascot-mood-badge {
+    position: absolute;
+    top: -4px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.3);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    pointer-events: none;
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.3s var(--mascot-spring-easing), opacity 0.25s ease;
+    z-index: 10;
+}
+
+.mascot-mood-badge.is-visible {
+    transform: scale(1);
+    opacity: 1;
+    animation: mascotBadgeBob 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes mascotBadgeBob {
+    0%   { transform: scale(1) translateY(0); }
+    100% { transform: scale(1.08) translateY(-4px); }
+}
+
+[data-theme="light"] .mascot-mood-badge {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(5, 150, 105, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 8px rgba(5, 150, 105, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Частицы-искры (Sparkle Particles) для пасхалок и кликов
+   -------------------------------------------------------------------------- */
+.mascot-particles-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.mascot-sparkle {
+    position: absolute;
+    pointer-events: none;
+    font-size: 13px;
+    line-height: 1;
+    animation: sparkleFlyOut 0.85s ease-out forwards;
+}
+
+@keyframes sparkleFlyOut {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(0.4) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(var(--rot));
     }
 }
 
@@ -325,53 +754,58 @@
 }
 
 /* --------------------------------------------------------------------------
-   Кнопка быстрого сворачивания / разворачивания
+   Кнопка сворачивания маскота
    -------------------------------------------------------------------------- */
 .mascot-toggle-btn {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 24px;
-    height: 24px;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.4);
+    border: 1px solid rgba(56, 189, 248, 0.35);
     color: #94a3b8;
-    display: grid;
-    place-items: center;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    font-size: 13px;
-    pointer-events: auto;
-    transition: all 0.2s ease;
     opacity: 0;
     transform: scale(0.8);
+    transition: opacity 0.2s, transform 0.2s, background 0.2s, color 0.2s;
+    z-index: 20;
+    padding: 0;
+    line-height: 1;
 }
 
-.aurora-mascot-container:hover .mascot-toggle-btn {
+.mascot-body-wrapper:hover .mascot-toggle-btn {
     opacity: 1;
     transform: scale(1);
 }
 
 .mascot-toggle-btn:hover {
-    background: #0284c7;
+    background: rgba(239, 68, 68, 0.85);
+    border-color: #ef4444;
     color: #ffffff;
-    border-color: #38bdf8;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
 }
 
-/* Мини-бейдж при сворачивании робота */
+/* --------------------------------------------------------------------------
+   Мини-бейдж (Свернутое состояние)
+   -------------------------------------------------------------------------- */
 .mascot-collapsed-pill {
     position: fixed;
-    bottom: 24px;
-    left: 24px;
+    bottom: 20px;
+    left: 20px;
     z-index: 900;
     display: none;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px 6px 8px;
-    background: rgba(10, 16, 32, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    border-radius: 20px;
+    padding: 6px 14px 6px 8px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 9999px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -411,17 +845,17 @@
         left: 14px;
     }
     .mascot-body-wrapper {
-        width: 100px;
-        height: 100px;
+        width: 104px;
+        height: 104px;
     }
     .mascot-bubble {
-        max-width: 250px;
+        max-width: 260px;
         font-size: 0.775rem;
         padding: 10px 12px;
     }
     .mascot-shadow {
-        width: 56px;
-        height: 10px;
+        width: 58px;
+        height: 11px;
     }
 }
 
@@ -431,12 +865,19 @@
         left: 10px;
     }
     .mascot-body-wrapper {
-        width: 82px;
-        height: 82px;
+        width: 86px;
+        height: 86px;
     }
     .mascot-bubble {
-        max-width: 220px;
+        max-width: 230px;
         font-size: 0.725rem;
         padding: 8px 10px;
+    }
+    .mascot-ai-chip-row {
+        gap: 4px;
+    }
+    .mascot-ai-chip {
+        font-size: 0.68rem;
+        padding: 2px 6px;
     }
 }

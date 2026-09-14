@@ -8,9 +8,9 @@
  * Разработка: Амброзиев О.А. (модуль 3.4)
  */
 
-import { callVkApi, resolveApiUrl } from './api.js?v=4.10.0';
-import { CANONICAL_BRANCHES, escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=4.10.0';
-import { makeTableSortable } from './tablesort.js?v=4.10.0';
+import { callVkApi, resolveApiUrl } from './api.js?v=4.11.0';
+import { CANONICAL_BRANCHES, escapeHtml, renderBranchAvatarHtml, findCanonicalBranch } from './branches.js?v=4.11.0';
+import { makeTableSortable } from './tablesort.js?v=4.11.0';
 
 const DATA_URL = resolveApiUrl('api/data.php');
 
