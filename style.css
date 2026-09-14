@@ -11965,3 +11965,504 @@ select:hover { border-color: var(--accent-medium); }
 [data-theme="light"] .tab-btn.active {
     background: #1757a6 !important;
 }
+
+/* =============================================================================
+   DESIGN SYSTEM v3 — de-slop (обе темы)
+   Сплошные цвета вместо градиентов, нейтральные тени вместо неона,
+   непрозрачные поверхности вместо стекла, сдержанная типографика.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   1. Токены: ТЁМНАЯ ТЕМА (по умолчанию)
+   --------------------------------------------------------------------------- */
+:root {
+    /* Фон и поверхности — непрозрачные */
+    --bg-page: #0e1320;
+    --bg-page-gradient: linear-gradient(180deg, #0e1320 0%, #0e1320 100%);
+    --bg-card: #161c2c;
+    --bg-card-hover: #1a2133;
+    --surface: #151b29;
+    --surface-hover: #1b2233;
+    --surface-glass: #182031;
+    --surface-glass-hover: #202941;
+    --glass-card-border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+    /* Акцент — один сдержанный синий */
+    --accent: #4d8dff;
+    --accent-hover: #6ba1ff;
+    --accent-soft: rgba(77, 141, 255, 0.13);
+    --accent-medium: rgba(77, 141, 255, 0.24);
+    --accent-gradient: linear-gradient(180deg, #4d8dff 0%, #4d8dff 100%);
+
+    /* Дополнительные цвета без неона */
+    --color-aurora-cyan: #2dd4bf;
+    --color-aurora-blue: #4d8dff;
+    --color-aurora-purple: #8b7ff0;
+    --color-aurora-pink: #f472b6;
+    --color-aurora-gold: #d9a429;
+
+    /* Кнопки — сплошные */
+    --btn-primary-bg: linear-gradient(180deg, #3d7ef7 0%, #3d7ef7 100%);
+    --btn-primary-shadow: 0 2px 8px rgba(2, 6, 17, 0.4);
+    --btn-primary-hover-shadow: 0 4px 14px rgba(2, 6, 17, 0.5);
+    --btn-primary-border-color: #3d7ef7;
+
+    /* Карточки: без неоновой кромки */
+    --card-border-top: 1px solid rgba(255, 255, 255, 0.07);
+    --aurora-card-border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+    /* Тумблеры и бейджи — сплошные */
+    --switch-active-bg: #4d8dff;
+    --switch-active-shadow: 0 1px 4px rgba(2, 6, 17, 0.4);
+    --badge-selected-bg: #4d8dff;
+    --badge-selected-shadow: 0 1px 4px rgba(2, 6, 17, 0.4);
+
+    /* Логотип без свечения */
+    --logo-gradient: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+    --logo-shadow: none;
+
+    /* Нейтральные тени вместо цветного глоу */
+    --elevation-1: 0 1px 3px rgba(2, 6, 17, 0.35);
+    --elevation-2: 0 4px 12px rgba(2, 6, 17, 0.4);
+    --elevation-4: 0 12px 32px rgba(2, 6, 17, 0.5);
+    --elevation-focus: 0 0 0 3px rgba(77, 141, 255, 0.35);
+    --input-focus-halo: 0 0 0 3px rgba(77, 141, 255, 0.25);
+    --shadow-card: 0 1px 3px rgba(2, 6, 17, 0.35);
+    --shadow-card-hover: 0 6px 18px rgba(2, 6, 17, 0.45);
+    --shadow-button: 0 1px 3px rgba(2, 6, 17, 0.35);
+    --shadow-modal: 0 16px 48px rgba(2, 6, 17, 0.55);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Токены: СВЕТЛАЯ ТЕМА
+   --------------------------------------------------------------------------- */
+[data-theme="light"] {
+    --bg-page: #f2f4f8;
+    --bg-page-gradient: linear-gradient(180deg, #f2f4f8 0%, #f2f4f8 100%);
+    --bg-card: #ffffff;
+    --bg-card-hover: #ffffff;
+    --surface: #f6f8fb;
+    --surface-hover: #eef1f6;
+    --surface-glass: #ffffff;
+    --surface-glass-hover: #f6f8fb;
+    --glass-card-border-top: 1px solid rgba(15, 23, 42, 0.08);
+
+    --accent: #1d5bd8;
+    --accent-hover: #174ba8;
+    --accent-soft: rgba(29, 91, 216, 0.1);
+    --accent-medium: rgba(29, 91, 216, 0.22);
+    --accent-gradient: linear-gradient(180deg, #1d5bd8 0%, #1d5bd8 100%);
+
+    --color-aurora-cyan: #0e9488;
+    --color-aurora-blue: #1d5bd8;
+    --color-aurora-purple: #6d5bd0;
+    --color-aurora-pink: #db2777;
+    --color-aurora-gold: #b45309;
+
+    --btn-primary-bg: linear-gradient(180deg, #1d5bd8 0%, #1a4fc0 100%);
+    --btn-primary-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+    --btn-primary-hover-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+    --btn-primary-border-color: #1d5bd8;
+
+    --card-border-top: 1px solid rgba(15, 23, 42, 0.08);
+    --aurora-card-border-top: 1px solid rgba(15, 23, 42, 0.08);
+
+    --switch-active-bg: #1d5bd8;
+    --switch-active-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+    --badge-selected-bg: #1d5bd8;
+    --badge-selected-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+
+    --elevation-1: 0 1px 2px rgba(15, 23, 42, 0.07);
+    --elevation-2: 0 3px 10px rgba(15, 23, 42, 0.09);
+    --elevation-4: 0 12px 28px rgba(15, 23, 42, 0.14);
+    --elevation-focus: 0 0 0 3px rgba(29, 91, 216, 0.22);
+    --input-focus-halo: 0 0 0 3px rgba(29, 91, 216, 0.16);
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.07);
+    --shadow-card-hover: 0 5px 16px rgba(15, 23, 42, 0.11);
+    --shadow-button: 0 1px 2px rgba(15, 23, 42, 0.08);
+    --shadow-modal: 0 16px 44px rgba(15, 23, 42, 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+   3. Отключение фоновых эффектов и бессмысленных анимаций
+   --------------------------------------------------------------------------- */
+.aurora-backdrop,
+.aurora-waves,
+.aurora-mesh-grid,
+.aurora-blob,
+.cosmic-search-backdrop,
+.cosmic-vignette-overlay {
+    display: none !important;
+}
+
+/* Неоновые пульсации — глушим сами keyframes (позднее определение побеждает) */
+@keyframes pulseGlow { 0%, 100% { } }
+@keyframes badgePulse { 0%, 100% { } }
+@keyframes auroraBadgePulse { 0%, 100% { } }
+@keyframes pulseResultsBtn { 0%, 100% { } }
+@keyframes btnShimmerSweep { 0%, 100% { } }
+@keyframes galaxySpin { 0%, 100% { } }
+@keyframes galaxyPulse { 0%, 100% { } }
+@keyframes starTwinkle { 0%, 100% { } }
+@keyframes serverKeyPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* ---------------------------------------------------------------------------
+   4. Логотип: строгая типографика без градиентов и глоу
+   --------------------------------------------------------------------------- */
+.brand-aurora {
+    font-family: var(--font-display) !important;
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: currentColor !important;
+    color: var(--text-primary) !important;
+    filter: none !important;
+    letter-spacing: 0.06em;
+}
+[data-theme="light"] .brand-aurora {
+    background: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    color: #0f172a !important;
+    filter: none !important;
+}
+.logo-icon-wrap {
+    background: var(--surface) !important;
+    box-shadow: var(--elevation-1) !important;
+}
+.logo-icon-wrap *,
+.logo-icon-wrap svg {
+    filter: none !important;
+    animation: none !important;
+    drop-shadow: none;
+}
+.aurora-pill-badge {
+    font-family: var(--font-display) !important;
+    text-shadow: none !important;
+    box-shadow: var(--elevation-1) !important;
+}
+.badge-pulse-dot { animation: none !important; }
+
+/* ---------------------------------------------------------------------------
+   5. Кнопки: сплошные, без shimmer-бликов и неоновых ореолов
+   --------------------------------------------------------------------------- */
+.btn-primary {
+    background: var(--btn-primary-bg) !important;
+    background-size: 100% 100% !important;
+    animation: none !important;
+    box-shadow: var(--btn-primary-shadow);
+}
+.btn-primary::before { display: none !important; }
+.btn-secondary {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: var(--shadow-button) !important;
+}
+.btn-secondary:hover { box-shadow: var(--shadow-card-hover) !important; }
+#space-3d-btn,
+.space-3d-btn {
+    background: var(--surface) !important;
+    box-shadow: var(--elevation-1) !important;
+    text-shadow: none !important;
+    animation: none !important;
+}
+.btn-view-results { animation: none !important; box-shadow: var(--shadow-button) !important; }
+
+/* ---------------------------------------------------------------------------
+   6. Вкладки, бейджи, чипы: сплошной активный цвет в обеих темах
+   --------------------------------------------------------------------------- */
+.tab-btn.active {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    border-color: var(--accent) !important;
+    box-shadow: var(--shadow-button) !important;
+}
+.tab-btn.active .icon,
+.tab-btn.active .tab-badge { color: #ffffff !important; }
+.tab-btn.active .tab-badge { background: rgba(255, 255, 255, 0.22) !important; }
+.tab-btn.active::after { background: transparent; }
+[data-theme="light"] .tab-btn.active { background: var(--accent) !important; }
+.month-badge.selected,
+.segment-btn.active,
+.preset-pill.active,
+.events-cat-btn.active {
+    background: var(--badge-selected-bg) !important;
+    color: #ffffff !important;
+    box-shadow: var(--badge-selected-shadow) !important;
+    border-color: var(--badge-selected-bg) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   7. Поверхности: стекло → непрозрачные (ключевой каркас)
+   --------------------------------------------------------------------------- */
+.app-header,
+.card,
+.tabs-container,
+.post-card,
+.stat-box,
+.source-showcase-card,
+.month-badge,
+.branches-toggle-container,
+.advice-branch-card,
+.subs-kpi,
+.crosspost-cluster-card,
+.file-card,
+.skeleton-card,
+.post-repost-box,
+.report-document,
+.scroll-to-top-btn,
+.video-play-btn,
+.modal-card,
+.search-motion-modal,
+.post-modal-content,
+.post-detail-modal,
+.analytics-table th,
+.textarea,
+textarea,
+.ai-chat,
+.ai-msg-body {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.app-header { background: var(--bg-card) !important; border-bottom: 1px solid var(--hairline); }
+.card { background: var(--bg-card) !important; }
+.search-modal-overlay { background: rgba(4, 8, 18, 0.62) !important; }
+[data-theme="light"] .search-modal-overlay { background: rgba(15, 23, 42, 0.38) !important; }
+.post-card::after { display: none !important; }
+
+/* Убираем «спекулярную» неоновую кромку карточек */
+.card::before, .card::after { box-shadow: none !important; }
+
+/* ---------------------------------------------------------------------------
+   8. Свечения текста — снимаем (основной интерфейс)
+   --------------------------------------------------------------------------- */
+.aurora-hero-badge,
+.aurora-pill-badge,
+.input-leading-icon,
+.text-primary,
+.expand-text-btn,
+.report-official-badge,
+.passport-value.highlight,
+.avatar-num-badge {
+    text-shadow: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+   9. Прогресс, графики, скелетоны — сплошные цвета
+   --------------------------------------------------------------------------- */
+.progress-bar-fill,
+.progress-bar-fill::after {
+    background: var(--accent) !important;
+    animation: none !important;
+    box-shadow: none !important;
+}
+.chart-bar-fill.bar-posts { background: #60a5fa !important; }
+.chart-bar-fill.bar-views { background: #3b82f6 !important; }
+.chart-bar-fill.bar-er { background: #1d4ed8 !important; }
+[data-theme="light"] .chart-bar-fill.bar-posts { background: #7ea6f5 !important; }
+[data-theme="light"] .chart-bar-fill.bar-views { background: #4a80e8 !important; }
+[data-theme="light"] .chart-bar-fill.bar-er { background: #2b5fc9 !important; }
+.chart-bar-fill { box-shadow: none !important; }
+.skeleton-avatar, .skeleton-line, .skeleton-media, .skeleton-pill {
+    background: rgba(148, 163, 184, 0.16) !important;
+    animation: none !important;
+}
+[data-theme="light"] .skeleton-avatar,
+[data-theme="light"] .skeleton-line,
+[data-theme="light"] .skeleton-media,
+[data-theme="light"] .skeleton-pill { background: rgba(15, 23, 42, 0.08) !important; }
+.spark-bar, .sys-bar, .cosmo-progress-bar { box-shadow: none !important; }
+
+/* ---------------------------------------------------------------------------
+   10. Прочее: пульсирующие тени индикаторов и модалок — нейтральные
+   --------------------------------------------------------------------------- */
+.stat-box:hover,
+.kpi-card:hover,
+.attachment-link-card:hover,
+.source-showcase-card.selected {
+    box-shadow: var(--shadow-card-hover) !important;
+}
+.search-motion-modal,
+.promo-modal-window {
+    box-shadow: var(--shadow-modal) !important;
+    text-shadow: none !important;
+}
+.scroll-to-top-btn { box-shadow: var(--elevation-2) !important; }
+.report-official-badge { box-shadow: var(--elevation-1) !important; }
+.folder-back, .folder-front { box-shadow: var(--elevation-2) !important; }
+
+/* =============================================================================
+   DESIGN SYSTEM v4 — редизайн в стиле современного SaaS-дашборда
+   (светлая база, крупный радиус, мягкие тени, акцент маджента)
+   ============================================================================= */
+
+/* --- Токены: тёмная тема --- */
+:root {
+    --bg-page: #121419;
+    --bg-page-gradient: linear-gradient(180deg, #121419 0%, #121419 100%);
+    --bg-card: #1a1d24;
+    --bg-card-hover: #1e222b;
+    --surface: #171a21;
+    --surface-hover: #1e222b;
+    --surface-glass: #1b1f27;
+    --surface-glass-hover: #232833;
+    --hairline: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.09);
+    --divider-color: rgba(255, 255, 255, 0.06);
+
+    --accent: #ec4899;
+    --accent-hover: #f472b6;
+    --accent-soft: rgba(236, 72, 153, 0.14);
+    --accent-medium: rgba(236, 72, 153, 0.26);
+    --accent-gradient: linear-gradient(180deg, #ec4899 0%, #ec4899 100%);
+    --color-aurora-cyan: #ec4899;
+    --color-aurora-blue: #ec4899;
+
+    --btn-primary-bg: linear-gradient(180deg, #ec4899 0%, #db2777 100%);
+    --btn-primary-border-color: #db2777;
+    --btn-primary-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --btn-primary-hover-shadow: 0 4px 14px rgba(219, 39, 119, 0.35);
+    --switch-active-bg: #ec4899;
+    --badge-selected-bg: #ec4899;
+    --logo-gradient: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+    --elevation-focus: 0 0 0 3px rgba(236, 72, 153, 0.3);
+    --input-focus-halo: 0 0 0 3px rgba(236, 72, 153, 0.22);
+}
+
+/* --- Токены: светлая тема --- */
+[data-theme="light"] {
+    --bg-page: #f4f5f8;
+    --bg-page-gradient: linear-gradient(180deg, #f4f5f8 0%, #f4f5f8 100%);
+    --bg-card: #ffffff;
+    --surface: #f7f8fa;
+    --surface-hover: #f1f3f6;
+    --surface-glass: #ffffff;
+    --surface-glass-hover: #f7f8fa;
+    --hairline: rgba(15, 23, 42, 0.07);
+    --border-color: rgba(15, 23, 42, 0.09);
+    --divider-color: rgba(15, 23, 42, 0.06);
+
+    --accent: #d6338f;
+    --accent-hover: #b82a79;
+    --accent-soft: rgba(214, 51, 143, 0.09);
+    --accent-medium: rgba(214, 51, 143, 0.2);
+    --accent-gradient: linear-gradient(180deg, #d6338f 0%, #d6338f 100%);
+    --color-aurora-cyan: #d6338f;
+    --color-aurora-blue: #d6338f;
+
+    --btn-primary-bg: linear-gradient(180deg, #d6338f 0%, #c22a80 100%);
+    --btn-primary-border-color: #d6338f;
+    --btn-primary-shadow: 0 2px 6px rgba(214, 51, 143, 0.25);
+    --btn-primary-hover-shadow: 0 4px 12px rgba(214, 51, 143, 0.32);
+    --switch-active-bg: #d6338f;
+    --badge-selected-bg: #d6338f;
+    --elevation-focus: 0 0 0 3px rgba(214, 51, 143, 0.2);
+    --input-focus-halo: 0 0 0 3px rgba(214, 51, 143, 0.14);
+}
+
+/* --- Формы: мягкие «залитые» поля как в референсе --- */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select,
+.textarea,
+textarea {
+    background: var(--surface) !important;
+    border: 1px solid transparent !important;
+    border-radius: 12px !important;
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+input[type="text"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+select:hover,
+.textarea:hover,
+textarea:hover {
+    background: var(--surface-hover) !important;
+    border-color: var(--hairline) !important;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus,
+.textarea:focus,
+textarea:focus {
+    background: var(--bg-card) !important;
+    border-color: var(--accent) !important;
+    box-shadow: var(--input-focus-halo) !important;
+}
+[data-theme="light"] input[data-theme="light"], .ai-input { background: var(--surface) !important; }
+
+/* --- Крупный радиус у ключевых поверхностей --- */
+.card { border-radius: 18px !important; }
+.tabs-container { border-radius: 16px !important; }
+.app-header { border-radius: 18px !important; }
+.btn, .btn-primary, .btn-secondary { border-radius: 12px !important; }
+.month-badge, .preset-pill, .segment-btn, .events-cat-btn { border-radius: 10px !important; }
+.post-card { border-radius: 16px !important; }
+
+/* --- Кнопки-«пилюли» и бейджи в акценте --- */
+.btn-primary { font-weight: 600; }
+.month-badge.selected,
+.segment-btn.active,
+.preset-pill.active,
+.events-cat-btn.active {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+.switch-container input:checked + .switch-slider,
+.switch-slider.on {
+    background: var(--switch-active-bg) !important;
+}
+
+/* --- Графики в розовой гамме --- */
+.chart-bar-fill.bar-posts { background: #f9a8d4 !important; }
+.chart-bar-fill.bar-views { background: #ec4899 !important; }
+.chart-bar-fill.bar-er { background: #be185d !important; }
+[data-theme="light"] .chart-bar-fill.bar-posts { background: #f6a8d4 !important; }
+[data-theme="light"] .chart-bar-fill.bar-views { background: #e2529f !important; }
+[data-theme="light"] .chart-bar-fill.bar-er { background: #b01d6f !important; }
+
+/* --- Прогресс-бар в акценте --- */
+.progress-bar-fill { background: var(--accent) !important; }
+
+/* --- Скроллбары нейтральнее --- */
+::-webkit-scrollbar-thumb { background: rgba(140, 145, 160, 0.35); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-medium); }
+
+/* --- Кнопка «Пространство 3D» в общем стиле (ID-специфичность) --- */
+#space-3d-btn {
+    background: var(--surface) !important;
+    border: 1px solid var(--hairline) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: var(--elevation-1) !important;
+    text-shadow: none !important;
+}
+#space-3d-btn:hover {
+    background: var(--surface-hover) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    box-shadow: var(--shadow-card-hover) !important;
+}
+[data-theme="light"] #space-3d-btn {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: var(--hairline) !important;
+    box-shadow: var(--elevation-1) !important;
+}
+[data-theme="light"] #space-3d-btn:hover {
+    background: var(--surface-hover) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    box-shadow: var(--shadow-card-hover) !important;
+}
+.space-badge-pulse {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+#space-3d-btn.click-step-1,
+#space-3d-btn.click-step-2 {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    box-shadow: var(--elevation-1) !important;
+}

@@ -695,7 +695,7 @@ function initApp() {
         const currentVal = elements.branchSelect.value;
         elements.branchSelect.innerHTML = `
             <option value="">— Выберите филиал библиотеки (или введите ниже ссылку вручную) —</option>
-            <option value="all">⚡ Все 16 филиалов одновременно (пакетный поиск)</option>
+            <option value="all">Все 16 филиалов одновременно (пакетный поиск)</option>
         `;
         const group = document.createElement('optgroup');
         group.label = 'Филиалы библиотек г. Владимира (16 источников)';
@@ -1426,7 +1426,7 @@ function initApp() {
                 if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `Поиск прерван пользователем. Найдено записей: ${state.matchedCount}`;
                 showToast('Поиск остановлен пользователем', 'warning');
             } else {
-                if (elements.progressTitle) elements.progressTitle.textContent = '✅ Поиск успешно завершён!';
+                if (elements.progressTitle) elements.progressTitle.textContent = 'Поиск успешно завершён';
                 if (elements.progressStatusMsg) elements.progressStatusMsg.textContent = `Просканировано ${resolvedTargets.length} сообществ, найдено ${state.matchedCount} записей за ${elapsedSec}с.`;
                 showToast(`Поиск завершен за ${elapsedSec}с! Найдено ${state.matchedCount} записей.`, 'check_circle');
             }
@@ -2064,11 +2064,11 @@ function initApp() {
                 counts[att.type] = (counts[att.type] || 0) + 1;
             });
             const parts = [];
-            if (counts.photo) parts.push(`📷 ${counts.photo} ${declOfNum(counts.photo, ['фотография', 'фотографии', 'фотографий'])}`);
-            if (counts.video) parts.push(`🎥 ${counts.video} ${declOfNum(counts.video, ['видеозапись', 'видеозаписи', 'видеозаписей'])}`);
-            if (counts.doc) parts.push(`📄 ${counts.doc} ${declOfNum(counts.doc, ['документ', 'документа', 'документов'])}`);
-            if (counts.audio) parts.push(`🎵 ${counts.audio} ${declOfNum(counts.audio, ['аудиозапись', 'аудиозаписи', 'аудиозаписей'])}`);
-            if (counts.link) parts.push(`🔗 Материал с ссылкой`);
+            if (counts.photo) parts.push(`${counts.photo} ${declOfNum(counts.photo, ['фотография', 'фотографии', 'фотографий'])}`);
+            if (counts.video) parts.push(`${counts.video} ${declOfNum(counts.video, ['видеозапись', 'видеозаписи', 'видеозаписей'])}`);
+            if (counts.doc) parts.push(`${counts.doc} ${declOfNum(counts.doc, ['документ', 'документа', 'документов'])}`);
+            if (counts.audio) parts.push(`${counts.audio} ${declOfNum(counts.audio, ['аудиозапись', 'аудиозаписи', 'аудиозаписей'])}`);
+            if (counts.link) parts.push(`Материал с ссылкой`);
             if (parts.length > 0) {
                 return `<span class="report-empty-hint">${parts.join(', ')} (без текста)</span>`;
             }
@@ -3473,13 +3473,13 @@ function initApp() {
         // Блокируем кнопку и выводим статус
         if (elements.forceUpdateSubmit) elements.forceUpdateSubmit.disabled = true;
         if (elements.forceUpdateBtnText) elements.forceUpdateBtnText.textContent = 'Обновление...';
-        showForceUpdateStatus('🔄 Подключение к GitHub и загрузка актуального релиза… Это займёт несколько секунд.', 'info');
+        showForceUpdateStatus('Подключение к GitHub и загрузка актуального релиза… Это займёт несколько секунд.', 'info');
 
         try {
             const res = await applyUpdate(pwd, true);
             const shaStr = res.sha ? shortSha(res.sha) : '';
             const msgStr = res.message ? `«${res.message}»` : 'актуальная версия';
-            showForceUpdateStatus(`✅ Свежее обновление успешно установлено! Коммит ${shaStr}: ${msgStr}. Перезагрузка страницы…`, 'success');
+            showForceUpdateStatus(`Обновление успешно установлено. Коммит ${shaStr}: ${msgStr}. Перезагрузка страницы…`, 'success');
             
             saveUpdateToken(pwd);
             try {
@@ -3499,7 +3499,7 @@ function initApp() {
                 window.location.href = window.location.pathname + '?v=' + Date.now();
             }, 1800);
         } catch (err) {
-            showForceUpdateStatus(`❌ Ошибка обновления: ${err.message || String(err)}`, 'error');
+            showForceUpdateStatus(`Ошибка обновления: ${err.message || String(err)}`, 'error');
             if (elements.forceUpdateSubmit) elements.forceUpdateSubmit.disabled = false;
             if (elements.forceUpdateBtnText) elements.forceUpdateBtnText.textContent = 'Повторить попытку';
         }

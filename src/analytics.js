@@ -400,8 +400,8 @@ export function renderCrossPostingSection(containerEl, crossPostingData, onFilte
                             <div class="cp-branch-info">
                                 <span class="cp-branch-name">${escapeHtml(t.canonicalName || t.name)}</span>
                                 <div class="cp-branch-badges">
-                                    ${isOrig ? '<span class="cp-micro-badge orig-badge">🥇 Первоисточник</span>' : ''}
-                                    ${isLeader ? '<span class="cp-micro-badge leader-badge">🔥 Лидер реакций</span>' : ''}
+                                    ${isOrig ? '<span class="cp-micro-badge orig-badge">Первоисточник</span>' : ''}
+                                    ${isLeader ? '<span class="cp-micro-badge leader-badge">Лидер реакций</span>' : ''}
                                 </div>
                             </div>
                         </div>
@@ -456,9 +456,9 @@ export function renderCrossPostingSection(containerEl, crossPostingData, onFilte
                                     <strong>${escapeHtml(leader.canonicalName || leader.name)}</strong>
                                 </div>
                                 <span class="spotlight-stats">
-                                    ❤️ ${extractNum(cluster.leaderPost.likes)} &nbsp;|&nbsp; 
-                                    🔁 ${extractNum(cluster.leaderPost.reposts)} &nbsp;|&nbsp; 
-                                    👁️ ${formatViews(cluster.leaderPost.views)}
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">favorite</span> ${extractNum(cluster.leaderPost.likes)} &nbsp;|&nbsp;
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">repeat</span> ${extractNum(cluster.leaderPost.reposts)} &nbsp;|&nbsp;
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">visibility</span> ${formatViews(cluster.leaderPost.views)}
                                 </span>
                             </div>
                         </div>
