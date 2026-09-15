@@ -1807,7 +1807,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.18.0 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.18.1 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
@@ -1991,6 +1991,12 @@
 .mascot-sound-toggle.is-muted {
     color: #ef4444;
     opacity: 0.7;
+}
+
+/* Переключатель рабочего режима (💼 аналитик / 🎭 шоумен) */
+.mascot-mode-toggle.is-work {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.18);
 }
 
 /* 7. Плавный патруль без задержек CSS-переходов */

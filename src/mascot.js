@@ -1,5 +1,5 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.0)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.1)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.18.0';
+import { resolveApiUrl } from './api.js?v=4.18.1';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -37,97 +37,97 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.18.0',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.18.0',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.0',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.0',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.18.0',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.0',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.18.0'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.18.1',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.18.1',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.1',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.1',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.18.1',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.1',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.18.1'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.0',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.0',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.0',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.0',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.0',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.0',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.0',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.0',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.0',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.0',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.1',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.1',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.1',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.1',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.1',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.1',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.1',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.1',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.1',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.1',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.0',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.0',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.0',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.0',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.0',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.0',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.0',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.0',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.0',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.1',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.1',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.1',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.1',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.1',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.1',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.1',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.1',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.1',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.0',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.0',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.0',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.0',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.1',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.1',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.1',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.1',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.0',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.0',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.0',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.1',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.1',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.1',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.0',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.0',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.0',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.1',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.1',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.1',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.0',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.0',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.0',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.0',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.0',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.0',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.0',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.0',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.0',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.0',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.0',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.0',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.0',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.0',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.0',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.0',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.0',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.0',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.0',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.0',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.1',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.1',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.1',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.1',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.1',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.1',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.1',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.1',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.1',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.1',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.1',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.1',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.1',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.1',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.1',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.1',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.1',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.1',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.1',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.1',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.0',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.0',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.0',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.1',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.1',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.1',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.0',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.0',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.0',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.1',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.1',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.1',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.0',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.0',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.1',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.1',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.0',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.0',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.0',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.0'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.1',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.1',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.1',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.1'
 };
 
 const MOOD_EMOJIS = {
@@ -792,6 +792,16 @@ export class AuroraMascot {
         // Короткая память диалога для уточняющих вопросов ИИ
         this.aiConversationMemory = [];
 
+        // Рабочий режим: инсайты вместо болтовни (настройка сохраняется)
+        this.isWorkMode = false;
+        try {
+            this.isWorkMode = localStorage.getItem('aurora_cosmo_work_mode') === '1';
+        } catch (e) {}
+        this.modeToggleBtn = null;
+        this.reminderTimers = [];
+        this.lastScanTime = null;
+        this.lastScanInsight = null;
+
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onUserActivity = this.onUserActivity.bind(this);
         this.updateParallaxAndMotion = this.updateParallaxAndMotion.bind(this);
@@ -846,6 +856,7 @@ export class AuroraMascot {
                             <span class="voice-bar"></span>
                         </span>
                     </span>
+                    <button type="button" class="mascot-sound-toggle mascot-mode-toggle" title="Режим: работа (инсайты) / развлечение (шутки)" data-mascot-mode>🎭</button>
                     <button type="button" class="mascot-sound-toggle" title="Включить/выключить голос Космо" data-mascot-sound>🔊</button>
                     <button type="button" class="mascot-bubble-close" title="Закрыть реплику" data-bubble-close>&times;</button>
                 </div>
@@ -950,6 +961,7 @@ export class AuroraMascot {
         this.collapsedPill = pill;
 
         this.bindEvents();
+        this.scheduleReminders();
         this.bindDragAndDrop();
         this.bindAutonomousInteractions();
         this.getLiveScanStats();
@@ -1200,6 +1212,17 @@ export class AuroraMascot {
             }
         });
 
+        // Переключатель режима «работа / развлечение»
+        this.modeToggleBtn = this.container.querySelector('[data-mascot-mode]');
+        if (this.modeToggleBtn) {
+            this.modeToggleBtn.textContent = this.isWorkMode ? '💼' : '🎭';
+            this.modeToggleBtn.classList.toggle('is-work', this.isWorkMode);
+            this.modeToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleWorkMode();
+            });
+        }
+
         // Закрытие облачка
         const closeBtn = this.container.querySelector('[data-bubble-close]');
         if (closeBtn) {
@@ -1256,6 +1279,18 @@ export class AuroraMascot {
                 } else if (action === 'go-home') {
                     clearTimeout(this.returnTimer);
                     this.navigateBackHome(this.baseLeft ?? 24);
+                } else if (action === 'generate-post') {
+                    this.generatePostDraft();
+                } else if (action === 'week-ideas') {
+                    this.generateWeekIdeas();
+                } else if (action === 'hashtag-advice') {
+                    this.suggestHashtags();
+                } else if (action === 'branch-diagnose') {
+                    this.diagnoseBranch();
+                } else if (action === 'copy-report') {
+                    this.copyReportToClipboard();
+                } else if (action === 'set-reminder') {
+                    this.setReminder(60);
                 } else if (action === 'custom') {
                     if (this.aiInputWrapEl) {
                         this.aiInputWrapEl.classList.toggle('is-visible');
@@ -1292,6 +1327,10 @@ export class AuroraMascot {
                     e.stopPropagation();
                     clearTimeout(this.returnTimer);
                     this.navigateBackHome(this.baseLeft ?? 24);
+                } else if (action === 'copy-text') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.copyBubbleText();
                 }
             });
         }
@@ -2057,7 +2096,8 @@ export class AuroraMascot {
                     { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '🏆 Анализ победы лидера', query: 'Проанализируй победу лидера по просмотрам. За счёт чего он обогнал всех остальных?' },
                     { label: '📈 Как спасти отстающих?', query: 'Как спасти филиалы с низкими охватами? Дай 3 конкретных шага.' },
-                    { label: '⚡ Аудит ER', query: 'Проанализируй вовлечённость (ER) лидеров и отстающих, дай краткий и ёмкий разбор.' },
+                    { label: '🩺 Диагноз отстающему', action: 'branch-diagnose' },
+                    { label: '📋 Отчёт в буфер', action: 'copy-report' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'visual-tab') {
@@ -2066,7 +2106,8 @@ export class AuroraMascot {
                     { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
                     { label: '🕒 Время для постов', query: 'В какое время лучше выкладывать посты библиотекам для максимального охвата?' },
                     { label: '🖼️ Ошибки картинок', query: 'Назови главные визуальные ошибки оформления постов в библиотеках.' },
-                    { label: '🔥 Топ-3 ошибки ленты', query: 'Какие 3 ошибки убивают охваты постов во ВКонтакте?' },
+                    { label: '✍️ Напиши пост', action: 'generate-post' },
+                    { label: '#️⃣ Хэштег-ревизия', action: 'hashtag-advice' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'advice-tab') {
@@ -2075,7 +2116,8 @@ export class AuroraMascot {
                     { label: '✍️ Идея вирусного поста', query: 'Придумай одну взрывную идею вирусного поста для библиотеки, чтобы залететь в рекомендации.' },
                     { label: '🚀 Как залететь в топ?', query: 'Как библиотеке сделать виральный пост во Владимире?' },
                     { label: '💡 Идеи интерактива', query: 'Предложи 2 крутые темы интерактива для читателей библиотек.' },
-                    { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '📅 Идеи недели', action: 'week-ideas' },
+                    { label: '✍️ Напиши пост', action: 'generate-post' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else if (tabId === 'subscribers-tab') {
@@ -2084,23 +2126,23 @@ export class AuroraMascot {
                     { label: '👥 Топ по подписчикам', query: 'Опираясь на данные о подписчиках из контекста, назови топ-3 филиала по числу подписчиков и дай аутсайдеру один конкретный шаг для роста.' },
                     { label: '👥 Удержание читателей', query: 'Как превратить случайных посетителей в постоянных читателей паблика?' },
                     { label: '📈 Секрет роста', query: 'Что привлекает новых читателей в библиотечные соцсети?' },
-                    { label: '🏆 Кто лидер?', action: 'leader' },
+                    { label: '🩺 Диагноз отстающему', action: 'branch-diagnose' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             } else {
                 chips = [
                     { label: '🏆 Кто лидер?', action: 'leader' },
                     { label: '🎙️ Разбор топ-3', action: 'analyze-top3' },
-                    { label: '🛸 Патруль 30 сек', action: 'patrol' },
-                    { label: '💡 Совет по контенту', query: 'Дай один острый совет для роста активности читателей.' },
+                    { label: '📅 Идеи недели', action: 'week-ideas' },
+                    { label: '⏰ Напомни через час', action: 'set-reminder' },
                     { label: '✨ Спросить Космо...', action: 'custom' }
                 ];
             }
         } else {
             chips = [
                 { label: '🚀 Запустить поиск', action: 'start-search' },
-                { label: '🛸 Патруль 30 сек', action: 'patrol' },
-                { label: '💡 О чём написать?', query: 'Предложи 3 яркие идеи для библиотечного паблика сегодня.' },
+                { label: '📅 Идеи недели', action: 'week-ideas' },
+                { label: '✍️ Напиши пост', action: 'generate-post' },
                 { label: '✨ Спросить Космо...', action: 'custom' }
             ];
         }
@@ -3076,19 +3118,29 @@ export class AuroraMascot {
                 this.aiConversationMemory = this.aiConversationMemory.slice(-8);
             }
 
-            // Озвучиваем ответ одной из подходящих критических / пост-скан фраз
-            const replyVoices = [
-                'surprise_1', 'surprise_2', 'surprise_3',
-                'sarcasm_1', 'sarcasm_2', 'sarcasm_3', 'sarcasm_4',
-                'critique_extra_1', 'critique_extra_2',
-                'critique_1', 'critique_2', 'critique_3', 'critique_4', 'critique_6',
-                'critique_7', 'critique_10', 'critique_11', 'critique_13', 'critique_15',
-                'critique_16', 'critique_17', 'critique_18', 'critique_20',
-                'post_scan_1', 'post_scan_2', 'post_scan_3', 'post_scan_4', 'post_scan_8'
-            ];
-            const chosenVoice = replyVoices[Math.floor(Math.random() * replyVoices.length)];
+            // Подпись источника данных: пользователь видит, откуда цифры
+            const sourceLabel = this.lastScanTime
+                ? `\n\n\`📊 Источник: сканирование ${new Date(this.lastScanTime).toLocaleString('ru-RU')}\``
+                : '';
 
-            this.say(reply, 13000, 'smile', chosenVoice);
+            this.say(`${reply}${sourceLabel}`, 14000, 'smile', null);
+
+            // Озвучиваем реальный текст ответа голосом Бэлы (TTS);
+            // при недоступности синтеза — запасной записанный клип
+            const spoken = await this.speakReplyViaTts(reply);
+            if (!spoken) {
+                const replyVoices = [
+                    'surprise_1', 'surprise_2', 'surprise_3',
+                    'sarcasm_1', 'sarcasm_2', 'sarcasm_3', 'sarcasm_4',
+                    'critique_extra_1', 'critique_extra_2',
+                    'critique_1', 'critique_2', 'critique_3', 'critique_4', 'critique_6',
+                    'critique_7', 'critique_10', 'critique_11', 'critique_13', 'critique_15',
+                    'critique_16', 'critique_17', 'critique_18', 'critique_20',
+                    'post_scan_1', 'post_scan_2', 'post_scan_3', 'post_scan_4', 'post_scan_8'
+                ];
+                const chosenVoice = replyVoices[Math.floor(Math.random() * replyVoices.length)];
+                this.playVoice(chosenVoice);
+            }
             this.setMoodBadge('💡', 5000);
             this.spawnSparkles(8);
         } catch (err) {
@@ -3097,6 +3149,442 @@ export class AuroraMascot {
             this.say(fallbackReply, 8000, 'smile', 'post_scan_5');
         } finally {
             this.isAiLoading = false;
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * 13a. РАБОЧИЙ ИНСТРУМЕНТАРИЙ КОСМО: контент, аналитика, экспорт
+     * ------------------------------------------------------------------- */
+
+    /* Озвучка реального текста ответа через TTS-прокси (голос Бэлы).
+       Возвращает true, если аудио запущено, иначе нужен запасной клип. */
+    async speakReplyViaTts(replyText) {
+        if (this.isMuted) return false;
+        try {
+            // TTS-прокси сам чистит markdown/эмодзи и обрезает до 450 символов
+            const plain = replyText
+                .replace(/^##+\s*/gm, '')
+                .replace(/[*_`#]/g, '')
+                .trim();
+            if (!plain) return false;
+
+            const res = await fetch(TTS_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: plain.slice(0, 450) })
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            if (!data.audio_url && data.status !== 'success') return false;
+            if (!data.audio_url) return false;
+
+            // Проигрываем синтез, не трогая содержимое облачка
+            // (внутри него уже показан ответ с кнопкой копирования)
+            if (this.currentAudio) {
+                try { this.currentAudio.pause(); } catch (e) {}
+                this.currentAudio = null;
+            }
+            const audio = new Audio(data.audio_url);
+            audio.volume = 0.9;
+            this.currentAudio = audio;
+            this.isSpeakingAudio = true;
+            this.bubbleEl?.classList.add('is-speaking');
+
+            const cleanup = () => {
+                this.isSpeakingAudio = false;
+                this.bubbleEl?.classList.remove('is-speaking');
+                this.currentAudio = null;
+            };
+            audio.onended = cleanup;
+            audio.onerror = cleanup;
+            audio.addEventListener('loadedmetadata', () => {
+                if (audio.duration && !isNaN(audio.duration)) {
+                    clearTimeout(this.speechTimer);
+                    this.speechTimer = setTimeout(() => this.hideBubble(false), (audio.duration * 1000) + 2200);
+                }
+            });
+            audio.play().catch(e => {
+                console.debug('[Cosmo TTS] Playback blocked:', e.message);
+                cleanup();
+            });
+            return true;
+        } catch (e) {
+            console.debug('[Cosmo TTS] Fallback:', e.message);
+            return false;
+        }
+    }
+
+    /* История сканов в localStorage + инсайт при сравнении с прошлым сканом */
+    recordScanHistory() {
+        const stats = this.getLiveScanStats();
+        if (!stats || !stats.count) return;
+
+        const entry = {
+            ts: Date.now(),
+            count: stats.count,
+            totalViews: stats.totalViews || 0,
+            totalLikes: stats.totalLikes || 0,
+            topBranch: stats.topByViews?.name || '',
+            topViews: stats.topByViews?.views || 0
+        };
+
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem('aurora_scan_history') || '[]');
+        } catch (e) {}
+
+        const prev = history[history.length - 1];
+        if (prev && prev.ts !== entry.ts) {
+            this.lastScanInsight = this.buildScanInsight(prev, entry);
+        }
+
+        history.push(entry);
+        // Храним не более 20 сканов
+        if (history.length > 20) history = history.slice(-20);
+        try {
+            localStorage.setItem('aurora_scan_history', JSON.stringify(history));
+        } catch (e) {}
+    }
+
+    buildScanInsight(prev, current) {
+        const days = Math.max(0, Math.round((current.ts - prev.ts) / 86400000));
+        const period = days === 0 ? 'с прошлого скана' : `за ${days} дн.`;
+
+        if (current.totalViews > 0 && prev.totalViews > 0) {
+            const deltaPct = Math.round(((current.totalViews - prev.totalViews) / prev.totalViews) * 100);
+            if (Math.abs(deltaPct) >= 10) {
+                const dir = deltaPct > 0 ? 'выросли' : 'упали';
+                return `Суммарные просмотры ${dir} на **${Math.abs(deltaPct)}%** ${period} (${formatViews(prev.totalViews)} → ${formatViews(current.totalViews)}). ${deltaPct > 0 ? 'Отличная динамика, продолжайте!' : 'Проверьте время публикации и заголовки!'}`;
+            }
+        }
+        if (prev.topBranch && current.topBranch && prev.topBranch !== current.topBranch) {
+            return `Смена лидера! ${period} на первое место вышел **«${current.topBranch}»**, сместив «${prev.topBranch}».`;
+        }
+        if (current.count !== prev.count) {
+            const delta = current.count - prev.count;
+            return `Найдено постов: **${current.count}** (в прошлый раз ${prev.count}, ${delta >= 0 ? '+' : ''}${delta}). Динамика публикаций ${delta >= 0 ? 'растёт' : 'снижается'}.`;
+        }
+        return `Показатели стабильны относительно прошлого скана. Стабильность — тоже результат!`;
+    }
+
+    /* Тренды подписчиков из data/subscribers.json (рост/отток) */
+    subscribersTrendsSummary() {
+        const snaps = this.subscribersData?.snapshots;
+        if (!Array.isArray(snaps) || snaps.length < 2) return null;
+        const timestamps = [...new Set(snaps.map(s => s.ts || 0))].sort((a, b) => a - b);
+        if (timestamps.length < 2) return null;
+        const [tOld, tNew] = [timestamps[timestamps.length - 2], timestamps[timestamps.length - 1]];
+        const old = snaps.filter(s => s.ts === tOld);
+        const fresh = snaps.filter(s => s.ts === tNew);
+        const totalOld = old.reduce((a, s) => a + (s.members || 0), 0);
+        const totalNew = fresh.reduce((a, s) => a + (s.members || 0), 0);
+        const delta = totalNew - totalOld;
+        const byBranch = fresh.map(s => {
+            const o = old.find(x => (x.branch && x.branch === s.branch) || x.group_id === s.group_id);
+            return { name: s.name || s.branch, delta: o ? (s.members || 0) - (o.members || 0) : 0 };
+        });
+        const worst = byBranch.reduce((m, b) => (!m || b.delta < m.delta ? b : m), null);
+        const best = byBranch.reduce((m, b) => (!m || b.delta > m.delta ? b : m), null);
+        return { totalNew, delta, worst, best };
+    }
+
+    /* Чип: ✍️ Напиши пост — черновик под конкретный филиал или сеть в целом */
+    async generatePostDraft() {
+        if (this.isAiLoading) return;
+        this.isAiLoading = true;
+        this.setState('thinking');
+        this.setMoodBadge('✍️', 15000);
+        this.say(`## Пишу черновик поста... ✍️⚡\nМистраль подбирает слова, а Космо следит за стилем!`, 8000, 'thinking', 'scan_wait_3', true);
+
+        try {
+            const branchFilter = window.__VK_APP__?.state?.activeBranchFilter;
+            const info = branchFilter ? this.findBranchInfo(branchFilter) : null;
+            const target = info
+                ? `${info.branch_name} (${info.branch_num}, адрес: ${info.address})`
+                : 'библиотечной сети города Владимира в целом';
+
+            const systemPrompt = `Ты — опытный SMM-копирайтер библиотек. Напиши готовый черновик поста ВКонтакте для ${target}.
+ТРЕБОВАНИЯ:
+1. Тёплый, дружелюбный тон, без канцелярита.
+2. Цепляющий заголовок в первой строке.
+3. 4-7 строк текста с призывом к действию.
+4. В конце — 4-5 релевантных хэштегов.
+5. Предложи 2 альтернативных коротких заголовка отдельными строками в конце.
+Формат: сначала заголовок, затем текст, затем хэштеги, затем строка «Альтернативные заголовки:» и два варианта. Без пояснений.`;
+
+            const res = await fetch(AI_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: 'Напиши черновик поста на актуальную тему для читателей (новинки книг, мероприятия, уют библиотеки — выбери сам).' }
+                    ],
+                    max_tokens: 500,
+                    temperature: 0.85
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const draft = (data?.choices?.[0]?.message?.content || '').trim();
+            if (!draft) throw new Error('Empty draft');
+
+            const copyBtn = `<br><button type="button" class="mascot-action-btn" data-mascot-action="copy-text">📋 Скопировать текст</button>`;
+            this.say(`## Черновик готов! ✍️✨\n${escapeHtml(draft).replace(/\n/g, '<br>')}${copyBtn}`, 60000, 'smile', 'post_scan_1', true);
+            this.lastGeneratedText = draft;
+        } catch (e) {
+            console.warn('[Cosmo] generatePostDraft error:', e);
+            this.say(`Ой, синтезатор слов барахлит! Попробуй ещё раз чуть позже 🙈`, 7000, 'tired', 'disappoint_1', true);
+        } finally {
+            this.isAiLoading = false;
+        }
+    }
+
+    /* Чип: 📅 Идеи недели — контент-план с учётом даты */
+    async generateWeekIdeas() {
+        if (this.isAiLoading) return;
+        this.isAiLoading = true;
+        this.setState('thinking');
+        this.setMoodBadge('📅', 15000);
+        this.say(`## Составляю план недели... 📅⚡`, 6000, 'thinking', 'scan_wait_5', true);
+
+        try {
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+            const trends = this.subscribersTrendsSummary();
+            const trendsNote = trends
+                ? ` Динамика подписчиков: всего ${trends.totalNew} (${trends.delta >= 0 ? '+' : ''}${trends.delta} к прошлому снимку).`
+                : '';
+
+            const res = await fetch(AI_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: `Ты — контент-стратег библиотечной сети. Сегодня ${dateStr}.${trendsNote} Предложи 5 конкретных идей постов на ближайшие 7 дней. Для каждой идеи: день недели, короткая тема (до 8 слов), формат (фото/видео/опрос/подборка). Пиши списком, без вступлений и заключений.` },
+                        { role: 'user', content: 'Дай 5 идей постов на эту неделю для библиотек Владимира.' }
+                    ],
+                    max_tokens: 500,
+                    temperature: 0.8
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const ideas = (data?.choices?.[0]?.message?.content || '').trim();
+            if (!ideas) throw new Error('Empty ideas');
+
+            const copyBtn = `<br><button type="button" class="mascot-action-btn" data-mascot-action="copy-text">📋 Скопировать план</button>`;
+            this.say(`## Контент-план недели 📅✨\n${escapeHtml(ideas).replace(/\n/g, '<br>')}${copyBtn}`, 60000, 'smile', 'post_scan_2', true);
+            this.lastGeneratedText = ideas;
+        } catch (e) {
+            console.warn('[Cosmo] generateWeekIdeas error:', e);
+            this.say(`Календарь идей пока недоступен — попробуй ещё раз! 🗓️`, 7000, 'tired', 'disappoint_2', true);
+        } finally {
+            this.isAiLoading = false;
+        }
+    }
+
+    /* Чип: #️⃣ Хэштег-советник — по реальным данным сканирования */
+    suggestHashtags() {
+        const stats = this.getLiveScanStats();
+        if (!stats || !stats.count) {
+            this.say(`Сначала запусти сканирование — мне нужны реальные посты, чтобы советовать теги! 🔍`, 7000, 'thinking', 'scan_wait_7', true);
+            return;
+        }
+        // Топ хэштегов ищем в последнем снапшоте сканирования (topHashtags)
+        const snapshot = window.__AURORA_LAST_SCAN_SNAPSHOT__;
+        const topTags = Array.isArray(snapshot?.stats?.topHashtags) ? snapshot.stats.topHashtags : null;
+
+        let msg = `## Хэштег-ревизия #️⃣`;
+        if (topTags && topTags.length > 0) {
+            const list = topTags.slice(0, 6).map(t => `**#${escapeHtml(t.tag || t)}** (${t.count || '?'})`).join(', ');
+            msg += `\nСамые частые теги сети: ${list}.`;
+            msg += `\n**Совет Космо:** оставь 3-5 релевантных тегов в конце поста. Больше — умная лента считает спамом!`;
+        } else {
+            msg += `\nВ этом скане топов тегов нет, но правило всегда одно: **3-5 точных тегов** лучше сорока общих!`;
+            msg += `\nРабочая формула: тег города (#Владимир) + тег библиотеки + тема поста + формат (#афиша).`;
+        }
+        this.say(msg, 11000, 'smile', 'critique_4', true);
+        this.setMoodBadge('#️⃣', 5000);
+    }
+
+    /* Чип: 🩺 Диагноз отстающему — структурный разбор одного филиала */
+    async diagnoseBranch() {
+        const stats = this.getLiveScanStats();
+        const branch = stats?.worstBranch;
+        if (!stats || !stats.count || !branch) {
+            this.say(`Диагноз ставить некому — запусти сканирование, и я найду отстающих! 🩺`, 7000, 'thinking', 'scan_wait_7', true);
+            return;
+        }
+        if (this.isAiLoading) return;
+        this.isAiLoading = true;
+        this.setState('thinking');
+        this.setMoodBadge('🩺', 15000);
+        this.say(`## Ставлю диагноз: «${escapeHtml(branch.name)}» 🩺⚡\nАнализирую симптомы...`, 8000, 'thinking', 'scan_wait_6', true);
+
+        try {
+            const info = this.findBranchInfo(branch.name);
+            const subsNote = this.subscribersTrendsSummary();
+            const context = [
+                `Филиал: ${branch.name}.`,
+                `Найдено постов за период: ${branch.postsCount || 0}.`,
+                `Просмотры: ${branch.views || 0}, лайки: ${branch.likes ?? 'нет данных'}, комментарии: ${branch.comments ?? 'нет данных'}, репосты: ${branch.reposts ?? 'нет данных'}.`,
+                `ER: ${branch.er != null ? branch.er + '%' : 'нет данных'}.`,
+                info ? `Справка: ${info.branch_num}, адрес ${info.address}.` : '',
+                subsNote ? `Подписчиков у сети всего: ${subsNote.totalNew}.` : ''
+            ].filter(Boolean).join(' ');
+
+            const res = await fetch(AI_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: 'Ты — строгий, но доброжелательный SMM-аудитор библиотек. Проанализируй данные отстающего филиала и выдай: 1) краткий диагноз (1-2 предложения), 2) три вероятные причины слабых показателей, 3) три конкретных шага на ближайшую неделю. Пиши списком, без воды, опирайся только на данные.' },
+                        { role: 'user', content: `Данные отстающего филиала: ${context}` }
+                    ],
+                    max_tokens: 450,
+                    temperature: 0.5
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const diagnosis = (data?.choices?.[0]?.message?.content || '').trim();
+            if (!diagnosis) throw new Error('Empty diagnosis');
+
+            this.say(`## Диагноз: «${escapeHtml(branch.name)}» 🩺\n${escapeHtml(diagnosis).replace(/\n/g, '<br>')}`, 60000, 'smile', null, true);
+            await this.speakReplyViaTts(`Диагноз готов. ${diagnosis.slice(0, 300)}`);
+        } catch (e) {
+            console.warn('[Cosmo] diagnoseBranch error:', e);
+            this.say(`Мой стетоскоп сломался! Попробуй диагноз ещё раз 🙈`, 7000, 'tired', 'disappoint_3', true);
+        } finally {
+            this.isAiLoading = false;
+        }
+    }
+
+    /* Чип: 📋 Экспорт отчёта в буфер обмена */
+    copyReportToClipboard() {
+        const stats = this.getLiveScanStats();
+        if (!stats || !stats.count) {
+            this.say(`Отчёт пуст! Сначала сканирование — потом бумажки 📋`, 6500, 'tired', 'scan_wait_7', true);
+            return;
+        }
+        const lines = [
+            `ОТЧЁТ AURORA — сканирование от ${new Date().toLocaleString('ru-RU')}`,
+            `Постов найдено: ${stats.count}`,
+            `Просмотры: ${stats.totalViews}, лайки: ${stats.totalLikes}, комментарии: ${stats.totalComments}, репосты: ${stats.totalReposts}`,
+            stats.avgEr != null ? `Средний ER: ${stats.avgEr}%` : '',
+            `Лидер по просмотрам: ${stats.topByViews?.name || '—'} (${formatViews(stats.topByViews?.views || 0)})`,
+            stats.topByEr ? `Лидер по вовлечённости: ${stats.topByEr.name} (ER ${stats.topByEr.er}%)` : '',
+            stats.worstBranch ? `Требует внимания: ${stats.worstBranch.name} (${formatViews(stats.worstBranch.views || 0)} просмотров)` : ''
+        ].filter(Boolean);
+
+        const report = lines.join('\n');
+        this.copyToClipboard(report);
+        this.say(`## Отчёт скопирован! 📋✅\nВставляй его в письмо или документ!`, 7000, 'smile', 'post_scan_9', true);
+    }
+
+    /* Кнопка копирования сгенерированного текста из облачка */
+    copyBubbleText() {
+        const text = this.lastGeneratedText || this.bubbleTextEl?.innerText || '';
+        if (!text) return;
+        this.copyToClipboard(text);
+        this.say(`Готово! Текст в буфере обмена 📋✨`, 5000, 'smile', 'post_scan_10', true);
+    }
+
+    copyToClipboard(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).catch(() => this.fallbackCopy(text));
+            } else {
+                this.fallbackCopy(text);
+            }
+        } catch (e) {
+            this.fallbackCopy(text);
+        }
+    }
+
+    fallbackCopy(text) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        } catch (e) {}
+    }
+
+    /* Напоминания: «⏰ Напомни через час» с сохранением между сессиями */
+    setReminder(minutes = 60, text = 'Проверь комментарии и опубликуй пост!') {
+        const reminder = { at: Date.now() + minutes * 60000, text };
+        let list = [];
+        try {
+            list = JSON.parse(localStorage.getItem('aurora_cosmo_reminders') || '[]');
+        } catch (e) {}
+        list.push(reminder);
+        try {
+            localStorage.setItem('aurora_cosmo_reminders', JSON.stringify(list));
+        } catch (e) {}
+
+        const timer = setTimeout(() => this.fireReminder(reminder), minutes * 60000);
+        this.reminderTimers.push(timer);
+        this.say(`## Напоминание принято! ⏰\nЧерез **${minutes} мин** напомню: ${escapeHtml(text)}`, 7000, 'smile', 'post_scan_5', true);
+        this.setMoodBadge('⏰', 4000);
+    }
+
+    scheduleReminders() {
+        let list = [];
+        try {
+            list = JSON.parse(localStorage.getItem('aurora_cosmo_reminders') || '[]');
+        } catch (e) {}
+        const now = Date.now();
+        const active = [];
+        list.forEach(r => {
+            if (r.at <= now) {
+                // Просроченное: напомнить сразу после загрузки
+                setTimeout(() => this.fireReminder(r, true), 4000);
+            } else {
+                const timer = setTimeout(() => this.fireReminder(r), r.at - now);
+                this.reminderTimers.push(timer);
+                active.push(r);
+            }
+        });
+        try {
+            localStorage.setItem('aurora_cosmo_reminders', JSON.stringify(active));
+        } catch (e) {}
+    }
+
+    fireReminder(reminder, late = false) {
+        try {
+            const list = JSON.parse(localStorage.getItem('aurora_cosmo_reminders') || '[]');
+            localStorage.setItem('aurora_cosmo_reminders', JSON.stringify(list.filter(r => r.at !== reminder.at)));
+        } catch (e) {}
+        if (this.isCollapsed) this.expand?.();
+        this.wakeUp?.();
+        this.say(`## ⏰ Напоминание от Космо!\n${late ? '(чуть с опозданием — я спал) ' : ''}${escapeHtml(reminder.text)}`, 10000, 'smile', 'high_altitude_1', true);
+        this.setMoodBadge('⏰', 6000);
+        this.spawnSparkles(8);
+    }
+
+    /* Режим «работа / развлечение»: в рабочем Космо молчит сам и только анализирует */
+    toggleWorkMode() {
+        this.isWorkMode = !this.isWorkMode;
+        try {
+            localStorage.setItem('aurora_cosmo_work_mode', this.isWorkMode ? '1' : '0');
+        } catch (e) {}
+        if (this.modeToggleBtn) {
+            this.modeToggleBtn.textContent = this.isWorkMode ? '💼' : '🎭';
+            this.modeToggleBtn.classList.toggle('is-work', this.isWorkMode);
+        }
+        if (this.statusTitleEl) {
+            this.statusTitleEl.textContent = this.isWorkMode ? 'КОСМО • АНАЛИТИК' : 'КОСМО • SMM-ГУРУ';
+        }
+        if (this.isWorkMode) {
+            this.say(`## Рабочий режим активирован 💼\nБолтовня отключена — только инсайты по делу. Вернуть шутки? Жми 🎭!`, 8000, 'thinking', null, true);
+        } else {
+            this.say(`## Режим развлечений снова в эфире! 🎭🎉`, 6000, 'smile', 'post_scan_1', true);
         }
     }
 
@@ -3179,9 +3667,24 @@ export class AuroraMascot {
         ];
         const chosenVoice = critiqueClips[Math.floor(Math.random() * critiqueClips.length)];
 
+        this.lastScanTime = Date.now();
+
         this.say(msg, 12000, 'smile', chosenVoice, true);
         this.setMoodBadge('🏆', 4000);
         this.spawnSparkles(10);
+
+        // Проактивная аналитика: сравнение с прошлым сканом → точный инсайт
+        this.recordScanHistory();
+        if (this.lastScanInsight) {
+            const insight = this.lastScanInsight;
+            this.lastScanInsight = null;
+            setTimeout(() => {
+                if (!this.isCollapsed && !this.isIn3D && !this.isSleeping) {
+                    this.say(`## Инсайт Космо 🔎\n${insight}`, 11000, 'thinking', 'critique_extra_1', true);
+                    this.setMoodBadge('🔎', 5000);
+                }
+            }, this.isWorkMode ? 1500 : 6500);
+        }
     }
 
     onScanComplete(count, topBranch, stats = null) {
@@ -3249,6 +3752,15 @@ export class AuroraMascot {
         clearInterval(this.proactiveTimer);
         this.proactiveTimer = setInterval(() => {
             if (this.isSleeping || this.isIn3D || this.isCollapsed || this.isAiLoading || this.isPerformingActivity || this.isDragging || this.isPatrolling || this.isSpeakingAudio || (this.currentAudio && !this.currentAudio.paused)) return;
+
+            // Рабочий режим: без болтовни — только короткий факт по данным
+            if (this.isWorkMode) {
+                const ws = this.getLiveScanStats();
+                if (ws && ws.count > 0 && ws.topByViews) {
+                    this.say(`Лидер: **${escapeHtml(ws.topByViews.name)}** — ${formatViews(ws.topByViews.views)} просмотров. Всего постов: ${ws.count}. 💼`, 6000, 'idle');
+                }
+                return;
+            }
 
             const stats = this.getLiveScanStats();
 

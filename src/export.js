@@ -3,10 +3,10 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { extractNum, formatViews } from './analytics.js?v=4.18.0';
-import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js?v=4.18.0';
-import { resolveApiUrl } from './api.js?v=4.18.0';
-import { resolveRepostAuthor } from './render.js?v=4.18.0';
+import { extractNum, formatViews } from './analytics.js?v=4.18.1';
+import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js?v=4.18.1';
+import { resolveApiUrl } from './api.js?v=4.18.1';
+import { resolveRepostAuthor } from './render.js?v=4.18.1';
 
 /** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */
 function fmtDocDelta(v) {
