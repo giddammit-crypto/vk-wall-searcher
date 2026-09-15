@@ -2461,7 +2461,7 @@ export class AuroraMascot {
      * ------------------------------------------------------------------- */
     startAutonomousCycle() {
         const scheduleNext = () => {
-            const delay = 65000 + Math.random() * 45000;
+            const delay = 82000 + Math.random() * 56000; // ×1/0.8 от 65+rnd*45 сек
             this.activityCycleTimer = setTimeout(() => {
                 if (!this.isSleeping && !this.isIn3D && !this.isCollapsed && !this.isAiLoading && !this.isPerformingActivity && !this.isDragging && !this.isPatrolling && !this.isReturningHome && !this.isSpeakingAudio && (!this.currentAudio || this.currentAudio.paused)) {
                     this.executeRandomActivity();
@@ -2488,8 +2488,8 @@ export class AuroraMascot {
         ];
 
         const pick = activities[Math.floor(Math.random() * activities.length)];
-        // В 70% случаев робот совершает пантомиму молча (без звука и пузыря), в 30% — со звуком
-        const shouldSpeak = (Math.random() < 0.30);
+        // В 76% случаев робот совершает пантомиму молча (без звука и пузыря), в 24% — со звуком (×0.8 от 30%)
+        const shouldSpeak = (Math.random() < 0.24);
         this.playActivity(pick, shouldSpeak ? null : false);
     }
 
@@ -3745,7 +3745,7 @@ export class AuroraMascot {
                 this.say(joke.t, 5000, 'smile', joke.k);
                 this.spawnSparkles(5);
             }
-        }, 16000);
+        }, 20000); // ×1/0.8 от 16 сек — реже болтаем во время сканирования
     }
 
     onScanProgress(percent, count) {
@@ -3938,7 +3938,7 @@ export class AuroraMascot {
                 this.say(p.t, 7000, 'smile', p.k);
                 this.setMoodBadge('✨', 3000);
             }
-        }, 75000);
+        }, 94000); // ×1/0.8 от исходных 75 сек — чуть реже болтаем
     }
 
     resetIdleTimer() {
