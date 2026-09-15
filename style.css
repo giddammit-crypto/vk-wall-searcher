@@ -8821,13 +8821,31 @@ textarea:focus-visible,
 }
 
 .bm-civic-seal {
-    font-size: 6.5px;
+    font-size: 6.8px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #64748b;
     margin-bottom: 6px;
+    line-height: 1.25;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bm-civic-org {
+    display: block;
     line-height: 1.2;
+}
+
+.bm-city-line {
+    display: inline-block;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    line-height: 1.2;
+    margin-top: 1px;
 }
 
 .bm-branch-name {
@@ -8858,8 +8876,10 @@ textarea:focus-visible,
 }
 
 .bm-frame svg {
-    width: 88px;
-    height: 88px;
+    width: 84px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
     display: block;
 }
 
@@ -8957,6 +8977,119 @@ textarea:focus-visible,
     width: 0;
     border-left: 1.5px dashed #cbd5e1;
     margin: 4px 0;
+}
+
+/* ==========================================================================
+   BOOKMARK PRINT SETTINGS & RESPONSIVE ADAPTATIONS
+   ========================================================================== */
+.bookmark-scale-group {
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .bookmark-scale-group {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.promo-scale-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+.promo-scale-chip {
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+[data-theme="dark"] .promo-scale-chip {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f1f5f9;
+}
+
+.promo-scale-chip:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.promo-scale-chip.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.promo-scale-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: #2563eb;
+    line-height: 1.35;
+}
+
+[data-theme="dark"] .promo-scale-info {
+    color: #60a5fa;
+}
+
+.promo-scale-info .scale-info-ico {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* Адаптивность предпросмотра закладок на планшетах и смартфонах */
+@media (max-width: 860px) {
+    .promo-preview-viewport {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        justify-content: flex-start !important;
+        padding-bottom: 12px !important;
+    }
+    .sheet-bookmark {
+        min-width: 640px !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .sheet-bookmark {
+        min-width: 580px !important;
+        padding: 12px 8px !important;
+        gap: 4px !important;
+    }
+    .bm-card {
+        padding: 10px 5px 8px !important;
+    }
+    .bm-frame svg {
+        width: 70px !important;
+    }
+    .bm-branch-name {
+        font-size: 9.5px !important;
+    }
+    .bm-quote-container {
+        font-size: 7.5px !important;
+    }
 }
 
 /* ==========================================================================

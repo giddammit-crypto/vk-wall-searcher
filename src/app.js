@@ -106,7 +106,7 @@ import { SpaceAudio } from './space_audio.js?v=4.23.2';
 import { Mascot } from './mascot.js?v=4.23.2';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.23.5';
+export const APP_VERSION = '4.23.6';
 
 function initApp() {
 

@@ -272,6 +272,20 @@ export function initPromoModal() {
                         </div>
                     </div>
 
+                    <div class="form-group bookmark-scale-group" id="bookmark-scale-group" style="display: none;">
+                        <label class="promo-label">Параметры печати закладок (А4 Альбомная):</label>
+                        <div class="promo-scale-chips" id="bookmark-scale-chips">
+                            <button type="button" class="promo-scale-chip" data-scale="1.00">100% (Компакт)</button>
+                            <button type="button" class="promo-scale-chip" data-scale="1.10">110%</button>
+                            <button type="button" class="promo-scale-chip active" data-scale="1.25">125% (По умолчанию)</button>
+                            <button type="button" class="promo-scale-chip" data-scale="1.30">130% (Макс)</button>
+                        </div>
+                        <div class="promo-scale-info">
+                            <span class="material-symbols-outlined scale-info-ico">tune</span>
+                            <span>Пользовательский масштаб <strong>125%</strong> выставлен по умолчанию (оптимально для листа А4 и уверенного считывания QR-кода)</span>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label class="promo-label">Шаблон оформления (10 дизайн-систем):</label>
                         <div class="promo-templates-selector" id="promo-templates-picker">
@@ -337,6 +351,7 @@ export function initPromoModal() {
 
     let currentBranch = CANONICAL_BRANCHES[0];
     let currentFormat = 'a4';
+    let currentBookmarkScale = 1.25;
     let currentSlogan = PROMO_SLOGANS[0];
     let currentTemplate = PROMO_TEMPLATES[0];
 
@@ -387,7 +402,8 @@ export function initPromoModal() {
                                 КНИЖНАЯ ЗАКЛАДКА
                             </div>
                             <div class="bm-civic-seal">
-                                Муниципальные библиотеки г. Владимира
+                                <span class="bm-civic-org">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ</span>
+                                <span class="bm-city-line">Г.&nbsp;ВЛАДИМИРА</span>
                             </div>
                             <div class="bm-branch-name">
                                 ${escapeHtml(currentBranch.canonicalName)}
@@ -599,7 +615,20 @@ export function initPromoModal() {
             const radio = card.querySelector('input');
             if (radio) radio.checked = true;
             currentFormat = radio ? radio.value : 'a4';
+            const scaleGroup = modal.querySelector('#bookmark-scale-group');
+            if (scaleGroup) {
+                scaleGroup.style.display = currentFormat === 'bookmark' ? 'block' : 'none';
+            }
             updatePreview();
+        });
+    });
+
+    const scaleChips = modal.querySelectorAll('.promo-scale-chip');
+    scaleChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            scaleChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentBookmarkScale = parseFloat(chip.getAttribute('data-scale')) || 1.25;
         });
     });
 
@@ -638,7 +667,7 @@ export function initPromoModal() {
     });
 
     printBtn.addEventListener('click', () => {
-        printPromoPoster(currentBranch, currentFormat, currentSlogan, currentTemplate);
+        printPromoPoster(currentBranch, currentFormat, currentSlogan, currentTemplate, currentBookmarkScale);
     });
 
     updatePreview();
@@ -679,7 +708,7 @@ export function closePromoModal() {
 /**
  * Открывает окно типографской печати плаката / тейблтента / закладок
  */
-export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLATES[0]) {
+export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLATES[0], bookmarkScale = 1.25) {
     const printWin = window.open('', '_blank', 'width=1000,height=1150');
     if (!printWin) {
         alert('Пожалуйста, разрешите всплывающие окна для печати промо-материалов');
@@ -820,14 +849,20 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         const qrSvg = createQrSvg(targetUrl, { size: 120, foreground: qrFg, background: qrBg, margin: 4 });
         const bThemes = template.bookmarkThemes;
 
+        const scale = typeof bookmarkScale === 'number' && bookmarkScale > 0 ? bookmarkScale : 1.25;
+        const baseWidthMm = Math.round((282 / scale) * 10) / 10;
+        const baseMaxItemWidthMm = Math.round((66 / scale) * 10) / 10;
+
         pageCss = `
-            @page { size: A4 landscape; margin: 9mm 12mm 9mm 12mm; }
+            @page {
+                size: A4 landscape;
+                margin: 4mm 5mm 4mm 5mm;
+            }
             html, body {
                 width: 100%;
                 height: 100%;
                 margin: 0;
                 padding: 0;
-                overflow: hidden;
                 background: #ffffff !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -839,25 +874,66 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
+                min-height: 100vh;
+                padding: 0;
+            }
+            .print-guide-banner {
+                width: 100%;
+                max-width: 960px;
+                background: #eff6ff;
+                border: 1px solid #bfdbfe;
+                border-radius: 8px;
+                padding: 8px 14px;
+                margin: 6px auto 10px;
+                font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 12px;
+                line-height: 1.45;
+                color: #1e3a8a;
+                box-sizing: border-box;
+                text-align: center;
+                box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+            }
+            .print-guide-banner strong {
+                color: #1d4ed8;
+            }
+            @media print {
+                .print-guide-banner {
+                    display: none !important;
+                }
+            }
+            .print-sheet-bookmarks-wrapper {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin: 0 auto;
             }
             .print-sheet-bookmarks {
+                zoom: ${scale};
+                transform-origin: top center;
                 display: flex;
                 align-items: stretch;
                 justify-content: space-between;
                 width: 100%;
-                max-width: 273mm;
+                max-width: ${baseWidthMm}mm;
                 box-sizing: border-box;
                 page-break-inside: avoid;
                 break-inside: avoid;
                 background: #ffffff !important;
             }
+            @supports not (zoom: 1) {
+                .print-sheet-bookmarks {
+                    transform: scale(${scale});
+                    transform-origin: top center;
+                }
+            }
             .bm-item {
                 flex: 1;
                 min-width: 0;
-                max-width: 65mm;
+                max-width: ${baseMaxItemWidthMm}mm;
                 border: 1px solid #cbd5e1;
                 border-radius: 3mm;
-                padding: 5.5mm 4.5mm 4.5mm;
+                padding: 5mm 4mm 4mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -874,27 +950,43 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 text-transform: uppercase;
                 padding: 1.6mm 4mm;
                 border-radius: 3mm;
-                margin-bottom: 2.2mm;
+                margin-bottom: 2mm;
                 color: #ffffff;
                 line-height: 1;
                 flex-shrink: 0;
             }
             .bm-civic {
-                font-size: 6.5pt;
+                font-size: 6.8pt;
                 font-weight: 700;
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
                 color: ${template.dark ? '#94a3b8' : '#64748b'};
-                margin-bottom: 2.2mm;
-                line-height: 1.2;
+                margin-bottom: 2mm;
+                line-height: 1.25;
                 flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                width: 100%;
+            }
+            .bm-civic .bm-civic-org {
+                display: block;
+                line-height: 1.2;
+            }
+            .bm-civic .bm-city-line {
+                display: inline-block;
+                white-space: nowrap !important;
+                word-break: keep-all !important;
+                line-height: 1.2;
+                margin-top: 0.3mm;
             }
             .bm-title {
                 font-size: 9.5pt;
                 font-weight: 800;
                 color: ${template.dark ? '#ffffff' : '#0a0f1d'};
                 line-height: 1.25;
-                margin-bottom: 2.5mm;
+                margin-bottom: 2.2mm;
                 flex-shrink: 0;
             }
             .bm-quote {
@@ -907,7 +999,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 border-left-width: 1.2mm;
                 border-left-style: solid;
                 border-radius: 0 1.5mm 1.5mm 0;
-                margin-bottom: 2.5mm;
+                margin-bottom: 2.2mm;
                 width: 100%;
                 box-sizing: border-box;
                 flex-shrink: 0;
@@ -1009,7 +1101,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex-direction: column;
                 align-items: center;
                 justify-content: space-between;
-                width: 6mm;
+                width: 5mm;
                 flex-shrink: 0;
                 color: #64748b !important;
                 background: #ffffff !important;
@@ -1032,50 +1124,57 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         `;
 
         bodyContent = `
-            <div class="print-sheet-bookmarks print-theme-${template.id}">
-                ${bThemes.map((theme, idx) => `
-                    ${idx > 0 ? `
-                        <div class="bm-cut">
-                            <span class="cut-ico">✂</span>
-                            <span class="cut-line"></span>
-                            <span class="cut-ico">✂</span>
-                        </div>
-                    ` : ''}
-                    <div class="bm-item" style="border-color: ${theme.accentBorder};">
-                        <div class="bm-tag" style="background: ${theme.tagBg}; color: ${theme.tagColor};">
-                            КНИЖНАЯ ЗАКЛАДКА
-                        </div>
-                        <div class="bm-civic">
-                            Муниципальные библиотеки г. Владимира
-                        </div>
-                        <div class="bm-title">
-                            ${escapeHtml(branch.canonicalName)}
-                        </div>
-                        <div class="bm-quote" style="border-left-color: ${theme.accent};">
-                            «${escapeHtml(slogans[idx])}»
-                        </div>
-                        <div class="bm-qr-box">
-                            <div class="bm-frame" style="border-color: ${theme.accent};">
-                                <span class="corner corner-tl" style="border-color: ${theme.accent};"></span>
-                                <span class="corner corner-tr" style="border-color: ${theme.accent};"></span>
-                                <span class="corner corner-bl" style="border-color: ${theme.accent};"></span>
-                                <span class="corner corner-br" style="border-color: ${theme.accent};"></span>
-                                ${qrSvg}
+            <div class="print-guide-banner">
+                🔖 <strong>Параметры печати закладок (А4 Альбомная):</strong>
+                В макет закладок по умолчанию встроен пользовательский масштаб <strong>${Math.round(scale * 100)}%</strong>. В окне печати браузера выберите: Ориентация: <strong>«Альбомная»</strong>, Масштаб: <strong>«По умолчанию (100%)»</strong>, Поля: <strong>«Минимум» или «По умолчанию»</strong>.
+            </div>
+            <div class="print-sheet-bookmarks-wrapper">
+                <div class="print-sheet-bookmarks print-theme-${template.id}">
+                    ${bThemes.map((theme, idx) => `
+                        ${idx > 0 ? `
+                            <div class="bm-cut">
+                                <span class="cut-ico">✂</span>
+                                <span class="cut-line"></span>
+                                <span class="cut-ico">✂</span>
+                            </div>
+                        ` : ''}
+                        <div class="bm-item" style="border-color: ${theme.accentBorder};">
+                            <div class="bm-tag" style="background: ${theme.tagBg}; color: ${theme.tagColor};">
+                                КНИЖНАЯ ЗАКЛАДКА
+                            </div>
+                            <div class="bm-civic">
+                                <span class="bm-civic-org">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ</span>
+                                <span class="bm-city-line">Г.&nbsp;ВЛАДИМИРА</span>
+                            </div>
+                            <div class="bm-title">
+                                ${escapeHtml(branch.canonicalName)}
+                            </div>
+                            <div class="bm-quote" style="border-left-color: ${theme.accent};">
+                                «${escapeHtml(slogans[idx])}»
+                            </div>
+                            <div class="bm-qr-box">
+                                <div class="bm-frame" style="border-color: ${theme.accent};">
+                                    <span class="corner corner-tl" style="border-color: ${theme.accent};"></span>
+                                    <span class="corner corner-tr" style="border-color: ${theme.accent};"></span>
+                                    <span class="corner corner-bl" style="border-color: ${theme.accent};"></span>
+                                    <span class="corner corner-br" style="border-color: ${theme.accent};"></span>
+                                    ${qrSvg}
+                                </div>
+                            </div>
+                            <div class="bm-scan-cue">НАВЕДИТЕ КАМЕРУ</div>
+                            <div class="bm-link" style="color: ${theme.accent};">${escapeHtml(displayUrl)}</div>
+                            <div class="bm-chips">
+                                <span class="bm-chip">Продление книг онлайн</span>
+                                <span class="bm-chip">Афиша событий</span>
+                            </div>
+                            <div class="bm-foot">
+                                <div class="bm-foot-item">${escapeHtml(branch.address)}</div>
+                                <div class="bm-foot-item">тел. ${escapeHtml(branch.phone)}</div>
+                                <div class="bm-foot-portal">https://biblioteka33.ru</div>
                             </div>
                         </div>
-                        <div class="bm-scan-cue">НАВЕДИТЕ КАМЕРУ</div>
-                        <div class="bm-link" style="color: ${theme.accent};">${escapeHtml(displayUrl)}</div>
-                        <div class="bm-chips">
-                            <span class="bm-chip">Продление книг онлайн</span>
-                            <span class="bm-chip">Афиша событий</span>
-                        </div>
-                        <div class="bm-foot">
-                            <div class="bm-foot-item">${escapeHtml(branch.address)}</div>
-                            <div class="bm-foot-item">тел. ${escapeHtml(branch.phone)}</div>
-                            <div class="bm-foot-portal">https://biblioteka33.ru</div>
-                        </div>
-                    </div>
-                `).join('')}
+                    `).join('')}
+                </div>
             </div>
         `;
     } else if (format === 'a5') {

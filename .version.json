@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.5",
+    "version": "4.23.6",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T15:53:00+03:00",
-    "release_name": "AURORA 4.23.5 — Мобильная верстка чата с Космо в стиле VK Messenger (сохранение ПК-версии без изменений)"
+    "commit_date": "2026-09-15T16:22:00+03:00",
+    "release_name": "AURORA 4.23.6 — QR-закладки: неразрывный текст «Г. ВЛАДИМИРА», масштаб печати 125% по умолчанию, адаптивность"
 }
