@@ -24,7 +24,7 @@
     position: fixed;
     bottom: 24px;
     left: 24px;
-    z-index: 100000 !important;
+    z-index: 100010 !important;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1810,16 +1810,16 @@
    COSMO v4.21.0 — CHAT MODAL, MARKDOWN, ATTACHMENTS, SMM AI ASSISTANT
    ========================================================================== */
 
-/* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
+/* 1. Повышенный z-index 100010, чтобы Космо ВСЕГДА был поверх модальных окон и чата */
 .aurora-mascot-container {
-    z-index: 100000 !important;
+    z-index: 100010 !important;
 }
 
 /* 2. Drag & Drop механика перетаскивания */
 .aurora-mascot-container.is-dragging {
     transition: none !important;
     user-select: none !important;
-    z-index: 100001 !important;
+    z-index: 100012 !important;
 }
 
 .aurora-mascot-container.is-dragging .mascot-floater {
@@ -2236,7 +2236,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 45px;
+    box-sizing: border-box;
     background: rgba(3, 7, 18, 0.78);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -2256,8 +2257,9 @@
 }
 
 .cosmo-chat-dialog {
-    width: min(975px, 96vw);
-    height: min(88vh, 820px);
+    width: min(1320px, calc(100vw - 90px));
+    max-width: calc(100vw - 90px);
+    height: min(88vh, 860px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2648,8 +2650,8 @@
 
 .presets-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 11px;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 12px;
     overflow-y: auto;
     padding-right: 4px;
     flex: 1 1 auto;

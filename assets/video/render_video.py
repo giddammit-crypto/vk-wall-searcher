@@ -50,12 +50,11 @@ framed_scan = round_corners_and_border(shot_scan, 840, 480, border_color=(168, 8
 framed_rank = round_corners_and_border(shot_rank, 840, 480, border_color=(240, 147, 251, 240))
 framed_modal = round_corners_and_border(shot_modal, 840, 480, border_color=(52, 211, 153, 240))
 
-# Pre-render glowing aura for Cosmo
-def make_aura(sprite, color=(0, 242, 254, 160), radius=22):
+# Pre-render glowing aura for Cosmo with larger, adaptive sizing and rich expressions
+def make_aura(sprite, color=(0, 242, 254, 160), radius=24):
     w, h = sprite.size
     pad = radius * 2
     canvas = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    # Extract alpha mask
     alpha = sprite.split()[3]
     solid = Image.new("RGBA", (w, h), color)
     canvas.paste(solid, (pad, pad), mask=alpha)
@@ -63,9 +62,11 @@ def make_aura(sprite, color=(0, 242, 254, 160), radius=22):
     canvas.paste(sprite, (pad, pad), mask=sprite)
     return canvas, pad
 
-aura_smile_cyan, pad_smile = make_aura(cosmo_smile.resize((360, 360), Image.Resampling.LANCZOS), (0, 242, 254, 180), 20)
-aura_smile_pink, _ = make_aura(cosmo_smile.resize((360, 360), Image.Resampling.LANCZOS), (240, 147, 251, 180), 20)
-aura_thinking, pad_think = make_aura(cosmo_thinking.resize((320, 320), Image.Resampling.LANCZOS), (168, 85, 247, 180), 18)
+aura_smile_cyan, _ = make_aura(cosmo_smile.resize((440, 440), Image.Resampling.LANCZOS), (0, 242, 254, 190), 22)
+aura_smile_pink, _ = make_aura(cosmo_smile.resize((410, 410), Image.Resampling.LANCZOS), (240, 147, 251, 190), 22)
+aura_thinking_purple, _ = make_aura(cosmo_thinking.resize((410, 410), Image.Resampling.LANCZOS), (168, 85, 247, 190), 22)
+aura_thinking_cyan, _ = make_aura(cosmo_thinking.resize((410, 410), Image.Resampling.LANCZOS), (0, 242, 254, 190), 22)
+aura_idle_cyan, _ = make_aura(cosmo_idle.resize((410, 410), Image.Resampling.LANCZOS), (0, 242, 254, 180), 20)
 
 # Start ffmpeg process for streaming raw RGBA frames
 ffmpeg_cmd = [
@@ -99,7 +100,6 @@ for frame_idx in range(TOTAL_FRAMES):
     # -------------------------------------------------------------
     if t < 5.6:
         # Scene 1: Intro (0.0s - 5.6s)
-        # Background with gentle zoom
         zoom = 1.0 + (t / 5.6) * 0.05
         frame = bg_intro.copy()
         
@@ -112,11 +112,11 @@ for frame_idx in range(TOTAL_FRAMES):
         else:
             frame.paste(ov_1, (0, 0), ov_1)
             
-        # Cosmo in center, floating smoothly
-        bob = math.sin(t * 3.5) * 14
+        # Cosmo in center, floating smoothly with joyful aura
+        bob = math.sin(t * 3.5) * 16
         cw, ch = aura_smile_cyan.size
         cx = W // 2 - cw // 2
-        cy = int(490 - ch // 2 + bob)
+        cy = int(480 - ch // 2 + bob)
         frame.paste(aura_smile_cyan, (cx, cy), aura_smile_cyan)
         
     elif t < 14.0:
@@ -132,15 +132,19 @@ for frame_idx in range(TOTAL_FRAMES):
         if t_rel < 4.2:
             frame.paste(framed_dash, (sx, sy), framed_dash)
         else:
-            # Transition
             frame.paste(framed_scan, (sx, sy), framed_scan)
             
-        # Cosmo on right bottom with thinking / analytical pose
-        bob = math.sin(t * 3.0) * 10
-        cw, ch = aura_thinking.size
-        cx = 1520
-        cy = int(660 + bob)
-        frame.paste(aura_thinking, (cx, cy), aura_thinking)
+        # Cosmo on right: larger, prominent, emotional!
+        # First 3.5s: analyzing data (thinking), then enthusiastic insight (smile)!
+        bob = math.sin(t * 3.2) * 12
+        if t_rel < 3.6:
+            cur_sprite = aura_thinking_purple
+        else:
+            cur_sprite = aura_smile_cyan
+        cw, ch = cur_sprite.size
+        cx = 1410
+        cy = int(580 + bob)
+        frame.paste(cur_sprite, (cx, cy), cur_sprite)
         
     elif t < 21.8:
         # Scene 3: Cosmo Powers (14.0s - 21.8s)
@@ -157,12 +161,16 @@ for frame_idx in range(TOTAL_FRAMES):
         else:
             frame.paste(framed_modal, (sx, sy), framed_modal)
             
-        # Cosmo on left bottom cheering
-        bob = math.sin(t * 3.8) * 12
-        cw, ch = aura_smile_pink.size
-        cx = 120
-        cy = int(660 + bob)
-        frame.paste(aura_smile_pink, (cx, cy), aura_smile_pink)
+        # Cosmo on left bottom: emotional transitions
+        bob = math.sin(t * 3.6) * 14
+        if t_rel < 4.0:
+            cur_sprite = aura_smile_pink
+        else:
+            cur_sprite = aura_thinking_cyan
+        cw, ch = cur_sprite.size
+        cx = 150
+        cy = int(580 + bob)
+        frame.paste(cur_sprite, (cx, cy), cur_sprite)
         
     else:
         # Scene 4: Outro & Call to Action (21.8s - 25.8s)
@@ -173,10 +181,10 @@ for frame_idx in range(TOTAL_FRAMES):
         frame.paste(ov_4, (0, 0), ov_4)
         
         # Cosmo floating in center with cosmic joy
-        bob = math.sin(t * 4.0) * 14
+        bob = math.sin(t * 4.0) * 16
         cw, ch = aura_smile_cyan.size
         cx = W // 2 - cw // 2
-        cy = int(520 - ch // 2 + bob)
+        cy = int(510 - ch // 2 + bob)
         frame.paste(aura_smile_cyan, (cx, cy), aura_smile_cyan)
         
     # Write frame bytes to ffmpeg stdin

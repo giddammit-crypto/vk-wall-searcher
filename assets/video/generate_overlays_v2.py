@@ -35,17 +35,22 @@ def draw_dual_font_text(draw, x, y, text, f_text, f_digits, fill, anchor="la"):
         if h > max_h: max_h = h
         
     cur_x = x
-    if "m" in anchor[:2]: # horizontal middle
+    h_align = anchor[0] if len(anchor) >= 1 else "l"
+    v_align = anchor[1] if len(anchor) >= 2 else "a"
+
+    if h_align == "m": # horizontal middle
         cur_x = x - total_w / 2
-    elif "r" in anchor[:2]: # right
+    elif h_align == "r": # right
         cur_x = x - total_w
         
     cur_y = y
-    if anchor.endswith("m"): # vertical middle
+    if v_align == "m": # vertical middle
         cur_y = y - max_h / 2
+    elif v_align in ("b", "d"): # bottom / baseline
+        cur_y = y - max_h
         
     for token, f, w, h, bbox in token_sizes:
-        draw.text((cur_x - bbox[0], cur_y), token, fill=fill, font=f)
+        draw.text((cur_x, cur_y), token, fill=fill, font=f)
         cur_x += w
     return total_w, max_h
 

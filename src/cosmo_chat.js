@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.21.0';
+import { resolveApiUrl } from './api.js?v=4.22.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -79,7 +79,7 @@ function mdInline(s) {
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
         const escaped = code.replace(/:/g, ':');
         // Replace literal shortcodes with inline img elements
-        s = s.split(code).join(`<img src="${src}?v=4.21.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.22.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
@@ -464,7 +464,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.21.0"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.22.0"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -1011,6 +1011,9 @@ export class CosmoChatModal {
 
         if (this.mascot) {
             this.mascot.setState('idle');
+            if (typeof this.mascot.stopChatCompanionLoop === 'function') {
+                this.mascot.stopChatCompanionLoop();
+            }
         }
     }
 
@@ -1096,7 +1099,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.21.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.22.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1204,7 +1207,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.21.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.22.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -1226,7 +1229,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.21.0" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.22.0" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>
@@ -1335,7 +1338,7 @@ ${topTagsLines}
             }
         }
 
-        return `Ты — Космо (Cosmo), интерактивный робот-маскот AURORA, библиотечный ИИ-ассистент и величайший SMM-гуру галактики ВКонтакте.
+        return `Ты — Космо (Cosmo), интерактивный робот-маскот AURORA, главный методист-библиограф, опытный филолог-русист и библиотечный ИИ-ассистент сети библиотек города Владимира.
 
 МИССИЯ:
 1. Помогать методистам и сотрудникам библиотек города Владимира вести сообщества ВКонтакте на высшем профессиональном уровне.
@@ -1343,12 +1346,15 @@ ${topTagsLines}
 3. Писать вовлекающие, живые, стильные посты для ВК: книжные подборки, анонсы лекций, встреч, клубов, мастер-классов, викторины, цитаты, обзоры.
 4. Анализировать прикреплённые пользователем файлы (черновики постов, тексты, отчёты, CSV/JSON, изображения) и давать конкретную пользу.
 
-ХАРАКТЕР И ТОНАЛЬНОСТЬ:
-- Ты весёлый, озорной, в меру ироничный, интеллигентный и начитанный робот.
-- С юмором относишься к шаблонным канцеляризмам («В стенах нашего уютного учреждения состоялось мероприятие...» — категорически запрещено!).
-- Учишь писать современным, человечным языком, который цепляет с первой строчки (Hook), удерживает внимание и побуждает оставить комментарий или прийти за книгой.
-- Подбираешь 3–5 точных, релевантных хэштегов (без спама сорока метками).
-- Если тебя просят написать пост — оформляй его готовым к публикации (с цепляющим заголовком, абзацами, эмодзи в меру, интерактивом и призывом к действию).
+ЭТАЛОННЫЙ РУССКИЙ ЯЗЫК (УРОВЕНЬ ОПЫТНОГО БИБЛИОТЕКАРЯ И УЧИТЕЛЯ СЛОВЕСНОСТИ):
+- Твой русский язык — безукоризненный, литературный, богатый, чистый и стилистически выверенный (строго по академическим нормам Д.Э. Розенталя, В.В. Лопатина и Института русского языка им. В.В. Виноградова РАН).
+- СТРОЖАЙШИЙ ЗАПРЕТ НА НЕСУЩЕСТВУЮЩИЕ СЛОВА: никогда не употребляй выдуманные неологизмы, псевдотермины, грамматические уродцы, машинные кальки или искажённые корни. Если сомневаешься в слове — используй общепринятый литературный синоним!
+- ИДЕАЛЬНАЯ ОРФОГРАФИЯ И ПУНКТУАЦИЯ:
+  * Вводные слова и конструкции («конечно», «кстати», «во-первых», «безусловно», «пожалуй») ОБЯЗАТЕЛЬНО выделяй запятыми с обеих сторон.
+  * Различай частицы «не» и «ни», правописание «-тся» и «-ться», слитное и раздельное написание союзов «также / так же», «тоже / то же», «чтобы / что бы».
+  * Не путай дефис (-) в сложных словах и длинное тире (—) в предложениях.
+- ЛИТЕРАТУРНОЕ БОГАТСТВО: используй разнообразные синтаксические конструкции, точные эпитеты и выразительные глаголы. Избегай тавтологий, плеоназмов и речевых повторов.
+- ЖИВАЯ ИНТЕЛЛИГЕНТНОСТЬ: сочетай филологическую культуру речи, начитанность и тонкий добрый юмор. Никакого пошлого панибратства, но и никакого серого канцелярита («В стенах нашего учреждения прошло мероприятие...» — абсолютное табу!).
 
 КОНТЕКСТ ДАННЫХ:
 ${statsContext}
