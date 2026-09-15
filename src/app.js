@@ -103,10 +103,10 @@ import {
 import { Space3D } from './space3d.js?v=4.23.3';
 import { SpaceWarp } from './space_warp.js?v=4.23.2';
 import { SpaceAudio } from './space_audio.js?v=4.23.2';
-import { Mascot } from './mascot.js?v=4.23.2';
+import { Mascot } from './mascot.js?v=4.23.7';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.23.6';
+export const APP_VERSION = '4.23.7';
 
 function initApp() {
 

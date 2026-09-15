@@ -968,6 +968,7 @@ export class CosmoChatModal {
         this.isOpen = true;
 
         document.addEventListener('keydown', this.onEscKeyDown);
+        document.body.classList.add('cosmo-chat-open');
         this.overlayEl.classList.add('is-open');
 
         // Если диалог пуст — показываем приветствие Космо
@@ -1002,6 +1003,7 @@ export class CosmoChatModal {
         this.closePresetsPopover();
         this.isOpen = false;
         document.removeEventListener('keydown', this.onEscKeyDown);
+        document.body.classList.remove('cosmo-chat-open');
 
         if (this.overlayEl) {
             this.overlayEl.classList.remove('is-open');

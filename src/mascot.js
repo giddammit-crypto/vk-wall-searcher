@@ -741,24 +741,36 @@ export class AuroraMascot {
         this.updateParallaxAndMotion = this.updateParallaxAndMotion.bind(this);
     }
 
+    isMobile() {
+        return window.innerWidth <= 768 || (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches);
+    }
+
     /* ---------------------------------------------------------------------
      * 1. Инициализация DOM-структуры Космо
      * ------------------------------------------------------------------- */
     init() {
         if (this.container) return;
 
-        // Восстановление закреплённой пользователем базы Космо из localStorage
+        // Восстановление закреплённой пользователем базы Космо из localStorage (только на ПК)
         try {
-            const savedX = localStorage.getItem('aurora_mascot_base_x');
-            const savedY = localStorage.getItem('aurora_mascot_base_y');
-            if (savedX !== null && !isNaN(parseFloat(savedX))) {
-                this.baseLeft = parseFloat(savedX);
-                this.currentPosX = this.baseLeft;
-                this.homePosX = this.baseLeft;
-            }
-            if (savedY !== null && !isNaN(parseFloat(savedY))) {
-                this.baseBottom = parseFloat(savedY);
-                this.currentPosY = this.baseBottom;
+            if (!this.isMobile()) {
+                const savedX = localStorage.getItem('aurora_mascot_base_x');
+                const savedY = localStorage.getItem('aurora_mascot_base_y');
+                if (savedX !== null && !isNaN(parseFloat(savedX))) {
+                    this.baseLeft = parseFloat(savedX);
+                    this.currentPosX = this.baseLeft;
+                    this.homePosX = this.baseLeft;
+                }
+                if (savedY !== null && !isNaN(parseFloat(savedY))) {
+                    this.baseBottom = parseFloat(savedY);
+                    this.currentPosY = this.baseBottom;
+                }
+            } else {
+                this.currentPosX = 14;
+                this.homePosX = 14;
+                this.baseLeft = 14;
+                this.currentPosY = 16;
+                this.baseBottom = 16;
             }
         } catch (e) {
             console.debug('[Cosmo] Failed to load saved base from localStorage:', e);
@@ -915,9 +927,9 @@ export class AuroraMascot {
             }
         }, 1600);
 
-        // Первый автоматический 30-секундный патруль через 8.5 секунд после загрузки!
+        // Первый автоматический 30-секундный патруль через 8.5 секунд после загрузки (только на ПК)!
         this.initialPatrolTimer = setTimeout(() => {
-            if (!this.isIn3D && !this.isCollapsed && !this.isDragging && !this.isPatrolling) {
+            if (!this.isMobile() && !this.isIn3D && !this.isCollapsed && !this.isDragging && !this.isPatrolling) {
                 this.startContinuousPatrol(30000);
             }
         }, 8500);
@@ -1350,6 +1362,8 @@ export class AuroraMascot {
         let altitudeScreamPlayed = false;
 
         const onStart = (e) => {
+            // На мобильных устройствах отключаем перетаскивание Космо: робот зафиксирован в углу и не блокирует скролл
+            if (this.isMobile()) return;
             if (e.button !== undefined && e.button !== 0) return; // Только ЛКМ
             if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-bubble-close]') || e.target.closest('[data-mascot-sound]') || e.target.closest('[data-mascot-open-chat]')) return;
 
@@ -1635,6 +1649,18 @@ export class AuroraMascot {
     }
 
     navigateBackHome(targetX) {
+        if (this.isMobile()) {
+            this.currentPosX = 14;
+            this.currentPosY = 16;
+            if (this.container) {
+                this.container.style.transition = 'none';
+                this.container.style.left = '14px';
+                this.container.style.bottom = '16px';
+            }
+            this.isReturningHome = false;
+            return;
+        }
+
         this.isReturningHome = true;
         const goingLeft = (this.currentPosX > targetX);
         this.bodyEl.classList.toggle('is-walking-left', goingLeft);
@@ -1683,7 +1709,7 @@ export class AuroraMascot {
     }
 
     startContinuousPatrol(totalDurationMs = 30000) {
-        if (!this.container || this.isIn3D || this.isCollapsed || this.isDragging || this.isReturningHome) return;
+        if (!this.container || this.isMobile() || this.isIn3D || this.isCollapsed || this.isDragging || this.isReturningHome) return;
 
         this.isPatrolling = true;
         const body = this.bodyEl;
@@ -2493,8 +2519,8 @@ export class AuroraMascot {
     }
 
     executeRandomActivity() {
-        // Патруль имеет сбалансированный вес в цикле (20% вероятность)
-        if (Math.random() < 0.20) {
+        // Патруль имеет сбалансированный вес в цикле (20% вероятность) только на ПК
+        if (!this.isMobile() && Math.random() < 0.20) {
             this.startContinuousPatrol(30000);
             return;
         }
@@ -2540,6 +2566,10 @@ export class AuroraMascot {
                 break;
 
             case 'horizontal_patrol':
+                if (this.isMobile()) {
+                    this.playActivity('joy_dance', customText, forcedDuration);
+                    return;
+                }
                 sprite = 'smile';
                 emoji = '🛸';
                 duration = 30000;
