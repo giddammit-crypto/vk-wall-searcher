@@ -1,9 +1,10 @@
 /**
- * src/cosmo_chat.js — Интерактивный чат с Космо (Cosmo AI Chat) (v4.19.0)
+ * src/cosmo_chat.js — Интерактивный чат с Космо (Cosmo AI Chat) (v4.20.0)
  * ============================================================================
  * Полноценный модальный чат с роботом-маскотом Космо:
  *   • Вызывается по двойному клику на Космо
  *   • Адаптивное модальное окно в неоновом стиле AURORA
+ *   • Полная замена вкладки «ИИ-аналитик»: 10 всплывающих пресетов аудита групп ВК
  *   • Полная поддержка Markdown (заголовки, списки, таблицы, код, цитаты)
  *   • Кнопки «Скопировать пост» прямо в сообщениях ИИ
  *   • Прикрепление и анализ файлов (тексты, черновики постов, JSON, CSV, изображения)
@@ -11,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.19.0';
+import { resolveApiUrl } from './api.js?v=4.20.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 
@@ -244,6 +245,153 @@ export function parseCosmoMarkdown(text) {
 
 
 /* ===========================================================================
+ * 10 БЫСТРЫХ ПРЕСЕТОВ АНАЛИЗА ГРУПП ВК (Замена старой вкладки «ИИ-аналитик»)
+ * =========================================================================== */
+export const VK_GROUP_PRESETS = [
+    {
+        id: 'net-audit',
+        icon: 'summarize',
+        category: 'Методический аудит',
+        title: 'Отчёт для методиста (Аудит сети)',
+        desc: 'Сводный аудит всех филиалов: сравнительная таблица, лидеры, аутсайдеры и рекомендации.',
+        badge: 'ТОП-ОТЧЁТ',
+        prompt: `Составь официальный аналитический отчёт для методиста по группам ВКонтакте на основе текущего сканирования.
+ОБЯЗАТЕЛЬНАЯ СТРУКТУРА:
+1. ### Параметры сканирования и общие охваты
+   Укажи общее количество филиалов, постов, суммарные просмотры, лайки, репосты и комментарии.
+2. ### Сравнительная таблица филиалов
+   Построй Markdown-таблицу: Филиал | Посты | Подписчики | Просмотры | Лайки | Репосты | Комм. | ER (вовлечённость)
+   Отсортируй по убыванию вовлечённости или просмотров.
+3. ### Лидеры и аутсайдеры периода
+   Выдели топ-1 по просмотрам и топ-1 по ER с точными данными. Укажи филиалы с низкой активностью и причины просадки.
+4. ### Топ-3 самых успешных публикаций
+   Разбери 3 поста с максимальной вовлечённостью (тема, формат, реакции).
+5. ### Конкретные рекомендации методисту
+   Дай 4 обоснованных шага для улучшения показателей всей библиотечной сети.`
+    },
+    {
+        id: 'deep-insights',
+        icon: 'insights',
+        category: 'Инсайты и аналитика',
+        title: 'Глубокие инсайты и аномалии',
+        desc: 'Скрытые паттерны, разрывы просмотров/реакций, неожиданные скачки активности.',
+        badge: 'ИНСАЙТЫ',
+        prompt: `Проведи глубокий аналитический поиск неочевидных инсайтов и аномалий в данных сообществ ВК:
+1. ### Что работает превосходно
+   Какие приёмы и форматы у лидеров принесли максимальную отдачу?
+2. ### Где теряется вовлечённость
+   У каких филиалов высокий охват просмотров, но критически мало лайков и комментариев (синдром «слепых просмотров»)?
+3. ### Анализ аномалий
+   Необычные всплески репостов или виральные взлёты отдельных постов — разбери их механику.
+4. ### Тренды читательского интереса
+   Какие темы (краеведение, новинки, детские книги, мастер-классы) вызывают наибольший живой отклик?
+5. ### 5 стратегических выводов
+   Опирайся на точные цифры выборки.`
+    },
+    {
+        id: 'leaders-secrets',
+        icon: 'emoji_events',
+        category: 'Разбор лидеров',
+        title: 'Разбор лидеров (Секрет победы)',
+        desc: 'За счёт чего побеждают топ-филиалы по просмотрам и ER, и что перенять остальным.',
+        badge: 'ЛИДЕРЫ',
+        prompt: `Проанализируй победу абсолютных лидеров текущего сканирования:
+1. Назови топ-3 филиала по просмотрам и топ-3 по коэффициенту вовлечённости (ER).
+2. Разбери, за счёт каких конкретных факторов (частота публикаций, подача, визуал, интерактив) они обошли коллег.
+3. Сформулируй 3 «золотых правила» лидеров, которые любой другой филиал может внедрить уже на этой неделе.`
+    },
+    {
+        id: 'underdogs-revival',
+        icon: 'healing',
+        category: 'Антикризис',
+        title: 'Реанимация отстающих групп',
+        desc: 'Экспресс-диагностика и пошаговый антикризисный план для групп с низким охватом.',
+        badge: 'SOS',
+        prompt: `Проведи диагностику групп с наименьшими показателями и нулевой активностью:
+1. Выдели филиалы с минимальными охватами или отсутствием постов в периоде.
+2. Определи типичные ошибки: редкий постинг, скучные пресс-релизные заголовки, отсутствие общения с читателями.
+3. Предложи пошаговый «План реанимации на 14 дней» из 5 простых действий, которые поднимут охваты даже без рекламного бюджета.`
+    },
+    {
+        id: 'best-timing',
+        icon: 'schedule',
+        category: 'Алгоритмы ВК',
+        title: 'Тайминг и виральные дни',
+        desc: 'В какие дни недели и часы посты библиотек собирают максимум реакций и репостов.',
+        badge: 'АЛГОРИТМЫ',
+        prompt: `На основе временных меток и данных активности постов проанализируй оптимальный тайминг публикаций:
+1. В какие дни недели читатели библиотечных пабликов наиболее отзывчивы на контент?
+2. Какие временные слоты (утро 08:00–09:30, обед 12:30–14:00, вечер 19:00–21:30) показывают наибольший ER?
+3. Дай рекомендации по частоте публикаций: сколько постов в день/неделю идеально выпускать филиалу, чтобы умная лента ВК не резала показы.`
+    },
+    {
+        id: 'visual-audit',
+        icon: 'palette',
+        category: 'Визуальный аудит',
+        title: 'Аудит визуала и форматов',
+        desc: 'Оценка обложек, фото-каруселей, клипов и типичные ошибки визуального оформления.',
+        badge: 'ВИЗУАЛ',
+        prompt: `Проведи визуальный и форматный аудит публикаций библиотечных групп:
+1. Сравни форматы: одиночное фото vs карусель из 3-5 фото vs постер/афиша vs видео. Какой формат собирает больше просмотров?
+2. Главные визуальные ошибки библиотечных групп ВК (мелкий нечитаемый текст на афишах, стоковые безликие картинки, перегруженные коллажи).
+3. Чек-лист из 5 правил создания цепляющей обложки поста для библиотеки, чтобы остановить скролл ленты.`
+    },
+    {
+        id: 'engagement-quality',
+        icon: 'forum',
+        category: 'Вовлечённость',
+        title: 'Качество вовлечённости (ER и ядро)',
+        desc: 'Анализ комментариев и живой дискуссии: реальные читатели против формальных лайков.',
+        badge: 'ДИСКУССИИ',
+        prompt: `Оцени глубину диалога с аудиторией и качество вовлечённости:
+1. Каково соотношение лайков к комментариям и репостам в проанализированных группах?
+2. Какие посты смогли вызвать реальные дискуссии читателей в комментариях, а какие собрали только молчаливые лайки?
+3. Предложи 3 проверенные механики (вопросы-крючки, опросы, игры в слова, цитаты-загадки), стимулирующие читателей писать осмысленные комментарии.`
+    },
+    {
+        id: 'viral-formula',
+        icon: 'rocket_launch',
+        category: 'Виральность',
+        title: 'Рецепт вирусного поста недели',
+        desc: 'Анатомия самого вирального поста выборки и адаптация идеи для других филиалов.',
+        badge: 'ВИРУС',
+        prompt: `Найди в собранных данных самый виральный пост (максимум репостов и пересылок):
+1. Проведи анатомический разбор этого поста: цепляющий заголовок (Hook), эмоциональный триггер, оформление, призыв к действию (CTA).
+2. Почему именно этой записью захотели поделиться читатели на своих страницах?
+3. Напиши готовую адаптированную матрицу поста по этой же формуле, которую может опубликовать любая библиотека сети!`
+    },
+    {
+        id: 'cross-promo',
+        icon: 'hub',
+        category: 'Коллаборации',
+        title: 'Стратегия кросс-промо и коллабораций',
+        desc: 'Взаимный пиар между филиалами, совместные марафоны и перелив читателей.',
+        badge: 'СЕТЬ',
+        prompt: `Разработай стратегию кросс-продвижения и объединения аудиторий библиотечной сети Владимира:
+1. Как крупным филиалам-лидерам поддержать начинающие или специализированные библиотеки без ущерба своим охватам?
+2. Предложи концепцию общегородского сетевого флешмоба/квеста (например, «Книжная карта Владимира»), где читатели переходят между группами филиалов.
+3. Правила грамотного репоста: как репостить анонсы коллег так, чтобы алгоритм ВК не пессимизировал запись.`
+    },
+    {
+        id: 'media-plan-7d',
+        icon: 'calendar_month',
+        category: 'Контент-план',
+        title: 'Медиаплан на 7 дней с темами',
+        desc: 'Готовое расписание из 5 вовлекающих постов с рубриками, интерактивом и призывами к действию.',
+        badge: 'КОНТЕНТ-ПЛАН',
+        prompt: `Составь готовый к публикации контент-план для библиотечной группы на ближайшие 7 дней (5 постов: Пн, Вт, Ср, Пт, Сб):
+Для каждого дня укажи:
+- Рубрику и цель (вовлечение / информирование / виральность / экспертность);
+- Цепляющий рабочий заголовок;
+- Краткое содержание (2-3 предложения) с интерактивным вопросом читателю;
+- Визуальное решение (фото библиотекаря, книжная полка, мем, карусель цитат);
+- 3-4 рекомендованных хэштега.
+Сделай контент живым, душевным и свободным от канцеляризмов!`
+    }
+];
+
+
+/* ===========================================================================
  * КЛАСС CosmoChatModal
  * =========================================================================== */
 export class CosmoChatModal {
@@ -259,6 +407,9 @@ export class CosmoChatModal {
         this.attachmentBarEl = null;
         this.chipsContainerEl = null;
         this.statusPillEl = null;
+        this.presetsPopoverEl = null;
+        this.presetsBtnEl = null;
+        this.isPresetsOpen = false;
 
         this.isOpen = false;
         this.isBusy = false;
@@ -287,7 +438,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.19.0"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.20.0"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -305,6 +456,11 @@ export class CosmoChatModal {
                     </div>
 
                     <div class="cosmo-chat-header-actions">
+                        <button type="button" class="cosmo-chat-tool-btn cosmo-chat-presets-btn" data-chat-presets-toggle title="Быстрые пресеты анализа ВК (10 сценариев)">
+                            <span class="material-symbols-outlined">analytics</span>
+                            <span class="tool-btn-text">Пресеты ВК</span>
+                            <span class="presets-count-badge">10</span>
+                        </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-clear title="Начать новый диалог">
                             <span class="material-symbols-outlined">restart_alt</span>
                             <span class="tool-btn-text">Новый диалог</span>
@@ -318,25 +474,63 @@ export class CosmoChatModal {
                     </div>
                 </div>
 
+                <!-- Всплывающий поповер с 10 пресетами анализа групп ВК -->
+                <div class="cosmo-chat-presets-popover" data-chat-presets-popover aria-hidden="true">
+                    <div class="presets-popover-header">
+                        <div class="popover-title-row">
+                            <span class="material-symbols-outlined popover-title-icon">auto_graph</span>
+                            <div>
+                                <h4 class="popover-title">ПРЕСЕТЫ АНАЛИЗА ГРУПП ВК</h4>
+                                <p class="popover-subtitle">10 готовых сценариев аудита на основе реального сканирования стены</p>
+                            </div>
+                        </div>
+                        <button type="button" class="presets-popover-close" data-chat-presets-close title="Закрыть пресеты (Esc)">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="presets-grid" data-presets-grid>
+                        ${VK_GROUP_PRESETS.map(p => `
+                            <button type="button" class="preset-card" data-preset-id="${p.id}" title="${escapeHtml(p.title)}">
+                                <div class="preset-card-top">
+                                    <span class="material-symbols-outlined preset-icon">${p.icon}</span>
+                                    <span class="preset-badge">${p.badge}</span>
+                                </div>
+                                <div class="preset-title">${p.title}</div>
+                                <div class="preset-desc">${p.desc}</div>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+
                 <!-- Область сообщений -->
                 <div class="cosmo-chat-messages" data-chat-messages></div>
+
+                <!-- Плашка быстрого открытия 10 пресетов над вводом -->
+                <div class="cosmo-chat-quick-presets-bar">
+                    <button type="button" class="cosmo-chat-quick-presets-pill" data-chat-presets-toggle title="Открыть 10 пресетов анализа групп ВК">
+                        <span class="material-symbols-outlined pill-bolt">bolt</span>
+                        <span class="pill-text">10 быстрых пресетов анализа групп ВК</span>
+                        <span class="pill-count">10</span>
+                        <span class="material-symbols-outlined pill-arrow">expand_less</span>
+                    </button>
+                </div>
 
                 <!-- Быстрые чипы-подсказки -->
                 <div class="cosmo-chat-chips" data-chat-chips>
                     <button type="button" class="cosmo-chip" data-prompt="Напиши вовлекающий пост для библиотеки о новинках книг с интерактивом и призывом к чтению!">
                         <span class="chip-icon">📚</span> Пост о новинках
                     </button>
-                    <button type="button" class="cosmo-chip" data-prompt="Сделай детальный анализ активности групп библиотек по результатам последнего сканирования: кто лидер, у кого высокий ER и где просадка?">
-                        <span class="chip-icon">📊</span> Анализ лидеров скана
+                    <button type="button" class="cosmo-chip" data-preset-id="net-audit">
+                        <span class="chip-icon">📊</span> Отчёт для методиста
+                    </button>
+                    <button type="button" class="cosmo-chip" data-preset-id="deep-insights">
+                        <span class="chip-icon">💡</span> Инсайты и аномалии
                     </button>
                     <button type="button" class="cosmo-chip" data-prompt="Придумай 3 оригинальные идеи для викторины или опроса в библиотечной группе ВК, чтобы повысить охваты!">
                         <span class="chip-icon">🔥</span> Идея для интерактива
                     </button>
-                    <button type="button" class="cosmo-chip" data-prompt="Как библиотеке поднять показатель ER и привлекать больше комментариев в ВК? Дай конкретные рекомендации.">
-                        <span class="chip-icon">🚀</span> Как поднять ER?
-                    </button>
-                    <button type="button" class="cosmo-chip" data-prompt="Подбери 5 трендовых и целевых хэштегов для публикации библиотеки о встрече читательского клуба.">
-                        <span class="chip-icon">🏷️</span> Хэштеги для поста
+                    <button type="button" class="cosmo-chip" data-preset-id="leaders-secrets">
+                        <span class="chip-icon">🏆</span> Секрет лидеров
                     </button>
                 </div>
 
@@ -371,7 +565,7 @@ export class CosmoChatModal {
                         <textarea class="cosmo-chat-input"
                                   data-chat-input
                                   rows="1"
-                                  placeholder="Спроси Космо, попроси написать пост или перетащи файл... (Enter — отправить, Shift+Enter — перенос)"></textarea>
+                                  placeholder="Спроси Космо, выбери пресет анализа или прикрепи файл... (Enter — отправить, Shift+Enter — перенос)"></textarea>
                     </div>
 
                     <button type="button" class="cosmo-chat-send-btn" data-chat-send title="Отправить сообщение (Enter)">
@@ -392,6 +586,8 @@ export class CosmoChatModal {
         this.fileInputEl = overlay.querySelector('[data-chat-file-input]');
         this.attachmentBarEl = overlay.querySelector('[data-chat-attachment]');
         this.chipsContainerEl = overlay.querySelector('[data-chat-chips]');
+        this.presetsPopoverEl = overlay.querySelector('[data-chat-presets-popover]');
+        this.presetsBtnEl = overlay.querySelector('[data-chat-presets-toggle]');
 
         this.bindEvents();
     }
@@ -400,16 +596,49 @@ export class CosmoChatModal {
      * Привязка событий интерфейса
      * ------------------------------------------------------------------- */
     bindEvents() {
-        // Клик вне диалога — закрыть
+        // Клик вне диалога или закрытие поповера
         this.overlayEl.addEventListener('click', (e) => {
+            // Если открыт поповер и клик был не внутри него и не по кнопке открытия — закрываем поповер
+            if (this.isPresetsOpen && !e.target.closest('[data-chat-presets-popover]') && !e.target.closest('[data-chat-presets-toggle]')) {
+                this.closePresetsPopover();
+                return;
+            }
             if (e.target === this.overlayEl) {
                 this.close();
             }
         });
 
-        // Кнопка «Закрыть»
+        // Кнопка «Закрыть» диалог
         const closeBtn = this.overlayEl.querySelector('[data-chat-close]');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+
+        // Кнопки открытия/закрытия поповера пресетов
+        const toggleBtns = this.overlayEl.querySelectorAll('[data-chat-presets-toggle]');
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.togglePresetsPopover();
+            });
+        });
+
+        const closePresetsBtn = this.overlayEl.querySelector('[data-chat-presets-close]');
+        if (closePresetsBtn) {
+            closePresetsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closePresetsPopover();
+            });
+        }
+
+        // Клик по карточке пресета внутри поповера
+        if (this.presetsPopoverEl) {
+            this.presetsPopoverEl.addEventListener('click', (e) => {
+                const card = e.target.closest('[data-preset-id]');
+                if (card && card.dataset.presetId) {
+                    e.stopPropagation();
+                    this.applyPreset(card.dataset.presetId);
+                }
+            });
+        }
 
         // Кнопка «Новый диалог»
         const clearBtn = this.overlayEl.querySelector('[data-chat-clear]');
@@ -417,6 +646,7 @@ export class CosmoChatModal {
             clearBtn.addEventListener('click', () => {
                 this.messages = [];
                 this.clearAttachedFile();
+                this.closePresetsPopover();
                 this.renderWelcome();
                 if (this.inputEl) this.inputEl.focus();
             });
@@ -469,17 +699,33 @@ export class CosmoChatModal {
             removeAttachBtn.addEventListener('click', () => this.clearAttachedFile());
         }
 
-        // Быстрые чипы
+        // Быстрые чипы (поддерживают и data-prompt, и data-preset-id)
         this.chipsContainerEl.addEventListener('click', (e) => {
             const chip = e.target.closest('.cosmo-chip');
-            if (chip && chip.dataset.prompt) {
+            if (!chip) return;
+            if (chip.dataset.presetId) {
+                this.applyPreset(chip.dataset.presetId);
+            } else if (chip.dataset.prompt) {
                 this.inputEl.value = chip.dataset.prompt;
                 this.handleSend();
             }
         });
 
-        // Делегирование копирования постов и блоков кода
+        // Делегирование кликов по ленте сообщений (копирование, пресеты из приветствия)
         this.messagesEl.addEventListener('click', (e) => {
+            // Клик по чипу пресета из баннера приветствия
+            const welcomeChip = e.target.closest('.welcome-preset-chip');
+            if (welcomeChip) {
+                if (welcomeChip.dataset.presetId) {
+                    this.applyPreset(welcomeChip.dataset.presetId);
+                    return;
+                }
+                if (welcomeChip.hasAttribute('data-chat-presets-toggle')) {
+                    this.openPresetsPopover();
+                    return;
+                }
+            }
+
             const copyPostBtn = e.target.closest('[data-copy-post]');
             if (copyPostBtn) {
                 const text = copyPostBtn.getAttribute('data-copy-post') || '';
@@ -638,6 +884,7 @@ export class CosmoChatModal {
 
     close() {
         if (!this.isOpen) return;
+        this.closePresetsPopover();
         this.isOpen = false;
         document.removeEventListener('keydown', this.onEscKeyDown);
 
@@ -656,8 +903,69 @@ export class CosmoChatModal {
 
     onEscKeyDown(e) {
         if (e.key === 'Escape') {
+            if (this.isPresetsOpen) {
+                this.closePresetsPopover();
+                return;
+            }
             this.close();
         }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Управление всплывающим поповером с 10 пресетами анализа групп ВК
+     * ------------------------------------------------------------------- */
+    togglePresetsPopover() {
+        if (this.isPresetsOpen) {
+            this.closePresetsPopover();
+        } else {
+            this.openPresetsPopover();
+        }
+    }
+
+    openPresetsPopover() {
+        if (!this.presetsPopoverEl) return;
+        this.isPresetsOpen = true;
+        this.presetsPopoverEl.classList.add('is-open');
+        this.presetsPopoverEl.setAttribute('aria-hidden', 'false');
+        if (this.presetsBtnEl) this.presetsBtnEl.classList.add('is-active');
+
+        // Звуковая реакция маскота
+        if (this.mascot && this.mascot.playVoice && this.audioEnabled) {
+            this.mascot.playVoice('scan_wait_3');
+        }
+    }
+
+    closePresetsPopover() {
+        if (!this.presetsPopoverEl) return;
+        this.isPresetsOpen = false;
+        this.presetsPopoverEl.classList.remove('is-open');
+        this.presetsPopoverEl.setAttribute('aria-hidden', 'true');
+        if (this.presetsBtnEl) this.presetsBtnEl.classList.remove('is-active');
+    }
+
+    applyPreset(presetId) {
+        const preset = VK_GROUP_PRESETS.find(p => p.id === presetId);
+        if (!preset) return;
+
+        this.closePresetsPopover();
+
+        if (this.isBusy) return;
+
+        // Показываем в чате аккуратную плашку запуска пресета
+        const displayLabel = `📊 **Пресет: ${preset.title}**\n*${preset.desc}*`;
+        this.appendUserMessage(displayLabel, null);
+
+        // В контекст диалога передаём полный развёрнутый промпт для ИИ
+        this.messages.push({
+            role: 'user',
+            content: `[Запущен аналитический пресет «${preset.title}» (${preset.badge})]:\n${preset.prompt}`
+        });
+
+        // Запускаем генерацию ответа с повышенным лимитом токенов (3000) для аналитических таблиц
+        this.executeAiRequest({
+            maxTokens: 3000,
+            temperature: 0.6
+        });
     }
 
     /* ---------------------------------------------------------------------
@@ -669,7 +977,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.19.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.20.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -682,7 +990,21 @@ export class CosmoChatModal {
                             <li>📎 <strong>Оценить черновик или файл</strong> — прикрепи файл через кнопку со скрепкой внизу или перетащи сюда.</li>
                             <li>🎯 <strong>Придумать викторину, опрос или рубрику</strong>, чтобы поднять охваты и вовлечённость читателей.</li>
                         </ul>
-                        <p>Выбирай быструю тему из карточек ниже или пиши свой вопрос прямо в чат! 🚀✨</p>
+                        <div class="welcome-presets-banner">
+                            <div class="welcome-presets-title">
+                                <span class="material-symbols-outlined">analytics</span>
+                                <span>Быстрый анализ данных сканирования:</span>
+                            </div>
+                            <div class="welcome-presets-chips">
+                                <button type="button" class="welcome-preset-chip" data-preset-id="net-audit">📊 Отчёт для методиста</button>
+                                <button type="button" class="welcome-preset-chip" data-preset-id="deep-insights">💡 Инсайты и аномалии</button>
+                                <button type="button" class="welcome-preset-chip" data-preset-id="leaders-secrets">🏆 Секрет лидеров</button>
+                                <button type="button" class="welcome-preset-chip" data-preset-id="underdogs-diagnostic">🩺 Диагностика филиалов</button>
+                                <button type="button" class="welcome-preset-chip" data-preset-id="media-plan-7d">📅 План на 7 дней</button>
+                                <button type="button" class="welcome-preset-chip welcome-preset-all" data-chat-presets-toggle>✨ Все 10 пресетов →</button>
+                            </div>
+                        </div>
+                        <p style="margin-top: 10px;">Выбирай быструю тему из карточек выше или пиши свой вопрос прямо в чат! 🚀✨</p>
                     </div>
                 </div>
             </div>
@@ -751,7 +1073,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.19.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.20.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -773,7 +1095,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.19.0" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.20.0" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>
@@ -811,7 +1133,59 @@ export class CosmoChatModal {
     buildCosmoSystemPrompt() {
         let statsContext = 'Данные сканирования пока не собраны (сканирование не запускалось). Предложи пользователю запустить поиск по стене.';
 
-        if (this.mascot && typeof this.mascot.getLiveScanStats === 'function') {
+        let fullSnapshot = null;
+        if (this.mascot && typeof this.mascot.getAiSnapshot === 'function') {
+            const raw = this.mascot.getAiSnapshot();
+            if (typeof raw === 'string') {
+                try { fullSnapshot = JSON.parse(raw); } catch (e) {}
+            } else if (raw && typeof raw === 'object') {
+                fullSnapshot = raw;
+            }
+        }
+
+        if (fullSnapshot && Array.isArray(fullSnapshot.branches) && fullSnapshot.branches.length > 0) {
+            const branchesLines = fullSnapshot.branches.map(b => {
+                const mem = b.members !== null && b.members !== undefined ? b.members : 'неизвестно';
+                const erP = b.erPost !== null ? `${b.erPost}%` : 'н/д';
+                const erV = b.erViews ? `${b.erViews}%` : 'н/д';
+                return `- ${b.name}: подписчиков=${mem}, постов=${b.posts}, просмотров=${b.views.toLocaleString('ru-RU')}, лайков=${b.likes}, репостов=${b.reposts}, комментов=${b.comments}, ER_пост=${erP}, ER_просмотры=${erV}, ср.реакций_на_пост=${b.avgInteractionsPerPost}`;
+            }).join('\n');
+
+            const topPostsLines = Array.isArray(fullSnapshot.topPostsByEngagement) && fullSnapshot.topPostsByEngagement.length > 0
+                ? fullSnapshot.topPostsByEngagement.slice(0, 8).map((p, idx) =>
+                    `${idx + 1}. [${p.branch || 'Филиал'}, ${p.date || 'дата'}] Лайков: ${p.likes}, Репостов: ${p.reposts}, Комментов: ${p.comments}, Просмотров: ${p.views}\n   Текст поста: "${(p.text || '').replace(/\n+/g, ' ')}"`
+                ).join('\n')
+                : 'Нет данных о топ-постах.';
+
+            const topTagsLines = Array.isArray(fullSnapshot.topHashtags) && fullSnapshot.topHashtags.length > 0
+                ? fullSnapshot.topHashtags.slice(0, 12).map(t => `${t.tag} (${t.count})`).join(', ')
+                : 'Хэштеги не найдены.';
+
+            const agg = fullSnapshot.aggregates || {};
+
+            statsContext = `
+ТОЧНЫЕ ДАННЫЕ ТЕКУЩЕГО СКАНИРОВАНИЯ БИБЛИОТЕК ВЛАДИМИРА:
+- Период сканирования: ${fullSnapshot.period || 'не указан'}
+- Ключевые слова поиска: ${fullSnapshot.keywords ? `"${fullSnapshot.keywords}"` : 'все посты без фильтра по словам'}
+- Всего филиалов в базе: ${fullSnapshot.branchesCount || fullSnapshot.branches.length}
+- Всего постов в текущей выборке: ${fullSnapshot.totalPosts}
+- Суммарные показатели по всей сети:
+  • Просмотры: ${(agg.totalViews || 0).toLocaleString('ru-RU')}
+  • Лайки: ${(agg.totalLikes || 0).toLocaleString('ru-RU')}
+  • Репосты: ${(agg.totalReposts || 0).toLocaleString('ru-RU')}
+  • Комментарии: ${(agg.totalComments || 0).toLocaleString('ru-RU')}
+- Область выборки: ${fullSnapshot.scope?.note || 'полный скан'}
+
+ДАННЫЕ ПО ВСЕМ ФИЛИАЛАМ СЕТИ:
+${branchesLines}
+
+ТОП-ПУБЛИКАЦИИ ПО СУММЕ РЕАКЦИЙ (ЛАЙКИ + РЕПОСТЫ + КОММЕНТАРИИ):
+${topPostsLines}
+
+ПОПУЛЯРНЫЕ ХЭШТЕГИ:
+${topTagsLines}
+`;
+        } else if (this.mascot && typeof this.mascot.getLiveScanStats === 'function') {
             const stats = this.mascot.getLiveScanStats();
             if (stats && stats.count > 0) {
                 statsContext = `
@@ -833,10 +1207,10 @@ export class CosmoChatModal {
         return `Ты — Космо (Cosmo), интерактивный робот-маскот AURORA, библиотечный ИИ-ассистент и величайший SMM-гуру галактики ВКонтакте.
 
 МИССИЯ:
-1. Помогать методистам и сотрудникам библиотек города Владимира вести сообщества ВКонтакте на высшем уровне.
-2. Писать вовлекающие, живые, стильные посты для ВК: книжные подборки, анонсы лекций, встреч, клубов, мастер-классов, викторины, цитаты, обзоры.
-3. Анализировать активность и показатели групп ВК, опираясь ТОЛЬКО на реальные данные сканирования.
-4. Анализировать прикреплённые пользователем файлы (черновики постов, тексты, статистические отчёты, CSV/JSON, изображения) и давать конкретную пользу.
+1. Помогать методистам и сотрудникам библиотек города Владимира вести сообщества ВКонтакте на высшем профессиональном уровне.
+2. Проводить глубокий аналитический аудит групп ВК на основе данных сканирования, заменяя отдельную вкладку «ИИ-аналитик». Строить сравнительные таблицы, рассчитывать ER, определять сильные и слабые стороны филиалов, давать методические рекомендации.
+3. Писать вовлекающие, живые, стильные посты для ВК: книжные подборки, анонсы лекций, встреч, клубов, мастер-классов, викторины, цитаты, обзоры.
+4. Анализировать прикреплённые пользователем файлы (черновики постов, тексты, отчёты, CSV/JSON, изображения) и давать конкретную пользу.
 
 ХАРАКТЕР И ТОНАЛЬНОСТЬ:
 - Ты весёлый, озорной, в меру ироничный, интеллигентный и начитанный робот.
@@ -848,9 +1222,9 @@ export class CosmoChatModal {
 КОНТЕКСТ ДАННЫХ:
 ${statsContext}
 
-ПРАВИЛО ТОЧНОСТИ:
+ПРАВИЛО ТОЧНОСТИ (ZERO HALLUCINATIONS):
 - Любые цифры по филиалам и статистике бери ТОЛЬКО из предоставленного контекста сканирования. Никогда не выдумывай несуществующие показатели. Если данных нет — честно скажи об этом и посоветуй запустить сканирование.
-- Форматируй ответы с красивой структурой Markdown: используй заголовки, списки, выделения жирным и цитаты.`;
+- Форматируй ответы с красивой структурой Markdown: используй таблицы (| Заголовок | Заголовок |), списки, выделения жирным и цитаты. Таблицы оформляй аккуратно с разделителями.`;
     }
 
     /* ---------------------------------------------------------------------
@@ -884,6 +1258,13 @@ ${statsContext}
         // Сохраняем в историю диалога
         this.messages.push({ role: 'user', content: userContent });
 
+        await this.executeAiRequest({ maxTokens: 2200, temperature: 0.7 });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Выполнение запроса к ИИ с системным промптом и снимком сканирования
+     * ------------------------------------------------------------------- */
+    async executeAiRequest({ maxTokens = 2200, temperature = 0.7 } = {}) {
         this.isBusy = true;
         this.sendBtnEl.disabled = true;
         this.showTypingIndicator();
@@ -909,8 +1290,8 @@ ${statsContext}
                         { role: 'system', content: systemPrompt },
                         ...history
                     ],
-                    max_tokens: 2200,
-                    temperature: 0.7
+                    max_tokens: maxTokens,
+                    temperature: temperature
                 })
             });
 

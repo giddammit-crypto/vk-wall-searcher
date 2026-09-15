@@ -13,17 +13,16 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.19.0';
+} from './api.js?v=4.20.0';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.19.0';
+} from './advice.js?v=4.20.0';
 
 import {
-    initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.19.0';
+} from './ai.js?v=4.20.0';
 
 import {
     fetchHistory,
@@ -33,7 +32,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.19.0';
+} from './subscribers.js?v=4.20.0';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +41,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.19.0';
+} from './updater.js?v=4.20.0';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +52,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.19.0';
+} from './branches.js?v=4.20.0';
 
 import {
     calculateKPIs,
@@ -62,7 +61,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.19.0';
+} from './analytics.js?v=4.20.0';
 
 import {
     createPostCard,
@@ -74,7 +73,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.19.0';
+} from './render.js?v=4.20.0';
 
 import {
     exportToCsv,
@@ -84,28 +83,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.19.0';
+} from './export.js?v=4.20.0';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.19.0';
-import { CosmicUniverse } from './cosmic.js?v=4.19.0';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.20.0';
+import { CosmicUniverse } from './cosmic.js?v=4.20.0';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.19.0';
+} from './promo.js?v=4.20.0';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.19.0';
+} from './radar.js?v=4.20.0';
 
-import { Space3D } from './space3d.js?v=4.19.0';
-import { SpaceWarp } from './space_warp.js?v=4.19.0';
-import { SpaceAudio } from './space_audio.js?v=4.19.0';
-import { Mascot } from './mascot.js?v=4.19.0';
+import { Space3D } from './space3d.js?v=4.20.0';
+import { SpaceWarp } from './space_warp.js?v=4.20.0';
+import { SpaceAudio } from './space_audio.js?v=4.20.0';
+import { Mascot } from './mascot.js?v=4.20.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.19.0';
+export const APP_VERSION = '4.20.0';
 
 function initApp() {
 
@@ -3139,8 +3138,7 @@ function initApp() {
                 '3': 'analytics-tab',
                 '4': 'summary-tab',
                 '5': 'advice-tab',
-                '6': 'subscribers-tab',
-                '7': 'ai-tab'
+                '6': 'subscribers-tab'
             };
             if (tabMap[e.key]) {
                 const targetTabId = tabMap[e.key];
@@ -3150,6 +3148,14 @@ function initApp() {
                     showToast(`Вкладка: ${targetBtn.querySelector('span:not(.icon):not(.tab-badge)')?.textContent?.trim() || targetTabId}`, 'tab');
                 }
                 return;
+            }
+
+            // '7' или 'C' / 'c': Чат с Космо
+            if (e.key === '7' || e.key === 'c' || e.key === 'C' || e.key === 'с' || e.key === 'С') {
+                if (window.Mascot && typeof window.Mascot.openCosmoChat === 'function') {
+                    window.Mascot.openCosmoChat();
+                    return;
+                }
             }
 
             // 'T' / 't': Quick theme toggle
@@ -3733,10 +3739,10 @@ function initApp() {
         console.warn('[Space3D] Deferred init error:', err);
     }
 
-    // Initialize AI Analyst tab (src/ai.js — отчёты, инсайты и чат)
+    // Передаём генератор полного аналитического снимка в робота-маскота Космо
     try {
-        initAiTab({
-            getSnapshot: () => {
+        if (Mascot && typeof Mascot.setSnapshotGetter === 'function') {
+            Mascot.setSnapshotGetter(() => {
                 const posts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
                 let periodLabel = '';
                 try { periodLabel = computeScanPeriod().label; } catch (e) { /* опционально */ }
@@ -3747,11 +3753,10 @@ function initApp() {
                     keywords: elements.keywordInput ? elements.keywordInput.value : '',
                     exclude: elements.excludeInput ? elements.excludeInput.value : ''
                 });
-            },
-            onToast: showToast
-        });
+            });
+        }
     } catch (err) {
-        console.warn('[AI] Tab init error:', err);
+        console.warn('[Mascot] Snapshot getter init error:', err);
     }
 
     // Инициализация интерактивного 2D робота-ассистента в нижнем левом углу

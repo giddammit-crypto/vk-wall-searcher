@@ -31,13 +31,13 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=4.19.0">
-    <link rel="stylesheet" href="src/iss_hud.css?v=4.19.0">
-    <link rel="stylesheet" href="src/space_ui.css?v=4.19.0">
-    <link rel="stylesheet" href="src/warp_hud.css?v=4.19.0">
-    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.19.0">
-    <link rel="stylesheet" href="src/space_cinematic.css?v=4.19.0">
-    <link rel="stylesheet" href="src/mascot.css?v=4.19.0">
+    <link rel="stylesheet" href="style.css?v=4.20.0">
+    <link rel="stylesheet" href="src/iss_hud.css?v=4.20.0">
+    <link rel="stylesheet" href="src/space_ui.css?v=4.20.0">
+    <link rel="stylesheet" href="src/warp_hud.css?v=4.20.0">
+    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.20.0">
+    <link rel="stylesheet" href="src/space_cinematic.css?v=4.20.0">
+    <link rel="stylesheet" href="src/mascot.css?v=4.20.0">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -586,10 +586,6 @@
                         <span class="material-symbols-outlined icon">trending_up</span>
                         <span>Подписчики</span>
                     </button>
-                    <button class="tab-btn" data-tab="ai-tab">
-                        <span class="material-symbols-outlined icon">auto_awesome</span>
-                        <span>ИИ-аналитик</span>
-                    </button>
                 </div>
 
                 <!-- Tab 1: Visual Cards Grid -->
@@ -1020,48 +1016,6 @@
                         <div class="subs-chart-empty">
                             <span class="material-symbols-outlined">hourglass_empty</span>
                             <p>Загрузка истории подписчиков…</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 7: ИИ-аналитик (отчёты, инсайты и чат с моделью) -->
-                <div id="ai-tab" class="tab-content no-print">
-                    <div class="ai-wrap">
-                        <div class="ai-toolbar">
-                            <span class="ai-status-chip ai-status-err" id="ai-status-chip">
-                                <span class="material-symbols-outlined" style="font-size:14px">hourglass_top</span> Проверка ИИ…
-                            </span>
-                            <div class="ai-toolbar-actions">
-                                <button id="ai-report-btn" class="btn btn-primary btn-sm">
-                                    <span class="material-symbols-outlined icon">summarize</span>
-                                    <span>Отчёт для методиста</span>
-                                </button>
-                                <button id="ai-insight-btn" class="btn btn-secondary btn-sm">
-                                    <span class="material-symbols-outlined icon">insights</span>
-                                    <span>Инсайты и рекомендации</span>
-                                </button>
-                                <button id="ai-clear-btn" class="btn btn-secondary btn-sm" title="Очистить диалог">
-                                    <span class="material-symbols-outlined icon">delete_sweep</span>
-                                    <span>Очистить</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="ai-quick-row">
-                            <button class="ai-quick-chip" data-q="Какой филиал самый активный и почему?"><span class="material-symbols-outlined">emoji_events</span>Самый активный филиал</button>
-                            <button class="ai-quick-chip" data-q="Какие темы постов вызывают больше всего вовлечённости?"><span class="material-symbols-outlined">forum</span>Лучшие темы</button>
-                            <button class="ai-quick-chip" data-q="Каким филиалам нужно срочно улучшить активность? Дай конкретные шаги."><span class="material-symbols-outlined">warning</span>Отстающие филиалы</button>
-                            <button class="ai-quick-chip" data-q="Предложи 5 идей постов для библиотеки на основе лучших записей этого периода."><span class="material-symbols-outlined">lightbulb</span>Идеи постов</button>
-                        </div>
-
-                        <div class="ai-chat" id="ai-chat-messages"></div>
-
-                        <div class="ai-input-row">
-                            <textarea id="ai-chat-input" class="ai-input" rows="1"
-                                placeholder="Спросите ИИ о результатах поиска… (Enter — отправить, Shift+Enter — новая строка)"></textarea>
-                            <button id="ai-send-btn" class="btn btn-primary ai-send" title="Отправить">
-                                <span class="material-symbols-outlined icon">send</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1537,7 +1491,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.19.0"></script>
+    <script type="module" src="src/app.js?v=4.20.0"></script>
 
     <script>
     /* =============================================================
@@ -1832,8 +1786,8 @@
             </div>
             <div class="video-help-body">
                 <div class="video-player-wrapper">
-                    <video id="aurora-guide-video" controls playsinline preload="metadata" poster="assets/screenshots/hero_banner.png?v=4.19.0">
-                        <source src="assets/video/aurora_cosmo_guide.mp4?v=4.19.0" type="video/mp4">
+                    <video id="aurora-guide-video" controls playsinline preload="metadata" poster="assets/screenshots/hero_banner.png?v=4.20.0">
+                        <source src="assets/video/aurora_cosmo_guide.mp4?v=4.20.0" type="video/mp4">
                         Ваш браузер не поддерживает воспроизведение видео.
                     </video>
                 </div>
