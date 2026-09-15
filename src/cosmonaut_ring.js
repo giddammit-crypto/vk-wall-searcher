@@ -24,8 +24,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.18.1';
-import { SpaceAudio } from './space_audio.js?v=4.18.1';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.18.2';
+import { SpaceAudio } from './space_audio.js?v=4.18.2';
 
 const DEG = Math.PI / 180;
 

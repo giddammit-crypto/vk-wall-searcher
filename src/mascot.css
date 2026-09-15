@@ -1807,7 +1807,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.18.1 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.18.2 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
@@ -2015,5 +2015,194 @@
     right: 36px;
 }
 
+/* ==========================================================================
+   COSMO MODAL — адаптивное окно предпросмотра сгенерированного ИИ текста
+   (Markdown-форматирование, копирование, закрытие по фону/кнопке/Escape)
+   ========================================================================== */
+.cosmo-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(4, 8, 20, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.24s ease;
+}
 
+.cosmo-modal-overlay.is-open {
+    opacity: 1;
+}
 
+.cosmo-modal-overlay.is-closing {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cosmo-modal {
+    width: min(680px, 94vw);
+    max-height: min(84vh, 720px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 18px;
+    background: linear-gradient(165deg, rgba(13, 21, 43, 0.98) 0%, rgba(8, 13, 30, 0.98) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(0, 240, 255, 0.14),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    font-family: var(--font-body, system-ui, sans-serif);
+    transform: translateY(24px) scale(0.94);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cosmo-modal-overlay.is-open .cosmo-modal {
+    transform: translateY(0) scale(1);
+}
+
+.cosmo-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.18);
+    background: rgba(0, 240, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.cosmo-modal-title {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #00f0ff;
+    text-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+}
+
+.cosmo-modal-close {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.6);
+    color: #94a3b8;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.cosmo-modal-close:hover {
+    color: #ff6b81;
+    border-color: rgba(255, 107, 129, 0.5);
+    transform: scale(1.08);
+}
+
+.cosmo-modal-body {
+    padding: 18px 20px;
+    overflow-y: auto;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overscroll-behavior: contain;
+}
+
+.cosmo-modal-body .mascot-md-h2 {
+    font-size: 1.02rem;
+    margin-top: 4px;
+}
+
+.cosmo-modal-body .mascot-md-h3 {
+    font-size: 0.95rem;
+}
+
+.cosmo-modal-body .mascot-md-code {
+    white-space: normal;
+}
+
+.cosmo-modal-body strong {
+    color: #7dd3fc;
+}
+
+.cosmo-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(0, 240, 255, 0.14);
+    background: rgba(0, 0, 0, 0.18);
+    flex-shrink: 0;
+}
+
+.cosmo-modal-footer .mascot-action-btn.is-copied {
+    color: #4ade80;
+    border-color: rgba(74, 222, 128, 0.5);
+}
+
+[data-theme="light"] .cosmo-modal-overlay {
+    background: rgba(15, 23, 42, 0.45);
+}
+
+[data-theme="light"] .cosmo-modal {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.35);
+    color: #1e293b;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22), 0 0 24px rgba(2, 132, 199, 0.12);
+}
+
+[data-theme="light"] .cosmo-modal-header {
+    background: rgba(2, 132, 199, 0.07);
+    border-bottom-color: rgba(2, 132, 199, 0.25);
+}
+
+[data-theme="light"] .cosmo-modal-title {
+    color: #0284c7;
+    text-shadow: none;
+}
+
+[data-theme="light"] .cosmo-modal-body strong {
+    color: #0369a1;
+}
+
+[data-theme="light"] .cosmo-modal-footer {
+    border-top-color: rgba(2, 132, 199, 0.2);
+    background: rgba(2, 132, 199, 0.04);
+}
+
+/* Мобильная адаптация: окно на всю ширину, кнопки на всю ширину, по центру экрана */
+@media (max-width: 560px) {
+    .cosmo-modal-overlay {
+        padding: 10px;
+        align-items: center;
+    }
+
+    .cosmo-modal {
+        width: 100%;
+        max-height: 88vh;
+        border-radius: 16px 16px 10px 10px;
+    }
+
+    .cosmo-modal-footer {
+        flex-direction: column;
+    }
+
+    .cosmo-modal-footer .mascot-action-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Движение сведено к минимуму — мгновенное появление без пружин */
+@media (prefers-reduced-motion: reduce) {
+    .cosmo-modal-overlay,
+    .cosmo-modal {
+        transition: none !important;
+    }
+}
