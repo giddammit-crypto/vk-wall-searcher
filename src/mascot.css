@@ -3809,76 +3809,638 @@
     box-shadow: 0 0 14px rgba(219, 39, 119, 0.3);
 }
 
-/* Мобильная адаптация */
-@media (max-width: 640px) {
+/* ============================================================================
+ * МОБИЛЬНАЯ АДАПТАЦИЯ ЧАТА С КОСМО (В СТИЛЕ VK MESSENGER MOBILE)
+ * Внимание: правила строго изолированы в @media (max-width: 768px).
+ * ПК-версия (> 768px) остаётся на 100% нетронутой и без изменений!
+ * ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Полноэкранный оверлей и диалоговое окно (100dvh / 100vw) */
     .cosmo-chat-overlay {
-        padding: 0;
+        padding: 0 !important;
+        background: #19191a !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
+    [data-theme="light"] .cosmo-chat-overlay {
+        background: #edeef0 !important;
+    }
+
     .cosmo-chat-dialog {
-        width: 100vw;
-        height: 100vh;
-        max-height: 100vh;
-        border-radius: 0;
-        border: none;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100dvh !important;
+        height: 100vh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #19191a !important;
+        color: #f1f5f9 !important;
+        transform: none !important;
+        transition: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
     }
+    [data-theme="light"] .cosmo-chat-dialog {
+        background: #edeef0 !important;
+        color: #1e293b !important;
+    }
+
+    /* 2. Шапка в стиле VK Mobile Messenger */
     .cosmo-chat-header {
-        padding: 10px 14px;
+        height: 54px !important;
+        min-height: 54px !important;
+        padding: 6px 10px !important;
+        padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
+        background: #222222 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
     }
+    [data-theme="light"] .cosmo-chat-header {
+        background: #ffffff !important;
+        border-bottom: 1px solid #e1e3e6 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .cosmo-chat-brand {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .cosmo-chat-avatar-wrap {
+        width: 38px !important;
+        height: 38px !important;
+        position: relative !important;
+        flex-shrink: 0 !important;
+    }
+
+    .cosmo-chat-avatar-img {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        object-fit: contain !important;
+    }
+    [data-theme="light"] .cosmo-chat-avatar-img {
+        background: #f0f2f5 !important;
+        border: 1px solid #e1e3e6 !important;
+    }
+
+    .cosmo-chat-online-dot {
+        width: 10px !important;
+        height: 10px !important;
+        right: -1px !important;
+        bottom: -1px !important;
+        border-radius: 50% !important;
+        background: #4bb34b !important;
+        border: 2px solid #222222 !important;
+        box-shadow: 0 0 4px #4bb34b !important;
+    }
+    [data-theme="light"] .cosmo-chat-online-dot {
+        border-color: #ffffff !important;
+    }
+
+    .cosmo-chat-title-group {
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+
+    .cosmo-chat-title-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
     .cosmo-chat-title {
-        font-size: 0.95rem;
+        font-size: 15.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.01em !important;
+        color: #ffffff !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.25 !important;
     }
-    .cosmo-chat-badge,
+    [data-theme="light"] .cosmo-chat-title {
+        color: #000000 !important;
+    }
+
+    .cosmo-chat-badge {
+        display: none !important;
+    }
+
+    .cosmo-chat-subtitle {
+        font-size: 12px !important;
+        color: #909499 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        line-height: 1.2 !important;
+    }
+    [data-theme="light"] .cosmo-chat-subtitle {
+        color: #818c99 !important;
+    }
+    .cosmo-chat-subtitle .material-symbols-outlined {
+        font-size: 13px !important;
+        color: #529ef4 !important;
+    }
+    [data-theme="light"] .cosmo-chat-subtitle .material-symbols-outlined {
+        color: #2688eb !important;
+    }
+
+    .cosmo-chat-header-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 2px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .cosmo-chat-tool-btn,
+    .cosmo-chat-close-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #71aaeb !important;
+        transition: background-color 0.15s ease !important;
+    }
+    [data-theme="light"] .cosmo-chat-tool-btn,
+    [data-theme="light"] .cosmo-chat-close-btn {
+        color: #2688eb !important;
+    }
+    .cosmo-chat-tool-btn:active,
+    .cosmo-chat-close-btn:active {
+        background: rgba(255, 255, 255, 0.08) !important;
+        transform: scale(0.92) !important;
+    }
+    [data-theme="light"] .cosmo-chat-tool-btn:active,
+    [data-theme="light"] .cosmo-chat-close-btn:active {
+        background: rgba(0, 0, 0, 0.06) !important;
+    }
+    .cosmo-chat-close-btn {
+        color: #909499 !important;
+    }
+    [data-theme="light"] .cosmo-chat-close-btn {
+        color: #818c99 !important;
+    }
+
     .tool-btn-text,
     .send-btn-label {
-        display: none;
+        display: none !important;
     }
-    .cosmo-chat-send-btn {
-        padding: 0 14px;
+
+    .cosmo-chat-presets-btn .presets-count-badge {
+        top: 2px !important;
+        right: 2px !important;
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        background: #e64646 !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        border: 1px solid #222222 !important;
     }
-    .cosmo-chat-input {
-        min-height: 56px;
-        max-height: 140px;
+    [data-theme="light"] .cosmo-chat-presets-btn .presets-count-badge {
+        border-color: #ffffff !important;
     }
-    .cosmo-chat-footer {
-        padding: 10px 12px;
+
+    /* 3. Лента сообщений (VK Chat Feed) */
+    .cosmo-chat-messages {
+        flex: 1 1 auto !important;
+        padding: 10px 8px 12px 8px !important;
+        background: #19191a !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
     }
+    [data-theme="light"] .cosmo-chat-messages {
+        background: #edeef0 !important;
+    }
+
     .cosmo-chat-msg {
-        max-width: 96%;
+        max-width: 88% !important;
+        gap: 6px !important;
+        margin-bottom: 2px !important;
     }
+
+    /* 4. Исходящие сообщения пользователя (VK User Bubble) */
+    .cosmo-chat-msg-user {
+        align-self: flex-end !important;
+        max-width: 84% !important;
+        flex-direction: row-reverse !important;
+    }
+    .cosmo-chat-msg-user .msg-avatar {
+        display: none !important; /* В мобильном ВК аватар отправителя не дублируется */
+    }
+    .cosmo-chat-msg-user .msg-author {
+        display: none !important;
+    }
+    .cosmo-chat-msg-user .msg-body {
+        background: #3b6ba5 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 18px 18px 4px 18px !important; /* Классический хвост пузыря ВК справа внизу */
+        padding: 9px 13px !important;
+        font-size: 14.5px !important;
+        line-height: 1.45 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22) !important;
+        word-break: break-word !important;
+    }
+    [data-theme="light"] .cosmo-chat-msg-user .msg-body {
+        background: #528bcc !important;
+        color: #ffffff !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* 5. Входящие сообщения бота Космо (VK Bot Bubble) */
+    .cosmo-chat-msg-bot {
+        align-self: flex-start !important;
+        max-width: 90% !important;
+    }
+    .cosmo-chat-msg-bot .msg-avatar {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        border-radius: 50% !important;
+        align-self: flex-end !important;
+        margin-bottom: 2px !important;
+        background: rgba(0, 240, 255, 0.12) !important;
+        border: 1px solid rgba(0, 240, 255, 0.25) !important;
+        display: grid !important;
+        place-items: center !important;
+    }
+    .cosmo-chat-msg-bot .msg-avatar img {
+        width: 26px !important;
+        height: 26px !important;
+    }
+    .cosmo-chat-msg-bot .msg-author {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #529ef4 !important;
+        margin-bottom: 2px !important;
+        padding-left: 2px !important;
+    }
+    [data-theme="light"] .cosmo-chat-msg-bot .msg-author {
+        color: #2688eb !important;
+    }
+    .cosmo-chat-msg-bot .msg-body {
+        background: #242526 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #e1e3e6 !important;
+        border-radius: 18px 18px 18px 4px !important; /* Хвост пузыря ВК слева внизу */
+        padding: 10px 13px !important;
+        font-size: 14.5px !important;
+        line-height: 1.48 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28) !important;
+        word-break: break-word !important;
+    }
+    [data-theme="light"] .cosmo-chat-msg-bot .msg-body {
+        background: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        color: #000000 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+    }
+    [data-theme="light"] .cosmo-chat-msg-bot .msg-body p {
+        color: #000000 !important;
+    }
+
+    /* Мобильный вид интерактивных кнопок под постом */
+    .msg-actions {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        margin-top: 10px !important;
+        padding-top: 8px !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    [data-theme="light"] .msg-actions {
+        border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+    }
+    .post-metrics-badge {
+        font-size: 11.5px !important;
+        padding: 4px 10px !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border-radius: 10px !important;
+        color: #909499 !important;
+    }
+    [data-theme="light"] .post-metrics-badge {
+        background: rgba(0, 0, 0, 0.04) !important;
+        color: #656565 !important;
+    }
+    .cosmo-chat-action-btn {
+        width: 100% !important;
+        height: 38px !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        background: rgba(38, 136, 235, 0.12) !important;
+        color: #529ef4 !important;
+        border: 1px solid rgba(38, 136, 235, 0.25) !important;
+    }
+    [data-theme="light"] .cosmo-chat-action-btn {
+        background: rgba(38, 136, 235, 0.08) !important;
+        color: #2688eb !important;
+        border: 1px solid rgba(38, 136, 235, 0.2) !important;
+    }
+    .cosmo-chat-action-btn[data-copy-post] {
+        background: #2688eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 6px rgba(38, 136, 235, 0.35) !important;
+    }
+
+    /* 6. Быстрые пресеты и чипы-подсказки над вводом */
+    .cosmo-chat-quick-presets-bar {
+        padding: 3px 8px 1px 8px !important;
+        background: transparent !important;
+    }
+    .cosmo-chat-quick-presets-pill {
+        width: 100% !important;
+        height: 30px !important;
+        border-radius: 15px !important;
+        font-size: 12px !important;
+        padding: 0 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: rgba(38, 136, 235, 0.12) !important;
+        border: 1px solid rgba(38, 136, 235, 0.22) !important;
+        color: #529ef4 !important;
+    }
+    [data-theme="light"] .cosmo-chat-quick-presets-pill {
+        background: rgba(38, 136, 235, 0.08) !important;
+        color: #2688eb !important;
+        border-color: rgba(38, 136, 235, 0.18) !important;
+    }
+
+    .cosmo-chat-chips {
+        padding: 3px 8px 6px 8px !important;
+        gap: 6px !important;
+        display: flex !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+    .cosmo-chat-chips::-webkit-scrollbar {
+        display: none !important;
+    }
+    .cosmo-chip {
+        font-size: 12px !important;
+        padding: 5px 10px !important;
+        border-radius: 14px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e1e3e6 !important;
+    }
+    [data-theme="light"] .cosmo-chip {
+        background: #ffffff !important;
+        border: 1px solid #e1e3e6 !important;
+        color: #222222 !important;
+    }
+
+    /* Плашка прикреплённого файла над полем ввода */
+    .cosmo-chat-attachment-bar {
+        margin: 0 8px 4px 8px !important;
+        padding: 6px 10px !important;
+        border-radius: 10px !important;
+        font-size: 12px !important;
+        background: rgba(38, 136, 235, 0.14) !important;
+        border: 1px solid rgba(38, 136, 235, 0.28) !important;
+    }
+
+    /* 7. Нижняя панель ввода сообщения (VK Messenger Mobile Input Bar) */
+    .cosmo-chat-footer {
+        padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px !important;
+        background: #222222 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.25) !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+        z-index: 10 !important;
+    }
+    [data-theme="light"] .cosmo-chat-footer {
+        background: #ffffff !important;
+        border-top: 1px solid #e1e3e6 !important;
+        box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .cosmo-chat-attach-btn {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #909499 !important;
+        flex-shrink: 0 !important;
+        transition: background-color 0.15s ease !important;
+    }
+    [data-theme="light"] .cosmo-chat-attach-btn {
+        color: #818c99 !important;
+    }
+    .cosmo-chat-attach-btn:active {
+        background: rgba(255, 255, 255, 0.08) !important;
+        transform: scale(0.92) !important;
+    }
+    [data-theme="light"] .cosmo-chat-attach-btn:active {
+        background: rgba(0, 0, 0, 0.06) !important;
+    }
+    .attach-btn-label {
+        display: none !important;
+    }
+
+    .cosmo-chat-input-wrap {
+        flex: 1 !important;
+        min-width: 0 !important;
+        border-radius: 20px !important;
+        background: #2a2f3d !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 1px !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+    [data-theme="light"] .cosmo-chat-input-wrap {
+        background: #f0f2f5 !important;
+        border: 1px solid #e1e3e6 !important;
+    }
+    .cosmo-chat-input-wrap:focus-within {
+        border-color: #529ef4 !important;
+        box-shadow: 0 0 0 2px rgba(82, 158, 244, 0.25) !important;
+    }
+    [data-theme="light"] .cosmo-chat-input-wrap:focus-within {
+        border-color: #2688eb !important;
+        box-shadow: 0 0 0 2px rgba(38, 136, 235, 0.2) !important;
+    }
+
+    .cosmo-chat-input {
+        width: 100% !important;
+        min-height: 38px !important;
+        max-height: 110px !important;
+        padding: 8px 12px !important;
+        font-size: 16px !important; /* 16px предотвращает нежелательный авто-зум на iOS Safari */
+        line-height: 1.35 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #ffffff !important;
+        resize: none !important;
+        box-sizing: border-box !important;
+    }
+    [data-theme="light"] .cosmo-chat-input {
+        color: #000000 !important;
+    }
+    .cosmo-chat-input::placeholder {
+        color: #909499 !important;
+        font-size: 15px !important;
+    }
+    [data-theme="light"] .cosmo-chat-input::placeholder {
+        color: #818c99 !important;
+    }
+
+    /* Круглая синяя кнопка отправки в стиле мобильного ВК */
+    .cosmo-chat-send-btn {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 50% !important;
+        background: #2688eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 8px rgba(38, 136, 235, 0.4) !important;
+        transition: transform 0.15s ease, background-color 0.15s ease !important;
+    }
+    .cosmo-chat-send-btn:active {
+        transform: scale(0.92) !important;
+    }
+    .cosmo-chat-send-btn .material-symbols-outlined {
+        font-size: 20px !important;
+        margin-left: 2px !important;
+    }
+
+    /* 8. Всплывающий поповер пресетов как VK BottomSheet */
     .cosmo-chat-presets-popover {
-        top: 58px;
-        padding: 12px 14px 18px;
+        position: fixed !important;
+        inset: auto 0 0 0 !important;
+        top: auto !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        max-height: 84vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-bottom: none !important;
+        background: #222222 !important;
+        color: #ffffff !important;
+        box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.6) !important;
+        padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+        transform: translateY(100%) !important;
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        z-index: 100010 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+    .cosmo-chat-presets-popover.is-open {
+        transform: translateY(0) !important;
+    }
+    [data-theme="light"] .cosmo-chat-presets-popover {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-color: #e1e3e6 !important;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18) !important;
+    }
+    .cosmo-chat-presets-popover::before {
+        content: '' !important;
+        display: block !important;
+        width: 36px !important;
+        height: 4px !important;
+        border-radius: 2px !important;
+        background: rgba(128, 128, 128, 0.35) !important;
+        margin: 0 auto 12px auto !important;
     }
     .presets-popover-header {
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        margin-bottom: 12px !important;
+    }
+    .popover-title-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+    .popover-title {
+        font-size: 14px !important;
+    }
+    .popover-subtitle {
+        font-size: 11.5px !important;
     }
     .presets-search-wrap {
-        order: 3;
-        flex: 1 1 100%;
-        max-width: 100%;
-        margin: 4px 0 0 0;
+        width: 100% !important;
+        margin: 0 !important;
+        order: 3 !important;
     }
     .presets-search-input {
-        height: 36px;
-        font-size: 0.78rem;
+        height: 38px !important;
+        font-size: 14px !important;
+        border-radius: 10px !important;
     }
     .presets-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
     }
-    .msg-actions {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
+    .preset-card {
+        padding: 10px 12px !important;
+        border-radius: 12px !important;
     }
-    .post-metrics-badge,
-    .cosmo-chat-action-btn {
-        width: 100%;
-        justify-content: center;
-        box-sizing: border-box;
-    }
-}}
+}
 
 /* ============================================================================
  * Эмодзи-аватарки Космо в ответах чата (32×32px inline img)

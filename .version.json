@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.4",
+    "version": "4.23.5",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T15:45:00+03:00",
-    "release_name": "AURORA 4.23.4 — Добавление 3-го ИИ-ключа в пул и ротацию с полным failover-циклом для Космо"
+    "commit_date": "2026-09-15T15:53:00+03:00",
+    "release_name": "AURORA 4.23.5 — Мобильная верстка чата с Космо в стиле VK Messenger (сохранение ПК-версии без изменений)"
 }
