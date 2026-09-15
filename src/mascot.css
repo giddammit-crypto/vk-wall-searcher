@@ -1807,7 +1807,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.20.0 — CHAT MODAL, MARKDOWN, ATTACHMENTS, SMM AI ASSISTANT
+   COSMO v4.21.0 — CHAT MODAL, MARKDOWN, ATTACHMENTS, SMM AI ASSISTANT
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
@@ -2227,7 +2227,7 @@
 }
 
 /* ==========================================================================
-   ИНТЕРАКТИВНЫЙ ЧАТ С КОСМО (Cosmo AI Chat Modal) (v4.20.0)
+   ИНТЕРАКТИВНЫЙ ЧАТ С КОСМО (Cosmo AI Chat Modal) (v4.21.0)
    ========================================================================== */
 .cosmo-chat-overlay {
     position: fixed;
@@ -2517,6 +2517,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 .popover-title-icon {
     font-size: 26px;
@@ -2536,6 +2537,61 @@
     font-size: 0.76rem;
     color: #94a3b8;
 }
+
+/* Строка быстрого живого поиска по 10 пресетам */
+.presets-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 280px;
+    max-width: 440px;
+    margin: 0 6px;
+}
+.presets-search-wrap .search-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 18px;
+    color: #94a3b8;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.presets-search-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 14px 0 38px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.25s ease;
+    box-sizing: border-box;
+}
+.presets-search-input::placeholder {
+    color: #64748b;
+    font-size: 0.78rem;
+    transition: color 0.2s ease;
+}
+.presets-search-input:focus {
+    border-color: #00f0ff;
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.32), inset 0 0 8px rgba(0, 240, 255, 0.12);
+}
+.presets-search-input:focus::placeholder {
+    color: #94a3b8;
+}
+.presets-search-wrap:focus-within .search-icon {
+    color: #00f0ff;
+    transform: scale(1.1);
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+}
+
 .presets-popover-close {
     width: 32px;
     height: 32px;
@@ -2553,6 +2609,41 @@
     color: #ff6b81;
     border-color: rgba(255, 107, 129, 0.6);
     background: rgba(255, 107, 129, 0.15);
+}
+
+/* Пустое состояние при поиске пресетов */
+.presets-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 44px 20px;
+    text-align: center;
+    flex: 1 1 auto;
+    width: 100%;
+    box-sizing: border-box;
+    animation: presetsEmptyFade 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes presetsEmptyFade {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.presets-empty-state .empty-icon {
+    font-size: 46px;
+    color: rgba(148, 163, 184, 0.4);
+    margin-bottom: 12px;
+}
+.presets-empty-state .empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+}
+.presets-empty-state .empty-desc {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    max-width: 340px;
+    line-height: 1.45;
 }
 
 .presets-grid {
@@ -2996,39 +3087,96 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Кнопка «Скопировать пост» в ответах бота */
+/* Панель действий под постом (метрики, копирование, перегенерация, озвучка) */
 .msg-actions {
-    margin-top: 8px;
+    margin-top: 10px;
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
 }
+
+/* Бейдж счётчика знаков и слов для постов */
+.post-metrics-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #94a3b8;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    transition: all 0.2s ease;
+}
+.post-metrics-badge .material-symbols-outlined {
+    font-size: 15px;
+    color: #00f0ff;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+/* Кнопки действий над постом (копирование, перегенерация, озвучка) */
 .cosmo-chat-action-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 0.78rem;
     font-weight: 700;
-    padding: 6px 12px;
+    padding: 6px 13px;
     border-radius: 8px;
     border: 1px solid rgba(0, 240, 255, 0.35);
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 240, 255, 0.08);
     color: #38bdf8;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
 }
 .cosmo-chat-action-btn .material-symbols-outlined {
-    font-size: 14px;
+    font-size: 15px;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .cosmo-chat-action-btn:hover {
-    background: rgba(0, 240, 255, 0.2);
-    border-color: rgba(0, 240, 255, 0.6);
-    color: #fff;
+    background: rgba(0, 240, 255, 0.22);
+    border-color: rgba(0, 240, 255, 0.75);
+    color: #ffffff;
     transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 240, 255, 0.28);
+}
+.cosmo-chat-action-btn:hover .material-symbols-outlined {
+    transform: scale(1.12);
+}
+.cosmo-chat-action-btn[data-regenerate-response]:hover .material-symbols-outlined {
+    transform: rotate(90deg) scale(1.1);
 }
 .cosmo-chat-action-btn.is-copied {
     border-color: #4ade80;
     color: #4ade80;
-    background: rgba(74, 222, 128, 0.15);
+    background: rgba(74, 222, 128, 0.18);
+    box-shadow: 0 0 14px rgba(74, 222, 128, 0.3);
+}
+.cosmo-chat-action-btn.is-speaking {
+    border-color: #ec4899;
+    color: #f472b6;
+    background: rgba(236, 72, 153, 0.2);
+    box-shadow: 0 0 16px rgba(236, 72, 153, 0.38);
+    animation: cosmoSpeakingBtnPulse 1.5s ease-in-out infinite;
+}
+@keyframes cosmoSpeakingBtnPulse {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(236, 72, 153, 0.35);
+        border-color: rgba(236, 72, 153, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(236, 72, 153, 0.65);
+        border-color: #f472b6;
+    }
 }
 
 /* Индикатор набора ответа */
@@ -3450,6 +3598,65 @@
     border-color: rgba(2, 132, 199, 0.35);
     color: #0284c7;
 }
+[data-theme="light"] .presets-search-wrap .search-icon {
+    color: #64748b;
+}
+[data-theme="light"] .presets-search-wrap:focus-within .search-icon {
+    color: #0284c7;
+}
+[data-theme="light"] .presets-search-input {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(2, 132, 199, 0.35);
+}
+[data-theme="light"] .presets-search-input:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 14px rgba(2, 132, 199, 0.25);
+}
+[data-theme="light"] .presets-search-input::placeholder {
+    color: #94a3b8;
+}
+[data-theme="light"] .presets-empty-state .empty-icon {
+    color: #94a3b8;
+}
+[data-theme="light"] .presets-empty-state .empty-title {
+    color: #0f172a;
+}
+[data-theme="light"] .presets-empty-state .empty-desc {
+    color: #64748b;
+}
+[data-theme="light"] .post-metrics-badge {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #475569;
+    border-color: rgba(148, 163, 184, 0.35);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+[data-theme="light"] .post-metrics-badge .material-symbols-outlined {
+    color: #0284c7;
+    text-shadow: none;
+}
+[data-theme="light"] .cosmo-chat-action-btn {
+    background: rgba(2, 132, 199, 0.08);
+    border-color: rgba(2, 132, 199, 0.35);
+    color: #0284c7;
+}
+[data-theme="light"] .cosmo-chat-action-btn:hover {
+    background: rgba(2, 132, 199, 0.16);
+    border-color: #0284c7;
+    color: #0369a1;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.2);
+}
+[data-theme="light"] .cosmo-chat-action-btn.is-copied {
+    border-color: #16a34a;
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.12);
+}
+[data-theme="light"] .cosmo-chat-action-btn.is-speaking {
+    border-color: #db2777;
+    color: #db2777;
+    background: rgba(219, 39, 119, 0.12);
+    box-shadow: 0 0 14px rgba(219, 39, 119, 0.3);
+}
 
 /* Мобильная адаптация */
 @media (max-width: 640px) {
@@ -3487,8 +3694,62 @@
         top: 58px;
         padding: 12px 14px 18px;
     }
+    .presets-popover-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .presets-search-wrap {
+        order: 3;
+        flex: 1 1 100%;
+        max-width: 100%;
+        margin: 4px 0 0 0;
+    }
+    .presets-search-input {
+        height: 36px;
+        font-size: 0.78rem;
+    }
     .presets-grid {
         grid-template-columns: 1fr;
         gap: 8px;
     }
+    .msg-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .post-metrics-badge,
+    .cosmo-chat-action-btn {
+        width: 100%;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+}}
+
+/* ============================================================================
+ * Эмодзи-аватарки Космо в ответах чата (32×32px inline img)
+ * ========================================================================== */
+.cosmo-emoji-img {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    vertical-align: middle;
+    object-fit: contain;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    margin: 0 2px;
+    position: relative;
+    top: -1px;
+    transition: transform 0.2s cubic-bezier(.34, 1.56, .64, 1);
+    cursor: default;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.cosmo-emoji-img:hover {
+    transform: scale(1.35) rotate(-6deg);
+}
+
+[data-theme="light"] .cosmo-emoji-img {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }

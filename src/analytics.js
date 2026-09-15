@@ -3,7 +3,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=4.20.0';
+import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=4.21.0';
 
 export function extractNum(val) {
     if (!val) return 0;
@@ -504,3 +504,613 @@ export function renderCrossPostingSection(containerEl, crossPostingData, onFilte
         </div>
     `;
 }
+
+/**
+ * -----------------------------------------------------------------------------
+ * Аналитический движок тепловой матрицы публикаций (Timing Heatmap Engine)
+ * -----------------------------------------------------------------------------
+ * 7 дней недели (0 = Пн, 6 = Вс) x 24 часа (0..23).
+ * Подсчитывает: count, views, likes, reposts, comments, interactions, er.
+ * Находит глобальный maxCount и maxEr для нормализации интенсивности (0..1).
+ * Определяет ТОП-3 «золотых окна» публикаций с экспертным обоснованием.
+ */
+
+export const HEATMAP_DAY_NAMES = [
+    'Понедельник',
+    'Вторник',
+    'Среда',
+    'Четверг',
+    'Пятница',
+    'Суббота',
+    'Воскресенье'
+];
+
+export const HEATMAP_SHORT_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+export function computeTimingHeatmap(posts) {
+    // 1. Инициализация матрицы 7 дней x 24 часа
+    const matrix = [];
+    for (let d = 0; d < 7; d++) {
+        const dayRow = [];
+        for (let h = 0; h < 24; h++) {
+            const nextH = (h + 1) % 24;
+            const timeSlot = `${String(h).padStart(2, '0')}:00–${String(nextH).padStart(2, '0')}:00`;
+            dayRow.push({
+                day: d,
+                dayName: HEATMAP_DAY_NAMES[d],
+                dayShort: HEATMAP_SHORT_DAYS[d],
+                hour: h,
+                timeSlot,
+                count: 0,
+                views: 0,
+                likes: 0,
+                reposts: 0,
+                comments: 0,
+                interactions: 0,
+                er: 0,
+                intensityCount: 0,
+                intensityEr: 0,
+                score: 0
+            });
+        }
+        matrix.push(dayRow);
+    }
+
+    if (!Array.isArray(posts) || posts.length === 0) {
+        return {
+            matrix,
+            days: HEATMAP_DAY_NAMES,
+            shortDays: HEATMAP_SHORT_DAYS,
+            hours: Array.from({ length: 24 }, (_, i) => i),
+            maxCount: 0,
+            maxEr: 0,
+            totalPosts: 0,
+            avgEr: 0,
+            peakActivitySlot: null,
+            peakErSlot: null,
+            goldenWindows: []
+        };
+    }
+
+    let totalLikes = 0;
+    let totalReposts = 0;
+    let totalComments = 0;
+    let totalViews = 0;
+
+    // 2. Агрегация метрик по дням и часам
+    posts.forEach(p => {
+        let postDate = null;
+        if (typeof p.date === 'number' && !isNaN(p.date)) {
+            postDate = new Date(p.date > 1e11 ? p.date : p.date * 1000);
+        } else if (p.date) {
+            postDate = new Date(p.date);
+        } else if (p.humanDate) {
+            postDate = new Date(p.humanDate);
+        }
+
+        if (!postDate || isNaN(postDate.getTime())) {
+            return;
+        }
+
+        // JS getDay(): 0 = Вс, 1 = Пн ... 6 = Сб. Преобразуем к 0 = Пн ... 6 = Вс:
+        const jsDay = postDate.getDay();
+        const dayIdx = (jsDay + 6) % 7;
+        const hour = postDate.getHours();
+
+        if (dayIdx < 0 || dayIdx > 6 || hour < 0 || hour > 23) {
+            return;
+        }
+
+        const likes = extractNum(p.likes);
+        const reposts = extractNum(p.reposts);
+        const comments = extractNum(p.comments);
+        const views = extractNum(p.views);
+        const interactions = likes + reposts + comments;
+
+        totalLikes += likes;
+        totalReposts += reposts;
+        totalComments += comments;
+        totalViews += views;
+
+        const cell = matrix[dayIdx][hour];
+        cell.count += 1;
+        cell.likes += likes;
+        cell.reposts += reposts;
+        cell.comments += comments;
+        cell.views += views;
+        cell.interactions += interactions;
+    });
+
+    const totalPosts = posts.length;
+    const totalInteractions = totalLikes + totalReposts + totalComments;
+    const avgEr = totalViews > 0
+        ? Math.round(((totalInteractions / totalViews) * 100) * 100) / 100
+        : (totalPosts > 0 ? Math.round((totalInteractions / totalPosts) * 100) / 100 : 0);
+
+    let maxCount = 0;
+    let maxEr = 0;
+    let peakActivitySlot = null;
+    let peakErSlot = null;
+
+    // 3. Расчёт ER для каждой ячейки и поиск экстремумов
+    for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+            const cell = matrix[d][h];
+            if (cell.count > 0) {
+                if (cell.views > 0) {
+                    cell.er = Math.round(((cell.interactions / cell.views) * 100) * 100) / 100;
+                } else {
+                    cell.er = Math.round((cell.interactions / cell.count) * 100) / 100;
+                }
+
+                if (cell.count > maxCount) {
+                    maxCount = cell.count;
+                    peakActivitySlot = cell;
+                }
+                if (cell.er > maxEr) {
+                    maxEr = cell.er;
+                    peakErSlot = cell;
+                }
+            }
+        }
+    }
+
+    // 4. Нормализация интенсивности (0..1) для визуализации
+    for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+            const cell = matrix[d][h];
+            cell.intensityCount = maxCount > 0 ? Math.round((cell.count / maxCount) * 1000) / 1000 : 0;
+            cell.intensityEr = maxEr > 0 ? Math.round((cell.er / maxEr) * 1000) / 1000 : 0;
+
+            if (cell.count > 0) {
+                const avgCellViews = Math.round(cell.views / cell.count);
+                const avgCellInteractions = cell.interactions / cell.count;
+                const volumeBonus = Math.min(2.0, 1.0 + Math.log10(1 + cell.count) * 0.5);
+                const reachBonus = Math.log10(1 + avgCellViews);
+                cell.score = (cell.er * 2.5 + avgCellInteractions * 1.5 + reachBonus * 2.0) * volumeBonus;
+            }
+        }
+    }
+
+    // 5. Определение ТОП-3 «золотых окон» публикаций
+    const activeCells = [];
+    for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+            const cell = matrix[d][h];
+            if (cell.count > 0) {
+                activeCells.push(cell);
+            }
+        }
+    }
+
+    activeCells.sort((a, b) => b.score - a.score || b.er - a.er || b.views - a.views);
+
+    const goldenWindows = activeCells.slice(0, 3).map((cell, idx) => {
+        const avgViews = Math.round(cell.views / cell.count);
+        const avgInteractions = +(cell.interactions / cell.count).toFixed(1);
+        const erMultiple = avgEr > 0 ? (cell.er / avgEr).toFixed(1) : '1.0';
+
+        let slotContext = '';
+        if (cell.hour >= 7 && cell.hour <= 10) {
+            slotContext = 'Утренний слот: читатели просматривают анонсы перед началом рабочего дня.';
+        } else if (cell.hour >= 11 && cell.hour <= 14) {
+            slotContext = 'Обеденный прайм-тайм: повышенное внимание к афишам мероприятий и обзорам книг.';
+        } else if (cell.hour >= 15 && cell.hour <= 18) {
+            slotContext = 'Вторая половина дня: читатели активно планируют досуг и делятся публикациями.';
+        } else if (cell.hour >= 19 && cell.hour <= 22) {
+            slotContext = 'Вечерний прайм: вдумчивое чтение лонгридов, максимальная глубина обсуждений.';
+        } else {
+            slotContext = 'Нишевый временной интервал с концентрированным вниманием целевой аудитории.';
+        }
+
+        const reason = `ER ${cell.er}% (в ${erMultiple}× выше среднего по сообществам), в среднем ${avgViews.toLocaleString('ru-RU')} просмотров и ${avgInteractions} реакций на публикацию. ${slotContext}`;
+
+        return {
+            rank: idx + 1,
+            day: cell.day,
+            dayName: cell.dayName,
+            dayShort: cell.dayShort,
+            hour: cell.hour,
+            timeSlot: cell.timeSlot,
+            count: cell.count,
+            views: cell.views,
+            likes: cell.likes,
+            reposts: cell.reposts,
+            comments: cell.comments,
+            er: cell.er,
+            avgViews,
+            avgInteractions,
+            score: Math.round(cell.score * 10) / 10,
+            reason
+        };
+    });
+
+    return {
+        matrix,
+        days: HEATMAP_DAY_NAMES,
+        shortDays: HEATMAP_SHORT_DAYS,
+        hours: Array.from({ length: 24 }, (_, i) => i),
+        maxCount,
+        maxEr,
+        totalPosts,
+        avgEr,
+        peakActivitySlot,
+        peakErSlot,
+        goldenWindows
+    };
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Визуализация тепловой матрицы публикаций 24×7 и витрины «Золотых окон»
+ * -----------------------------------------------------------------------------
+ */
+
+export function renderTimingHeatmapSection(container, heatmapData) {
+    if (!container) return;
+
+    if (!heatmapData || !heatmapData.matrix || heatmapData.totalPosts === 0) {
+        container.innerHTML = `
+            <div class="card analytics-card heatmap-card">
+                <div class="analytics-card-header">
+                    <div class="analytics-card-title-wrap">
+                        <div class="showcase-icon-badge">
+                            <span class="material-symbols-outlined">schedule</span>
+                        </div>
+                        <div>
+                            <h3 class="analytics-card-title">Тепловая карта времени публикаций (24×7 Heatmap)</h3>
+                            <p class="analytics-card-subtitle">Анализ плотности постов и эффективности вовлечённости читателей по часам и дням недели</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="heatmap-empty-card">
+                    <span class="material-symbols-outlined heatmap-empty-icon">calendar_clock</span>
+                    <p class="heatmap-empty-title">Нет данных о датах публикаций для построения тепловой сетки</p>
+                    <p class="heatmap-empty-sub">Выполните поиск или сканирование постов в сообществах филиалов для расчёта матрицы прайм-тайма.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let currentMetric = 'count'; // 'count' | 'er'
+
+    function getCellLevel(cell, metric) {
+        if (cell.count === 0) return 0;
+        const intensity = metric === 'er' ? cell.intensityEr : cell.intensityCount;
+        if (intensity >= 0.75) return 4;
+        if (intensity >= 0.50) return 3;
+        if (intensity >= 0.25) return 2;
+        return 1;
+    }
+
+    function buildGridRowsHtml(metric) {
+        let html = '';
+        heatmapData.matrix.forEach((dayRow, dayIdx) => {
+            const dayName = heatmapData.days[dayIdx];
+            const dayShort = heatmapData.shortDays[dayIdx];
+
+            let cellsHtml = '';
+            dayRow.forEach((cell, hour) => {
+                const lvl = getCellLevel(cell, metric);
+                const isGolden = lvl === 4;
+                const cellClasses = `heatmap-cell heatmap-lvl-${lvl}${isGolden ? ' heatmap-cell-golden' : ''}`;
+                const valDisplay = metric === 'er'
+                    ? (cell.count > 0 ? (cell.er > 0 ? `${cell.er}%` : '0%') : '·')
+                    : (cell.count > 0 ? cell.count : '·');
+
+                const tooltipTitle = `${cell.dayName}, ${cell.timeSlot}\nПубликаций: ${cell.count}\nПросмотров: ${cell.views.toLocaleString('ru-RU')}\nЛайков: ${cell.likes.toLocaleString('ru-RU')}\nВовлечённость (ER): ${cell.er}%`;
+
+                cellsHtml += `
+                    <div class="${cellClasses}"
+                         data-day-idx="${dayIdx}"
+                         data-hour="${hour}"
+                         data-day="${escapeHtml(cell.dayName)}"
+                         data-timeslot="${escapeHtml(cell.timeSlot)}"
+                         data-count="${cell.count}"
+                         data-views="${cell.views}"
+                         data-likes="${cell.likes}"
+                         data-er="${cell.er}"
+                         title="${escapeHtml(tooltipTitle)}">
+                        <span class="heatmap-cell-val">${valDisplay}</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="heatmap-grid-row">
+                    <div class="heatmap-day-label" title="${escapeHtml(dayName)}">
+                        <span class="day-short-text">${escapeHtml(dayShort)}</span>
+                    </div>
+                    <div class="heatmap-cells-track">
+                        ${cellsHtml}
+                    </div>
+                </div>
+            `;
+        });
+        return html;
+    }
+
+    // Рендер ТОП-3 «Золотых окон» публикаций
+    let goldenCardsHtml = '';
+    const medals = ['🥇', '🥈', '🥉'];
+    const rankTitles = [
+        'Абсолютный прайм-тайм (№1)',
+        'Окно максимального охвата (№2)',
+        'Перспективный слот вовлечения (№3)'
+    ];
+
+    if (heatmapData.goldenWindows && heatmapData.goldenWindows.length > 0) {
+        goldenCardsHtml = heatmapData.goldenWindows.map((gw, idx) => {
+            const medal = medals[idx] || '⭐';
+            const title = rankTitles[idx] || `Золотой слот №${gw.rank}`;
+            return `
+                <div class="golden-window-card golden-rank-${gw.rank}">
+                    <div class="gw-card-header">
+                        <span class="gw-medal-badge">${medal}</span>
+                        <div class="gw-title-wrap">
+                            <h5 class="gw-card-title">${title}</h5>
+                            <span class="gw-slot-badge">${escapeHtml(gw.dayName)}, ${escapeHtml(gw.timeSlot)}</span>
+                        </div>
+                    </div>
+
+                    <div class="gw-metrics-grid">
+                        <div class="gw-metric-item">
+                            <span class="gw-metric-lbl">Публикаций</span>
+                            <b class="gw-metric-val">${gw.count}</b>
+                        </div>
+                        <div class="gw-metric-item">
+                            <span class="gw-metric-lbl">Ср. просмотры</span>
+                            <b class="gw-metric-val">${gw.avgViews.toLocaleString('ru-RU')}</b>
+                        </div>
+                        <div class="gw-metric-item">
+                            <span class="gw-metric-lbl">Вовлечённость ER</span>
+                            <b class="gw-metric-val gw-metric-accent">${gw.er}%</b>
+                        </div>
+                        <div class="gw-metric-item">
+                            <span class="gw-metric-lbl">Реакций / пост</span>
+                            <b class="gw-metric-val">${gw.avgInteractions}</b>
+                        </div>
+                    </div>
+
+                    <div class="golden-window-reason">
+                        <span class="material-symbols-outlined gw-reason-ico">auto_awesome</span>
+                        <div class="gw-reason-content">
+                            <span class="gw-reason-tag">Методическая рекомендация:</span>
+                            <p class="gw-reason-text">${escapeHtml(gw.reason)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        goldenCardsHtml = `
+            <div class="gw-empty-note">
+                <p>Недостаточно постов с реакциями для выделения контрастных золотых окон публикаций.</p>
+            </div>
+        `;
+    }
+
+    // Заголовки часов 00..23
+    let hoursHeaderHtml = '';
+    for (let h = 0; h < 24; h++) {
+        const hStr = String(h).padStart(2, '0');
+        hoursHeaderHtml += `<div class="heatmap-hour-th" title="Интервал ${hStr}:00–${String((h+1)%24).padStart(2, '0')}:00">${hStr}</div>`;
+    }
+
+    container.innerHTML = `
+        <div class="card analytics-card heatmap-card">
+            <div class="analytics-card-header">
+                <div class="analytics-card-title-wrap">
+                    <div class="showcase-icon-badge">
+                        <span class="material-symbols-outlined">schedule</span>
+                    </div>
+                    <div>
+                        <h3 class="analytics-card-title">Тепловая карта времени публикаций (24×7 Heatmap)</h3>
+                        <p class="analytics-card-subtitle">Анализ плотности постов и эффективности вовлечённости читателей по часам и дням недели</p>
+                    </div>
+                </div>
+
+                <div class="heatmap-header-controls">
+                    <div class="segment-control heatmap-mode-switcher">
+                        <button type="button" class="segment-btn active" data-heatmap-metric="count">
+                            <span class="material-symbols-outlined segment-icon">grid_view</span>
+                            Число постов (Плотность)
+                        </button>
+                        <button type="button" class="segment-btn" data-heatmap-metric="er">
+                            <span class="material-symbols-outlined segment-icon">trending_up</span>
+                            Вовлечённость (ER)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="heatmap-body-wrap">
+                <!-- Сетка тепловой карты с горизонтальным скроллом -->
+                <div class="heatmap-grid-scroll-wrap">
+                    <div class="heatmap-grid">
+                        <div class="heatmap-header-row">
+                            <div class="heatmap-corner-label">День \ Час</div>
+                            <div class="heatmap-hours-track">
+                                ${hoursHeaderHtml}
+                            </div>
+                        </div>
+                        <div class="heatmap-rows-container" id="heatmap-rows-body">
+                            ${buildGridRowsHtml(currentMetric)}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Легенда градиентной шкалы интенсивности -->
+                <div class="heatmap-legend-bar">
+                    <span class="heatmap-leg-title">Шкала интенсивности:</span>
+                    <div class="heatmap-legend-scale">
+                        <div class="heatmap-leg-item">
+                            <span class="heatmap-leg-chip heatmap-lvl-0"></span>
+                            <span class="heatmap-leg-txt">0 постов (вакуум)</span>
+                        </div>
+                        <div class="heatmap-leg-item">
+                            <span class="heatmap-leg-chip heatmap-lvl-1"></span>
+                            <span class="heatmap-leg-txt">Мягкий циан (1-й ур.)</span>
+                        </div>
+                        <div class="heatmap-leg-item">
+                            <span class="heatmap-leg-chip heatmap-lvl-2"></span>
+                            <span class="heatmap-leg-txt">Электрический циан (2-й ур.)</span>
+                        </div>
+                        <div class="heatmap-leg-item">
+                            <span class="heatmap-leg-chip heatmap-lvl-3"></span>
+                            <span class="heatmap-leg-txt">Ультрамарин / фиолетовый (3-й ур.)</span>
+                        </div>
+                        <div class="heatmap-leg-item">
+                            <span class="heatmap-leg-chip heatmap-lvl-4 heatmap-cell-golden"></span>
+                            <span class="heatmap-leg-txt">Золотой слот / Пик</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Витрина ТОП-3 «Золотых окон» -->
+                <div class="golden-windows-section">
+                    <div class="golden-windows-header">
+                        <div class="gw-sec-title-wrap">
+                            <span class="material-symbols-outlined gw-sec-ico">stars</span>
+                            <div>
+                                <h4 class="golden-windows-title">ТОП-3 Золотых окна публикаций</h4>
+                                <p class="golden-windows-subtitle">Лучшее время для публикаций на основе охвата, вовлечения и читательского отклика</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="golden-windows-grid">
+                        ${goldenCardsHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Интерактивный переключатель метрик
+    const switcherBtns = container.querySelectorAll('[data-heatmap-metric]');
+    const rowsBody = container.querySelector('#heatmap-rows-body');
+
+    switcherBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetMetric = btn.getAttribute('data-heatmap-metric');
+            if (targetMetric === currentMetric) return;
+
+            currentMetric = targetMetric;
+            switcherBtns.forEach(b => b.classList.toggle('active', b === btn));
+
+            if (rowsBody) {
+                const cells = rowsBody.querySelectorAll('.heatmap-cell');
+                cells.forEach(cellEl => {
+                    const dayIdx = parseInt(cellEl.getAttribute('data-day-idx'), 10);
+                    const hour = parseInt(cellEl.getAttribute('data-hour'), 10);
+                    const cell = heatmapData.matrix[dayIdx]?.[hour];
+                    if (!cell) return;
+
+                    const lvl = getCellLevel(cell, currentMetric);
+                    const isGolden = lvl === 4;
+                    cellEl.className = `heatmap-cell heatmap-lvl-${lvl}${isGolden ? ' heatmap-cell-golden' : ''}`;
+
+                    const valDisplay = currentMetric === 'er'
+                        ? (cell.count > 0 ? (cell.er > 0 ? `${cell.er}%` : '0%') : '·')
+                        : (cell.count > 0 ? cell.count : '·');
+
+                    const valSpan = cellEl.querySelector('.heatmap-cell-val');
+                    if (valSpan) valSpan.textContent = valDisplay;
+                });
+            }
+        });
+    });
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * Экспорт диалога чата с Космо в форматы Markdown (.md) и текст (.txt)
+ * -----------------------------------------------------------------------------
+ */
+
+export function formatCosmoChat(messages, format = 'md') {
+    if (!Array.isArray(messages) || messages.length === 0) {
+        return format === 'md' ? '# Чат с Космо\n\n_Диалог пуст._\n' : 'Диалог пуст.\n';
+    }
+
+    const nowStr = new Date().toLocaleString('ru-RU', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+
+    if (format === 'txt') {
+        const lines = [
+            '================================================================================',
+            'ДИАЛОГ С ИИ-АССИСТЕНТОМ «КОСМО» — AURORA SMM & БИБЛИОТЕЧНЫЙ ПОМОЩНИК',
+            `Дата экспорта: ${nowStr}`,
+            `Всего сообщений: ${messages.length}`,
+            '================================================================================',
+            ''
+        ];
+
+        messages.forEach((m, idx) => {
+            const roleName = m.role === 'assistant' ? 'КОСМО' : (m.role === 'user' ? 'ПОЛЬЗОВАТЕЛЬ' : 'СИСТЕМА');
+            const timeStr = m.time || m.timestamp || '';
+            const header = timeStr ? `[${roleName} — ${timeStr}]` : `[${roleName}]`;
+            lines.push(header);
+            lines.push(String(m.content || '').trim());
+            lines.push('');
+            lines.push('--------------------------------------------------------------------------------');
+            lines.push('');
+        });
+
+        return lines.join('\n');
+    }
+
+    // По умолчанию: Markdown
+    const mdLines = [
+        '# 🚀 Диалог с ИИ-ассистентом Космо (AURORA)',
+        '',
+        `> **Дата экспорта:** ${nowStr}  `,
+        `> **Всего сообщений:** ${messages.length}  `,
+        `> **Система:** AURORA VK Wall Searcher & Library AI Assistant  `,
+        '',
+        '---',
+        ''
+    ];
+
+    messages.forEach((m, idx) => {
+        const isAssistant = m.role === 'assistant';
+        const isSystem = m.role === 'system';
+        const author = isAssistant ? '🤖 **Космо**' : (isSystem ? '⚙️ **Системный контекст**' : '👤 **Пользователь**');
+        const timeBadge = m.time || m.timestamp ? ` \`${m.time || m.timestamp}\`` : '';
+
+        mdLines.push(`### ${author}${timeBadge}`);
+        mdLines.push('');
+        mdLines.push(String(m.content || '').trim());
+        mdLines.push('');
+        mdLines.push('---');
+        mdLines.push('');
+    });
+
+    return mdLines.join('\n');
+}
+
+export function exportCosmoChat(messages, format = 'md', filename = null) {
+    const text = formatCosmoChat(messages, format);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const ext = format === 'txt' ? 'txt' : 'md';
+    const mimeType = format === 'txt' ? 'text/plain;charset=utf-8;' : 'text/markdown;charset=utf-8;';
+    const finalFilename = filename || `cosmo_chat_${dateStr}.${ext}`;
+
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const blob = new Blob([text], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = finalFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+    }
+
+    return text;
+}
+

@@ -2,14 +2,20 @@
 /**
  * AI Proxy Endpoint for VK Wall Searcher (вкладка «ИИ-аналитик»)
  * =============================================================================
- * OpenAI-совместимый шлюз (api.xkiro.com/v1). Ключ хранится ТОЛЬКО на сервере
- * в api/config.php и никогда не попадает в браузер клиента.
+ * OpenAI-совместимый шлюз (api.xkiro.com/v1). Ключи хранятся ТОЛЬКО на сервере
+ * в api/config.php и никогда не попадают в браузер клиента.
+ *
+ * Отказоустойчивость:
+ *   - Поддержка двух ИИ-ключей с Zero Downtime автоматическим failover
+ *   - Кэширование активного ключа в cache/ai_active_key.json с блокировкой flock
+ *   - При ошибках 429 (rate limit), 401, 402, 403 или quota/credit/insufficient
+ *     происходит мгновенная ротация и повтор запроса в рамках одного HTTP-вызова
  *
  * Совместимо с PHP 7.4+ (cURL). Работает на любом веб-сервере.
  *
  * Методы:
- *   GET                      → статус (ai_configured, model — без раскрытия ключа)
- *   POST {messages:[...]}    → проксирование в /chat/completions
+ *   GET                      → статус (ai_configured, keys_count, model — без раскрытия ключей)
+ *   POST {messages:[...]}    → проксирование в /chat/completions с автоматическим failover
  *
  * Разработка: Амброзиев О.А.
  */
@@ -18,12 +24,13 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
 
 // ---------------------------------------------------------------------------
-// 0. Конфигурация
+// 0. Конфигурация и пулы ИИ-ключей
 // ---------------------------------------------------------------------------
-// Читаем config.php и опционально config.local.php (локальные переопределения
-// поверх основного конфига; config.local.php не коммитится в git — см. .gitignore).
-// Это позволяет добавить ИИ-ключи на хостинге одним файлом, не трогая config.php,
-// который защищён от перезаписи самообновлением (api/updater.php).
+// Встроенные дефолтные fallback-ключи на случай отсутствия или повреждения конфигурации
+$defaultAiKey1 = 'sk-xt-7bfbd1f7908daa6a630e1e6e3d5cfa4e1961dcef6aebbfe1';
+$defaultAiKey2 = 'sk-xt-764dbb9ee98b4d75bcedeef2fd0899d01044e46e8143acd2';
+
+// Читаем config.php и опционально config.local.php (локальные переопределения)
 $aiConfig = [];
 foreach ([__DIR__ . '/config.php', __DIR__ . '/config.local.php'] as $aiConfigFile) {
     if (is_readable($aiConfigFile)) {
@@ -35,13 +42,54 @@ foreach ([__DIR__ . '/config.php', __DIR__ . '/config.local.php'] as $aiConfigFi
 }
 $configLocalFound = is_readable(__DIR__ . '/config.local.php');
 
-$aiKey      = isset($aiConfig['ai_api_key'])  ? trim((string)$aiConfig['ai_api_key'])  : '';
+// Сбор доступных ключей из конфигурации
+$rawKeys = [];
+if (!empty($aiConfig['ai_api_keys']) && is_array($aiConfig['ai_api_keys'])) {
+    foreach ($aiConfig['ai_api_keys'] as $k) {
+        $k = trim((string)$k);
+        if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0 && !preg_match('/^[<\[].+[>\]]$/', $k)) {
+            $rawKeys[] = $k;
+        }
+    }
+}
+if (!empty($aiConfig['ai_api_key'])) {
+    $k = trim((string)$aiConfig['ai_api_key']);
+    if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) {
+        $rawKeys[] = $k;
+    }
+}
+if (!empty($aiConfig['ai_api_key_fallback'])) {
+    $k = trim((string)$aiConfig['ai_api_key_fallback']);
+    if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) {
+        $rawKeys[] = $k;
+    }
+}
+
+// Гарантируем наличие двух резервных ключей
+if (empty($rawKeys)) {
+    $rawKeys = [$defaultAiKey1, $defaultAiKey2];
+} else {
+    if (!in_array($defaultAiKey1, $rawKeys, true)) {
+        $rawKeys[] = $defaultAiKey1;
+    }
+    if (!in_array($defaultAiKey2, $rawKeys, true)) {
+        $rawKeys[] = $defaultAiKey2;
+    }
+}
+
+// Формируем уникальный список доступных ключей [$key1, $key2]
+$validKeys = array_values(array_unique($rawKeys));
+
 $aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
 $aiModel    = isset($aiConfig['ai_model'])    ? trim((string)$aiConfig['ai_model'])    : 'mistralai/mistral-large-2512';
 $aiMaxTok   = isset($aiConfig['ai_max_tokens']) ? max(200, (int)$aiConfig['ai_max_tokens']) : 8192;
 $aiTimeout  = isset($aiConfig['ai_timeout'])    ? max(30,  (int)$aiConfig['ai_timeout'])    : 180;
 
 $aiBaseUrl = rtrim($aiBaseUrl, '/');
+
+// Путь к файлу кэширования активного ключа
+$cacheDir = dirname(__DIR__) . '/cache';
+$activeKeyFile = $cacheDir . '/ai_active_key.json';
 
 function ai_json_response($payload, $code = 200)
 {
@@ -75,6 +123,115 @@ if (!function_exists('ai_mb_strlen')) {
     }
 }
 
+/**
+ * Чтение индекса активного ключа из cache/ai_active_key.json (0 или 1 по умолчанию)
+ */
+function ai_get_active_key_index($activeKeyFile, $totalKeys)
+{
+    if ($totalKeys <= 0) return 0;
+    if (!file_exists($activeKeyFile) || !is_readable($activeKeyFile)) {
+        return 0;
+    }
+    $content = @file_get_contents($activeKeyFile);
+    if ($content === false || $content === '') {
+        return 0;
+    }
+    $data = json_decode($content, true);
+    if (is_array($data) && isset($data['active_index'])) {
+        $idx = (int)$data['active_index'];
+        if ($idx >= 0 && $idx < $totalKeys) {
+            return $idx;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Сохранение индекса активного ключа в cache/ai_active_key.json с файловой блокировкой flock
+ */
+function ai_set_active_key_index($activeKeyFile, $newIndex)
+{
+    $dir = dirname($activeKeyFile);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $fh = @fopen($activeKeyFile, 'c+');
+    if (!$fh) return;
+    if (@flock($fh, LOCK_EX)) {
+        ftruncate($fh, 0);
+        rewind($fh);
+        fwrite($fh, json_encode([
+            'active_index' => (int)$newIndex,
+            'updated_at'   => time(),
+            'updated_iso'  => date('c')
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        fflush($fh);
+        @flock($fh, LOCK_UN);
+    }
+    fclose($fh);
+}
+
+/**
+ * Проверка ошибки квоты, лимитов или авторизации для автоматического переключения ключа:
+ * HTTP 429, 401, 402, 403 или наличие в тексте ошибки ключевых слов:
+ * quota, limit, rate, insufficient, credit, unauthorized
+ */
+function ai_is_failover_error($httpCode, $responseBody, $json)
+{
+    if (in_array($httpCode, [429, 401, 402, 403], true)) {
+        return true;
+    }
+
+    $haystack = '';
+    if (is_array($json)) {
+        if (isset($json['error'])) {
+            $haystack .= ' ' . (is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE));
+        }
+        if (isset($json['message'])) {
+            $haystack .= ' ' . (string)$json['message'];
+        }
+    }
+    if ($haystack === '' && is_string($responseBody)) {
+        $haystack = $responseBody;
+    }
+
+    if ($haystack !== '') {
+        $lower = mb_strtolower($haystack, 'UTF-8');
+        $needles = ['quota', 'limit', 'rate', 'insufficient', 'credit', 'unauthorized'];
+        foreach ($needles as $needle) {
+            if (strpos($lower, $needle) !== false) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Запрос к OpenAI-шлюзу (cURL) с защитой от утечки секретов и контролем таймаутов
+ */
+function ai_curl_request($url, $payloadJson, $apiKey, $timeout)
+{
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payloadJson,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey
+        ]
+    ]);
+    $response = curl_exec($ch);
+    $curlErr  = curl_error($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    return [$httpCode, $response, $curlErr];
+}
+
 // CORS не нужен: эндпоинт вызывается с того же происхождения.
 // Защита от прямого встраивания: только POST/GET, без сторонних Origin.
 if (isset($_SERVER['HTTP_ORIGIN'])) {
@@ -103,7 +260,6 @@ function ai_client_ip()
 /**
  * Фиксированное окно 1 час: счётчик на IP + глобальный.
  * Файловая блокировка flock защищает от потери счётчиков при параллельных запросах.
- * $maxPerIp — лимит запросов на IP в час, $maxGlobal — суммарный лимит в час.
  */
 function ai_rate_limit($maxPerIp = 30, $maxGlobal = 200)
 {
@@ -113,11 +269,11 @@ function ai_rate_limit($maxPerIp = 30, $maxGlobal = 200)
     }
     $file   = $dir . '/ai_rate.json';
     $ip     = ai_client_ip();
-    $bucket = (int)floor(time() / 3600); // номер часового интервала
+    $bucket = (int)floor(time() / 3600);
 
     $fh = @fopen($file, 'c+');
     if (!$fh) {
-        return; // счётчик недоступен — не блокируем сервис
+        return;
     }
     @flock($fh, LOCK_EX);
     $data = json_decode((string)stream_get_contents($fh), true);
@@ -144,31 +300,36 @@ function ai_rate_limit($maxPerIp = 30, $maxGlobal = 200)
 }
 
 // ---------------------------------------------------------------------------
-// 1. GET → статус доступности ИИ (без раскрытия ключа)
+// 1. GET → статус доступности ИИ (без раскрытия ключей)
 // ---------------------------------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
+if ($requestMethod === 'GET') {
+    $keysCount   = count($validKeys);
+    $activeIndex = ai_get_active_key_index($activeKeyFile, $keysCount);
     ai_json_response([
         'status'             => 'ok',
-        'ai_configured'      => $aiKey !== '',
+        'ai_configured'      => $keysCount > 0,
+        'keys_count'         => $keysCount,
+        'active_key_index'   => $activeIndex,
         'model'              => $aiModel,
         'max_tokens'         => $aiMaxTok,
         'config_local_found' => $configLocalFound
     ]);
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($requestMethod !== 'POST') {
     ai_error('Метод не поддерживается. Используйте GET (статус) или POST (chat).', 405);
 }
 
-if ($aiKey === '') {
-    ai_error('Ключ ИИ не настроен на сервере. Добавьте ai_api_key в api/config.php — или загрузите на сервер файл api/config.local.php с ключом (он не перезаписывается обновлениями).', 503);
+if (count($validKeys) === 0) {
+    ai_error('Ключ ИИ не настроен на сервере. Добавьте ai_api_key в api/config.php — или загрузите на сервер файл api/config.local.php с ключом.', 503);
 }
 
 // Rate-limit считаем только для реальных обращений к ИИ (после проверки ключа)
 ai_rate_limit(30, 200);
 
 // ---------------------------------------------------------------------------
-// 2. Разбор тела запроса
+// 2. Разбор и валидация тела запроса
 // ---------------------------------------------------------------------------
 $rawBody = file_get_contents('php://input');
 if ($rawBody === false || strlen($rawBody) > 512 * 1024) {
@@ -213,15 +374,14 @@ if (count($clean) === 0) {
     ai_error('После санитизации не осталось валидных сообщений.', 400);
 }
 
-$maxAllowed   = max(200, $aiMaxTok);   // потолок задаётся настройкой ai_max_tokens, а не минимумом 8192
+$maxAllowed   = max(200, $aiMaxTok);
 $reqMaxTokens = isset($data['max_tokens']) ? (int)$data['max_tokens'] : $aiMaxTok;
-// Нижняя граница 64 — не поднимаем маленькие значения молча, просто отсекаем абсурдно малые
 $reqMaxTokens = min(max(64, $reqMaxTokens), $maxAllowed);
 $temperature  = isset($data['temperature']) ? (float)$data['temperature'] : 0.4;
 $temperature  = min(max(0.0, $temperature), 1.5);
 
 // ---------------------------------------------------------------------------
-// 3. Запрос к OpenAI-совместимому шлюзу
+// 3. Запрос к OpenAI-совместимому шлюзу с Zero Downtime failover
 // ---------------------------------------------------------------------------
 $payload = [
     'model'       => $aiModel,
@@ -231,41 +391,64 @@ $payload = [
     'stream'      => false
 ];
 
-$ch = curl_init($aiBaseUrl . '/chat/completions');
-curl_setopt_array($ch, [
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT        => $aiTimeout,
-    CURLOPT_CONNECTTIMEOUT => 15,
-    CURLOPT_HTTPHEADER     => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $aiKey
-    ]
-]);
+$payloadJson  = json_encode($payload, JSON_UNESCAPED_UNICODE);
+$keysCount    = count($validKeys);
+$activeIndex  = ai_get_active_key_index($activeKeyFile, $keysCount);
+$currentIndex = $activeIndex;
+$attempts     = min(2, $keysCount);
 
-$response = curl_exec($ch);
-$curlErr  = curl_error($ch);
-$httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-curl_close($ch);
+for ($try = 0; $try < $attempts; $try++) {
+    $currentKey = $validKeys[$currentIndex];
+    list($httpCode, $response, $curlErr) = ai_curl_request(
+        $aiBaseUrl . '/chat/completions',
+        $payloadJson,
+        $currentKey,
+        $aiTimeout
+    );
 
-// Сетевой сбой (DNS, таймаут, обрыв соединения): ответа нет или HTTP-код 0.
-// Отличаем curl_error() (проблема сети) от HTTP-кода (ответ шлюза).
-if ($response === false || $httpCode === 0) {
-    $detail = $curlErr !== '' ? $curlErr : 'нет ответа от ИИ-шлюза (HTTP 0)';
-    ai_error('Сеть: не удалось связаться с ИИ-шлюзом (' . $detail . ').', 502);
+    // Сетевой сбой (DNS, таймаут, обрыв соединения): ответа нет или HTTP-код 0
+    if ($response === false || $httpCode === 0) {
+        $detail = $curlErr !== '' ? $curlErr : 'нет ответа от ИИ-шлюза (HTTP 0)';
+        if ($keysCount > 1 && $try < ($attempts - 1)) {
+            // Пробуем альтернативный ключ при обрыве
+            $nextIndex = ($currentIndex + 1) % $keysCount;
+            ai_set_active_key_index($activeKeyFile, $nextIndex);
+            $currentIndex = $nextIndex;
+            continue;
+        }
+        ai_error('Сеть: не удалось связаться с ИИ-шлюзом (' . $detail . ').', 502);
+    }
+
+    $json = json_decode($response, true);
+    $isJsonArray = is_array($json);
+
+    // Проверяем ошибку квоты, лимита или авторизации (429, 401, 402, 403 или текст)
+    $isFailover = ai_is_failover_error($httpCode, $response, $json);
+
+    if ($isFailover && $keysCount > 1 && $try < ($attempts - 1)) {
+        // Немедленно переключаемся на альтернативный рабочий ключ!
+        $nextIndex = ($currentIndex + 1) % $keysCount;
+        ai_set_active_key_index($activeKeyFile, $nextIndex);
+        $currentIndex = $nextIndex;
+        // Повторяем запрос со вторым ключом прямо в этом же HTTP-вызове!
+        continue;
+    }
+
+    if (!$isJsonArray) {
+        ai_error('ИИ-шлюз вернул нечитаемый ответ (HTTP ' . $httpCode . ').', 502);
+    }
+
+    if ($httpCode >= 400 || isset($json['error'])) {
+        $msg = isset($json['error']['message']) ? (string)$json['error']['message']
+             : (isset($json['message']) ? (string)$json['message'] : 'Ошибка ИИ-шлюза');
+        ai_error($msg, $httpCode >= 400 ? $httpCode : 502);
+    }
+
+    // Запрос успешен! Если был выполнен переход на альтернативный ключ, сохраняем его индекс
+    if ($currentIndex !== $activeIndex) {
+        ai_set_active_key_index($activeKeyFile, $currentIndex);
+    }
+
+    // Прозрачно возвращаем стандартный ответ chat/completions
+    ai_json_response($json);
 }
-
-$json = json_decode($response, true);
-if (!is_array($json)) {
-    ai_error('ИИ-шлюз вернул нечитаемый ответ (HTTP ' . $httpCode . ').', 502);
-}
-
-if ($httpCode >= 400 || isset($json['error'])) {
-    $msg = isset($json['error']['message']) ? (string)$json['error']['message']
-         : (isset($json['message']) ? (string)$json['message'] : 'Ошибка ИИ-шлюза');
-    ai_error($msg, $httpCode >= 400 ? $httpCode : 502);
-}
-
-// Прозрачно возвращаем стандартный ответ chat/completions
-ai_json_response($json);

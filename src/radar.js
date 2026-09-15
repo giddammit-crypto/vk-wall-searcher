@@ -11,8 +11,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.20.0';
-import { extractNum } from './analytics.js?v=4.20.0';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.21.0';
+import { extractNum } from './analytics.js?v=4.21.0';
 
 export const RADAR_AXES = [
     { id: 'regularity', label: 'Регулярность', desc: 'Частота и ритмичность постов' },
@@ -222,6 +222,11 @@ export function renderRadarSection(container, groupsStats, posts = []) {
                             ${compareOptionsHtml}
                         </select>
                     </div>
+
+                    <div class="radar-actions-group">
+                        <label class="radar-lbl">&nbsp;</label>
+                        <button type="button" class="btn btn-secondary btn-sm" id="radar-export-svg-btn" title="Скачать векторную диаграмму в SVG"><span class="material-symbols-outlined">download</span> Скачать SVG</button>
+                    </div>
                 </div>
             </div>
 
@@ -251,6 +256,7 @@ export function renderRadarSection(container, groupsStats, posts = []) {
     const compSelect = container.querySelector('#radar-compare-select');
     const legPrim = container.querySelector('#leg-primary-name');
     const legComp = container.querySelector('#leg-compare-name');
+    const exportSvgBtn = container.querySelector('#radar-export-svg-btn');
 
     primSelect.addEventListener('change', (e) => {
         primaryBranchCode = e.target.value;
@@ -267,6 +273,51 @@ export function renderRadarSection(container, groupsStats, posts = []) {
         redraw();
     });
 
+    if (exportSvgBtn) {
+        exportSvgBtn.addEventListener('click', () => {
+            const svgEl = container.querySelector('#radar-svg-canvas-wrap svg');
+            if (!svgEl) return;
+
+            const primaryData = scoresMap.get(primaryBranchCode) || scoresMap.get(branchList[0]?.code);
+            const safeBranch = (primaryData?.code || primaryBranchCode || 'branch')
+                .toString()
+                .toLowerCase()
+                .replace(/[^a-z0-9а-яё_-]/gi, '_');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const filename = `aurora_competence_radar_${safeBranch}_${dateStr}.svg`;
+
+            // Клонируем SVG для подготовки чистого экспорта
+            const clone = svgEl.cloneNode(true);
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+            // Подложка тёмного вакуума для красивого просмотра в сторонних редакторах и браузерах
+            if (!clone.querySelector('.radar-svg-export-bg')) {
+                const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                bgRect.setAttribute('width', '100%');
+                bgRect.setAttribute('height', '100%');
+                bgRect.setAttribute('fill', '#0b0f19');
+                bgRect.setAttribute('rx', '16');
+                bgRect.setAttribute('class', 'radar-svg-export-bg');
+                clone.insertBefore(bgRect, clone.firstChild);
+            }
+
+            const serializer = new XMLSerializer();
+            const svgString = serializer.serializeToString(clone);
+            const fullSvg = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgString;
+
+            const blob = new Blob([fullSvg], { type: 'image/svg+xml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 3000);
+        });
+    }
+
     if (legPrim) {
         const b = branchList.find(x => x.code === primaryBranchCode);
         if (b) legPrim.textContent = b.name;
@@ -282,7 +333,7 @@ export function renderRadarSection(container, groupsStats, posts = []) {
  * Генерирует векторный SVG паутины (Radar Chart)
  */
 function buildRadarSvg(primary, compare) {
-    const size = 520;
+    const size = 540;
     const center = size / 2;
     const radius = 145;
     const numAxes = RADAR_AXES.length;
@@ -300,13 +351,19 @@ function buildRadarSvg(primary, compare) {
 
     // 1. Концентрические сетки (20%, 40%, 60%, 80%, 100%)
     let gridSvg = '';
+    let levelLabelsSvg = '';
     [0.2, 0.4, 0.6, 0.8, 1.0].forEach((level) => {
         const pts = [];
         for (let i = 0; i < numAxes; i++) {
             const p = getPoint(i, level);
             pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
         }
-        gridSvg += `<polygon points="${pts.join(' ')}" class="radar-grid-poly" />`;
+        const isOuter = level === 1.0;
+        gridSvg += `<polygon points="${pts.join(' ')}" class="${isOuter ? 'radar-grid-poly radar-grid-poly-outer' : 'radar-grid-poly'}" />`;
+
+        // Метки процентов по верхней вертикальной оси
+        const pctY = center - (radius * level);
+        levelLabelsSvg += `<text x="${(center + 6).toFixed(1)}" y="${(pctY + 3).toFixed(1)}" class="radar-grid-level-text">${Math.round(level * 100)}%</text>`;
     });
 
     // 2. Оси и подписи
@@ -317,16 +374,48 @@ function buildRadarSvg(primary, compare) {
         axesSvg += `<line x1="${center}" y1="${center}" x2="${pEdge.x.toFixed(1)}" y2="${pEdge.y.toFixed(1)}" class="radar-axis-line" />`;
 
         // Вынос подписи за пределы круга
-        const pLabel = getPoint(i, 1.25);
+        const pLabel = getPoint(i, 1.28);
         const val1 = primary ? (primary[axis.id] || 0) : 0;
         
         let textAnchor = 'middle';
-        if (pLabel.x < center - 20) textAnchor = 'end';
-        else if (pLabel.x > center + 20) textAnchor = 'start';
+        let labelX = pLabel.x;
+        let labelY = pLabel.y;
+        let badgeX = pLabel.x - 28;
+        let badgeY = pLabel.y + 2;
+
+        if (pLabel.x < center - 25) {
+            textAnchor = 'end';
+            labelX = pLabel.x - 6;
+            labelY = pLabel.y - 6;
+            badgeX = pLabel.x - 62;
+            badgeY = pLabel.y - 3;
+        } else if (pLabel.x > center + 25) {
+            textAnchor = 'start';
+            labelX = pLabel.x + 6;
+            labelY = pLabel.y - 6;
+            badgeX = pLabel.x + 6;
+            badgeY = pLabel.y - 3;
+        } else {
+            if (pLabel.y < center) {
+                labelY = pLabel.y - 14;
+                badgeY = pLabel.y - 10;
+            } else {
+                labelY = pLabel.y - 4;
+                badgeY = pLabel.y + 4;
+            }
+        }
+
+        const badgeTextX = badgeX + 28;
+        const badgeTextY = badgeY + 12;
 
         labelsSvg += `
-            <text x="${pLabel.x.toFixed(1)}" y="${(pLabel.y - 4).toFixed(1)}" text-anchor="${textAnchor}" class="radar-axis-label">${escapeHtml(axis.label)}</text>
-            <text x="${pLabel.x.toFixed(1)}" y="${(pLabel.y + 12).toFixed(1)}" text-anchor="${textAnchor}" class="radar-axis-score">${val1} / 100</text>
+            <g class="radar-axis-label-group">
+                <text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="${textAnchor}" class="radar-axis-label">${escapeHtml(axis.label)}</text>
+                <g class="radar-axis-badge">
+                    <rect x="${badgeX.toFixed(1)}" y="${badgeY.toFixed(1)}" width="56" height="17" rx="8.5" class="radar-score-badge-rect" />
+                    <text x="${badgeTextX.toFixed(1)}" y="${badgeTextY.toFixed(1)}" text-anchor="middle" class="radar-axis-score">${val1} / 100</text>
+                </g>
+            </g>
         `;
     });
 
@@ -360,17 +449,79 @@ function buildRadarSvg(primary, compare) {
             const score = (primary[axis.id] || 0) / 100;
             const pt = getPoint(i, score);
             primaryDotsSvg += `
-                <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="4.5" class="radar-primary-dot">
-                    <title>${escapeHtml(axis.label)}: ${primary[axis.id]} / 100</title>
-                </circle>
+                <g class="radar-node-group">
+                    <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="9" class="radar-node-halo" />
+                    <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="5" class="radar-primary-dot" filter="url(#radar-dot-glow)">
+                        <title>${escapeHtml(axis.label)}: ${primary[axis.id]} / 100</title>
+                    </circle>
+                    <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2" class="radar-primary-dot-core" />
+                </g>
             `;
         });
     }
 
     return `
         <svg viewBox="0 0 ${size} ${size}" class="radar-svg-root" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- Неоновые градиенты и фильтры для радарного полотна -->
+                <radialGradient id="radar-center-aura" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.10" />
+                    <stop offset="70%" stop-color="#818cf8" stop-opacity="0.03" />
+                    <stop offset="100%" stop-color="#0b0f19" stop-opacity="0" />
+                </radialGradient>
+                <radialGradient id="radar-primary-grad" cx="50%" cy="50%" r="55%">
+                    <stop offset="0%" stop-color="#ec4899" stop-opacity="0.55" />
+                    <stop offset="60%" stop-color="#ec4899" stop-opacity="0.30" />
+                    <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.10" />
+                </radialGradient>
+                <linearGradient id="radar-primary-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fb7185" />
+                    <stop offset="50%" stop-color="#ec4899" />
+                    <stop offset="100%" stop-color="#a855f7" />
+                </linearGradient>
+                <radialGradient id="radar-compare-grad" cx="50%" cy="50%" r="55%">
+                    <stop offset="0%" stop-color="#8a6cff" stop-opacity="0.38" />
+                    <stop offset="70%" stop-color="#6366f1" stop-opacity="0.18" />
+                    <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.05" />
+                </radialGradient>
+                <linearGradient id="radar-compare-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#c084fc" />
+                    <stop offset="100%" stop-color="#818cf8" />
+                </linearGradient>
+                <filter id="radar-glow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+                <filter id="radar-dot-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+                <style>
+                    .radar-svg-root { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                    .radar-grid-poly { fill: none; stroke: rgba(148, 163, 184, 0.18); stroke-dasharray: 4 4; stroke-width: 1; }
+                    .radar-grid-poly-outer { fill: rgba(15, 23, 42, 0.4); stroke: rgba(148, 163, 184, 0.35); stroke-width: 1.5; stroke-dasharray: none; }
+                    .radar-axis-line { stroke: rgba(148, 163, 184, 0.22); stroke-width: 1; stroke-dasharray: 3 3; }
+                    .radar-axis-label { fill: #f8fafc; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+                    .radar-axis-score { fill: #38bdf8; font-size: 10px; font-weight: 800; }
+                    .radar-score-badge-rect { fill: rgba(15, 23, 42, 0.88); stroke: rgba(56, 189, 248, 0.45); stroke-width: 1; }
+                    .radar-grid-level-text { fill: rgba(148, 163, 184, 0.45); font-size: 9px; font-weight: 600; }
+                    .radar-compare-poly { fill: url(#radar-compare-grad); stroke: url(#radar-compare-stroke); stroke-width: 2; stroke-dasharray: 5 4; }
+                    .radar-primary-poly { fill: url(#radar-primary-grad); stroke: url(#radar-primary-stroke); stroke-width: 2.8; filter: url(#radar-glow); }
+                    .radar-node-halo { fill: #ec4899; opacity: 0.35; }
+                    .radar-primary-dot { fill: #ec4899; stroke: #ffffff; stroke-width: 2; cursor: pointer; }
+                    .radar-primary-dot-core { fill: #ffffff; pointer-events: none; }
+                </style>
+            </defs>
+            <circle cx="${center}" cy="${center}" r="${radius}" fill="url(#radar-center-aura)" />
             <g class="radar-grid-group">
                 ${gridSvg}
+                ${levelLabelsSvg}
                 ${axesSvg}
             </g>
             ${comparePolygonSvg}

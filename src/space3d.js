@@ -16,25 +16,25 @@
  * ============================================================================
  */
 
-import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.20.0';
-import { SpaceAudio } from './space_audio.js?v=4.20.0';
-import { CelestialPlanets } from './celestial_planets.js?v=4.20.0';
-import { IssStation } from './iss_station.js?v=4.20.0';
-import { SatellitesSwarm } from './satellites_swarm.js?v=4.20.0';
-import { Constellations } from './constellations.js?v=4.20.0';
-import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.20.0';
+import { CANONICAL_BRANCHES, escapeHtml, findCanonicalBranch } from './branches.js?v=4.21.0';
+import { SpaceAudio } from './space_audio.js?v=4.21.0';
+import { CelestialPlanets } from './celestial_planets.js?v=4.21.0';
+import { IssStation } from './iss_station.js?v=4.21.0';
+import { SatellitesSwarm } from './satellites_swarm.js?v=4.21.0';
+import { Constellations } from './constellations.js?v=4.21.0';
+import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.21.0';
 // Версия ДОЛЖНА совпадать с импортом cosmonaut_ring.js в space_cinematic.js —
 // иначе два экземпляра модуля → два синглтона → рассинхрон DOM-узлов карточек.
-import { CosmonautRing } from './cosmonaut_ring.js?v=4.20.0';
-import { Starfield } from './starfield.js?v=4.20.0';
-import { SunOptics } from './sun_optics.js?v=4.20.0';
-import { createQrSvg } from './qrcode.js?v=4.20.0';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.20.0';
-import { openPostModal } from './render.js?v=4.20.0';
-import { fetchHistory } from './subscribers.js?v=4.20.0';
-import { buildBranchAdvice } from './advice.js?v=4.20.0';
-import { Space3DGL } from './space3d_gl.js?v=4.20.0';
-import { SpaceCinematic } from './space_cinematic.js?v=4.20.0';
+import { CosmonautRing } from './cosmonaut_ring.js?v=4.21.0';
+import { Starfield } from './starfield.js?v=4.21.0';
+import { SunOptics } from './sun_optics.js?v=4.21.0';
+import { createQrSvg } from './qrcode.js?v=4.21.0';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.21.0';
+import { openPostModal } from './render.js?v=4.21.0';
+import { fetchHistory } from './subscribers.js?v=4.21.0';
+import { buildBranchAdvice } from './advice.js?v=4.21.0';
+import { Space3DGL } from './space3d_gl.js?v=4.21.0';
+import { SpaceCinematic } from './space_cinematic.js?v=4.21.0';
 
 export class Space3DEngine {
     constructor() {

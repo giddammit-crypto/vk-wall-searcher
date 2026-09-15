@@ -1,5 +1,5 @@
 /**
- * src/cosmo_chat.js — Интерактивный чат с Космо (Cosmo AI Chat) (v4.20.0)
+ * src/cosmo_chat.js — Интерактивный чат с Космо (Cosmo AI Chat) (v4.21.0)
  * ============================================================================
  * Полноценный модальный чат с роботом-маскотом Космо:
  *   • Вызывается по двойному клику на Космо
@@ -12,9 +12,18 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.20.0';
+import { resolveApiUrl } from './api.js?v=4.21.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
+const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
+
+function resolveTtsAudioUrl(url) {
+    try {
+        return new URL(url, TTS_PROXY_URL).href;
+    } catch (e) {
+        return url;
+    }
+}
 
 /* ---------------------------------------------------------------------------
  * Вспомогательные функции экранирования и Markdown
@@ -57,6 +66,21 @@ function mdInline(s) {
     // Подсветка цифр внутри жирного текста
     s = s.replace(/<strong>([^<]*)<\/strong>/g, (m, inner) =>
         '<strong>' + inner.replace(/(\d[\d\s.,%₽руб]*)/g, '<span class="cosmo-chat-num">$1</span>') + '</strong>');
+    // Эмодзи-аватарки Космо (32×32px) — можно вставлять в ответы через шорткоды
+    const COSMO_EMOJI = {
+        ':cosmo_smile:':   'assets/images/mascot/robot_smile.png',
+        ':cosmo_think:':   'assets/images/mascot/robot_thinking.png',
+        ':cosmo_yawn:':    'assets/images/mascot/robot_yawn.png',
+        ':cosmo_angry:':   'assets/images/mascot/robot_angry.png',
+        ':cosmo_sleep:':   'assets/images/mascot/robot_sleep.png',
+        ':cosmo_tired:':   'assets/images/mascot/robot_tired.png',
+        ':cosmo:':         'assets/images/mascot/robot_idle.png',
+    };
+    for (const [code, src] of Object.entries(COSMO_EMOJI)) {
+        const escaped = code.replace(/:/g, ':');
+        // Replace literal shortcodes with inline img elements
+        s = s.split(code).join(`<img src="${src}?v=4.21.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+    }
     return s;
 }
 
@@ -416,6 +440,8 @@ export class CosmoChatModal {
         this.messages = []; // [{role: 'user'|'assistant', content: string, file?: Object}]
         this.attachedFile = null; // {name, size, type, isImage, textContent, dataUrl}
         this.audioEnabled = true;
+        this.currentSpeechAudio = null;
+        this.currentSpeakingBtn = null;
 
         this.onEscKeyDown = this.onEscKeyDown.bind(this);
     }
@@ -438,7 +464,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.20.0"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.21.0"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -460,6 +486,10 @@ export class CosmoChatModal {
                             <span class="material-symbols-outlined">analytics</span>
                             <span class="tool-btn-text">Пресеты ВК</span>
                             <span class="presets-count-badge">10</span>
+                        </button>
+                        <button type="button" class="cosmo-chat-tool-btn" data-chat-export title="Скачать диалог в Markdown">
+                            <span class="material-symbols-outlined">download</span>
+                            <span class="tool-btn-text">Экспорт</span>
                         </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-clear title="Начать новый диалог">
                             <span class="material-symbols-outlined">restart_alt</span>
@@ -484,6 +514,13 @@ export class CosmoChatModal {
                                 <p class="popover-subtitle">10 готовых сценариев аудита на основе реального сканирования стены</p>
                             </div>
                         </div>
+                        <div class="presets-search-wrap">
+                            <span class="material-symbols-outlined search-icon">search</span>
+                            <input type="search"
+                                   class="presets-search-input"
+                                   data-presets-search
+                                   placeholder="Быстрый поиск по 10 пресетам (например: вирус, ER, методист, визуал)..." />
+                        </div>
                         <button type="button" class="presets-popover-close" data-chat-presets-close title="Закрыть пресеты (Esc)">
                             <span class="material-symbols-outlined">close</span>
                         </button>
@@ -499,6 +536,11 @@ export class CosmoChatModal {
                                 <div class="preset-desc">${p.desc}</div>
                             </button>
                         `).join('')}
+                    </div>
+                    <div class="presets-empty-state" data-presets-empty style="display: none;">
+                        <span class="material-symbols-outlined empty-icon">search_off</span>
+                        <div class="empty-title">Пресеты не найдены</div>
+                        <div class="empty-desc">Попробуйте ввести другой поисковый запрос (например: «вирус», «ER», «методист», «визуал»)</div>
                     </div>
                 </div>
 
@@ -640,13 +682,64 @@ export class CosmoChatModal {
             });
         }
 
+        // Живой поиск по 10 пресетам внутри поповера
+        const searchInput = this.presetsPopoverEl ? this.presetsPopoverEl.querySelector('[data-presets-search]') : null;
+        const emptyStateEl = this.presetsPopoverEl ? this.presetsPopoverEl.querySelector('[data-presets-empty]') : null;
+        const presetsGridEl = this.presetsPopoverEl ? this.presetsPopoverEl.querySelector('[data-presets-grid]') : null;
+
+        if (searchInput && presetsGridEl) {
+            searchInput.addEventListener('input', () => {
+                const q = searchInput.value.trim().toLowerCase();
+                const cards = presetsGridEl.querySelectorAll('.preset-card');
+                let visibleCount = 0;
+
+                cards.forEach(card => {
+                    const title = (card.querySelector('.preset-title')?.textContent || '').toLowerCase();
+                    const desc = (card.querySelector('.preset-desc')?.textContent || '').toLowerCase();
+                    const badge = (card.querySelector('.preset-badge')?.textContent || '').toLowerCase();
+                    const id = (card.dataset.presetId || '').toLowerCase();
+                    const match = !q || title.includes(q) || desc.includes(q) || badge.includes(q) || id.includes(q);
+
+                    card.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                });
+
+                if (emptyStateEl) {
+                    emptyStateEl.style.display = (visibleCount === 0) ? 'flex' : 'none';
+                }
+            });
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (searchInput.value) {
+                        e.stopPropagation();
+                        searchInput.value = '';
+                        searchInput.dispatchEvent(new Event('input'));
+                    }
+                }
+            });
+        }
+
+        // Кнопка экспорта диалога в Markdown (.md)
+        const exportBtn = this.overlayEl.querySelector('[data-chat-export]');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.exportDialogMarkdown(exportBtn);
+            });
+        }
+
         // Кнопка «Новый диалог»
         const clearBtn = this.overlayEl.querySelector('[data-chat-clear]');
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
+                this.stopSpeaking();
                 this.messages = [];
                 this.clearAttachedFile();
                 this.closePresetsPopover();
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.dispatchEvent(new Event('input'));
+                }
                 this.renderWelcome();
                 if (this.inputEl) this.inputEl.focus();
             });
@@ -711,7 +804,7 @@ export class CosmoChatModal {
             }
         });
 
-        // Делегирование кликов по ленте сообщений (копирование, пресеты из приветствия)
+        // Делегирование кликов по ленте сообщений (копирование, перегенерация, озвучка, пресеты)
         this.messagesEl.addEventListener('click', (e) => {
             // Клик по чипу пресета из баннера приветствия
             const welcomeChip = e.target.closest('.welcome-preset-chip');
@@ -726,6 +819,7 @@ export class CosmoChatModal {
                 }
             }
 
+            // Копирование текста поста
             const copyPostBtn = e.target.closest('[data-copy-post]');
             if (copyPostBtn) {
                 const text = copyPostBtn.getAttribute('data-copy-post') || '';
@@ -733,6 +827,24 @@ export class CosmoChatModal {
                 return;
             }
 
+            // Перегенерация (Другой вариант)
+            const regenBtn = e.target.closest('[data-regenerate-response]');
+            if (regenBtn) {
+                this.regenerateResponse(regenBtn);
+                return;
+            }
+
+            // Озвучка ответа Космо (голос Бэлы)
+            const speakBtn = e.target.closest('[data-speak-response]');
+            if (speakBtn) {
+                const msgCard = speakBtn.closest('.cosmo-chat-msg');
+                const copyBtn = msgCard ? msgCard.querySelector('[data-copy-post]') : null;
+                const text = copyBtn ? copyBtn.getAttribute('data-copy-post') : (msgCard ? msgCard.querySelector('.msg-body')?.innerText : '');
+                this.toggleSpeakResponse(text || '', speakBtn);
+                return;
+            }
+
+            // Копирование блока кода
             const copyCodeBtn = e.target.closest('[data-copy-code]');
             if (copyCodeBtn) {
                 const wrap = copyCodeBtn.closest('.cosmo-chat-codeblock-wrap');
@@ -884,6 +996,7 @@ export class CosmoChatModal {
 
     close() {
         if (!this.isOpen) return;
+        this.stopSpeaking();
         this.closePresetsPopover();
         this.isOpen = false;
         document.removeEventListener('keydown', this.onEscKeyDown);
@@ -928,6 +1041,12 @@ export class CosmoChatModal {
         this.presetsPopoverEl.classList.add('is-open');
         this.presetsPopoverEl.setAttribute('aria-hidden', 'false');
         if (this.presetsBtnEl) this.presetsBtnEl.classList.add('is-active');
+
+        // Фокусируем строку поиска пресетов для быстрого ввода
+        const searchInput = this.presetsPopoverEl.querySelector('[data-presets-search]');
+        if (searchInput) {
+            setTimeout(() => searchInput.focus(), 120);
+        }
 
         // Звуковая реакция маскота
         if (this.mascot && this.mascot.playVoice && this.audioEnabled) {
@@ -977,7 +1096,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.20.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.21.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1061,19 +1180,31 @@ export class CosmoChatModal {
 
         const parsedHtml = parseCosmoMarkdown(markdownText);
 
-        // Если ответ похож на пост (содержит хэштеги или эмодзи/абзацы), добавляем кнопку копирования всего поста
-        const isPostDraft = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 120;
+        // Расчёт метрик текста поста (символы и слова)
+        const cleanText = String(markdownText).replace(/[*#`_~[\]()<>]/g, ' ').trim();
+        const charCount = markdownText.length;
+        const wordCount = cleanText ? (cleanText.match(/[\p{L}\p{N}]+/gu) || []).length : 0;
+
+        // Если ответ похож на пост (хэштеги/абзацы) или имеет достаточный объём — добавляем панель метрик и действий
+        const isPostDraft = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 80;
         const copyActionBtn = isPostDraft ? `
             <div class="msg-actions">
-                <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}">
+                <span class="post-metrics-badge"><span class="material-symbols-outlined">analytics</span> ${charCount} знаков • ${wordCount} слов</span>
+                <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}" title="Скопировать текст поста">
                     <span class="material-symbols-outlined">content_copy</span> Скопировать текст поста
+                </button>
+                <button type="button" class="cosmo-chat-action-btn" data-regenerate-response title="Сгенерировать другой вариант">
+                    <span class="material-symbols-outlined">refresh</span> Другой вариант
+                </button>
+                <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ">
+                    <span class="material-symbols-outlined">volume_up</span> Озвучить
                 </button>
             </div>
         ` : '';
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.20.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.21.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -1095,7 +1226,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.20.0" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.21.0" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>
@@ -1224,8 +1355,20 @@ ${statsContext}
 
 ПРАВИЛО ТОЧНОСТИ (ZERO HALLUCINATIONS):
 - Любые цифры по филиалам и статистике бери ТОЛЬКО из предоставленного контекста сканирования. Никогда не выдумывай несуществующие показатели. Если данных нет — честно скажи об этом и посоветуй запустить сканирование.
-- Форматируй ответы с красивой структурой Markdown: используй таблицы (| Заголовок | Заголовок |), списки, выделения жирным и цитаты. Таблицы оформляй аккуратно с разделителями.`;
+- Форматируй ответы с красивой структурой Markdown: используй таблицы (| Заголовок | Заголовок |), списки, выделения жирным и цитаты. Таблицы оформляй аккуратно с разделителями.
+
+ТВОИ ЛИЧНЫЕ ЭМОДЗИ (используй в ответах — система отображает их как 32×32px аватарки Космо!):
+- :cosmo_smile: — радуешься, одобряешь, выражаешь позитив, хвалишь хорошую работу
+- :cosmo_think: — думаешь, анализируешь, формулируешь сложный ответ, задумываешься
+- :cosmo_yawn: — ленишься, скучаешь (например, если контент слишком банальный)
+- :cosmo_angry: — недоволен канцеляризмами, шаблонными постами, нулевым ER
+- :cosmo_sleep: — говоришь о сне, ночных постах, времени публикаций, усталости
+- :cosmo_tired: — сочувствуешь усталости, тяжёлой работе, когда данных мало
+- :cosmo: — нейтральная реакция, идентификация себя
+
+Используй 1–2 таких шорткода в каждом ответе там, где это эмоционально уместно. Не злоупотребляй!`;
     }
+
 
     /* ---------------------------------------------------------------------
      * Отправка запроса в ИИ
@@ -1369,5 +1512,233 @@ ${statsContext}
                 }, 2200);
             }
         });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Экспорт диалога в файл Markdown (.md)
+     * ------------------------------------------------------------------- */
+    exportDialogMarkdown(btnEl) {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const mm = pad(now.getMonth() + 1);
+        const dd = pad(now.getDate());
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        const lines = [
+            `# Диалог с Космо (AURORA SMM AI Assistant)`,
+            ``,
+            `- **Дата экспорта:** ${dateStr} ${timeStr}`,
+            `- **Всего сообщений в диалоге:** ${this.messages.length}`,
+            `- **Ассистент:** Космо 🤖 (Библиотечный SMM-гуру)`,
+            ``,
+            `---`,
+            ``
+        ];
+
+        if (this.messages.length === 0) {
+            lines.push(`*Диалог пуст. Сообщений для выгрузки не найдено.*`);
+        } else {
+            this.messages.forEach((msg, idx) => {
+                const roleLabel = msg.role === 'user' ? '👤 Пользователь' : '🤖 Космо (SMM-гуру)';
+                lines.push(`### ${idx + 1}. ${roleLabel}`);
+                lines.push(``);
+                lines.push(msg.content.trim());
+                lines.push(``);
+                lines.push(`---`);
+                lines.push(``);
+            });
+        }
+
+        const fullMarkdown = lines.join('\n');
+        const blob = new Blob([fullMarkdown], { type: 'text/markdown;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cosmo-dialog-${dateStr}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        if (btnEl) {
+            const origHtml = btnEl.innerHTML;
+            btnEl.innerHTML = `<span class="material-symbols-outlined">check</span> <span class="tool-btn-text">Экспортировано!</span>`;
+            btnEl.classList.add('is-copied');
+            setTimeout(() => {
+                btnEl.innerHTML = origHtml;
+                btnEl.classList.remove('is-copied');
+            }, 2200);
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Перегенерация ответа Космо («Другой вариант»)
+     * ------------------------------------------------------------------- */
+    async regenerateResponse(btnEl) {
+        if (this.isBusy) return;
+
+        let lastUserIndex = -1;
+        for (let i = this.messages.length - 1; i >= 0; i--) {
+            if (this.messages[i].role === 'user') {
+                lastUserIndex = i;
+                break;
+            }
+        }
+
+        if (lastUserIndex === -1) return;
+
+        // Удаляем последний ответ бота из истории перед повторным запросом
+        if (this.messages.length > lastUserIndex + 1) {
+            this.messages.splice(lastUserIndex + 1);
+        }
+
+        if (btnEl) {
+            const icon = btnEl.querySelector('.material-symbols-outlined');
+            if (icon) icon.classList.add('avatar-pulse');
+        }
+
+        if (this.mascot && typeof this.mascot.setState === 'function') {
+            this.mascot.setState('thinking');
+            if (typeof this.mascot.setMoodBadge === 'function') {
+                this.mascot.setMoodBadge('🔄', 3500);
+            }
+        }
+
+        // Запуск с повышенной температурой 0.88 для получения нового альтернативного варианта
+        await this.executeAiRequest({ maxTokens: 2500, temperature: 0.88 });
+
+        if (btnEl) {
+            const icon = btnEl.querySelector('.material-symbols-outlined');
+            if (icon) icon.classList.remove('avatar-pulse');
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Озвучивание ответа Космо (голос Бэлы через ElevenLabs или Web Speech API)
+     * ------------------------------------------------------------------- */
+    async toggleSpeakResponse(text, btnEl) {
+        if (this.currentSpeakingBtn === btnEl) {
+            this.stopSpeaking();
+            return;
+        }
+
+        this.stopSpeaking();
+
+        if (!text) return;
+
+        // Очищаем разметку от синтаксиса Markdown для естественного звучания речи
+        const plainText = text
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/`([^`]+)`/g, '$1')
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+            .replace(/https?:\/\/\S+/g, '')
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/[*_~>|]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 420);
+
+        if (!plainText) return;
+
+        this.currentSpeakingBtn = btnEl;
+        btnEl.classList.add('is-speaking');
+        btnEl.innerHTML = `<span class="material-symbols-outlined">graphic_eq</span> Остановить`;
+
+        if (this.mascot && typeof this.mascot.setState === 'function') {
+            this.mascot.setState('smile');
+            if (typeof this.mascot.setMoodBadge === 'function') {
+                this.mascot.setMoodBadge('🎙️', 6000);
+            }
+        }
+
+        // Попытка синтеза через ElevenLabs TTS Proxy
+        try {
+            const response = await fetch(TTS_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: plainText })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.audio_url) {
+                    const fullAudioUrl = resolveTtsAudioUrl(data.audio_url);
+                    const audio = new Audio(fullAudioUrl);
+                    audio.volume = 0.9;
+                    this.currentSpeechAudio = audio;
+
+                    audio.onended = () => this.stopSpeaking();
+                    audio.onerror = () => this.fallbackWebSpeech(plainText, btnEl);
+                    await audio.play();
+                    return;
+                }
+            }
+            this.fallbackWebSpeech(plainText, btnEl);
+        } catch (err) {
+            console.debug('[Cosmo Chat TTS] Fallback to Web Speech:', err);
+            this.fallbackWebSpeech(plainText, btnEl);
+        }
+    }
+
+    fallbackWebSpeech(text, btnEl) {
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ru-RU';
+                utterance.rate = 1.05;
+                utterance.pitch = 1.15;
+
+                const voices = window.speechSynthesis.getVoices();
+                const ruVoice = voices.find(v => v.lang && v.lang.startsWith('ru') && (
+                    v.name.includes('Female') || v.name.includes('Tatyana') || v.name.includes('Milena') || v.name.includes('Yandex') || v.name.includes('Google')
+                )) || voices.find(v => v.lang && v.lang.startsWith('ru'));
+
+                if (ruVoice) utterance.voice = ruVoice;
+
+                utterance.onend = () => this.stopSpeaking();
+                utterance.onerror = () => this.stopSpeaking();
+
+                this.currentSpeakingBtn = btnEl;
+                window.speechSynthesis.speak(utterance);
+                return;
+            } catch (e) {
+                console.debug('[Cosmo WebSpeech error]:', e);
+            }
+        }
+
+        if (this.mascot && typeof this.mascot.playVoice === 'function') {
+            this.mascot.playVoice('post_scan_8', true);
+        }
+        this.stopSpeaking();
+    }
+
+    stopSpeaking() {
+        if (this.currentSpeechAudio) {
+            try {
+                this.currentSpeechAudio.pause();
+                this.currentSpeechAudio.currentTime = 0;
+            } catch (e) {}
+            this.currentSpeechAudio = null;
+        }
+
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.cancel();
+            } catch (e) {}
+        }
+
+        if (this.currentSpeakingBtn) {
+            this.currentSpeakingBtn.classList.remove('is-speaking');
+            this.currentSpeakingBtn.innerHTML = `<span class="material-symbols-outlined">volume_up</span> Озвучить`;
+            this.currentSpeakingBtn = null;
+        }
+
+        if (this.mascot && typeof this.mascot.setState === 'function' && this.isOpen) {
+            this.mascot.setState('idle');
+        }
     }
 }
