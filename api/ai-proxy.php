@@ -220,8 +220,12 @@ function ai_curl_request($url, $payloadJson, $apiKey, $timeout)
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 AURORA-Cosmo-AI/4.23.1',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
+            'Accept: application/json',
             'Authorization: Bearer ' . $apiKey
         ]
     ]);
@@ -232,13 +236,26 @@ function ai_curl_request($url, $payloadJson, $apiKey, $timeout)
     return [$httpCode, $response, $curlErr];
 }
 
-// CORS не нужен: эндпоинт вызывается с того же происхождения.
-// Защита от прямого встраивания: только POST/GET, без сторонних Origin.
+// ---------------------------------------------------------------------------
+// 0b. CORS & Preflight Headers
+// ---------------------------------------------------------------------------
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Защита от прямого встраивания со сторонних недоверенных доменов
 if (isset($_SERVER['HTTP_ORIGIN'])) {
-    $origin = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
-    $self   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
-    if ($origin && $self && strcasecmp($origin, (string)$self) !== 0) {
-        ai_error('Запросы с чужих доменов запрещены.', 403);
+    $originHost = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
+    $selfHost   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
+    $localHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
+    $isLocal = in_array($originHost, $localHosts, true) || in_array($selfHost, $localHosts, true);
+    if ($originHost && $selfHost && strcasecmp($originHost, (string)$selfHost) !== 0 && !$isLocal) {
+        ai_error('Запросы со сторонних доменов запрещены.', 403);
     }
 }
 
@@ -401,6 +418,15 @@ $payload = [
     'temperature' => $temperature,
     'stream'      => false
 ];
+if (isset($data['top_p'])) {
+    $payload['top_p'] = min(max(0.0, (float)$data['top_p']), 1.0);
+}
+if (isset($data['frequency_penalty'])) {
+    $payload['frequency_penalty'] = min(max(-2.0, (float)$data['frequency_penalty']), 2.0);
+}
+if (isset($data['presence_penalty'])) {
+    $payload['presence_penalty'] = min(max(-2.0, (float)$data['presence_penalty']), 2.0);
+}
 
 $payloadJson  = json_encode($payload, JSON_UNESCAPED_UNICODE);
 $keysCount    = count($validKeys);

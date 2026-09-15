@@ -28,8 +28,8 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.0';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.23.0';
+import { resolveApiUrl } from './api.js?v=4.23.1';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.23.1';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -38,97 +38,97 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.23.0',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.23.0',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.23.0',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.23.0',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.23.0',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.23.0',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.23.0'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.23.1',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.23.1',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.23.1',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.23.1',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.23.1',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.23.1',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.23.1'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.23.0',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.23.0',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.23.0',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.23.0',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.23.0',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.23.0',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.23.0',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.23.0',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.23.0',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.23.0',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.23.1',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.23.1',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.23.1',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.23.1',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.23.1',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.23.1',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.23.1',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.23.1',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.23.1',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.23.1',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.23.0',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.23.0',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.23.0',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.23.0',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.23.0',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.23.0',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.23.0',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.23.0',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.23.0',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.23.1',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.23.1',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.23.1',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.23.1',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.23.1',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.23.1',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.23.1',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.23.1',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.23.1',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.23.0',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.23.0',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.23.0',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.23.0',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.23.1',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.23.1',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.23.1',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.23.1',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.23.0',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.23.0',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.23.0',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.23.1',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.23.1',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.23.1',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.23.0',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.23.0',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.23.0',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.23.1',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.23.1',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.23.1',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.23.0',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.23.0',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.23.0',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.23.0',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.23.0',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.23.0',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.23.0',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.23.0',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.23.0',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.23.0',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.23.0',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.23.0',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.23.0',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.23.0',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.23.0',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.23.0',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.23.0',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.23.0',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.23.0',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.23.0',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.23.1',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.23.1',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.23.1',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.23.1',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.23.1',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.23.1',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.23.1',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.23.1',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.23.1',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.23.1',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.23.1',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.23.1',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.23.1',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.23.1',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.23.1',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.23.1',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.23.1',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.23.1',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.23.1',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.23.1',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.23.0',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.23.0',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.23.0',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.23.1',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.23.1',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.23.1',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.23.0',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.23.0',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.23.0',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.23.1',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.23.1',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.23.1',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.23.0',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.23.0',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.23.1',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.23.1',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.23.0',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.23.0',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.23.0',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.23.0'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.23.1',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.23.1',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.23.1',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.23.1'
 };
 
 const MOOD_EMOJIS = {
@@ -819,6 +819,7 @@ export class AuroraMascot {
 
             <!-- Корпус Космо: drag & drop, 2.5D трекинг, моушен-слои -->
             <div class="mascot-body-wrapper" data-mascot-body title="Космо: зажми ЛКМ для переноса, клик — эмоция, двойной клик — чат с Космо!">
+                <button type="button" class="mascot-direct-chat-btn" title="Открыть диалог с Космо (двойной клик по роботу)" data-mascot-open-chat>💬 Чат</button>
                 <button type="button" class="mascot-toggle-btn" title="Свернуть Космо" data-mascot-collapse>&minus;</button>
                 
                 <div class="mascot-floater" data-mascot-floater>
@@ -1129,6 +1130,7 @@ export class AuroraMascot {
 
         // Клик по роботу: одиночный — тычок и реплика, двойной — открытие чата с Космо
         this.bodyEl.addEventListener('click', (e) => {
+            if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-mascot-open-chat]')) return;
             e.stopPropagation();
             if (this.isDragging) return;
             if (this.isSleeping) {
@@ -1142,16 +1144,17 @@ export class AuroraMascot {
                 this.clickTimeout = null;
                 this.openCosmoChat();
             } else {
-                // Первый клик: ждём 280мс, если второго клика нет — выполняем тычок
+                // Первый клик: ждём 380мс, если второго клика нет — выполняем тычок
                 this.clickTimeout = setTimeout(() => {
                     this.clickTimeout = null;
                     if (!this.isDragging) this.triggerPokeSquish();
-                }, 280);
+                }, 380);
             }
         });
 
         // Нативный двойной клик по роботу — гарантированное открытие чата
         this.bodyEl.addEventListener('dblclick', (e) => {
+            if (e.target.closest('[data-mascot-collapse]')) return;
             e.preventDefault();
             e.stopPropagation();
             if (this.clickTimeout) {
@@ -1161,14 +1164,17 @@ export class AuroraMascot {
             this.openCosmoChat();
         });
 
-        // Кнопка открытия полноценного чата с Космо в шапке облачка
-        const openChatBtn = this.container.querySelector('[data-mascot-open-chat]');
-        if (openChatBtn) {
-            openChatBtn.addEventListener('click', (e) => {
+        // Кнопки открытия полноценного чата с Космо (в шапке облачка и плавающий бейдж)
+        this.container.querySelectorAll('[data-mascot-open-chat]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (this.clickTimeout) {
+                    clearTimeout(this.clickTimeout);
+                    this.clickTimeout = null;
+                }
                 this.openCosmoChat();
             });
-        }
+        });
 
         // Переключатель режима «работа / развлечение»
         this.modeToggleBtn = this.container.querySelector('[data-mascot-mode]');
@@ -1259,7 +1265,7 @@ export class AuroraMascot {
                         }
                     }
                 } else if (query) {
-                    this.askAiThrifty(query);
+                    this.openCosmoChat(query);
                 }
             });
         }
@@ -1301,7 +1307,7 @@ export class AuroraMascot {
                 const val = (this.aiInputEl.value || '').trim();
                 if (!val || this.isAiLoading) return;
                 this.aiInputEl.value = '';
-                this.askAiThrifty(val);
+                this.openCosmoChat(val);
             };
 
             this.aiSendBtnEl.addEventListener('click', (e) => {
@@ -1345,10 +1351,12 @@ export class AuroraMascot {
 
         const onStart = (e) => {
             if (e.button !== undefined && e.button !== 0) return; // Только ЛКМ
-            if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-bubble-close]') || e.target.closest('[data-mascot-sound]')) return;
+            if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-bubble-close]') || e.target.closest('[data-mascot-sound]') || e.target.closest('[data-mascot-open-chat]')) return;
 
-            // Блокируем нативный драг картинок браузером и выделение текста!
-            e.preventDefault();
+            // Для тач-устройств предотвращаем прокрутку страницы во время драга
+            if (e.type === 'touchstart' && e.cancelable) {
+                e.preventDefault();
+            }
 
             // Новая сессия драга: гасим активный CSS-переход (например, возврат на базу),
             // чтобы контейнер не «уезжал» из-под курсора во время перетаскивания

@@ -49,14 +49,26 @@ function tts_error($msg, $code = 400, $extra = [])
     tts_json_response(array_merge(['error' => ['error_code' => $code, 'error_msg' => $msg]], $extra), $code);
 }
 
-// CORS не нужен: эндпоинт вызывается с того же происхождения.
-// Защита от прямого встраивания: только GET/POST без сторонних Origin
-// (аналогично api/ai-proxy.php).
+// ---------------------------------------------------------------------------
+// 1a. CORS & Preflight Headers
+// ---------------------------------------------------------------------------
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Защита от прямого встраивания со сторонних недоверенных доменов
 if (isset($_SERVER['HTTP_ORIGIN'])) {
-    $origin = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
-    $self   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
-    if ($origin && $self && strcasecmp($origin, (string)$self) !== 0) {
-        tts_error('Запросы с чужих доменов запрещены.', 403);
+    $originHost = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
+    $selfHost   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
+    $localHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
+    $isLocal = in_array($originHost, $localHosts, true) || in_array($selfHost, $localHosts, true);
+    if ($originHost && $selfHost && strcasecmp($originHost, (string)$selfHost) !== 0 && !$isLocal) {
+        tts_error('Запросы со сторонних доменов запрещены.', 403);
     }
 }
 

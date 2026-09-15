@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.0';
+import { resolveApiUrl } from './api.js?v=4.23.1';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -78,7 +78,7 @@ function mdInline(s) {
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
         const escaped = code.replace(/:/g, ':');
         // Replace literal shortcodes with inline img elements
-        s = s.split(code).join(`<img src="${src}?v=4.23.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.23.1" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
@@ -464,7 +464,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.23.0"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.23.1"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -988,8 +988,10 @@ export class CosmoChatModal {
             if (this.inputEl) {
                 if (initialQuery) {
                     this.inputEl.value = initialQuery;
+                    this.handleSend();
+                } else {
+                    this.inputEl.focus();
                 }
-                this.inputEl.focus();
             }
         }, 150);
     }
@@ -1099,7 +1101,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.23.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.23.1" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1207,7 +1209,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.23.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.23.1" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -1229,7 +1231,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.23.0" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.23.1" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>

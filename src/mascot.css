@@ -1999,6 +1999,57 @@
     background: rgba(251, 191, 36, 0.18);
 }
 
+/* Кнопка чата с Космо в шапке облачка */
+.mascot-chat-toggle {
+    color: #c084fc;
+    font-size: 0.95rem;
+    margin-right: 2px;
+}
+
+.mascot-chat-toggle:hover {
+    color: #f472b6;
+    background: rgba(192, 132, 252, 0.2);
+}
+
+/* Прямая кнопка быстрого вызова чата над Космо */
+.mascot-direct-chat-btn {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.9), rgba(59, 130, 246, 0.9));
+    border: 1px solid rgba(192, 132, 252, 0.6);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.mascot-direct-chat-btn:hover {
+    transform: translateX(-50%) scale(1.08);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.95), rgba(0, 240, 255, 0.95));
+    box-shadow: 0 6px 16px rgba(192, 132, 252, 0.6);
+}
+
+.mascot-direct-chat-btn:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+[data-theme="light"] .mascot-direct-chat-btn {
+    background: linear-gradient(135deg, #9333ea, #2563eb);
+    color: #ffffff;
+    border-color: #a855f7;
+    box-shadow: 0 4px 10px rgba(147, 51, 234, 0.25);
+}
+
 /* 7. Плавный патруль без задержек CSS-переходов */
 .aurora-mascot-container.is-patrolling {
     transition: none !important;
