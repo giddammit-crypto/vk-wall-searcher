@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.7",
+    "version": "4.24.0",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T17:05:00+03:00",
-    "release_name": "AURORA 4.23.7 — Полноэкранный адаптивный мобильный чат с Космо и фиксация маскота на смартфонах"
+    "commit_date": "2026-09-15T19:35:00+03:00",
+    "release_name": "AURORA 4.24.0 — Идеальная мобильная адаптивность, QR Плакат А4 (без &), промо-ролик Космо 35 сек в стиле Pixar"
 }

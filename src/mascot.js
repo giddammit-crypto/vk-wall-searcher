@@ -29,7 +29,7 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.23.2';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.23.2';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.24.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -1140,13 +1140,24 @@ export class AuroraMascot {
             window.addEventListener(evt, this.onUserActivity, { passive: true });
         });
 
-        // Клик по роботу: одиночный — тычок и реплика, двойной — открытие чата с Космо
+        // Клик по роботу: на мобильных устройствах одиночный тап сразу открывает чат с Космо;
+        // на ПК: одиночный — тычок и реплика, двойной — открытие чата с Космо
         this.bodyEl.addEventListener('click', (e) => {
             if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-mascot-open-chat]')) return;
             e.stopPropagation();
             if (this.isDragging) return;
             if (this.isSleeping) {
                 this.wakeUp();
+                return;
+            }
+
+            const isMobile = window.innerWidth <= 768 || window.matchMedia('(pointer: coarse)').matches;
+            if (isMobile) {
+                if (this.clickTimeout) {
+                    clearTimeout(this.clickTimeout);
+                    this.clickTimeout = null;
+                }
+                this.openCosmoChat();
                 return;
             }
 

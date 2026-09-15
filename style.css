@@ -8359,10 +8359,25 @@ textarea:focus-visible,
    ========================================================================== */
 .sheet-a4 {
     width: 100%;
-    max-width: 480px;
+    max-width: 470px;
+    aspect-ratio: 210 / 297;
+    height: auto;
     margin: 0 auto;
     padding: 24px 22px 20px;
     text-align: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.sheet-a4 .poster-sheet-inner {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
 }
 
 .poster-identity-bar {

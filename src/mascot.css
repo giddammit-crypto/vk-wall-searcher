@@ -2528,6 +2528,23 @@
     transform: scale(1.08);
 }
 
+/* Бэкдроп под поповером пресетов */
+.cosmo-chat-presets-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 39;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+}
+.cosmo-chat-presets-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 /* Всплывающий поповер с 10 пресетами анализа групп ВК */
 .cosmo-chat-presets-popover {
     position: absolute;
@@ -2569,8 +2586,18 @@
 .popover-title-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
     flex-shrink: 0;
+}
+.popover-title-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.popover-title-text {
+    display: flex;
+    flex-direction: column;
 }
 .popover-title-icon {
     font-size: 26px;
@@ -4340,26 +4367,61 @@
 
     /* 6. Быстрые пресеты и чипы-подсказки над вводом */
     .cosmo-chat-quick-presets-bar {
-        padding: 3px 8px 1px 8px !important;
+        padding: 4px 8px 2px 8px !important;
         background: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .cosmo-chat-quick-presets-pill {
         width: 100% !important;
-        height: 30px !important;
-        border-radius: 15px !important;
+        max-width: 100% !important;
+        height: 32px !important;
+        border-radius: 16px !important;
         font-size: 12px !important;
         padding: 0 10px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        background: rgba(38, 136, 235, 0.12) !important;
-        border: 1px solid rgba(38, 136, 235, 0.22) !important;
+        gap: 6px !important;
+        background: rgba(38, 136, 235, 0.14) !important;
+        border: 1px solid rgba(38, 136, 235, 0.28) !important;
         color: #529ef4 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    .cosmo-chat-quick-presets-pill .pill-bolt {
+        font-size: 16px !important;
+        color: #fbbf24 !important;
+        flex-shrink: 0 !important;
+    }
+    .cosmo-chat-quick-presets-pill .pill-text {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        font-weight: 600 !important;
+        flex: 1 1 auto !important;
+        text-align: left !important;
+        min-width: 0 !important;
+    }
+    .cosmo-chat-quick-presets-pill .pill-count {
+        flex-shrink: 0 !important;
+        padding: 1px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+        background: #ec4899 !important;
+        color: #ffffff !important;
+    }
+    .cosmo-chat-quick-presets-pill .pill-arrow {
+        font-size: 16px !important;
+        color: #94a3b8 !important;
+        flex-shrink: 0 !important;
     }
     [data-theme="light"] .cosmo-chat-quick-presets-pill {
         background: rgba(38, 136, 235, 0.08) !important;
         color: #2688eb !important;
-        border-color: rgba(38, 136, 235, 0.18) !important;
+        border-color: rgba(38, 136, 235, 0.22) !important;
     }
 
     .cosmo-chat-chips {
@@ -4369,19 +4431,31 @@
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
         scrollbar-width: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .cosmo-chat-chips::-webkit-scrollbar {
         display: none !important;
     }
     .cosmo-chip {
         font-size: 12px !important;
-        padding: 5px 10px !important;
-        border-radius: 14px !important;
+        padding: 6px 12px !important;
+        border-radius: 16px !important;
         white-space: nowrap !important;
         flex-shrink: 0 !important;
-        background: rgba(255, 255, 255, 0.06) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        min-height: 30px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
         color: #e1e3e6 !important;
+        box-sizing: border-box !important;
+        transition: transform 0.15s ease, background 0.15s ease !important;
+    }
+    .cosmo-chip:active {
+        transform: scale(0.95) !important;
     }
     [data-theme="light"] .cosmo-chip {
         background: #ffffff !important;
@@ -4528,83 +4602,282 @@
         margin-left: 2px !important;
     }
 
-    /* 8. Всплывающий поповер пресетов как VK BottomSheet */
+    /* 8. Всплывающий поповер пресетов как VK BottomSheet (идеальная мобильная адаптивность) */
+    .cosmo-chat-presets-backdrop {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0, 0, 0, 0.68) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        z-index: 100009 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .cosmo-chat-presets-backdrop.is-open {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
     .cosmo-chat-presets-popover {
         position: fixed !important;
         inset: auto 0 0 0 !important;
         top: auto !important;
-        width: 100vw !important;
         width: 100% !important;
-        max-width: 100vw !important;
         max-width: 100% !important;
-        max-height: 84vh !important;
-        max-height: 84dvh !important;
-        border-radius: 20px 20px 0 0 !important;
+        height: auto !important;
+        max-height: 85vh !important;
+        max-height: 85dvh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 22px 22px 0 0 !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         border-bottom: none !important;
-        background: #222222 !important;
+        background: #1e2433 !important;
         color: #ffffff !important;
-        box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.6) !important;
-        padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
-        transform: translateY(100%) !important;
+        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.8) !important;
+        padding: 8px 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+        transform: translateY(102%) !important;
         transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
         z-index: 100010 !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        overflow: hidden !important;
         box-sizing: border-box !important;
+        opacity: 1 !important;
+        pointer-events: none !important;
     }
     .cosmo-chat-presets-popover.is-open {
         transform: translateY(0) !important;
+        pointer-events: auto !important;
     }
     [data-theme="light"] .cosmo-chat-presets-popover {
         background: #ffffff !important;
-        color: #000000 !important;
-        border-color: #e1e3e6 !important;
-        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18) !important;
+        color: #0f172a !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18) !important;
     }
+
     .cosmo-chat-presets-popover::before {
         content: '' !important;
         display: block !important;
-        width: 36px !important;
-        height: 4px !important;
-        border-radius: 2px !important;
-        background: rgba(128, 128, 128, 0.35) !important;
-        margin: 0 auto 12px auto !important;
+        width: 44px !important;
+        height: 5px !important;
+        border-radius: 3px !important;
+        background: rgba(255, 255, 255, 0.24) !important;
+        margin: 4px auto 10px auto !important;
+        flex-shrink: 0 !important;
     }
+    [data-theme="light"] .cosmo-chat-presets-popover::before {
+        background: rgba(0, 0, 0, 0.22) !important;
+    }
+
     .presets-popover-header {
+        display: flex !important;
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 10px !important;
-        margin-bottom: 12px !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 8px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        flex-shrink: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
+    [data-theme="light"] .presets-popover-header {
+        border-bottom-color: #e2e8f0 !important;
+    }
+
     .popover-title-row {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
+        width: 100% !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+    }
+    .popover-title-meta {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+    .popover-title-icon {
+        font-size: 24px !important;
+        color: #00f0ff !important;
+        flex-shrink: 0 !important;
+    }
+    .popover-title-text {
+        display: flex !important;
+        flex-direction: column !important;
+        min-width: 0 !important;
     }
     .popover-title {
-        font-size: 14px !important;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #ffffff !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.25 !important;
+        margin: 0 !important;
+    }
+    [data-theme="light"] .popover-title {
+        color: #0f172a !important;
     }
     .popover-subtitle {
-        font-size: 11.5px !important;
+        font-size: 11px !important;
+        color: #94a3b8 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.25 !important;
+        margin: 2px 0 0 0 !important;
     }
+
+    .presets-popover-close {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        border-radius: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        flex-shrink: 0 !important;
+        cursor: pointer !important;
+        transition: transform 0.15s ease !important;
+    }
+    .presets-popover-close:active {
+        transform: scale(0.92) !important;
+    }
+    [data-theme="light"] .presets-popover-close {
+        background: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #334155 !important;
+    }
+
     .presets-search-wrap {
         width: 100% !important;
+        max-width: 100% !important;
         margin: 0 !important;
-        order: 3 !important;
+        flex: 0 0 auto !important;
+        box-sizing: border-box !important;
     }
     .presets-search-input {
-        height: 38px !important;
-        font-size: 14px !important;
+        width: 100% !important;
+        height: 36px !important;
+        font-size: 13px !important;
         border-radius: 10px !important;
+        padding-left: 36px !important;
+        padding-right: 12px !important;
+        box-sizing: border-box !important;
+        background: rgba(15, 23, 42, 0.75) !important;
+        border: 1px solid rgba(0, 240, 255, 0.28) !important;
+        color: #ffffff !important;
     }
+    [data-theme="light"] .presets-search-input {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+    }
+
+    /* Полноразмерный адаптивный список пресетов: плавная прокрутка, крупные карточки */
     .presets-grid {
-        grid-template-columns: 1fr !important;
-        gap: 8px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        padding: 4px 2px 16px 2px !important;
+        box-sizing: border-box !important;
+        scrollbar-width: thin !important;
     }
+
     .preset-card {
-        padding: 10px 12px !important;
-        border-radius: 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 12px 14px !important;
+        border-radius: 14px !important;
+        background: rgba(30, 41, 59, 0.82) !important;
+        border: 1px solid rgba(0, 240, 255, 0.22) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        text-align: left !important;
+        cursor: pointer !important;
+        min-height: 74px !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+        transition: transform 0.15s ease, border-color 0.15s ease !important;
+    }
+    .preset-card:active {
+        transform: scale(0.985) !important;
+        border-color: #00f0ff !important;
+    }
+    [data-theme="light"] .preset-card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    .preset-card-top {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        margin-bottom: 6px !important;
+    }
+    .preset-icon {
+        font-size: 22px !important;
+        color: #00f0ff !important;
+        flex-shrink: 0 !important;
+    }
+    .preset-badge {
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        background: rgba(0, 240, 255, 0.15) !important;
+        border: 1px solid rgba(0, 240, 255, 0.35) !important;
+        color: #38bdf8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+    }
+    [data-theme="light"] .preset-badge {
+        background: rgba(38, 136, 235, 0.1) !important;
+        border-color: rgba(38, 136, 235, 0.25) !important;
+        color: #2688eb !important;
+    }
+
+    .preset-title {
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        line-height: 1.3 !important;
+        margin-bottom: 4px !important;
+        word-break: break-word !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    [data-theme="light"] .preset-title {
+        color: #0f172a !important;
+    }
+
+    .preset-desc {
+        font-size: 12.5px !important;
+        color: #94a3b8 !important;
+        line-height: 1.38 !important;
+        word-break: break-word !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    [data-theme="light"] .preset-desc {
+        color: #64748b !important;
     }
 }
 

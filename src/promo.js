@@ -40,7 +40,7 @@ export const PROMO_TEMPLATES = [
     },
     {
         id: 'bauhaus',
-        name: 'Баухаус & Авангард',
+        name: 'Баухаус И Авангард',
         category: 'Авангард',
         description: 'Архитектурная геометрия Дессау, чистый белый фон, терракота, тёплая охра и плотная типографика',
         swatches: ['#ffffff', '#c2410c', '#1e293b'],
@@ -88,7 +88,7 @@ export const PROMO_TEMPLATES = [
     },
     {
         id: 'botanical',
-        name: 'Эко-библиотека & Природа',
+        name: 'Эко-библиотека И Природа',
         category: 'Экология',
         description: 'Биофильный дизайн: чистый белый фон, хвоя, лесной мох и гармония природного чтения',
         swatches: ['#ffffff', '#9d174d', '#3b0a24'],
@@ -136,7 +136,7 @@ export const PROMO_TEMPLATES = [
     },
     {
         id: 'kids',
-        name: 'Детство & Семейное чтение',
+        name: 'Детство И Семейное чтение',
         category: 'Детство',
         description: 'Чистый белый фон, солнечный мандариновый янтарь, лазурное небо и мягкие формы',
         swatches: ['#ffffff', '#ea580c', '#0284c7'],
@@ -152,7 +152,7 @@ export const PROMO_TEMPLATES = [
     },
     {
         id: 'neo',
-        name: 'Цифровая лаборатория & Медиахаб',
+        name: 'Цифровая лаборатория И Медиахаб',
         category: 'Технологии',
         description: 'Чистый белый фон, высокотехнологичный ультрамарин, лазурный циан, моноширинные теги [ LAB ] и технологичный драйв',
         swatches: ['#ffffff', '#0284c7', '#2563eb'],
@@ -168,7 +168,7 @@ export const PROMO_TEMPLATES = [
     },
     {
         id: 'poetry',
-        name: 'Арт-резиденция & Креатив',
+        name: 'Арт-резиденция И Креатив',
         category: 'Искусство',
         description: 'Чистый белый фон, смелая маджента, чернильный индиго, тёплый шафран, творческая свобода и экспрессивный литературный стиль',
         swatches: ['#ffffff', '#be185d', '#1e1b4b'],
@@ -537,7 +537,7 @@ export function initPromoModal() {
                                     <span class="p-card-num">01</span>
                                     <span class="p-card-icon">📖</span>
                                 </div>
-                                <h3 class="p-card-title">Книжный фонд & Новинки</h3>
+                                <h3 class="p-card-title">Книжный фонд И Новинки</h3>
                                 <p class="p-card-desc">Актуальные бестселлеры, классика, периодика и редкие краеведческие издания</p>
                             </div>
                             <div class="p-card">
@@ -545,7 +545,7 @@ export function initPromoModal() {
                                     <span class="p-card-num">02</span>
                                     <span class="p-card-icon">🎨</span>
                                 </div>
-                                <h3 class="p-card-title">Мастер-классы & Клубы</h3>
+                                <h3 class="p-card-title">Мастер-классы И Клубы</h3>
                                 <p class="p-card-desc">Интеллектуальные лектории, выставки, творческие встречи и клубы по интересам</p>
                             </div>
                             <div class="p-card">
@@ -553,7 +553,7 @@ export function initPromoModal() {
                                     <span class="p-card-num">03</span>
                                     <span class="p-card-icon">📸</span>
                                 </div>
-                                <h3 class="p-card-title">Анонсы событий & Фото</h3>
+                                <h3 class="p-card-title">Анонсы событий И Фото</h3>
                                 <p class="p-card-desc">Афиша мероприятий, продление изданий онлайн и яркие фотоотчёты встреч</p>
                             </div>
                         </section>
@@ -1412,8 +1412,10 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 align-items: center;
             }
             .print-a4-container {
-                height: 100%;
-                width: 100%;
+                height: 275mm;
+                max-height: 275mm;
+                width: 186mm;
+                max-width: 186mm;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
@@ -1635,7 +1637,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                             <span class="a4-card-num">01</span>
                             <span class="a4-card-ico">📖</span>
                         </div>
-                        <div class="a4-card-title">Книжный фонд & Новинки</div>
+                        <div class="a4-card-title">Книжный фонд И Новинки</div>
                         <p class="a4-card-desc">Актуальные бестселлеры, классика, периодика и редкие краеведческие издания</p>
                     </div>
                     <div class="a4-card">
@@ -1643,7 +1645,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                             <span class="a4-card-num">02</span>
                             <span class="a4-card-ico">🎨</span>
                         </div>
-                        <div class="a4-card-title">Мастер-классы & Клубы</div>
+                        <div class="a4-card-title">Мастер-классы И Клубы</div>
                         <p class="a4-card-desc">Интеллектуальные лектории, выставки, творческие встречи и клубы по интересам</p>
                     </div>
                     <div class="a4-card">
@@ -1651,7 +1653,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                             <span class="a4-card-num">03</span>
                             <span class="a4-card-ico">📸</span>
                         </div>
-                        <div class="a4-card-title">Анонсы событий & Фото</div>
+                        <div class="a4-card-title">Анонсы событий И Фото</div>
                         <p class="a4-card-desc">Афиша мероприятий, продление изданий онлайн и яркие фотоотчёты встреч</p>
                     </div>
                 </div>

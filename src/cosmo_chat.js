@@ -505,25 +505,28 @@ export class CosmoChatModal {
                 </div>
 
                 <!-- Всплывающий поповер с 10 пресетами анализа групп ВК -->
+                <div class="cosmo-chat-presets-backdrop" data-chat-presets-backdrop aria-hidden="true"></div>
                 <div class="cosmo-chat-presets-popover" data-chat-presets-popover aria-hidden="true">
                     <div class="presets-popover-header">
                         <div class="popover-title-row">
-                            <span class="material-symbols-outlined popover-title-icon">auto_graph</span>
-                            <div>
-                                <h4 class="popover-title">ПРЕСЕТЫ АНАЛИЗА ГРУПП ВК</h4>
-                                <p class="popover-subtitle">10 готовых сценариев аудита на основе реального сканирования стены</p>
+                            <div class="popover-title-meta">
+                                <span class="material-symbols-outlined popover-title-icon">auto_graph</span>
+                                <div class="popover-title-text">
+                                    <h4 class="popover-title">ПРЕСЕТЫ АНАЛИЗА ГРУПП ВК</h4>
+                                    <p class="popover-subtitle">10 готовых сценариев аудита на основе реального сканирования стены</p>
+                                </div>
                             </div>
+                            <button type="button" class="presets-popover-close" data-chat-presets-close title="Закрыть пресеты (Esc)">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
                         </div>
                         <div class="presets-search-wrap">
                             <span class="material-symbols-outlined search-icon">search</span>
                             <input type="search"
                                    class="presets-search-input"
                                    data-presets-search
-                                   placeholder="Быстрый поиск по 10 пресетам (например: вирус, ER, методист, визуал)..." />
+                                   placeholder="Быстрый поиск по 10 пресетам (вирус, ER, методист, визуал)..." />
                         </div>
-                        <button type="button" class="presets-popover-close" data-chat-presets-close title="Закрыть пресеты (Esc)">
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
                     </div>
                     <div class="presets-grid" data-presets-grid>
                         ${VK_GROUP_PRESETS.map(p => `
@@ -666,6 +669,14 @@ export class CosmoChatModal {
         const closePresetsBtn = this.overlayEl.querySelector('[data-chat-presets-close]');
         if (closePresetsBtn) {
             closePresetsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closePresetsPopover();
+            });
+        }
+
+        const presetsBackdrop = this.overlayEl.querySelector('[data-chat-presets-backdrop]');
+        if (presetsBackdrop) {
+            presetsBackdrop.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.closePresetsPopover();
             });
@@ -1047,11 +1058,17 @@ export class CosmoChatModal {
         this.isPresetsOpen = true;
         this.presetsPopoverEl.classList.add('is-open');
         this.presetsPopoverEl.setAttribute('aria-hidden', 'false');
+        const backdrop = this.overlayEl?.querySelector('[data-chat-presets-backdrop]');
+        if (backdrop) {
+            backdrop.classList.add('is-open');
+            backdrop.setAttribute('aria-hidden', 'false');
+        }
         if (this.presetsBtnEl) this.presetsBtnEl.classList.add('is-active');
 
-        // Фокусируем строку поиска пресетов для быстрого ввода
+        // Фокусируем строку поиска пресетов для быстрого ввода (на ПК)
+        const isTouch = window.innerWidth <= 768 || window.matchMedia('(pointer: coarse)').matches;
         const searchInput = this.presetsPopoverEl.querySelector('[data-presets-search]');
-        if (searchInput) {
+        if (searchInput && !isTouch) {
             setTimeout(() => searchInput.focus(), 120);
         }
 
@@ -1066,6 +1083,11 @@ export class CosmoChatModal {
         this.isPresetsOpen = false;
         this.presetsPopoverEl.classList.remove('is-open');
         this.presetsPopoverEl.setAttribute('aria-hidden', 'true');
+        const backdrop = this.overlayEl?.querySelector('[data-chat-presets-backdrop]');
+        if (backdrop) {
+            backdrop.classList.remove('is-open');
+            backdrop.setAttribute('aria-hidden', 'true');
+        }
         if (this.presetsBtnEl) this.presetsBtnEl.classList.remove('is-active');
     }
 
