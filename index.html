@@ -31,13 +31,13 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=4.18.4">
-    <link rel="stylesheet" href="src/iss_hud.css?v=4.18.4">
-    <link rel="stylesheet" href="src/space_ui.css?v=4.18.4">
-    <link rel="stylesheet" href="src/warp_hud.css?v=4.18.4">
-    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.18.4">
-    <link rel="stylesheet" href="src/space_cinematic.css?v=4.18.4">
-    <link rel="stylesheet" href="src/mascot.css?v=4.18.4">
+    <link rel="stylesheet" href="style.css?v=4.18.5">
+    <link rel="stylesheet" href="src/iss_hud.css?v=4.18.5">
+    <link rel="stylesheet" href="src/space_ui.css?v=4.18.5">
+    <link rel="stylesheet" href="src/warp_hud.css?v=4.18.5">
+    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.18.5">
+    <link rel="stylesheet" href="src/space_cinematic.css?v=4.18.5">
+    <link rel="stylesheet" href="src/mascot.css?v=4.18.5">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -142,6 +142,10 @@
                 <button id="help-btn" class="btn btn-tonal" title="Справка по сервису">
                     <span class="material-symbols-outlined icon">help</span>
                     <span class="settings-btn-text">Справка</span>
+                </button>
+                <button type="button" id="video-help-btn" class="btn btn-tonal" title="Видео-справка: Космо рассказывает о возможностях AURORA">
+                    <span class="material-symbols-outlined icon">play_circle</span>
+                    <span class="settings-btn-text">Видео-справка</span>
                 </button>
                 <button id="space-3d-btn" class="btn btn-secondary space-mode-trigger" title="Интерактивное космическое 3D-пространство 360°">
                     <span class="material-symbols-outlined icon">orbit</span>
@@ -1533,7 +1537,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.18.4"></script>
+    <script type="module" src="src/app.js?v=4.18.5"></script>
 
     <script>
     /* =============================================================
@@ -1810,6 +1814,90 @@
             </div><!-- /.help-body -->
         </div><!-- /.help-card -->
     </div><!-- /#help-modal -->
+
+    <!-- Video Help Modal (AURORA Cosmo Guide) -->
+    <div id="video-help-modal" class="video-help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="video-help-title">
+        <div class="video-help-card">
+            <div class="video-help-topbar">
+                <div class="video-help-title-wrap">
+                    <span class="material-symbols-outlined video-help-title-icon">smart_toy</span>
+                    <div>
+                        <h2 id="video-help-title" class="video-help-title">Космо-Гид: Возможности AURORA</h2>
+                        <p class="video-help-subtitle">Видеоролик о системе и возможностях робота Космо &bull; 25 секунд</p>
+                    </div>
+                </div>
+                <button class="pm-close-btn" id="video-help-close-btn" aria-label="Закрыть видео">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="video-help-body">
+                <div class="video-player-wrapper">
+                    <video id="aurora-guide-video" controls playsinline preload="metadata" poster="assets/screenshots/hero_banner.png?v=4.18.5">
+                        <source src="assets/video/aurora_cosmo_guide.mp4?v=4.18.5" type="video/mp4">
+                        Ваш браузер не поддерживает воспроизведение видео.
+                    </video>
+                </div>
+                <div class="video-help-footer">
+                    <div class="video-help-pills">
+                        <span class="video-pill">⚡ 16 библиотек</span>
+                        <span class="video-pill">📊 Рейтинг ER</span>
+                        <span class="video-pill">✍️ ИИ-генерация</span>
+                        <span class="video-pill">🤖 Голос: ElevenLabs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* Video Help Modal */
+    (function() {
+        const modal    = document.getElementById('video-help-modal');
+        const openBtn  = document.getElementById('video-help-btn');
+        const closeBtn = document.getElementById('video-help-close-btn');
+        const video    = document.getElementById('aurora-guide-video');
+
+        function openVideo() {
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('video-open');
+            document.body.style.overflow = 'hidden';
+            if (video) {
+                video.currentTime = 0;
+                video.play().catch(() => {});
+            }
+        }
+
+        function closeVideo() {
+            if (!modal) return;
+            modal.classList.remove('video-open');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            if (video) {
+                video.pause();
+            }
+        }
+
+        if (openBtn) openBtn.addEventListener('click', openVideo);
+        if (closeBtn) closeBtn.addEventListener('click', closeVideo);
+        if (modal) {
+            modal.addEventListener('click', e => {
+                if (e.target === modal) closeVideo();
+            });
+        }
+        document.addEventListener('keydown', e => {
+            const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) ||
+                              document.activeElement?.isContentEditable;
+            if (e.key === 'Escape' && modal && modal.classList.contains('video-open')) {
+                closeVideo();
+            } else if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')) {
+                if (modal && !modal.classList.contains('video-open')) {
+                    openVideo();
+                }
+            }
+        });
+    })();
+    </script>
 
     <script>
     /* Help Modal */

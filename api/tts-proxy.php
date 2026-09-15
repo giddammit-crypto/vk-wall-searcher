@@ -61,6 +61,26 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
 }
 
 // ---------------------------------------------------------------------------
+// 1б. Отдача готового аудио через PHP (?audio=хэш).
+// Статическая отдача из cache/ ненадёжна: AddDefaultCharset и настройки
+// хостинга могут отдавать mp3 с неверным Content-Type. Здесь заголовки
+// контролирует PHP — браузер всегда получает корректный audio/mpeg.
+// ---------------------------------------------------------------------------
+if (isset($_GET['audio'])) {
+    $ttsHash = preg_replace('/[^a-f0-9]/', '', (string)$_GET['audio']);
+    $ttsFile = dirname(__DIR__) . '/cache/tts/' . $ttsHash . '.mp3';
+    if ($ttsHash === '' || !is_file($ttsFile) || filesize($ttsFile) < 1024) {
+        tts_error('Аудио не найдено в кэше.', 404);
+    }
+    header('Content-Type: audio/mpeg');
+    header('Content-Length: ' . filesize($ttsFile));
+    header('Cache-Control: public, max-age=604800');
+    header('Accept-Ranges: bytes');
+    readfile($ttsFile);
+    exit;
+}
+
+// ---------------------------------------------------------------------------
 // 1a. Простой файловый rate-limit (cache/tts_rate.json, часовые интервалы)
 // ---------------------------------------------------------------------------
 /** IP клиента: учитываем прокси (X-Forwarded-For), иначе REMOTE_ADDR */
@@ -192,7 +212,8 @@ if (!is_dir($cacheDir)) {
 $seed = !empty($cacheKey) ? $cacheKey : $speechText;
 $fileHash = md5($seed . '_' . $voiceId . '_pitch1.24');
 $cacheFilePath = $cacheDir . '/' . $fileHash . '.mp3';
-$publicUrl = 'cache/tts/' . $fileHash . '.mp3';
+// Относительная ссылка на этот же скрипт: клиент резолвит её от адреса прокси
+$publicUrl = '?audio=' . $fileHash;
 
 if (file_exists($cacheFilePath) && filesize($cacheFilePath) > 1024) {
     tts_json_response([

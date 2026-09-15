@@ -1,5 +1,5 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.4)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.5)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.18.4';
+import { resolveApiUrl } from './api.js?v=4.18.5';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -37,97 +37,97 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.18.4',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.18.4',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.4',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.4',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.18.4',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.4',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.18.4'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.18.5',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.18.5',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.5',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.5',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.18.5',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.5',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.18.5'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.4',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.4',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.4',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.4',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.4',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.4',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.4',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.4',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.4',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.4',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.5',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.5',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.5',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.5',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.5',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.5',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.5',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.5',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.5',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.5',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.4',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.4',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.4',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.4',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.4',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.4',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.4',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.4',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.4',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.5',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.5',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.5',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.5',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.5',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.5',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.5',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.5',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.5',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.4',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.4',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.4',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.4',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.5',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.5',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.5',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.5',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.4',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.4',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.4',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.5',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.5',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.5',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.4',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.4',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.4',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.5',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.5',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.5',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.4',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.4',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.4',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.4',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.4',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.4',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.4',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.4',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.4',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.4',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.4',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.4',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.4',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.4',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.4',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.4',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.4',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.4',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.4',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.4',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.5',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.5',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.5',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.5',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.5',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.5',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.5',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.5',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.5',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.5',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.5',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.5',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.5',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.5',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.5',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.5',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.5',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.5',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.5',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.5',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.4',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.4',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.4',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.5',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.5',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.5',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.4',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.4',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.4',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.5',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.5',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.5',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.4',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.4',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.5',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.5',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.4',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.4',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.4',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.4'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.5',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.5',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.5',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.5'
 };
 
 const MOOD_EMOJIS = {
@@ -2231,7 +2231,7 @@ export class AuroraMascot {
             return;
         }
 
-        const audio = new Audio(audioUrl);
+        const audio = new Audio(this.resolveTtsAudioUrl(audioUrl));
         audio.volume = 0.9;
         this.currentAudio = audio;
         this.isSpeakingAudio = true;
@@ -3220,7 +3220,7 @@ export class AuroraMascot {
                 try { this.currentAudio.pause(); } catch (e) {}
                 this.currentAudio = null;
             }
-            const audio = new Audio(data.audio_url);
+            const audio = new Audio(this.resolveTtsAudioUrl(data.audio_url));
             audio.volume = 0.9;
             this.currentAudio = audio;
             this.isSpeakingAudio = true;
@@ -3566,6 +3566,16 @@ export class AuroraMascot {
 
     truncationNote() {
         return `\n\n*⚠️ Ответ оборвался на лимите токенов — попроси Космо повторить или задай вопрос короче!*`;
+    }
+
+    /* Абсолютный путь к синтезированному аудио: относительное «?audio=хэш»
+       резолвится от адреса TTS-прокси (работает в любой поддиректории сайта) */
+    resolveTtsAudioUrl(url) {
+        try {
+            return new URL(url, TTS_PROXY_URL).href;
+        } catch (e) {
+            return url;
+        }
     }
 
     /* ---------------------------------------------------------------------

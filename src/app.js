@@ -13,17 +13,17 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.18.4';
+} from './api.js?v=4.18.5';
 
 import {
     buildBranchAdvice,
     renderAdviceTab
-} from './advice.js?v=4.18.4';
+} from './advice.js?v=4.18.5';
 
 import {
     initAiTab,
     buildAiSnapshot
-} from './ai.js?v=4.18.4';
+} from './ai.js?v=4.18.5';
 
 import {
     fetchHistory,
@@ -33,7 +33,7 @@ import {
     computeTrends,
     snapshotsFromScan,
     renderSubscribersTab
-} from './subscribers.js?v=4.18.4';
+} from './subscribers.js?v=4.18.5';
 
 import {
     fetchUpdaterStatus,
@@ -42,7 +42,7 @@ import {
     getSavedUpdateToken,
     saveUpdateToken,
     shortSha
-} from './updater.js?v=4.18.4';
+} from './updater.js?v=4.18.5';
 
 import {
     CANONICAL_BRANCHES,
@@ -53,7 +53,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.18.4';
+} from './branches.js?v=4.18.5';
 
 import {
     calculateKPIs,
@@ -62,7 +62,7 @@ import {
     renderCrossPostingSection,
     formatViews,
     extractNum
-} from './analytics.js?v=4.18.4';
+} from './analytics.js?v=4.18.5';
 
 import {
     createPostCard,
@@ -74,7 +74,7 @@ import {
     copyPostToClipboard,
     truncateToSentences,
     resolveRepostAuthor
-} from './render.js?v=4.18.4';
+} from './render.js?v=4.18.5';
 
 import {
     exportToCsv,
@@ -84,28 +84,28 @@ import {
     exportRatingToCsv,
     exportPhotosZip,
     openPrintReport
-} from './export.js?v=4.18.4';
+} from './export.js?v=4.18.5';
 
-import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.18.4';
-import { CosmicUniverse } from './cosmic.js?v=4.18.4';
+import { initTableSorting, makeTableSortable } from './tablesort.js?v=4.18.5';
+import { CosmicUniverse } from './cosmic.js?v=4.18.5';
 
 import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.18.4';
+} from './promo.js?v=4.18.5';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.18.4';
+} from './radar.js?v=4.18.5';
 
-import { Space3D } from './space3d.js?v=4.18.4';
-import { SpaceWarp } from './space_warp.js?v=4.18.4';
-import { SpaceAudio } from './space_audio.js?v=4.18.4';
-import { Mascot } from './mascot.js?v=4.18.4';
+import { Space3D } from './space3d.js?v=4.18.5';
+import { SpaceWarp } from './space_warp.js?v=4.18.5';
+import { SpaceAudio } from './space_audio.js?v=4.18.5';
+import { Mascot } from './mascot.js?v=4.18.5';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.18.4';
+export const APP_VERSION = '4.18.5';
 
 function initApp() {
 
@@ -3119,6 +3119,14 @@ function initApp() {
                 helpModal.classList.add('hidden');
                 document.body.style.overflow = '';
             }
+            const videoModal = document.getElementById('video-help-modal');
+            if (videoModal && (videoModal.classList.contains('video-open') || !videoModal.classList.contains('hidden'))) {
+                videoModal.classList.remove('video-open');
+                videoModal.classList.add('hidden');
+                document.body.style.overflow = '';
+                const v = document.getElementById('aurora-guide-video');
+                if (v) v.pause();
+            }
             return;
         }
 
@@ -3165,6 +3173,13 @@ function initApp() {
             if (e.key === '?' || e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р') {
                 const helpBtn = document.getElementById('help-btn');
                 if (helpBtn) helpBtn.click();
+                return;
+            }
+
+            // 'v' or 'V' / 'м' / 'М': Toggle Video Help
+            if (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М') {
+                const videoBtn = document.getElementById('video-help-btn');
+                if (videoBtn) videoBtn.click();
                 return;
             }
         }
