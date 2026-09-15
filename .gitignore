@@ -3,6 +3,7 @@
 *.m4a
 *.wav
 *.aac
+!assets/video/*.mp4
 video_production/raw_video/
 video_production/frames/
 video_production/new_voiceover/
