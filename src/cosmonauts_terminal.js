@@ -13,8 +13,8 @@
  * ============================================================================
  */
 
-import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.18.3';
-import { SpaceAudio } from './space_audio.js?v=4.18.3';
+import { COSMONAUTS_DATA } from './cosmonauts_data.js?v=4.18.4';
+import { SpaceAudio } from './space_audio.js?v=4.18.4';
 
 export class CosmonautsTerminalEngine {
     constructor() {
