@@ -68,6 +68,63 @@ aura_thinking_purple, _ = make_aura(cosmo_thinking.resize((410, 410), Image.Resa
 aura_thinking_cyan, _ = make_aura(cosmo_thinking.resize((410, 410), Image.Resampling.LANCZOS), (0, 242, 254, 190), 22)
 aura_idle_cyan, _ = make_aura(cosmo_idle.resize((410, 410), Image.Resampling.LANCZOS), (0, 242, 254, 180), 20)
 
+EXPAND = 80
+bg_intro_exp = bg_intro.resize((W + EXPAND * 2, H + EXPAND * 2), Image.Resampling.BILINEAR)
+bg_system_exp = bg_system.resize((W + EXPAND * 2, H + EXPAND * 2), Image.Resampling.BILINEAR)
+bg_cosmo_exp = bg_cosmo.resize((W + EXPAND * 2, H + EXPAND * 2), Image.Resampling.BILINEAR)
+bg_warp_exp = bg_warp.resize((W + EXPAND * 2, H + EXPAND * 2), Image.Resampling.BILINEAR)
+
+def get_parallax_bg(bg_exp, t, amp_x=34, amp_y=18, phase=0.0):
+    ox = int(EXPAND + math.sin(t * 0.42 + phase) * amp_x)
+    oy = int(EXPAND + math.cos(t * 0.32 + phase) * amp_y)
+    return bg_exp.crop((ox, oy, ox + W, oy + H))
+
+# 50 dynamic glowing space particles for cinematic depth
+np.random.seed(1337)
+particle_count = 50
+particles = []
+for _ in range(particle_count):
+    particles.append({
+        'x': float(np.random.uniform(0, W)),
+        'y': float(np.random.uniform(0, H)),
+        'vx': float(np.random.uniform(-14, 14)),
+        'vy': float(np.random.uniform(-20, -6)),
+        'radius': float(np.random.uniform(1.5, 3.2)),
+        'color': (
+            int(np.random.choice([0, 168, 240, 255])),
+            int(np.random.choice([242, 85, 147, 255])),
+            int(np.random.choice([254, 247, 251, 230]))
+        ),
+        'base_alpha': float(np.random.uniform(120, 220)),
+        'phase': float(np.random.uniform(0, 6.28))
+    })
+
+def render_particles(frame, t):
+    d = ImageDraw.Draw(frame)
+    for p in particles:
+        px = (p['x'] + p['vx'] * t) % W
+        py = (p['y'] + p['vy'] * t) % H
+        pulse = math.sin(t * 3.2 + p['phase']) * 0.4 + 0.6
+        alpha = int(p['base_alpha'] * pulse)
+        r = p['radius'] * (0.8 + 0.3 * pulse)
+        col = (p['color'][0], p['color'][1], p['color'][2], alpha)
+        d.ellipse([px - r, py - r, px + r, py + r], fill=col)
+
+def paste_cosmo_animated(frame, sprite, target_cx, target_cy, t, amp_bob_y=14, amp_tilt=3.2):
+    bob_y = math.sin(t * 3.4) * amp_bob_y
+    bob_x = math.cos(t * 1.8) * 6
+    tilt = math.sin(t * 2.2) * amp_tilt
+    sprite_rot = sprite.rotate(-tilt, resample=Image.Resampling.BICUBIC, expand=True)
+    sw, sh = sprite_rot.size
+    px = int(target_cx + bob_x - sw // 2)
+    py = int(target_cy + bob_y - sh // 2)
+    frame.paste(sprite_rot, (px, py), sprite_rot)
+
+def paste_ui_floating(frame, shot_img, base_x, base_y, t):
+    ui_bob_y = int(math.sin(t * 2.2) * 7)
+    ui_bob_x = int(math.cos(t * 1.6) * 4)
+    frame.paste(shot_img, (base_x + ui_bob_x, base_y + ui_bob_y), shot_img)
+
 # Start ffmpeg process for streaming raw RGBA frames
 ffmpeg_cmd = [
     "ffmpeg", "-y",
@@ -90,7 +147,7 @@ ffmpeg_cmd = [
 proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE)
 
 t_start = time.time()
-print("Encoding frames...")
+print("Encoding frames with AAA motion & parallax...")
 
 for frame_idx in range(TOTAL_FRAMES):
     t = frame_idx / FPS
@@ -100,8 +157,8 @@ for frame_idx in range(TOTAL_FRAMES):
     # -------------------------------------------------------------
     if t < 5.6:
         # Scene 1: Intro (0.0s - 5.6s)
-        zoom = 1.0 + (t / 5.6) * 0.05
-        frame = bg_intro.copy()
+        frame = get_parallax_bg(bg_intro_exp, t, amp_x=32, amp_y=16)
+        render_particles(frame, t)
         
         # Overlay with fade in
         if t < 0.6:
@@ -112,80 +169,67 @@ for frame_idx in range(TOTAL_FRAMES):
         else:
             frame.paste(ov_1, (0, 0), ov_1)
             
-        # Cosmo in center, floating smoothly with joyful aura
-        bob = math.sin(t * 3.5) * 16
-        cw, ch = aura_smile_cyan.size
-        cx = W // 2 - cw // 2
-        cy = int(480 - ch // 2 + bob)
-        frame.paste(aura_smile_cyan, (cx, cy), aura_smile_cyan)
+        # Cosmo in center: AAA levitation and cheerful tilt
+        paste_cosmo_animated(frame, aura_smile_cyan, W // 2, 480, t, amp_bob_y=16, amp_tilt=3.5)
         
     elif t < 14.0:
         # Scene 2: Project Capabilities (5.6s - 14.0s)
         t_rel = t - 5.6
-        frame = bg_system.copy()
+        frame = get_parallax_bg(bg_system_exp, t, amp_x=36, amp_y=18, phase=1.0)
+        render_particles(frame, t)
         
         # Left overlay
         frame.paste(ov_2, (0, 0), ov_2)
         
-        # Right Screenshot: slide from dash to scan at t_rel = 4.2s (t = 9.8s)
+        # Right Screenshot: floating UI window with slide transition
         sx, sy = 960, 160
         if t_rel < 4.2:
-            frame.paste(framed_dash, (sx, sy), framed_dash)
+            paste_ui_floating(frame, framed_dash, sx, sy, t)
         else:
-            frame.paste(framed_scan, (sx, sy), framed_scan)
+            paste_ui_floating(frame, framed_scan, sx, sy, t)
             
         # Cosmo on right: larger, prominent, emotional!
         # First 3.5s: analyzing data (thinking), then enthusiastic insight (smile)!
-        bob = math.sin(t * 3.2) * 12
         if t_rel < 3.6:
             cur_sprite = aura_thinking_purple
         else:
             cur_sprite = aura_smile_cyan
-        cw, ch = cur_sprite.size
-        cx = 1410
-        cy = int(580 + bob)
-        frame.paste(cur_sprite, (cx, cy), cur_sprite)
+        paste_cosmo_animated(frame, cur_sprite, 1620, 780, t, amp_bob_y=14, amp_tilt=4.0)
         
     elif t < 21.8:
         # Scene 3: Cosmo Powers (14.0s - 21.8s)
         t_rel = t - 14.0
-        frame = bg_cosmo.copy()
+        frame = get_parallax_bg(bg_cosmo_exp, t, amp_x=34, amp_y=18, phase=2.0)
+        render_particles(frame, t)
         
         # Right overlay
         frame.paste(ov_3, (0, 0), ov_3)
         
-        # Left Screenshot
+        # Left Screenshot floating UI
         sx, sy = 120, 160
         if t_rel < 3.8:
-            frame.paste(framed_rank, (sx, sy), framed_rank)
+            paste_ui_floating(frame, framed_rank, sx, sy, t)
         else:
-            frame.paste(framed_modal, (sx, sy), framed_modal)
+            paste_ui_floating(frame, framed_modal, sx, sy, t)
             
         # Cosmo on left bottom: emotional transitions
-        bob = math.sin(t * 3.6) * 14
         if t_rel < 4.0:
             cur_sprite = aura_smile_pink
         else:
             cur_sprite = aura_thinking_cyan
-        cw, ch = cur_sprite.size
-        cx = 150
-        cy = int(580 + bob)
-        frame.paste(cur_sprite, (cx, cy), cur_sprite)
+        paste_cosmo_animated(frame, cur_sprite, 350, 780, t, amp_bob_y=15, amp_tilt=3.8)
         
     else:
         # Scene 4: Outro & Call to Action (21.8s - 25.8s)
         t_rel = t - 21.8
-        frame = bg_warp.copy()
+        frame = get_parallax_bg(bg_warp_exp, t, amp_x=30, amp_y=14, phase=3.0)
+        render_particles(frame, t)
         
         # Overlay
         frame.paste(ov_4, (0, 0), ov_4)
         
         # Cosmo floating in center with cosmic joy
-        bob = math.sin(t * 4.0) * 16
-        cw, ch = aura_smile_cyan.size
-        cx = W // 2 - cw // 2
-        cy = int(510 - ch // 2 + bob)
-        frame.paste(aura_smile_cyan, (cx, cy), aura_smile_cyan)
+        paste_cosmo_animated(frame, aura_smile_cyan, W // 2, 510, t, amp_bob_y=16, amp_tilt=3.5)
         
     # Write frame bytes to ffmpeg stdin
     raw_data = frame.tobytes()

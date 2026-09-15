@@ -3011,13 +3011,21 @@
 }
 
 .cosmo-chat-quote {
-    margin: 8px 0;
-    padding: 8px 14px;
-    border-left: 3px solid #ec4899;
-    background: rgba(236, 72, 153, 0.08);
-    border-radius: 0 8px 8px 0;
-    color: #fbcfe8;
-    font-style: italic;
+    margin: 10px 0;
+    padding: 10px 16px;
+    border-left: 4px solid #c084fc;
+    background: rgba(147, 51, 234, 0.14);
+    border-radius: 0 10px 10px 0;
+    color: #f8fafc;
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+.cosmo-chat-quote strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+.cosmo-chat-quote em {
+    color: #e2e8f0;
 }
 
 .cosmo-chat-hr {
@@ -3540,10 +3548,91 @@
     text-shadow: none;
 }
 [data-theme="light"] .cosmo-chat-msg-bot .msg-body {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.28);
+    color: #0f172a;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+[data-theme="light"] .cosmo-chat-msg-bot .msg-body p {
+    color: #0f172a;
+}
+[data-theme="light"] .cosmo-chat-quote {
+    background: #fdf4ff;
+    border-left: 4px solid #a855f7;
+    color: #3b0764;
+    font-weight: 500;
+}
+[data-theme="light"] .cosmo-chat-quote strong {
+    color: #1e1b4b;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-quote em {
+    color: #581c87;
+}
+[data-theme="light"] .cosmo-chat-h1 {
+    color: #0369a1;
+    text-shadow: none;
+    font-weight: 800;
+}
+[data-theme="light"] .cosmo-chat-h2 {
+    color: #0284c7;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-h3 {
+    color: #0f172a;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-h4 {
+    color: #1e293b;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-code {
+    background: #f1f5f9;
+    color: #0284c7;
+    border-color: rgba(2, 132, 199, 0.35);
+    font-weight: 600;
+}
+[data-theme="light"] .cosmo-chat-codeblock {
     background: #f8fafc;
-    border-color: rgba(2, 132, 199, 0.25);
-    color: #334155;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+[data-theme="light"] .cosmo-chat-table th {
+    background: #f0f9ff;
+    color: #0369a1;
+    border-bottom: 2px solid #bae6fd;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-table td {
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+}
+[data-theme="light"] .cosmo-chat-table tr:hover td {
+    background: #f1f5f9;
+}
+[data-theme="light"] .cosmo-chat-ol-num {
+    background: #e0f2fe;
+    border-color: #0284c7;
+    color: #0284c7;
+    font-weight: 800;
+}
+[data-theme="light"] .cosmo-chat-ol-text {
+    color: #0f172a;
+}
+[data-theme="light"] .cosmo-chat-ul li {
+    color: #0f172a;
+}
+[data-theme="light"] .cosmo-chat-hl {
+    background: #fef08a;
+    color: #713f12;
+    border-color: #facc15;
+}
+[data-theme="light"] .cosmo-chat-num {
+    color: #0284c7;
+    font-weight: 700;
+}
+[data-theme="light"] .cosmo-chat-link {
+    color: #0284c7;
 }
 [data-theme="light"] .cosmo-chat-footer {
     background: #f1f5f9;

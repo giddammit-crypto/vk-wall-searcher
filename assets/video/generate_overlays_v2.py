@@ -9,24 +9,31 @@ FONT_ARIAL = "assets/fonts/arial.ttf"
 def get_font(font_path, size):
     return ImageFont.truetype(font_path, size)
 
+def is_arial_token(t):
+    # Любые цифры, слеши '/', точки, буллеты, знаки препинания, английские слова и URL используют Arial!
+    return bool(re.search(r"[\d/•%+=#@№\-_.:\"'()\[\]/\\]|[a-zA-Z]", t))
+
+def split_smart_tokens(text):
+    return [p for p in re.split(r"([a-zA-Z0-9/•%+=#@№\-_.:\"'()\[\]/\\]+)", text) if p]
+
 def measure_dual_width(draw, text, f_text, f_digits):
-    tokens = re.split(r"(\d+)", text)
+    tokens = split_smart_tokens(text)
     total_w = 0
     for token in tokens:
         if not token: continue
-        f = f_digits if token.isdigit() else f_text
+        f = f_digits if is_arial_token(token) else f_text
         bbox = draw.textbbox((0, 0), token, font=f)
         total_w += (bbox[2] - bbox[0])
     return total_w
 
 def draw_dual_font_text(draw, x, y, text, f_text, f_digits, fill, anchor="la"):
-    tokens = re.split(r"(\d+)", text)
+    tokens = split_smart_tokens(text)
     token_sizes = []
     total_w = 0
     max_h = 0
     for token in tokens:
         if not token: continue
-        f = f_digits if token.isdigit() else f_text
+        f = f_digits if is_arial_token(token) else f_text
         bbox = draw.textbbox((0, 0), token, font=f)
         w = bbox[2] - bbox[0]
         h = bbox[3] - bbox[1]
@@ -130,11 +137,11 @@ f_logo_arial = get_font(FONT_ARIAL, 96)
 f_h1_shop = get_font(FONT_SHOP, 42)
 f_h1_arial = get_font(FONT_ARIAL, 42)
 
-f_h2_shop = get_font(FONT_SHOP, 30)
-f_h2_arial = get_font(FONT_ARIAL, 30)
+f_h2_shop = get_font(FONT_SHOP, 26)
+f_h2_arial = get_font(FONT_ARIAL, 26)
 
-f_body_shop = get_font(FONT_SHOP, 21)
-f_body_arial = get_font(FONT_ARIAL, 21)
+f_body_shop = get_font(FONT_SHOP, 19)
+f_body_arial = get_font(FONT_ARIAL, 19)
 
 f_tag_shop = get_font(FONT_SHOP, 18)
 f_tag_arial = get_font(FONT_ARIAL, 18)
@@ -189,16 +196,16 @@ cards_data_2 = [
 ]
 
 for (icon, title, desc, tag, color), cy in zip(cards_data_2, [160, 420, 680]):
-    draw_glow_rect(d2, [100, cy, 900, cy + 225], fill=(12, 17, 34, 230), outline=(color[0], color[1], color[2], 240), glow_color=(color[0], color[1], color[2], 140), radius=18)
+    draw_glow_rect(d2, [90, cy, 915, cy + 225], fill=(12, 17, 34, 230), outline=(color[0], color[1], color[2], 240), glow_color=(color[0], color[1], color[2], 140), radius=18)
     # Icon
-    draw_icon(d2, icon, 150, cy + 50, 24, color)
+    draw_icon(d2, icon, 145, cy + 44, 22, color)
     # Title
-    draw_dual_font_text(d2, 190, cy + 50, title, f_h2_shop, f_h2_arial, color, anchor="lm")
+    draw_dual_font_text(d2, 185, cy + 44, title, f_h2_shop, f_h2_arial, color, anchor="lm")
     # Description wrapped
-    draw_wrapped_dual_text(d2, 130, cy + 95, desc, 730, 8, f_body_shop, f_body_arial, (226, 232, 240, 235))
+    draw_wrapped_dual_text(d2, 125, cy + 86, desc, 740, 6, f_body_shop, f_body_arial, (226, 232, 240, 235))
     # Tag chip
-    draw_glow_rect(d2, [130, cy + 170, 350, cy + 205], fill=(color[0], color[1], color[2], 45), outline=(color[0], color[1], color[2], 200), glow_color=(0,0,0,0), radius=10)
-    draw_dual_font_text(d2, 240, cy + 187, tag, f_tag_shop, f_tag_arial, (255, 255, 255, 240), anchor="mm")
+    draw_glow_rect(d2, [125, cy + 168, 350, cy + 205], fill=(color[0], color[1], color[2], 45), outline=(color[0], color[1], color[2], 200), glow_color=(0,0,0,0), radius=10)
+    draw_dual_font_text(d2, 237, cy + 186, tag, f_tag_shop, f_tag_arial, (255, 255, 255, 240), anchor="mm")
 
 ov2.save("assets/video/overlays/overlay_scene2.png")
 print("Overlay 2 generated!")
@@ -220,12 +227,12 @@ cards_data_3 = [
 ]
 
 for (icon, title, desc, tag, color), cy in zip(cards_data_3, [160, 420, 680]):
-    draw_glow_rect(d3, [1020, cy, 1820, cy + 225], fill=(12, 17, 34, 230), outline=(color[0], color[1], color[2], 240), glow_color=(color[0], color[1], color[2], 140), radius=18)
-    draw_icon(d3, icon, 1070, cy + 50, 24, color)
-    draw_dual_font_text(d3, 1110, cy + 50, title, f_h2_shop, f_h2_arial, color, anchor="lm")
-    draw_wrapped_dual_text(d3, 1050, cy + 95, desc, 730, 8, f_body_shop, f_body_arial, (226, 232, 240, 235))
-    draw_glow_rect(d3, [1050, cy + 170, 1310, cy + 205], fill=(color[0], color[1], color[2], 45), outline=(color[0], color[1], color[2], 200), glow_color=(0,0,0,0), radius=10)
-    draw_dual_font_text(d3, 1180, cy + 187, tag, f_tag_shop, f_tag_arial, (255, 255, 255, 240), anchor="mm")
+    draw_glow_rect(d3, [1005, cy, 1830, cy + 225], fill=(12, 17, 34, 230), outline=(color[0], color[1], color[2], 240), glow_color=(color[0], color[1], color[2], 140), radius=18)
+    draw_icon(d3, icon, 1060, cy + 44, 22, color)
+    draw_dual_font_text(d3, 1100, cy + 44, title, f_h2_shop, f_h2_arial, color, anchor="lm")
+    draw_wrapped_dual_text(d3, 1040, cy + 86, desc, 740, 6, f_body_shop, f_body_arial, (226, 232, 240, 235))
+    draw_glow_rect(d3, [1040, cy + 168, 1300, cy + 205], fill=(color[0], color[1], color[2], 45), outline=(color[0], color[1], color[2], 200), glow_color=(0,0,0,0), radius=10)
+    draw_dual_font_text(d3, 1170, cy + 186, tag, f_tag_shop, f_tag_arial, (255, 255, 255, 240), anchor="mm")
 
 ov3.save("assets/video/overlays/overlay_scene3.png")
 print("Overlay 3 generated!")

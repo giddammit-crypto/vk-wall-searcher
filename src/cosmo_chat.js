@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.22.0';
+import { resolveApiUrl } from './api.js?v=4.23.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -61,8 +61,7 @@ function mdInline(s) {
     s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/==([^\n]+?)==/g, '<mark class="cosmo-chat-hl">$1</mark>');
     s = s.replace(/__([^_\n]+)__/g, '<u class="cosmo-chat-u">$1</u>');
-    s = s.replace(/~~([^~\n]+)~~/g, '<s class="cosmo-chat-s">$1</s>');
-    s = s.replace(/(^|[^\w*])\*([^*\n]+)\*(?=[^\w*]|$)/g, '$1<em>$2</em>');
+    s = s.replace(/(^|[^\p{L}\p{N}*])\*([^*\n]+)\*(?=[^\p{L}\p{N}*]|$)/gu, '$1<em>$2</em>');
     // Подсветка цифр внутри жирного текста
     s = s.replace(/<strong>([^<]*)<\/strong>/g, (m, inner) =>
         '<strong>' + inner.replace(/(\d[\d\s.,%₽руб]*)/g, '<span class="cosmo-chat-num">$1</span>') + '</strong>');
@@ -79,7 +78,7 @@ function mdInline(s) {
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
         const escaped = code.replace(/:/g, ':');
         // Replace literal shortcodes with inline img elements
-        s = s.split(code).join(`<img src="${src}?v=4.22.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.23.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
@@ -260,6 +259,7 @@ export function parseCosmoMarkdown(text) {
 
         // Обычная строка
         flushList();
+        flushQuote();
         para.push(t);
     }
 
@@ -464,7 +464,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.22.0"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.23.0"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -1099,7 +1099,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.22.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.23.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1207,7 +1207,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.22.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.23.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -1229,7 +1229,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.22.0" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.23.0" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>
@@ -1462,38 +1462,58 @@ ${statsContext}
                 history.unshift({ role: msg.role, content: msg.content });
             }
 
-            const response = await fetch(AI_PROXY_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        ...history
-                    ],
-                    max_tokens: maxTokens,
-                    temperature: temperature,
-                    top_p: 0.92,
-                    frequency_penalty: 0.15,  // снижает повторяемость фраз
-                    presence_penalty: 0.10    // поощряет новые темы
-                })
-            });
+            let data = null;
+            let lastErr = null;
 
-            if (!response.ok) {
-                const errJson = await response.json().catch(() => null);
-                const errMsg = errJson?.error?.message
-                    || errJson?.error?.error_msg
-                    || errJson?.message
-                    || `HTTP ${response.status}`;
-                throw new Error(errMsg);
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const response = await fetch(AI_PROXY_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                ...history
+                            ],
+                            max_tokens: maxTokens,
+                            temperature: temperature,
+                            top_p: 0.92,
+                            frequency_penalty: 0.15,
+                            presence_penalty: 0.10
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errJson = await response.json().catch(() => null);
+                        const errMsg = errJson?.error?.message
+                            || errJson?.error?.error_msg
+                            || errJson?.message
+                            || `HTTP ${response.status}`;
+                        throw new Error(errMsg);
+                    }
+
+                    data = await response.json();
+                    if (data && (data.choices || data.text)) {
+                        break; // Успешно получили ответ!
+                    }
+                } catch (e) {
+                    lastErr = e;
+                    console.warn(`[CosmoChat] Попытка ${attempt} завершилась ошибкой:`, e.message);
+                    if (attempt === 1) {
+                        // Небольшая пауза, чтобы прокси переключил активный ключ
+                        await new Promise(res => setTimeout(res, 400));
+                    }
+                }
             }
 
-            const data = await response.json();
-            let replyText = '';
+            if (!data && lastErr) {
+                throw lastErr;
+            }
 
+            let replyText = '';
             if (data?.choices?.[0]?.message?.content) {
                 replyText = data.choices[0].message.content.trim();
             } else if (data?.choices?.[0]?.text) {
-                // Совместимость с completion-формата
                 replyText = data.choices[0].text.trim();
             } else {
                 replyText = ':cosmo_think: Хм, мои квантовые каналы вернули пустой ответ. Давай попробуем переформулировать вопрос?';
@@ -1512,15 +1532,16 @@ ${statsContext}
             }
 
         } catch (err) {
-            console.error('[CosmoChat] Ошибка запроса к ИИ:', err);
+            console.error('[CosmoChat] Ошибка запроса к ИИ после повтора:', err);
             this.hideTypingIndicator();
 
-            const errorMsg = `Ой! Не удалось связаться с нейросетью: *${escapeHtml(err.message)}*.\n\nПроверь подключение к интернету или статус ИИ в настройках. Я всегда готов повторить попытку! 🛠️`;
-            this.appendBotMessage(errorMsg);
+            // Вместо страшных технических ошибок мягко переключаемся и предлагаем повторить
+            const friendlyMsg = `:cosmo_think: Квантовые каналы связи сейчас кратковременно перегружены. Я уже автоматически переключился на резервный рабочий ключ! Нажми кнопку **«Другой вариант»** или отправь запрос снова — всё получится! 🛠️`;
+            this.appendBotMessage(friendlyMsg);
 
             if (this.mascot) {
-                this.mascot.setState('angry');
-                this.mascot.setMoodBadge('⚠️', 4000);
+                this.mascot.setState('thinking');
+                this.mascot.setMoodBadge('🔄', 3500);
             }
         } finally {
             this.isBusy = false;

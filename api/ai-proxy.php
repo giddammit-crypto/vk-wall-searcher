@@ -332,11 +332,22 @@ ai_rate_limit(30, 200);
 // 2. Разбор и валидация тела запроса
 // ---------------------------------------------------------------------------
 $rawBody = file_get_contents('php://input');
-if ($rawBody === false || strlen($rawBody) > 512 * 1024) {
-    ai_error('Тело запроса отсутствует или превышает 512 КБ.', 413);
+if ($rawBody === false || strlen($rawBody) > 2 * 1024 * 1024) {
+    ai_error('Тело запроса отсутствует или превышает 2 МБ.', 413);
 }
 
+// Удаляем UTF-8 BOM если присутствует
+$rawBody = preg_replace('/^\xEF\xBB\xBF/', '', (string)$rawBody);
+
 $data = json_decode($rawBody, true);
+if (!is_array($data)) {
+    // Пробуем альтернативные источники данных (POST-параметры)
+    if (isset($_POST['messages']) && is_array($_POST['messages'])) {
+        $data = $_POST;
+    } elseif (isset($_POST['data']) && is_string($_POST['data'])) {
+        $data = json_decode($_POST['data'], true);
+    }
+}
 if (!is_array($data)) {
     ai_error('Некорректный JSON в теле запроса.', 400);
 }
@@ -410,7 +421,7 @@ for ($try = 0; $try < $attempts; $try++) {
     if ($response === false || $httpCode === 0) {
         $detail = $curlErr !== '' ? $curlErr : 'нет ответа от ИИ-шлюза (HTTP 0)';
         if ($keysCount > 1 && $try < ($attempts - 1)) {
-            // Пробуем альтернативный ключ при обрыве
+            // Немедленно переключаемся на резервный ключ и повторяем
             $nextIndex = ($currentIndex + 1) % $keysCount;
             ai_set_active_key_index($activeKeyFile, $nextIndex);
             $currentIndex = $nextIndex;
@@ -422,11 +433,11 @@ for ($try = 0; $try < $attempts; $try++) {
     $json = json_decode($response, true);
     $isJsonArray = is_array($json);
 
-    // Проверяем ошибку квоты, лимита или авторизации (429, 401, 402, 403 или текст)
-    $isFailover = ai_is_failover_error($httpCode, $response, $json);
+    // Если произошла ЛЮБАЯ ошибка (HTTP >= 400, ошибка квоты/лимита/авторизации, ошибка парсинга JSON, пустой ответ)
+    // и у нас есть резервный ключ — немедленно переключаемся на альтернативный ключ и повторяем запрос!
+    $hasError = ($httpCode >= 400 || !$isJsonArray || isset($json['error']) || ai_is_failover_error($httpCode, $response, $json));
 
-    if ($isFailover && $keysCount > 1 && $try < ($attempts - 1)) {
-        // Немедленно переключаемся на альтернативный рабочий ключ!
+    if ($hasError && $keysCount > 1 && $try < ($attempts - 1)) {
         $nextIndex = ($currentIndex + 1) % $keysCount;
         ai_set_active_key_index($activeKeyFile, $nextIndex);
         $currentIndex = $nextIndex;
