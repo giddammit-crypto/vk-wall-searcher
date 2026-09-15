@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.18.2",
+    "version": "4.18.3",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T07:38:00+03:00",
-    "release_name": "AURORA 4.18.2 — Модальное окно предпросмотра Космо (Cosmo Modal) для черновиков постов, контент-планов и аудита"
+    "commit_date": "2026-09-15T07:55:00+03:00",
+    "release_name": "AURORA 4.18.3 — Токен-лимиты до 1500, умный скроллбар модального окна и защита от обрыва текста"
 }

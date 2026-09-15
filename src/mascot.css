@@ -1807,7 +1807,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.18.2 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.18.3 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
@@ -2105,12 +2105,29 @@
 }
 
 .cosmo-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 18px 20px;
     overflow-y: auto;
     font-size: 0.92rem;
     line-height: 1.65;
     white-space: pre-wrap;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 240, 255, 0.35) rgba(255, 255, 255, 0.04);
+}
+
+.cosmo-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cosmo-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 240, 255, 0.35);
+    border-radius: 4px;
+}
+
+.cosmo-modal-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .cosmo-modal-body .mascot-md-h2 {

@@ -1,5 +1,5 @@
 /**
- * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.2)
+ * src/mascot.js — Интерактивный робот-маскот Космо (Cosmo) для AURORA (v4.18.3)
  * ============================================================================
  * Персонаж: Космо (Cosmo) — величайший SMM-гуру галактики ВКонтакте.
  * Озвучка: Женский мультяшный голос Бэла (ElevenLabs, звонкий писклявый тон).
@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.18.2';
+import { resolveApiUrl } from './api.js?v=4.18.3';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -37,97 +37,97 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.18.2',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.18.2',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.2',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.2',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.18.2',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.2',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.18.2'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.18.3',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.18.3',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.18.3',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.18.3',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.18.3',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.18.3',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.18.3'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.2',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.2',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.2',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.2',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.2',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.2',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.2',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.2',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.2',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.2',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.18.3',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.18.3',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.18.3',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.18.3',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.18.3',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.18.3',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.18.3',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.18.3',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.18.3',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.18.3',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.2',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.2',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.2',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.2',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.2',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.2',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.2',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.2',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.2',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.18.3',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.18.3',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.18.3',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.18.3',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.18.3',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.18.3',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.18.3',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.18.3',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.18.3',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.2',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.2',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.2',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.2',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.18.3',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.18.3',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.18.3',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.18.3',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.2',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.2',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.2',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.18.3',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.18.3',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.18.3',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.2',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.2',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.2',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.18.3',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.18.3',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.18.3',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.2',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.2',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.2',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.2',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.2',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.2',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.2',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.2',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.2',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.2',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.2',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.2',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.2',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.2',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.2',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.2',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.2',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.2',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.2',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.2',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.18.3',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.18.3',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.18.3',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.18.3',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.18.3',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.18.3',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.18.3',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.18.3',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.18.3',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.18.3',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.18.3',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.18.3',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.18.3',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.18.3',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.18.3',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.18.3',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.18.3',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.18.3',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.18.3',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.18.3',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.2',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.2',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.2',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.18.3',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.18.3',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.18.3',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.2',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.2',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.2',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.18.3',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.18.3',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.18.3',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.2',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.2',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.18.3',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.18.3',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.2',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.2',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.2',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.2'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.18.3',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.18.3',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.18.3',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.18.3'
 };
 
 const MOOD_EMOJIS = {
@@ -2324,14 +2324,14 @@ export class AuroraMascot {
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
                     ],
-                    max_tokens: 120,
+                    max_tokens: 250,
                     temperature: 0.72
                 })
             });
 
             if (!aiResponse.ok) throw new Error(`AI proxy HTTP ${aiResponse.status}`);
             const aiData = await aiResponse.json();
-            const commentary = (aiData?.choices?.[0]?.message?.content || aiData?.reply || '').trim();
+            const { text: commentary, truncated: top3Truncated } = this.parseAiChoice(aiData);
 
             if (!commentary) throw new Error('Empty AI commentary');
 
@@ -2352,7 +2352,7 @@ export class AuroraMascot {
                 throw new Error(ttsData.error || 'TTS generation failed');
             }
 
-            const formattedText = `## Разбор тройки лидеров 🎙️🔥\n${commentary}`;
+            const formattedText = `## Разбор тройки лидеров 🎙️🔥\n${commentary}${top3Truncated ? this.truncationNote() : ''}`;
             this.analyzedTop3Signatures.add(sig);
             this.analyzedTop3AudioCache.set(sig, {
                 audioUrl: ttsData.audio_url,
@@ -3108,14 +3108,15 @@ export class AuroraMascot {
                         ...history,
                         { role: 'user', content: userQuestion }
                     ],
-                    max_tokens: 180,
+                    max_tokens: 350,
                     temperature: 0.75
                 })
             });
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            const reply = data?.choices?.[0]?.message?.content || data?.reply || 'Умная лента любит смелых! Делай упор на яркие фото и искренние заголовки! ✨';
+            const parsed = this.parseAiChoice(data);
+            const reply = parsed.text || 'Умная лента любит смелых! Делай упор на яркие фото и искренние заголовки! ✨';
 
             this.aiResponseCache.set(normalizedKey, reply);
 
@@ -3130,8 +3131,9 @@ export class AuroraMascot {
                 ? `\n\n\`📊 Источник: сканирование ${new Date(this.lastScanTime).toLocaleString('ru-RU')}\``
                 : '';
 
+            const truncNote = parsed.truncated ? this.truncationNote() : '';
             this.say(`Готово! Полный ответ — в окне по центру экрана 💡`, 6000, 'smile', null);
-            this.showCosmoModal('Ответ Космо 💡', `${reply}${sourceLabel}`);
+            this.showCosmoModal('Ответ Космо 💡', `${reply}${truncNote}${sourceLabel}`);
 
             // Озвучиваем реальный текст ответа голосом Бэлы (TTS);
             // при недоступности синтеза — запасной записанный клип
@@ -3328,18 +3330,18 @@ export class AuroraMascot {
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: 'Напиши черновик поста на актуальную тему для читателей (новинки книг, мероприятия, уют библиотеки — выбери сам).' }
                     ],
-                    max_tokens: 500,
+                    max_tokens: 1500,
                     temperature: 0.85
                 })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            const draft = (data?.choices?.[0]?.message?.content || '').trim();
+            const { text: draft, truncated } = this.parseAiChoice(data);
             if (!draft) throw new Error('Empty draft');
 
             this.lastGeneratedText = draft;
             this.say(`## Черновик готов! ✍️✨\nОткрываю предпросмотр — там можно скопировать!`, 7000, 'smile', 'post_scan_1', true);
-            this.showCosmoModal('Черновик поста ✍️', draft);
+            this.showCosmoModal('Черновик поста ✍️', truncated ? draft + this.truncationNote() : draft);
         } catch (e) {
             console.warn('[Cosmo] generatePostDraft error:', e);
             this.say(`Ой, синтезатор слов барахлит! Попробуй ещё раз чуть позже 🙈`, 7000, 'tired', 'disappoint_1', true);
@@ -3369,21 +3371,21 @@ export class AuroraMascot {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: [
-                        { role: 'system', content: `Ты — контент-стратег библиотечной сети. Сегодня ${dateStr}.${trendsNote} Предложи 5 конкретных идей постов на ближайшие 7 дней. Для каждой идеи: день недели, короткая тема (до 8 слов), формат (фото/видео/опрос/подборка). Пиши списком, без вступлений и заключений.` },
-                        { role: 'user', content: 'Дай 5 идей постов на эту неделю для библиотек Владимира.' }
+                        { role: 'system', content: `Ты — контент-стратег библиотечной сети. Сегодня ${dateStr}.${trendsNote} Составь подробный контент-план на ближайшие 7 дней для библиотек Владимира. Для каждого дня (все 7 подряд): заголовок дня жирным (**Понедельник**, **Вторник** и т.д.), тема поста (до 8 слов), формат (фото/видео/опрос/подборка/карточки) и одно предложение-описание, что именно делать. Форматируй в Markdown списком, без вступлений и заключений.` },
+                        { role: 'user', content: 'Дай контент-план на все 7 дней этой недели для библиотек Владимира.' }
                     ],
-                    max_tokens: 500,
+                    max_tokens: 1500,
                     temperature: 0.8
                 })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            const ideas = (data?.choices?.[0]?.message?.content || '').trim();
+            const { text: ideas, truncated } = this.parseAiChoice(data);
             if (!ideas) throw new Error('Empty ideas');
 
             this.lastGeneratedText = ideas;
             this.say(`## Контент-план недели готов! 📅✨\nОткрываю предпросмотр!`, 7000, 'smile', 'post_scan_2', true);
-            this.showCosmoModal('Контент-план недели 📅', ideas);
+            this.showCosmoModal('Контент-план недели 📅', truncated ? ideas + this.truncationNote() : ideas);
         } catch (e) {
             console.warn('[Cosmo] generateWeekIdeas error:', e);
             this.say(`Календарь идей пока недоступен — попробуй ещё раз! 🗓️`, 7000, 'tired', 'disappoint_2', true);
@@ -3451,17 +3453,17 @@ export class AuroraMascot {
                         { role: 'system', content: 'Ты — строгий, но доброжелательный SMM-аудитор библиотек. Проанализируй данные отстающего филиала и выдай: 1) краткий диагноз (1-2 предложения), 2) три вероятные причины слабых показателей, 3) три конкретных шага на ближайшую неделю. Пиши списком, без воды, опирайся только на данные.' },
                         { role: 'user', content: `Данные отстающего филиала: ${context}` }
                     ],
-                    max_tokens: 450,
+                    max_tokens: 1200,
                     temperature: 0.5
                 })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            const diagnosis = (data?.choices?.[0]?.message?.content || '').trim();
+            const { text: diagnosis, truncated } = this.parseAiChoice(data);
             if (!diagnosis) throw new Error('Empty diagnosis');
 
             this.say(`Диагноз готов! Полный разбор — в окне по центру 🩺`, 6000, 'smile', null, true);
-            this.showCosmoModal(`Диагноз: «${branch.name}» 🩺`, `## Диагноз: «${branch.name}» 🩺\n${diagnosis}`);
+            this.showCosmoModal(`Диагноз: «${branch.name}» 🩺`, `## Диагноз: «${branch.name}» 🩺\n${diagnosis}${truncated ? this.truncationNote() : ''}`);
             await this.speakReplyViaTts(`Диагноз готов. ${diagnosis.slice(0, 300)}`);
         } catch (e) {
             console.warn('[Cosmo] diagnoseBranch error:', e);
@@ -3526,6 +3528,18 @@ export class AuroraMascot {
             document.execCommand('copy');
             ta.remove();
         } catch (e) {}
+    }
+
+    /* Разбор ответа ИИ: текст и признак обрыва по лимиту токенов */
+    parseAiChoice(data) {
+        const choice = data?.choices?.[0];
+        const text = (choice?.message?.content || data?.reply || '').trim();
+        const truncated = choice?.finish_reason === 'length';
+        return { text, truncated };
+    }
+
+    truncationNote() {
+        return `\n\n*⚠️ Ответ оборвался на лимите токенов — попроси Космо повторить или задай вопрос короче!*`;
     }
 
     /* ---------------------------------------------------------------------
