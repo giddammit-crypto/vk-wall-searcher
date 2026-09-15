@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.2",
+    "version": "4.23.3",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T14:30:00+03:00",
-    "release_name": "AURORA 4.23.2 — Сверхнадёжный JSON-парсер (защита от битых суррогатов, UTF-8 BOM, magic_quotes), двухфазная отправка JSON + urlencoded fallback"
+    "commit_date": "2026-09-15T15:30:00+03:00",
+    "release_name": "AURORA 4.23.3 — Исправление стандарта QR-кодов (ISO/IEC 18004 0x5412, тихие поля 4 модуля, устранение rx=12 у подложки SVG, надёжное сканирование плакатов и закладок)"
 }

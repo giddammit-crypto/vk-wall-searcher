@@ -10,8 +10,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.21.0';
-import { createQrSvg } from './qrcode.js?v=4.21.0';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.23.3';
+import { createQrSvg } from './qrcode.js?v=4.23.3';
 
 export const PROMO_SLOGANS = [
     'Читай новинки первым — подпишись на наше сообщество ВКонтакте!',
@@ -185,10 +185,11 @@ export const PROMO_TEMPLATES = [
 ];
 
 function getDisplayUrl(branch) {
-    if (!branch) return 'vk.com';
+    if (!branch) return 'biblioteka33.ru';
     if (branch.screenName) return `vk.com/${branch.screenName}`;
-    if (branch.vkLink) return branch.vkLink.replace(/^https?:\/\//, '');
-    return 'vk.com';
+    if (branch.vkLink && branch.vkLink.trim()) return branch.vkLink.replace(/^https?:\/\//, '');
+    if (branch.branch_url && branch.branch_url.trim()) return branch.branch_url.replace(/^https?:\/\//, '');
+    return 'biblioteka33.ru';
 }
 
 function getBookmarkSlogans(chosenSlogan) {
@@ -367,7 +368,8 @@ export function initPromoModal() {
 
         if (currentFormat === 'bookmark') {
             const slogans = getBookmarkSlogans(currentSlogan);
-            const qrSvgSmall = createQrSvg(currentBranch.vkLink, { size: 95, foreground: qrFg, background: qrBg, margin: 1 });
+            const targetUrl = (currentBranch.vkLink && currentBranch.vkLink.trim()) || currentBranch.branch_url || 'https://biblioteka33.ru';
+            const qrSvgSmall = createQrSvg(targetUrl, { size: 95, foreground: qrFg, background: qrBg, margin: 4 });
             const bThemes = currentTemplate.bookmarkThemes;
 
             viewport.innerHTML = `
@@ -420,7 +422,8 @@ export function initPromoModal() {
                 </div>
             `;
         } else if (currentFormat === 'a5') {
-            const qrSvgA5 = createQrSvg(currentBranch.vkLink, { size: 105, foreground: qrFg, background: qrBg, margin: 1 });
+            const targetUrl = (currentBranch.vkLink && currentBranch.vkLink.trim()) || currentBranch.branch_url || 'https://biblioteka33.ru';
+            const qrSvgA5 = createQrSvg(targetUrl, { size: 105, foreground: qrFg, background: qrBg, margin: 4 });
 
             viewport.innerHTML = `
                 <div class="poster-sheet sheet-a5 sheet-theme-${currentTemplate.id}">
@@ -486,7 +489,8 @@ export function initPromoModal() {
             `;
         } else {
             // Плакат А4
-            const qrSvgA4 = createQrSvg(currentBranch.vkLink, { size: 120, foreground: qrFg, background: qrBg, margin: 1 });
+            const targetUrl = (currentBranch.vkLink && currentBranch.vkLink.trim()) || currentBranch.branch_url || 'https://biblioteka33.ru';
+            const qrSvgA4 = createQrSvg(targetUrl, { size: 120, foreground: qrFg, background: qrBg, margin: 4 });
 
             viewport.innerHTML = `
                 <div class="poster-sheet sheet-a4 sheet-theme-${currentTemplate.id}">
@@ -812,7 +816,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
 
     if (format === 'bookmark') {
         const slogans = getBookmarkSlogans(slogan);
-        const qrSvg = createQrSvg(branch.vkLink, { size: 120, foreground: qrFg, background: qrBg, margin: 1 });
+        const targetUrl = (branch.vkLink && branch.vkLink.trim()) || branch.branch_url || 'https://biblioteka33.ru';
+        const qrSvg = createQrSvg(targetUrl, { size: 120, foreground: qrFg, background: qrBg, margin: 4 });
         const bThemes = template.bookmarkThemes;
 
         pageCss = `
@@ -1074,7 +1079,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
             </div>
         `;
     } else if (format === 'a5') {
-        const qrSvgA5 = createQrSvg(branch.vkLink, { size: 140, foreground: qrFg, background: qrBg, margin: 1 });
+        const targetUrl = (branch.vkLink && branch.vkLink.trim()) || branch.branch_url || 'https://biblioteka33.ru';
+        const qrSvgA5 = createQrSvg(targetUrl, { size: 140, foreground: qrFg, background: qrBg, margin: 4 });
 
         pageCss = `
             @page { size: A5 landscape; margin: 9mm 12mm 9mm 12mm; }
@@ -1284,7 +1290,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
         `;
     } else {
         // Плакат А4
-        const qrSvgA4 = createQrSvg(branch.vkLink, { size: 170, foreground: qrFg, background: qrBg, margin: 1 });
+        const targetUrl = (branch.vkLink && branch.vkLink.trim()) || branch.branch_url || 'https://biblioteka33.ru';
+        const qrSvgA4 = createQrSvg(targetUrl, { size: 170, foreground: qrFg, background: qrBg, margin: 4 });
 
         pageCss = `
             @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }

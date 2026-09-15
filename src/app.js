@@ -94,19 +94,19 @@ import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.23.2';
+} from './promo.js?v=4.23.3';
 
 import {
     renderRadarSection
 } from './radar.js?v=4.23.2';
 
-import { Space3D } from './space3d.js?v=4.23.2';
+import { Space3D } from './space3d.js?v=4.23.3';
 import { SpaceWarp } from './space_warp.js?v=4.23.2';
 import { SpaceAudio } from './space_audio.js?v=4.23.2';
 import { Mascot } from './mascot.js?v=4.23.2';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.23.2';
+export const APP_VERSION = '4.23.3';
 
 function initApp() {
 

@@ -28,8 +28,8 @@ import { CosmonautsTerminal } from './cosmonauts_terminal.js?v=4.21.0';
 import { CosmonautRing } from './cosmonaut_ring.js?v=4.21.0';
 import { Starfield } from './starfield.js?v=4.21.0';
 import { SunOptics } from './sun_optics.js?v=4.21.0';
-import { createQrSvg } from './qrcode.js?v=4.21.0';
-import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.21.0';
+import { createQrSvg } from './qrcode.js?v=4.23.3';
+import { PROMO_TEMPLATES, PROMO_SLOGANS, printPromoPoster } from './promo.js?v=4.23.3';
 import { openPostModal } from './render.js?v=4.21.0';
 import { fetchHistory } from './subscribers.js?v=4.21.0';
 import { buildBranchAdvice } from './advice.js?v=4.21.0';
@@ -884,11 +884,12 @@ export class Space3DEngine {
     renderPromoStation() {
         const branch = CANONICAL_BRANCHES.find(b => b.shortCode === this.selectedPromoBranch) || CANONICAL_BRANCHES[0];
         const tpl = PROMO_TEMPLATES.find(t => t.id === this.selectedPromoTemplate) || PROMO_TEMPLATES[0];
-        const qrSvg = createQrSvg(branch.vkLink || 'https://vk.com/vladcgb', {
+        const targetUrl = (branch.vkLink && branch.vkLink.trim()) || branch.branch_url || 'https://vk.com/vladcgb';
+        const qrSvg = createQrSvg(targetUrl, {
             size: 130,
             foreground: tpl.qrForeground || '#0a0f1d',
             background: tpl.qrBackground || '#ffffff',
-            margin: 1
+            margin: 4
         });
 
         return `

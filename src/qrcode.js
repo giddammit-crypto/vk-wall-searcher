@@ -81,7 +81,8 @@ const ALIGNMENT_POS = [
 ];
 
 export function generateQrMatrix(text) {
-    const utf8Bytes = new TextEncoder().encode(text);
+    const rawText = (typeof text === 'string' && text.trim().length > 0) ? text.trim() : 'https://biblioteka33.ru';
+    const utf8Bytes = new TextEncoder().encode(rawText);
     
     // Подбор минимальной подходящей версии QR
     let spec = null;
@@ -244,7 +245,10 @@ export function generateQrMatrix(text) {
         up = !up;
     }
 
-    const FORMAT_INFO_M_MASK0 = 0x4B0A;
+    // Согласно ISO/IEC 18004: Уровень коррекции ошибок M (00) и маска 0 (000).
+    // 5 бит = 00000. 10 бит полинома BCH(15, 5) = 0000000000.
+    // Маска XOR = 101010000010010 (0x5412). Итоговое значение: 0x5412.
+    const FORMAT_INFO_M_MASK0 = 0x5412;
     const fmtBits = [];
     for (let i = 14; i >= 0; i--) {
         fmtBits.push((FORMAT_INFO_M_MASK0 >>> i) & 1);
@@ -274,7 +278,8 @@ export function createQrSvg(text, options = {}) {
     const size = options.size || 220;
     const fg = options.foreground || '#000000';
     const bg = options.background || '#ffffff';
-    const margin = options.margin !== undefined ? options.margin : 2;
+    // ISO/IEC 18004 строго требует свободное белое поле (Quiet Zone) шириной не менее 4 модулей
+    const margin = options.margin !== undefined ? Math.max(0, options.margin) : 4;
 
     const matrix = generateQrMatrix(text);
     const n = matrix.length;
@@ -293,7 +298,7 @@ export function createQrSvg(text, options = {}) {
 
     return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalModules} ${totalModules}" width="${size}" height="${size}" shape-rendering="crispEdges" class="qr-svg-code">
-    ${bg !== 'transparent' ? `<rect width="100%" height="100%" fill="${bg}" rx="12"/>` : ''}
-    <path d="${paths}" fill="${fg}" />
+    ${bg !== 'transparent' ? `<rect width="100%" height="100%" fill="${bg}"/>` : ''}
+    <path d="${paths.trim()}" fill="${fg}" shape-rendering="crispEdges" />
 </svg>`.trim();
 }
