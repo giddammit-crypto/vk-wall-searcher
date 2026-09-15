@@ -124,6 +124,48 @@ if (!function_exists('ai_mb_strlen')) {
 }
 
 /**
+ * Сверхнадёжный парсер JSON: исцеляет битые суррогаты UTF-16, непечатные символы,
+ * magic_quotes слэши, BOM и некорректные байты UTF-8.
+ */
+function ai_robust_json_decode($raw)
+{
+    if (!is_string($raw) || trim($raw) === '') return null;
+
+    // 1. Удаляем UTF-8 BOM
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+
+    // 2. Прямой декодинг с заменой некорректных байтов UTF-8
+    $flags = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0;
+    $data = json_decode($raw, true, 512, $flags);
+    if (is_array($data)) return $data;
+
+    // 3. Снятие экранирования слэшей (magic_quotes, фильтры веб-сервера / mod_security)
+    $unslashed = stripslashes($raw);
+    $data = json_decode($unslashed, true, 512, $flags);
+    if (is_array($data)) return $data;
+
+    // 4. Удаление одиночных суррогатных пар UTF-16 (\uD800 - \uDFFF)
+    $cleanSurrogates = preg_replace('/\\\\u[dD][89a-bA-B][0-9a-fA-F]{2}(?!\\\\u[dD][c-fC-F][0-9a-fA-F]{2})/', '', $raw);
+    $cleanSurrogates = preg_replace('/(?<!\\\\u[dD][89a-bA-B][0-9a-fA-F]{2})\\\\u[dD][c-fC-F][0-9a-fA-F]{2}/', '', $cleanSurrogates);
+    $data = json_decode($cleanSurrogates, true, 512, $flags);
+    if (is_array($data)) return $data;
+
+    // 5. Очистка непечатных управляющих символов (\x00-\x1F за исключением \t, \r, \n)
+    $cleanControls = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $cleanSurrogates);
+    $data = json_decode($cleanControls, true, 512, $flags);
+    if (is_array($data)) return $data;
+
+    // 6. Конвертация кодировки в UTF-8
+    if (function_exists('mb_convert_encoding')) {
+        $converted = mb_convert_encoding($cleanControls, 'UTF-8', 'UTF-8');
+        $data = json_decode($converted, true, 512, $flags);
+        if (is_array($data)) return $data;
+    }
+
+    return null;
+}
+
+/**
  * Чтение индекса активного ключа из cache/ai_active_key.json (0 или 1 по умолчанию)
  */
 function ai_get_active_key_index($activeKeyFile, $totalKeys)
@@ -348,25 +390,40 @@ ai_rate_limit(30, 200);
 // ---------------------------------------------------------------------------
 // 2. Разбор и валидация тела запроса
 // ---------------------------------------------------------------------------
-$rawBody = file_get_contents('php://input');
-if ($rawBody === false || strlen($rawBody) > 2 * 1024 * 1024) {
-    ai_error('Тело запроса отсутствует или превышает 2 МБ.', 413);
+$data = null;
+if (isset($_POST['messages']) && is_array($_POST['messages'])) {
+    $data = $_POST;
+} elseif (isset($_POST['data'])) {
+    $data = ai_robust_json_decode((string)$_POST['data']);
 }
 
-// Удаляем UTF-8 BOM если присутствует
-$rawBody = preg_replace('/^\xEF\xBB\xBF/', '', (string)$rawBody);
-
-$data = json_decode($rawBody, true);
 if (!is_array($data)) {
-    // Пробуем альтернативные источники данных (POST-параметры)
-    if (isset($_POST['messages']) && is_array($_POST['messages'])) {
-        $data = $_POST;
-    } elseif (isset($_POST['data']) && is_string($_POST['data'])) {
-        $data = json_decode($_POST['data'], true);
+    $rawBody = file_get_contents('php://input');
+    if (($rawBody === false || $rawBody === '') && !empty($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $rawBody = $GLOBALS['HTTP_RAW_POST_DATA'];
+    }
+    if (is_string($rawBody) && strlen($rawBody) > 2 * 1024 * 1024) {
+        ai_error('Тело запроса превышает 2 МБ.', 413);
+    }
+    $data = ai_robust_json_decode((string)$rawBody);
+}
+
+// Если клиент передал запрос через строковые параметры query / prompt
+if (!is_array($data)) {
+    $fallbackPrompt = $_POST['prompt'] ?? ($_POST['query'] ?? ($_GET['prompt'] ?? ($_GET['query'] ?? '')));
+    if (is_string($fallbackPrompt) && trim($fallbackPrompt) !== '') {
+        $data = [
+            'messages' => [
+                ['role' => 'user', 'content' => trim($fallbackPrompt)]
+            ]
+        ];
     }
 }
+
 if (!is_array($data)) {
-    ai_error('Некорректный JSON в теле запроса.', 400);
+    $errDetail = json_last_error_msg();
+    $bodyLen = isset($rawBody) ? strlen((string)$rawBody) : 0;
+    ai_error("Некорректный JSON в теле запроса ({$errDetail}, length={$bodyLen}).", 400);
 }
 
 $messages = isset($data['messages']) && is_array($data['messages']) ? $data['messages'] : [];

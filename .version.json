@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.1",
+    "version": "4.23.2",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T14:15:00+03:00",
-    "release_name": "AURORA 4.23.1 — Восстановление коннекта ИИ и чата с Космо (CORS/OPTIONS, User-Agent Cloudflare, надежный dblclick и прямая кнопка чата)"
+    "commit_date": "2026-09-15T14:30:00+03:00",
+    "release_name": "AURORA 4.23.2 — Сверхнадёжный JSON-парсер (защита от битых суррогатов, UTF-8 BOM, magic_quotes), двухфазная отправка JSON + urlencoded fallback"
 }

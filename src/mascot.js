@@ -28,8 +28,8 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.1';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.23.1';
+import { resolveApiUrl } from './api.js?v=4.23.2';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.23.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -38,97 +38,97 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.23.1',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.23.1',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.23.1',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.23.1',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.23.1',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.23.1',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.23.1'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.23.2',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.23.2',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.23.2',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.23.2',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.23.2',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.23.2',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.23.2'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
-    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.23.1',
-    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.23.1',
-    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.23.1',
-    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.23.1',
-    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.23.1',
-    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.23.1',
-    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.23.1',
-    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.23.1',
-    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.23.1',
-    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.23.1',
+    post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.23.2',
+    post_scan_2: 'assets/audio/cosmo/post_scan_2.mp3?v=4.23.2',
+    post_scan_3: 'assets/audio/cosmo/post_scan_3.mp3?v=4.23.2',
+    post_scan_4: 'assets/audio/cosmo/post_scan_4.mp3?v=4.23.2',
+    post_scan_5: 'assets/audio/cosmo/post_scan_5.mp3?v=4.23.2',
+    post_scan_6: 'assets/audio/cosmo/post_scan_6.mp3?v=4.23.2',
+    post_scan_7: 'assets/audio/cosmo/post_scan_7.mp3?v=4.23.2',
+    post_scan_8: 'assets/audio/cosmo/post_scan_8.mp3?v=4.23.2',
+    post_scan_9: 'assets/audio/cosmo/post_scan_9.mp3?v=4.23.2',
+    post_scan_10: 'assets/audio/cosmo/post_scan_10.mp3?v=4.23.2',
 
     // 9 шуток и реплик во время сканирования
-    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.23.1',
-    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.23.1',
-    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.23.1',
-    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.23.1',
-    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.23.1',
-    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.23.1',
-    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.23.1',
-    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.23.1',
-    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.23.1',
+    scan_wait_1: 'assets/audio/cosmo/scan_wait_1.mp3?v=4.23.2',
+    scan_wait_2: 'assets/audio/cosmo/scan_wait_2.mp3?v=4.23.2',
+    scan_wait_3: 'assets/audio/cosmo/scan_wait_3.mp3?v=4.23.2',
+    scan_wait_4: 'assets/audio/cosmo/scan_wait_4.mp3?v=4.23.2',
+    scan_wait_5: 'assets/audio/cosmo/scan_wait_5.mp3?v=4.23.2',
+    scan_wait_6: 'assets/audio/cosmo/scan_wait_6.mp3?v=4.23.2',
+    scan_wait_7: 'assets/audio/cosmo/scan_wait_7.mp3?v=4.23.2',
+    scan_wait_8: 'assets/audio/cosmo/scan_wait_8.mp3?v=4.23.2',
+    scan_wait_9: 'assets/audio/cosmo/scan_wait_9.mp3?v=4.23.2',
 
     // 4 комичных ворчания при обычном перетаскивании
-    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.23.1',
-    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.23.1',
-    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.23.1',
-    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.23.1',
+    drag_drop_1: 'assets/audio/cosmo/drag_drop_1.mp3?v=4.23.2',
+    drag_drop_2: 'assets/audio/cosmo/drag_drop_2.mp3?v=4.23.2',
+    drag_drop_3: 'assets/audio/cosmo/drag_drop_3.mp3?v=4.23.2',
+    drag_drop_4: 'assets/audio/cosmo/drag_drop_4.mp3?v=4.23.2',
 
     // 3 панических вопля при высокой высоте («Спасите! Помогите!»)
-    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.23.1',
-    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.23.1',
-    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.23.1',
+    high_altitude_1: 'assets/audio/cosmo/high_altitude_1.mp3?v=4.23.2',
+    high_altitude_2: 'assets/audio/cosmo/high_altitude_2.mp3?v=4.23.2',
+    high_altitude_3: 'assets/audio/cosmo/high_altitude_3.mp3?v=4.23.2',
 
     // 3 крика радостного сверхзвукового полёта при швырянии («Уи-и-и-и! Я лечу-у-у-у!»)
-    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.23.1',
-    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.23.1',
-    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.23.1',
+    throw_fling_1: 'assets/audio/cosmo/throw_fling_1.mp3?v=4.23.2',
+    throw_fling_2: 'assets/audio/cosmo/throw_fling_2.mp3?v=4.23.2',
+    throw_fling_3: 'assets/audio/cosmo/throw_fling_3.mp3?v=4.23.2',
 
     // 20 остроумных и ехидных критических замечаний по статистике и постам
-    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.23.1',
-    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.23.1',
-    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.23.1',
-    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.23.1',
-    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.23.1',
-    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.23.1',
-    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.23.1',
-    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.23.1',
-    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.23.1',
-    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.23.1',
-    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.23.1',
-    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.23.1',
-    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.23.1',
-    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.23.1',
-    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.23.1',
-    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.23.1',
-    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.23.1',
-    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.23.1',
-    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.23.1',
-    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.23.1',
+    critique_1: 'assets/audio/cosmo/critique_1.mp3?v=4.23.2',
+    critique_2: 'assets/audio/cosmo/critique_2.mp3?v=4.23.2',
+    critique_3: 'assets/audio/cosmo/critique_3.mp3?v=4.23.2',
+    critique_4: 'assets/audio/cosmo/critique_4.mp3?v=4.23.2',
+    critique_5: 'assets/audio/cosmo/critique_5.mp3?v=4.23.2',
+    critique_6: 'assets/audio/cosmo/critique_6.mp3?v=4.23.2',
+    critique_7: 'assets/audio/cosmo/critique_7.mp3?v=4.23.2',
+    critique_8: 'assets/audio/cosmo/critique_8.mp3?v=4.23.2',
+    critique_9: 'assets/audio/cosmo/critique_9.mp3?v=4.23.2',
+    critique_10: 'assets/audio/cosmo/critique_10.mp3?v=4.23.2',
+    critique_11: 'assets/audio/cosmo/critique_11.mp3?v=4.23.2',
+    critique_12: 'assets/audio/cosmo/critique_12.mp3?v=4.23.2',
+    critique_13: 'assets/audio/cosmo/critique_13.mp3?v=4.23.2',
+    critique_14: 'assets/audio/cosmo/critique_14.mp3?v=4.23.2',
+    critique_15: 'assets/audio/cosmo/critique_15.mp3?v=4.23.2',
+    critique_16: 'assets/audio/cosmo/critique_16.mp3?v=4.23.2',
+    critique_17: 'assets/audio/cosmo/critique_17.mp3?v=4.23.2',
+    critique_18: 'assets/audio/cosmo/critique_18.mp3?v=4.23.2',
+    critique_19: 'assets/audio/cosmo/critique_19.mp3?v=4.23.2',
+    critique_20: 'assets/audio/cosmo/critique_20.mp3?v=4.23.2',
 
     // 3 фразы искреннего удивления охватами
-    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.23.1',
-    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.23.1',
-    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.23.1',
+    surprise_1: 'assets/audio/cosmo/surprise_1.mp3?v=4.23.2',
+    surprise_2: 'assets/audio/cosmo/surprise_2.mp3?v=4.23.2',
+    surprise_3: 'assets/audio/cosmo/surprise_3.mp3?v=4.23.2',
 
     // 3 фразы комичного разочарования
-    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.23.1',
-    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.23.1',
-    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.23.1',
+    disappoint_1: 'assets/audio/cosmo/disappoint_1.mp3?v=4.23.2',
+    disappoint_2: 'assets/audio/cosmo/disappoint_2.mp3?v=4.23.2',
+    disappoint_3: 'assets/audio/cosmo/disappoint_3.mp3?v=4.23.2',
 
     // 2 фразы острой критики контента
-    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.23.1',
-    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.23.1',
+    critique_extra_1: 'assets/audio/cosmo/critique_extra_1.mp3?v=4.23.2',
+    critique_extra_2: 'assets/audio/cosmo/critique_extra_2.mp3?v=4.23.2',
 
     // 4 фразы искромётного сарказма и SMM-шуток
-    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.23.1',
-    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.23.1',
-    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.23.1',
-    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.23.1'
+    sarcasm_1: 'assets/audio/cosmo/sarcasm_1.mp3?v=4.23.2',
+    sarcasm_2: 'assets/audio/cosmo/sarcasm_2.mp3?v=4.23.2',
+    sarcasm_3: 'assets/audio/cosmo/sarcasm_3.mp3?v=4.23.2',
+    sarcasm_4: 'assets/audio/cosmo/sarcasm_4.mp3?v=4.23.2'
 };
 
 const MOOD_EMOJIS = {
@@ -3109,20 +3109,44 @@ export class AuroraMascot {
 
             // Память диалога: последние реплики уходят в Mistral, чтобы Космо
             // понимал уточняющие вопросы («а теперь сравни со вторым местом»)
-            const history = this.aiConversationMemory.slice(-4);
-            const response = await fetch(AI_PROXY_URL, {
+            const sanitizeStr = (s) => {
+                if (typeof s !== 'string') return '';
+                return s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+                        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+            };
+
+            const history = this.aiConversationMemory.slice(-4).map(h => ({
+                role: h.role,
+                content: sanitizeStr(h.content)
+            }));
+
+            const payloadObj = {
+                messages: [
+                    { role: 'system', content: sanitizeStr(systemPrompt) },
+                    ...history,
+                    { role: 'user', content: sanitizeStr(userQuestion) }
+                ],
+                max_tokens: 350,
+                temperature: 0.75
+            };
+            const payloadJson = JSON.stringify(payloadObj);
+
+            let response = await fetch(AI_PROXY_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        ...history,
-                        { role: 'user', content: userQuestion }
-                    ],
-                    max_tokens: 350,
-                    temperature: 0.75
-                })
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                body: payloadJson
             });
+
+            if (!response.ok) {
+                // Резервный формат application/x-www-form-urlencoded
+                const bodyParams = new URLSearchParams();
+                bodyParams.append('data', payloadJson);
+                response = await fetch(AI_PROXY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: bodyParams.toString()
+                });
+            }
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();

@@ -237,7 +237,17 @@ header('Content-Type: application/json; charset=UTF-8');
 // 2. Read and Parse JSON Request Body
 // ---------------------------------------------------------------------------
 $rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true);
+$rawInput = preg_replace('/^\xEF\xBB\xBF/', '', (string)$rawInput);
+$flags = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0;
+$data = json_decode($rawInput, true, 512, $flags);
+
+if (!is_array($data)) {
+    if (isset($_POST['data'])) {
+        $data = json_decode((string)$_POST['data'], true, 512, $flags);
+    } elseif (isset($_POST['method'])) {
+        $data = $_POST;
+    }
+}
 
 if (!is_array($data)) {
     http_response_code(400);

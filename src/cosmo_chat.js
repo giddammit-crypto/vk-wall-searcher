@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.1';
+import { resolveApiUrl } from './api.js?v=4.23.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -78,7 +78,7 @@ function mdInline(s) {
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
         const escaped = code.replace(/:/g, ':');
         // Replace literal shortcodes with inline img elements
-        s = s.split(code).join(`<img src="${src}?v=4.23.1" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.23.2" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
@@ -464,7 +464,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.23.1"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.23.2"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -1101,7 +1101,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.23.1" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.23.2" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1209,7 +1209,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.23.1" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.23.2" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо • SMM-гуру</div>
@@ -1231,7 +1231,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.23.1" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.23.2" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">Космо генерирует ответ...</div>
@@ -1465,25 +1465,45 @@ ${statsContext}
             }
 
             let data = null;
-            let lastErr = null;
+            // Очистка суррогатных символов и управляющих байтов во избежание ошибок JSON в PHP
+            const sanitizeStr = (s) => {
+                if (typeof s !== 'string') return '';
+                return s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+                        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+            };
+
+            const payloadObj = {
+                messages: [
+                    { role: 'system', content: sanitizeStr(systemPrompt) },
+                    ...history.map(m => ({ role: m.role, content: sanitizeStr(m.content) }))
+                ],
+                max_tokens: maxTokens,
+                temperature: temperature,
+                top_p: 0.92,
+                frequency_penalty: 0.15,
+                presence_penalty: 0.10
+            };
+            const payloadJson = JSON.stringify(payloadObj);
 
             for (let attempt = 1; attempt <= 2; attempt++) {
                 try {
-                    const response = await fetch(AI_PROXY_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            messages: [
-                                { role: 'system', content: systemPrompt },
-                                ...history
-                            ],
-                            max_tokens: maxTokens,
-                            temperature: temperature,
-                            top_p: 0.92,
-                            frequency_penalty: 0.15,
-                            presence_penalty: 0.10
-                        })
-                    });
+                    let response;
+                    if (attempt === 1) {
+                        response = await fetch(AI_PROXY_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                            body: payloadJson
+                        });
+                    } else {
+                        // Резервный формат application/x-www-form-urlencoded для хостингов, сбрасывающих raw php://input
+                        const bodyParams = new URLSearchParams();
+                        bodyParams.append('data', payloadJson);
+                        response = await fetch(AI_PROXY_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body: bodyParams.toString()
+                        });
+                    }
 
                     if (!response.ok) {
                         const errJson = await response.json().catch(() => null);
@@ -1502,8 +1522,8 @@ ${statsContext}
                     lastErr = e;
                     console.warn(`[CosmoChat] Попытка ${attempt} завершилась ошибкой:`, e.message);
                     if (attempt === 1) {
-                        // Небольшая пауза, чтобы прокси переключил активный ключ
-                        await new Promise(res => setTimeout(res, 400));
+                        // Небольшая пауза перед второй попыткой
+                        await new Promise(res => setTimeout(res, 350));
                     }
                 }
             }
