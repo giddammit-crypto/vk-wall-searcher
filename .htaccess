@@ -18,6 +18,11 @@ DirectoryIndex index.php index.html
 # Security & Cache Headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
+
+    # Запрет поисковой индексации видеофайлов (Google, Яндекс и др.)
+    <FilesMatch "\.(mp4|m4v|aac|m4a)$">
+        Header set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+    </FilesMatch>
 </IfModule>
 
 # Enable Gzip compression if mod_deflate is available

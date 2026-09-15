@@ -29,7 +29,7 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.23.2';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.24.0';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.24.1';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');

@@ -1,0 +1,16 @@
+# ==============================================================================
+# Robots.txt for AURORA (VK Wall Searcher)
+# ==============================================================================
+
+User-agent: *
+# Запрет индексации папки с видеоматериалами
+Disallow: /assets/video/
+Disallow: /stat/assets/video/
+Disallow: */assets/video/
+Disallow: */assets/video/*
+
+# Запрет индексации системных директорий и API
+Disallow: /data/
+Disallow: /stat/data/
+Disallow: /api/
+Disallow: /stat/api/

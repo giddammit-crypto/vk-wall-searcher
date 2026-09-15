@@ -5,6 +5,9 @@
 *.aac
 !assets/video/*.mp4
 assets/video/audio_raw/
+assets/video/*preview*.jpg
+assets/video/*check*.jpg
+assets/video/crop_robot_test.png
 scratch/
 video_production/raw_video/
 video_production/frames/
