@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.18.6",
+    "version": "4.19.0",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T08:50:00+03:00",
-    "release_name": "AURORA 4.18.6 — Шрифты Shoptronic SP + Arial для цифр в промо-видео, чёткие векторные иконки и адаптивная вёрстка"
+    "commit_date": "2026-09-15T10:25:00+03:00",
+    "release_name": "AURORA 4.19.0 — Интерактивный чат с Космо по двойному клику: Markdown, прикрепление файлов, библиотечный ИИ-ассистент"
 }

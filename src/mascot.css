@@ -1807,7 +1807,7 @@
 
 
 /* ==========================================================================
-   COSMO v4.18.6 — DRAG & DROP, FLING THROW, HIGH ALTITUDE, 30S PATROL, 49 VOICES
+   COSMO v4.19.0 — CHAT MODAL, MARKDOWN, ATTACHMENTS, SMM AI ASSISTANT
    ========================================================================== */
 
 /* 1. Повышенный z-index 100000, чтобы Космо ВСЕГДА был поверх #search-modal-overlay (99999) */
@@ -2219,7 +2219,909 @@
 /* Движение сведено к минимуму — мгновенное появление без пружин */
 @media (prefers-reduced-motion: reduce) {
     .cosmo-modal-overlay,
-    .cosmo-modal {
+    .cosmo-modal,
+    .cosmo-chat-overlay,
+    .cosmo-chat-dialog {
         transition: none !important;
+    }
+}
+
+/* ==========================================================================
+   ИНТЕРАКТИВНЫЙ ЧАТ С КОСМО (Cosmo AI Chat Modal) (v4.19.0)
+   ========================================================================== */
+.cosmo-chat-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(3, 7, 18, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+
+.cosmo-chat-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cosmo-chat-overlay.is-closing {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cosmo-chat-dialog {
+    width: min(780px, 95vw);
+    height: min(85vh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 22px;
+    background: linear-gradient(165deg, rgba(10, 18, 42, 0.96) 0%, rgba(6, 11, 28, 0.98) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.75),
+                0 0 45px rgba(0, 240, 255, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    color: #f1f5f9;
+    font-family: var(--font-body, system-ui, sans-serif);
+    transform: translateY(24px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cosmo-chat-overlay.is-open .cosmo-chat-dialog {
+    transform: translateY(0) scale(1);
+}
+
+.cosmo-chat-dialog.is-dragover {
+    border-color: #ec4899;
+    box-shadow: 0 0 55px rgba(236, 72, 153, 0.45);
+}
+
+/* Шапка чата */
+.cosmo-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.18);
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.08) 0%, rgba(138, 108, 255, 0.06) 100%);
+    flex-shrink: 0;
+}
+
+.cosmo-chat-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cosmo-chat-avatar-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.cosmo-chat-avatar-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
+}
+
+.cosmo-chat-online-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #10b981;
+    border: 2px solid #060b1c;
+    box-shadow: 0 0 8px #10b981;
+    animation: cosmoDotPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes cosmoDotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.8); opacity: 0.6; }
+}
+
+.cosmo-chat-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.cosmo-chat-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cosmo-chat-title {
+    font-family: 'Shoptronic SP', var(--font-heading, sans-serif);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.cosmo-chat-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: rgba(0, 240, 255, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    text-transform: uppercase;
+}
+
+.cosmo-chat-subtitle {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+}
+.cosmo-chat-subtitle .material-symbols-outlined {
+    font-size: 13px;
+    color: #38bdf8;
+}
+
+.cosmo-chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cosmo-chat-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.6);
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cosmo-chat-tool-btn .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.cosmo-chat-tool-btn:hover {
+    border-color: rgba(0, 240, 255, 0.5);
+    color: #ffffff;
+    background: rgba(0, 240, 255, 0.12);
+}
+
+.cosmo-chat-tool-btn.is-muted {
+    color: #94a3b8;
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.cosmo-chat-close-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.7);
+    color: #cbd5e1;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.cosmo-chat-close-btn .material-symbols-outlined {
+    font-size: 19px;
+}
+
+.cosmo-chat-close-btn:hover {
+    color: #ff6b81;
+    border-color: rgba(255, 107, 129, 0.6);
+    background: rgba(255, 107, 129, 0.15);
+    transform: scale(1.08);
+}
+
+/* Область сообщений */
+.cosmo-chat-messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 240, 255, 0.35) rgba(255, 255, 255, 0.04);
+}
+
+.cosmo-chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+.cosmo-chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 240, 255, 0.35);
+    border-radius: 4px;
+}
+.cosmo-chat-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.cosmo-chat-msg {
+    display: flex;
+    gap: 12px;
+    max-width: 92%;
+    animation: cosmoMsgIn 0.25s ease both;
+}
+
+@keyframes cosmoMsgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cosmo-chat-msg-user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.cosmo-chat-msg-bot {
+    align-self: flex-start;
+}
+
+.cosmo-chat-msg .msg-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+}
+
+.cosmo-chat-msg-user .msg-avatar {
+    background: linear-gradient(135deg, #0284c7, #2563eb);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+}
+.cosmo-chat-msg-user .msg-avatar .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.cosmo-chat-msg-bot .msg-avatar {
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+}
+
+.cosmo-chat-msg-bot .msg-avatar img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}
+
+.avatar-pulse {
+    animation: cosmoAvatarPulse 1.4s ease-in-out infinite;
+}
+@keyframes cosmoAvatarPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #00f0ff); }
+    50% { transform: scale(1.08); filter: drop-shadow(0 0 12px #ec4899); }
+}
+
+.cosmo-chat-msg .msg-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.cosmo-chat-msg-user .msg-content {
+    align-items: flex-end;
+}
+
+.cosmo-chat-msg .msg-author {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.cosmo-chat-msg-user .msg-body {
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.95), rgba(37, 99, 235, 0.95));
+    color: #ffffff;
+    border-radius: 16px 4px 16px 16px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.3);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    word-wrap: break-word;
+}
+
+.cosmo-chat-msg-bot .msg-body {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(0, 240, 255, 0.22);
+    color: #e2e8f0;
+    border-radius: 4px 16px 16px 16px;
+    padding: 14px 18px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    font-size: 0.92rem;
+    line-height: 1.65;
+    word-wrap: break-word;
+}
+
+.cosmo-chat-msg-bot .msg-body p {
+    margin: 0 0 10px 0;
+}
+.cosmo-chat-msg-bot .msg-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* Markdown форматирование внутри пузыря сообщений Космо */
+.cosmo-chat-h {
+    font-weight: 800;
+    color: #38bdf8;
+    margin: 12px 0 6px;
+    line-height: 1.3;
+}
+.cosmo-chat-h1 { font-size: 1.15rem; color: #ffffff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
+.cosmo-chat-h2 { font-size: 1.05rem; color: #38bdf8; }
+.cosmo-chat-h3 { font-size: 0.95rem; color: #7dd3fc; }
+.cosmo-chat-h4 { font-size: 0.88rem; color: #bae6fd; }
+
+.cosmo-chat-code {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.84em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 240, 255, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+.cosmo-chat-codeblock-wrap {
+    position: relative;
+    margin: 10px 0;
+}
+.cosmo-chat-codeblock {
+    margin: 0;
+    padding: 12px 14px;
+    background: #030712;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #7ee8ff;
+}
+.cosmo-chat-copy-code-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.cosmo-chat-copy-code-btn .material-symbols-outlined {
+    font-size: 13px;
+}
+.cosmo-chat-copy-code-btn:hover {
+    color: #fff;
+    border-color: #38bdf8;
+}
+
+.cosmo-chat-ul {
+    margin: 8px 0;
+    padding-left: 20px;
+    list-style: disc;
+}
+.cosmo-chat-ul li {
+    margin: 4px 0;
+}
+
+.cosmo-chat-ol {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cosmo-chat-ol-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.cosmo-chat-ol-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 240, 255, 0.18);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    color: #38bdf8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.cosmo-chat-ol-text {
+    flex: 1;
+}
+
+.cosmo-chat-table-wrap {
+    margin: 10px 0;
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 240, 255, 0.22);
+}
+.cosmo-chat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    text-align: left;
+}
+.cosmo-chat-table th {
+    background: rgba(0, 240, 255, 0.14);
+    padding: 8px 12px;
+    color: #38bdf8;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.22);
+}
+.cosmo-chat-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+}
+.cosmo-chat-table tr:last-child td {
+    border-bottom: none;
+}
+.cosmo-chat-table tr:hover td {
+    background: rgba(0, 240, 255, 0.04);
+}
+
+.cosmo-chat-quote {
+    margin: 8px 0;
+    padding: 8px 14px;
+    border-left: 3px solid #ec4899;
+    background: rgba(236, 72, 153, 0.08);
+    border-radius: 0 8px 8px 0;
+    color: #fbcfe8;
+    font-style: italic;
+}
+
+.cosmo-chat-hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.4), transparent);
+    margin: 12px 0;
+}
+
+.cosmo-chat-link {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.15s ease;
+}
+.cosmo-chat-link:hover {
+    color: #7dd3fc;
+}
+
+.cosmo-chat-hl {
+    background: rgba(236, 72, 153, 0.25);
+    color: #fbcfe8;
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
+.cosmo-chat-num {
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Карточка прикреплённого файла внутри сообщения пользователя */
+.msg-attached-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.msg-attached-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+.msg-attached-head .material-symbols-outlined {
+    font-size: 16px;
+    color: #7dd3fc;
+}
+.msg-attached-name {
+    font-weight: 700;
+    color: #ffffff;
+    word-break: break-all;
+}
+.msg-attached-size {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: auto;
+}
+.msg-file-thumb img {
+    max-width: 220px;
+    max-height: 140px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Кнопка «Скопировать пост» в ответах бота */
+.msg-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.cosmo-chat-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    background: rgba(0, 240, 255, 0.1);
+    color: #38bdf8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.cosmo-chat-action-btn .material-symbols-outlined {
+    font-size: 14px;
+}
+.cosmo-chat-action-btn:hover {
+    background: rgba(0, 240, 255, 0.2);
+    border-color: rgba(0, 240, 255, 0.6);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.cosmo-chat-action-btn.is-copied {
+    border-color: #4ade80;
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+}
+
+/* Индикатор набора ответа */
+.cosmo-chat-typing-msg .msg-body {
+    padding: 10px 14px;
+}
+.cosmo-chat-typing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00f0ff;
+    box-shadow: 0 0 6px #00f0ff;
+    animation: typingBlink 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBlink {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.2); }
+}
+
+.typing-text {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-left: 4px;
+    font-style: italic;
+}
+
+/* Быстрые чипы-подсказки */
+.cosmo-chat-chips {
+    display: flex;
+    gap: 8px;
+    padding: 10px 20px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(6, 11, 28, 0.6);
+}
+.cosmo-chat-chips::-webkit-scrollbar {
+    display: none;
+}
+.cosmo-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    padding: 6px 13px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.cosmo-chip:hover {
+    border-color: #00f0ff;
+    color: #fff;
+    background: rgba(0, 240, 255, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 240, 255, 0.2);
+}
+
+/* Плашка прикреплённого файла над полем ввода */
+.cosmo-chat-attachment-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: rgba(0, 240, 255, 0.08);
+    border-top: 1px solid rgba(0, 240, 255, 0.2);
+    flex-shrink: 0;
+    animation: cosmoMsgIn 0.2s ease both;
+}
+.attachment-preview-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(0, 240, 255, 0.18);
+    display: grid;
+    place-items: center;
+    color: #38bdf8;
+}
+.attachment-preview-icon .material-symbols-outlined {
+    font-size: 18px;
+}
+.attachment-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+.attachment-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #38bdf8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.attachment-size {
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+.attachment-remove-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.attachment-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #ff6b81;
+}
+.attachment-remove-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+/* Нижняя панель ввода */
+.cosmo-chat-footer {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(0, 240, 255, 0.18);
+    background: rgba(6, 11, 28, 0.95);
+    flex-shrink: 0;
+}
+
+.cosmo-chat-attach-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.7);
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.cosmo-chat-attach-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+.cosmo-chat-attach-btn .attach-btn-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    margin-top: -2px;
+}
+.cosmo-chat-attach-btn:hover {
+    border-color: #00f0ff;
+    color: #00f0ff;
+    background: rgba(0, 240, 255, 0.12);
+}
+
+.cosmo-chat-input-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cosmo-chat-input {
+    width: 100%;
+    min-height: 44px;
+    max-height: 140px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.cosmo-chat-input:focus {
+    border-color: #00f0ff;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+}
+
+.cosmo-chat-send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+    color: #020617;
+    font-weight: 800;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 240, 255, 0.35);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.cosmo-chat-send-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+.cosmo-chat-send-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0, 240, 255, 0.5);
+    filter: brightness(1.1);
+}
+.cosmo-chat-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Светлая тема */
+[data-theme="light"] .cosmo-chat-overlay {
+    background: rgba(15, 23, 42, 0.5);
+}
+[data-theme="light"] .cosmo-chat-dialog {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.35);
+    color: #1e293b;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.25), 0 0 30px rgba(2, 132, 199, 0.15);
+}
+[data-theme="light"] .cosmo-chat-header {
+    background: rgba(2, 132, 199, 0.08);
+    border-bottom-color: rgba(2, 132, 199, 0.25);
+}
+[data-theme="light"] .cosmo-chat-title {
+    color: #0284c7;
+    text-shadow: none;
+}
+[data-theme="light"] .cosmo-chat-msg-bot .msg-body {
+    background: #f8fafc;
+    border-color: rgba(2, 132, 199, 0.25);
+    color: #334155;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .cosmo-chat-footer {
+    background: #f1f5f9;
+    border-top-color: rgba(2, 132, 199, 0.2);
+}
+[data-theme="light"] .cosmo-chat-input {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(2, 132, 199, 0.35);
+}
+[data-theme="light"] .cosmo-chat-chips {
+    background: #f8fafc;
+}
+[data-theme="light"] .cosmo-chip {
+    background: #ffffff;
+    color: #334155;
+    border-color: rgba(2, 132, 199, 0.3);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 640px) {
+    .cosmo-chat-overlay {
+        padding: 0;
+    }
+    .cosmo-chat-dialog {
+        width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+    .cosmo-chat-header {
+        padding: 10px 14px;
+    }
+    .cosmo-chat-title {
+        font-size: 0.95rem;
+    }
+    .cosmo-chat-badge,
+    .tool-btn-text,
+    .send-btn-label {
+        display: none;
+    }
+    .cosmo-chat-send-btn {
+        padding: 0 14px;
+    }
+    .cosmo-chat-footer {
+        padding: 10px 12px;
+    }
+    .cosmo-chat-msg {
+        max-width: 96%;
     }
 }

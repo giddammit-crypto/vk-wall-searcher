@@ -8,7 +8,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { resolveApiUrl } from './api.js?v=4.18.6';
+import { resolveApiUrl } from './api.js?v=4.19.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 
