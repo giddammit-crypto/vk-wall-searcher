@@ -33,12 +33,14 @@ return [
     'ai_api_key'          => '',
 
     // Резервный ключ ИИ (автоматический Zero Downtime failover при 429/401/402/403):
-    'ai_api_key_fallback' => '',
+    'ai_api_key_fallback'   => '',
+    'ai_api_key_fallback_2' => '',
 
     // Опциональный массив ключей для автоматической ротации (если задан, объединяется с ai_api_key):
     'ai_api_keys'         => [
-        // 'sk-xt-основной-ключ',
-        // 'sk-xt-резервный-ключ',
+        // 'sk-xt-основной-ключ-1',
+        // 'sk-xt-резервный-ключ-2',
+        // 'sk-xt-резервный-ключ-3',
     ],
 
     'ai_base_url'   => 'https://api.xkiro.com/v1',

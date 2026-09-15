@@ -29,6 +29,7 @@ ini_set('display_errors', '0');
 // Встроенные дефолтные fallback-ключи на случай отсутствия или повреждения конфигурации
 $defaultAiKey1 = 'sk-xt-7bfbd1f7908daa6a630e1e6e3d5cfa4e1961dcef6aebbfe1';
 $defaultAiKey2 = 'sk-xt-764dbb9ee98b4d75bcedeef2fd0899d01044e46e8143acd2';
+$defaultAiKey3 = 'sk-xt-89197544de3c1a413756421f7181e8ef5334c84915c67b1e';
 
 // Читаем config.php и опционально config.local.php (локальные переопределения)
 $aiConfig = [];
@@ -64,10 +65,16 @@ if (!empty($aiConfig['ai_api_key_fallback'])) {
         $rawKeys[] = $k;
     }
 }
+if (!empty($aiConfig['ai_api_key_fallback_2'])) {
+    $k = trim((string)$aiConfig['ai_api_key_fallback_2']);
+    if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) {
+        $rawKeys[] = $k;
+    }
+}
 
-// Гарантируем наличие двух резервных ключей
+// Гарантируем наличие трёх резервных ключей
 if (empty($rawKeys)) {
-    $rawKeys = [$defaultAiKey1, $defaultAiKey2];
+    $rawKeys = [$defaultAiKey1, $defaultAiKey2, $defaultAiKey3];
 } else {
     if (!in_array($defaultAiKey1, $rawKeys, true)) {
         $rawKeys[] = $defaultAiKey1;
@@ -75,9 +82,12 @@ if (empty($rawKeys)) {
     if (!in_array($defaultAiKey2, $rawKeys, true)) {
         $rawKeys[] = $defaultAiKey2;
     }
+    if (!in_array($defaultAiKey3, $rawKeys, true)) {
+        $rawKeys[] = $defaultAiKey3;
+    }
 }
 
-// Формируем уникальный список доступных ключей [$key1, $key2]
+// Формируем уникальный список доступных ключей [$key1, $key2, $key3, ...]
 $validKeys = array_values(array_unique($rawKeys));
 
 $aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
@@ -489,7 +499,7 @@ $payloadJson  = json_encode($payload, JSON_UNESCAPED_UNICODE);
 $keysCount    = count($validKeys);
 $activeIndex  = ai_get_active_key_index($activeKeyFile, $keysCount);
 $currentIndex = $activeIndex;
-$attempts     = min(2, $keysCount);
+$attempts     = $keysCount;
 
 for ($try = 0; $try < $attempts; $try++) {
     $currentKey = $validKeys[$currentIndex];
@@ -524,7 +534,7 @@ for ($try = 0; $try < $attempts; $try++) {
         $nextIndex = ($currentIndex + 1) % $keysCount;
         ai_set_active_key_index($activeKeyFile, $nextIndex);
         $currentIndex = $nextIndex;
-        // Повторяем запрос со вторым ключом прямо в этом же HTTP-вызове!
+        // Повторяем запрос со следующим ключом прямо в этом же HTTP-вызове!
         continue;
     }
 

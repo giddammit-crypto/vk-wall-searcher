@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.23.3",
+    "version": "4.23.4",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-15T15:30:00+03:00",
-    "release_name": "AURORA 4.23.3 — Исправление стандарта QR-кодов (ISO/IEC 18004 0x5412, тихие поля 4 модуля, устранение rx=12 у подложки SVG, надёжное сканирование плакатов и закладок)"
+    "commit_date": "2026-09-15T15:45:00+03:00",
+    "release_name": "AURORA 4.23.4 — Добавление 3-го ИИ-ключа в пул и ротацию с полным failover-циклом для Космо"
 }
