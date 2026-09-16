@@ -1411,7 +1411,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.24.3" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.24.4" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1537,7 +1537,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.24.3" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.24.4" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${authorLabel}</div>
@@ -1562,7 +1562,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.24.3" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.24.4" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${typingAuthor}</div>

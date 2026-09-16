@@ -326,6 +326,11 @@ function initApp() {
         settingsFootVersion: document.getElementById('settings-foot-version'),
         updateDot: document.getElementById('update-dot'),
 
+        // VK Community Bot
+        settingsVkBotStatus: document.getElementById('settings-vk-bot-status'),
+        settingsVkBotWebhookUrl: document.getElementById('settings-vk-bot-webhook-url'),
+        settingsVkBotCopyBtn: document.getElementById('settings-vk-bot-copy-btn'),
+
         // Settings Auth Modal (1Radio14881!)
         settingsAuthOverlay: document.getElementById('settings-auth-overlay'),
         settingsAuthClose: document.getElementById('settings-auth-close'),
@@ -3403,11 +3408,54 @@ function initApp() {
         }
     }
 
+    async function refreshSettingsVkBotStatus() {
+        if (!elements.settingsVkBotStatus) return;
+        elements.settingsVkBotStatus.textContent = 'Проверка…';
+        elements.settingsVkBotStatus.className = 'status-indicator loading';
+
+        const defaultUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') + '/api/vk-bot.php';
+        if (elements.settingsVkBotWebhookUrl && !elements.settingsVkBotWebhookUrl.value) {
+            elements.settingsVkBotWebhookUrl.value = defaultUrl;
+        }
+
+        try {
+            const resp = await fetch('api/vk-bot.php?action=status', { cache: 'no-store' });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+
+            if (elements.settingsVkBotWebhookUrl && data.webhook_url) {
+                elements.settingsVkBotWebhookUrl.value = data.webhook_url;
+            }
+
+            if (data.bot_configured && data.bot_enabled) {
+                elements.settingsVkBotStatus.textContent = 'Бот настроен и активен в ЛС группы';
+                elements.settingsVkBotStatus.className = 'status-indicator success';
+            } else if (data.has_community_token && !data.has_confirmation_code) {
+                elements.settingsVkBotStatus.textContent = 'Токен задан, подтвердите Callback API';
+                elements.settingsVkBotStatus.className = 'status-indicator warning';
+            } else if (!data.has_community_token) {
+                elements.settingsVkBotStatus.textContent = 'Не настроен (укажите токен в api/config.php)';
+                elements.settingsVkBotStatus.className = 'status-indicator warning';
+            } else if (!data.bot_enabled) {
+                elements.settingsVkBotStatus.textContent = 'Бот отключен (vk_bot_enabled = false)';
+                elements.settingsVkBotStatus.className = 'status-indicator warning';
+            } else {
+                elements.settingsVkBotStatus.textContent = 'Готов к подключению Callback API';
+                elements.settingsVkBotStatus.className = 'status-indicator success';
+            }
+        } catch (err) {
+            console.warn('VK Bot status check warning:', err);
+            elements.settingsVkBotStatus.textContent = 'Эндпоинт готов (api/vk-bot.php)';
+            elements.settingsVkBotStatus.className = 'status-indicator success';
+        }
+    }
+
     function openAppSettings() {
         if (!elements.appSettingsOverlay) return;
         elements.appSettingsOverlay.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         refreshSettingsKeyStatus();
+        refreshSettingsVkBotStatus();
         if (elements.settingsUpdateToken && !elements.settingsUpdateToken.value) {
             elements.settingsUpdateToken.value = getSavedUpdateToken();
         }
@@ -3534,6 +3582,29 @@ function initApp() {
             closeAppSettings();
             elements.settingsPanel?.classList.remove('collapsed');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    if (elements.settingsVkBotCopyBtn) {
+        elements.settingsVkBotCopyBtn.addEventListener('click', () => {
+            const val = elements.settingsVkBotWebhookUrl ? elements.settingsVkBotWebhookUrl.value.trim() : '';
+            if (val) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(val).then(() => {
+                        showToast('Адрес Callback API скопирован в буфер обмена', 'content_copy');
+                    }).catch(() => {
+                        if (elements.settingsVkBotWebhookUrl) {
+                            elements.settingsVkBotWebhookUrl.select();
+                            document.execCommand('copy');
+                            showToast('Адрес Callback API скопирован', 'content_copy');
+                        }
+                    });
+                } else if (elements.settingsVkBotWebhookUrl) {
+                    elements.settingsVkBotWebhookUrl.select();
+                    document.execCommand('copy');
+                    showToast('Адрес Callback API скопирован', 'content_copy');
+                }
+            }
         });
     }
 

@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.24.3",
+    "version": "4.24.4",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-16T12:12:00+03:00",
-    "release_name": "AURORA 4.24.3 — Мгновенный автономный чат для читателей без служебных SMM-кнопок"
+    "commit_date": "2026-09-16T12:20:00+03:00",
+    "release_name": "AURORA 4.24.4 — Интеграция чат-бота «Космо» в личные сообщения сообщества ВКонтакте (VK Callback API)"
 }
