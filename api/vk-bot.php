@@ -576,6 +576,60 @@ if ($eventType === 'message_allow') {
     $payload = $msgObj['payload'] ?? null;
 }
 
+// =============================================================================
+// ЗАЩИТА ОТ ДУБЛИРОВАНИЯ СООБЩЕНИЙ (ДЕДУПЛИКАЦИЯ ВЕБХУКОВ И БЫСТРЫХ КЛИКОВ)
+// =============================================================================
+$eventId = isset($event['event_id']) ? trim((string)$event['event_id']) : '';
+$cmid = isset($msgObj['conversation_message_id']) ? (int)$msgObj['conversation_message_id'] : (isset($msgObj['id']) ? (int)$msgObj['id'] : 0);
+
+$dedupDir = $cacheDir . '/dedup';
+if (!is_dir($dedupDir)) {
+    @mkdir($dedupDir, 0777, true);
+}
+
+if ($eventId !== '') {
+    $dedupKey = 'evt_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $eventId);
+} elseif ($peerId > 0 && $cmid > 0) {
+    $dedupKey = 'msg_' . $peerId . '_' . $cmid;
+} else {
+    $dedupKey = 'usr_' . $peerId . '_' . $fromId . '_' . md5($userMsg . '_' . (string)$payload) . '_' . (int)(time() / 3);
+}
+
+$dedupFile = $dedupDir . '/' . $dedupKey . '.lock';
+if (file_exists($dedupFile)) {
+    $lockAge = time() - (int)@filemtime($dedupFile);
+    if ($lockAge < 120) {
+        // Запрос уже обрабатывается или был успешно обработан — отдаём мгновенный 'ok'
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Connection: close');
+        header('Content-Length: 2');
+        header('X-Accel-Buffering: no');
+        echo 'ok';
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            while (ob_get_level() > 0) ob_end_flush();
+            if (function_exists('flush')) @flush();
+        }
+        exit;
+    }
+}
+@file_put_contents($dedupFile, (string)time(), LOCK_EX);
+
+if (mt_rand(1, 40) === 1) {
+    $oldLocks = @glob($dedupDir . '/*.lock');
+    if ($oldLocks) {
+        $now = time();
+        foreach ($oldLocks as $lf) {
+            if (($now - (int)@filemtime($lf)) > 600) {
+                @unlink($lf);
+            }
+        }
+    }
+}
+
+$GLOBALS['VK_CURRENT_INCOMING_KEY'] = $dedupKey;
+
 // Поиск голосового сообщения (audio_message) среди вложений сообщения, реплая или пересланных
 $audioAttachment = null;
 if (!empty($msgObj['attachments']) && is_array($msgObj['attachments'])) {
@@ -728,8 +782,8 @@ if ($isChat && !$isBotInvited) {
     // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
     $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
 
-    // Проверяем команды квиза, опроса, счета, хохмы, статьи, стикеров или ввод цифры ответа
-    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата|статья|статью|article|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
+    // Проверяем команды квиза, опроса, счета, хохмы, стикеров или ввод цифры ответа
+    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
     $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
         file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
@@ -805,12 +859,13 @@ if (!$botEnabled || $communityToken === '') {
 header('Content-Type: text/plain; charset=UTF-8');
 header('Connection: close');
 header('Content-Length: 2');
+header('X-Accel-Buffering: no');
 echo 'ok';
 
 if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 } else {
-    if (ob_get_level() > 0) {
+    while (ob_get_level() > 0) {
         ob_end_flush();
     }
     if (function_exists('flush')) {
@@ -2540,258 +2595,6 @@ function vk_bot_build_poll_results_keyboard($poll)
 }
 
 /**
- * Экспресс-проверка темы статьи на явно посторонние (нелитературные) категории
- */
-function vk_bot_is_forbidden_nonliterary_topic($topic)
-{
-    if (!is_string($topic) || trim($topic) === '') return false;
-    $pattern = '/\b(?:'
-        . 'крипт[а-я]*|биткоин[а-я]*|эфириум[а-я]*|майнинг[а-я]*|блокчейн[а-я]*|криптовалют[а-я]*|токен[а-я]*'
-        . '|рецепт[а-я]*|шашлык[а-я]*|пирог[а-я]*|борщ[а-я]*|суп[а-я]*|кулинари[яи][а-я]*|выпечк[а-я]*|салат[а-я]*'
-        . '|авторемонт[а-я]*|двигател[а-я]*|шиномонтаж[а-я]*|карбюратор[а-я]*|замен[а-я]*\s+масла'
-        . '|казино|ставк[а-я]*\s+на\s+спорт|букмекер[а-я]*|покер|рулетк[а-я]*|слот[а-я]*'
-        . '|порно|секс[а-я]*|интим|наркотик[а-я]*|оружи[ея][а-я]*|патрон[а-я]*'
-        . ')\b/ui';
-    // Если тема содержит книжный/литературный контекст (например «кулинарные книги 19 века» или «книги об автомобилях»), не блокируем
-    if (preg_match('/(?:книг[а-я]*|литератур[а-я]*|библиограф|роман[а-я]*|писател[а-я]*|автор[а-я]*)/ui', $topic)) {
-        return false;
-    }
-    return (bool)preg_match($pattern, $topic);
-}
-
-/**
- * Сохранение статьи робота Космо (срок жизни: ровно 12 часов)
- */
-function vk_bot_save_article($article, $cacheDir)
-{
-    $dir = $cacheDir . '/articles';
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0777, true);
-    }
-
-    // Авто-очистка статей старше 12 часов (43200 сек)
-    $files = @glob($dir . '/*.json');
-    if ($files) {
-        $now = time();
-        foreach ($files as $f) {
-            $fdata = @json_decode(@file_get_contents($f), true);
-            if (is_array($fdata) && isset($fdata['expires_at']) && $now > (int)$fdata['expires_at']) {
-                @unlink($f);
-            }
-        }
-    }
-
-    $id = 'art_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 10);
-    $now = time();
-    $data = [
-        'id'         => $id,
-        'created_at' => $now,
-        'expires_at' => $now + 43200, // 12 часов
-        'views'      => 0,
-        'article'    => $article
-    ];
-
-    $filePath = $dir . '/' . $id . '.json';
-    $fh = @fopen($filePath, 'c+');
-    if ($fh) {
-        if (@flock($fh, LOCK_EX)) {
-            ftruncate($fh, 0);
-            rewind($fh);
-            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            fflush($fh);
-            @flock($fh, LOCK_UN);
-        }
-        fclose($fh);
-        return $id;
-    }
-    return null;
-}
-
-/**
- * Резервные высококачественные статьи при недоступности внешнего шлюза ИИ
- */
-function vk_bot_get_fallback_article($topic = '')
-{
-    $articles = [
-        [
-            'off_topic' => false,
-            'title' => 'Миры Полдня: философия и тайны братьев Стругацких',
-            'subtitle' => 'Как Аркадий и Борис Стругацкие переосмыслили будущее человечества и научную фантастику XX века',
-            'lead' => 'Творчество братьев Стругацких — это не просто классика советской и мировой фантастики, а глубочайшая философская лаборатория, исследовавшая природу морали, разума и ответственности человека перед будущим.',
-            'category' => 'Литературоведение',
-            'reading_time_min' => 6,
-            'tags' => ['Стругацкие', 'Фантастика', 'XX век', 'Философия', 'Классика'],
-            'sections' => [
-                [
-                    'heading' => 'Рождение Мира Полдня и вера в Человека Воспитанного',
-                    'content' => "В конце 1950-х годов, на волне первых космических триумфов, Аркадий и Борис Стругацкие создали масштабную вселенную будущего — Мир Полдня (XXII век). В повестях «Возвращение» («Полдень, XXII век»), «Трудно быть богом» и «Попытка к бегству» авторы нарисовали общество, где главной ценностью стал непрекращающийся творческий труд и познание тайн Вселенной.\n\nОднако за романтическим фасадом братья-соавторы всегда видели трагические противоречия: имеет ли право высокоразвитая цивилизация вмешиваться в чужую историю и пытаться ускорить исторический прогресс мечом?",
-                    'quote' => '«Самое главное — это оставаться человеком при любых поворотах судьбы и цивилизации».',
-                    'list' => [
-                        '1962 год — публикация цикла «Полдень, XXII век»;',
-                        '1964 год — шедевр «Трудно быть богом» и концепция института Прогрессорства;',
-                        '1972 год — «Пикник на обочине», подаривший миру понятие Зоны и образ сталкера.'
-                    ]
-                ],
-                [
-                    'heading' => '«Пикник на обочине»: Зона, Сталкер и золотой шар человеческих надежд',
-                    'content' => "Особой вершиной творчества стала повесть «Пикник на обочине». В ней авторы предложили совершенно иной взгляд на контакт с внеземным разумом: инопланетяне посетили Землю мимоходом, оставив после себя опасные артефакты, словно мусор после пикника на обочине лесной дороги.\n\nОбраз Рэдрика Шухарта, идущего к Золотому Шару сквозь «мясорубки» и ловушки Зоны, чтобы в финале прошептать выстраданные слова, стал одним из мощнейших литературных катарсисов XX столетия.",
-                    'quote' => '«Счастье для всех, даром, и пусть никто не уйдёт обиженный!»'
-                ]
-            ],
-            'curious_facts' => [
-                'Аркадий Стругацкий был профессиональным переводчиком-японистом и свободно владел японским и английским языками.',
-                'Борис Стругацкий работал астрономом в знаменитой Пулковской обсерватории, исследуя звёздные скопления и лунные структуры.',
-                'Повесть «Пикник на обочине» легла в основу культового фильма Андрея Тарковского «Сталкер» и вдохновила глобальные феномены мировой культуры.'
-            ],
-            'library_recommendation' => 'В фондах Центральной городской библиотеки Владимира (Суздальский пр-т, 2) и библиотек-филиалов представлены как ранние романтические повести Стругацких, так и академические собрания сочинений с подробными комментариями Бориса Натановича.',
-            'conclusion' => 'Книги Стругацких остаются живым компасом для каждого мыслящего читателя. Они не дают простых ответов, но учат главному — ответственности за свой выбор.'
-        ],
-        [
-            'off_topic' => false,
-            'title' => 'Рукописи не горят: литературный лабиринт Михаила Булгакова',
-            'subtitle' => 'История создания «Мастера и Маргариты», скрытые аллюзии и тайны московских адресов писателя',
-            'lead' => 'Михаил Афанасьевич Булгаков — один из самых мистических и проницательных авторов русской литературы XX века. Его произведения преодолели цензурные запреты и время, доказав бессмертие истинного слова.',
-            'category' => 'Биографии классиков',
-            'reading_time_min' => 7,
-            'tags' => ['Булгаков', 'Мастер и Маргарита', 'Классика', 'Белая гвардия', 'Москва'],
-            'sections' => [
-                [
-                    'heading' => 'От врача земской больницы к драматургу Московского Художественного театра',
-                    'content' => "Жизненный путь Булгакова начался в Киеве. Окончив с отличием медицинский факультет, он прошёл горнило Первой мировой и Гражданской войн, что нашло отражение в пронзительных «Записках юного врача» и великом романе «Белая гвардия».\n\nПереехав в голодную Москву начала 1920-х годов, Булгаков целиком посвятил себя литературе и драматургии. Его пьеса «Дни Турбиных» на сцене МХАТ выдержала сотни аншлагов, вызывая восхищение современников психологической глубиной и честностью.",
-                    'quote' => '«Никогда и ничего не просите! Никогда и ничего, и в особенности у тех, кто сильнее вас. Сами предложат и сами всё дадут!»'
-                ],
-                [
-                    'heading' => '«Мастер и Маргарита»: роман-завещание и вечный суд Воланда',
-                    'content' => "Над своим главным закатным романом Михаил Афанасьевич работал более двенадцати лет, вплоть до последних дней жизни в марте 1940 года. Первую редакцию рукописи писатель сжёг в печи в 1930 году после известия о запрете его пьесы «Кабала святош», однако позже восстановил текст по памяти.\n\nПереплетение ершалаимских глав с сатирической панорамой предвоенной Москвы создало непревзойдённую полифоническую структуру, исследующую вечные темы верности, трусости и света.",
-                    'quote' => '«Трусость, несомненно, один из самых страшных пороков... Нет, философ, я тебе возражаю: это самый страшный порок!»'
-                ]
-            ],
-            'curious_facts' => [
-                'Знаменитый Кот Бегемот имел реального прототипа — огромного серого пса по кличке Бегемот, жившего у писателя.',
-                'Первая полная публикация романа «Мастер и Маргарита» в СССР состоялась лишь в 1966–1967 годах в журнале «Москва», вызвав грандиозный читательский бум.',
-                'В архивах Булгакова сохранились десятки вариантов заглавия романа: «Чёрный маг», «Копыто инженера», «Великий канцлер».'
-            ],
-            'library_recommendation' => 'Произведения Михаила Булгакова — романы, повести, пьесы и биографические исследования Мариэтты Чудаковой — доступны для читателей во всех 18 филиалах Централизованной библиотечной системы г. Владимира.',
-            'conclusion' => 'Свет слова Булгакова не тускнеет с десятилетиями, продолжая восхищать новые поколения читателей силой художественного гения.'
-        ]
-    ];
-
-    if ($topic !== '') {
-        $tl = mb_strtolower($topic, 'UTF-8');
-        foreach ($articles as $a) {
-            $hay = mb_strtolower($a['title'] . ' ' . $a['subtitle'] . ' ' . implode(' ', $a['tags']), 'UTF-8');
-            if (mb_strpos($hay, $tl) !== false) {
-                return $a;
-            }
-        }
-    }
-    return $articles[array_rand($articles)];
-}
-
-/**
- * Генерация иллюстрированной статьи через ИИ с проверкой тематики и защитой от иноагентов
- */
-function vk_bot_generate_ai_article($topic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0)
-{
-    $topic = trim((string)$topic);
-    if ($topic === '') {
-        $topic = 'Шедевры русской и мировой литературы';
-    }
-
-    $systemPrompt = "Ты — робот Космо, высокоинтеллектуальный библиотечный эксперт и библиограф Централизованной библиотечной системы города Владимира (портал biblioteka33.ru).\n"
-                  . "Твоя задача — написать великолепную, глубокую, познавательную и на 100% достоверную иллюстрированную статью для читательского веб-портала.\n\n"
-                  . "КРИТИЧЕСКИЕ ПРАВИЛА И ОГРАНИЧЕНИЯ:\n"
-                  . "1. СТРОЖАЙШИЙ ТЕМАТИЧЕСКИЙ ФИЛЬТР:\n"
-                  . "   - Статьи разрешено создавать ИСКЛЮЧИТЕЛЬНО по темам: Литература, Литературоведение, Библиография, Библиотечное дело, История книг и книгопечатания, Биографии писателей и поэтов, Анализ литературных произведений и жанров, Книжные редкости и фонды библиотек.\n"
-                  . "   - Если предложенная тема НЕ относится к книгам, литературе, библиографии, библиотекам или писателям (например: кулинария, рецепты, криптовалюта, ремонт автомобилей, компьютерные игры, политика, бизнес и т.п.):\n"
-                  . "     ТЫ ОБЯЗАН ВЕРНУТЬ JSON с полем \"off_topic\": true и полем \"off_topic_reason\": вежливое объяснение от лица робота Космо, почему ты создаёшь статьи исключительно о литературе и книжной культуре.\n\n"
-                  . "2. СТРОЖАЙШИЙ ЗАПРЕТ НА ИНОАГЕНТОВ:\n"
-                  . "   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать статьи о лицах, признанных иностранными агентами Минюстом РФ, и об их произведениях (включая Б. Акунина / Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и др.)!\n"
-                  . "   - Если запрашивается автор-иноагент — верни \"off_topic\": true и мотивированный отказ.\n\n"
-                  . "3. ФАКТИЧЕСКАЯ ДОСТОВЕРНОСТЬ (ZERO HALLUCINATIONS):\n"
-                  . "   - 100% реальные книги, проверенные историко-биографические факты, подлинные цитаты.\n"
-                  . "   - Высокий литературный слог, богатство русского языка, живая и захватывающая подача.\n\n"
-                  . "ВЕРНИ СТРОГО ВАЛИДНЫЙ JSON БЕЗ MARKDOWN-ОБЁРТОК И БЕЗ ЛИШНЕГО ТЕКСТА СЛЕДУЮЩЕЙ СТРУКТУРЫ:\n"
-                  . "{\n"
-                  . "  \"off_topic\": false,\n"
-                  . "  \"title\": \"Яркий заголовок статьи (до 70 символов)\",\n"
-                  . "  \"subtitle\": \"Интригующий подзаголовок (1-2 предложения)\",\n"
-                  . "  \"lead\": \"Увлекательный лид-абзац, вовлекающий в чтение (3-4 предложения)\",\n"
-                  . "  \"category\": \"Литературоведение | История книги | Библиография | Библиотечное дело | Биографии классиков | Книжный гид\",\n"
-                  . "  \"reading_time_min\": 6,\n"
-                  . "  \"tags\": [\"тег1\", \"тег2\", \"тег3\", \"тег4\"],\n"
-                  . "  \"sections\": [\n"
-                  . "    {\n"
-                  . "      \"heading\": \"Заголовок раздела 1\",\n"
-                  . "      \"content\": \"Подробный аналитический текст раздела (2-3 абзаца)...\",\n"
-                  . "      \"quote\": \"Знаковая цитата...\",\n"
-                  . "      \"list\": [\"Пункт 1\", \"Пункт 2\"]\n"
-                  . "    },\n"
-                  . "    {\n"
-                  . "      \"heading\": \"Заголовок раздела 2\",\n"
-                  . "      \"content\": \"Текст раздела...\",\n"
-                  . "      \"quote\": \"\",\n"
-                  . "      \"list\": []\n"
-                  . "    }\n"
-                  . "  ],\n"
-                  . "  \"curious_facts\": [\n"
-                  . "    \"Любопытный факт 1...\",\n"
-                  . "    \"Любопытный факт 2...\",\n"
-                  . "    \"Любопытный факт 3...\"\n"
-                  . "  ],\n"
-                  . "  \"library_recommendation\": \"Рекомендация книг из фондов Центральной городской библиотеки г. Владимира (Суздальский пр-т, 2) и филиалов...\",\n"
-                  . "  \"conclusion\": \"Вдохновляющее итоговое резюме от Космо о значении темы.\"\n"
-                  . "}";
-
-    $userPrompt = "Напиши подробную, глубокую и познавательную статью на тему: «{$topic}».";
-
-    $messages = [
-        ['role' => 'system', 'content' => $systemPrompt],
-        ['role' => 'user', 'content' => $userPrompt]
-    ];
-
-    $raw = vk_bot_call_ai_text($messages, 2800, 0.35, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
-
-    $parsed = null;
-    if ($raw !== '' && preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
-        $parsed = json_decode($m[0], true);
-    }
-
-    if (is_array($parsed)) {
-        if (!empty($parsed['off_topic'])) {
-            return [
-                'off_topic'        => true,
-                'off_topic_reason' => !empty($parsed['off_topic_reason']) ? (string)$parsed['off_topic_reason'] : 'Робот Космо создаёт статьи исключительно о литературе, библиографии, библиотечном деле, книгах и писателях!'
-            ];
-        }
-
-        if (!empty($parsed['title']) && !empty($parsed['sections']) && is_array($parsed['sections'])) {
-            // Санитизация каждого текстового поля от возможных упоминаний иноагентов
-            $parsed['title'] = vk_bot_sanitize_foreign_agents((string)$parsed['title']);
-            $parsed['subtitle'] = vk_bot_sanitize_foreign_agents((string)($parsed['subtitle'] ?? ''));
-            $parsed['lead'] = vk_bot_sanitize_foreign_agents((string)($parsed['lead'] ?? ''));
-            $parsed['category'] = !empty($parsed['category']) ? trim((string)$parsed['category']) : 'Литературоведение';
-            $parsed['reading_time_min'] = isset($parsed['reading_time_min']) ? max(3, min(20, (int)$parsed['reading_time_min'])) : 6;
-            $parsed['conclusion'] = vk_bot_sanitize_foreign_agents((string)($parsed['conclusion'] ?? ''));
-            $parsed['library_recommendation'] = vk_bot_sanitize_foreign_agents((string)($parsed['library_recommendation'] ?? ''));
-
-            foreach ($parsed['sections'] as &$sec) {
-                if (isset($sec['heading'])) $sec['heading'] = vk_bot_sanitize_foreign_agents((string)$sec['heading']);
-                if (isset($sec['content'])) $sec['content'] = vk_bot_sanitize_foreign_agents((string)$sec['content']);
-                if (isset($sec['quote'])) $sec['quote'] = vk_bot_sanitize_foreign_agents((string)$sec['quote']);
-            }
-            unset($sec);
-
-            $parsed['off_topic'] = false;
-            return $parsed;
-        }
-    }
-
-    // Резервная статья при сбое внешнего API
-    return vk_bot_get_fallback_article($topic);
-}
-
-/**
  * Проверка запроса на авторов-иноагентов, их произведения и запросы информации об иноагентах
  */
 function vk_bot_is_foreign_agent_query($text)
@@ -3025,9 +2828,19 @@ function vk_bot_split_message($text, $maxLength = 3900)
  */
 function vk_bot_send_message($params, $token)
 {
-    // 1. Гарантия уникального random_id
-    if (empty($params['random_id'])) {
-        $params['random_id'] = (int)(microtime(true) * 10000) + mt_rand(1, 999999);
+    static $sendSeq = 0;
+    $sendSeq++;
+
+    // 1. Детерминированный random_id для защиты от дублирования сообщений на стороне ВК
+    $incomingKey = !empty($GLOBALS['VK_CURRENT_INCOMING_KEY'])
+        ? (string)$GLOBALS['VK_CURRENT_INCOMING_KEY']
+        : ('peer_' . ($params['peer_id'] ?? 0));
+
+    if (empty($params['random_id']) || empty($params['deterministic_random_id'])) {
+        $hash = abs(crc32($incomingKey . '_seq_' . $sendSeq)) & 0x7FFFFFFF;
+        if ($hash === 0) $hash = 1;
+        $params['random_id'] = $hash;
+        $params['deterministic_random_id'] = true;
     }
 
     // 2. Markdown-форматирование
@@ -3046,7 +2859,10 @@ function vk_bot_send_message($params, $token)
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunkParams = $params;
             $chunkParams['message'] = $chunks[$i];
-            $chunkParams['random_id'] = (int)(microtime(true) * 10000) + mt_rand(1, 999999);
+            $chunkHash = abs(crc32($incomingKey . '_seq_' . $sendSeq . '_chunk_' . $i)) & 0x7FFFFFFF;
+            if ($chunkHash === 0) $chunkHash = 1;
+            $chunkParams['random_id'] = $chunkHash;
+            $chunkParams['deterministic_random_id'] = true;
 
             // Фото/медиа-вложения отправляем только с первым сообщением
             if ($i > 0 && isset($chunkParams['attachment'])) {
@@ -3774,24 +3590,6 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🤖 Кто ты, Космо?'
-                ],
-                'color' => 'secondary'
-            ],
-            [
-                'action' => [
-                    'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'reset'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🔄 Новый диалог'
-                ],
-                'color' => 'secondary'
-            ]
-        ],
-        [
-            [
-                'action' => [
-                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'book_club'], JSON_UNESCAPED_UNICODE),
                     'label'   => '📖 Книжный клуб'
                 ],
@@ -3818,18 +3616,18 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'create_article'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '📄 !статья'
+                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🖼️ Стикеры Космо'
                 ],
-                'color' => 'primary'
+                'color' => 'secondary'
             ]
         ],
         [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🖼️ Стикеры Космо'
+                    'payload' => json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🤖 Кто ты, Космо?'
                 ],
                 'color' => 'secondary'
             ]
@@ -3978,16 +3776,6 @@ $inlineChatKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'create_article'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '📄 !статья'
-                ],
-                'color' => 'primary'
-            ]
-        ],
-        [
-            [
-                'action' => [
-                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
                     'label'   => '🖼️ !стикеры'
                 ],
@@ -4072,7 +3860,7 @@ if ($audioAttachment !== null) {
                 $isReplyToBot ||
                 preg_match('/(?:космос|космо|cosmo|cosma|\bробот\s*космо\b|\bбот\b|\bаврора\b)/ui', $voiceTranscribedText) ||
                 preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $voiceTranscribedText) ||
-                preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|статья|стикер)#ui', $voiceTranscribedText)
+                preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|стикер)#ui', $voiceTranscribedText)
             );
 
             if (!$hasVoiceMention && empty($payload)) {
@@ -4767,7 +4555,6 @@ if ($isWelcomeQuery) {
            . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
            . "• 🖼️ Стикеры Космо — 17 живых эмоций робота для чатов («!стикеры», «!стикер читаю»);\n"
            . "• 😄 Литературная хохма — смешные книжные шутки и цитаты («!хохма»);\n"
-           . "• 📄 Веб-статьи — создаю авторские лонгриды на сайте («!статья»);\n"
            . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
            . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «🎯 Квиз», «📊 Опрос», «🖼️ Стикеры Космо», «⭐ Книга дня»);\n"
@@ -4814,39 +4601,8 @@ if ($isMenuQuery) {
            . "• ⭐ «Книга дня» — актуальная книга и вдохновляющая цитата дня;\n"
            . "• 📰 «Новости филиалов» — свежие публикации библиотек Владимира за сутки;\n"
            . "• 🏛 «Где библиотеки?» — адреса, телефоны и режим работы всех 18 филиалов Владимира;\n"
-           . "• 🎲 «Случайный шедевр» — неожиданная жемчужина классики или современной прозы;\n"
-           . "• 🔄 «Новый диалог» — очистить контекст и начать общение заново.\n\n"
+           . "• 🎲 «Случайный шедевр» — неожиданная жемчужина классики или современной прозы.\n\n"
            . "Чем могу помочь вам прямо сейчас? ✨";
-
-    if ($isVoiceQuery && $voiceTranscribedText !== '') {
-        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
-    }
-
-    vk_bot_send_message([
-        'peer_id'          => $peerId,
-        'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'] ?? null,
-        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 1
-    ], $communityToken);
-    exit;
-}
-
-// Сценарий 2c: Новый диалог / Сброс истории беседы
-$isResetQuery = (
-    $cmd === 'reset' ||
-    preg_match('/^(?:новый диалог|сброс|очистить|заново|начать заново|очистить память|очистить диалог|сбросить|reset)[?!.]*$/ui', $cleanMsgForCmd)
-);
-
-if ($isResetQuery) {
-    if (file_exists($dialogFile)) {
-        @unlink($dialogFile);
-    }
-    $history = [];
-
-    $reply = "🔄 Контекст беседы очищен! Начинаем диалог с чистого листа.\n\n"
-           . "Я готов подобрать для вас новые книги, рассказать о книжном клубе, новостях филиалов или подсказать адреса библиотек Владимира. О чём побеседуем? 🤖✨";
 
     if ($isVoiceQuery && $voiceTranscribedText !== '') {
         $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
@@ -5428,239 +5184,6 @@ if ($isHohmaQuery) {
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($hohmaKb, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
-    ], $communityToken);
-    exit;
-}
-
-// =============================================================================
-// Сценарий 2L: Создание иллюстрированной веб-статьи на сайте (срок жизни 12 часов)
-// =============================================================================
-$isArticleQuery = false;
-$articleTopic = '';
-
-if ($cmd === 'create_article' || $cmd === 'article') {
-    $isArticleQuery = true;
-    $articleTopic = trim((string)($payloadData['topic'] ?? ''));
-} elseif (preg_match('#^(?:[!/](?:статья|статью|article))\b\s*(.*)$#ui', $cleanMsgForCmd, $am)) {
-    $isArticleQuery = true;
-    $articleTopic = trim($am[1] ?? '');
-} elseif (preg_match('#(?:^|\s)(?:создай|сделай|напиши|выпусти|опубликуй)\s+стать[юяи](?:\s+(?:на\s+тему|по\s+теме|про|по|о|об))?\s+(.+)$#ui', $cleanMsgForCmd, $am)) {
-    $isArticleQuery = true;
-    $articleTopic = trim($am[1] ?? '');
-} elseif (preg_match('#^(?:статья|статью)\s+(?:на\s+тему|по\s+теме|про|по|о|об)\s+(.+)$#ui', $cleanMsgForCmd, $am)) {
-    $isArticleQuery = true;
-    $articleTopic = trim($am[1] ?? '');
-} elseif (preg_match('#^(?:создай\s+статью|сделай\s+статью|напиши\s+статью|создать\s+статью|статья|статью)[?!.]*$#ui', $cleanMsgForCmd)) {
-    $isArticleQuery = true;
-    $articleTopic = '';
-}
-
-if ($isArticleQuery) {
-    $articleTopic = trim(preg_replace('/[?!.]+$/u', '', $articleTopic));
-
-    if ($articleTopic === '') {
-        $reply = "📄 Создание авторской веб-статьи от робота Космо 🤖✨\n\n"
-               . "Я умею формировать глубокие, иллюстрированные лонгриды на портале biblioteka33.ru с таймером чтения ровно на 12 часов!\n\n"
-               . "💡 Напишите мне, о чём создать статью, например:\n"
-               . "• «Космос, создай статью о романе Мастер и Маргарита»\n"
-               . "• «Космо, сделай статью про редкие книги и библиографию»\n"
-               . "• «!статья Братья Стругацкие и их миры»\n"
-               . "• «!статья История библиотек города Владимира»\n\n"
-               . "📚 Важно: Я создаю статьи исключительно о литературе, писателях, книгах, библиографии и библиотечном деле. По закону РФ статьи об иноагентах строго запрещены.";
-
-        $articlePromptKb = [
-            'inline'  => true,
-            'buttons' => [
-                [
-                    [
-                        'action' => [
-                            'type'    => 'text',
-                            'payload' => json_encode(['cmd' => 'create_article', 'topic' => 'Мастер и Маргарита: скрытые смыслы Булгакова'], JSON_UNESCAPED_UNICODE),
-                            'label'   => '📖 Мастер и Маргарита'
-                        ],
-                        'color' => 'primary'
-                    ],
-                    [
-                        'action' => [
-                            'type'    => 'text',
-                            'payload' => json_encode(['cmd' => 'create_article', 'topic' => 'Братья Стругацкие: философия научной фантастики'], JSON_UNESCAPED_UNICODE),
-                            'label'   => '🚀 Братья Стругацкие'
-                        ],
-                        'color' => 'positive'
-                    ]
-                ],
-                [
-                    [
-                        'action' => [
-                            'type'    => 'text',
-                            'payload' => json_encode(['cmd' => 'create_article', 'topic' => 'Редкие фонды и библиография библиотек Владимира'], JSON_UNESCAPED_UNICODE),
-                            'label'   => '🏛 Фонды библиотек'
-                        ],
-                        'color' => 'secondary'
-                    ],
-                    [
-                        'action' => [
-                            'type'    => 'text',
-                            'payload' => json_encode(['cmd' => 'create_article', 'topic' => 'История книгопечатания от Гутенберга и Ивана Фёдорова'], JSON_UNESCAPED_UNICODE),
-                            'label'   => '📜 История книг'
-                        ],
-                        'color' => 'secondary'
-                    ]
-                ]
-            ]
-        ];
-
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['thinking'] ?? null,
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => json_encode($articlePromptKb, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    // 1. Строжайшая проверка на авторов-иноагентов, их книги и материалы
-    if (vk_bot_is_foreign_agent_query($articleTopic)) {
-        $reply = "🛡️ Как робот Централизованной библиотечной системы города Владимира, я строго следую законодательству РФ и библиотечным стандартам: я не создаю статьи и публикации об авторах, признанных иностранными агентами Минюстом РФ, а также об их произведениях.\n\n"
-               . "Давайте лучше создадим глубокую статью о признанных классиках, истории книгопечатания или жемчужинах мировой литературы! ✨📚";
-
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['angry'] ?? ($mascotStickers['thinking'] ?? null),
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    // 2. Тематический фильтр: статьи ТОЛЬКО о литературе, библиографии, библиотечном деле, книгах и авторах
-    if (vk_bot_is_forbidden_nonliterary_topic($articleTopic)) {
-        $reply = "📚 Робот Космо специализируется исключительно на книжной культуре и библиографии!\n\n"
-               . "Я создаю иллюстрированные статьи строго по направлениям:\n"
-               . "• Литература, поэзия и анализ произведений\n"
-               . "• Биографии выдающихся писателей и поэтов\n"
-               . "• Библиография, редкие книги и история книгопечатания\n"
-               . "• Библиотечное дело и книжные фонды\n\n"
-               . "Пожалуйста, выберите тему о книгах или литературе, и я с радостью подготовлю для вас потрясающий материал! 🤖✨";
-
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['thinking'] ?? null,
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    if ($botTyping) {
-        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-    }
-
-    $articleResult = vk_bot_generate_ai_article($articleTopic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
-
-    // Проверка на отказ ИИ по несоответствию литературной теме
-    if (!empty($articleResult['off_topic'])) {
-        $refusal = !empty($articleResult['off_topic_reason'])
-            ? (string)$articleResult['off_topic_reason']
-            : "Робот Космо создаёт публикации строго по литературе, библиографии, библиотечному делу, книгам и писателям!";
-        $reply = "🛡️ Робот Космо: Тематическое ограничение 🤖\n\n"
-               . "{$refusal}\n\n"
-               . "Пожалуйста, предложите литературную тему — и я с удовольствием подготовлю увлекательный лонгрид! 📚✨";
-
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['thinking'] ?? null,
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    // Сохраняем статью на сайте на 12 часов
-    $artId = vk_bot_save_article($articleResult, $cacheDir);
-
-    // Формируем URL к статье
-    $siteBaseUrl = 'https://biblioteka33.ru/stat';
-    if (!empty($_SERVER['HTTP_HOST'])) {
-        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'];
-        $basePath = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/stat/api/vk-bot.php'));
-        $basePath = ($basePath === '/' || $basePath === '\\') ? '' : rtrim($basePath, '/');
-        if ($host !== 'localhost' && $host !== '127.0.0.1') {
-            $siteBaseUrl = $proto . '://' . $host . $basePath;
-        }
-    }
-    $articleUrl = $siteBaseUrl . '/article.php?id=' . urlencode((string)$artId);
-
-    $title = htmlspecialchars_decode((string)($articleResult['title'] ?? 'Литературный шедевр'), ENT_QUOTES);
-    $subtitle = htmlspecialchars_decode((string)($articleResult['subtitle'] ?? ''), ENT_QUOTES);
-    $category = (string)($articleResult['category'] ?? 'Литературоведение');
-    $readTime = max(3, min(20, (int)($articleResult['reading_time_min'] ?? 6)));
-    $lead = htmlspecialchars_decode((string)($articleResult['lead'] ?? ''), ENT_QUOTES);
-
-    $reply = "📄 Новая статья от робота Космо готова! 🤖✨\n\n"
-           . "📖 «{$title}»\n"
-           . ($subtitle !== '' ? "💡 {$subtitle}\n\n" : "\n")
-           . "🏷 Направление: {$category}\n"
-           . "⏱ Время чтения: ~{$readTime} мин\n"
-           . "⏳ Статья доступна: ровно 12 часов\n\n"
-           . ($lead !== '' ? "«" . mb_substr($lead, 0, 220) . (mb_strlen($lead) > 220 ? '...' : '') . "»\n\n" : "")
-           . "🌐 Читать полную иллюстрированную версию на сайте:\n"
-           . "👉 {$articleUrl}";
-
-    if ($isVoiceQuery && $voiceTranscribedText !== '') {
-        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
-    }
-
-    // Инлайн-клавиатура со ссылкой на статью и быстрыми действиями
-    $articleKb = [
-        'inline'  => true,
-        'buttons' => [
-            [
-                [
-                    'action' => [
-                        'type'  => 'open_link',
-                        'link'  => $articleUrl,
-                        'label' => '📖 Читать статью на сайте'
-                    ]
-                ]
-            ],
-            [
-                [
-                    'action' => [
-                        'type'    => 'text',
-                        'payload' => json_encode(['cmd' => 'create_article'], JSON_UNESCAPED_UNICODE),
-                        'label'   => '✍️ Ещё статью'
-                    ],
-                    'color' => 'primary'
-                ],
-                [
-                    'action' => [
-                        'type'    => 'text',
-                        'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
-                        'label'   => '😄 !хохма'
-                    ],
-                    'color' => 'positive'
-                ]
-            ]
-        ]
-    ];
-
-    vk_bot_send_message([
-        'peer_id'          => $peerId,
-        'message'          => $reply,
-        'attachment'       => $mascotStickers['idea'] ?? ($mascotStickers['smile'] ?? null),
-        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => json_encode($articleKb, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 0
     ], $communityToken);
     exit;
 }
