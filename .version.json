@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.25.3",
+    "version": "4.25.4",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-16T14:16:00+03:00",
-    "release_name": "AURORA 4.25.3 — ВК бот: исправление маршрутизации кнопки «Новости филиалов» (приоритет над адресами, ссылки из branches_cache.json, аннотации Космо)"
+    "commit_date": "2026-09-16T14:28:00+03:00",
+    "release_name": "AURORA 4.25.4 — ВК бот: исправление ссылок на посты (канонические URL, защита подчеркиваний в ссылках от Markdown-фильтра, dont_parse_links: 0)"
 }

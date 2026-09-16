@@ -159,6 +159,10 @@ $currentWebhookUrl = $proto . '://' . $host . $reqUri;
 // -----------------------------------------------------------------------------
 // 3. Обработка GET / HEAD-запросов (Диагностика и статус)
 // -----------------------------------------------------------------------------
+if (php_sapi_name() === 'cli' && !isset($_SERVER['GATEWAY_INTERFACE']) && empty($_SERVER['REQUEST_METHOD'])) {
+    return;
+}
+
 $reqMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
@@ -506,6 +510,11 @@ if (is_array($event) && isset($event['action']) && $event['action'] === 'sync_co
     exit;
 }
 
+if (php_sapi_name() === 'cli' && empty($rawInput)) {
+    // Вызов из консоли / unit-тестов: позволяем вызывать экспортированные функции
+    return;
+}
+
 if (!is_array($event) || empty($event['type'])) {
     http_response_code(400);
     header('Content-Type: text/plain; charset=UTF-8');
@@ -755,10 +764,21 @@ function vk_format_markdown($text)
 {
     if (!is_string($text) || $text === '') return '';
 
-    // 1. Убираем служебные теги эмоций [emotion:xxx]
-    $t = preg_replace('/\[emotion:[a-z]+\]/i', '', $text);
+    // 0. Преобразование Markdown-ссылок [текст](url) -> текст (url) ДО токенизации URL
+    $t = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/', '$1 ($2)', $text);
 
-    // 2. Блоки кода ```lang ... ``` -> 💻 Код: ...
+    // 1. Защита всех абсолютных URL от повреждения регулярными выражениями Markdown (включая подчеркивания '_' в ссылках wall-XXX_YYY)
+    $urlMap = [];
+    $t = preg_replace_callback('/https?:\/\/[^\s<>"\'`()]+/u', function($m) use (&$urlMap) {
+        $token = '___VK_URL_TOKEN_' . count($urlMap) . '___';
+        $urlMap[$token] = $m[0];
+        return $token;
+    }, $t);
+
+    // 2. Убираем служебные теги эмоций [emotion:xxx]
+    $t = preg_replace('/\[emotion:[a-z]+\]/i', '', $t);
+
+    // 3. Блоки кода ```lang ... ``` -> 💻 Код: ...
     $t = preg_replace_callback('/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/', function($m) {
         $lang = trim($m[1]);
         $code = trim($m[2]);
@@ -766,11 +786,8 @@ function vk_format_markdown($text)
         return "\n" . $hdr . "\n" . $code . "\n";
     }, $t);
 
-    // 3. Инлайн-код `code` -> «code»
+    // 4. Инлайн-код `code` -> «code»
     $t = preg_replace('/`([^`\n]+)`/', '«$1»', $t);
-
-    // 4. Ссылки [текст](url) -> текст (url)
-    $t = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/', '$1 ($2)', $t);
 
     // 5. Заголовки Markdown (любое количество #) -> аккуратный заголовок с эмодзи
     $t = preg_replace('/^#{4,}\s*(.+)$/m', '🔹 $1', $t);
@@ -788,13 +805,13 @@ function vk_format_markdown($text)
     // 8. Маркированные списки -> заменяем дефисы и звёздочки на красивую точку •
     $t = preg_replace('/^[ \t]*[-*•]\s+(.+)$/m', '• $1', $t);
 
-    // 9. Жирный шрифт и курсив: преобразуем каноничные пары в чистый текст
+    // 9. Жирный шрифт и курсив: преобразуем каноничные пары в чистый текст (без разрушения ссылок и переносов)
     $t = preg_replace('/\*\*\*([^*\n]+)\*\*\*/u', '$1', $t);
     $t = preg_replace('/\*\*«([^»\n]+)»\*\*/u', '«$1»', $t);
     $t = preg_replace('/\*\*([^*\n]+)\*\*/u', '$1', $t);
-    $t = preg_replace('/__([^_]+)__/u', '$1', $t);
+    $t = preg_replace('/(?<=^|[\s(«"\'`])__([^_ \n][^_\n]*?[^_ \n]|[^_ \n])__(?=[\s).,!?:;»"\'`]|$)/u', '$1', $t);
     $t = preg_replace('/\*([^*\n]+)\*/u', '$1', $t);
-    $t = preg_replace('/_([^_]+)_/u', '$1', $t);
+    $t = preg_replace('/(?<=^|[\s(«"\'`])_([^_ \n][^_\n]*?[^_ \n]|[^_ \n])_(?=[\s).,!?:;»"\'`]|$)/u', '$1', $t);
     $t = preg_replace('/~~([^~\n]+)~~/u', '$1', $t);
 
     // 10. ПОЛНОЕ УНИЧТОЖЕНИЕ ЛЮБЫХ ОСТАВШИХСЯ СИМВОЛОВ MARKDOWN:
@@ -819,6 +836,11 @@ function vk_format_markdown($text)
     // 13. Удаление лишних пробелов и пустых строк
     $t = preg_replace("/[ \t]+\n/", "\n", $t);
     $t = preg_replace("/\n{3,}/", "\n\n", $t);
+
+    // 14. Восстановление исходных защищённых URL в первозданном виде
+    if (!empty($urlMap)) {
+        $t = strtr($t, $urlMap);
+    }
 
     return trim($t);
 }
@@ -968,7 +990,7 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     $activeToken = $serviceToken ?: $communityToken;
     $codeParts = [];
     foreach ($ids as $idx => $gid) {
-        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 3})';
+        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 5})';
     }
     $code = 'return {' . implode(',', $codeParts) . '};';
 
@@ -1032,6 +1054,27 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
 }
 
 /**
+ * Построение надёжной, кликабельной ссылки на публикацию ВКонтакте (поддерживается всеми клиентами и приложениями ВК)
+ */
+function vk_bot_build_post_url($post)
+{
+    $ownerId  = (int)($post['owner_id'] ?? 0);
+    $postId   = (int)($post['id'] ?? 0);
+    $branchVk = trim((string)($post['branch']['vk'] ?? ''));
+
+    if ($branchVk !== '') {
+        $baseUrl = rtrim($branchVk, '/');
+        return $baseUrl . '?w=wall' . $ownerId . '_' . $postId;
+    }
+
+    if ($ownerId < 0) {
+        return 'https://vk.com/club' . abs($ownerId) . '?w=wall' . $ownerId . '_' . $postId;
+    }
+
+    return 'https://vk.com/id' . $ownerId . '?w=wall' . $ownerId . '_' . $postId;
+}
+
+/**
  * Форматирование новостей филиалов с краткими аннотациями и ссылками
  */
 function vk_bot_format_branch_news_message($newsData)
@@ -1063,17 +1106,19 @@ function vk_bot_format_branch_news_message($newsData)
 
     foreach ($items as $p) {
         $bName = $p['branch']['name'] ?? 'Филиал';
-        $bVk   = $p['branch']['vk'] ?? '';
+        $bVk   = trim((string)($p['branch']['vk'] ?? ''));
         $timeStr = date('H:i', $p['date']);
-        $link = 'https://vk.com/wall' . $p['owner_id'] . '_' . $p['id'];
+        $postUrl = vk_bot_build_post_url($p);
         $annot = vk_bot_format_cosmo_annotation($p['text']);
+
+        $groupLabel = (isset($p['owner_id']) && $p['owner_id'] > 0) ? '👥 Страница филиала: ' : '👥 Сообщество: ';
 
         $block = "🏛 " . $bName . "\n"
                . "⏰ Опубликовано: " . $timeStr . "\n"
                . "🤖 Аннотация от Космо: " . $annot . "\n"
-               . "🔗 Ссылка на пост: " . $link;
+               . "🔗 Читать запись: " . $postUrl;
         if ($bVk !== '') {
-            $block .= "\n👥 Группа: " . $bVk;
+            $block .= "\n" . $groupLabel . $bVk;
         }
         $blocks[] = $block;
     }
@@ -1346,7 +1391,7 @@ if ($isBranchNewsQuery) {
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 1
+        'dont_parse_links' => 0
     ], $communityToken);
     exit;
 }
