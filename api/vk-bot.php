@@ -846,14 +846,132 @@ function vk_format_markdown($text)
 }
 
 /**
- * Надёжная отправка сообщения в диалог (с Markdown-форматированием и авто-восстановлением при ошибках чат-бота)
+ * Интеллектуальное разбиение длинного сообщения на части с сохранением абзацев и предложений
+ * (для соблюдения лимита ВКонтакте 4096 символов, защита от ошибки API 914)
+ */
+function vk_bot_split_message($text, $maxLength = 3900)
+{
+    $text = (string)$text;
+    if (mb_strlen($text, 'UTF-8') <= $maxLength) {
+        return [$text];
+    }
+
+    $chunks = [];
+    $remaining = $text;
+
+    while (mb_strlen($remaining, 'UTF-8') > $maxLength) {
+        $slice = mb_substr($remaining, 0, $maxLength, 'UTF-8');
+
+        // 1. По двойному переводу строки (абзац)
+        $breakPos = mb_strrpos($slice, "\n\n", 0, 'UTF-8');
+        if ($breakPos !== false && $breakPos > (int)($maxLength * 0.35)) {
+            $cutLen = $breakPos + 2;
+        } else {
+            // 2. По одинарному переводу строки
+            $breakPos = mb_strrpos($slice, "\n", 0, 'UTF-8');
+            if ($breakPos !== false && $breakPos > (int)($maxLength * 0.35)) {
+                $cutLen = $breakPos + 1;
+            } else {
+                // 3. По границе предложения (. ! ? с пробелом)
+                $breakPos = false;
+                foreach (['. ', '! ', '? '] as $punct) {
+                    $pos = mb_strrpos($slice, $punct, 0, 'UTF-8');
+                    if ($pos !== false && ($breakPos === false || $pos > $breakPos)) {
+                        $breakPos = $pos + 1;
+                    }
+                }
+                if ($breakPos !== false && $breakPos > (int)($maxLength * 0.35)) {
+                    $cutLen = $breakPos + 1;
+                } else {
+                    // 4. По пробелу между словами
+                    $breakPos = mb_strrpos($slice, ' ', 0, 'UTF-8');
+                    if ($breakPos !== false && $breakPos > (int)($maxLength * 0.35)) {
+                        $cutLen = $breakPos + 1;
+                    } else {
+                        // 5. Жёсткий разрез по лимиту
+                        $cutLen = $maxLength;
+                    }
+                }
+            }
+        }
+
+        $chunk = trim(mb_substr($remaining, 0, $cutLen, 'UTF-8'));
+        if ($chunk !== '') {
+            $chunks[] = $chunk;
+        }
+        $remaining = ltrim(mb_substr($remaining, $cutLen, null, 'UTF-8'));
+    }
+
+    if ($remaining !== '') {
+        $chunks[] = $remaining;
+    }
+
+    return !empty($chunks) ? $chunks : [$text];
+}
+
+/**
+ * Надёжная отправка сообщения в диалог:
+ * - Автогенерация random_id, если не передан вызывающим кодом;
+ * - Markdown-форматирование для ВКонтакте;
+ * - Автоматическое разбиение длинных сообщений (> 4000 символов, защита от ошибки VK API 914);
+ * - Авто-восстановление при ошибках клавиатур в беседах (коды 911, 912, 917, 921).
  */
 function vk_bot_send_message($params, $token)
 {
+    // 1. Гарантия уникального random_id
+    if (empty($params['random_id'])) {
+        $params['random_id'] = (int)(microtime(true) * 10000) + mt_rand(1, 999999);
+    }
+
+    // 2. Markdown-форматирование
     if (isset($params['message']) && is_string($params['message'])) {
         $params['message'] = vk_format_markdown($params['message']);
     }
 
+    $rawMsg = isset($params['message']) ? (string)$params['message'] : '';
+
+    // 3. Защита от лимита ВКонтакте 4096 символов (ошибка 914 "Message is too long")
+    if (mb_strlen($rawMsg, 'UTF-8') > 4000) {
+        $chunks = vk_bot_split_message($rawMsg, 3900);
+        $totalChunks = count($chunks);
+        $lastResult = [0, null, ''];
+
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkParams = $params;
+            $chunkParams['message'] = $chunks[$i];
+            $chunkParams['random_id'] = (int)(microtime(true) * 10000) + mt_rand(1, 999999);
+
+            // Фото/медиа-вложения отправляем только с первым сообщением
+            if ($i > 0 && isset($chunkParams['attachment'])) {
+                unset($chunkParams['attachment']);
+            }
+
+            // Клавиатуру прикрепляем строго к последнему сообщению, чтобы кнопки были внизу
+            if ($i < ($totalChunks - 1) && isset($chunkParams['keyboard'])) {
+                unset($chunkParams['keyboard']);
+            }
+
+            $lastResult = vk_bot_api_call('messages.send', $chunkParams, $token);
+
+            // Обработка ошибки клавиатуры в беседах (коды 911, 912, 917, 921)
+            if (isset($lastResult[1]['error']['error_code'])) {
+                $errCode = (int)$lastResult[1]['error']['error_code'];
+                if (in_array($errCode, [911, 912, 917, 921], true)) {
+                    unset($chunkParams['keyboard']);
+                    $lastResult = vk_bot_api_call('messages.send', $chunkParams, $token);
+                }
+            }
+
+            // Минимальная пауза между частями для гарантированного сохранения порядка доставки сообщений ВК
+            if ($i < ($totalChunks - 1)) {
+                usleep(150000); // 150 мс
+            }
+        }
+
+        return $lastResult;
+    }
+
+    // 4. Обычная отправка короткого сообщения
     list($httpCode, $json, $curlErr) = vk_bot_api_call('messages.send', $params, $token);
 
     // Ошибки клавиатуры в беседах или при выключенных ботах (911, 912, 917, 921)
@@ -1101,10 +1219,17 @@ function vk_bot_format_branch_news_message($newsData)
         ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
         : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за прошедшие 24 часа:\n\n";
 
+    $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
     $blocks = [];
-    $items = array_slice($postsToShow, 0, 8);
+    $maxSummaryLength = 3400; // Безопасный порог длины одного сообщения ВКонтакте
+    $totalCount = count($postsToShow);
+    $addedCount = 0;
 
-    foreach ($items as $p) {
+    foreach ($postsToShow as $p) {
+        if ($addedCount >= 8) {
+            break;
+        }
+
         $bName = $p['branch']['name'] ?? 'Филиал';
         $bVk   = trim((string)($p['branch']['vk'] ?? ''));
         $timeStr = date('H:i', $p['date']);
@@ -1120,13 +1245,27 @@ function vk_bot_format_branch_news_message($newsData)
         if ($bVk !== '') {
             $block .= "\n" . $groupLabel . $bVk;
         }
+
+        // Проверяем суммарную длину с текущим блоком
+        $tempBlocks = array_merge($blocks, [$block]);
+        $testMsg = $header . implode("\n\n────────────────\n\n", $tempBlocks) . $footerBase;
+
+        if (mb_strlen($testMsg, 'UTF-8') > $maxSummaryLength && !empty($blocks)) {
+            break;
+        }
+
         $blocks[] = $block;
+        $addedCount++;
     }
 
     $body = implode("\n\n────────────────\n\n", $blocks);
-    $footer = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
+    $remaining = $totalCount - $addedCount;
+    $remainingNotice = '';
+    if ($remaining > 0) {
+        $remainingNotice = "\n\n➕ И ещё {$remaining} свежих записей в сообществах филиалов!";
+    }
 
-    return $header . $body . $footer;
+    return $header . $body . $remainingNotice . $footerBase;
 }
 
 // -----------------------------------------------------------------------------
@@ -1241,6 +1380,16 @@ $inlineMoodKeyboard = [
                     'label'   => '🌱 Вдохновение'
                 ],
                 'color' => 'secondary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'menu'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🔙 Главное меню'
+                ],
+                'color' => 'primary'
             ]
         ]
     ]
@@ -1370,6 +1519,32 @@ if ($isWelcomeQuery) {
     exit;
 }
 
+// Сценарий 2b: Главное меню / Возврат в меню / «Меню», «Назад»
+$isMenuQuery = (
+    $cmd === 'menu' ||
+    preg_match('/^(?:меню|в меню|главное меню|назад|меню бота|показать меню|кнопки|верни меню)[?!.]*$/ui', $cleanMsgForCmd)
+);
+
+if ($isMenuQuery) {
+    $reply = "📋 Главное меню робота Космо 🤖📚\n\n"
+           . "Выберите нужный раздел на кнопках ниже или напишите свой вопрос:\n\n"
+           . "• 📚 «Подобрать книгу» — персональная рекомендация под настроение или запрос;\n"
+           . "• 📰 «Новости филиалов» — свежие публикации 16 библиотек города за сутки;\n"
+           . "• 🏛 «Где библиотеки?» — адреса, телефоны и режим работы всех 18 филиалов Владимира;\n"
+           . "• 🎲 «Случайный шедевр» — неожиданная жемчужина классики или современной прозы!\n\n"
+           . "Чем могу помочь вам прямо сейчас? ✨";
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
 // Сценарий 3: Новости филиалов — сканирование всех 16 групп библиотек за текущие сутки
 $isBranchNewsQuery = (
     $cmd === 'branch_news' ||
@@ -1463,8 +1638,10 @@ if ($isLibrariesQuery) {
 // -----------------------------------------------------------------------------
 // 6. Формирование запроса к нейросети (Mistral Large / OpenAI Gateway)
 // -----------------------------------------------------------------------------
-// Преобразуем выбор настроения в текстовый контекст для ИИ
+// Преобразуем входящий запрос читателя в текстовый контекст для ИИ
+$userText = trim($userMsg);
 $promptContext = '';
+
 if ($mood !== '') {
     $moodNames = [
         'action'    => '🔥 Драйв и экшен (острый сюжет, приключения, динамика, не оторваться)',
@@ -1476,12 +1653,21 @@ if ($mood !== '') {
     ];
     $moodDesc = $moodNames[$mood] ?? $mood;
     $promptContext = "Читатель выбрал настроение: «{$moodDesc}». Посоветуй 1-2 книги под это состояние.";
+    if ($userText !== '' && !preg_match('/^(?:🔥|☕|🧩|⭐|🚀|🌱|драйв|уют|тайна|золотая|космос|вдохновение)/ui', $userText)) {
+        $promptContext .= "\nДополнительное пожелание читателя: " . $userText;
+    }
 } elseif ($cmd === 'random') {
     $promptContext = "Посоветуй читателю одну неожиданную, редкую или безумно увлекательную книгу из признанной классики или современной качественной литературы.";
+    if ($userText !== '' && !preg_match('/^(?:🎲|случайный|шедевр)/ui', $userText)) {
+        $promptContext .= "\nПожелание читателя: " . $userText;
+    }
+} else {
+    // Произвольное текстовое сообщение читателя (гарантируем, что текст вопроса не теряется и уходит ИИ!)
+    $promptContext = $userText !== '' ? $userText : "Посоветуй хорошую книгу для чтения из фондов городских библиотек Владимира.";
 }
 
 if ($isChat) {
-    $promptContext .= " (Примечание: ты отвечаешь в групповой беседе читателей, держи ответ компактным и ёмким).";
+    $promptContext .= "\n(Примечание: ты отвечаешь в групповой беседе читателей, держи ответ компактным и ёмким).";
 }
 
 // Каноничный системный промпт Космо
@@ -1598,7 +1784,7 @@ $payloadArr = [
 $payloadJson = json_encode($payloadArr, JSON_UNESCAPED_UNICODE);
 
 $attempts = 0;
-$maxAttempts = min(count($validAiKeys), 3);
+$maxAttempts = count($validAiKeys);
 $currentIdx = $activeIdx;
 
 while ($attempts < $maxAttempts) {
@@ -1616,7 +1802,7 @@ while ($attempts < $maxAttempts) {
         CURLOPT_POSTFIELDS     => $payloadJson,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => $aiTimeout,
-        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.25.2',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
@@ -1635,23 +1821,46 @@ while ($attempts < $maxAttempts) {
         ]
     ]);
     $resp = curl_exec($ch);
+    $curlErr = curl_error($ch);
     $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
 
     $json = is_string($resp) ? json_decode($resp, true) : null;
 
-    // Проверка на ошибку квот/авторизации для failover
-    $needFailover = in_array($httpCode, [429, 401, 402, 403], true);
-    if (!$needFailover && is_array($json) && isset($json['error'])) {
-        $errStr = is_string($json['error']) ? $json['error'] : json_encode($json['error']);
-        if (preg_match('/quota|rate|limit|insufficient|unauthorized/i', $errStr)) {
+    // Проверка необходимости failover (сеть, квоты, лимиты, перегрузка)
+    $needFailover = ($resp === false || $httpCode === 0 || in_array($httpCode, [429, 401, 402, 403, 500, 502, 503, 504], true));
+    if (!$needFailover && is_array($json)) {
+        $errStr = '';
+        if (isset($json['error'])) {
+            $errStr .= is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE);
+        }
+        if (isset($json['message'])) {
+            $errStr .= ' ' . (string)$json['message'];
+        }
+        if ($errStr !== '' && preg_match('/quota|rate|limit|insufficient|unauthorized|credit|exceeded|busy/i', $errStr)) {
             $needFailover = true;
         }
     }
 
-    if ($needFailover) {
+    if ($needFailover && count($validAiKeys) > 1 && $attempts < ($maxAttempts - 1)) {
         $currentIdx = ($currentIdx + 1) % count($validAiKeys);
         $attempts++;
+        // Немедленно кэшируем рабочий ключ через flock
+        $fh = @fopen($activeKeyIndexFile, 'c+');
+        if ($fh) {
+            if (@flock($fh, LOCK_EX)) {
+                ftruncate($fh, 0);
+                rewind($fh);
+                fwrite($fh, json_encode([
+                    'active_index' => $currentIdx,
+                    'updated_at'   => time(),
+                    'updated_iso'  => date('c')
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                fflush($fh);
+                @flock($fh, LOCK_UN);
+            }
+            fclose($fh);
+        }
         continue;
     }
 
@@ -1659,11 +1868,21 @@ while ($attempts < $maxAttempts) {
         $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
         // Сохраняем рабочий индекс ключа
         if ($currentIdx !== $activeIdx) {
-            @file_put_contents($activeKeyIndexFile, json_encode([
-                'active_index' => $currentIdx,
-                'updated_at'   => time(),
-                'updated_iso'  => date('c')
-            ], JSON_PRETTY_PRINT));
+            $fh = @fopen($activeKeyIndexFile, 'c+');
+            if ($fh) {
+                if (@flock($fh, LOCK_EX)) {
+                    ftruncate($fh, 0);
+                    rewind($fh);
+                    fwrite($fh, json_encode([
+                        'active_index' => $currentIdx,
+                        'updated_at'   => time(),
+                        'updated_iso'  => date('c')
+                    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                    fflush($fh);
+                    @flock($fh, LOCK_UN);
+                }
+                fclose($fh);
+            }
         }
         break;
     }
@@ -1695,7 +1914,8 @@ if (strpos($aiResponseText, 'В наших библиотеках-филиала
 // -----------------------------------------------------------------------------
 // 8. Сохранение обновлённой истории беседы
 // -----------------------------------------------------------------------------
-$history[] = ['role' => 'user', 'content' => $userMsg];
+$historyUserContent = ($userText !== '') ? $userText : $promptContext;
+$history[] = ['role' => 'user', 'content' => $historyUserContent];
 $history[] = ['role' => 'assistant', 'content' => $aiResponseText];
 
 // Оставляем последние 6 сообщений
