@@ -27,9 +27,21 @@ foreach ([__DIR__ . '/config.php', __DIR__ . '/config.local.php'] as $cfgFile) {
     }
 }
 
+$defaultCommunityToken   = 'vk1.a.ju2kZ7qPSBnKqy9r_GkNCyhr5F2WwC7SkVYYU_921TAAk7qu5svlGo7HMXcgbLBsh3qyHhuYmll8BSA0UHeVkn95rLjUVbGzWNDP3huyHqugUophS3it44EOY1o9Ov5iNh-y_iOpZ6l5WKgBwMtozY8qBZoLRpbiLjd7akbL3MELkkisZQPkFG8v1HnGMRsNaosd5YHSXRx7y8F0bFK1Pg';
+$defaultGroupId          = 241534292;
+$defaultServiceToken     = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
+
 $communityToken = trim((string)($config['vk_community_token'] ?? ''));
+if ($communityToken === '' || strpos($communityToken, 'ВСТАВЬТЕ') === 0) {
+    $communityToken = $defaultCommunityToken;
+}
+
 $serviceToken   = trim((string)($config['vk_service_token'] ?? ''));
-$vkGroupId      = (int)($config['vk_group_id'] ?? 241534292);
+if ($serviceToken === '' || strpos($serviceToken, 'ВСТАВЬТЕ') === 0) {
+    $serviceToken = $defaultServiceToken;
+}
+
+$vkGroupId      = (int)($config['vk_group_id'] ?? $defaultGroupId);
 $directDialogUrl= 'https://vk.me/club' . $vkGroupId;
 $apiVersion     = trim((string)($config['api_version'] ?? '5.131'));
 
