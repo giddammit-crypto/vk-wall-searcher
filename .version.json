@@ -1,9 +1,9 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.26.1",
+    "version": "4.26.2",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-16T15:09:00+03:00",
-    "release_name": "AURORA 4.26.1 — Промпт Космо: 100% фактологическая достоверность книг и авторов (Zero Hallucinations) и уважительный тон опытного библиотекаря"
+    "commit_date": "2026-09-16T15:15:00+03:00",
+    "release_name": "AURORA 4.26.2 — Полное исключение шаблонной фразы о читательском билете из выдачи Космо"
 }
 

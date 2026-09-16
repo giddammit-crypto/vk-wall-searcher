@@ -959,6 +959,10 @@
                         return;
                     }
 
+                    reply = reply.replace(/\s*[-—–]?\s*жд[её]м\s+вас\s+за\s+чтением[!?.]*/gi, '').trim();
+                    reply = reply.replace(/(?:^|\n+)?\s*(?:📍|🏛|💡|📖|\*|_)?\s*В?\s*наших\s+библиотеках(?:-филиалах)?\s+вы\s+можете\s+взять\s+(?:эту\s+книгу|эти\s+книги|книги)\s+бесплатно\s+по\s+читательскому\s+билету[.!*]*/gi, '');
+                    reply = reply.replace(/\n{3,}/g, '\n\n').trim();
+
                     addMessage(reply, 'bot');
                     chatHistory.push({ role: 'assistant', content: reply });
                     if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
