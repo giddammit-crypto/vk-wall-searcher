@@ -94,26 +94,26 @@ import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.25.0';
+} from './promo.js?v=4.25.1';
 
 import {
     initLeagueModal,
     openLeagueModal,
     closeLeagueModal,
     renderLeagueSection
-} from './league.js?v=4.25.0';
+} from './league.js?v=4.25.1';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.25.0';
+} from './radar.js?v=4.25.1';
 
-import { Space3D } from './space3d.js?v=4.25.0';
-import { SpaceWarp } from './space_warp.js?v=4.25.0';
-import { SpaceAudio } from './space_audio.js?v=4.25.0';
-import { Mascot } from './mascot.js?v=4.25.0';
+import { Space3D } from './space3d.js?v=4.25.1';
+import { SpaceWarp } from './space_warp.js?v=4.25.1';
+import { SpaceAudio } from './space_audio.js?v=4.25.1';
+import { Mascot } from './mascot.js?v=4.25.1';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.24.2';
+export const APP_VERSION = '4.25.1';
 
 function initApp() {
 

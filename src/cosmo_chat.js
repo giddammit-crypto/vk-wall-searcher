@@ -733,7 +733,7 @@ export class CosmoChatModal {
                     <span class="format-sep"></span>
 
                     <div class="format-bar-group">
-                        <button type="button" class="format-btn" data-format="code" title="Код (`код` или ```блок) • Ctrl+`">
+                        <button type="button" class="format-btn" data-format="code" title="Код (\`код\` или \`\`\`блок) • Ctrl+\`">
                             <span class="material-symbols-outlined">code</span>
                         </button>
                         <button type="button" class="format-btn" data-format="link" title="Вставить ссылку ([текст](url)) • Ctrl+K">
@@ -1785,7 +1785,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.25.0" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.25.1" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • Библиотечный робот и ИИ-сомелье</div>
