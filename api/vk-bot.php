@@ -23,6 +23,7 @@ ini_set('display_errors', '0');
 // Разрешаем скрипту работать после закрытия HTTP-соединения
 ignore_user_abort(true);
 set_time_limit(180);
+define('VK_BOT_LOADED', true);
 
 // -----------------------------------------------------------------------------
 // 1. Полифиллы и вспомогательные функции
@@ -1565,6 +1566,36 @@ if ($isResetQuery) {
 
     $reply = "🔄 Контекст беседы очищен! Начинаем диалог с чистого листа.\n\n"
            . "Я готов подобрать для вас новые книги, рассказать о новостях филиалов или подсказать адреса библиотек Владимира. О чём побеседуем? 🤖✨";
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 2d: «Книга дня от Космо» (виджет и актуальная рекомендация)
+$isBookOfDayQuery = (
+    $cmd === 'book_of_day' ||
+    preg_match('/^(?:книга дня|книгу дня|книга дня от космо|виджет|какая книга дня|что почитать сегодня)[?!.]*$/ui', $cleanMsgForCmd) ||
+    preg_match('/(книг[а-я]* дня|виджет)/ui', $userMsg)
+);
+
+if ($isBookOfDayQuery) {
+    require_once __DIR__ . '/vk-widget.php';
+    $b = get_cosmo_book_of_the_day();
+    $reply = "⭐ Книга дня от Космо на сегодня ({$b['date_str']}) 🤖📚\n\n"
+           . "{$b['icon']} {$b['title']} — {$b['author']}\n"
+           . "📌 Жанр: {$b['genre']}\n\n"
+           . "💬 {$b['hook']}\n\n"
+           . "📖 Цитата: {$b['quote']}\n\n"
+           . "💡 Почему стоит прочитать:\n{$b['why_read']}\n\n"
+           . "🏛 В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету!\n\n"
+           . "Хотите подобрать книгу под конкретное настроение? Нажмите «📚 Подобрать книгу»!";
 
     vk_bot_send_message([
         'peer_id'          => $peerId,
