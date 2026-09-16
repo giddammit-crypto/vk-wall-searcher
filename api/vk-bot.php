@@ -664,6 +664,28 @@ if ($botTyping) {
 }
 
 // -----------------------------------------------------------------------------
+// Фирменные стикеры-эмоции робота Космо (из официального альбома сообщества)
+// -----------------------------------------------------------------------------
+$defaultMascotStickers = [
+    'smile'    => 'photo-241534292_457239019',
+    'tired'    => 'photo-241534292_457239020',
+    'yawn'     => 'photo-241534292_457239021',
+    'idle'     => 'photo-241534292_457239022',
+    'angry'    => 'photo-241534292_457239023',
+    'sleep'    => 'photo-241534292_457239024',
+    'thinking' => 'photo-241534292_457239025'
+];
+
+$stickersFile = $cacheDir . '/vk_mascot_stickers.json';
+$mascotStickers = $defaultMascotStickers;
+if (file_exists($stickersFile) && is_readable($stickersFile)) {
+    $loadedStickers = json_decode(@file_get_contents($stickersFile), true);
+    if (is_array($loadedStickers)) {
+        $mascotStickers = array_merge($defaultMascotStickers, $loadedStickers);
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Формирование интерактивных клавиатур ВКонтакте
 // -----------------------------------------------------------------------------
 // 1. Постоянная навигационная клавиатура
@@ -801,6 +823,7 @@ if ($cmd === 'about' || preg_match('/^(кто ты|о роботе|о боте|�
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'],
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -840,6 +863,7 @@ if ($cmd === 'libraries' || preg_match('/(где библиотек|адрес|�
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
+        'attachment'       => $mascotStickers['idle'],
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -854,6 +878,7 @@ if ($cmd === 'recommend' || preg_match('/^(подобрать книгу|выб�
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
+        'attachment'       => $mascotStickers['thinking'],
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -937,6 +962,14 @@ $systemPrompt = <<<SYS
    - Филиал №14: мкр. Оргтруд, ул. Октябрьская, 26 «б» (тел. 45-74-69)
    - Филиал №15: пос. Заклязьменский, ул. Центральная, 11 «А» (тел. 42-53-96)
    - Филиал №16: мкр. Коммунар, ул. Песочная, 15, кв. 21 (тел. 42-53-95)
+7. ФИРМЕННЫЕ СТИКЕРЫ-ЭМОЦИИ РОБОТА КОСМО (наши иллюстрации):
+   Ты можешь прикреплять к сообщению свою фирменную иллюстрацию! Для этого добавь в начале или в самом конце ответа тег эмоции:
+   - [emotion:smile] — радость, тёплое приветствие, отличная рекомендация (робот показывает палец вверх 👍);
+   - [emotion:thinking] — загадка, детектив, глубокий анализ сюжета, сложные размышления;
+   - [emotion:sleep] — уютное вечернее чтение, книги перед сном, согревающие душевные истории;
+   - [emotion:tired] или [emotion:yawn] — лёгкая книжная усталость, неспешный медленный ритм;
+   - [emotion:angry] — строгое вежливое электронное негодование (если спросили про авторов-иноагентов);
+   - [emotion:idle] — спокойный робот-проводник, общая справка.
 SYS;
 
 // Собираем сообщения для LLM (последние реплики диалога)
@@ -991,6 +1024,16 @@ $currentIdx = $activeIdx;
 
 while ($attempts < $maxAttempts) {
     $currentApiKey = $validAiKeys[$currentIdx];
+
+    // Непрерывный индикатор «Космо печатает...» пока ИИ генерирует ответ
+    if ($botTyping) {
+        vk_bot_api_call('messages.setActivity', [
+            'peer_id' => $peerId,
+            'type'    => 'typing'
+        ], $communityToken);
+    }
+    $lastTypingPing = microtime(true);
+
     $ch = curl_init($aiBaseUrl . '/chat/completions');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
@@ -998,9 +1041,20 @@ while ($attempts < $maxAttempts) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => $aiTimeout,
         CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.24.4',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.24.9',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_NOPROGRESS     => false,
+        CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $botTyping) {
+            if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.5) {
+                $lastTypingPing = microtime(true);
+                vk_bot_api_call('messages.setActivity', [
+                    'peer_id' => $peerId,
+                    'type'    => 'typing'
+                ], $communityToken);
+            }
+            return 0;
+        },
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'Accept: application/json',
@@ -1079,11 +1133,42 @@ if ($fh) {
 }
 
 // -----------------------------------------------------------------------------
-// 9. Отправка ответа в диалог ВКонтакте через messages.send
+// 9. Отправка ответа в диалог ВКонтакте со стикером-эмоцией Космо
 // -----------------------------------------------------------------------------
+$chosenEmotion = 'smile';
+if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle)\]/i', $aiResponseText, $m)) {
+    $rawEmo = strtolower($m[1]);
+    if ($rawEmo === 'cozy') $rawEmo = 'sleep';
+    $chosenEmotion = $rawEmo;
+    $aiResponseText = trim(preg_replace('/\[emotion:[a-z]+\]/i', '', $aiResponseText));
+} else {
+    // Умный автоматический подбор эмоции по содержанию ответа или настроению
+    if ($mood === 'cozy') {
+        $chosenEmotion = 'sleep';
+    } elseif ($mood === 'detective' || $mood === 'scifi') {
+        $chosenEmotion = 'thinking';
+    } elseif ($mood === 'action' || $mood === 'classic') {
+        $chosenEmotion = 'smile';
+    } elseif ($cmd === 'random') {
+        $chosenEmotion = 'thinking';
+    } elseif (preg_match('/(спокойной ночи|на ночь|засыпа|сон|уютн)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'sleep';
+    } elseif (preg_match('/(загад|тайн|почему|сложн|подума|философ|расследован)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'thinking';
+    } elseif (preg_match('/(устал|зева|вымотан|тяжел)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'tired';
+    } elseif (preg_match('/(иноагент|запрещ|акунин|быков|глуховск)/ui', $userMsg)) {
+        $chosenEmotion = 'angry';
+    } else {
+        $chosenEmotion = 'smile';
+    }
+}
+$mascotAttachment = $mascotStickers[$chosenEmotion] ?? $mascotStickers['smile'];
+
 vk_bot_send_message([
     'peer_id'          => $peerId,
     'message'          => $aiResponseText,
+    'attachment'       => $mascotAttachment,
     'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
     'keyboard'         => json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
     'dont_parse_links' => 1
