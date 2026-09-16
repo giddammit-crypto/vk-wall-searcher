@@ -545,15 +545,24 @@ export function initPromoModal() {
 
             const renderTentCard = () => `
                 <div class="shelf-tent-card">
-                    <div class="shelf-tent-fold-guide">- - - - - - - - ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ ШАЛАШИКОМ) - - - - - - - -</div>
+                    <div class="shelf-tent-fold-zone">
+                        <span class="fold-cue">⌃ ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ ШАЛАШИКОМ) ⌃</span>
+                        <span class="fold-portal">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
+                    </div>
                     <div class="shelf-tent-front">
                         <div class="shelf-tent-main">
                             <div class="shelf-badge-row">
-                                <span class="shelf-cosmo-badge"><span class="material-symbols-outlined">smart_toy</span> КНИЖНАЯ ПОЛКА С КОСМО</span>
-                                <span class="shelf-genre-pill"><span class="material-symbols-outlined">${genreObj.icon}</span> ${escapeHtml(genreObj.name)}</span>
+                                <span class="shelf-cosmo-badge">
+                                    <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="cosmo-mini-avatar" alt="Космо" />
+                                    <span>КНИЖНАЯ ПОЛКА С КОСМО</span>
+                                </span>
+                                <span class="shelf-genre-pill">
+                                    <span class="material-symbols-outlined">${genreObj.icon}</span>
+                                    <span>${escapeHtml(genreObj.name)}</span>
+                                </span>
                             </div>
-                            <h3 class="shelf-tent-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу по настроению!</h3>
-                            <p class="shelf-tent-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твой темп и настроение.</p>
+                            <h3 class="shelf-tent-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h3>
+                            <p class="shelf-tent-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
                             <div class="shelf-steps-row">
                                 <span class="shelf-step"><span class="step-num">1</span> Сканируй QR</span>
                                 <span class="shelf-step-arrow">→</span>
@@ -561,14 +570,14 @@ export function initPromoModal() {
                                 <span class="shelf-step-arrow">→</span>
                                 <span class="shelf-step"><span class="step-num">3</span> ТОП-3 книги на полке</span>
                             </div>
-                            <div class="shelf-org-tag">${escapeHtml(currentBranch.canonicalName)}</div>
+                            <div class="shelf-org-tag">🏛 ${escapeHtml(currentBranch.canonicalName)}${currentBranch.address ? ' &bull; ' + escapeHtml(currentBranch.address) : ''}</div>
                         </div>
                         <div class="shelf-tent-qr-col">
                             <div class="shelf-qr-frame">
                                 ${qrSvgShelf}
                             </div>
                             <div class="shelf-qr-cue">ВЕБ-ЧАТ С КОСМО</div>
-                            <div class="shelf-qr-sub">Без установки приложений</div>
+                            <div class="shelf-qr-sub">Без приложений &bull; С телефона</div>
                         </div>
                     </div>
                 </div>
@@ -579,13 +588,13 @@ export function initPromoModal() {
                     ${renderTentCard()}
                     <div class="shelf-cut-guide">
                         <span class="shelf-cut-line"></span>
-                        <span>✂ ЛИНИЯ РЕЗА (3 МИНИ-ТЕЙБЛТЕНТА НА ЛИСТ А4)</span>
+                        <span class="shelf-cut-badge">✂ ЛИНИЯ РЕЗА (3 МАКЕТА НА ЛИСТ А4)</span>
                         <span class="shelf-cut-line"></span>
                     </div>
                     ${renderTentCard()}
                     <div class="shelf-cut-guide">
                         <span class="shelf-cut-line"></span>
-                        <span>✂ ЛИНИЯ РЕЗА</span>
+                        <span class="shelf-cut-badge">✂ ЛИНИЯ РЕЗА</span>
                         <span class="shelf-cut-line"></span>
                     </div>
                     ${renderTentCard()}
@@ -1543,26 +1552,40 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 break-inside: avoid;
             }
             .print-shelf-fold {
-                border-top: 0.3mm dashed #94a3b8;
+                border-bottom: 0.3mm dashed #94a3b8;
                 font-family: 'JetBrains Mono', monospace;
-                font-size: 6.5pt;
+                font-size: 6pt;
                 color: #64748b;
                 text-transform: uppercase;
-                letter-spacing: 0.12em;
-                text-align: center;
-                padding-top: 1mm;
+                letter-spacing: 0.08em;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 1mm 2mm;
                 margin-bottom: 2mm;
+                background: #f8fafc;
+                border-radius: 1mm 1mm 0 0;
+            }
+            .print-fold-cue {
+                color: #0284c7;
+                font-weight: 700;
+            }
+            .print-fold-portal {
+                color: #94a3b8;
+                font-weight: 600;
             }
             .print-shelf-front {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 5mm;
+                gap: 4.5mm;
                 flex: 1;
+                padding: 0 1mm;
             }
             .print-shelf-main {
                 flex: 1;
                 text-align: left;
+                min-width: 0;
             }
             .print-shelf-badges {
                 display: flex;
@@ -1573,17 +1596,26 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
             .print-shelf-badge-cosmo {
                 font-size: 7.5pt;
                 font-weight: 800;
-                background: #e0f2fe;
-                color: #0284c7;
+                background: #0284c7;
+                color: #ffffff;
                 padding: 1mm 2.5mm;
                 border-radius: 1.5mm;
                 letter-spacing: 0.04em;
-                display: inline-block;
+                display: inline-flex;
+                align-items: center;
+                gap: 1.5mm;
+            }
+            .print-cosmo-mini-avatar {
+                width: 3.8mm;
+                height: 3.8mm;
+                object-fit: contain;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.25);
             }
             .print-shelf-badge-genre {
                 font-size: 7pt;
                 font-weight: 700;
-                background: #f1f5f9;
+                background: #f8fafc;
                 color: #0f172a;
                 border: 0.25mm solid #cbd5e1;
                 padding: 1mm 2.5mm;
@@ -1596,6 +1628,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 line-height: 1.25;
                 color: #0f172a;
                 margin: 0 0 1.5mm 0;
+                letter-spacing: -0.01em;
             }
             .print-shelf-sub {
                 font-size: 7.5pt;
@@ -1608,31 +1641,46 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 align-items: center;
                 gap: 2mm;
                 font-size: 6.5pt;
-                font-weight: 700;
-                color: #0284c7;
                 margin-bottom: 2mm;
+                flex-wrap: wrap;
+            }
+            .print-shelf-step {
+                display: inline-flex;
+                align-items: center;
+                gap: 1mm;
+                background: #f0f9ff;
+                border: 0.25mm solid #bae6fd;
+                color: #0369a1;
+                padding: 0.6mm 1.8mm;
+                border-radius: 1mm;
+                font-weight: 700;
             }
             .print-shelf-step-num {
-                display: inline-block;
-                width: 3.5mm;
-                height: 3.5mm;
-                line-height: 3.5mm;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 3mm;
+                height: 3mm;
                 background: #0284c7;
                 color: #ffffff;
                 border-radius: 50%;
-                text-align: center;
-                font-size: 5.5pt;
-                margin-right: 0.8mm;
+                font-size: 5pt;
+                font-weight: 800;
+            }
+            .print-shelf-step-arrow {
+                color: #94a3b8;
+                font-size: 6.5pt;
+                font-weight: bold;
             }
             .print-shelf-branch {
                 font-size: 6.5pt;
-                font-weight: 600;
+                font-weight: 700;
                 color: #64748b;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 0.04em;
             }
             .print-shelf-qr-box {
-                width: 30mm;
+                width: 28mm;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -1640,8 +1688,8 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex-shrink: 0;
             }
             .print-shelf-qr-frame {
-                width: 26mm;
-                height: 26mm;
+                width: 25mm;
+                height: 25mm;
                 padding: 1mm;
                 border: 0.3mm solid #cbd5e1;
                 border-radius: 1.5mm;
@@ -1649,27 +1697,31 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 align-items: center;
                 justify-content: center;
                 background: #ffffff;
+                box-shadow: 0 0.5mm 2mm rgba(0,0,0,0.05);
             }
             .print-shelf-qr-frame svg {
-                width: 24mm;
-                height: 24mm;
+                width: 23mm;
+                height: 23mm;
+                display: block;
             }
             .print-shelf-qr-cue {
                 font-size: 6pt;
                 font-weight: 800;
                 color: #0284c7;
                 margin-top: 1mm;
-                letter-spacing: 0.04em;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
             }
             .print-shelf-qr-sub {
                 font-size: 5pt;
                 color: #64748b;
+                margin-top: 0.3mm;
             }
             .print-shelf-cut-guide {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 3mm;
+                gap: 2mm;
                 font-size: 6.5pt;
                 color: #94a3b8;
                 height: 4mm;
@@ -1680,34 +1732,113 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 border-top: 0.3mm dashed #cbd5e1;
                 height: 0;
             }
+            .print-shelf-cut-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 1mm;
+                background: #f8fafc;
+                border: 0.25mm dashed #cbd5e1;
+                border-radius: 1mm;
+                padding: 0.5mm 2mm;
+                color: #64748b;
+                font-weight: 700;
+            }
+
+            /* Print Theme Overrides for Shelf Table-Tents */
+            .print-theme-swiss .print-shelf-badge-cosmo { background: #1d4ed8; }
+            .print-theme-swiss .print-shelf-step { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+            .print-theme-swiss .print-shelf-step-num { background: #1d4ed8; }
+            .print-theme-swiss .print-shelf-qr-cue { color: #1d4ed8; }
+            .print-theme-swiss .print-fold-cue { color: #1d4ed8; }
+
+            .print-theme-bauhaus .print-shelf-badge-cosmo { background: #c2410c; border-radius: 0; }
+            .print-theme-bauhaus .print-shelf-badge-genre { border-radius: 0; border-color: #fed7aa; background: #fff7ed; color: #111827; }
+            .print-theme-bauhaus .print-shelf-step { background: #fff7ed; border-color: #fed7aa; color: #c2410c; border-radius: 0; }
+            .print-theme-bauhaus .print-shelf-step-num { background: #c2410c; border-radius: 0; }
+            .print-theme-bauhaus .print-shelf-qr-cue { color: #c2410c; }
+            .print-theme-bauhaus .print-shelf-card { border-radius: 0; border-color: #111827; }
+            .print-theme-bauhaus .print-shelf-qr-frame { border-radius: 0; border-color: #c2410c; }
+            .print-theme-bauhaus .print-fold-cue { color: #c2410c; }
+
+            .print-theme-scandi .print-shelf-badge-cosmo { background: #0f766e; }
+            .print-theme-scandi .print-shelf-step { background: #f0fdfa; border-color: #ccfbf1; color: #0f766e; }
+            .print-theme-scandi .print-shelf-step-num { background: #0f766e; }
+            .print-theme-scandi .print-shelf-qr-cue { color: #0f766e; }
+            .print-theme-scandi .print-fold-cue { color: #0f766e; }
+
+            .print-theme-editorial .print-shelf-title { font-family: Georgia, serif; }
+            .print-theme-editorial .print-shelf-badge-cosmo { background: #831843; font-family: Georgia, serif; }
+            .print-theme-editorial .print-shelf-step { background: #fdf2f8; border-color: #fbcfe8; color: #831843; }
+            .print-theme-editorial .print-shelf-step-num { background: #831843; }
+            .print-theme-editorial .print-shelf-qr-cue { color: #831843; }
+            .print-theme-editorial .print-fold-cue { color: #831843; }
+
+            .print-theme-botanical .print-shelf-badge-cosmo { background: #15803d; }
+            .print-theme-botanical .print-shelf-step { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+            .print-theme-botanical .print-shelf-step-num { background: #15803d; }
+            .print-theme-botanical .print-shelf-qr-cue { color: #15803d; }
+            .print-theme-botanical .print-fold-cue { color: #15803d; }
+
+            .print-theme-craft .print-shelf-card { background: #faf5ec !important; border-color: #d6cbba; }
+            .print-theme-craft .print-shelf-fold { background: #f4ecdf; }
+            .print-theme-craft .print-shelf-badge-cosmo { background: #991b1b; }
+            .print-theme-craft .print-shelf-step { background: #f5ede0; border-color: #e6dac6; color: #991b1b; }
+            .print-theme-craft .print-shelf-step-num { background: #991b1b; }
+            .print-theme-craft .print-shelf-qr-cue { color: #991b1b; }
+            .print-theme-craft .print-fold-cue { color: #991b1b; }
+
+            .print-theme-kids .print-shelf-badge-cosmo { background: #ea580c; border-radius: 3mm; }
+            .print-theme-kids .print-shelf-card { border-radius: 4mm; border-color: #fed7aa; }
+            .print-theme-kids .print-shelf-step { border-radius: 2mm; background: #fff7ed; color: #c2410c; }
+            .print-theme-kids .print-shelf-step-num { background: #ea580c; }
+            .print-theme-kids .print-shelf-qr-cue { color: #ea580c; }
+            .print-theme-kids .print-fold-cue { color: #ea580c; }
+
+            .print-theme-neo .print-shelf-badge-cosmo { background: #2563eb; }
+            .print-theme-neo .print-shelf-step { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+            .print-theme-neo .print-shelf-step-num { background: #2563eb; }
+            .print-theme-neo .print-shelf-qr-cue { color: #2563eb; }
+            .print-theme-neo .print-fold-cue { color: #2563eb; }
+
+            .print-theme-poetry .print-shelf-badge-cosmo { background: #be185d; }
+            .print-theme-poetry .print-shelf-step { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+            .print-theme-poetry .print-shelf-step-num { background: #be185d; }
+            .print-theme-poetry .print-shelf-qr-cue { color: #be185d; }
+            .print-theme-poetry .print-fold-cue { color: #be185d; }
         `;
 
         const renderPrintTent = () => `
             <div class="print-shelf-card">
-                <div class="print-shelf-fold">- - - - - - - - ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ) - - - - - - - -</div>
+                <div class="print-shelf-fold">
+                    <span class="print-fold-cue">⌃ ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ ШАЛАШИКОМ) ⌃</span>
+                    <span class="print-fold-portal">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
+                </div>
                 <div class="print-shelf-front">
                     <div class="print-shelf-main">
                         <div class="print-shelf-badges">
-                            <span class="print-shelf-badge-cosmo">КНИЖНАЯ ПОЛКА С КОСМО</span>
+                            <span class="print-shelf-badge-cosmo">
+                                <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="print-cosmo-mini-avatar" alt="Космо" />
+                                <span>КНИЖНАЯ ПОЛКА С КОСМО</span>
+                            </span>
                             <span class="print-shelf-badge-genre">${escapeHtml(genreObj.name)}</span>
                         </div>
                         <h2 class="print-shelf-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h2>
-                        <p class="print-shelf-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и подберёт ТОП-3 книги с этого стеллажа под твой темп и настроение.</p>
+                        <p class="print-shelf-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
                         <div class="print-shelf-steps">
-                            <span><span class="print-shelf-step-num">1</span>Сканируй QR</span>
-                            <span>→</span>
-                            <span><span class="print-shelf-step-num">2</span>2 вопроса от Космо</span>
-                            <span>→</span>
-                            <span><span class="print-shelf-step-num">3</span>ТОП-3 книги на полке</span>
+                            <span class="print-shelf-step"><span class="print-shelf-step-num">1</span> Сканируй QR</span>
+                            <span class="print-shelf-step-arrow">→</span>
+                            <span class="print-shelf-step"><span class="print-shelf-step-num">2</span> 2 вопроса от Космо</span>
+                            <span class="print-shelf-step-arrow">→</span>
+                            <span class="print-shelf-step"><span class="print-shelf-step-num">3</span> ТОП-3 книги на полке</span>
                         </div>
-                        <div class="print-shelf-branch">${escapeHtml(branch.canonicalName)} • https://biblioteka33.ru</div>
+                        <div class="print-shelf-branch">🏛 ${escapeHtml(branch.canonicalName)}${branch.address ? ' &bull; ' + escapeHtml(branch.address) : ''}</div>
                     </div>
                     <div class="print-shelf-qr-box">
                         <div class="print-shelf-qr-frame">
                             ${qrSvgShelf}
                         </div>
                         <div class="print-shelf-qr-cue">ВЕБ-ЧАТ С КОСМО</div>
-                        <div class="print-shelf-qr-sub">Без приложений</div>
+                        <div class="print-shelf-qr-sub">Без приложений &bull; С телефона</div>
                     </div>
                 </div>
             </div>
@@ -1718,13 +1849,13 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 ${renderPrintTent()}
                 <div class="print-shelf-cut-guide">
                     <span class="print-shelf-cut-line"></span>
-                    <span>✂ ЛИНИЯ РЕЗА (3 МАКЕТА НА А4)</span>
+                    <span class="print-shelf-cut-badge">✂ ЛИНИЯ РЕЗА (3 МАКЕТА НА ЛИСТ А4)</span>
                     <span class="print-shelf-cut-line"></span>
                 </div>
                 ${renderPrintTent()}
                 <div class="print-shelf-cut-guide">
                     <span class="print-shelf-cut-line"></span>
-                    <span>✂ ЛИНИЯ РЕЗА</span>
+                    <span class="print-shelf-cut-badge">✂ ЛИНИЯ РЕЗА</span>
                     <span class="print-shelf-cut-line"></span>
                 </div>
                 ${renderPrintTent()}

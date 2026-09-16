@@ -6992,7 +6992,7 @@ textarea:focus-visible,
 .promo-format-selector,
 .promo-format-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.65rem;
 }
 
@@ -9105,6 +9105,8 @@ textarea:focus-visible,
     .bm-quote-container {
         font-size: 7.5px !important;
     }
+}
+
 /* ==========================================================================
    FORMAT D: КНИЖНАЯ ПОЛКА С КОСМО (3 тейблтента / наклейки на А4)
    ========================================================================== */
@@ -9115,20 +9117,24 @@ textarea:focus-visible,
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px 14px;
+    padding: 18px 16px;
     background: #ffffff !important;
     color: #0f172a;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .sheet-shelf .shelf-cut-guide {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 10px;
+    gap: 10px;
+    font-size: 9.5px;
+    font-weight: 700;
     color: #94a3b8;
+    letter-spacing: 0.08em;
     user-select: none;
     padding: 2px 0;
 }
@@ -9139,69 +9145,113 @@ textarea:focus-visible,
     height: 0;
 }
 
+.sheet-shelf .shelf-cut-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: #64748b;
+}
+
 .shelf-tent-card {
     background: #ffffff;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
-    padding: 12px 14px;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    overflow: hidden;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .shelf-tent-card:hover {
     border-color: #38bdf8;
-    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.15);
+    box-shadow: 0 4px 18px rgba(56, 189, 248, 0.15);
 }
 
-.shelf-tent-fold-guide {
-    border-top: 1px dashed #cbd5e1;
-    font-size: 8px;
-    color: #94a3b8;
+.shelf-tent-fold-zone {
+    background: #f8fafc;
+    border-bottom: 1px dashed #94a3b8;
+    padding: 4px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    text-align: center;
-    padding-top: 4px;
-    margin-bottom: 4px;
+    user-select: none;
+}
+
+.shelf-tent-fold-zone .fold-cue {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #0284c7;
+    font-weight: 700;
+}
+
+.shelf-tent-fold-zone .fold-portal {
+    color: #94a3b8;
 }
 
 .shelf-tent-front {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
     gap: 14px;
+    padding: 10px 14px 12px;
+    background: #ffffff;
 }
 
 .shelf-tent-main {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .shelf-badge-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     flex-wrap: wrap;
 }
 
 .shelf-cosmo-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    background: #e0f2fe;
-    color: #0369a1;
+    gap: 5px;
+    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+    color: #ffffff;
     font-size: 9.5px;
     font-weight: 800;
-    padding: 2px 8px;
+    padding: 2.5px 9px;
     border-radius: 6px;
     letter-spacing: 0.04em;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+    line-height: 1;
+}
+
+.shelf-cosmo-badge .cosmo-mini-avatar {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .shelf-cosmo-badge .material-symbols-outlined {
     font-size: 14px;
+    color: #ffffff;
 }
 
 .shelf-genre-pill {
@@ -9209,12 +9259,13 @@ textarea:focus-visible,
     align-items: center;
     gap: 4px;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     color: #0f172a;
     font-size: 9px;
     font-weight: 700;
-    padding: 2px 8px;
+    padding: 2.5px 8px;
     border-radius: 6px;
+    line-height: 1;
 }
 
 .shelf-genre-pill .material-symbols-outlined {
@@ -9223,16 +9274,16 @@ textarea:focus-visible,
 }
 
 .shelf-tent-title {
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 900;
     color: #0f172a;
-    margin: 0 0 4px 0;
+    margin: 4px 0 3px 0;
     letter-spacing: -0.01em;
-    line-height: 1.2;
+    line-height: 1.25;
 }
 
 .shelf-tent-sub {
-    font-size: 10px;
+    font-size: 9.5px;
     color: #475569;
     line-height: 1.35;
     margin: 0 0 6px 0;
@@ -9243,58 +9294,79 @@ textarea:focus-visible,
     align-items: center;
     gap: 5px;
     font-size: 9px;
-    color: #0284c7;
-    font-weight: 700;
     margin-bottom: 6px;
     flex-wrap: wrap;
+}
+
+.shelf-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    color: #0369a1;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 700;
 }
 
 .shelf-step .step-num {
     background: #0284c7;
     color: #ffffff;
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 8px;
-    margin-right: 2px;
+    font-weight: 800;
+    margin-right: 1px;
 }
 
 .shelf-step-arrow {
     color: #94a3b8;
     font-size: 9px;
+    font-weight: bold;
 }
 
 .shelf-org-tag {
     font-size: 8px;
-    font-weight: 600;
+    font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    margin-top: 2px;
 }
 
 .shelf-tent-qr-col {
-    width: 90px;
+    width: 96px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     flex-shrink: 0;
 }
 
 .shelf-qr-frame {
-    width: 78px;
-    height: 78px;
+    width: 82px;
+    height: 82px;
     padding: 4px;
     background: #ffffff;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 .shelf-qr-frame svg {
-    width: 70px;
-    height: 70px;
+    width: 74px;
+    height: 74px;
+    display: block;
 }
 
 .shelf-qr-cue {
@@ -9302,12 +9374,14 @@ textarea:focus-visible,
     font-weight: 800;
     color: #0284c7;
     margin-top: 4px;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .shelf-qr-sub {
     font-size: 7px;
     color: #64748b;
+    margin-top: 1px;
 }
 
 .shelf-genre-group {
@@ -9323,6 +9397,96 @@ textarea:focus-visible,
     background: rgba(59, 130, 246, 0.08);
     border-color: rgba(59, 130, 246, 0.25);
 }
+
+/* Адаптивность для предпросмотра книжной полки на экранах <= 860px и <= 560px */
+@media (max-width: 860px) {
+    .sheet-shelf {
+        min-width: 520px !important;
+        margin: 0 auto !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .sheet-shelf {
+        min-width: 480px !important;
+        padding: 12px 10px !important;
+        gap: 8px !important;
+    }
+    .shelf-tent-front {
+        padding: 8px 10px;
+        gap: 10px;
+    }
+    .shelf-tent-title {
+        font-size: 12px;
+    }
+    .shelf-tent-sub {
+        font-size: 8.5px;
+    }
+    .shelf-qr-frame {
+        width: 72px;
+        height: 72px;
+    }
+    .shelf-qr-frame svg {
+        width: 64px;
+        height: 64px;
+    }
+}
+
+/* Theme overrides for Shelf Table-Tents */
+.sheet-theme-swiss .shelf-cosmo-badge { background: #1d4ed8; }
+.sheet-theme-swiss .shelf-step { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.sheet-theme-swiss .shelf-step .step-num { background: #1d4ed8; }
+.sheet-theme-swiss .shelf-qr-cue { color: #1d4ed8; }
+.sheet-theme-swiss .shelf-tent-card { border-radius: 4px; }
+
+.sheet-theme-bauhaus .shelf-cosmo-badge { background: #c2410c; border-radius: 0; }
+.sheet-theme-bauhaus .shelf-genre-pill { border-radius: 0; border-color: #fed7aa; background: #fff7ed; color: #111827; }
+.sheet-theme-bauhaus .shelf-step { background: #fff7ed; border-color: #fed7aa; color: #c2410c; border-radius: 0; }
+.sheet-theme-bauhaus .shelf-step .step-num { background: #c2410c; border-radius: 0; }
+.sheet-theme-bauhaus .shelf-qr-cue { color: #c2410c; }
+.sheet-theme-bauhaus .shelf-tent-card { border-radius: 0; border-color: #111827; }
+.sheet-theme-bauhaus .shelf-qr-frame { border-radius: 0; border-color: #c2410c; }
+
+.sheet-theme-scandi .shelf-cosmo-badge { background: #0f766e; }
+.sheet-theme-scandi .shelf-step { background: #f0fdfa; border-color: #ccfbf1; color: #0f766e; }
+.sheet-theme-scandi .shelf-step .step-num { background: #0f766e; }
+.sheet-theme-scandi .shelf-qr-cue { color: #0f766e; }
+
+.sheet-theme-editorial .shelf-tent-title { font-family: Georgia, serif; }
+.sheet-theme-editorial .shelf-cosmo-badge { background: #831843; font-family: Georgia, serif; }
+.sheet-theme-editorial .shelf-step { background: #fdf2f8; border-color: #fbcfe8; color: #831843; }
+.sheet-theme-editorial .shelf-step .step-num { background: #831843; }
+.sheet-theme-editorial .shelf-qr-cue { color: #831843; }
+
+.sheet-theme-botanical .shelf-cosmo-badge { background: #15803d; }
+.sheet-theme-botanical .shelf-step { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.sheet-theme-botanical .shelf-step .step-num { background: #15803d; }
+.sheet-theme-botanical .shelf-qr-cue { color: #15803d; }
+
+.sheet-theme-craft .shelf-tent-card { background: #faf5ec; border-color: #d6cbba; }
+.sheet-theme-craft .shelf-tent-front { background: #faf5ec; }
+.sheet-theme-craft .shelf-tent-fold-zone { background: #f4ecdf; }
+.sheet-theme-craft .shelf-cosmo-badge { background: #991b1b; }
+.sheet-theme-craft .shelf-step { background: #f5ede0; border-color: #e6dac6; color: #991b1b; }
+.sheet-theme-craft .shelf-step .step-num { background: #991b1b; }
+.sheet-theme-craft .shelf-qr-cue { color: #991b1b; }
+
+.sheet-theme-kids .shelf-cosmo-badge { background: #ea580c; border-radius: 12px; }
+.sheet-theme-kids .shelf-tent-card { border-radius: 12px; border-color: #fed7aa; }
+.sheet-theme-kids .shelf-step { border-radius: 12px; background: #fff7ed; color: #c2410c; }
+.sheet-theme-kids .shelf-step .step-num { background: #ea580c; }
+.sheet-theme-kids .shelf-qr-cue { color: #ea580c; }
+
+.sheet-theme-neo .shelf-cosmo-badge { background: #2563eb; }
+.sheet-theme-neo .shelf-step { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+.sheet-theme-neo .shelf-step .step-num { background: #2563eb; }
+.sheet-theme-neo .shelf-qr-cue { color: #2563eb; }
+
+.sheet-theme-poetry .shelf-cosmo-badge { background: #be185d; }
+.sheet-theme-poetry .shelf-step { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+.sheet-theme-poetry .shelf-step .step-num { background: #be185d; }
+.sheet-theme-poetry .shelf-qr-cue { color: #be185d; }
 
 
 /* ==========================================================================
