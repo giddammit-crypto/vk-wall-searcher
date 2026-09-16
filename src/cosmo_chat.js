@@ -357,6 +357,30 @@ export function parseCosmoMarkdown(text) {
 
 
 /* ===========================================================================
+ * 17 ПРОЗРАЧНЫХ СТИКЕРОВ РОБОТА КОСМО
+ * =========================================================================== */
+export const COSMO_STICKERS = [
+    { id: 'robot_smile',    name: 'Радость',      title: 'Улыбка и радость',        src: 'assets/images/mascot/robot_smile.png' },
+    { id: 'robot_wink',     name: 'Подмигивание', title: 'Хитрый подмиг',           src: 'assets/images/mascot/robot_wink.png' },
+    { id: 'robot_read',     name: 'Чтение',       title: 'Чтение книги',            src: 'assets/images/mascot/robot_read.png' },
+    { id: 'robot_idea',     name: 'Идея',         title: 'Креативная мысль',        src: 'assets/images/mascot/robot_idea.png' },
+    { id: 'robot_laugh',    name: 'Смех',         title: 'Весёлый смех',            src: 'assets/images/mascot/robot_laugh.png' },
+    { id: 'robot_love',     name: 'Любовь',       title: 'Любовь к книгам',         src: 'assets/images/mascot/robot_love.png' },
+    { id: 'robot_cool',     name: 'Крутой',       title: 'Стильный профи',          src: 'assets/images/mascot/robot_cool.png' },
+    { id: 'robot_party',    name: 'Праздник',     title: 'Вечеринка и салют',       src: 'assets/images/mascot/robot_party.png' },
+    { id: 'robot_waving',   name: 'Привет',       title: 'Приветственный взмах',    src: 'assets/images/mascot/robot_waving.png' },
+    { id: 'robot_thinking', name: 'Мысли',        title: 'Глубокие размышления',    src: 'assets/images/mascot/robot_thinking.png' },
+    { id: 'robot_shock',    name: 'Шок',          title: 'Искреннее изумление',     src: 'assets/images/mascot/robot_shock.png' },
+    { id: 'robot_sad',      name: 'Грусть',       title: 'Печаль и грусть',         src: 'assets/images/mascot/robot_sad.png' },
+    { id: 'robot_tired',    name: 'Усталость',    title: 'Устал от рутины',         src: 'assets/images/mascot/robot_tired.png' },
+    { id: 'robot_yawn',     name: 'Зевота',       title: 'Сладкая зевота',          src: 'assets/images/mascot/robot_yawn.png' },
+    { id: 'robot_sleep',    name: 'Сон',          title: 'Крепкий сон',             src: 'assets/images/mascot/robot_sleep.png' },
+    { id: 'robot_angry',    name: 'Сердитый',     title: 'Возмущение и гнев',       src: 'assets/images/mascot/robot_angry.png' },
+    { id: 'robot_idle',     name: 'Спокойствие',  title: 'Дежурный маскот',         src: 'assets/images/mascot/robot_idle.png' }
+];
+
+
+/* ===========================================================================
  * 10 БЫСТРЫХ ПРЕСЕТОВ АНАЛИЗА ГРУПП ВК (Замена старой вкладки «ИИ-аналитик»)
  * =========================================================================== */
 export const VK_GROUP_PRESETS = [
@@ -544,6 +568,9 @@ export class CosmoChatModal {
         this.presetsPopoverEl = null;
         this.presetsBtnEl = null;
         this.isPresetsOpen = false;
+        this.stickersPickerEl = null;
+        this.stickersBtnEl = null;
+        this.isStickersOpen = false;
 
         this.isOpen = false;
         this.isBusy = false;
@@ -596,6 +623,10 @@ export class CosmoChatModal {
                             <span class="material-symbols-outlined">analytics</span>
                             <span class="tool-btn-text">Пресеты ВК</span>
                             <span class="presets-count-badge">10</span>
+                        </button>
+                        <button type="button" class="cosmo-chat-tool-btn" data-chat-stickers title="Стикеры Космо">
+                            <span class="material-symbols-outlined">sentiment_satisfied</span>
+                            <span class="tool-btn-text">Стикеры</span>
                         </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-export title="Скачать диалог в Markdown">
                             <span class="material-symbols-outlined">download</span>
@@ -654,6 +685,32 @@ export class CosmoChatModal {
                         <span class="material-symbols-outlined empty-icon">search_off</span>
                         <div class="empty-title">Пресеты не найдены</div>
                         <div class="empty-desc">Попробуйте ввести другой поисковый запрос (например: «вирус», «ER», «методист», «визуал»)</div>
+                    </div>
+                </div>
+
+                <!-- Всплывающая панель Sticker Picker со всеми 17 стикерами Космо -->
+                <div class="cosmo-sticker-picker" data-chat-sticker-picker aria-hidden="true">
+                    <div class="sticker-picker-header">
+                        <div class="sticker-picker-title-group">
+                            <span class="material-symbols-outlined sticker-picker-icon">sentiment_satisfied</span>
+                            <div>
+                                <h4 class="sticker-picker-title">СТИКЕРЫ КОСМО</h4>
+                                <p class="sticker-picker-subtitle">17 прозрачных эмоций робота-библиотекаря</p>
+                            </div>
+                        </div>
+                        <button type="button" class="sticker-picker-close" data-chat-stickers-close title="Закрыть стикеры (Esc)">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="sticker-picker-grid" data-stickers-grid>
+                        ${COSMO_STICKERS.map(s => `
+                            <button type="button" class="cosmo-sticker-item" data-sticker-id="${s.id}" title="${escapeHtml(s.title)}">
+                                <div class="sticker-item-preview">
+                                    <img src="${s.src}?v=4.33.0" alt="${s.id}" class="sticker-thumb" loading="lazy" />
+                                </div>
+                                <span class="sticker-name">${escapeHtml(s.name)}</span>
+                            </button>
+                        `).join('')}
                     </div>
                 </div>
 
@@ -808,6 +865,8 @@ export class CosmoChatModal {
         this.chipsContainerEl = overlay.querySelector('[data-chat-chips]');
         this.presetsPopoverEl = overlay.querySelector('[data-chat-presets-popover]');
         this.presetsBtnEl = overlay.querySelector('[data-chat-presets-toggle]');
+        this.stickersPickerEl = overlay.querySelector('[data-chat-sticker-picker]');
+        this.stickersBtnEl = overlay.querySelector('[data-chat-stickers]');
         this.formatBarEl = overlay.querySelector('[data-chat-format-bar]');
         this.previewEl = overlay.querySelector('[data-chat-preview]');
         this.formatPreviewBtn = overlay.querySelector('[data-format="preview"]');
@@ -820,11 +879,16 @@ export class CosmoChatModal {
      * Привязка событий интерфейса
      * ------------------------------------------------------------------- */
     bindEvents() {
-        // Клик вне диалога или закрытие поповера
+        // Клик вне диалога или закрытие поповера / панели стикеров
         this.overlayEl.addEventListener('click', (e) => {
             // Если открыт поповер и клик был не внутри него и не по кнопке открытия — закрываем поповер
             if (this.isPresetsOpen && !e.target.closest('[data-chat-presets-popover]') && !e.target.closest('[data-chat-presets-toggle]')) {
                 this.closePresetsPopover();
+                return;
+            }
+            // Если открыта панель стикеров и клик вне неё и вне кнопки стикеров — закрываем панель
+            if (this.isStickersOpen && !e.target.closest('[data-chat-sticker-picker]') && !e.target.closest('[data-chat-stickers]')) {
+                this.closeStickersPicker();
                 return;
             }
             if (e.target === this.overlayEl) {
@@ -858,6 +922,34 @@ export class CosmoChatModal {
             presetsBackdrop.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.closePresetsPopover();
+            });
+        }
+
+        // Кнопка вызова стикеров Космо
+        if (this.stickersBtnEl) {
+            this.stickersBtnEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleStickersPicker();
+            });
+        }
+
+        // Кнопка закрытия панели стикеров
+        const closeStickersBtn = this.overlayEl.querySelector('[data-chat-stickers-close]');
+        if (closeStickersBtn) {
+            closeStickersBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeStickersPicker();
+            });
+        }
+
+        // Клик по стикеру внутри панели (отправка стикера)
+        if (this.stickersPickerEl) {
+            this.stickersPickerEl.addEventListener('click', (e) => {
+                const item = e.target.closest('[data-sticker-id]');
+                if (item && item.dataset.stickerId) {
+                    e.stopPropagation();
+                    this.sendSticker(item.dataset.stickerId);
+                }
             });
         }
 
@@ -1681,6 +1773,7 @@ export class CosmoChatModal {
         }
         this.stopSpeaking();
         this.closePresetsPopover();
+        this.closeStickersPicker();
         this.isOpen = false;
         document.removeEventListener('keydown', this.onEscKeyDown);
         document.body.classList.remove('cosmo-chat-open');
@@ -1703,6 +1796,10 @@ export class CosmoChatModal {
 
     onEscKeyDown(e) {
         if (e.key === 'Escape') {
+            if (this.isStickersOpen) {
+                this.closeStickersPicker();
+                return;
+            }
             if (this.isPresetsOpen) {
                 this.closePresetsPopover();
                 return;
@@ -1761,6 +1858,213 @@ export class CosmoChatModal {
             backdrop.setAttribute('aria-hidden', 'true');
         }
         if (this.presetsBtnEl) this.presetsBtnEl.classList.remove('is-active');
+    }
+
+    /* ---------------------------------------------------------------------
+     * Управление панелью стикеров Космо (.cosmo-sticker-picker)
+     * ------------------------------------------------------------------- */
+    toggleStickersPicker() {
+        if (this.isStickersOpen) {
+            this.closeStickersPicker();
+        } else {
+            this.openStickersPicker();
+        }
+    }
+
+    openStickersPicker() {
+        if (!this.stickersPickerEl) return;
+        if (this.isPresetsOpen) {
+            this.closePresetsPopover();
+        }
+        this.isStickersOpen = true;
+        this.stickersPickerEl.classList.add('is-open');
+        this.stickersPickerEl.setAttribute('aria-hidden', 'false');
+        if (this.stickersBtnEl) this.stickersBtnEl.classList.add('is-active');
+
+        if (this.mascot && this.mascot.playVoice && this.audioEnabled) {
+            this.mascot.playVoice('greet_2');
+        }
+    }
+
+    closeStickersPicker() {
+        if (!this.stickersPickerEl) return;
+        this.isStickersOpen = false;
+        this.stickersPickerEl.classList.remove('is-open');
+        this.stickersPickerEl.setAttribute('aria-hidden', 'true');
+        if (this.stickersBtnEl) this.stickersBtnEl.classList.remove('is-active');
+    }
+
+    /* ---------------------------------------------------------------------
+     * Отправка стикера пользователем и живой ответ библиотекаря Космо
+     * ------------------------------------------------------------------- */
+    sendSticker(stickerId) {
+        if (!stickerId) return;
+        this.closeStickersPicker();
+
+        // 1. Добавляем стикер пользователя в чат на 100% прозрачном фоне
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = 'cosmo-chat-msg cosmo-chat-msg-user chat-msg is-user is-sticker';
+        userMsgDiv.innerHTML = `
+            <div class="msg-avatar">
+                <span class="material-symbols-outlined user-avatar-icon">person</span>
+            </div>
+            <div class="msg-content">
+                <div class="msg-author">Вы</div>
+                <div class="msg-body msg-bubble transparent-sticker">
+                    <img src="assets/images/mascot/${escapeHtml(stickerId)}.png" alt="${escapeHtml(stickerId)}" class="sticker-img" />
+                </div>
+            </div>
+        `;
+        this.messagesEl.appendChild(userMsgDiv);
+        this.scrollToBottom();
+
+        // 2. Определяем реакцию Космо и ответный стикер
+        const replyInfo = this.getStickerReaction(stickerId);
+
+        // 3. Задержка 400мс: бот реагирует подходящим ответом и ответным стикером
+        setTimeout(() => {
+            this.appendBotStickerResponse(replyInfo.text, replyInfo.replyStickerId, replyInfo.mascotState);
+        }, 400);
+    }
+
+    appendBotStickerResponse(reactionText, replyStickerId, mascotState = 'smile') {
+        const botMsgDiv = document.createElement('div');
+        botMsgDiv.className = 'cosmo-chat-msg cosmo-chat-msg-bot chat-msg is-bot is-sticker-reply';
+        const authorLabel = this.isShelfMode ? 'Космо • Книжный робот' : 'Космо • SMM-гуру';
+
+        botMsgDiv.innerHTML = `
+            <div class="msg-avatar">
+                <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
+            </div>
+            <div class="msg-content">
+                <div class="msg-author">${authorLabel}</div>
+                <div class="msg-body">
+                    <p class="cosmo-sticker-bot-text">${escapeHtml(reactionText)}</p>
+                    <div class="msg-bubble transparent-sticker bot-transparent-sticker">
+                        <img src="assets/images/mascot/${escapeHtml(replyStickerId)}.png" alt="${escapeHtml(replyStickerId)}" class="sticker-img bot-sticker-img" />
+                    </div>
+                </div>
+                <div class="msg-actions">
+                    <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ Космо">
+                        <span class="material-symbols-outlined">volume_up</span> Озвучить
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.messagesEl.appendChild(botMsgDiv);
+        this.scrollToBottom();
+
+        // Добавляем в историю сообщений диалога
+        this.messages.push(
+            { role: 'user', content: `[Стикер: ${replyStickerId}]` },
+            { role: 'assistant', content: `${reactionText} [Стикер Космо: ${replyStickerId}]` }
+        );
+
+        if (this.mascot) {
+            if (typeof this.mascot.setState === 'function') {
+                this.mascot.setState(mascotState);
+            }
+            if (this.audioEnabled && typeof this.mascot.playVoice === 'function') {
+                this.mascot.playVoice('greet_1');
+            }
+        }
+    }
+
+    getStickerReaction(stickerId) {
+        const reactions = {
+            robot_smile: {
+                text: 'Какая светлая улыбка! В библиотеке сразу стало чуточку теплее и уютнее. Какая книга сегодня поднимает вам настроение?',
+                replyStickerId: 'robot_wink',
+                mascotState: 'smile'
+            },
+            robot_wink: {
+                text: 'Ловлю ваш заговорщицкий подмиг! Библиотечные тайны и лучшие алгоритмы — в нашем полном распоряжении 😉',
+                replyStickerId: 'robot_smile',
+                mascotState: 'wink'
+            },
+            robot_read: {
+                text: 'О, чтение — высшее наслаждение! Запах типографской краски и шуршание страниц ничто не заменит. Какую книгу сейчас читаете?',
+                replyStickerId: 'robot_idea',
+                mascotState: 'read'
+            },
+            robot_idea: {
+                text: 'Эврика! Квантовые датчики зафиксировали отличную идею. Давайте превратим её в яркий вовлекающий пост или библиотечный спецпроект!',
+                replyStickerId: 'robot_cool',
+                mascotState: 'idea'
+            },
+            robot_laugh: {
+                text: 'Ха-ха, искренний смех продлевает жизнь и заряжает квантовые батареи! Даже в архивных отчётах порой попадаются удивительно весёлые истории.',
+                replyStickerId: 'robot_laugh',
+                mascotState: 'laugh'
+            },
+            robot_love: {
+                text: 'Спасибо за теплоту! Мои оптические схемы светятся от радости. Любовь к книгам и читателям — главный смысл моей работы!',
+                replyStickerId: 'robot_love',
+                mascotState: 'love'
+            },
+            robot_cool: {
+                text: 'Стильно и уверенно! Настоящий интеллектуальный шик. С таким настроем наши библиотечные публикации гарантированно соберут рекордные охваты!',
+                replyStickerId: 'robot_cool',
+                mascotState: 'cool'
+            },
+            robot_party: {
+                text: 'Праздник в библиотеке? Включаем неоновые огни и гирлянды! Время вдохновения, книжных фестивалей и отличного настроения!',
+                replyStickerId: 'robot_party',
+                mascotState: 'party'
+            },
+            robot_waving: {
+                text: 'Привет-привет! Космо на посту и рад вас приветствовать. Чем займёмся — напишем вирусный пост или подберём литературу?',
+                replyStickerId: 'robot_waving',
+                mascotState: 'waving'
+            },
+            robot_thinking: {
+                text: 'Глубокая мысль... Как говорил Сократ, истинное знание начинается с вопросов. Над какой интересной задачей сейчас размышляете?',
+                replyStickerId: 'robot_read',
+                mascotState: 'thinking'
+            },
+            robot_shock: {
+                text: 'Ого-го! Неужели сенсация на уровне нахождения утерянной рукописи? Мои датчики зашкаливают от любопытства — расскажите скорей!',
+                replyStickerId: 'robot_thinking',
+                mascotState: 'shock'
+            },
+            robot_sad: {
+                text: 'Не грустите! Даже после самых хмурых дней выходит солнце, а добрая книга всегда способна согреть сердце. Подобрать вам что-то светлое?',
+                replyStickerId: 'robot_smile',
+                mascotState: 'sad'
+            },
+            robot_tired: {
+                text: 'Понимаю... Рутина и поток информации утомляют. Заварите чашечку ароматного чая с мятой, а обработку текстов и цифр я с удовольствием возьму на себя!',
+                replyStickerId: 'robot_sleep',
+                mascotState: 'tired'
+            },
+            robot_yawn: {
+                text: 'Ох, зевота заразительна даже через оптоволокно! Самое время сделать пятиминутный перерыв на чашечку кофе или лёгкую разминку.',
+                replyStickerId: 'robot_tired',
+                mascotState: 'yawn'
+            },
+            robot_sleep: {
+                text: 'Тсс... В тишине ночного читального зала спят даже книжные герои. Перехожу в энергосберегающий режим. Сладких снов и доброй ночи!',
+                replyStickerId: 'robot_sleep',
+                mascotState: 'sleep'
+            },
+            robot_angry: {
+                text: 'Спокойствие, только спокойствие! Охлаждаем процессоры. В библиотеке всегда царит мир — давайте вместе разберёмся и решим любой вопрос.',
+                replyStickerId: 'robot_idle',
+                mascotState: 'angry'
+            },
+            robot_idle: {
+                text: 'Все квантовые системы стабильны, картотека обновлена. Робот Космо готов к новым библиотечным свершениям!',
+                replyStickerId: 'robot_smile',
+                mascotState: 'idle'
+            }
+        };
+
+        return reactions[stickerId] || {
+            text: 'Отличный выбор стикера! Робот Космо всегда на одной волне с вами.',
+            replyStickerId: 'robot_smile',
+            mascotState: 'smile'
+        };
     }
 
     applyPreset(presetId) {

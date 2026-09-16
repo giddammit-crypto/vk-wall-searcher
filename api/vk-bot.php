@@ -772,6 +772,114 @@ if ($isChat) {
         }
         exit;
     }
+
+    // 2. Авто-модерация нецензурной лексики для групповых бесед ($isChat && $fromId > 0)
+    if ($fromId > 0 && vk_bot_detect_profanity($userMsg)) {
+        // Мгновенный ответ Callback API ВКонтакте
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Connection: close');
+        header('Content-Length: 2');
+        echo 'ok';
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            if (ob_get_level() > 0) ob_end_flush();
+            if (function_exists('flush')) @flush();
+        }
+
+        // Немедленно удаляем сообщение нарушителя
+        $cmid = (int)($msgObj['conversation_message_id'] ?? 0);
+        if ($cmid > 0) {
+            vk_bot_delete_chat_message($peerId, $cmid, $communityToken, $vkGroupId);
+        }
+
+        // Хранилище нарушений в cache/vk_profanity_warns_{peerId}.json
+        $profCacheFile = $cacheDir . '/vk_profanity_warns_' . $peerId . '.json';
+        $profData = [];
+        if (file_exists($profCacheFile)) {
+            $loaded = @json_decode(@file_get_contents($profCacheFile), true);
+            if (is_array($loaded)) $profData = $loaded;
+        }
+
+        $uKey = (string)$fromId;
+        $userWarns = $profData[$uKey] ?? [
+            'warnings'       => 0,
+            'mutes_count'   => 0,
+            'last_violation' => 0
+        ];
+
+        $chatId = $peerId - 2000000000;
+        $msgText = '';
+
+        if ($userWarns['mutes_count'] >= 2) {
+            // КИК ИЗ ЧАТА
+            vk_bot_api_call('messages.removeChatUser', [
+                'chat_id'   => $chatId,
+                'member_id' => $fromId
+            ], $communityToken);
+
+            $userWarns['last_violation'] = time();
+            $profData[$uKey] = $userWarns;
+            $msgText = "🚫 [id{$fromId}|Участник] исключён из беседы за систематическое употребление нецензурной лексики!";
+        } elseif ($userWarns['mutes_count'] == 1) {
+            // МУТ НА 1 ЧАС (3600 сек)
+            $memberInfo = vk_bot_get_member_info($peerId, $fromId, $communityToken, $cacheDir);
+            $userName = $memberInfo['name'] ?? 'Участник';
+            vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 3600, '1 час', 'Повторный мат после мута', $cacheDir);
+
+            $userWarns['mutes_count'] = 2;
+            $userWarns['last_violation'] = time();
+            $profData[$uKey] = $userWarns;
+            $msgText = "🔇 [id{$fromId}|Участник] повторно использовал нецензурную лексику после мута и отправлен в режим молчания на 1 час! Следующее нарушение приведет к исключению из беседы.";
+        } else {
+            // mutes_count == 0
+            $userWarns['warnings']++;
+            $userWarns['last_violation'] = time();
+
+            if ($userWarns['warnings'] == 1) {
+                $profData[$uKey] = $userWarns;
+                $msgText = "⚠️ [id{$fromId}|Участник], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 1/3. На 3-е предупреждение — мут на 15 минут.";
+            } elseif ($userWarns['warnings'] == 2) {
+                $profData[$uKey] = $userWarns;
+                $msgText = "⚠️ [id{$fromId}|Участник], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 2/3. Следующий мат приведет к муту на 15 минут!";
+            } else {
+                // warnings >= 3: МУТ НА 15 МИНУТ (900 сек)
+                $memberInfo = vk_bot_get_member_info($peerId, $fromId, $communityToken, $cacheDir);
+                $userName = $memberInfo['name'] ?? 'Участник';
+                vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 900, '15 минут', 'Нецензурная лексика (3 предупреждения)', $cacheDir);
+
+                $userWarns['mutes_count'] = 1;
+                $userWarns['warnings'] = 0;
+                $profData[$uKey] = $userWarns;
+                $msgText = "🔇 [id{$fromId}|Участник] получил 3 предупреждения за нецензурную лексику и отправлен в режим молчания на 15 минут!";
+            }
+        }
+
+        // Сохраняем прогресс нарушений с блокировкой файла
+        $fh = @fopen($profCacheFile, 'c+');
+        if ($fh) {
+            if (@flock($fh, LOCK_EX)) {
+                ftruncate($fh, 0);
+                rewind($fh);
+                fwrite($fh, json_encode($profData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                fflush($fh);
+                @flock($fh, LOCK_UN);
+            }
+            fclose($fh);
+        } else {
+            @file_put_contents($profCacheFile, json_encode($profData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        // Отправляем сообщение нарушителю в чат
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $msgText,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+
+        exit;
+    }
 }
 
 // Если это групповая беседа (чат) и не событие добавления бота:
@@ -1458,6 +1566,94 @@ function vk_bot_is_cosmo_admin($peerId, $vkGroupId, $token, $cacheDir)
             return !empty($item['is_admin']);
         }
     }
+    return false;
+}
+
+/**
+ * Детектор нецензурной лексики (мата) для групповых бесед
+ * С учётом корней мата, транслита, спецсимволов и белого списка исключений.
+ */
+function vk_bot_detect_profanity($text)
+{
+    if (!is_string($text) || trim($text) === '') return false;
+
+    // 1. Приведение к нижнему регистру и замена ё -> е
+    $t = function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+    $t = str_replace('ё', 'е', $t);
+
+    // 2. Замена латиницы и цифр-суррогатов на похожие кириллические буквы (x->х, y->у, e->е, a->а, p->р, c->с, o->о, 0->о)
+    $latMap = [
+        'a' => 'а', 'b' => 'б', 'c' => 'с', 'e' => 'е', 'k' => 'к', 'm' => 'м',
+        'o' => 'о', 'p' => 'р', 't' => 'т', 'x' => 'х', 'y' => 'у', 'u' => 'и',
+        '0' => 'о', '1' => 'и', '3' => 'з', '4' => 'ч', '6' => 'б', '@' => 'а'
+    ];
+    $t = strtr($t, $latMap);
+
+    // 3. Очистка от пробелов и спецсимволов между одиночными буквами (х.у.й, х_у_й, х у й, б л я т ь)
+    $t = preg_replace('/(?<=[а-я])[\s._\-*~+=,;:!?\/\\\]+(?=[а-я](?:[\s._\-*~+=,;:!?\/\\\]+[а-я]|\b))/u', '', $t);
+
+    // 4. Сжатие повторяющихся одинаковых букв более 2 подряд (суууука -> сука, бляяяять -> блять)
+    $t = preg_replace('/([а-я])\1{2,}/u', '$1$1', $t);
+
+    // 5. Белый список исключений для слов без мата
+    // рубль, колеблется, потреблять, влюблен, оскорблять, гребля, сукно, суккулент, хулахуп, страхование, парикмахер, скипидар, теребить, педаль, ястреб
+    $whiteList = [
+        '/\bрубл[а-я]*/u',
+        '/\bколеб[а-я]*/u',
+        '/\bпотреб[а-я]*/u',
+        '/\bвлюб[а-я]*/u',
+        '/\bоскорб[а-я]*/u',
+        '/\bгреб[а-я]*/u',
+        '/\bсук[но][а-я]*/u',
+        '/\bсуккулент[а-я]*/u',
+        '/\bхула[ -]?хуп[а-я]*/u',
+        '/\b[а-я]*страхов[а-я]*/u',
+        '/\bпарикмахер[а-я]*/u',
+        '/\bскипидар[а-я]*/u',
+        '/\bтереб[а-я]*/u',
+        '/\bпедал[а-я]*/u',
+        '/\bястреб[а-я]*/u',
+        '/\bбарсук[а-я]*/u',
+        '/\bстеб[а-я]*/u',
+        '/\bмеб[а-я]*/u',
+        '/\bграбл[а-я]*/u',
+        '/\bсабл[а-я]*/u',
+        '/\bхлебороб[а-я]*/u',
+        '/\bдубликат[а-я]*/u',
+        '/\bшаблон[а-я]*/u',
+        '/\bпедиатри[а-я]*/u'
+    ];
+    foreach ($whiteList as $wPattern) {
+        $t = preg_replace($wPattern, ' [белый] ', $t);
+    }
+
+    // 6. Корни мата
+    $badPatterns = [
+        // хуй / хуе / хуя / хули / хуесос / охуе / нахуй / похуй / залуп
+        '/(?:\b|[а-я]{0,4})(?:ху[йиеяю]|хули|залуп)[а-я]*/u',
+        // пизд (пизда, пиздец, спиздил и др.)
+        '/(?:\b|[а-я]{0,4})пизд[а-я]*/u',
+        // еб / ёб (ебать, выеб, поеб, долбоеб, уебок, ебло)
+        '/(?:\b|[а-я]{0,4})(?:[её]б[а-я]*|ебл[а-я]*|ебу[а-я]*)/u',
+        // бля[дт] / бля
+        '/(?:\b|[а-я]{0,3})бля[тд][а-я]*/u',
+        '/\bбля\b/u',
+        // муд[аое] (мудак, мудила, мудозвон, мудоеб)
+        '/(?:\b|[а-я]{0,2})муд(?:ак|ил|озвон|оеб|е|я)[а-я]*/u',
+        // сук[аиое] (сука, суки, сучара, сцуко)
+        '/\b(?:сук[аиоеу]|сучк[аи]|сучар[а-я]|сцук[ао])[а-я]*/u',
+        // гандон / гондон
+        '/(?:\b|[а-я]{0,2})г[ао]ндон[а-я]*/u',
+        // пидор / пидар / пидарас / пидорас
+        '/(?:\b|[а-я]{0,2})пид[ао]р[а-я]*/u'
+    ];
+
+    foreach ($badPatterns as $pattern) {
+        if (preg_match($pattern, $t)) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -3388,7 +3584,7 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     $activeToken = $serviceToken ?: $communityToken;
     $codeParts = [];
     foreach ($ids as $idx => $gid) {
-        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 5})';
+        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 15})';
     }
     $code = 'return {' . implode(',', $codeParts) . '};';
 
@@ -3484,7 +3680,7 @@ function vk_bot_format_branch_news_message($newsData)
     $postsToShow = $isToday ? $todayPosts : $recentPosts;
 
     if (empty($postsToShow)) {
-        return "📰 В группах 16 филиалов библиотек города Владимира за последние сутки пока нет новых записей.\n\n"
+        return "📰 В группах 16 филиалов библиотек города Владимира за последние 24 часа пока нет новых записей.\n\n"
              . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Где библиотеки?». ✨";
     }
 
@@ -3497,20 +3693,15 @@ function vk_bot_format_branch_news_message($newsData)
 
     $header = $isToday
         ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
-        : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за прошедшие 24 часа:\n\n";
+        : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за последние 24 часа:\n\n";
 
     $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
     $blocks = [];
-    $maxSummaryLength = 3400; // Безопасный порог длины одного сообщения ВКонтакте
+    $maxSummaryLength = 3600; // Безопасный порог длины одного сообщения ВКонтакте (лимит ВК 4096 символов)
     $totalCount = count($postsToShow);
     $addedCount = 0;
-    $maxCards = 5; // Золотой стандарт мобильного дайджеста — 5 карточек
 
     foreach ($postsToShow as $p) {
-        if ($addedCount >= $maxCards) {
-            break;
-        }
-
         $bName = $p['branch']['name'] ?? 'Филиал';
         $timeStr = date('H:i', $p['date']);
         $postUrl = vk_bot_build_post_url($p);
