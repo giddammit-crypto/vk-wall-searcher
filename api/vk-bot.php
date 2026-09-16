@@ -2690,8 +2690,16 @@ $mascotStickers = $defaultMascotStickers;
 if (file_exists($stickersFile) && is_readable($stickersFile)) {
     $loadedStickers = json_decode(@file_get_contents($stickersFile), true);
     if (is_array($loadedStickers)) {
+        // Игнорируем устаревшие полноразмерные стикеры первой ревизии (457239019-457239025)
+        foreach ($loadedStickers as $emoKey => $attId) {
+            if (is_string($attId) && preg_match('/photo-241534292_4572390(19|20|21|22|23|24|25)/', $attId)) {
+                unset($loadedStickers[$emoKey]);
+            }
+        }
         $mascotStickers = array_merge($defaultMascotStickers, $loadedStickers);
     }
+    // Синхронизируем файл кэша актуальными стикерами
+    @file_put_contents($stickersFile, json_encode($mascotStickers, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
 // -----------------------------------------------------------------------------
