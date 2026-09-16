@@ -131,6 +131,16 @@ if (!function_exists('ai_mb_strlen')) {
         }
         return substr($s, $start, $len);
     }
+    function ai_mb_strtolower($s)
+    {
+        if (function_exists('mb_strtolower')) return mb_strtolower($s, 'UTF-8');
+        if (function_exists('iconv_strlen')) {
+            return strtr((string)$s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+        }
+        // strtr с байтовой картой не трогает продолжения UTF-8 (>= 0x80),
+        // а для ASCII-игл failover этого достаточно.
+        return strtr((string)$s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+    }
 }
 
 /**
@@ -248,7 +258,7 @@ function ai_is_failover_error($httpCode, $responseBody, $json)
     }
 
     if ($haystack !== '') {
-        $lower = mb_strtolower($haystack, 'UTF-8');
+        $lower = ai_mb_strtolower($haystack);
         $needles = ['quota', 'limit', 'rate', 'insufficient', 'credit', 'unauthorized'];
         foreach ($needles as $needle) {
             if (strpos($lower, $needle) !== false) {

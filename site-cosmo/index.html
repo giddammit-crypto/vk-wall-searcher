@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Космо — библиотечный робот · маскот AURORA</title>
+    <meta name="description" content="Космо — робот-маскот сервиса AURORA: разбирает посты 16 филиалов библиотек Владимира, даёт советы по SMM и терпит, когда его швыряют.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FAF6EE'/%3E%3Crect x='5' y='10' width='22' height='14' rx='6' fill='%23262B29'/%3E%3Crect x='3' y='12' width='4' height='10' rx='2' fill='%232FA26E'/%3E%3Crect x='25' y='12' width='4' height='10' rx='2' fill='%232FA26E'/%3E%3Ccircle cx='12' cy='17' r='2.6' fill='%23F5C842'/%3E%3Ccircle cx='20' cy='17' r='2.6' fill='%23F5C842'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=1.1">
+    <link rel="stylesheet" href="css/cosmo-animations.css?v=1.1">
+</head>
+<body>
+
+    <!-- Шапка -->
+    <header class="header" id="header">
+        <a class="header__logo" href="#hero" aria-label="Космо — на главную">
+            <img src="../assets/images/mascot/robot_smile.png" alt="" class="header__logo-img" width="40" height="40">
+            <span class="header__logo-text">Космо</span>
+        </a>
+        <nav class="header__nav" id="headerNav" aria-label="Основная навигация">
+            <a href="#about">Знакомство</a>
+            <a href="#moods">Эмоции</a>
+            <a href="#skills">Умения</a>
+            <a href="#ask">Спроси Космо</a>
+            <a href="#inside">Под капотом</a>
+            <a href="#playground">Площадка</a>
+        </nav>
+        <button class="header__burger" id="burger" aria-label="Открыть меню" aria-expanded="false" aria-controls="headerNav">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <!-- Мини-Космо: ходит по сайту вместе с вами -->
+    <div class="mini-bot" id="miniBot" aria-hidden="true">
+        <img src="../assets/images/mascot/robot_idle.png" alt="" id="miniBotImg">
+    </div>
+
+    <main>
+        <!-- HERO -->
+        <section class="hero" id="hero">
+            <div class="hero__bg" data-parallax-bg>
+                <!-- Дальняя стена: стеллажи и часы -->
+                <div class="hero__layer hero__layer--back" data-depth="0.12">
+                    <svg viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                        <g stroke="#262B29" stroke-linejoin="round" stroke-linecap="round">
+                            <!-- Левый стеллаж -->
+                            <g transform="translate(70,80)">
+                                <rect x="0" y="0" width="320" height="440" rx="16" fill="#FFFFFF" stroke-width="7"/>
+                                <rect x="12" y="216" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="12" y="336" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="12" y="456" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="26" y="126" width="34" height="82" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="64" y="118" width="30" height="90" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="98" y="132" width="36" height="76" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                                <rect x="150" y="134" width="30" height="74" rx="6" fill="#B9DCC7" stroke-width="5" transform="rotate(9 165 208)"/>
+                                <rect x="188" y="122" width="32" height="86" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="224" y="130" width="34" height="78" rx="6" fill="#FAF6EE" stroke-width="5"/>
+                                <rect x="262" y="124" width="30" height="84" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="26" y="246" width="30" height="82" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="60" y="254" width="36" height="74" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="100" y="248" width="30" height="80" rx="6" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="134" y="242" width="34" height="86" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="172" y="252" width="30" height="76" rx="6" fill="#F7A8B8" stroke-width="5" transform="rotate(-8 187 328)"/>
+                                <rect x="216" y="246" width="34" height="82" rx="6" fill="#FAF6EE" stroke-width="5"/>
+                                <rect x="254" y="252" width="32" height="76" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="26" y="366" width="34" height="82" rx="6" fill="#FAF6EE" stroke-width="5"/>
+                                <rect x="64" y="372" width="30" height="76" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="98" y="364" width="36" height="84" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="138" y="370" width="30" height="78" rx="6" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="172" y="364" width="32" height="84" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="208" y="372" width="34" height="76" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                                <rect x="246" y="366" width="34" height="82" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="26" y="478" width="130" height="30" rx="8" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="170" y="478" width="120" height="30" rx="8" fill="#F5C842" stroke-width="5"/>
+                                <path d="M256 -26 C 252 -44 262 -56 274 -60 M256 -26 C 260 -46 274 -54 286 -56" fill="none" stroke="#2FA26E" stroke-width="5"/>
+                                <circle cx="274" cy="-62" r="9" fill="#B9DCC7" stroke-width="5"/>
+                                <circle cx="288" cy="-58" r="8" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="238" y="-28" width="40" height="26" rx="7" fill="#F7A8B8" stroke-width="5"/>
+                            </g>
+                            <!-- Правый стеллаж -->
+                            <g transform="translate(1050,80)">
+                                <rect x="0" y="0" width="320" height="440" rx="16" fill="#FFFFFF" stroke-width="7"/>
+                                <rect x="12" y="216" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="12" y="336" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="12" y="456" width="296" height="12" rx="6" fill="#F3EDE0" stroke-width="5"/>
+                                <rect x="26" y="122" width="32" height="86" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="62" y="130" width="34" height="78" rx="6" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="100" y="124" width="30" height="84" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="134" y="130" width="36" height="78" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="174" y="122" width="30" height="86" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                                <rect x="208" y="128" width="34" height="80" rx="6" fill="#FAF6EE" stroke-width="5" transform="rotate(8 225 208)"/>
+                                <rect x="252" y="124" width="34" height="84" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="26" y="248" width="34" height="80" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="64" y="242" width="30" height="86" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                                <rect x="98" y="250" width="36" height="78" rx="6" fill="#FAF6EE" stroke-width="5"/>
+                                <rect x="138" y="244" width="30" height="84" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="172" y="250" width="34" height="78" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="210" y="242" width="30" height="86" rx="6" fill="#B9DCC7" stroke-width="5" transform="rotate(-9 225 328)"/>
+                                <rect x="250" y="246" width="36" height="82" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="26" y="366" width="32" height="82" rx="6" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="62" y="372" width="34" height="76" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="100" y="364" width="30" height="84" rx="6" fill="#2FA26E" stroke-width="5"/>
+                                <rect x="134" y="368" width="34" height="80" rx="6" fill="#FAF6EE" stroke-width="5"/>
+                                <rect x="172" y="374" width="30" height="74" rx="6" fill="#262B29" stroke-width="5"/>
+                                <rect x="206" y="366" width="36" height="82" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                                <rect x="246" y="372" width="32" height="76" rx="6" fill="#F5C842" stroke-width="5"/>
+                                <rect x="26" y="478" width="120" height="30" rx="8" fill="#F5C842" stroke-width="5"/>
+                                <rect x="160" y="478" width="130" height="30" rx="8" fill="#B9DCC7" stroke-width="5"/>
+                                <path d="M64 -26 C 60 -44 70 -56 82 -60 M64 -26 C 68 -46 82 -54 94 -56" fill="none" stroke="#2FA26E" stroke-width="5"/>
+                                <circle cx="82" cy="-62" r="9" fill="#B9DCC7" stroke-width="5"/>
+                                <circle cx="96" cy="-58" r="8" fill="#B9DCC7" stroke-width="5"/>
+                                <rect x="46" y="-28" width="40" height="26" rx="7" fill="#2FA26E" stroke-width="5"/>
+                            </g>
+                            <!-- Часы -->
+                            <g transform="translate(720,150)">
+                                <circle r="46" fill="#FFFFFF" stroke-width="7"/>
+                                <line x1="0" y1="0" x2="0" y2="-25" stroke-width="5"/>
+                                <line x1="0" y1="0" x2="17" y2="8" stroke-width="5"/>
+                                <circle r="6" fill="#2FA26E" stroke="none"/>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+                <!-- Передний план: стол с компьютером -->
+                <div class="hero__layer hero__layer--front" data-depth="0.25">
+                    <svg viewBox="0 0 1440 340" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                        <g stroke="#262B29" stroke-linejoin="round" stroke-linecap="round">
+                            <rect x="0" y="300" width="1440" height="40" fill="#F3EDE0" stroke-width="7"/>
+                            <rect x="470" y="200" width="44" height="102" fill="#FFFFFF" stroke-width="7"/>
+                            <rect x="926" y="200" width="44" height="102" fill="#FFFFFF" stroke-width="7"/>
+                            <rect x="430" y="168" width="580" height="34" rx="10" fill="#FFFFFF" stroke-width="7"/>
+                            <rect x="610" y="28" width="220" height="140" rx="18" fill="#FFFFFF" stroke-width="7"/>
+                            <rect x="622" y="40" width="196" height="116" rx="12" fill="#262B29" stroke="none"/>
+                            <circle cx="668" cy="96" r="12" fill="#F5C842" stroke="none"/>
+                            <circle cx="772" cy="96" r="12" fill="#F5C842" stroke="none"/>
+                            <circle cx="646" cy="118" r="7" fill="#F7A8B8" stroke="none" opacity=".85"/>
+                            <circle cx="794" cy="118" r="7" fill="#F7A8B8" stroke="none" opacity=".85"/>
+                            <rect x="560" y="182" width="260" height="20" rx="8" fill="#FAF6EE" stroke-width="5"/>
+                            <circle cx="610" cy="192" r="3.5" fill="#B9DCC7" stroke="none"/>
+                            <circle cx="690" cy="192" r="3.5" fill="#B9DCC7" stroke="none"/>
+                            <circle cx="770" cy="192" r="3.5" fill="#B9DCC7" stroke="none"/>
+                            <rect x="480" y="150" width="110" height="18" rx="6" fill="#2FA26E" stroke-width="5"/>
+                            <rect x="488" y="132" width="104" height="18" rx="6" fill="#F5C842" stroke-width="5"/>
+                            <rect x="484" y="114" width="108" height="18" rx="6" fill="#F7A8B8" stroke-width="5"/>
+                            <g transform="translate(880,118)">
+                                <circle cx="52" cy="26" r="13" fill="none" stroke-width="5"/>
+                                <rect x="0" y="0" width="46" height="50" rx="9" fill="#F7A8B8" stroke-width="5"/>
+                                <path d="M12 -12 q7 -10 0 -20" fill="none" stroke-width="4" opacity=".55"/>
+                                <path d="M30 -12 q7 -10 0 -20" fill="none" stroke-width="4" opacity=".55"/>
+                            </g>
+                            <g transform="translate(1150,238)">
+                                <path d="M0 0 h64 l-9 62 h-46 Z" fill="#2FA26E" stroke-width="6"/>
+                                <path d="M32 0 C 30 -28 14 -40 2 -44 M32 0 C 34 -30 50 -42 62 -46 M32 0 C 32 -34 32 -48 32 -56" fill="none" stroke-width="6"/>
+                                <circle cx="2" cy="-48" r="10" fill="#B9DCC7" stroke-width="5"/>
+                                <circle cx="62" cy="-50" r="10" fill="#B9DCC7" stroke-width="5"/>
+                                <circle cx="32" cy="-60" r="11" fill="#B9DCC7" stroke-width="5"/>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="hero__inner">
+                <div class="hero__content">
+                    <h1 class="hero__title reveal">
+                        Маленький робот<br>с большой <span class="marker">формой отчётности</span>
+                    </h1>
+                    <p class="hero__subtitle reveal" style="--i:1">
+                        Патрулирует экран, разбирает посты 16 филиалов библиотек Владимира
+                        и раздаёт советы по SMM. Иногда — с криком «Уи-и-и!».
+                    </p>
+                    <div class="hero__actions reveal" style="--i:2">
+                        <a class="btn btn--primary" href="#playground">Погладить робота</a>
+                        <a class="btn btn--ghost" href="#skills">Что он умеет</a>
+                    </div>
+                    <dl class="hero__stats reveal" style="--i:3">
+                        <div class="stat">
+                            <dt class="stat__num" data-count="16">0</dt>
+                            <dd class="stat__label">филиалов под присмотром.<br>Ни один не ускользнёт.</dd>
+                        </div>
+                        <div class="stat">
+                            <dt class="stat__num" data-count="61">0</dt>
+                            <dd class="stat__label">записанных фраз.<br>Каждая — с интонацией.</dd>
+                        </div>
+                        <div class="stat">
+                            <dt class="stat__num" data-count="7">0</dt>
+                            <dd class="stat__label">эмоций. Как у офис-менеджера<br>в пятницу.</dd>
+                        </div>
+                        <div class="stat">
+                            <dt class="stat__num" data-count="1">0</dt>
+                            <dd class="stat__label">ИИ-мозг. Mistral, если честно.<br>Он не скрывает.</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="hero__stage" id="heroStage">
+                    <!-- 1. ДИНАМИЧЕСКИЙ БАББЛ РЕЧИ И МЫСЛЕЙ -->
+                    <aside class="cosmo-bubble cosmo-bubble--speech is-visible" 
+                           id="cosmoBubble" 
+                           role="status" 
+                           aria-live="polite" 
+                           aria-atomic="true">
+                        <div class="cosmo-bubble__bar">
+                            <div class="cosmo-bubble__status">
+                                <span class="cosmo-bubble__pulse" aria-hidden="true"></span>
+                                <span class="cosmo-bubble__sender" id="cosmoBubbleSender">КОСМО · SMM-ГУРУ</span>
+                            </div>
+                            <div class="cosmo-bubble__actions">
+                                <span class="cosmo-bubble__badge" id="cosmoBubbleBadge">✨ В эфире</span>
+                                <button type="button" class="cosmo-bubble__sound-toggle is-active" id="bubbleAudioBtn" aria-label="Включить или отключить звук озвучки" title="Звук реплик">
+                                    <span class="cosmo-bubble__eq" aria-hidden="true">
+                                        <i></i><i></i><i></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="cosmo-bubble__body">
+                            <h4 class="cosmo-bubble__title" id="cosmoBubbleTitle">Аналитика на планшете 📱</h4>
+                            <p class="cosmo-bubble__text" id="cosmoBubbleText">
+                                Смотрю графики за неделю... Репосты растут, но где сторис? Библиотека без сторис — как книжка без оглавления!
+                            </p>
+                        </div>
+                        <span class="cosmo-bubble__tail" aria-hidden="true"></span>
+                    </aside>
+
+                    <!-- 2. СЦЕНА ПЕРСОНАЖА (РОБОТ + ПРОПСЫ + ТЕНЬ) -->
+                    <div class="hero__robot-wrap cosmo--tablet" id="heroRobotWrap" data-active="tablet">
+                        <img class="hero__robot" id="heroRobot"
+                             src="../assets/images/mascot/robot_thinking.png"
+                             alt="Робот Космо — интерактивный маскот AURORA"
+                             width="420" height="420" draggable="false">
+                        <span class="hero__robot-shadow" id="heroRobotShadow" aria-hidden="true"></span>
+                        
+                        <!-- 17 Векторных Пропсов (SVG) -->
+<div class="cosmo-props" aria-hidden="true">
+    <!-- Shared SVG Gradients, Glow Filters & Patterns -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <defs>
+            <!-- Cyan Glow Filter -->
+            <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        
+            <!-- Amber Glow Filter -->
+            <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        
+            <!-- Fiery Red Glow Filter -->
+            <filter id="glow-red" x="-25%" y="-25%" width="150%" height="150%">
+                <feGaussianBlur stdDeviation="4.5" result="blur" />
+                <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        
+            <!-- Emerald Soft Shadow -->
+            <filter id="shadow-emerald" x="-10%" y="-10%" width="120%" height="130%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#1e7a4e" flood-opacity="0.35" />
+            </filter>
+        
+            <!-- Tablet Gradients -->
+            <linearGradient id="grad-tablet-glass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#142621" stop-opacity="0.92" />
+                <stop offset="100%" stop-color="#0a1613" stop-opacity="0.95" />
+            </linearGradient>
+            <linearGradient id="grad-tablet-border" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#00f0ff" />
+                <stop offset="50%" stop-color="#2fa26e" />
+                <stop offset="100%" stop-color="#f5c842" />
+            </linearGradient>
+            <linearGradient id="grad-bar-cyan" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#008080" />
+                <stop offset="100%" stop-color="#00f0ff" />
+            </linearGradient>
+            <linearGradient id="grad-bar-emerald" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#1e7a4e" />
+                <stop offset="100%" stop-color="#2fa26e" />
+            </linearGradient>
+            <linearGradient id="grad-bar-amber" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#d48806" />
+                <stop offset="100%" stop-color="#f5c842" />
+            </linearGradient>
+        
+            <!-- VK Gradients -->
+            <linearGradient id="grad-vk-logo" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2b88f5" />
+                <stop offset="100%" stop-color="#0066d6" />
+            </linearGradient>
+            <linearGradient id="grad-vk-chart-area" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2787f5" stop-opacity="0.45" />
+                <stop offset="100%" stop-color="#2787f5" stop-opacity="0.0" />
+            </linearGradient>
+            <linearGradient id="grad-vk-card-bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+                <stop offset="100%" stop-color="#f0f6fc" stop-opacity="0.90" />
+            </linearGradient>
+        
+            <!-- Cyber Book Gradients -->
+            <linearGradient id="grad-book-cover" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#143d2b" />
+                <stop offset="25%" stop-color="#1e7a4e" />
+                <stop offset="75%" stop-color="#2fa26e" />
+                <stop offset="100%" stop-color="#1b4332" />
+            </linearGradient>
+            <linearGradient id="grad-book-gold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffeaa7" />
+                <stop offset="50%" stop-color="#f5c842" />
+                <stop offset="100%" stop-color="#b7791f" />
+            </linearGradient>
+            <linearGradient id="grad-book-page-turn" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#f3ede0" />
+                <stop offset="80%" stop-color="#fffdf7" />
+                <stop offset="100%" stop-color="#e8dcbf" />
+            </linearGradient>
+        
+            <!-- Cocoa Gradients -->
+            <linearGradient id="grad-cocoa-liquid" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4a2612" />
+                <stop offset="100%" stop-color="#6e3d20" />
+            </linearGradient>
+            <linearGradient id="grad-mug-ceramic" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#FAF6EE" />
+                <stop offset="50%" stop-color="#FFFFFF" />
+                <stop offset="100%" stop-color="#EFE8D8" />
+            </linearGradient>
+            <linearGradient id="grad-straw-spiral" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#2fa26e" />
+                <stop offset="50%" stop-color="#FAF6EE" />
+                <stop offset="100%" stop-color="#f5c842" />
+            </linearGradient>
+        
+            <!-- Anger Gradients -->
+            <radialGradient id="grad-anger-aura" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ff3b30" stop-opacity="0.38" />
+                <stop offset="60%" stop-color="#ff453a" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="#ff453a" stop-opacity="0" />
+            </radialGradient>
+            <linearGradient id="grad-anger-vein" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ff3b30" />
+                <stop offset="100%" stop-color="#b80c09" />
+            </linearGradient>
+        
+            <!-- Joy Celebration Halo -->
+            <radialGradient id="grad-joy-halo" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#f5c842" stop-opacity="0.45" />
+                <stop offset="50%" stop-color="#2fa26e" stop-opacity="0.20" />
+                <stop offset="100%" stop-color="#FAF6EE" stop-opacity="0" />
+            </radialGradient>
+        
+            <!-- Sleep Night Aura -->
+            <radialGradient id="grad-sleep-aura" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#2d3436" stop-opacity="0.42" />
+                <stop offset="55%" stop-color="#4834d4" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="#FAF6EE" stop-opacity="0" />
+            </radialGradient>
+            <linearGradient id="grad-moon" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#fff8d6" />
+                <stop offset="100%" stop-color="#f5c842" />
+            </linearGradient>
+        
+            <!-- Telescope Brass -->
+            <linearGradient id="grad-brass-light" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffeaa7" />
+                <stop offset="35%" stop-color="#f5c842" />
+                <stop offset="70%" stop-color="#d49a1d" />
+                <stop offset="100%" stop-color="#8c5b05" />
+            </linearGradient>
+            <linearGradient id="grad-lens-reflect" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.8" />
+                <stop offset="50%" stop-color="#70a1ff" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#ff4757" stop-opacity="0.4" />
+            </linearGradient>
+        
+            <!-- Crown Gradients -->
+            <linearGradient id="grad-crown-gold" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff3b0" />
+                <stop offset="40%" stop-color="#f5c842" />
+                <stop offset="85%" stop-color="#c98a0c" />
+                <stop offset="100%" stop-color="#804e00" />
+            </linearGradient>
+            <radialGradient id="grad-gem-emerald" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#7bed9f" />
+                <stop offset="50%" stop-color="#2fa26e" />
+                <stop offset="100%" stop-color="#104e2e" />
+            </radialGradient>
+            <radialGradient id="grad-gem-ruby" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#ff7675" />
+                <stop offset="50%" stop-color="#ff3b30" />
+                <stop offset="100%" stop-color="#800600" />
+            </radialGradient>
+            <radialGradient id="grad-gem-sapphire" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#70a1ff" />
+                <stop offset="50%" stop-color="#1e90ff" />
+                <stop offset="100%" stop-color="#09357a" />
+            </radialGradient>
+        
+            <!-- Jet Boost Rocket Plasma -->
+            <linearGradient id="grad-jet-core" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="30%" stop-color="#00f0ff" />
+                <stop offset="70%" stop-color="#f5c842" />
+                <stop offset="100%" stop-color="#ff4757" stop-opacity="0" />
+            </linearGradient>
+            <linearGradient id="grad-jet-nozzle" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#262b29" />
+                <stop offset="50%" stop-color="#4a5550" />
+                <stop offset="100%" stop-color="#1a1e1c" />
+            </linearGradient>
+        
+            <!-- Yawn Bubble Gradients -->
+            <radialGradient id="grad-yawn-bubble" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85" />
+                <stop offset="40%" stop-color="#b9dcc7" stop-opacity="0.45" />
+                <stop offset="75%" stop-color="#f7a8b8" stop-opacity="0.30" />
+                <stop offset="95%" stop-color="#00f0ff" stop-opacity="0.65" />
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.9" />
+            </radialGradient>
+        
+            <!-- Compass Gradients -->
+            <linearGradient id="grad-compass-dial" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#1b2823" stop-opacity="0.88" />
+                <stop offset="100%" stop-color="#0f1714" stop-opacity="0.94" />
+            </linearGradient>
+        
+            <!-- Orbital Speed Torus -->
+            <linearGradient id="grad-orbital-cyan" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#00f0ff" stop-opacity="0" />
+                <stop offset="35%" stop-color="#00f0ff" stop-opacity="0.8" />
+                <stop offset="70%" stop-color="#2fa26e" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#f5c842" stop-opacity="0" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <!-- 1. TABLET: Holographic glowing tablet with charts & gaming bars -->
+    <div class="cosmo-prop cosmo-prop--tablet" aria-label="Голографический планшет с графиками">
+        <svg class="cosmo-svg cosmo-svg--tablet" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Hologram Projection Rays from Bottom Base -->
+            <g class="tablet__projector-rays" opacity="0.45">
+                <polygon points="210,385 105,255 315,255" fill="url(#grad-tablet-border)" opacity="0.12" />
+                <line x1="210" y1="385" x2="105" y2="255" stroke="#00f0ff" stroke-width="1.5" stroke-dasharray="4 4" />
+                <line x1="210" y1="385" x2="315" y2="255" stroke="#00f0ff" stroke-width="1.5" stroke-dasharray="4 4" />
+                <!-- Projector Emitter Base Node -->
+                <ellipse cx="210" cy="385" rx="28" ry="7" fill="#262b29" stroke="#00f0ff" stroke-width="1.5" />
+                <ellipse cx="210" cy="385" rx="14" ry="3.5" fill="#00f0ff" filter="url(#glow-cyan)" />
+            </g>
+    
+            <!-- Tablet Main Chassis -->
+            <g class="tablet__body" transform="translate(0, 0)">
+                <!-- Glass Screen Shadow & Outer Glow -->
+                <rect x="95" y="240" width="230" height="142" rx="14" fill="url(#grad-tablet-glass)" stroke="url(#grad-tablet-border)" stroke-width="2.5" filter="url(#shadow-emerald)" />
+                <rect x="99" y="244" width="222" height="134" rx="10" stroke="#00f0ff" stroke-width="1" stroke-opacity="0.35" fill="none" />
+    
+                <!-- Cyber Corner Brackets -->
+                <path d="M 98 256 L 98 243 L 111 243" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M 322 256 L 322 243 L 309 243" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M 98 366 L 98 379 L 111 379" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M 322 366 L 322 379 L 309 379" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+                <!-- Top Status Bar -->
+                <g class="tablet__statusbar" transform="translate(108, 248)">
+                    <!-- Battery Icon -->
+                    <rect x="0" y="4" width="20" height="9" rx="2" stroke="#2fa26e" stroke-width="1.2" fill="none" />
+                    <rect x="2" y="6" width="4" height="5" rx="1" fill="#2fa26e" />
+                    <rect x="7" y="6" width="4" height="5" rx="1" fill="#2fa26e" />
+                    <rect x="12" y="6" width="4" height="5" rx="1" fill="#2fa26e" />
+                    <path d="M 21 7.5 L 22.5 7.5" stroke="#2fa26e" stroke-width="1.5" stroke-linecap="round" />
+    
+                    <!-- Wifi Radio Wave Icon -->
+                    <path d="M 30 13 A 3 3 0 0 1 34 13" stroke="#00f0ff" stroke-width="1.2" fill="none" stroke-linecap="round" />
+                    <path d="M 28 10 A 6 6 0 0 1 36 10" stroke="#00f0ff" stroke-width="1.2" fill="none" stroke-linecap="round" />
+                    <path d="M 26 7 A 9 9 0 0 1 38 7" stroke="#00f0ff" stroke-width="1.2" fill="none" stroke-linecap="round" />
+    
+                    <!-- Digital Clock -->
+                    <text x="102" y="12" font-family="'Unbounded', monospace" font-size="8" font-weight="600" fill="#FAF6EE" text-anchor="middle" letter-spacing="1">23:42:08</text>
+    
+                    <!-- Status Pill -->
+                    <rect x="160" y="3" width="44" height="11" rx="5.5" fill="#2fa26e" fill-opacity="0.25" stroke="#2fa26e" stroke-width="1" />
+                    <circle cx="166" cy="8.5" r="2.5" fill="#00f0ff" filter="url(#glow-cyan)" />
+                    <text x="186" y="11.5" font-family="sans-serif" font-size="7" font-weight="bold" fill="#FAF6EE" text-anchor="middle">ONLINE</text>
+                </g>
+    
+                <!-- Divider Line -->
+                <line x1="106" y1="266" x2="314" y2="266" stroke="#2fa26e" stroke-opacity="0.3" stroke-width="1" />
+    
+                <!-- LEFT PANEL: Dynamic Analytics Equalizer Bars -->
+                <g class="tablet__chart" transform="translate(112, 275)">
+                    <text x="0" y="8" font-family="sans-serif" font-size="7.5" font-weight="bold" fill="#00f0ff" letter-spacing="0.5">SEARCH TRAFFIC</text>
+                    <!-- Grid Lines -->
+                    <line x1="0" y1="20" x2="88" y2="20" stroke="#FAF6EE" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="2 2" />
+                    <line x1="0" y1="36" x2="88" y2="36" stroke="#FAF6EE" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="2 2" />
+                    <line x1="0" y1="52" x2="88" y2="52" stroke="#FAF6EE" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="2 2" />
+                    <!-- 4 Animated Vertical Bars -->
+                    <g class="tablet__bars" transform="translate(6, 68)">
+                        <!-- Bar 1 -->
+                        <rect class="bar bar--1" x="0" y="-38" width="12" height="38" rx="3" fill="url(#grad-bar-cyan)" />
+                        <!-- Bar 2 -->
+                        <rect class="bar bar--2" x="18" y="-52" width="12" height="52" rx="3" fill="url(#grad-bar-emerald)" />
+                        <!-- Bar 3 -->
+                        <rect class="bar bar--3" x="36" y="-28" width="12" height="28" rx="3" fill="url(#grad-bar-amber)" />
+                        <!-- Bar 4 -->
+                        <rect class="bar bar--4" x="54" y="-46" width="12" height="46" rx="3" fill="url(#grad-bar-cyan)" />
+                    </g>
+                    <line x1="0" y1="69" x2="88" y2="69" stroke="#2fa26e" stroke-width="1.5" />
+                </g>
+    
+                <!-- Vertical Separator -->
+                <line x1="210" y1="272" x2="210" y2="348" stroke="#00f0ff" stroke-opacity="0.2" stroke-width="1" stroke-dasharray="3 3" />
+    
+                <!-- RIGHT PANEL: Gaming / Telemetry Gauge -->
+                <g class="tablet__telemetry" transform="translate(220, 275)">
+                    <text x="44" y="8" font-family="sans-serif" font-size="7.5" font-weight="bold" fill="#f5c842" text-anchor="middle" letter-spacing="0.5">CORE OVERCLOCK</text>
+    
+                    <!-- Circular HUD Gauge -->
+                    <g class="tablet__dial" transform="translate(44, 38)">
+                        <!-- Outer Ring Background -->
+                        <circle cx="0" cy="0" r="22" stroke="#FAF6EE" stroke-opacity="0.12" stroke-width="4" fill="none" />
+                        <!-- Meter Arc -->
+                        <circle class="tablet__arc" cx="0" cy="0" r="22" stroke="url(#grad-bar-amber)" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="138" stroke-dashoffset="32" transform="rotate(-90)" />
+                        <!-- Rotating Scanner Needle -->
+                        <line class="tablet__needle" x1="0" y1="0" x2="0" y2="-18" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" filter="url(#glow-cyan)" />
+                        <circle cx="0" cy="0" r="3.5" fill="#f5c842" />
+                        <!-- Center Readout -->
+                        <text x="0" y="3" font-family="'Unbounded', monospace" font-size="7" font-weight="bold" fill="#FAF6EE" text-anchor="middle">98%</text>
+                    </g>
+    
+                    <!-- Linear Energy Progress Gauge -->
+                    <g transform="translate(0, 64)">
+                        <rect x="0" y="0" width="88" height="6" rx="3" fill="#142621" stroke="#2fa26e" stroke-width="1" />
+                        <rect class="tablet__level-fill" x="1.5" y="1.5" width="76" height="3" rx="1.5" fill="url(#grad-bar-emerald)" />
+                    </g>
+                </g>
+    
+                <!-- Bottom Quick-Access Dock -->
+                <g class="tablet__dock" transform="translate(130, 356)">
+                    <!-- Book App Icon -->
+                    <rect x="0" y="0" width="18" height="16" rx="3" fill="#2fa26e" fill-opacity="0.25" stroke="#2fa26e" stroke-width="1" />
+                    <path d="M 4 4 Q 9 6, 14 4 L 14 12 Q 9 14, 4 12 Z" fill="#00f0ff" />
+    
+                    <!-- VK Wall Searcher Magnifier Icon -->
+                    <rect x="36" y="0" width="18" height="16" rx="3" fill="#0077ff" fill-opacity="0.25" stroke="#0077ff" stroke-width="1" />
+                    <circle cx="43" cy="7" r="3.5" stroke="#ffffff" stroke-width="1.2" fill="none" />
+                    <line x1="46" y1="9.5" x2="50" y2="13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+    
+                    <!-- Gamepad Retro Joy Icon -->
+                    <rect x="72" y="0" width="18" height="16" rx="3" fill="#f5c842" fill-opacity="0.25" stroke="#f5c842" stroke-width="1" />
+                    <path d="M 76 6 L 86 6 C 88 6, 88 12, 86 12 L 76 12 C 74 12, 74 6, 76 6 Z" fill="#FAF6EE" fill-opacity="0.7" />
+                    <circle cx="78" cy="9" r="1" fill="#f5c842" />
+                    <circle cx="84" cy="9" r="1" fill="#ff4757" />
+    
+                    <!-- Data Stream Icon -->
+                    <rect x="108" y="0" width="18" height="16" rx="3" fill="#f7a8b8" fill-opacity="0.25" stroke="#f7a8b8" stroke-width="1" />
+                    <path d="M 112 11 L 115 5 L 119 12 L 123 7" stroke="#00f0ff" stroke-width="1.2" fill="none" stroke-linecap="round" />
+                </g>
+    
+                <!-- Holographic Sweep Scanline -->
+                <line class="tablet__scanline" x1="99" y1="268" x2="321" y2="268" stroke="#00f0ff" stroke-width="2" stroke-opacity="0.75" filter="url(#glow-cyan)" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 2. VK_STUDY: VK feed card with VK logo icon, likes heart, view eye, and graph -->
+    <div class="cosmo-prop cosmo-prop--vk_study" aria-label="Карточка анализа постов ВКонтакте">
+        <svg class="cosmo-svg cosmo-svg--vk_study" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ambient Telemetry Connector Beam -->
+            <path class="vk__connector" d="M 210 200 C 235 180, 255 170, 275 165" stroke="#2787f5" stroke-width="1.5" stroke-dasharray="4 4" stroke-opacity="0.6" />
+    
+            <!-- Floating Glassmorphic VK Card Container -->
+            <g class="vk__card" transform="translate(230, 115) rotate(-3.5 90 85)">
+                <!-- Glassmorphic Card Background & Glowing Outline -->
+                <rect x="0" y="0" width="180" height="170" rx="16" fill="url(#grad-vk-card-bg)" stroke="#2787f5" stroke-width="2.2" filter="url(#shadow-emerald)" />
+                <rect x="2" y="2" width="176" height="166" rx="14" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.8" fill="none" />
+    
+                <!-- CARD HEADER: VK Badge & User Info -->
+                <g class="vk__header" transform="translate(12, 12)">
+                    <!-- Official Stylized VK Square Icon Badge -->
+                    <rect x="0" y="0" width="28" height="28" rx="8" fill="url(#grad-vk-logo)" />
+                    <!-- Authentic Vector VK Glyph Geometry -->
+                    <path d="M 6.8 9.2 L 9.2 9.2 C 9.7 13.1 11.4 14.8 12.8 15.2 L 12.8 9.2 L 15.1 9.2 L 15.1 12.6 C 16.5 12.5 17.9 10.9 18.4 9.2 L 20.6 9.2 C 20.2 11.3 18.6 13.0 17.5 13.6 C 18.6 14.2 20.4 15.6 21.2 18.2 L 18.8 18.2 C 18.1 16.2 16.6 14.7 15.1 14.5 L 15.1 18.2 L 14.8 18.2 C 10.1 18.2 7.3 14.9 6.8 9.2 Z" fill="#ffffff" />
+    
+                    <!-- Account & Channel Details -->
+                    <g transform="translate(34, 4)">
+                        <text x="0" y="8" font-family="'Nunito', sans-serif" font-size="9" font-weight="800" fill="#2B2E2C">Космо · Поиск VK</text>
+                        <text x="0" y="18" font-family="sans-serif" font-size="7.5" font-weight="600" fill="#6B6F6C">16 библиотек · ИИ-мониторинг</text>
+                    </g>
+    
+                    <!-- Verified Blue Badge -->
+                    <circle cx="148" cy="12" r="6" fill="#2787f5" />
+                    <path d="M 145 12 L 147 14 L 151 10" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </g>
+    
+                <!-- SKELETON POST CONTENT & METRIC HIGHLIGHT -->
+                <g class="vk__content" transform="translate(12, 48)">
+                    <!-- Skeleton Text Lines -->
+                    <rect x="0" y="0" width="156" height="5" rx="2.5" fill="#DDEEE2" />
+                    <rect x="0" y="9" width="124" height="5" rx="2.5" fill="#DDEEE2" />
+    
+                    <!-- Growth Highlight Badge -->
+                    <rect x="0" y="20" width="112" height="14" rx="4" fill="#2fa26e" fill-opacity="0.15" />
+                    <text x="6" y="30" font-family="'Nunito', sans-serif" font-size="8" font-weight="800" fill="#1E7A4E">📈 Охват аудитории: +142%</text>
+                </g>
+    
+                <!-- SPLINE ANALYTICS CHART -->
+                <g class="vk__graph" transform="translate(12, 88)">
+                    <!-- Chart Area Fill -->
+                    <path class="vk__chart-fill" d="M 0 42 L 0 32 Q 28 12, 54 26 T 108 8 T 156 18 L 156 42 Z" fill="url(#grad-vk-chart-area)" />
+                    <!-- Spline Line -->
+                    <path class="vk__chart-line" d="M 0 32 Q 28 12, 54 26 T 108 8 T 156 18" stroke="#2787f5" stroke-width="2.6" fill="none" stroke-linecap="round" />
+    
+                    <!-- Pulsing Interactive Data Nodes -->
+                    <circle class="vk__node vk__node--1" cx="28" cy="16" r="3.5" fill="#ffffff" stroke="#2787f5" stroke-width="2" />
+                    <circle class="vk__node vk__node--2" cx="78" cy="22" r="3.5" fill="#ffffff" stroke="#2fa26e" stroke-width="2" />
+                    <circle class="vk__node vk__node--3" cx="108" cy="8" r="4.5" fill="#f5c842" stroke="#2787f5" stroke-width="2" filter="url(#glow-amber)" />
+                    <circle class="vk__node vk__node--4" cx="156" cy="18" r="3.5" fill="#ffffff" stroke="#2787f5" stroke-width="2" />
+                </g>
+    
+                <!-- INTERACTIVE FOOTER TELEMETRY ROW -->
+                <g class="vk__footer" transform="translate(12, 142)">
+                    <!-- Likes Heart Pill with Counter -->
+                    <g class="vk__metric vk__metric--likes" transform="translate(0, 0)">
+                        <rect x="0" y="0" width="46" height="18" rx="9" fill="#fce8ec" />
+                        <!-- Heart Vector Glyph -->
+                        <path class="vk__heart" d="M 7 9 C 7 6.5, 9.5 5, 11.5 7 C 13.5 5, 16 6.5, 16 9 C 16 12, 11.5 14.5, 11.5 14.5 C 11.5 14.5, 7 12, 7 9 Z" fill="#ff4757" />
+                        <text x="21" y="12" font-family="'Nunito', sans-serif" font-size="8.5" font-weight="800" fill="#ff4757">4.8K</text>
+                    </g>
+    
+                    <!-- Views Eye Pill with Counter -->
+                    <g class="vk__metric vk__metric--views" transform="translate(52, 0)">
+                        <rect x="0" y="0" width="50" height="18" rx="9" fill="#e8f3fe" />
+                        <!-- Eye Vector Glyph -->
+                        <ellipse cx="61" cy="9" rx="6" ry="4" stroke="#2787f5" stroke-width="1.2" fill="none" />
+                        <circle class="vk__eye-pupil" cx="61" cy="9" r="2" fill="#2787f5" />
+                        <text x="22" y="12" font-family="'Nunito', sans-serif" font-size="8.5" font-weight="800" fill="#2787f5">32.1K</text>
+                    </g>
+    
+                    <!-- Repost Share Pill -->
+                    <g class="vk__metric vk__metric--shares" transform="translate(108, 0)">
+                        <rect x="0" y="0" width="44" height="18" rx="9" fill="#e8f8f0" />
+                        <!-- Curved Repost Arrow -->
+                        <path d="M 116 12 C 119 12, 122 10, 123 7 M 120 5 L 123 7 L 120 9" stroke="#2fa26e" stroke-width="1.3" stroke-linecap="round" fill="none" />
+                        <text x="20" y="12" font-family="'Nunito', sans-serif" font-size="8.5" font-weight="800" fill="#1E7A4E">892</text>
+                    </g>
+                </g>
+            </g>
+    
+            <!-- Floating +1 Heart Celebration Particles -->
+            <g class="vk__floating-heart" transform="translate(355, 100)">
+                <path d="M 0 4 C 0 1.5, 2.5 0, 4.5 2 C 6.5 0, 9 1.5, 9 4 C 9 7, 4.5 9.5, 4.5 9.5 C 4.5 9.5, 0 7, 0 4 Z" fill="#ff4757" filter="url(#glow-red)" />
+                <text x="12" y="8" font-family="'Nunito', sans-serif" font-size="9" font-weight="900" fill="#ff4757">+1</text>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 3. WORK: Holographic cyber keyboard with glowing keys and mini code/analytics windows -->
+    <div class="cosmo-prop cosmo-prop--work" aria-label="Голографическая клавиатура и окно терминала">
+        <svg class="cosmo-svg cosmo-svg--work" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- FLOATING CODE TERMINAL WINDOW (Top-Left) -->
+            <g class="work__terminal" transform="translate(18, 105)">
+                <!-- Terminal Outer Frame with Emerald Neon Glow -->
+                <rect x="0" y="0" width="168" height="114" rx="10" fill="#141a18" fill-opacity="0.92" stroke="#2fa26e" stroke-width="2" filter="url(#shadow-emerald)" />
+                <rect x="2" y="2" width="164" height="110" rx="8" stroke="#00f0ff" stroke-width="1" stroke-opacity="0.3" fill="none" />
+    
+                <!-- Window Titlebar with Mac/Cyber Control Dots -->
+                <rect x="0" y="0" width="168" height="20" rx="10" fill="#1e2623" />
+                <circle cx="12" cy="10" r="3.5" fill="#ff5f56" />
+                <circle cx="22" cy="10" r="3.5" fill="#ffbd2e" />
+                <circle cx="32" cy="10" r="3.5" fill="#27c93f" />
+                <text x="96" y="13" font-family="'Unbounded', monospace" font-size="7.5" font-weight="600" fill="#B9DCC7" text-anchor="middle">cosmo_indexer.sh</text>
+    
+                <!-- Syntax-Highlighted Code Lines -->
+                <g class="work__code" transform="translate(12, 34)" font-family="'Courier New', monospace" font-size="7.8" font-weight="600">
+                    <text x="0" y="0">
+                        <tspan fill="#f5c842">&gt; vk_scan</tspan><tspan fill="#FAF6EE">(</tspan><tspan fill="#00f0ff">"библиотека"</tspan><tspan fill="#FAF6EE">)</tspan>
+                    </text>
+                    <text x="0" y="14">
+                        <tspan fill="#2fa26e">✓ 16/16</tspan> <tspan fill="#B9DCC7">branches sync</tspan>
+                    </text>
+                    <text x="0" y="28">
+                        <tspan fill="#f7a8b8">AI.sentiment</tspan> = <tspan fill="#00f5d4">"JOY"</tspan>
+                    </text>
+                    <text x="0" y="42">
+                        <tspan fill="#f5c842">&gt; orders.auto_dispatch()</tspan>
+                    </text>
+                    <text x="0" y="56">
+                        <tspan fill="#00f0ff">&gt; status: READY</tspan><tspan class="work__cursor" fill="#00f0ff">█</tspan>
+                    </text>
+                </g>
+    
+                <!-- Mini Radar Sweep in Corner -->
+                <g transform="translate(142, 88)">
+                    <circle cx="0" cy="0" r="14" stroke="#2fa26e" stroke-opacity="0.4" stroke-width="1" fill="#0d1412" />
+                    <line x1="-14" y1="0" x2="14" y2="0" stroke="#2fa26e" stroke-opacity="0.2" stroke-width="1" />
+                    <line x1="0" y1="-14" x2="0" y2="14" stroke="#2fa26e" stroke-opacity="0.2" stroke-width="1" />
+                    <line class="work__radar-sweep" x1="0" y1="0" x2="10" y2="-10" stroke="#00f0ff" stroke-width="1.8" filter="url(#glow-cyan)" />
+                </g>
+            </g>
+    
+            <!-- HOLOGRAPHIC 3D ISOMETRIC KEYBOARD (Bottom Center) -->
+            <g class="work__keyboard" transform="translate(0, 0)">
+                <!-- Angled Base Plate -->
+                <polygon class="work__base-plate" points="110,310 310,310 345,392 75,392" fill="#142621" fill-opacity="0.85" stroke="#00f0ff" stroke-width="2.2" filter="url(#glow-cyan)" />
+    
+                <!-- Circuit Traces on Keyboard PCB -->
+                <path d="M 90 380 L 120 380 L 135 340 M 330 380 L 300 380 L 285 340" stroke="#2fa26e" stroke-width="1.2" stroke-dasharray="3 3" stroke-opacity="0.5" />
+    
+                <!-- Keycaps Matrix (4 Rows) -->
+                <!-- Row 1 (Number Row) -->
+                <g class="work__row work__row--1" transform="translate(0, 318)">
+                    <rect class="key key--esc" x="115" y="0" width="16" height="11" rx="2.5" fill="#ff4757" fill-opacity="0.8" stroke="#ff4757" stroke-width="1" />
+                    <rect class="key" x="135" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="151" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="167" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="183" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="199" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="215" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="231" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="247" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="263" y="0" width="13" height="11" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--del" x="279" y="0" width="22" height="11" rx="2.5" fill="#d48806" stroke="#f5c842" stroke-width="1" />
+                </g>
+    
+                <!-- Row 2 (QWERTY) -->
+                <g class="work__row work__row--2" transform="translate(0, 334)">
+                    <rect class="key key--tab" x="110" y="0" width="20" height="12" rx="2.5" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap1" x="133" y="0" width="14" height="12" rx="2" fill="#2fa26e" stroke="#00f5d4" stroke-width="1.2" />
+                    <rect class="key" x="150" y="0" width="14" height="12" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap2" x="167" y="0" width="14" height="12" rx="2" fill="#f5c842" stroke="#f5c842" stroke-width="1.2" />
+                    <rect class="key" x="184" y="0" width="14" height="12" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="201" y="0" width="14" height="12" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap3" x="218" y="0" width="14" height="12" rx="2" fill="#2fa26e" stroke="#00f5d4" stroke-width="1.2" />
+                    <rect class="key" x="235" y="0" width="14" height="12" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="252" y="0" width="14" height="12" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--enter" x="269" y="0" width="36" height="12" rx="3" fill="#1e7a4e" stroke="#2fa26e" stroke-width="1.5" />
+                </g>
+    
+                <!-- Row 3 (Home Row) -->
+                <g class="work__row work__row--3" transform="translate(0, 351)">
+                    <rect class="key key--caps" x="104" y="0" width="24" height="13" rx="2.5" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="131" y="0" width="15" height="13" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap4" x="149" y="0" width="15" height="13" rx="2" fill="#f5c842" stroke="#f5c842" stroke-width="1.2" />
+                    <rect class="key" x="167" y="0" width="15" height="13" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap5" x="185" y="0" width="15" height="13" rx="2" fill="#2fa26e" stroke="#00f5d4" stroke-width="1.2" />
+                    <rect class="key" x="203" y="0" width="15" height="13" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key" x="221" y="0" width="15" height="13" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--tap6" x="239" y="0" width="15" height="13" rx="2" fill="#00f0ff" stroke="#00f0ff" stroke-width="1.2" />
+                    <rect class="key" x="257" y="0" width="15" height="13" rx="2" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                    <rect class="key key--shift-r" x="275" y="0" width="37" height="13" rx="3" fill="#1a3830" stroke="#00f0ff" stroke-width="1" />
+                </g>
+    
+                <!-- Row 4 (Spacebar & Modifiers) -->
+                <g class="work__row work__row--4" transform="translate(0, 369)">
+                    <rect class="key key--ctrl" x="96" y="0" width="22" height="14" rx="3" fill="#142621" stroke="#2fa26e" stroke-width="1" />
+                    <rect class="key key--opt" x="122" y="0" width="22" height="14" rx="3" fill="#142621" stroke="#2fa26e" stroke-width="1" />
+                    <rect class="key key--space" x="148" y="0" width="124" height="14" rx="3.5" fill="url(#grad-bar-cyan)" stroke="#00f0ff" stroke-width="1.5" filter="url(#glow-cyan)" />
+                    <rect class="key key--cmd" x="276" y="0" width="22" height="14" rx="3" fill="#142621" stroke="#2fa26e" stroke-width="1" />
+                    <rect class="key key--fn" x="302" y="0" width="22" height="14" rx="3" fill="#142621" stroke="#2fa26e" stroke-width="1" />
+                </g>
+    
+                <!-- Holographic Keystroke Light Beams Shooting Upward -->
+                <polygon class="work__light-beam work__light-beam--1" points="140,334 147,334 150,290 137,290" fill="#2fa26e" opacity="0.35" />
+                <polygon class="work__light-beam work__light-beam--2" points="174,334 181,334 185,290 170,290" fill="#f5c842" opacity="0.35" />
+                <polygon class="work__light-beam work__light-beam--3" points="246,351 254,351 260,300 242,300" fill="#00f0ff" opacity="0.4" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 4. READ_BOOK: Floating library cyber-book with turning glowing pages -->
+    <div class="cosmo-prop cosmo-prop--read_book" aria-label="Парящая книга с золотым обрезом и листающимися страницами">
+        <svg class="cosmo-svg cosmo-svg--read_book" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Magical Knowledge Motes Rising Above Book -->
+            <g class="book__magic-motes">
+                <circle class="mote mote--1" cx="170" cy="220" r="3" fill="#f5c842" filter="url(#glow-amber)" />
+                <circle class="mote mote--2" cx="210" cy="205" r="4" fill="#00f0ff" filter="url(#glow-cyan)" />
+                <circle class="mote mote--3" cx="250" cy="215" r="2.5" fill="#f7a8b8" />
+                <circle class="mote mote--4" cx="140" cy="235" r="2" fill="#2fa26e" />
+                <circle class="mote mote--5" cx="280" cy="230" r="3" fill="#ffd166" filter="url(#glow-amber)" />
+            </g>
+    
+            <!-- BOOK MAIN ENSEMBLE -->
+            <g class="book__assembly" transform="translate(105, 240)">
+                <!-- Deep Leather Hardcover Binding (Emerald & Gold) -->
+                <!-- Left Wing Cover -->
+                <path d="M 105 110 C 70 106, 25 112, 0 106 L 2 18 C 30 22, 70 16, 105 20 Z" fill="url(#grad-book-cover)" stroke="#143d2b" stroke-width="2.5" filter="url(#shadow-emerald)" />
+                <!-- Right Wing Cover -->
+                <path d="M 105 110 C 140 106, 185 112, 210 106 L 208 18 C 180 22, 140 16, 105 20 Z" fill="url(#grad-book-cover)" stroke="#143d2b" stroke-width="2.5" filter="url(#shadow-emerald)" />
+    
+                <!-- Gilded Page Block Edges (Gold Leaf Texture) -->
+                <path d="M 4 104 C 30 108, 70 103, 105 106 C 140 103, 180 108, 206 104 L 208 97 C 180 101, 140 96, 105 99 C 70 96, 30 101, 2 97 Z" fill="url(#grad-book-gold)" stroke="#b7791f" stroke-width="0.8" />
+    
+                <!-- Ornate Antique Gold Corner Clasps -->
+                <path d="M 2 18 L 18 18 L 2 34 Z" fill="url(#grad-book-gold)" stroke="#804e00" stroke-width="0.8" />
+                <path d="M 208 18 L 192 18 L 208 34 Z" fill="url(#grad-book-gold)" stroke="#804e00" stroke-width="0.8" />
+    
+                <!-- LEFT OPEN SPREAD (Warm Parchment Paper) -->
+                <path d="M 105 20 C 72 16, 34 22, 8 16 L 8 98 C 34 103, 72 97, 105 102 Z" fill="#FAF6EE" stroke="#EFE8D8" stroke-width="1.2" />
+                <!-- Inner Leaf Depth Lines -->
+                <path d="M 12 21 C 36 26, 72 21, 103 24" stroke="#dcd6c8" stroke-width="1" fill="none" />
+    
+                <!-- Left Page Content: Illuminated Initial & Runic Script -->
+                <g transform="translate(20, 28)">
+                    <!-- Gold Illuminated Chapter Initial 'B' (Библиотека) -->
+                    <rect x="0" y="0" width="16" height="18" rx="2" fill="url(#grad-book-gold)" />
+                    <text x="8" y="14" font-family="'Unbounded', serif" font-size="12" font-weight="bold" fill="#143d2b" text-anchor="middle">Б</text>
+                    <!-- Cyber-Runic Text Lines -->
+                    <line x1="20" y1="6" x2="74" y2="6" stroke="#2B2E2C" stroke-width="1.6" stroke-linecap="round" />
+                    <line x1="20" y1="13" x2="68" y2="13" stroke="#6B6F6C" stroke-width="1.4" stroke-linecap="round" />
+                    <!-- Runes & Microcircuit Traces -->
+                    <line x1="2" y1="26" x2="74" y2="26" stroke="#2B2E2C" stroke-width="1.5" stroke-linecap="round" />
+                    <line x1="2" y1="34" x2="70" y2="34" stroke="#2fa26e" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 2" />
+                    <line x1="2" y1="42" x2="74" y2="42" stroke="#6B6F6C" stroke-width="1.5" stroke-linecap="round" />
+                    <line x1="2" y1="50" x2="62" y2="50" stroke="#2B2E2C" stroke-width="1.5" stroke-linecap="round" />
+                    <line x1="2" y1="58" x2="74" y2="58" stroke="#00f0ff" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="6 3" />
+                </g>
+    
+                <!-- RIGHT OPEN SPREAD (Base Stationary Page) -->
+                <path d="M 105 20 C 138 16, 176 22, 202 16 L 202 98 C 176 103, 138 97, 105 102 Z" fill="#FAF6EE" stroke="#EFE8D8" stroke-width="1.2" />
+    
+                <!-- Right Page Content: Diagrams & Analytics Graph -->
+                <g transform="translate(118, 28)">
+                    <text x="0" y="8" font-family="'Unbounded', sans-serif" font-size="6.5" font-weight="bold" fill="#1E7A4E">ТОМ IV · АРХИВ</text>
+                    <line x1="0" y1="14" x2="74" y2="14" stroke="#6B6F6C" stroke-width="1.4" stroke-linecap="round" />
+                    <line x1="0" y1="22" x2="65" y2="22" stroke="#2B2E2C" stroke-width="1.5" stroke-linecap="round" />
+                    <!-- Mini Tree Diagram / Library Stacks -->
+                    <path d="M 8 32 L 8 44 L 28 44 M 8 38 L 48 38" stroke="#2fa26e" stroke-width="1.2" stroke-linecap="round" fill="none" />
+                    <circle cx="28" cy="44" r="2.5" fill="#f5c842" />
+                    <circle cx="48" cy="38" r="2.5" fill="#00f0ff" />
+                    <line x1="0" y1="54" x2="74" y2="54" stroke="#6B6F6C" stroke-width="1.4" stroke-linecap="round" />
+                    <line x1="0" y1="62" x2="52" y2="62" stroke="#2B2E2C" stroke-width="1.4" stroke-linecap="round" />
+                </g>
+    
+                <!-- DYNAMIC TURNING MIDDLE PAGE (Leaf Arching from Right to Left) -->
+                <g class="book__page-turn">
+                    <path class="book__turning-leaf" d="M 105 20 C 120 10, 148 18, 168 8 L 164 88 C 145 98, 120 92, 105 102 Z" fill="url(#grad-book-page-turn)" stroke="#dcd6c8" stroke-width="1.2" />
+                    <!-- Shadow Cast by Turning Page -->
+                    <path d="M 105 22 C 115 28, 125 50, 128 100 L 105 102 Z" fill="#262b29" fill-opacity="0.14" />
+                    <!-- Shimmering Glyphs on Turning Page -->
+                    <line x1="118" y1="30" x2="152" y2="22" stroke="#f5c842" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8" />
+                    <line x1="118" y1="42" x2="148" y2="34" stroke="#00f0ff" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8" />
+                    <line x1="118" y1="54" x2="154" y2="46" stroke="#2fa26e" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8" />
+                    <line x1="118" y1="66" x2="142" y2="58" stroke="#f7a8b8" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8" />
+                </g>
+    
+                <!-- Silk Coral Bookmark Ribbon Trailing Down -->
+                <g class="book__bookmark" transform="translate(103, 18)">
+                    <path d="M 0 0 Q -5 45, 8 75 Q 16 100, 4 125 L -4 125 Q 8 100, 0 75 Q -8 45, -4 0 Z" fill="#f7a8b8" stroke="#d87084" stroke-width="0.8" />
+                    <!-- Golden Ribbon Tassel -->
+                    <polygon points="0,123 5,134 -5,134" fill="url(#grad-book-gold)" stroke="#804e00" stroke-width="0.8" />
+                </g>
+    
+                <!-- Spine Seam & Ribs -->
+                <line x1="105" y1="18" x2="105" y2="106" stroke="#804e00" stroke-width="2.5" />
+                <circle cx="105" cy="20" r="3" fill="url(#grad-book-gold)" />
+                <circle cx="105" cy="104" r="3" fill="url(#grad-book-gold)" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 5. COCOA: Cyber-cup with glowing straw and rising drink bubbles -->
+    <div class="cosmo-prop cosmo-prop--cocoa" aria-label="Чашка горячего какао со светящейся трубочкой">
+        <svg class="cosmo-svg cosmo-svg--cocoa" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Cozy Warm Ambient Glow Under Mug -->
+            <ellipse cx="295" cy="335" rx="38" ry="12" fill="#f5c842" fill-opacity="0.22" filter="url(#glow-amber)" />
+    
+            <!-- RISING STEAM CLOUD PUFFS & CURLS -->
+            <g class="cocoa__steam-group" transform="translate(295, 240)">
+                <!-- Steam Tendril 1 -->
+                <path class="steam steam--1" d="M -12 0 C -22 -15, -2 -32, -14 -50 C -24 -65, -8 -80, -16 -95" stroke="#FAF6EE" stroke-width="3" stroke-linecap="round" stroke-opacity="0.75" fill="none" filter="url(#glow-cyan)" />
+                <!-- Steam Tendril 2 -->
+                <path class="steam steam--2" d="M 2 -4 C 12 -22, -4 -42, 6 -62 C 14 -78, 2 -92, 10 -105" stroke="#FAF6EE" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.8" fill="none" />
+                <!-- Steam Tendril 3 -->
+                <path class="steam steam--3" d="M 18 2 C 28 -14, 14 -28, 24 -46 C 32 -60, 20 -74, 26 -88" stroke="#B9DCC7" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.65" fill="none" />
+            </g>
+    
+            <!-- CYBER-CERAMIC MUG MAIN BODY -->
+            <g class="cocoa__cup" transform="translate(250, 245)">
+                <!-- Ear-Shaped Ergonomic Mug Handle (Matches Cosmo's Emerald Ear!) -->
+                <path class="cocoa__handle" d="M 68 28 C 92 28, 96 68, 68 76 L 68 64 C 84 58, 80 38, 68 38 Z" fill="#2fa26e" stroke="#1e7a4e" stroke-width="2" />
+    
+                <!-- Mug Outer Ceramic Hull -->
+                <path d="M 12 18 C 12 18, 14 74, 20 84 C 26 94, 60 94, 66 84 C 72 74, 74 18, 74 18 Z" fill="url(#grad-mug-ceramic)" stroke="#DDEEE2" stroke-width="2" filter="url(#shadow-emerald)" />
+    
+                <!-- Emerald Racing Stripes / Thermal Band -->
+                <path d="M 14 36 L 72 36 L 71 52 L 15 52 Z" fill="#2fa26e" />
+                <path d="M 16 56 L 70 56 L 69 60 L 17 60 Z" fill="#f5c842" />
+    
+                <!-- Stamped Cosmo Mascot Smiling Visor Icon -->
+                <g transform="translate(43, 44)">
+                    <!-- Mini Dark Visor Screen -->
+                    <rect x="-14" y="-5" width="28" height="10" rx="4" fill="#262b29" />
+                    <!-- Mini Amber Visor Eyes -->
+                    <circle cx="-6" cy="0" r="1.8" fill="#f5c842" />
+                    <circle cx="6" cy="0" r="1.8" fill="#f5c842" />
+                </g>
+    
+                <!-- Cocoa Liquid Surface Ellipse -->
+                <ellipse cx="43" cy="18" rx="31" ry="9" fill="url(#grad-cocoa-liquid)" stroke="#2fa26e" stroke-width="1.5" />
+    
+                <!-- Creamy Marshmallow Foam Swirls -->
+                <path d="M 24 18 C 30 14, 42 14, 48 17 C 54 20, 62 16, 64 19" stroke="#fff8e7" stroke-width="3" stroke-linecap="round" fill="none" />
+                <ellipse cx="34" cy="17" rx="3.5" ry="2" fill="#ffffff" />
+                <ellipse cx="52" cy="18" rx="4" ry="2.2" fill="#ffffff" />
+    
+                <!-- Effervescent Drink Bubbles -->
+                <circle class="bubble bubble--1" cx="28" cy="15" r="2.5" fill="#f5c842" fill-opacity="0.8" stroke="#ffffff" stroke-width="0.8" />
+                <circle class="bubble bubble--2" cx="44" cy="20" r="2" fill="#00f0ff" fill-opacity="0.8" stroke="#ffffff" stroke-width="0.8" />
+                <circle class="bubble bubble--3" cx="58" cy="16" r="2.8" fill="#f7a8b8" fill-opacity="0.8" stroke="#ffffff" stroke-width="0.8" />
+    
+                <!-- TRANSLUCENT SPIRAL-STRIPED CYBER STRAW -->
+                <g class="cocoa__straw" transform="translate(48, 18) rotate(18)">
+                    <!-- Straw Body -->
+                    <rect x="-4" y="-55" width="8" height="60" rx="4" fill="url(#grad-straw-spiral)" stroke="#2fa26e" stroke-width="1.2" opacity="0.95" />
+                    <!-- Glowing Liquid Column Pulsing Inside Straw -->
+                    <line class="straw__liquid-pulse" x1="0" y1="-50" x2="0" y2="0" stroke="#f5c842" stroke-width="3" stroke-linecap="round" filter="url(#glow-amber)" />
+                    <!-- Straw Tip Glint -->
+                    <ellipse cx="0" cy="-55" rx="3.5" ry="1.5" fill="#ffffff" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 6. ANGRY: Steam clouds erupting from ears, anger symbol 💢, heat aura -->
+    <div class="cosmo-prop cosmo-prop--angry" aria-label="Пар из ушей, символ гнева и тепловая аура">
+        <svg class="cosmo-svg cosmo-svg--angry" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- THERMAL RADIATION HEAT AURA AROUND CHASSIS -->
+            <g class="angry__heat-aura">
+                <!-- Pulsating Radiant Red Heat Field -->
+                <ellipse cx="210" cy="220" rx="155" ry="145" fill="url(#grad-anger-aura)" />
+                <!-- Thermal Convection Squiggle Waves -->
+                <path class="angry__wave angry__wave--1" d="M 80 180 Q 70 150, 85 120 T 75 80" stroke="#ff3b30" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6" />
+                <path class="angry__wave angry__wave--2" d="M 340 180 Q 350 150, 335 120 T 345 80" stroke="#ff3b30" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6" />
+                <path class="angry__wave angry__wave--3" d="M 140 90 Q 150 65, 135 40 T 145 15" stroke="#f5c842" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5" />
+                <path class="angry__wave angry__wave--4" d="M 280 90 Q 270 65, 285 40 T 275 15" stroke="#f5c842" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5" />
+            </g>
+    
+            <!-- LEFT EAR STEAM PLUME (Bursting Horizontally Left) -->
+            <g class="angry__steam-left" transform="translate(100, 195)">
+                <!-- Shock Speed Jet Lines -->
+                <line x1="0" y1="0" x2="-35" y2="-8" stroke="#ff4757" stroke-width="2.5" stroke-linecap="round" />
+                <line x1="0" y1="6" x2="-45" y2="4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+                <line x1="0" y1="12" x2="-32" y2="18" stroke="#ff4757" stroke-width="2" stroke-linecap="round" />
+    
+                <!-- Billowing Comic Cloud Puffs -->
+                <path class="steam-puff puff--l1" d="M -25 -10 C -40 -30, -70 -25, -75 0 C -85 10, -75 35, -55 35 C -45 42, -25 35, -20 22 C -10 15, -15 -5, -25 -10 Z" fill="#ffffff" stroke="#ff4757" stroke-width="2.2" filter="url(#glow-red)" />
+                <circle class="steam-puff puff--l2" cx="-55" cy="5" r="14" fill="#fff5f5" />
+                <circle class="steam-puff puff--l3" cx="-80" cy="12" r="10" fill="#ffffff" stroke="#ff4757" stroke-width="1.5" />
+            </g>
+    
+            <!-- RIGHT EAR STEAM PLUME (Bursting Horizontally Right) -->
+            <g class="angry__steam-right" transform="translate(320, 195)">
+                <!-- Shock Speed Jet Lines -->
+                <line x1="0" y1="0" x2="35" y2="-8" stroke="#ff4757" stroke-width="2.5" stroke-linecap="round" />
+                <line x1="0" y1="6" x2="45" y2="4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+                <line x1="0" y1="12" x2="32" y2="18" stroke="#ff4757" stroke-width="2" stroke-linecap="round" />
+    
+                <!-- Billowing Comic Cloud Puffs -->
+                <path class="steam-puff puff--r1" d="M 25 -10 C 40 -30, 70 -25, 75 0 C 85 10, 75 35, 55 35 C 45 42, 25 35, 20 22 C 10 15, 15 -5, 25 -10 Z" fill="#ffffff" stroke="#ff4757" stroke-width="2.2" filter="url(#glow-red)" />
+                <circle class="steam-puff puff--r2" cx="55" cy="5" r="14" fill="#fff5f5" />
+                <circle class="steam-puff puff--r3" cx="80" cy="12" r="10" fill="#ffffff" stroke="#ff4757" stroke-width="1.5" />
+            </g>
+    
+            <!-- JAPANESE COMIC ANGER SYMBOL (💢 Cross-Vein Pop Mark) -->
+            <g class="angry__vein" transform="translate(262, 118)">
+                <!-- Outer Pulsing Glow -->
+                <path d="M 0 12 Q 12 12, 12 0 M 12 0 Q 12 12, 24 12 M 24 12 Q 12 12, 12 24 M 12 24 Q 12 12, 0 12" stroke="#ff3b30" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" filter="url(#glow-red)" />
+                <!-- Four-Pronged Crimson Comic Mark Body -->
+                <path class="vein__core" d="M 0 14 C 8 14, 14 8, 14 0 L 22 0 C 22 8, 28 14, 36 14 L 36 22 C 28 22, 22 28, 22 36 L 14 36 C 14 28, 8 22, 0 22 Z" fill="url(#grad-anger-vein)" stroke="#ffffff" stroke-width="2.5" filter="url(#glow-red)" />
+                <!-- Coral Cross Ribs -->
+                <line x1="8" y1="18" x2="28" y2="18" stroke="#ff758f" stroke-width="2" stroke-linecap="round" />
+                <line x1="18" y1="8" x2="18" y2="28" stroke="#ff758f" stroke-width="2" stroke-linecap="round" />
+            </g>
+    
+            <!-- COMIC ANGER SPARKS POPPING OFF -->
+            <g class="angry__sparks">
+                <polygon class="spark spark--1" points="255,100 258,108 266,110 260,115 262,123 255,118 248,123 250,115 244,110 252,108" fill="#f5c842" filter="url(#glow-amber)" />
+                <polygon class="spark spark--2" points="305,145 307,151 313,152 308,156 310,162 305,158 300,162 301,156 297,152 303,151" fill="#ff4757" />
+                <polygon class="spark spark--3" points="115,160 117,165 123,166 118,170 120,176 115,172 110,176 111,170 107,166 113,165" fill="#f5c842" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 7. JOY: Confetti bursts, star sparkles, celebration glow -->
+    <div class="cosmo-prop cosmo-prop--joy" aria-label="Праздничное конфетти, сияющие звёзды и золотой ореол">
+        <svg class="cosmo-svg cosmo-svg--joy" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- GOLDEN CELEBRATION HALO & SUNBURST RAYS (Background) -->
+            <g class="joy__halo">
+                <!-- Pulsating Golden Glow Disc -->
+                <circle cx="210" cy="200" r="150" fill="url(#grad-joy-halo)" />
+                <!-- Rotating Ethereal Sunburst Rays -->
+                <g class="joy__sunburst" transform="translate(210, 200)">
+                    <line x1="0" y1="-140" x2="0" y2="-105" stroke="#f5c842" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+                    <line x1="99" y1="-99" x2="74" y2="-74" stroke="#2fa26e" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+                    <line x1="140" y1="0" x2="105" y2="0" stroke="#f7a8b8" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+                    <line x1="99" y1="99" x2="74" y2="74" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+                    <line x1="0" y1="140" x2="0" y2="105" stroke="#f5c842" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+                    <line x1="-99" y1="99" x2="-74" y2="74" stroke="#2fa26e" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+                    <line x1="-140" y1="0" x2="-105" y2="0" stroke="#f7a8b8" stroke-width="2.5" stroke-linecap="round" opacity="0.65" />
+                    <line x1="-99" y1="-99" x2="-74" y2="-74" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+                </g>
+            </g>
+    
+            <!-- MULTI-COLORED GEOMETRIC CONFETTI BURST -->
+            <g class="joy__confetti">
+                <!-- Confetti Ribbons & Streamers -->
+                <path class="confetti ribbon--1" d="M 60 140 Q 75 125, 95 135 T 120 120" stroke="#2fa26e" stroke-width="3" stroke-linecap="round" fill="none" />
+                <path class="confetti ribbon--2" d="M 360 140 Q 345 125, 325 135 T 300 120" stroke="#f5c842" stroke-width="3" stroke-linecap="round" fill="none" />
+                <path class="confetti ribbon--3" d="M 90 280 Q 110 295, 130 285 T 150 305" stroke="#00f0ff" stroke-width="2.8" stroke-linecap="round" fill="none" />
+                <path class="confetti ribbon--4" d="M 330 280 Q 310 295, 290 285 T 270 305" stroke="#f7a8b8" stroke-width="2.8" stroke-linecap="round" fill="none" />
+    
+                <!-- Rectangular & Diamond Confetti Flakes -->
+                <!-- Emerald Flakes -->
+                <rect class="confetti c--1" x="50" y="90" width="10" height="6" rx="1.5" fill="#2fa26e" transform="rotate(25 55 93)" />
+                <rect class="confetti c--2" x="140" y="65" width="11" height="7" rx="1.5" fill="#2fa26e" transform="rotate(-35 145 68)" />
+                <rect class="confetti c--3" x="310" y="260" width="9" height="6" rx="1.5" fill="#2fa26e" transform="rotate(45 314 263)" />
+    
+                <!-- Golden Sun Flakes -->
+                <rect class="confetti c--4" x="340" y="80" width="12" height="7" rx="1.5" fill="#f5c842" transform="rotate(55 346 83)" />
+                <rect class="confetti c--5" x="260" y="50" width="10" height="6" rx="1.5" fill="#f5c842" transform="rotate(-15 265 53)" />
+                <rect class="confetti c--6" x="75" y="240" width="11" height="6" rx="1.5" fill="#f5c842" transform="rotate(-60 80 243)" />
+    
+                <!-- Coral Pink Flakes -->
+                <polygon class="confetti c--7" points="65,180 75,175 72,188" fill="#f7a8b8" />
+                <polygon class="confetti c--8" points="350,190 362,184 358,198" fill="#f7a8b8" />
+                <rect class="confetti c--9" x="200" y="40" width="9" height="5" rx="1.2" fill="#f7a8b8" transform="rotate(18 204 42)" />
+    
+                <!-- Cyber Cyan Flakes -->
+                <rect class="confetti c--10" x="100" y="160" width="10" height="6" rx="1.5" fill="#00f0ff" transform="rotate(-40 105 163)" />
+                <rect class="confetti c--11" x="320" y="160" width="10" height="6" rx="1.5" fill="#00f0ff" transform="rotate(30 325 163)" />
+                <polygon class="confetti c--12" points="175,340 185,335 180,348" fill="#00f0ff" />
+            </g>
+    
+            <!-- FACETED DIAMOND SPARKLE STARS (Specular Twinkles) -->
+            <g class="joy__stars">
+                <!-- 8-Point Hero Diamond Star (Top Left) -->
+                <g class="star star--1" transform="translate(80, 70)">
+                    <path d="M 0 -18 L 4 -5 L 18 0 L 4 5 L 0 18 L -4 5 L -18 0 L -4 -5 Z" fill="#ffffff" filter="url(#glow-amber)" />
+                    <path d="M 0 -10 L 2.5 -2.5 L 10 0 L 2.5 2.5 L 0 10 L -2.5 2.5 L -10 0 L -2.5 -2.5 Z" fill="#f5c842" />
+                    <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+                </g>
+    
+                <!-- 8-Point Hero Diamond Star (Top Right) -->
+                <g class="star star--2" transform="translate(340, 70)">
+                    <path d="M 0 -18 L 4 -5 L 18 0 L 4 5 L 0 18 L -4 5 L -18 0 L -4 -5 Z" fill="#ffffff" filter="url(#glow-cyan)" />
+                    <path d="M 0 -10 L 2.5 -2.5 L 10 0 L 2.5 2.5 L 0 10 L -2.5 2.5 L -10 0 L -2.5 -2.5 Z" fill="#00f0ff" />
+                    <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+                </g>
+    
+                <!-- 4-Point Medium Star (Mid Left) -->
+                <g class="star star--3" transform="translate(45, 210)">
+                    <path d="M 0 -12 L 3 -3 L 12 0 L 3 3 L 0 12 L -3 3 L -12 0 L -3 -3 Z" fill="#ffffff" filter="url(#glow-amber)" />
+                    <circle cx="0" cy="0" r="2" fill="#f5c842" />
+                </g>
+    
+                <!-- 4-Point Medium Star (Mid Right) -->
+                <g class="star star--4" transform="translate(375, 220)">
+                    <path d="M 0 -12 L 3 -3 L 12 0 L 3 3 L 0 12 L -3 3 L -12 0 L -3 -3 Z" fill="#ffffff" filter="url(#glow-red)" />
+                    <circle cx="0" cy="0" r="2" fill="#f7a8b8" />
+                </g>
+    
+                <!-- Small Accent Star (Zenith Center) -->
+                <g class="star star--5" transform="translate(210, 30)">
+                    <path d="M 0 -9 L 2 -2 L 9 0 L 2 2 L 0 9 L -2 2 L -9 0 L -2 -2 Z" fill="#ffffff" filter="url(#glow-cyan)" />
+                    <circle cx="0" cy="0" r="1.5" fill="#2fa26e" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 8. SLEEP: Glowing 'Zzz' particles, moon-night aura -->
+    <div class="cosmo-prop cosmo-prop--sleep" aria-label="Светящиеся буквы Zzz, ночной полумесяц и сонная аура">
+        <svg class="cosmo-svg cosmo-svg--sleep" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- DEEP TWILIGHT NIGHT AURA POOL (Background) -->
+            <ellipse class="sleep__aura" cx="210" cy="200" rx="160" ry="150" fill="url(#grad-sleep-aura)" />
+    
+            <!-- SLEEPY GOLDEN CRESCENT MOON (Top Right: 330, 75) -->
+            <g class="sleep__moon" transform="translate(325, 70)">
+                <!-- Outer Moon Glow -->
+                <path d="M 12 -28 C 24 -15, 26 12, 10 28 C 34 26, 46 -6, 26 -34 C 21 -33, 16 -31, 12 -28 Z" fill="#f5c842" opacity="0.3" filter="url(#glow-amber)" />
+                <!-- Crescent Moon Body -->
+                <path d="M 14 -24 C 24 -12, 24 10, 12 24 C 30 20, 38 -4, 22 -28 C 19 -27, 16 -26, 14 -24 Z" fill="url(#grad-moon)" stroke="#e1a100" stroke-width="1.2" />
+    
+                <!-- Soft Moon Crater Details -->
+                <circle cx="21" cy="-12" r="2.5" fill="#e1a100" opacity="0.35" />
+                <circle cx="23" cy="6" r="3.2" fill="#e1a100" opacity="0.35" />
+                <circle cx="17" cy="16" r="1.8" fill="#e1a100" opacity="0.3" />
+    
+                <!-- Sleeping Closed Eye on Moon -->
+                <path d="M 19 -2 C 22 2, 25 2, 27 -1" stroke="#804e00" stroke-width="1.2" stroke-linecap="round" fill="none" />
+    
+                <!-- Tiny Nightcap Tassel Hanging from Moon Tip -->
+                <line x1="22" y1="-28" x2="30" y2="-36" stroke="#f7a8b8" stroke-width="1.5" stroke-linecap="round" />
+                <circle cx="31" cy="-37" r="3" fill="#ffffff" />
+            </g>
+    
+            <!-- TWINKLE CONSTELLATION STARS -->
+            <g class="sleep__stars">
+                <!-- Micro Star 1 -->
+                <g class="sleep-star s--1" transform="translate(265, 55)">
+                    <path d="M 0 -5 L 1.5 -1.5 L 5 0 L 1.5 1.5 L 0 5 L -1.5 1.5 L -5 0 L -1.5 -1.5 Z" fill="#ffffff" filter="url(#glow-cyan)" />
+                </g>
+                <!-- Micro Star 2 -->
+                <g class="sleep-star s--2" transform="translate(380, 120)">
+                    <path d="M 0 -6 L 1.8 -1.8 L 6 0 L 1.8 1.8 L 0 6 L -1.8 1.8 L -6 0 L -1.8 -1.8 Z" fill="#ffd166" filter="url(#glow-amber)" />
+                </g>
+                <!-- Micro Star 3 -->
+                <g class="sleep-star s--3" transform="translate(285, 140)">
+                    <circle cx="0" cy="0" r="2" fill="#ffffff" opacity="0.8" />
+                </g>
+                <!-- Micro Star 4 -->
+                <g class="sleep-star s--4" transform="translate(130, 90)">
+                    <path d="M 0 -4 L 1 -1 L 4 0 L 1 1 L 0 4 L -1 1 L -4 0 L -1 -1 Z" fill="#B9DCC7" />
+                </g>
+            </g>
+    
+            <!-- THREE GLOWING 'Zzz' TYPOGRAPHIC GLYPHS -->
+            <g class="sleep__zzz-group">
+                <!-- Glyphs arranged along an organic sinusoidal upward drift path -->
+                <!-- 1. Small 'z' (Near visor mouth: 240, 175) -->
+                <g class="zzz zzz--1" transform="translate(235, 175)">
+                    <path d="M 0 0 L 14 0 L 4 14 L 16 14" stroke="#00f0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow-cyan)" />
+                    <path d="M 0 0 L 14 0 L 4 14 L 16 14" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </g>
+    
+                <!-- 2. Medium 'z' (Mid-float: 275, 130) -->
+                <g class="zzz zzz--2" transform="translate(270, 128)">
+                    <path d="M 0 0 L 18 0 L 5 18 L 20 18" stroke="#00f0ff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow-cyan)" />
+                    <path d="M 0 0 L 18 0 L 5 18 L 20 18" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </g>
+    
+                <!-- 3. Large 'Z' (Apex dream realm: 310, 80) -->
+                <g class="zzz zzz--3" transform="translate(305, 75)">
+                    <path d="M 0 0 L 24 0 L 7 24 L 27 24" stroke="#f5c842" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow-amber)" />
+                    <path d="M 0 0 L 24 0 L 7 24 L 27 24" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 9. TELESCOPE: Cute futuristic brass/cyber telescope with lens flare -->
+    <div class="cosmo-prop cosmo-prop--telescope" aria-label="Стимпанк-кибер телескоп с бликом линзы и сеткой прицела">
+        <svg class="cosmo-svg cosmo-svg--telescope" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- PROJECTED HOLOGRAPHIC CELESTIAL TARGETING RETICLE (Forward Projection) -->
+            <g class="telescope__reticle" transform="translate(355, 110)">
+                <!-- Outer Concentric HUD Reticle Ring -->
+                <circle class="reticle__ring" cx="0" cy="0" r="32" stroke="#00f0ff" stroke-width="1.4" stroke-dasharray="6 4" stroke-opacity="0.75" fill="none" />
+                <circle cx="0" cy="0" r="20" stroke="#2fa26e" stroke-width="1" stroke-opacity="0.5" fill="none" />
+    
+                <!-- Crosshairs & Azimuth Ticks -->
+                <line x1="-36" y1="0" x2="-22" y2="0" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" />
+                <line x1="22" y1="0" x2="36" y2="0" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" />
+                <line x1="0" y1="-36" x2="0" y2="-22" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" />
+                <line x1="0" y1="22" x2="0" y2="36" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" />
+    
+                <!-- Center Target Node -->
+                <circle cx="0" cy="0" r="3" fill="#f5c842" filter="url(#glow-amber)" />
+    
+                <!-- Cyber Target Locked Readout -->
+                <rect x="8" y="14" width="46" height="11" rx="2.5" fill="#142621" fill-opacity="0.85" stroke="#00f0ff" stroke-width="0.8" />
+                <text x="31" y="22" font-family="'Unbounded', monospace" font-size="5.5" font-weight="bold" fill="#00f0ff" text-anchor="middle">VK::FOUND</text>
+            </g>
+    
+            <!-- ARTICULATED ROBOTIC CHASSIS MOUNT (Gimbal Bracket) -->
+            <g class="telescope__mount" transform="translate(225, 185)">
+                <!-- Chassis Mounting Plate -->
+                <rect x="-8" y="-6" width="16" height="12" rx="3" fill="#262b29" stroke="#2fa26e" stroke-width="1.5" />
+                <!-- Swivel Gimbal Hinge -->
+                <circle cx="6" cy="0" r="7" fill="#4a5550" stroke="#FAF6EE" stroke-width="1.5" />
+                <circle cx="6" cy="0" r="3" fill="#00f0ff" />
+            </g>
+    
+            <!-- TELESCOPE SPYGLASS BARREL (Angled at -26° upward) -->
+            <g class="telescope__barrel" transform="translate(232, 185) rotate(-26)">
+                <!-- Stage 1: Eyepiece Section (Dark Titanium & Knurled Brass) -->
+                <rect x="-18" y="-7" width="18" height="14" rx="2" fill="#262b29" stroke="#1a1e1c" stroke-width="1.2" />
+                <circle cx="-18" cy="0" r="8" fill="#141816" stroke="#2fa26e" stroke-width="1.5" />
+                <!-- Amber Anti-Dust Eyepiece Seal -->
+                <rect x="-14" y="-8.5" width="4" height="17" rx="1.5" fill="url(#grad-brass-light)" />
+    
+                <!-- Stage 2: Main Telescoping Brass Body Tube -->
+                <rect x="0" y="-9" width="48" height="18" rx="2" fill="url(#grad-brass-light)" stroke="#804e00" stroke-width="1.2" />
+                <!-- Emerald Racing Accent Ring with Copper Rivets -->
+                <rect x="12" y="-10.5" width="12" height="21" rx="2" fill="#2fa26e" stroke="#1e7a4e" stroke-width="1" />
+                <circle cx="18" cy="-5" r="1" fill="#f5c842" />
+                <circle cx="18" cy="5" r="1" fill="#f5c842" />
+    
+                <!-- Stage 3: Second Extension Brass Tube -->
+                <rect x="48" y="-11.5" width="42" height="23" rx="2" fill="url(#grad-brass-light)" stroke="#804e00" stroke-width="1.2" />
+                <!-- Knurled Focus Ring -->
+                <line x1="62" y1="-12.5" x2="62" y2="12.5" stroke="#804e00" stroke-width="1.5" stroke-dasharray="2 2" />
+                <line x1="66" y1="-12.5" x2="66" y2="12.5" stroke="#804e00" stroke-width="1.5" stroke-dasharray="2 2" />
+    
+                <!-- Stage 4: Flared Front Objective Hood -->
+                <polygon points="90,-12 118,-18 118,18 90,12" fill="url(#grad-brass-light)" stroke="#804e00" stroke-width="1.2" />
+                <!-- Objective Lens Rim Collar -->
+                <rect x="117" y="-19" width="6" height="38" rx="2" fill="#2fa26e" stroke="#1e7a4e" stroke-width="1.2" />
+    
+                <!-- LARGE CONVEX OBJECTIVE LENS (Glass with Multi-Coating Refraction) -->
+                <ellipse class="telescope__lens" cx="120" cy="0" rx="3.5" ry="17" fill="url(#grad-lens-reflect)" stroke="#00f0ff" stroke-width="1.5" />
+    
+                <!-- SUPERNOVA LENS FLARE (brilliant 8-point diffraction starburst at aperture) -->
+                <g class="telescope__flare" transform="translate(122, 0)">
+                    <!-- Anamorphic Lens Flare Horizontal Streak -->
+                    <line x1="-35" y1="0" x2="60" y2="0" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" opacity="0.8" filter="url(#glow-cyan)" />
+                    <!-- 8-Point Diffraction Diamond Glint -->
+                    <path d="M 0 -24 L 3.5 -5 L 24 0 L 3.5 5 L 0 24 L -3.5 5 L -24 0 L -3.5 -5 Z" fill="#ffffff" filter="url(#glow-amber)" />
+                    <circle cx="0" cy="0" r="4" fill="#ffffff" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 10. ANTENNA: Radio frequency waves pulsing outward from antenna -->
+    <div class="cosmo-prop cosmo-prop--antenna" aria-label="Радиочастотные волны и передача данных с антенны">
+        <svg class="cosmo-svg cosmo-svg--antenna" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- CONCENTRIC ELECTROMAGNETIC RADIO WAVE ARCS (180° Dome) -->
+            <g class="antenna__waves" transform="translate(210, 68)">
+                <!-- Wave 1 (Inner Arc) -->
+                <path class="rf-wave wave--1" d="M -32 0 A 32 32 0 0 1 32 0" stroke="#00f0ff" stroke-width="3" stroke-linecap="round" fill="none" filter="url(#glow-cyan)" />
+                <!-- Wave 2 (Middle-Inner Arc) -->
+                <path class="rf-wave wave--2" d="M -58 0 A 58 58 0 0 1 58 0" stroke="#2fa26e" stroke-width="2.8" stroke-linecap="round" fill="none" />
+                <!-- Wave 3 (Middle-Outer Arc) -->
+                <path class="rf-wave wave--3" d="M -86 0 A 86 86 0 0 1 86 0" stroke="#f5c842" stroke-width="2.5" stroke-linecap="round" fill="none" filter="url(#glow-amber)" />
+                <!-- Wave 4 (Far Perimeter Arc) -->
+                <path class="rf-wave wave--4" d="M -118 0 A 118 118 0 0 1 118 0" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 6" fill="none" />
+            </g>
+    
+            <!-- STROBE BEACON FLASH AT ANTENNA TIP SPHERE -->
+            <g class="antenna__beacon" transform="translate(210, 68)">
+                <!-- Radial Pulse Aura -->
+                <circle class="beacon__aura" cx="0" cy="0" r="22" fill="#00f0ff" opacity="0.35" filter="url(#glow-cyan)" />
+                <circle class="beacon__core" cx="0" cy="0" r="10" fill="#f5c842" filter="url(#glow-amber)" />
+                <circle cx="0" cy="0" r="5" fill="#ffffff" />
+            </g>
+    
+            <!-- STREAMING BINARY DATA PACKETS (Floating Along Wave Trajectory) -->
+            <g class="antenna__packets" font-family="'Unbounded', monospace" font-size="8" font-weight="bold">
+                <!-- Packet 1 (Top Left) -->
+                <g class="packet packet--1" transform="translate(145, 25)">
+                    <rect x="-14" y="-7" width="28" height="14" rx="4" fill="#142621" stroke="#00f0ff" stroke-width="1.2" />
+                    <text x="0" y="3" fill="#00f0ff" text-anchor="middle">101</text>
+                </g>
+                <!-- Packet 2 (Zenith Center) -->
+                <g class="packet packet--2" transform="translate(210, -5)">
+                    <rect x="-16" y="-7" width="32" height="14" rx="4" fill="#0077ff" stroke="#ffffff" stroke-width="1.2" />
+                    <text x="0" y="3.5" fill="#ffffff" text-anchor="middle">VK::API</text>
+                </g>
+                <!-- Packet 3 (Top Right) -->
+                <g class="packet packet--3" transform="translate(275, 25)">
+                    <rect x="-14" y="-7" width="28" height="14" rx="4" fill="#142621" stroke="#2fa26e" stroke-width="1.2" />
+                    <text x="0" y="3" fill="#2fa26e" text-anchor="middle">ACK</text>
+                </g>
+            </g>
+    
+            <!-- SIGNAL STRENGTH TELEMETRY METER (Right Side of Antenna) -->
+            <g class="antenna__meter" transform="translate(242, 60)">
+                <rect x="0" y="0" width="32" height="16" rx="3" fill="#141a18" fill-opacity="0.8" stroke="#2fa26e" stroke-width="1" />
+                <!-- 4 Signal Strength Bars -->
+                <rect class="bar bar--s1" x="4" y="10" width="4" height="4" rx="1" fill="#2fa26e" />
+                <rect class="bar bar--s2" x="10" y="8" width="4" height="6" rx="1" fill="#2fa26e" />
+                <rect class="bar bar--s3" x="16" y="5" width="4" height="9" rx="1" fill="#2fa26e" />
+                <rect class="bar bar--s4" x="22" y="2" width="4" height="12" rx="1" fill="#00f0ff" filter="url(#glow-cyan)" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 11. GURU: Golden sparkling royal crown with jewels 👑 -->
+    <div class="cosmo-prop cosmo-prop--guru" aria-label="Золотая корона с драгоценными камнями и сиянием гуру">
+        <svg class="cosmo-svg cosmo-svg--guru" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- DIVINE GOLDEN SUNBURST HALO (Background Aura) -->
+            <g class="guru__halo" transform="translate(210, 52)">
+                <circle cx="0" cy="0" r="65" fill="url(#grad-joy-halo)" opacity="0.65" />
+                <!-- Sacred Rotating Sun Rays -->
+                <g class="guru__rays">
+                    <line x1="0" y1="-62" x2="0" y2="-48" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="44" y1="-44" x2="34" y2="-34" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="62" y1="0" x2="48" y2="0" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="44" y1="44" x2="34" y2="34" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="0" y1="62" x2="0" y2="48" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="-44" y1="44" x2="-34" y2="34" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="-62" y1="0" x2="-48" y2="0" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                    <line x1="-44" y1="-44" x2="-34" y2="-34" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                </g>
+            </g>
+    
+            <!-- FLOATING ROYAL CROWN STRUCTURE -->
+            <g class="guru__crown" transform="translate(145, 20)">
+                <!-- Inner Emerald Velvet Cap Cushion -->
+                <path d="M 12 56 C 12 36, 50 28, 65 28 C 80 28, 118 36, 118 56 Z" fill="#143d2b" stroke="#1e7a4e" stroke-width="1.5" />
+                <!-- Gold Cord & Fringe on Velvet -->
+                <line x1="65" y1="28" x2="65" y2="18" stroke="#f5c842" stroke-width="2" stroke-linecap="round" />
+                <circle cx="65" cy="17" r="3" fill="url(#grad-crown-gold)" />
+    
+                <!-- Five Imperial Crown Arches & Peaks -->
+                <!-- Base Gold Crown Rim / Circlet -->
+                <path d="M 6 62 C 35 68, 95 68, 124 62 L 126 50 C 95 56, 35 56, 4 50 Z" fill="url(#grad-crown-gold)" stroke="#804e00" stroke-width="1.8" filter="url(#shadow-emerald)" />
+    
+                <!-- Five Crown Points / Peaks -->
+                <path class="crown__points" d="M 4 50 L 12 18 L 32 38 L 65 6 L 98 38 L 118 18 L 126 50 C 95 56, 35 56, 4 50 Z" fill="url(#grad-crown-gold)" stroke="#804e00" stroke-width="2" />
+    
+                <!-- Filigree Acanthus Engravings on Gold Body -->
+                <path d="M 38 48 Q 65 32, 92 48" stroke="#804e00" stroke-width="1.5" fill="none" />
+                <path d="M 50 48 Q 65 38, 80 48" stroke="#ffeaa7" stroke-width="1.2" fill="none" />
+    
+                <!-- EMBEDDED PRECIOUS JEWELS & CABOCHONS -->
+                <!-- 1. Center Highest Point: Large Emerald Oval Gem -->
+                <ellipse class="jewel jewel--emerald" cx="65" cy="22" rx="7" ry="9" fill="url(#grad-gem-emerald)" stroke="#ffffff" stroke-width="1.5" filter="url(#glow-cyan)" />
+    
+                <!-- 2. Left Mid Point: Ruby Red Gem -->
+                <ellipse class="jewel jewel--ruby-l" cx="32" cy="40" rx="5" ry="6" fill="url(#grad-gem-ruby)" stroke="#ffffff" stroke-width="1.2" filter="url(#glow-red)" />
+    
+                <!-- 3. Right Mid Point: Ruby Red Gem -->
+                <ellipse class="jewel jewel--ruby-r" cx="98" cy="40" rx="5" ry="6" fill="url(#grad-gem-ruby)" stroke="#ffffff" stroke-width="1.2" filter="url(#glow-red)" />
+    
+                <!-- 4. Left Outer Point: Sapphire Blue Gem -->
+                <circle class="jewel jewel--sapphire-l" cx="12" cy="20" r="4.5" fill="url(#grad-gem-sapphire)" stroke="#ffffff" stroke-width="1.2" />
+    
+                <!-- 5. Right Outer Point: Sapphire Blue Gem -->
+                <circle class="jewel jewel--sapphire-r" cx="118" cy="20" r="4.5" fill="url(#grad-gem-sapphire)" stroke="#ffffff" stroke-width="1.2" />
+    
+                <!-- Circlet Rim Pearl Studs -->
+                <circle cx="20" cy="58" r="3" fill="#ffffff" stroke="#c98a0c" stroke-width="0.8" />
+                <circle cx="42" cy="61" r="3" fill="#ffffff" stroke="#c98a0c" stroke-width="0.8" />
+                <circle cx="65" cy="62" r="3.5" fill="#2fa26e" stroke="#ffffff" stroke-width="1" />
+                <circle cx="88" cy="61" r="3" fill="#ffffff" stroke="#c98a0c" stroke-width="0.8" />
+                <circle cx="110" cy="58" r="3" fill="#ffffff" stroke="#c98a0c" stroke-width="0.8" />
+    
+                <!-- SPECULAR DIAMOND GLINTS (Pinging on the tips) -->
+                <!-- Glint on Center Peak -->
+                <g class="glint glint--1" transform="translate(65, 6)">
+                    <path d="M 0 -8 L 2 -2 L 8 0 L 2 2 L 0 8 L -2 2 L -8 0 L -2 -2 Z" fill="#ffffff" filter="url(#glow-amber)" />
+                </g>
+                <!-- Glint on Left Peak -->
+                <g class="glint glint--2" transform="translate(12, 18)">
+                    <path d="M 0 -6 L 1.5 -1.5 L 6 0 L 1.5 1.5 L 0 6 L -1.5 1.5 L -6 0 L -1.5 -1.5 Z" fill="#ffffff" />
+                </g>
+                <!-- Glint on Right Peak -->
+                <g class="glint glint--3" transform="translate(118, 18)">
+                    <path d="M 0 -6 L 1.5 -1.5 L 6 0 L 1.5 1.5 L 0 6 L -1.5 1.5 L -6 0 L -1.5 -1.5 Z" fill="#ffffff" />
+                </g>
+            </g>
+    
+            <!-- FLOATING ROYAL GOLDEN DUST MOTES -->
+            <g class="guru__dust">
+                <circle class="dust dust--1" cx="170" cy="110" r="2.5" fill="#f5c842" filter="url(#glow-amber)" />
+                <circle class="dust dust--2" cx="250" cy="105" r="3" fill="#ffd166" filter="url(#glow-amber)" />
+                <circle class="dust dust--3" cx="210" cy="115" r="2" fill="#ffffff" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 12. CONFUSED: Animated floating question marks '?' -->
+    <div class="cosmo-prop cosmo-prop--confused" aria-label="Анимированные вопросительные знаки и капелька смущения">
+        <svg class="cosmo-svg cosmo-svg--confused" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- ANIME CYAN SWEAT DROPLET (Sliding Down Temple: 235, 175) -->
+            <g class="confused__sweat" transform="translate(240, 168)">
+                <!-- Tear-Shaped Droplet -->
+                <path class="sweat__drop" d="M 0 -16 C -6 -7, -10 -2, -10 6 C -10 12, -5 17, 0 17 C 5 17, 10 12, 10 6 C 10 -2, 6 -7, 0 -16 Z" fill="#00f0ff" stroke="#ffffff" stroke-width="1.8" filter="url(#glow-cyan)" />
+                <!-- Curved Specular White Glint -->
+                <path d="M -4 2 C -7 6, -6 11, -3 13" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none" />
+            </g>
+    
+            <!-- SATELLITE QUESTION MARKS (Orbiting at angles) -->
+            <!-- Small Question Mark (Left Upper: 135, 125) -->
+            <g class="qmark qmark--small" transform="translate(135, 125) rotate(-18)">
+                <path d="M 0 6 C 0 0, 7 -4, 12 0 C 16 3, 13 8, 9 11 L 9 16" stroke="#00f5d4" stroke-width="3" stroke-linecap="round" fill="none" filter="url(#glow-cyan)" />
+                <circle cx="9" cy="22" r="2.2" fill="#00f5d4" />
+            </g>
+    
+            <!-- Inverted Coral Question Mark (Far Right: 345, 160) -->
+            <g class="qmark qmark--coral" transform="translate(345, 160) rotate(22)">
+                <path d="M 0 6 C 0 0, 6 -4, 10 0 C 14 3, 11 8, 8 11 L 8 15" stroke="#f7a8b8" stroke-width="2.8" stroke-linecap="round" fill="none" />
+                <circle cx="8" cy="20" r="2" fill="#f7a8b8" />
+            </g>
+    
+            <!-- THOUGHT ELLIPSIS CLOUD (Pulsing Three Dots) -->
+            <g class="confused__ellipsis" transform="translate(200, 105)">
+                <rect x="-18" y="-9" width="36" height="18" rx="9" fill="#141a18" fill-opacity="0.8" stroke="#2fa26e" stroke-width="1.2" />
+                <circle class="dot dot--1" cx="-8" cy="0" r="2" fill="#FAF6EE" />
+                <circle class="dot dot--2" cx="0" cy="0" r="2" fill="#FAF6EE" />
+                <circle class="dot dot--3" cx="8" cy="0" r="2" fill="#FAF6EE" />
+            </g>
+    
+            <!-- HERO GIANT QUESTION MARK (Bouncy & Expressive: 275, 115) -->
+            <g class="qmark qmark--hero" transform="translate(270, 95)">
+                <!-- Drop Shadow Silhouette -->
+                <path d="M 4 18 C 4 7, 16 0, 26 0 C 38 0, 48 8, 48 20 C 48 30, 36 36, 28 44 L 28 54" stroke="#d48806" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.4" />
+                <circle cx="28" cy="68" r="6" fill="#d48806" opacity="0.4" />
+    
+                <!-- Main Amber Question Mark Hook -->
+                <path class="hero-hook" d="M 2 16 C 2 5, 14 -2, 24 -2 C 36 -2, 46 6, 46 18 C 46 28, 34 34, 26 42 L 26 50" stroke="#f5c842" stroke-width="9" stroke-linecap="round" fill="none" filter="url(#glow-amber)" />
+                <!-- Inner High-Contrast Core -->
+                <path d="M 2 16 C 2 5, 14 -2, 24 -2 C 36 -2, 46 6, 46 18 C 46 28, 34 34, 26 42 L 26 50" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" />
+    
+                <!-- Question Mark Bottom Dot -->
+                <circle class="hero-dot" cx="26" cy="64" r="5" fill="#f5c842" stroke="#ffffff" stroke-width="1.8" filter="url(#glow-amber)" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 13. WORKOUT: Power dumbbells/energy bolts -->
+    <div class="cosmo-prop cosmo-prop--workout" aria-label="Кибер-гантели, электрические молнии и силовое поле">
+        <svg class="cosmo-svg cosmo-svg--workout" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- GROUND POWER LEVEL EXPANSION RING (Floor Shockwave) -->
+            <g class="workout__shockwave" transform="translate(210, 360)">
+                <ellipse class="shockwave__ring" cx="0" cy="0" rx="145" ry="32" stroke="#00f0ff" stroke-width="2.5" stroke-dasharray="12 6" fill="none" opacity="0.6" filter="url(#glow-cyan)" />
+                <ellipse cx="0" cy="0" rx="110" ry="24" stroke="#f5c842" stroke-width="1.8" fill="none" opacity="0.5" />
+            </g>
+    
+            <!-- CRACKLING ELECTRIC LIGHTNING ENERGY BOLTS -->
+            <g class="workout__lightning">
+                <!-- Bolt 1 (Left Side Discharge) -->
+                <path class="bolt bolt--1" d="M 125 240 L 105 270 L 125 285 L 95 325" stroke="#f5c842" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow-amber)" />
+                <path d="M 125 240 L 105 270 L 125 285 L 95 325" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+                <!-- Bolt 2 (Right Side Discharge) -->
+                <path class="bolt bolt--2" d="M 295 240 L 315 270 L 295 285 L 325 325" stroke="#00f0ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow-cyan)" />
+                <path d="M 295 240 L 315 270 L 295 285 L 325 325" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+                <!-- Bolt 3 (Chest Arcing Bolt) -->
+                <path class="bolt bolt--3" d="M 160 305 L 185 295 L 205 315 L 245 295 L 260 310" stroke="#00f5d4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.75" />
+            </g>
+    
+            <!-- LEFT POWER CYBER-DUMBBELL (50..130, 240..315) -->
+            <g class="workout__dumbbell dumbbell--left" transform="translate(90, 275)">
+                <!-- Knurled Titanium Grip Bar -->
+                <rect x="-18" y="-4.5" width="36" height="9" rx="2" fill="#4a5550" stroke="#FAF6EE" stroke-width="1.2" />
+                <line x1="-10" y1="-4.5" x2="-10" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+                <line x1="0" y1="-4.5" x2="0" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+                <line x1="10" y1="-4.5" x2="10" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+    
+                <!-- Left Hexagonal Weight Plate Stack -->
+                <g transform="translate(-24, 0)">
+                    <!-- Outer Plate 1 -->
+                    <polygon points="-8,-28 8,-28 16,0 8,28 -8,28 -16,0" fill="#262b29" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-cyan)" />
+                    <polygon points="-5,-22 5,-22 11,0 5,22 -5,22 -11,0" fill="#142621" stroke="#2fa26e" stroke-width="1.5" />
+                    <circle cx="0" cy="0" r="4.5" fill="#f5c842" />
+                    <text x="0" y="2.5" font-family="'Unbounded', sans-serif" font-size="5" font-weight="bold" fill="#262b29" text-anchor="middle">50</text>
+                </g>
+    
+                <!-- Right Hexagonal Weight Plate Stack -->
+                <g transform="translate(24, 0)">
+                    <!-- Outer Plate 2 -->
+                    <polygon points="-8,-28 8,-28 16,0 8,28 -8,28 -16,0" fill="#262b29" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-cyan)" />
+                    <polygon points="-5,-22 5,-22 11,0 5,22 -5,22 -11,0" fill="#142621" stroke="#2fa26e" stroke-width="1.5" />
+                    <circle cx="0" cy="0" r="4.5" fill="#f5c842" />
+                    <text x="0" y="2.5" font-family="'Unbounded', sans-serif" font-size="5" font-weight="bold" fill="#262b29" text-anchor="middle">50</text>
+                </g>
+            </g>
+    
+            <!-- RIGHT POWER CYBER-DUMBBELL (290..370, 240..315) -->
+            <g class="workout__dumbbell dumbbell--right" transform="translate(330, 275)">
+                <!-- Knurled Titanium Grip Bar -->
+                <rect x="-18" y="-4.5" width="36" height="9" rx="2" fill="#4a5550" stroke="#FAF6EE" stroke-width="1.2" />
+                <line x1="-10" y1="-4.5" x2="-10" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+                <line x1="0" y1="-4.5" x2="0" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+                <line x1="10" y1="-4.5" x2="10" y2="4.5" stroke="#FAF6EE" stroke-width="1" />
+    
+                <!-- Left Hexagonal Weight Plate Stack -->
+                <g transform="translate(-24, 0)">
+                    <polygon points="-8,-28 8,-28 16,0 8,28 -8,28 -16,0" fill="#262b29" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-cyan)" />
+                    <polygon points="-5,-22 5,-22 11,0 5,22 -5,22 -11,0" fill="#142621" stroke="#2fa26e" stroke-width="1.5" />
+                    <circle cx="0" cy="0" r="4.5" fill="#f5c842" />
+                    <text x="0" y="2.5" font-family="'Unbounded', sans-serif" font-size="5" font-weight="bold" fill="#262b29" text-anchor="middle">50</text>
+                </g>
+    
+                <!-- Right Hexagonal Weight Plate Stack -->
+                <g transform="translate(24, 0)">
+                    <polygon points="-8,-28 8,-28 16,0 8,28 -8,28 -16,0" fill="#262b29" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-cyan)" />
+                    <polygon points="-5,-22 5,-22 11,0 5,22 -5,22 -11,0" fill="#142621" stroke="#2fa26e" stroke-width="1.5" />
+                    <circle cx="0" cy="0" r="4.5" fill="#f5c842" />
+                    <text x="0" y="2.5" font-family="'Unbounded', sans-serif" font-size="5" font-weight="bold" fill="#262b29" text-anchor="middle">50</text>
+                </g>
+            </g>
+    
+            <!-- COMIC DETERMINATION SWEAT DROPS -->
+            <g class="workout__sweat">
+                <path class="sweat-flick f--1" d="M 120 180 Q 95 160, 80 170 Q 95 185, 120 180 Z" fill="#00f0ff" stroke="#ffffff" stroke-width="1" />
+                <path class="sweat-flick f--2" d="M 300 180 Q 325 160, 340 170 Q 325 185, 300 180 Z" fill="#00f0ff" stroke="#ffffff" stroke-width="1" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 14. JET_BOOST: Twin exhaust thruster flames and speed trails -->
+    <div class="cosmo-prop cosmo-prop--jet_boost" aria-label="Двойное пламя реактивных сопел и скоростные полосы">
+        <svg class="cosmo-svg cosmo-svg--jet_boost" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- SUPERSONIC HORIZONTAL SPEED TRAILS & SLIPSTREAM LINES -->
+            <g class="jet__speed-streaks">
+                <!-- Streak 1 (Top Upper Left) -->
+                <line class="streak streak--1" x1="-30" y1="90" x2="160" y2="90" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" opacity="0.8" />
+                <!-- Streak 2 (Mid Left) -->
+                <line class="streak streak--2" x1="20" y1="180" x2="210" y2="180" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.9" filter="url(#glow-cyan)" />
+                <!-- Streak 3 (Lower Left) -->
+                <line class="streak streak--3" x1="-50" y1="270" x2="130" y2="270" stroke="#f5c842" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+                <!-- Streak 4 (Top Upper Right) -->
+                <line class="streak streak--4" x1="260" y1="110" x2="450" y2="110" stroke="#2fa26e" stroke-width="2.2" stroke-linecap="round" opacity="0.75" />
+                <!-- Streak 5 (Mid Right) -->
+                <line class="streak streak--5" x1="220" y1="210" x2="440" y2="210" stroke="#00f0ff" stroke-width="3.5" stroke-linecap="round" opacity="0.85" filter="url(#glow-cyan)" />
+                <!-- Streak 6 (Lower Right) -->
+                <line class="streak streak--6" x1="290" y1="310" x2="460" y2="310" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+            </g>
+    
+            <!-- TWIN TITANIUM EXHAUST NOZZLES -->
+            <g class="jet__nozzles" transform="translate(0, 315)">
+                <!-- Left Exhaust Nozzle Cone -->
+                <polygon points="152,0 188,0 196,18 144,18" fill="url(#grad-jet-nozzle)" stroke="#262b29" stroke-width="2" />
+                <ellipse cx="170" cy="18" rx="26" ry="6" fill="#141a18" stroke="#00f0ff" stroke-width="1.8" />
+    
+                <!-- Right Exhaust Nozzle Cone -->
+                <polygon points="232,0 268,0 276,18 224,18" fill="url(#grad-jet-nozzle)" stroke="#262b29" stroke-width="2" />
+                <ellipse cx="250" cy="18" rx="26" ry="6" fill="#141a18" stroke="#00f0ff" stroke-width="1.8" />
+            </g>
+    
+            <!-- MULTI-LAYERED PLASMA FLAME PLUMES -->
+            <!-- LEFT THRUSTER FLAME -->
+            <g class="jet__flame flame--left" transform="translate(170, 330)">
+                <!-- Outer Fiery Orange Flame -->
+                <path class="flame__outer" d="M -24 0 C -28 35, -15 70, 0 102 C 15 70, 28 35, 24 0 Z" fill="url(#grad-jet-core)" filter="url(#glow-amber)" />
+    
+                <!-- Middle Electric Cyan Plasma Sheath -->
+                <path class="flame__mid" d="M -16 0 C -20 28, -10 55, 0 80 C 10 55, 20 28, 16 0 Z" fill="#00f0ff" opacity="0.85" filter="url(#glow-cyan)" />
+    
+                <!-- Inner White-Hot Supersonic Core -->
+                <path class="flame__core" d="M -9 0 C -12 20, -5 38, 0 52 C 5 38, 12 20, 9 0 Z" fill="#ffffff" />
+    
+                <!-- Supersonic Shock Diamonds (Mach Discs) -->
+                <polygon class="mach-disc disc--1" points="0,22 5,28 0,34 -5,28" fill="#ffffff" filter="url(#glow-cyan)" />
+                <polygon class="mach-disc disc--2" points="0,48 4,53 0,58 -4,53" fill="#ffffff" />
+                <polygon class="mach-disc disc--3" points="0,70 3,74 0,78 -3,74" fill="#f5c842" />
+            </g>
+    
+            <!-- RIGHT THRUSTER FLAME -->
+            <g class="jet__flame flame--right" transform="translate(250, 330)">
+                <!-- Outer Fiery Orange Flame -->
+                <path class="flame__outer" d="M -24 0 C -28 35, -15 70, 0 102 C 15 70, 28 35, 24 0 Z" fill="url(#grad-jet-core)" filter="url(#glow-amber)" />
+    
+                <!-- Middle Electric Cyan Plasma Sheath -->
+                <path class="flame__mid" d="M -16 0 C -20 28, -10 55, 0 80 C 10 55, 20 28, 16 0 Z" fill="#00f0ff" opacity="0.85" filter="url(#glow-cyan)" />
+    
+                <!-- Inner White-Hot Supersonic Core -->
+                <path class="flame__core" d="M -9 0 C -12 20, -5 38, 0 52 C 5 38, 12 20, 9 0 Z" fill="#ffffff" />
+    
+                <!-- Supersonic Shock Diamonds (Mach Discs) -->
+                <polygon class="mach-disc disc--1" points="0,22 5,28 0,34 -5,28" fill="#ffffff" filter="url(#glow-cyan)" />
+                <polygon class="mach-disc disc--2" points="0,48 4,53 0,58 -4,53" fill="#ffffff" />
+                <polygon class="mach-disc disc--3" points="0,70 3,74 0,78 -3,74" fill="#f5c842" />
+            </g>
+    
+            <!-- SUPERSONIC PRESSURE SHOCKWAVE EXPANSION RINGS -->
+            <g class="jet__shock-rings" transform="translate(210, 375)">
+                <ellipse class="shock-ring ring--1" cx="0" cy="0" rx="60" ry="12" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.75" />
+                <ellipse class="shock-ring ring--2" cx="0" cy="22" rx="90" ry="16" stroke="#00f0ff" stroke-width="1.5" fill="none" opacity="0.5" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 15. YAWN: Soft sleepy bubble -->
+    <div class="cosmo-prop cosmo-prop--yawn" aria-label="Переливающийся сонный пузырь дыхания">
+        <svg class="cosmo-svg cosmo-svg--yawn" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- DROWSY EYE-DROOP SHADOW OVERLAY (Soft Vignette) -->
+            <ellipse cx="210" cy="205" rx="95" ry="45" fill="#262b29" fill-opacity="0.18" />
+    
+            <!-- IRIDESCENT TRANSLUCENT SLEEPY BUBBLE MAIN ASSEMBLY -->
+            <g class="yawn__bubble-assembly" transform="translate(250, 220)">
+                <!-- Outer Soap-Bubble Fringe Glow -->
+                <circle class="bubble__outer-glow" cx="0" cy="0" r="48" fill="#00f0ff" opacity="0.25" filter="url(#glow-cyan)" />
+    
+                <!-- Main Iridescent Pearlescent Bubble Sphere -->
+                <circle class="bubble__sphere" cx="0" cy="0" r="44" fill="url(#grad-yawn-bubble)" stroke="#ffffff" stroke-width="2.2" stroke-opacity="0.9" />
+    
+                <!-- Thin-Film Rainbow Interference Sheen Arcs -->
+                <!-- Pink / Coral Refraction Rim -->
+                <path d="M -32 20 C -22 38, 15 42, 34 26" stroke="#f7a8b8" stroke-width="3" stroke-linecap="round" opacity="0.75" fill="none" />
+                <!-- Cyan / Mint Refraction Rim -->
+                <path d="M -38 -10 C -42 18, -25 36, -6 40" stroke="#00f0ff" stroke-width="2.5" stroke-linecap="round" opacity="0.8" fill="none" />
+                <!-- Soft Amber Highlight -->
+                <path d="M 12 -38 C 28 -30, 38 -12, 38 12" stroke="#f5c842" stroke-width="2.5" stroke-linecap="round" opacity="0.65" fill="none" />
+    
+                <!-- Curved Specular White Window Reflection -->
+                <path class="bubble__glint" d="M -26 -26 C -14 -38, 8 -38, 22 -26 C 24 -24, 20 -22, 16 -24 C 6 -32, -10 -32, -20 -24 C -24 -22, -28 -24, -26 -26 Z" fill="#ffffff" opacity="0.92" />
+                <circle cx="28" cy="-16" r="3" fill="#ffffff" opacity="0.85" />
+    
+                <!-- Bubble Connection Stem (Originating from mouth) -->
+                <path d="M -42 8 Q -30 4, -24 0" stroke="#ffffff" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6" />
+            </g>
+    
+            <!-- DREAMY SLEEP CLOUD PUFFS -->
+            <g class="yawn__clouds">
+                <ellipse class="cloud cloud--1" cx="330" cy="180" rx="16" ry="10" fill="#FAF6EE" opacity="0.7" />
+                <circle cx="342" cy="176" r="8" fill="#FAF6EE" opacity="0.7" />
+                <ellipse class="cloud cloud--2" cx="365" cy="165" rx="11" ry="7" fill="#DDEEE2" opacity="0.6" />
+            </g>
+        </svg>
+    </div>
+
+    <!-- 16. WANDER: Directional compass/footstep trail sparkles -->
+    <div class="cosmo-prop cosmo-prop--wander" aria-label="Голографический компас на полу и светящиеся следы шагов">
+        <svg class="cosmo-svg cosmo-svg--wander" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- 3D PERSPECTIVE HOLOGRAPHIC COMPASS FLOOR DIAL -->
+            <g class="wander__dial" transform="translate(210, 360)">
+                <!-- Outer Brass Ring Ground Projection -->
+                <ellipse cx="0" cy="0" rx="135" ry="42" fill="url(#grad-compass-dial)" stroke="url(#grad-brass-light)" stroke-width="3" filter="url(#shadow-emerald)" />
+                <ellipse cx="0" cy="0" rx="124" ry="38" stroke="#00f0ff" stroke-width="1.2" stroke-dasharray="4 3" fill="none" />
+    
+                <!-- Degree Compass Ticks (360° Ring) -->
+                <g class="dial__ticks" stroke="#f5c842" stroke-width="1.5" stroke-linecap="round">
+                    <!-- North / South Major Ticks -->
+                    <line x1="0" y1="-42" x2="0" y2="-32" />
+                    <line x1="0" y1="42" x2="0" y2="32" />
+                    <!-- East / West Major Ticks -->
+                    <line x1="-135" y1="0" x2="-120" y2="0" />
+                    <line x1="135" y1="0" x2="120" y2="0" />
+                    <!-- Diagonal Ticks -->
+                    <line x1="-95" y1="-28" x2="-86" y2="-25" />
+                    <line x1="95" y1="-28" x2="86" y2="-25" />
+                    <line x1="-95" y1="28" x2="-86" y2="25" />
+                    <line x1="95" y1="28" x2="86" y2="25" />
+                </g>
+    
+                <!-- CARDINAL DIRECTION MARKERS -->
+                <!-- North (N) with Library Icon -->
+                <g transform="translate(0, -28)">
+                    <polygon points="0,-12 4,0 -4,0" fill="#00f0ff" filter="url(#glow-cyan)" />
+                    <text x="0" y="8" font-family="'Unbounded', sans-serif" font-size="9" font-weight="900" fill="#00f0ff" text-anchor="middle">N</text>
+                </g>
+                <!-- South (S) -->
+                <text x="0" y="32" font-family="'Unbounded', sans-serif" font-size="8" font-weight="bold" fill="#f5c842" text-anchor="middle">S</text>
+                <!-- East (E) -->
+                <text x="108" y="3" font-family="'Unbounded', sans-serif" font-size="8" font-weight="bold" fill="#2fa26e" text-anchor="middle">E</text>
+                <!-- West (W) -->
+                <text x="-108" y="3" font-family="'Unbounded', sans-serif" font-size="8" font-weight="bold" fill="#2fa26e" text-anchor="middle">W</text>
+    
+                <!-- ROTATING MAGNETIC COMPASS NEEDLE -->
+                <g class="wander__needle">
+                    <!-- North Needle Spear (Ruby Red) -->
+                    <polygon points="0,0 -8,-3 0,-34 8,-3" fill="url(#grad-gem-ruby)" stroke="#ffffff" stroke-width="1.2" filter="url(#glow-red)" />
+                    <!-- South Needle Spear (Dark Titanium) -->
+                    <polygon points="0,0 -8,3 0,34 8,3" fill="#262b29" stroke="#00f0ff" stroke-width="1.2" />
+                    <!-- Center Pivot Gem -->
+                    <circle cx="0" cy="0" r="6" fill="url(#grad-crown-gold)" stroke="#804e00" stroke-width="1.5" />
+                    <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+                </g>
+    
+                <!-- Real-World Library Hub GPS Coordinates Readout (Vladimir) -->
+                <rect x="-56" y="-7" width="112" height="14" rx="3" fill="#142621" fill-opacity="0.85" stroke="#2fa26e" stroke-width="0.8" />
+                <text x="0" y="3" font-family="'Courier New', monospace" font-size="7" font-weight="bold" fill="#B9DCC7" text-anchor="middle" letter-spacing="0.5">56.13°N · 40.40°E</text>
+            </g>
+    
+            <!-- SEQUENTIAL GLOWING WAYPOINT FOOTSTEP PADS (Exploration Trail) -->
+            <g class="wander__footsteps">
+                <!-- Footstep 1 (Start Left Rear) -->
+                <g class="footstep step--1" transform="translate(110, 340)">
+                    <ellipse cx="0" cy="0" rx="14" ry="7" fill="#2fa26e" fill-opacity="0.3" stroke="#00f0ff" stroke-width="1.5" filter="url(#glow-cyan)" />
+                    <circle cx="-4" cy="-1" r="2" fill="#ffffff" />
+                    <circle cx="4" cy="-1" r="2" fill="#ffffff" />
+                </g>
+                <!-- Footstep 2 (Mid Left) -->
+                <g class="footstep step--2" transform="translate(150, 365)">
+                    <ellipse cx="0" cy="0" rx="16" ry="8" fill="#2fa26e" fill-opacity="0.4" stroke="#00f0ff" stroke-width="1.5" filter="url(#glow-cyan)" />
+                    <circle cx="-5" cy="-1" r="2" fill="#ffffff" />
+                    <circle cx="5" cy="-1" r="2" fill="#ffffff" />
+                </g>
+                <!-- Footstep 3 (Mid Right) -->
+                <g class="footstep step--3" transform="translate(265, 365)">
+                    <ellipse cx="0" cy="0" rx="16" ry="8" fill="#2fa26e" fill-opacity="0.4" stroke="#f5c842" stroke-width="1.5" filter="url(#glow-amber)" />
+                    <circle cx="-5" cy="-1" r="2" fill="#ffffff" />
+                    <circle cx="5" cy="-1" r="2" fill="#ffffff" />
+                </g>
+                <!-- Footstep 4 (Forward Right) -->
+                <g class="footstep step--4" transform="translate(310, 340)">
+                    <ellipse cx="0" cy="0" rx="14" ry="7" fill="#2fa26e" fill-opacity="0.3" stroke="#f5c842" stroke-width="1.5" filter="url(#glow-amber)" />
+                    <circle cx="-4" cy="-1" r="2" fill="#ffffff" />
+                    <circle cx="4" cy="-1" r="2" fill="#ffffff" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <!-- 17. FLIP: Orbital aerodynamic speed ring -->
+    <div class="cosmo-prop cosmo-prop--flip" aria-label="Орбитальное аэродинамическое кольцо скорости">
+        <svg class="cosmo-svg cosmo-svg--flip" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- SONIC BOOM RADIAL SHOCKWAVE DISC (Apex Expansion) -->
+            <g class="flip__shockwave" transform="translate(210, 200)">
+                <circle class="flip__sonic-ring" cx="0" cy="0" r="160" stroke="#ffffff" stroke-width="3" stroke-dasharray="14 10" fill="none" opacity="0.6" filter="url(#glow-cyan)" />
+            </g>
+    
+            <!-- 3D OBLIQUE ORBITAL SPEED TORUS (Angled at -28°) -->
+            <g class="flip__torus" transform="translate(210, 205) rotate(-28)">
+                <!-- REAR SLIPSTREAM ARC (Passes behind Cosmo's back) -->
+                <g class="torus__rear">
+                    <ellipse cx="0" cy="0" rx="180" ry="60" stroke="#2fa26e" stroke-width="4" stroke-dasharray="80 180" stroke-linecap="round" fill="none" opacity="0.6" />
+                    <ellipse cx="0" cy="0" rx="175" ry="56" stroke="#00f0ff" stroke-width="2.5" stroke-dasharray="40 140" stroke-linecap="round" fill="none" opacity="0.5" />
+                </g>
+    
+                <!-- FRONT SLIPSTREAM ARC (Passes in front of Cosmo's body) -->
+                <g class="torus__front">
+                    <!-- Dual High-Velocity Neon Ribbons -->
+                    <!-- Cyan Primary Aerodynamic Ribbon -->
+                    <path class="ribbon ribbon--cyan" d="M -180 0 C -180 38, -90 64, 0 64 C 90 64, 180 38, 180 0" stroke="url(#grad-orbital-cyan)" stroke-width="7" stroke-linecap="round" fill="none" filter="url(#glow-cyan)" />
+                    <path d="M -180 0 C -180 38, -90 64, 0 64 C 90 64, 180 38, 180 0" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    
+                    <!-- Gold Secondary High-Speed Slipstream Trail -->
+                    <path class="ribbon ribbon--amber" d="M -150 -12 C -150 24, -75 48, 0 48 C 75 48, 150 24, 150 -12" stroke="#f5c842" stroke-width="4.5" stroke-dasharray="120 60" stroke-linecap="round" fill="none" filter="url(#glow-amber)" />
+    
+                    <!-- Air-Cutter Vortex Swirls -->
+                    <path d="M -160 14 Q -120 40, -80 32" stroke="#00f5d4" stroke-width="2" stroke-linecap="round" fill="none" />
+                    <path d="M 80 32 Q 120 40, 160 14" stroke="#00f5d4" stroke-width="2" stroke-linecap="round" fill="none" />
+                </g>
+    
+                <!-- CENTRIFUGAL MOTION SPARKS & VELOCITY BLUR DEBRIS -->
+                <g class="flip__sparks">
+                    <!-- Spark 1 -->
+                    <circle class="spark-dot d--1" cx="-140" cy="45" r="3.5" fill="#00f0ff" filter="url(#glow-cyan)" />
+                    <!-- Spark 2 -->
+                    <polygon class="spark-star s--1" points="-80,56 -77,61 -72,62 -76,66 -74,71 -80,68 -86,71 -84,66 -88,62 -83,61" fill="#ffffff" />
+                    <!-- Spark 3 -->
+                    <circle class="spark-dot d--2" cx="0" cy="68" r="4" fill="#f5c842" filter="url(#glow-amber)" />
+                    <!-- Spark 4 -->
+                    <polygon class="spark-star s--2" points="80,56 83,61 88,62 84,66 86,71 80,68 74,71 76,66 72,62 77,61" fill="#ffffff" />
+                    <!-- Spark 5 -->
+                    <circle class="spark-dot d--3" cx="140" cy="45" r="3.5" fill="#00f0ff" filter="url(#glow-cyan)" />
+                </g>
+            </g>
+        </svg>
+    </div>
+
+</div>
+
+                    </div>
+
+                    <!-- 3. «ПУЛЬТ КОСМО» (CONTROLLER DOCK) -->
+                    <section class="cosmo-dock" id="cosmoDock" aria-label="Пульт управления анимациями Космо">
+                        <div class="cosmo-dock__header">
+                            <div class="cosmo-dock__brand">
+                                <span class="cosmo-dock__status-led" aria-hidden="true"></span>
+                                <span class="cosmo-dock__title">ПУЛЬТ КОСМО · 17 РЕЖИМОВ</span>
+                                <span class="cosmo-dock__counter" id="dockActiveIndex">1/17</span>
+                            </div>
+                            <label class="cosmo-dock__toggle" title="Включить автоматическую смену анимаций">
+                                <span class="cosmo-dock__toggle-label">Автономная жизнь</span>
+                                <input type="checkbox" id="cosmoAutoToggle" class="cosmo-dock__toggle-input" checked>
+                                <span class="cosmo-dock__toggle-switch" aria-hidden="true">
+                                    <span class="cosmo-dock__toggle-thumb"></span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Табы категорий -->
+                        <nav class="cosmo-dock__tabs" aria-label="Категории анимаций">
+                            <button type="button" class="cosmo-dock__tab is-active" data-cat="all">Все (17)</button>
+                            <button type="button" class="cosmo-dock__tab" data-cat="analytics">📊 Аналитика</button>
+                            <button type="button" class="cosmo-dock__tab" data-cat="charisma">✨ Харизма</button>
+                            <button type="button" class="cosmo-dock__tab" data-cat="stunts">🚀 Трюки</button>
+                            <button type="button" class="cosmo-dock__tab" data-cat="routine">🧃 Быт</button>
+                        </nav>
+
+                        <!-- Карусель 17 чипов -->
+                        <div class="cosmo-dock__track-wrap">
+                            <button type="button" class="cosmo-dock__arrow cosmo-dock__arrow--prev" id="dockArrowPrev" aria-label="Прокрутить назад">‹</button>
+                            <div class="cosmo-dock__track" id="dockTrack" role="region" tabindex="0" aria-label="Список анимаций Космо">
+                                <!-- 1. tablet -->
+                                <button type="button" class="cosmo-chip is-active" data-activity="tablet" data-cat="analytics">
+                                    <span class="cosmo-chip__emoji">📱</span>
+                                    <span class="cosmo-chip__text">Планшет</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 2. vk_study -->
+                                <button type="button" class="cosmo-chip" data-activity="vk_study" data-cat="analytics">
+                                    <span class="cosmo-chip__emoji">🔎</span>
+                                    <span class="cosmo-chip__text">Изучает ВК</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 3. work -->
+                                <button type="button" class="cosmo-chip" data-activity="work" data-cat="analytics">
+                                    <span class="cosmo-chip__emoji">💼</span>
+                                    <span class="cosmo-chip__text">Работает</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 4. read_book -->
+                                <button type="button" class="cosmo-chip" data-activity="read_book" data-cat="analytics">
+                                    <span class="cosmo-chip__emoji">📚</span>
+                                    <span class="cosmo-chip__text">Читает</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 5. telescope -->
+                                <button type="button" class="cosmo-chip" data-activity="telescope" data-cat="analytics">
+                                    <span class="cosmo-chip__emoji">🔭</span>
+                                    <span class="cosmo-chip__text">Телескоп</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 6. joy -->
+                                <button type="button" class="cosmo-chip" data-activity="joy" data-cat="charisma">
+                                    <span class="cosmo-chip__emoji">🎉</span>
+                                    <span class="cosmo-chip__text">Веселится</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 7. angry -->
+                                <button type="button" class="cosmo-chip" data-activity="angry" data-cat="charisma">
+                                    <span class="cosmo-chip__emoji">😡</span>
+                                    <span class="cosmo-chip__text">Злится</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 8. guru -->
+                                <button type="button" class="cosmo-chip" data-activity="guru" data-cat="charisma">
+                                    <span class="cosmo-chip__emoji">👑</span>
+                                    <span class="cosmo-chip__text">SMM-гуру</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 9. confused -->
+                                <button type="button" class="cosmo-chip" data-activity="confused" data-cat="charisma">
+                                    <span class="cosmo-chip__emoji">🤷‍♂️</span>
+                                    <span class="cosmo-chip__text">Недоумение</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 10. workout -->
+                                <button type="button" class="cosmo-chip" data-activity="workout" data-cat="charisma">
+                                    <span class="cosmo-chip__emoji">💪</span>
+                                    <span class="cosmo-chip__text">Разминка</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 11. wander -->
+                                <button type="button" class="cosmo-chip" data-activity="wander" data-cat="stunts">
+                                    <span class="cosmo-chip__emoji">🚶</span>
+                                    <span class="cosmo-chip__text">Бродит</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 12. flip -->
+                                <button type="button" class="cosmo-chip" data-activity="flip" data-cat="stunts">
+                                    <span class="cosmo-chip__emoji">🤸</span>
+                                    <span class="cosmo-chip__text">Сальто 360°</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 13. jet_boost -->
+                                <button type="button" class="cosmo-chip" data-activity="jet_boost" data-cat="stunts">
+                                    <span class="cosmo-chip__emoji">⚡</span>
+                                    <span class="cosmo-chip__text">Турбо-полёт</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 14. cocoa -->
+                                <button type="button" class="cosmo-chip" data-activity="cocoa" data-cat="routine">
+                                    <span class="cosmo-chip__emoji">🧃</span>
+                                    <span class="cosmo-chip__text">Кибер-какао</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 15. antenna -->
+                                <button type="button" class="cosmo-chip" data-activity="antenna" data-cat="routine">
+                                    <span class="cosmo-chip__emoji">📡</span>
+                                    <span class="cosmo-chip__text">Антенна</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 16. yawn -->
+                                <button type="button" class="cosmo-chip" data-activity="yawn" data-cat="routine">
+                                    <span class="cosmo-chip__emoji">🥱</span>
+                                    <span class="cosmo-chip__text">Зевает</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                                <!-- 17. sleep -->
+                                <button type="button" class="cosmo-chip" data-activity="sleep" data-cat="routine">
+                                    <span class="cosmo-chip__emoji">😴</span>
+                                    <span class="cosmo-chip__text">Спит</span>
+                                    <span class="cosmo-chip__bar"></span>
+                                </button>
+                            </div>
+                            <button type="button" class="cosmo-dock__arrow cosmo-dock__arrow--next" id="dockArrowNext" aria-label="Прокрутить вперёд">›</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <a class="hero__scroll-hint" href="#about" aria-label="Листайте вниз">
+                <span></span>
+            </a>
+        </section>
+
+        <!-- ЗНАКОМСТВО -->
+        <section class="section about" id="about">
+            <div class="about__page about__page--left" data-scroll-speed="0.12" aria-hidden="true"></div>
+            <div class="about__page about__page--right" data-scroll-speed="-0.12" aria-hidden="true"></div>
+            <div class="container">
+                <p class="section__eyebrow reveal">Знакомство</p>
+                <h2 class="section__title reveal" style="--i:1">Робот, который <span class="marker">прописался</span> в библиотеках</h2>
+                <p class="section__lead reveal" style="--i:2">
+                    Космо — маскот сервиса AURORA. Он читает посты ВКонтакте 16 филиалов библиотек
+                    Владимира, чтобы библиотекари меньше сидели в отчётах и больше — в книгах.
+                </p>
+                <div class="about__grid">
+                    <article class="about__card reveal" style="--i:0">
+                        <h3>Где живёт</h3>
+                        <p>Внутри AURORA — инструмента, который разбирает посты ВКонтакте по всем филиалам
+                        городской сети. Космо патрулирует экран, ходит по графикам и заглядывает вам через плечо.</p>
+                    </article>
+                    <article class="about__card reveal" style="--i:1">
+                        <h3>Что делает</h3>
+                        <p>Комментирует статистику филиалов человеческим языком, подсказывает идеи для постов
+                        и честно зевает, если отчёт скучный. Он это не скрывает.</p>
+                    </article>
+                    <article class="about__card reveal" style="--i:2">
+                        <h3>С кем дружит</h3>
+                        <p>С библиотекарями Владимира. Все его фразы — про их будни: закрытые смены,
+                        лучшие посты месяца и читатели, которые снова спросили про Wi-Fi.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ЭМОЦИИ -->
+        <section class="section moods" id="moods">
+            <div class="container">
+                <p class="section__eyebrow reveal">Эмоции</p>
+                <h2 class="section__title reveal" style="--i:1">Семь настроений <span class="marker">одного робота</span></h2>
+                <p class="section__lead reveal" style="--i:2">
+                    У Космо семь лиц — как у человека неделю без отпуска, только красивее.
+                    Каждое нарисовано спрайтом и включается по делу.
+                </p>
+                <div class="moods__grid">
+                    <figure class="mood reveal" style="--i:0">
+                        <img src="../assets/images/mascot/robot_idle.png" alt="Космо спокоен" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Спокойствие</strong>
+                            <span>Жёлтые глазки горят ровно. В библиотеке тихо, отчёты сошлись, все живы.</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:1">
+                        <img src="../assets/images/mascot/robot_smile.png" alt="Космо радуется" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Радость</strong>
+                            <span>Ваш пост собрал лайков больше, чем на прошлогодней ёлке. Так держать!</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:2">
+                        <img src="../assets/images/mascot/robot_thinking.png" alt="Космо размышляет" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Раздумья</strong>
+                            <span>Считает охваты. Или вспоминает, куда положил отвёртку. Никто не рискнул спросить.</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:3">
+                        <img src="../assets/images/mascot/robot_yawn.png" alt="Космо зевает" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Зевота</strong>
+                            <span>Пятница, вечер, отчёт за квартал. Зевает честно — он вообще не умеет вежливо.</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:4">
+                        <img src="../assets/images/mascot/robot_tired.png" alt="Космо устал" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Усталость</strong>
+                            <span>Шестнадцать филиалов, конец месяца. Он бы и рад притвориться бодрым, но батарейка видна на визоре.</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:5">
+                        <img src="../assets/images/mascot/robot_sleep.png" alt="Космо спит" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Сон</strong>
+                            <span>Кто-то наконец закрыл вкладку с аналитикой. Спит стоя, как детская игрушка. Не будить.</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="mood reveal" style="--i:6">
+                        <img src="../assets/images/mascot/robot_angry.png" alt="Космо недоволен" loading="lazy" width="160" height="160">
+                        <figcaption>
+                            <strong>Недовольство</strong>
+                            <span>Оранжевые сердитые глаза. Так он смотрит на посты, опубликованные в 3 часа ночи.</span>
+                        </figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- УМЕНИЯ -->
+        <section class="section skills" id="skills">
+            <div class="container">
+                <p class="section__eyebrow reveal">Умения</p>
+                <h2 class="section__title reveal" style="--i:1">Что Космо умеет, <span class="marker">кроме обаяния</span></h2>
+                <p class="section__lead reveal" style="--i:2">
+                    Он не просто сидит в углу экрана и мил. Хотя и это тоже.
+                </p>
+                <div class="skills__grid">
+                    <article class="skill reveal" style="--i:0">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>
+                        </span>
+                        <h3>Комментирует статистику филиалов</h3>
+                        <p>Шестнадцать библиотек, десятки показателей — и всё это Космо пересказывает
+                        по-человечески: кто вырос, кто вздремнул, кого поздравить.</p>
+                    </article>
+                    <article class="skill reveal" style="--i:1">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg>
+                        </span>
+                        <h3>Разбирает посты ВКонтакте</h3>
+                        <p>AURORA читает ленту каждого филиала и раскладывает по полочкам: охваты, репосты,
+                        лучшие публикации. Космо — лицо этого разгрома.</p>
+                    </article>
+                    <article class="skill reveal" style="--i:2">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V19h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 3Z"/><path d="M10 21.5h4"/></svg>
+                        </span>
+                        <h3>Даёт советы по SMM</h3>
+                        <p>Когда публиковать, что продублировать в сторис и почему картинка с книгой зашла,
+                        а длинная цитата — нет. Бестактных вопросов не боится.</p>
+                    </article>
+                    <article class="skill reveal" style="--i:3">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+                        </span>
+                        <h3>Говорит вслух</h3>
+                        <p>Голос «Бэла» от ElevenLabs: 61 записанная фраза с той самой интонацией,
+                        будто он действительно устал в конце смены.</p>
+                    </article>
+                    <article class="skill reveal" style="--i:4">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 15c1.5-2 3-2 5 0s3.5 2 5 0"/></svg>
+                        </span>
+                        <h3>Ходит по экрану</h3>
+                        <p>Патрулирует интерфейс AURORA: обходит графики, заглядывает в таблицы,
+                        садится на панель, если она тёплая.</p>
+                    </article>
+                    <article class="skill reveal" style="--i:5">
+                        <span class="skill__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-8 4 16 3-8h6"/></svg>
+                        </span>
+                        <h3>Терпит, когда его швыряют</h3>
+                        <p>Схватите мышью и запустите — он честно закричит «Уи-и-и!», приземлится
+                        по законам физики и вернётся к работе. Профессионал.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ПОД КАПОТОМ -->
+        <section class="section inside" id="inside">
+            <div class="inside__wrap">
+                <div class="inside__head">
+                    <p class="section__eyebrow section__eyebrow--dark reveal">Под капотом</p>
+                    <h2 class="section__title section__title--dark reveal" style="--i:1">Паспорт робота</h2>
+                    <p class="section__lead section__lead--dark reveal" style="--i:2">
+                        Без магии. Вот из чего Космо собран на самом деле.
+                    </p>
+                </div>
+                <div class="passport reveal" style="--i:3">
+                    <div class="passport__stamp" aria-hidden="true">Проведено по вскрытию<br>и зашито обратно</div>
+                    <dl class="passport__rows">
+                        <div class="passport__row">
+                            <dt>Мозг</dt>
+                            <dd>ИИ Mistral. Отвечает за аналитику и генерацию текстов. Когда Космо комментирует
+                            охваты филиала №4 — это не импровизация, это модель.</dd>
+                        </div>
+                        <div class="passport__row">
+                            <dt>Голос</dt>
+                            <dd>ElevenLabs, голос «Бэла». 61 фраза в записи. Говорит тепло, слегка с хитринкой —
+                            так задумано.</dd>
+                        </div>
+                        <div class="passport__row">
+                            <dt>Мускулы</dt>
+                            <dd>Физический движок перетаскивания: схватили — тащится, отпустили — летит по параболе,
+                            падает — слегка спружинит. «Уи-и-и!» — тоже часть физики.</dd>
+                        </div>
+                        <div class="passport__row">
+                            <dt>Смена</dt>
+                            <dd>Патрулирование экрана: ходит по интерфейсу AURORA по маршруту, останавливается
+                            у графиков, меняет эмоции по событиям. Сон — если вы ушли пить чай дольше пяти минут.</dd>
+                        </div>
+                    </dl>
+                    <p class="passport__footnote">Собран из 7 эмоций и одной круглой головы.
+                    Гарантия — до первой сессии массового зева.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- СПРОСИ КОСМО (живой чат с ИИ) -->
+        <section class="section ask" id="ask">
+            <div class="container">
+                <p class="section__eyebrow reveal">ИИ-разговор</p>
+                <h2 class="section__title reveal" style="--i:1">Спросите Космо <span class="marker">о чём угодно</span></h2>
+                <p class="section__lead reveal" style="--i:2">
+                    Он подключён к той же модели, что работает в AURORA. Спросите про SMM,
+                    библиотечные паблики или попросите идею поста — ответит по делу, без канцелярита.
+                </p>
+
+                <div class="ask__layout reveal" style="--i:3">
+                    <div class="ask__chat" id="askChat">
+                        <div class="ask__log" id="askLog" role="log" aria-live="polite" aria-label="Переписка с Космо">
+                            <div class="chat-msg chat-msg--bot">
+                                <img class="chat-msg__avatar" src="../assets/images/mascot/robot_smile.png" alt="" width="40" height="40">
+                                <div class="chat-msg__bubble">
+                                    Привет! Я Космо. Спрашивайте про посты, охваты или идеи для библиотечного
+                                    паблика — что-нибудь да придумаем. Только не про погоду: за окном я не был с 2024 года.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ask__chips" id="askChips">
+                            <button type="button" class="ask__chip" data-q="Придумай идею поста для библиотеки на эту неделю.">💡 Идея поста на неделю</button>
+                            <button type="button" class="ask__chip" data-q="Почему посты библиотек не набирают просмотры? Назови три частые причины.">📉 Почему нет просмотров</button>
+                            <button type="button" class="ask__chip" data-q="Как оживить комментарии под постами библиотечного паблика?">💬 Оживить комментарии</button>
+                            <button type="button" class="ask__chip" data-q="Что важнее для охватов: время публикации или картинка?">⏰ Время или картинка</button>
+                        </div>
+
+                        <form class="ask__form" id="askForm" autocomplete="off">
+                            <label class="visually-hidden" for="askInput">Ваш вопрос Космо</label>
+                            <input class="ask__input" id="askInput" type="text" maxlength="300"
+                                   placeholder="Спросите что-нибудь у Космо…" required>
+                            <button class="btn btn--primary ask__send" id="askSend" type="submit">Спросить</button>
+                        </form>
+                        <p class="ask__hint" id="askHint">Отвечает ИИ Mistral. Держите вопрос по делу — так ответ будет полезнее.</p>
+                    </div>
+
+                    <aside class="ask__note">
+                        <img src="../assets/images/mascot/robot_thinking.png" alt="" width="120" height="120" loading="lazy">
+                        <h3>Что он умеет в чате</h3>
+                        <ul class="ask__list">
+                            <li>Разбирает, почему пост не зашёл, и что менять.</li>
+                            <li>Придумывает темы и заголовки под конкретную библиотеку.</li>
+                            <li>Подсказывает время публикации и работу с тегами.</li>
+                            <li>Объясняет термины вроде ER, охватов и вовлечённости.</li>
+                        </ul>
+                        <p class="ask__disclaimer">
+                            Это демонстрация. В самой AURORA Космо отвечает по реальной статистике
+                            ваших филиалов.
+                        </p>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <!-- ПЛОЩАДКА -->
+        <section class="section playground" id="playground">
+            <div class="container">
+                <p class="section__eyebrow reveal">Площадка</p>
+                <h2 class="section__title reveal" style="--i:1">Площадка для <span class="marker">испытаний</span></h2>
+                <p class="section__lead reveal" style="--i:2">
+                    Кликните по Космо — он сменит настроение. Схватите и швырните —
+                    он не обидится, он летал и не так.
+                </p>
+
+                <div class="stage reveal" id="stage" style="--i:3">
+                    <div class="stage__bubble" id="stageBubble" role="status" aria-live="polite">
+                        Ткни в меня — я покажу настроение. Только договоримся: без резких движений…<br>ну ладно, с резкими можно.
+                    </div>
+                    <img class="stage__robot" id="stageRobot"
+                         src="../assets/images/mascot/robot_idle.png"
+                         alt="Робот Космо на интерактивной площадке"
+                         width="190" height="190" draggable="false">
+                    <span class="stage__floor" aria-hidden="true"></span>
+                </div>
+                <p class="stage__caption reveal" style="--i:4">
+                    Клик — новая эмоция. Схватить и бросить — тоже способ пообщаться.
+                    Космо просил передать, что ему не больно, он на батарейках.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ФУТЕР -->
+    <footer class="footer">
+        <div class="container footer__inner">
+            <div class="footer__brand">
+                <img src="../assets/images/mascot/robot_smile.png" alt="" width="44" height="44">
+                <p>Космо — маскот AURORA (VK Wall Searcher).<br>
+                Работает на постах ВКонтакте, какао и Mistral.</p>
+            </div>
+            <nav class="footer__nav" aria-label="Навигация в подвале">
+                <a href="#about">Знакомство</a>
+                <a href="#moods">Эмоции</a>
+                <a href="#skills">Умения</a>
+                <a href="#ask">Спроси Космо</a>
+                <a href="#inside">Под капотом</a>
+                <a href="#playground">Площадка</a>
+            </nav>
+            <p class="footer__meta">Сделано библиотечной сетью Владимира · 2026</p>
+        </div>
+        <p class="footer__joke">Ни один робот при разработке не был выброшен через экран. Почти.</p>
+    </footer>
+
+    <script src="js/cosmo-motion-aaa.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

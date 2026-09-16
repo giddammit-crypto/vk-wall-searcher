@@ -9,6 +9,9 @@ assets/video/*preview*.jpg
 assets/video/*check*.jpg
 assets/video/crop_robot_test.png
 scratch/
+site-cosmo/scratch/
+site-cosmo/*.png
+site-cosmo/*.py
 video_production/raw_video/
 video_production/frames/
 video_production/new_voiceover/
