@@ -598,16 +598,22 @@ if (is_array($chatAction)) {
 
     // Если присоединился пользователь из чёрного списка беседы — мгновенный автокик
     if ($isChat && ($actType === 'chat_invite_user' || $actType === 'chat_invite_user_by_link')) {
-        if ($memberId > 0 && vk_bot_is_user_banned($peerId, $memberId, $cacheDir)) {
+        $banInfo = ($memberId > 0) ? vk_bot_get_user_ban($peerId, $memberId, $cacheDir) : null;
+        if ($banInfo !== null) {
             $chatId = $peerId - 2000000000;
             vk_bot_api_call('messages.removeChatUser', [
                 'chat_id'   => $chatId,
                 'member_id' => $memberId
             ], $communityToken);
 
+            $dlabel = htmlspecialchars($banInfo['duration_label'] ?? 'навсегда');
+            $until = (int)($banInfo['banned_until'] ?? 0);
+            $rem = ($until > time() && $until < 300000000) ? 'осталось ' . vk_bot_format_remaining_time($until - time()) : '';
+            $remStr = $rem !== '' ? " ({$rem})" : "";
+
             vk_bot_send_message([
                 'peer_id'          => $peerId,
-                'message'          => "🚫 [id{$memberId}|Пользователь] находится в чёрном списке этой беседы и был автоматически исключён.",
+                'message'          => "🚫 [id{$memberId}|Пользователь] находится в чёрном списке этой беседы (бан на {$dlabel}{$remStr}) и был автоматически исключён роботом Космо.",
                 'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
                 'dont_parse_links' => 1
             ], $communityToken);
@@ -675,8 +681,8 @@ if ($isChat && !$isBotInvited) {
     // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
     $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
 
-    // Проверяем команды квиза, опроса, счета или ввод цифры ответа
-    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги)\b#ui', $userMsg);
+    // Проверяем команды квиза, опроса, счета, хохмы или ввод цифры ответа
+    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата)\b#ui', $userMsg);
     $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
         file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
@@ -1383,22 +1389,52 @@ function vk_bot_unmute_user($peerId, $targetId, $cacheDir)
 }
 
 /**
+ * Получение данных о бане пользователя (с проверкой истечения срока)
+ */
+function vk_bot_get_user_ban($peerId, $userId, $cacheDir)
+{
+    if ($peerId <= 0 || $userId <= 0) return null;
+    $file = $cacheDir . '/vk_banned_' . $peerId . '.json';
+    if (!file_exists($file)) return null;
+
+    $data = @json_decode(@file_get_contents($file), true);
+    if (!is_array($data) || empty($data[(string)$userId])) return null;
+
+    $info = $data[(string)$userId];
+    $now = time();
+    $until = (int)($info['banned_until'] ?? 0);
+    // Если срок бана был задан и уже истёк — удаляем из чёрного списка
+    if ($until > 0 && $now >= $until) {
+        unset($data[(string)$userId]);
+        $fh = @fopen($file, 'c+');
+        if ($fh) {
+            if (@flock($fh, LOCK_EX)) {
+                ftruncate($fh, 0);
+                rewind($fh);
+                fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                fflush($fh);
+                @flock($fh, LOCK_UN);
+            }
+            fclose($fh);
+        }
+        return null;
+    }
+
+    return $info;
+}
+
+/**
  * Проверка: находится ли пользователь в чёрном списке беседы
  */
 function vk_bot_is_user_banned($peerId, $userId, $cacheDir)
 {
-    if ($peerId <= 0 || $userId <= 0) return false;
-    $file = $cacheDir . '/vk_banned_' . $peerId . '.json';
-    if (!file_exists($file)) return false;
-
-    $data = @json_decode(@file_get_contents($file), true);
-    return is_array($data) && !empty($data[(string)$userId]);
+    return (vk_bot_get_user_ban($peerId, $userId, $cacheDir) !== null);
 }
 
 /**
- * Исключение пользователя и занесение в чёрный список беседы
+ * Исключение пользователя и занесение в чёрный список беседы на выбранный срок
  */
-function vk_bot_ban_user($peerId, $targetId, $targetName, $adminId, $reason, $cacheDir, $token)
+function vk_bot_ban_user($peerId, $targetId, $targetName, $adminId, $durSec, $durLabel, $reason, $cacheDir, $token)
 {
     if ($peerId <= 0 || $targetId <= 0) return false;
 
@@ -1415,12 +1451,21 @@ function vk_bot_ban_user($peerId, $targetId, $targetName, $adminId, $reason, $ca
         if (is_array($loaded)) $data = $loaded;
     }
 
+    $durSec = (int)$durSec;
+    if ($durSec <= 0) {
+        $durSec = 315360000; // По умолчанию навсегда (~10 лет)
+        $durLabel = 'навсегда';
+    }
+
     $data[(string)$targetId] = [
-        'user_id'   => $targetId,
-        'user_name' => $targetName,
-        'banned_by' => $adminId,
-        'banned_at' => time(),
-        'reason'    => $reason !== '' ? $reason : 'Нарушение правил беседы'
+        'user_id'          => $targetId,
+        'user_name'        => $targetName,
+        'banned_by'        => $adminId,
+        'banned_at'        => time(),
+        'banned_until'     => time() + $durSec,
+        'duration_seconds' => $durSec,
+        'duration_label'   => $durLabel,
+        'reason'           => $reason !== '' ? $reason : 'Нарушение правил беседы'
     ];
 
     $fh = @fopen($file, 'c+');
@@ -2672,6 +2717,245 @@ function vk_bot_send_message($params, $token)
     return [$httpCode, $json, $curlErr];
 }
 
+/**
+ * Золотая коллекция литературных хохм и смешных книжных цитат от робота Космо
+ */
+function vk_bot_get_book_joke($theme = '', $peerId = 0, $cacheDir = '')
+{
+    $jokes = [
+        [
+            'quote'  => '— Помилуйте, королева, — прохрипел он, — разве я позволил бы себе налить даме водки? Это чистый спирт!',
+            'author' => 'Михаил Булгаков',
+            'book'   => '«Мастер и Маргарита»',
+            'cosmo'  => 'Кот Бегемот плохого не посоветует! Проверено на книжных полках библиотек. 😸✨'
+        ],
+        [
+            'quote'  => '— Не шалю, никого не трогаю, починяю примус. И еще считаю долгом предупредить, что кот — древнее и неприкосновенное животное.',
+            'author' => 'Михаил Булгаков',
+            'book'   => '«Мастер и Маргарита»',
+            'cosmo'  => 'Идеальное алиби на любой случай в жизни! 🤖🛠️'
+        ],
+        [
+            'quote'  => '— Если вы заботитесь о своем пищеварении, вот добрый совет: не говорите за обедом о большевизме и о медицине. И — боже вас сохрани — не читайте до обеда советских газет.',
+            'author' => 'Михаил Булгаков',
+            'book'   => '«Собачье сердце»',
+            'cosmo'  => 'Профессор Преображенский знал толк в информационной гигиене задолго до соцсетей! 📰☕'
+        ],
+        [
+            'quote'  => '— Успевает всюду тот, кто никуда не торопится.',
+            'author' => 'Михаил Булгаков',
+            'book'   => '«Собачье сердце»',
+            'cosmo'  => 'Мой главный девиз при чтении толстых романов в тишине читального зала. 📖⏳'
+        ],
+        [
+            'quote'  => '— Время, которое мы имеем, — это деньги, которых у нас нет.',
+            'author' => 'Илья Ильф, Евгений Петров',
+            'book'   => '«Двенадцать стульев»',
+            'cosmo'  => 'Зато в наших библиотеках книги и время выдаются совершенно бесплатно! 🏛️💳'
+        ],
+        [
+            'quote'  => '— Спасение утопающих — дело рук самих утопающих.',
+            'author' => 'Илья Ильф, Евгений Петров',
+            'book'   => '«Двенадцать стульев»',
+            'cosmo'  => 'Но если вы тонете в море нечитанных книг — Космо всегда бросит спасательный круг! 🛟📚'
+        ],
+        [
+            'quote'  => '— Утром деньги — вечером стулья, вечером деньги — утром стулья. А можно вперед стулья? Можно, но деньги — вперед!',
+            'author' => 'Илья Ильф, Евгений Петров',
+            'book'   => '«Двенадцать стульев»',
+            'cosmo'  => 'Монтёр Мечников сформулировал золотой закон мировой экономики за пару секунд! 🪑🪙'
+        ],
+        [
+            'quote'  => '— Не делайте из еды культа!',
+            'author' => 'Илья Ильф, Евгений Петров',
+            'book'   => '«Золотой телёнок»',
+            'cosmo'  => 'Делайте культ из хороших книг — от них не поправляются, только умнеют! 🥧📚'
+        ],
+        [
+            'quote'  => '— Финансовая пропасть — самая глубокая из всех пропастей, в нее можно падать всю жизнь.',
+            'author' => 'Илья Ильф, Евгений Петров',
+            'book'   => '«Золотой телёнок»',
+            'cosmo'  => 'Остап Бендер точно знал: лучше падать на мягкий диван с захватывающим детективом! 🛋️✨'
+        ],
+        [
+            'quote'  => '— Человек привык себя спрашивать: кто я? Там ученый, американец, шофер, еврей, иммигрант… А надо бы всё время себя спрашивать: не говно ли я?',
+            'author' => 'Сергей Довлатов',
+            'book'   => '«Чемодан»',
+            'cosmo'  => 'Самоирония высшей пробы — лучшее лекарство от звездной болезни! 🧳🧐'
+        ],
+        [
+            'quote'  => '— У богатых людей денег нет, у них есть акции, недвижимость, счета. А денег нет никогда. Деньги бывают только у нищих, и то ненадолго.',
+            'author' => 'Сергей Довлатов',
+            'book'   => '«Заповедник»',
+            'cosmo'  => 'А самое стабильное богатство — прочитанные книги, их никакой кризис не обесценит! 🌲📖'
+        ],
+        [
+            'quote'  => '— Юмор — украшение нации… Пока мы способны шутить, мы остаемся великим народом!',
+            'author' => 'Сергей Довлатов',
+            'book'   => '«Записные книжки»',
+            'cosmo'  => 'Полностью согласен с классиком: искренняя улыбка продлевает жизнь и бережет микросхемы! 😄🤖'
+        ],
+        [
+            'quote'  => '— Внутри каждого взрослого сидит ребенок, который понятия не имеет, что, черт возьми, вообще происходит.',
+            'author' => 'Терри Пратчетт',
+            'book'   => '«Мрачный Жнец»',
+            'cosmo'  => 'И этот ребенок просто хочет завернуться в тёплый плед и почитать захватывающую сказку! 🧒✨'
+        ],
+        [
+            'quote'  => '— Говорят, что против глупости бессильны даже боги. Однако против нее прекрасно помогает увесистая дубина.',
+            'author' => 'Терри Пратчетт',
+            'book'   => '«Стража! Стража!»',
+            'cosmo'  => 'Или увесистый том Большой энциклопедии — действует гуманнее и сразу просвещает! 🛡️📚'
+        ],
+        [
+            'quote'  => '— Если вы заблудились в лесу, лучше всего стоять на месте и громко звать на помощь. Рано или поздно вас найдет медведь.',
+            'author' => 'Терри Пратчетт',
+            'book'   => '«Безумная звезда»',
+            'cosmo'  => 'А если вы заблудились среди стеллажей библиотеки — вас всегда выручит приветливый библиотекарь! 🐻🏛️'
+        ],
+        [
+            'quote'  => '— Если боитесь одиночества, то не женитесь.',
+            'author' => 'Антон Чехов',
+            'book'   => '«Записные книжки»',
+            'cosmo'  => 'Антон Павлович умел в одну лаконичную строчку уложить весь психологический роман. 🎩✍️'
+        ],
+        [
+            'quote'  => '— Жизнь, по сути, очень простая штука, и человеку нужно приложить уйму усилий, чтобы её испортить.',
+            'author' => 'Антон Чехов',
+            'book'   => '«Письма и заметки»',
+            'cosmo'  => 'Поэтому не усложняйте: берите горячий чай, кота и хорошую душевную книгу! ☕🐱'
+        ],
+        [
+            'quote'  => '— Умный любит учиться, а дурак — учить.',
+            'author' => 'Антон Чехов',
+            'book'   => '«Записные книжки»',
+            'cosmo'  => 'Сказано больше ста лет назад, а в сетевых спорах актуально каждую минуту! 💡'
+        ],
+        [
+            'quote'  => '— Человек — существо нежное и легкомысленное. Чуть что не по нем — сразу падает духом или начинает скандалить в трамвае.',
+            'author' => 'Михаил Зощенко',
+            'book'   => '«Голубая книга»',
+            'cosmo'  => 'Зощенко видел человеческие слабости насквозь через призму трамвайного билета. 🚋😂'
+        ],
+        [
+            'quote'  => '— Ложи взад! — говорит. А я ей: — Сама ложи! За четыре пирожных я тебе не миллионер платить!',
+            'author' => 'Михаил Зощенко',
+            'book'   => '«Аристократка»',
+            'cosmo'  => 'Театр начинается с вешалки, а романтическое свидание — с подсчета эклеров в буфете! 🧁'
+        ],
+        [
+            'quote'  => '— Дживс, неужели у меня совсем нет мозгов? — Ну что вы, сэр. Мозги у вас есть, просто они находятся в состоянии абсолютного покоя.',
+            'author' => 'П. Г. Вудхаус',
+            'book'   => '«Этот неподражаемый Дживс»',
+            'cosmo'  => 'Истинный британский такт: мягко объяснить шефу его мыслительные способности! 🎩🫖'
+        ],
+        [
+            'quote'  => '— Он выглядел так, будто проглотил шпагу и боялся согнуться, чтобы не проткнуть себя изнутри.',
+            'author' => 'П. Г. Вудхаус',
+            'book'   => '«Дживс и Вустер»',
+            'cosmo'  => 'Классический портрет человека на официальном совещании в понедельник утром! 🗡️😆'
+        ],
+        [
+            'quote'  => '— Никогда не спорьте с идиотами. Вы опуститесь до их уровня, где они задавят вас своим колоссальным опытом.',
+            'author' => 'Марк Твен',
+            'book'   => '«Записные книжки»',
+            'cosmo'  => 'Золотое правило спокойной жизни и правильной модерации чатов в интернете! ⚖️🛡️'
+        ],
+        [
+            'quote'  => '— Бросить курить очень легко. Я сам лично бросал раз пятьдесят.',
+            'author' => 'Марк Твен',
+            'book'   => '«Очерки и афоризмы»',
+            'cosmo'  => 'Главное в любом начинании — постоянная регулярность тренировок! 🚭😂'
+        ],
+        [
+            'quote'  => '— Лето — это пора года, когда слишком жарко делать то, что зимой было делать слишком холодно.',
+            'author' => 'Марк Твен',
+            'book'   => '«Записные книжки»',
+            'cosmo'  => 'Универсальное литературное оправдание для любителей прокрастинации круглый год! ☀️❄️'
+        ],
+        [
+            'quote'  => '— Я обожаю работу: она очаровывает меня. Я могу часами сидеть и смотреть, как работают другие.',
+            'author' => 'Джером К. Джером',
+            'book'   => '«Трое в лодке, не считая собаки»',
+            'cosmo'  => 'Истинный эстет трудовых процессов! Джером понимал человеческую натуру как никто. 🚣‍♂️🐕'
+        ],
+        [
+            'quote'  => '— Единственная болезнь, которой у меня не оказалось в медицинском справочнике, была родильная горячка.',
+            'author' => 'Джером К. Джером',
+            'book'   => '«Трое в лодке, не считая собаки»',
+            'cosmo'  => 'Вот почему строго запрещено читать медицинские справочники после полуночи! 🩺'
+        ],
+        [
+            'quote'  => '— Летать очень просто: нужно всего лишь научиться падать на землю и промахиваться.',
+            'author' => 'Дуглас Адамс',
+            'book'   => '«Автостопом по галактике»',
+            'cosmo'  => 'Космическая аэродинамика по Адамсу: главное — вовремя отвлечься в момент падения! 🚀🌌'
+        ],
+        [
+            'quote'  => '— Время — это иллюзия. А время обеда — тем более.',
+            'author' => 'Дуглас Адамс',
+            'book'   => '«Ресторан „У конца Вселенной“»',
+            'cosmo'  => 'Эйнштейн бы поспорил, но аппетит читателя безоговорочно согласен! 🍲⌚'
+        ],
+        [
+            'quote'  => '— Я могу устоять против всего на свете, кроме соблазна.',
+            'author' => 'Оскар Уайльд',
+            'book'   => '«Веер леди Уиндермир»',
+            'cosmo'  => 'Особенно против соблазна взять еще парочку захватывающих книг на выходные! 📚✨'
+        ],
+        [
+            'quote'  => '— Бессмыслица — искать решение, если оно и так есть. Речь идет о том, как поступить с задачей, которая решения не имеет.',
+            'author' => 'Аркадий и Борис Стругацкие',
+            'book'   => '«Понедельник начинается в субботу»',
+            'cosmo'  => 'НИИЧАВО в одном предложении! Магия науки и бесконечного поиска. 🧙‍♂️🔬'
+        ],
+        [
+            'quote'  => '— Отсюда еще никто не уходил, не заплатив за пиво, потому что полиция у нас работает прекрасно!',
+            'author' => 'Ярослав Гашек',
+            'book'   => '«Похождения бравого солдата Швейка»',
+            'cosmo'  => 'Швейк излучал железный оптимизм даже в самых курьёзных переделках! 🍺🇨🇿'
+        ],
+        [
+            'quote'  => '— Бывают времена, когда умный человек должен притвориться дураком, чтобы не сойти с ума среди остальных.',
+            'author' => 'Фазиль Искандер',
+            'book'   => '«Сандро из Чегема»',
+            'cosmo'  => 'Мудрейшая кавказская философия и тончайшая психологическая броня. 🏔️✨'
+        ]
+    ];
+
+    if ($theme !== '') {
+        $themeLower = mb_strtolower($theme, 'UTF-8');
+        $filtered = [];
+        foreach ($jokes as $j) {
+            $haystack = mb_strtolower($j['quote'] . ' ' . $j['author'] . ' ' . $j['book'] . ' ' . $j['cosmo'], 'UTF-8');
+            if (mb_strpos($haystack, $themeLower) !== false) {
+                $filtered[] = $j;
+            }
+        }
+        if (!empty($filtered)) {
+            return $filtered[array_rand($filtered)];
+        }
+    }
+
+    $lastIdx = -1;
+    $trackerFile = ($peerId > 0 && $cacheDir !== '') ? $cacheDir . '/vk_last_joke_' . $peerId . '.txt' : '';
+    if ($trackerFile !== '' && file_exists($trackerFile)) {
+        $lastIdx = (int)@file_get_contents($trackerFile);
+    }
+
+    $count = count($jokes);
+    $idx = mt_rand(0, $count - 1);
+    if ($idx === $lastIdx && $count > 1) {
+        $idx = ($idx + 1) % $count;
+    }
+
+    if ($trackerFile !== '') {
+        @file_put_contents($trackerFile, (string)$idx);
+    }
+
+    return $jokes[$idx];
+}
+
 // -----------------------------------------------------------------------------
 // Фирменные стикеры-эмоции робота Космо (из официального альбома сообщества)
 // -----------------------------------------------------------------------------
@@ -3036,6 +3320,16 @@ $persistentKeyboard = [
                 ],
                 'color' => 'secondary'
             ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '😄 !хохма (Цитата)'
+                ],
+                'color' => 'positive'
+            ]
         ]
     ]
 ];
@@ -3167,6 +3461,16 @@ $inlineChatKeyboard = [
                     'label'   => '📊 Опрос'
                 ],
                 'color' => 'secondary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '😄 !хохма (Цитата)'
+                ],
+                'color' => 'positive'
             ]
         ]
     ]
@@ -3303,8 +3607,9 @@ if (file_exists($dialogFile) && is_readable($dialogFile)) {
 // =============================================================================
 $parsedModCmd = $isChat ? vk_bot_parse_mod_command($userMsg, $msgObj) : null;
 $isQuickMute = ($cmd === 'mod_quick_mute');
+$isQuickBan = ($cmd === 'mod_quick_ban');
 
-if ($parsedModCmd !== null || $isQuickMute) {
+if ($parsedModCmd !== null || $isQuickMute || $isQuickBan) {
     if (!$isChat) {
         $reply = "⚠️ Команды модерации работают только в групповых беседах и публичных чатах ВКонтакте!";
         vk_bot_send_message([
@@ -3361,15 +3666,53 @@ if ($parsedModCmd !== null || $isQuickMute) {
             $reply = "⚠️ Нельзя отправить в режим молчания администратора или создателя беседы!";
         } else {
             vk_bot_mute_user($peerId, $targetId, $targetName, $fromId, $durSec, $durLabel, $reason, $cacheDir);
-            $reply = "🔇 [id{$targetId}|{$targetName}] отправлен в режим молчания на {$durLabel} администратором [id{$fromId}|{$callerName}].\n"
-                   . "📌 Причина: {$reason}\n"
-                   . "Все сообщения нарушителя будут автоматически удаляться.";
+            $untilDate = ($durSec >= 300000000) ? 'бессрочно (навсегда)' : date('d.m.Y H:i', time() + $durSec) . ' МСК';
+            $reply = "🔇 Робот Космо отправил участника в режим молчания!\n\n"
+                   . "👤 Кого замутили: [id{$targetId}|{$targetName}]\n"
+                   . "⏱️ На сколько: {$durLabel} (до {$untilDate})\n"
+                   . "👮 Кто замутил: [id{$fromId}|{$callerName}]\n"
+                   . "📌 Причина: {$reason}\n\n"
+                   . "⚠️ Все сообщения пользователя в этой беседе будут автоматически удаляться до окончания срока.";
         }
 
         vk_bot_send_message([
             'peer_id'          => $peerId,
             'message'          => $reply,
             'attachment'       => $mascotStickers['sleep'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Обработка кнопки быстрого бана
+    if ($isQuickBan) {
+        $targetId = (int)($payloadData['target_id'] ?? 0);
+        $durSec = (int)($payloadData['dur'] ?? 315360000);
+        $durLabel = (string)($payloadData['label'] ?? 'навсегда');
+        $reason = trim((string)($payloadData['reason'] ?? ''));
+        if ($reason === '') $reason = 'Нарушение правил беседы';
+
+        $targetInfo = vk_bot_get_member_info($peerId, $targetId, $communityToken, $cacheDir);
+        $targetName = $targetInfo['name'] ?? ($payloadData['target_name'] ?? 'Пользователь');
+
+        if ($targetInfo && ($targetInfo['is_admin'] || $targetInfo['is_owner'])) {
+            $reply = "⚠️ Нельзя заблокировать администратора или создателя беседы!";
+        } else {
+            vk_bot_ban_user($peerId, $targetId, $targetName, $fromId, $durSec, $durLabel, $reason, $cacheDir, $communityToken);
+            $untilDate = ($durSec >= 300000000) ? 'бессрочно (навсегда)' : date('d.m.Y H:i', time() + $durSec) . ' МСК';
+            $reply = "⛔ Робот Космо заблокировал участника беседы!\n\n"
+                   . "👤 Кого забанили: [id{$targetId}|{$targetName}]\n"
+                   . "⏱️ На сколько: {$durLabel} (до {$untilDate})\n"
+                   . "👮 Кто забанил: [id{$fromId}|{$callerName}]\n"
+                   . "📌 Причина: {$reason}\n\n"
+                   . "🚪 Пользователь исключён из беседы. Повторный вход по ссылке заблокирован до окончания срока бана.";
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['angry'] ?? null,
             'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
             'dont_parse_links' => 1
         ], $communityToken);
@@ -3387,12 +3730,14 @@ if ($parsedModCmd !== null || $isQuickMute) {
                . "  Примеры: !мут 1 час спам, !мут 2 часа, !мут 3 часа, !мут на сутки, !мут неделя, !мут месяц, !мут навсегда.\n"
                . "  💡 Если написать «!мут» в ответ на сообщение без времени — появятся удобные кнопки выбора срока!\n"
                . "• !размут [пользователь] — досрочно снять режим молчания;\n"
-               . "• !кик [причина] — исключить участника из беседы;\n"
-               . "• !бан [причина] — исключить участника с занесением в чёрный список (повторный вход по ссылке блокируется);\n"
+               . "• !кик [причина] — исключить участника из беседы без занесения в чёрный список;\n"
+               . "• !бан [время] [причина] — исключить участника с блокировкой повторного входа на выбранный срок;\n"
+               . "  Примеры: !бан 1 час, !бан 2 часа, !бан сутки флуд, !бан неделя, !бан навсегда.\n"
+               . "  💡 Если написать «!бан» в ответ на сообщение без времени — появятся удобные кнопки выбора срока бана!\n"
                . "• !разбан [пользователь] — удалить участника из чёрного списка беседы;\n"
                . "• !муты — список текущих замученных участников со сроком окончания;\n"
-               . "• !баны — чёрный список участников беседы.\n\n"
-               . "📌 Команды можно писать через «!», «/» или словами: «Космо, мут на 2 часа». Доступно только администраторам чата.";
+               . "• !баны — чёрный список участников беседы со сроками блокировки.\n\n"
+               . "📌 Команды можно писать через «!», «/» или словами: «Космо, забань на 2 часа». Доступно только администраторам чата.";
 
         vk_bot_send_message([
             'peer_id'          => $peerId,
@@ -3447,18 +3792,27 @@ if ($parsedModCmd !== null || $isQuickMute) {
         $bans = file_exists($banFile) ? @json_decode(@file_get_contents($banFile), true) : [];
         if (!is_array($bans)) $bans = [];
 
-        if (empty($bans)) {
+        $now = time();
+        $banRows = [];
+        foreach ($bans as $uid => $inf) {
+            $until = (int)($inf['banned_until'] ?? 0);
+            if ($until > 0 && $now >= $until) {
+                continue;
+            }
+            $uname = htmlspecialchars($inf['user_name'] ?? "id{$uid}");
+            $durLabel = htmlspecialchars($inf['duration_label'] ?? 'навсегда');
+            $rem = ($until >= 300000000 || $until === 0) ? 'бессрочно' : 'осталось ' . vk_bot_format_remaining_time($until - $now);
+            $breason = htmlspecialchars($inf['reason'] ?? 'Нарушение правил');
+            $badmin = (int)($inf['banned_by'] ?? 0);
+            $adminStr = $badmin > 0 ? " (кем: [id{$badmin}|админ])" : '';
+            $banRows[] = "• [id{$uid}|{$uname}] — {$durLabel} ({$rem}){$adminStr}\n  Причина: {$breason}";
+        }
+
+        if (empty($banRows)) {
             $reply = "🕊️ Чёрный список этой беседы пуст.";
         } else {
-            $banRows = [];
-            foreach ($bans as $uid => $inf) {
-                $uname = htmlspecialchars($inf['user_name'] ?? "id{$uid}");
-                $bdate = isset($inf['banned_at']) ? date('d.m.Y H:i', (int)$inf['banned_at']) : '';
-                $breason = htmlspecialchars($inf['reason'] ?? 'Нарушение правил');
-                $banRows[] = "• [id{$uid}|{$uname}] (Забанен: {$bdate}, Причина: {$breason})";
-            }
             $reply = "⛔ Чёрный список участников беседы (" . count($banRows) . "):\n\n"
-                   . implode("\n", $banRows) . "\n\n"
+                   . implode("\n\n", $banRows) . "\n\n"
                    . "Для разблокировки отправьте: !разбан @id...";
         }
 
@@ -3554,7 +3908,9 @@ if ($parsedModCmd !== null || $isQuickMute) {
         if (!empty($res['error']) && $res['error']['error_code'] == 935) {
             $reply = "⚠️ Пользователь [id{$targetId}|{$targetName}] не найден в этой беседе.";
         } else {
-            $reply = "🚪 [id{$targetId}|{$targetName}] исключён из беседы администратором [id{$fromId}|{$callerName}].\n"
+            $reply = "🚪 Робот Космо исключил участника из беседы!\n\n"
+                   . "👤 Кого исключили: [id{$targetId}|{$targetName}]\n"
+                   . "👮 Кто исключил: [id{$fromId}|{$callerName}]\n"
                    . "📌 Причина: {$reason}";
         }
 
@@ -3570,21 +3926,112 @@ if ($parsedModCmd !== null || $isQuickMute) {
 
     // Бан в чате (!бан)
     if ($modType === 'ban') {
-        $reason = $rest !== '' ? $rest : 'Нарушение правил беседы';
-        vk_bot_ban_user($peerId, $targetId, $targetName, $fromId, $reason, $cacheDir, $communityToken);
+        list($durSec, $durLabel, $reason) = vk_bot_extract_duration_and_reason($rest);
 
-        $reply = "⛔ [id{$targetId}|{$targetName}] заблокирован и исключён из беседы администратором [id{$fromId}|{$callerName}].\n"
-               . "📌 Причина: {$reason}\n"
-               . "Повторный вход по ссылке для этого пользователя заблокирован.";
+        if ($durSec !== null) {
+            if ($reason === '') $reason = 'Нарушение правил беседы';
+            vk_bot_ban_user($peerId, $targetId, $targetName, $fromId, $durSec, $durLabel, $reason, $cacheDir, $communityToken);
+            $untilDate = ($durSec >= 300000000) ? 'бессрочно (навсегда)' : date('d.m.Y H:i', time() + $durSec) . ' МСК';
 
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['angry'] ?? null,
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
+            $reply = "⛔ Робот Космо заблокировал участника беседы!\n\n"
+                   . "👤 Кого забанили: [id{$targetId}|{$targetName}]\n"
+                   . "⏱️ На сколько: {$durLabel} (до {$untilDate})\n"
+                   . "👮 Кто забанил: [id{$fromId}|{$callerName}]\n"
+                   . "📌 Причина: {$reason}\n\n"
+                   . "🚪 Пользователь исключён из беседы. Повторный вход по ссылке заблокирован до окончания срока бана.";
+
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['angry'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        } else {
+            // Длительность не указана — выводим удобные интерактивные кнопки
+            $reasonClean = trim($reason);
+            $quickBanKeyboard = [
+                'inline'  => true,
+                'buttons' => [
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 3600, 'label' => '1 час', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 1 час'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 7200, 'label' => '2 часа', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 2 часа'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 10800, 'label' => '3 часа', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 3 часа'
+                            ],
+                            'color' => 'secondary'
+                        ]
+                    ],
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 86400, 'label' => 'сутки (24ч)', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '📅 Сутки (24ч)'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 604800, 'label' => '1 неделю', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '📅 Неделя'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 2592000, 'label' => '1 месяц', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '🗓️ Месяц'
+                            ],
+                            'color' => 'secondary'
+                        ]
+                    ],
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_ban', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 315360000, 'label' => 'навсегда', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⛔ Навсегда'
+                            ],
+                            'color' => 'negative'
+                        ]
+                    ]
+                ]
+            ];
+
+            $reply = "⛔ Выберите срок блокировки (бана) для [id{$targetId}|{$targetName}] кнопками ниже (или напишите, например: «!бан 2 часа»):\n"
+                   . ($reasonClean !== '' ? "📌 Причина: {$reasonClean}" : "");
+
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['thinking'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'keyboard'         => json_encode($quickBanKeyboard, JSON_UNESCAPED_UNICODE),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        }
     }
 
     // Мут (!мут)
@@ -3600,9 +4047,13 @@ if ($parsedModCmd !== null || $isQuickMute) {
                 vk_bot_delete_chat_message($peerId, (int)$msgObj['reply_message']['conversation_message_id'], $communityToken, $vkGroupId);
             }
 
-            $reply = "🔇 [id{$targetId}|{$targetName}] отправлен в режим молчания на {$durLabel} администратором [id{$fromId}|{$callerName}].\n"
-                   . "📌 Причина: {$reason}\n"
-                   . "Все сообщения нарушителя будут автоматически удаляться.";
+            $untilDate = ($durSec >= 300000000) ? 'бессрочно (навсегда)' : date('d.m.Y H:i', time() + $durSec) . ' МСК';
+            $reply = "🔇 Робот Космо отправил участника в режим молчания!\n\n"
+                   . "👤 Кого замутили: [id{$targetId}|{$targetName}]\n"
+                   . "⏱️ На сколько: {$durLabel} (до {$untilDate})\n"
+                   . "👮 Кто замутил: [id{$fromId}|{$callerName}]\n"
+                   . "📌 Причина: {$reason}\n\n"
+                   . "⚠️ Все сообщения пользователя в этой беседе будут автоматически удаляться до окончания срока.";
 
             vk_bot_send_message([
                 'peer_id'          => $peerId,
@@ -4341,6 +4792,88 @@ if ($isBookClubRulesQuery) {
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// =============================================================================
+// Сценарий 2k: Литературная хохма и смешные книжные цитаты от робота Космо
+// =============================================================================
+$isHohmaQuery = false;
+$hohmaTheme = '';
+
+if ($cmd === 'hohma' || $cmd === 'joke') {
+    $isHohmaQuery = true;
+    $hohmaTheme = trim((string)($payloadData['theme'] ?? ''));
+} elseif (preg_match('#^(?:[!/](?:хохма|хохмы|hohma|шутка|шутки|анекдот|анекдоты|цитата))\b\s*(.*)$#ui', $cleanMsgForCmd, $hm)) {
+    $isHohmaQuery = true;
+    $hohmaTheme = trim($hm[1] ?? '');
+} elseif (preg_match('#(?:^|\s)(?:расскажи|травани|потрави|выдай|покажи|напиши|хочу|давай|сделай)?\s*(?:хохм[уаы]|анекдот[а-я]*|смешну[юя]\s+цитат[уаы]|книжну[юя]\s+шутк[уа]|смешное\s+из\s+книг)(?:\s+(?:на\s+тему|по\s+теме|про|по|о)\s+(.+))?[?!.]*$#ui', $cleanMsgForCmd, $hm)) {
+    $isHohmaQuery = true;
+    $hohmaTheme = trim($hm[1] ?? '');
+} elseif (preg_match('#^(?:хохма|шутка|анекдот|смешная\s+цитата|книжная\s+шутка)[?!.]*$#ui', $cleanMsgForCmd)) {
+    $isHohmaQuery = true;
+    $hohmaTheme = '';
+}
+
+if ($isHohmaQuery) {
+    // Фильтрация иноагентов
+    if ($hohmaTheme !== '' && vk_bot_is_foreign_agent_query($hohmaTheme)) {
+        $reply = "🛡️ Как робот муниципальных библиотек г. Владимира, я строго следую правилам: я не цитирую авторов, признанных иностранными агентами.\n\n"
+               . "Давайте лучше послушаем добрую цитату из Булгакова, Твена, Джерома или Стругацких! 😄✨";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    $joke = vk_bot_get_book_joke($hohmaTheme, $peerId, $cacheDir);
+
+    $reply = "😄 Литературная хохма от Космо 🤖📖\n\n"
+           . "{$joke['quote']}\n\n"
+           . "✒️ {$joke['author']}, {$joke['book']}\n\n"
+           . "💡 Комментарий Космо: {$joke['cosmo']}";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    $hohmaKb = [
+        'inline'  => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '😄 Ещё хохму!'
+                    ],
+                    'color' => 'positive'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'quiz_new'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎯 Квиз'
+                    ],
+                    'color' => 'primary'
+                ]
+            ]
+        ]
+    ];
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($hohmaKb, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
