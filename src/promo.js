@@ -562,7 +562,7 @@ export function initPromoModal() {
                                 </span>
                             </div>
                             <h3 class="shelf-tent-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h3>
-                            <p class="shelf-tent-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
+                            <p class="shelf-tent-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
                             <div class="shelf-steps-row">
                                 <span class="shelf-step"><span class="step-num">1</span> Сканируй QR</span>
                                 <span class="shelf-step-arrow">→</span>
@@ -1823,7 +1823,7 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                             <span class="print-shelf-badge-genre">${escapeHtml(genreObj.name)}</span>
                         </div>
                         <h2 class="print-shelf-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h2>
-                        <p class="print-shelf-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
+                        <p class="print-shelf-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
                         <div class="print-shelf-steps">
                             <span class="print-shelf-step"><span class="print-shelf-step-num">1</span> Сканируй QR</span>
                             <span class="print-shelf-step-arrow">→</span>
