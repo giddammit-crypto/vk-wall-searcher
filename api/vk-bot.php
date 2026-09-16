@@ -9,10 +9,14 @@
  *    - Индикатор «Космо печатает...» в диалоге ВКонтакте
  *    - Персональный книжный сомелье с мультидиалоговой памятью (cache/vk_dialog_*.json)
  *    - Строгий запрет на авторов-иноагентов Минюста РФ и экстремистов
- *    - Отказоустойчивый шлюз ИИ с 3-ключевой ротацией (Mistral Large / Xkiro)
- *    - Интерактивная клавиатура (постоянное меню + inline-кнопки настроения)
+ *    - Отказоустойчивый шлюз ИИ с 4-ключевой ротацией (3 000 000 токенов/24ч xkiro)
+ *    - Распознавание голосовых сообщений: нативное нейрораспознавание VK ASR + Google Speech API v2
+ *    - Авто-модерация бесед: мат и вульгарные/непристойные картинки через Vision AI (3 варна -> 15м -> 1ч -> кик)
+ *    - 17 фирменных эмоций-стикеров Космо
+ *    - Интерактивная клавиатура (постоянное меню + inline-кнопки)
  *    - Диагностическая веб-страница и JSON-статус при GET-запросе
  *
+ *  Версия: 4.38.0
  *  Разработка: Амброзиев О.А. / Проект AURORA
  * =============================================================================
  */
@@ -116,11 +120,13 @@ $vkGroupUrl       = trim((string)($config['vk_group_url'] ?? $defaultGroupUrl));
 $vkGroupId        = (int)($config['vk_group_id'] ?? $defaultGroupId);
 $directDialogUrl  = 'https://vk.me/club' . $vkGroupId;
 
-// Пул ключей ИИ
+// Пул ключей ИИ (4 ключа, суммарно 3 000 000 токенов в сутки)
+// Ключи 1 и 2: по 1 000 000 токенов/24ч; 3 и 4: по 500 000 токенов/24ч
 $defaultAiKeys = [
     'sk-xt-7bfbd1f7908daa6a630e1e6e3d5cfa4e1961dcef6aebbfe1',
     'sk-xt-764dbb9ee98b4d75bcedeef2fd0899d01044e46e8143acd2',
-    'sk-xt-89197544de3c1a413756421f7181e8ef5334c84915c67b1e'
+    'sk-xt-89197544de3c1a413756421f7181e8ef5334c84915c67b1e',
+    'sk-xt-5ec04454fdfbae29eca0a631c43d6c07a0ef9d475c606161'
 ];
 
 $rawAiKeys = [];
@@ -130,7 +136,7 @@ if (!empty($config['ai_api_keys']) && is_array($config['ai_api_keys'])) {
         if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) $rawAiKeys[] = $k;
     }
 }
-foreach (['ai_api_key', 'ai_api_key_fallback', 'ai_api_key_fallback_2'] as $kField) {
+foreach (['ai_api_key', 'ai_api_key_fallback', 'ai_api_key_fallback_2', 'ai_api_key_fallback_3'] as $kField) {
     if (!empty($config[$kField])) {
         $k = trim((string)$config[$kField]);
         if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) $rawAiKeys[] = $k;
@@ -775,8 +781,26 @@ if ($isChat) {
         exit;
     }
 
-    // 2. Авто-модерация нецензурной лексики для групповых бесед ($isChat && $fromId > 0)
-    if ($fromId > 0 && vk_bot_detect_profanity($userMsg)) {
+    // 2. Авто-модерация нецензурной лексики и непристойных изображений для групповых бесед ($isChat && $fromId > 0)
+    $hasProfanity = ($fromId > 0 && vk_bot_detect_profanity($userMsg));
+    $hasVulgarImage = false;
+    $vulgarReason = '';
+
+    if ($fromId > 0 && !$hasProfanity) {
+        $photoUrls = vk_bot_extract_photo_urls($msgObj);
+        if (!empty($photoUrls)) {
+            foreach ($photoUrls as $pUrl) {
+                $check = vk_bot_detect_vulgar_image($pUrl, $validAiKeys, $aiBaseUrl);
+                if (!empty($check['is_vulgar'])) {
+                    $hasVulgarImage = true;
+                    $vulgarReason = $check['reason'] ?? '';
+                    break;
+                }
+            }
+        }
+    }
+
+    if ($hasProfanity || $hasVulgarImage) {
         // Мгновенный ответ Callback API ВКонтакте
         header('Content-Type: text/plain; charset=UTF-8');
         header('Connection: close');
@@ -823,15 +847,24 @@ if ($isChat) {
 
             $userWarns['last_violation'] = time();
             $profData[$uKey] = $userWarns;
-            $msgText = "🚫 [id{$fromId}|{$userName}] исключён из беседы за систематическое употребление нецензурной лексики!";
+            if ($hasVulgarImage) {
+                $msgText = "🚫 [id{$fromId}|{$userName}] исключён из беседы за систематическую отправку непристойного и матерного контента!";
+            } else {
+                $msgText = "🚫 [id{$fromId}|{$userName}] исключён из беседы за систематическое употребление нецензурной лексики!";
+            }
         } elseif ($userWarns['mutes_count'] == 1) {
             // МУТ НА 1 ЧАС (3600 сек)
-            vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 3600, '1 час', 'Повторный мат после мута', $cacheDir);
+            $muteReason = $hasVulgarImage ? 'Повторная отправка непристойного контента' : 'Повторный мат после мута';
+            vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 3600, '1 час', $muteReason, $cacheDir);
 
             $userWarns['mutes_count'] = 2;
             $userWarns['last_violation'] = time();
             $profData[$uKey] = $userWarns;
-            $msgText = "🔇 [id{$fromId}|{$userName}] повторно использовал нецензурную лексику после мута и отправлен в режим молчания на 1 час! Следующее нарушение приведет к исключению из беседы.";
+            if ($hasVulgarImage) {
+                $msgText = "🔇 [id{$fromId}|{$userName}] повторно отправил непристойный контент после мута и отправлен в режим молчания на 1 час! Следующее нарушение приведет к исключению из беседы.";
+            } else {
+                $msgText = "🔇 [id{$fromId}|{$userName}] повторно использовал нецензурную лексику после мута и отправлен в режим молчания на 1 час! Следующее нарушение приведет к исключению из беседы.";
+            }
         } else {
             // mutes_count == 0
             $userWarns['warnings']++;
@@ -839,18 +872,31 @@ if ($isChat) {
 
             if ($userWarns['warnings'] == 1) {
                 $profData[$uKey] = $userWarns;
-                $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 1/3. На 3-е предупреждение — мут на 15 минут.";
+                if ($hasVulgarImage) {
+                    $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещены непристойные и матерные изображения! Предупреждение 1/3. На 3-е предупреждение — мут на 15 минут.";
+                } else {
+                    $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 1/3. На 3-е предупреждение — мут на 15 минут.";
+                }
             } elseif ($userWarns['warnings'] == 2) {
                 $profData[$uKey] = $userWarns;
-                $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 2/3. Следующий мат приведет к муту на 15 минут!";
+                if ($hasVulgarImage) {
+                    $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещены непристойные и матерные изображения! Предупреждение 2/3. Следующее нарушение приведет к муту на 15 минут!";
+                } else {
+                    $msgText = "⚠️ [id{$fromId}|{$userName}], в нашей библиотечной беседе запрещена нецензурная лексика! Предупреждение 2/3. Следующий мат приведет к муту на 15 минут!";
+                }
             } else {
                 // warnings >= 3: МУТ НА 15 МИНУТ (900 сек)
-                vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 900, '15 минут', 'Нецензурная лексика (3 предупреждения)', $cacheDir);
+                $muteReason = $hasVulgarImage ? 'Непристойные изображения (3 предупреждения)' : 'Нецензурная лексика (3 предупреждения)';
+                vk_bot_mute_user($peerId, $fromId, $userName, -$vkGroupId, 900, '15 минут', $muteReason, $cacheDir);
 
                 $userWarns['mutes_count'] = 1;
                 $userWarns['warnings'] = 0;
                 $profData[$uKey] = $userWarns;
-                $msgText = "🔇 [id{$fromId}|{$userName}] получил 3 предупреждения за нецензурную лексику и отправлен в режим молчания на 15 минут!";
+                if ($hasVulgarImage) {
+                    $msgText = "🔇 [id{$fromId}|{$userName}] получил 3 предупреждения за непристойный контент и отправлен в режим молчания на 15 минут!";
+                } else {
+                    $msgText = "🔇 [id{$fromId}|{$userName}] получил 3 предупреждения за нецензурную лексику и отправлен в режим молчания на 15 минут!";
+                }
             }
         }
 
@@ -1035,24 +1081,68 @@ if ($botTyping && $peerId > 0) {
 
 /**
  * Распознавание входящего голосового сообщения ВКонтакте (Voice-to-Text ASR)
- * Многоуровневый отказоустойчивый конвейер:
- * 1. Нативная расшифровка VK API (если заполнена в объекте).
- * 2. ElevenLabs Scribe STT (https://api.elevenlabs.io/v1/speech-to-text) — напрямую с MP3/OGG, русская модель scribe_v1.
- * 3. Google Speech API v2 (Chromium FLAC 16kHz mono через ffmpeg).
+ * Отказоустойчивый конвейер:
+ * 1. Нативная расшифровка VK API (VK Neural ASR: мгновенно или через опрос 1-2.5 сек).
+ * 2. Резервный ASR через Google Speech API v2 (Chromium FLAC 16kHz mono через ffmpeg).
+ * (ElevenLabs для STT полностью исключён по требованию пользователя).
  */
-function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $token, $elevenlabsApiKey = '')
+function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $token, $groupId = 0)
 {
     $audio = $audioAttachment['audio_message'] ?? ($audioAttachment['doc'] ?? []);
     if (empty($audio)) return null;
 
-    // Уровень 1: Нативная расшифровка VK API (если вдруг заполнена)
+    // Уровень 1: Нативная расшифровка VK API (если уже заполнена в объекте события)
     $transcript = isset($audio['transcript']) ? trim((string)$audio['transcript']) : '';
     $state = $audio['transcript_state'] ?? '';
     if (($state === 'done' || $transcript !== '') && !preg_match('/^\[(?:шум|тишина|музыка|неразборчиво)\]$/ui', $transcript)) {
         return $transcript;
     }
 
-    // Получаем прямую CDN-ссылку на аудиофайл (VK Callback всегда отдаёт link_mp3 или link_ogg)
+    // Опрос нативной расшифровки ВКонтакте (VK Neural ASR завершает распознавание за 1-2.5 сек)
+    $cmId = (int)($msgObj['conversation_message_id'] ?? 0);
+    $msgId = (int)($msgObj['id'] ?? 0);
+
+    if ($peerId > 0 && ($cmId > 0 || $msgId > 0) && !empty($token)) {
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            usleep(850000); // 850 мс пауза
+            if ($groupId > 0) {
+                vk_bot_set_typing($peerId, $token, $groupId);
+            }
+
+            $pollRes = null;
+            if ($cmId > 0) {
+                list($code, $pollRes) = vk_bot_api_call('messages.getByConversationMessageId', [
+                    'peer_id'                  => $peerId,
+                    'conversation_message_ids' => $cmId
+                ], $token);
+            } elseif ($msgId > 0) {
+                list($code, $pollRes) = vk_bot_api_call('messages.getById', [
+                    'message_ids' => $msgId
+                ], $token);
+            }
+
+            $item = $pollRes['response']['items'][0] ?? null;
+            if (is_array($item) && !empty($item['attachments'])) {
+                foreach ($item['attachments'] as $att) {
+                    $attAudio = $att['audio_message'] ?? ($att['doc'] ?? null);
+                    if ($attAudio) {
+                        $pTranscript = isset($attAudio['transcript']) ? trim((string)$attAudio['transcript']) : '';
+                        $pState = $attAudio['transcript_state'] ?? '';
+                        if (($pState === 'done' || $pTranscript !== '') && !preg_match('/^\[(?:шум|тишина|музыка|неразборчиво)\]$/ui', $pTranscript)) {
+                            if ($pTranscript !== '') {
+                                return $pTranscript;
+                            }
+                        }
+                        if ($pState === 'failed') {
+                            break 2; // Переходим к Google Speech API
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Уровень 2: Резервный ASR через Google Speech API v2 (Chromium FLAC 16kHz mono)
     $audioUrl = $audio['link_mp3'] ?? ($audio['link_ogg'] ?? '');
     if ($audioUrl === '') return null;
 
@@ -1070,7 +1160,7 @@ function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $to
         CURLOPT_FILE           => $fp,
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AURORA-Cosmo-Voice/4.34.0',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AURORA-Cosmo-Voice/4.38.0',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false
     ]);
@@ -1084,50 +1174,6 @@ function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $to
         return null;
     }
 
-    // Уровень 2: ElevenLabs Scribe STT (Основной сверхточный русскоязычный ASR)
-    if ($elevenlabsApiKey !== '') {
-        $cfile = new CURLFile($tmpAudioFile, ($ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg'), 'voice.' . $ext);
-        $chStt = curl_init('https://api.elevenlabs.io/v1/speech-to-text');
-        curl_setopt_array($chStt, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => [
-                'file'          => $cfile,
-                'model_id'      => 'scribe_v1',
-                'language_code' => 'rus'
-            ],
-            CURLOPT_HTTPHEADER     => [
-                'xi-api-key: ' . $elevenlabsApiKey
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 25,
-            CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_USERAGENT      => 'AURORA-Cosmo-Voice/4.34.0',
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false
-        ]);
-        $sttResp = curl_exec($chStt);
-        $sttCode = (int)curl_getinfo($chStt, CURLINFO_RESPONSE_CODE);
-        curl_close($chStt);
-
-        if ($sttCode === 200 && is_string($sttResp)) {
-            $sttJson = json_decode($sttResp, true);
-            if (is_array($sttJson) && isset($sttJson['text'])) {
-                $rawText = trim((string)$sttJson['text']);
-                // Проверяем: не является ли результат только маркером шума/тишины
-                $cleanedText = trim(preg_replace('/\[(?:шум|тишина|музыка|вздох|кашель|неразборчиво|аплодисменты|смех)\]/ui', '', $rawText));
-                if ($cleanedText === '' && $rawText !== '') {
-                    @unlink($tmpAudioFile);
-                    return null; // В аудио лишь шум или тишина
-                }
-                if ($rawText !== '') {
-                    @unlink($tmpAudioFile);
-                    return $rawText;
-                }
-            }
-        }
-    }
-
-    // Уровень 3: Google Speech API v2 (Резервный ASR через Chromium API)
     $tmpFlac = $tmpDir . '/' . $uniq . '.flac';
     exec('ffmpeg -y -i ' . escapeshellarg($tmpAudioFile) . ' -ar 16000 -ac 1 ' . escapeshellarg($tmpFlac) . ' 2>&1', $ffOut, $ffRet);
     if ($ffRet === 0 && file_exists($tmpFlac) && filesize($tmpFlac) > 100) {
@@ -1746,6 +1792,133 @@ function vk_bot_delete_chat_message($peerId, $cmid, $token, $groupId)
         'group_id'                 => $groupId
     ], $token);
     return ($code === 200 && empty($res['error']));
+}
+
+/**
+ * Извлечение прямых ссылок на изображения из сообщения (фотографии и документы-изображения)
+ */
+function vk_bot_extract_photo_urls($msgObj)
+{
+    $urls = [];
+    if (!empty($msgObj['attachments']) && is_array($msgObj['attachments'])) {
+        foreach ($msgObj['attachments'] as $att) {
+            $type = $att['type'] ?? '';
+            if ($type === 'photo' && !empty($att['photo']['sizes']) && is_array($att['photo']['sizes'])) {
+                $bestSize = end($att['photo']['sizes']);
+                $url = $bestSize['url'] ?? '';
+                if ($url !== '') $urls[] = $url;
+            } elseif ($type === 'doc' && !empty($att['doc']['url'])) {
+                $ext = strtolower((string)($att['doc']['ext'] ?? ''));
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                    $urls[] = $att['doc']['url'];
+                }
+            }
+        }
+    }
+    return $urls;
+}
+
+/**
+ * Распознавание вульгарных, порнографических, эротических или содержащих нецензурную брань изображений (Vision AI)
+ * Использует модель minimax/minimax-m3:free с отказоустойчивой ротацией по пулу ИИ-ключей xkiro
+ * Возвращает ['is_vulgar' => bool, 'reason' => string]
+ */
+function vk_bot_detect_vulgar_image($photoUrl, $aiKeys, $aiBaseUrl = 'https://api.xkiro.com/v1')
+{
+    if (empty($photoUrl) || empty($aiKeys)) {
+        return ['is_vulgar' => false, 'reason' => ''];
+    }
+
+    // Скачиваем изображение во временный буфер (до 4 МБ)
+    $chDl = curl_init($photoUrl);
+    curl_setopt_array($chDl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AURORA-Vision-Mod/4.38.0',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false
+    ]);
+    $imgData = curl_exec($chDl);
+    $httpCode = (int)curl_getinfo($chDl, CURLINFO_RESPONSE_CODE);
+    $mimeType = (string)curl_getinfo($chDl, CURLINFO_CONTENT_TYPE);
+    curl_close($chDl);
+
+    if ($httpCode !== 200 || !$imgData || strlen($imgData) < 100) {
+        return ['is_vulgar' => false, 'reason' => 'download_failed'];
+    }
+
+    if (empty($mimeType) || strpos($mimeType, 'image/') !== 0) {
+        $mimeType = 'image/jpeg';
+    }
+    if (strpos($mimeType, ';') !== false) {
+        $mimeType = trim(explode(';', $mimeType)[0]);
+    }
+
+    $b64 = base64_encode($imgData);
+
+    $promptText = "Проанализируй изображение. Содержит ли оно порнографию, наготу, эротику, непристойный/вульгарный контент или нецензурную брань/мат на русском/английском языке (включая мемы и надписи)? Ответь строго в формате JSON без разметки: {\"is_vulgar\": true/false, \"reason\": \"краткая причина на русском\"}";
+
+    $payload = [
+        'model' => 'minimax/minimax-m3:free',
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'text',
+                        'text' => $promptText
+                    ],
+                    [
+                        'type' => 'image_url',
+                        'image_url' => [
+                            'url' => 'data:' . $mimeType . ';base64,' . $b64
+                        ]
+                    ]
+                ]
+            ]
+        ],
+        'max_tokens'  => 180,
+        'temperature' => 0.1
+    ];
+    $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+    // Ротация по пулу ключей xkiro
+    foreach ($aiKeys as $key) {
+        $chAi = curl_init($aiBaseUrl . '/chat/completions');
+        curl_setopt_array($chAi, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payloadJson,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $key,
+                'Content-Type: application/json'
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_CONNECTTIMEOUT => 6,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
+        $resp = curl_exec($chAi);
+        $code = (int)curl_getinfo($chAi, CURLINFO_RESPONSE_CODE);
+        curl_close($chAi);
+
+        if ($code === 200 && is_string($resp) && strlen($resp) > 0) {
+            $json = json_decode($resp, true);
+            $content = $json['choices'][0]['message']['content'] ?? '';
+            if (is_string($content) && preg_match('/\{.*?\}/s', $content, $m)) {
+                $parsed = json_decode($m[0], true);
+                if (is_array($parsed) && isset($parsed['is_vulgar'])) {
+                    return [
+                        'is_vulgar' => (bool)$parsed['is_vulgar'],
+                        'reason'    => (string)($parsed['reason'] ?? '')
+                    ];
+                }
+            }
+        }
+    }
+
+    return ['is_vulgar' => false, 'reason' => ''];
 }
 
 /**
@@ -3431,16 +3604,16 @@ $defaultMascotStickers = [
     'sleep'    => 'photo-241534292_457239037',
     'thinking' => 'photo-241534292_457239038',
     'angry'    => 'photo-241534292_457239039',
-    'cool'     => 'photo-241534292_457239040',
-    'idea'     => 'photo-241534292_457239041',
-    'laugh'    => 'photo-241534292_457239042',
-    'party'    => 'photo-241534292_457239043',
-    'read'     => 'photo-241534292_457239044',
-    'shock'    => 'photo-241534292_457239045',
-    'waving'   => 'photo-241534292_457239046',
-    'wink'     => 'photo-241534292_457239047',
-    'sad'      => 'photo-241534292_457239048',
-    'love'     => 'photo-241534292_457239049'
+    'love'     => 'photo-241534292_457239052',
+    'party'    => 'photo-241534292_457239053',
+    'sad'      => 'photo-241534292_457239054',
+    'shock'    => 'photo-241534292_457239055',
+    'waving'   => 'photo-241534292_457239056',
+    'wink'     => 'photo-241534292_457239057',
+    'cool'     => 'photo-241534292_457239058',
+    'read'     => 'photo-241534292_457239059',
+    'idea'     => 'photo-241534292_457239060',
+    'laugh'    => 'photo-241534292_457239061'
 ];
 
 /**
@@ -3948,16 +4121,6 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🖼️ Стикеры Космо'
-                ],
-                'color' => 'secondary'
-            ]
-        ],
-        [
-            [
-                'action' => [
-                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE),
                     'label'   => '🤖 Кто ты, Космо?'
                 ],
@@ -4108,8 +4271,8 @@ $inlineChatKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🖼️ !стикеры'
+                    'payload' => json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🤖 О Космо'
                 ],
                 'color' => 'secondary'
             ]
@@ -4180,7 +4343,7 @@ if ($audioAttachment !== null) {
     if ($botTyping && $peerId > 0) {
         vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
     }
-    $resolvedTranscript = vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $communityToken, $elevenlabsApiKey);
+    $resolvedTranscript = vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $communityToken, $vkGroupId);
     if ($resolvedTranscript !== null && trim($resolvedTranscript) !== '') {
         $voiceTranscribedText = trim($resolvedTranscript);
 

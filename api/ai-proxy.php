@@ -27,9 +27,11 @@ ini_set('display_errors', '0');
 // 0. Конфигурация и пулы ИИ-ключей
 // ---------------------------------------------------------------------------
 // Встроенные дефолтные fallback-ключи на случай отсутствия или повреждения конфигурации
+// 1 и 2: по 1 000 000 токенов/24ч; 3 и 4: по 500 000 токенов/24ч (всего 3 000 000 токенов/сутки)
 $defaultAiKey1 = 'sk-xt-7bfbd1f7908daa6a630e1e6e3d5cfa4e1961dcef6aebbfe1';
 $defaultAiKey2 = 'sk-xt-764dbb9ee98b4d75bcedeef2fd0899d01044e46e8143acd2';
 $defaultAiKey3 = 'sk-xt-89197544de3c1a413756421f7181e8ef5334c84915c67b1e';
+$defaultAiKey4 = 'sk-xt-5ec04454fdfbae29eca0a631c43d6c07a0ef9d475c606161';
 
 // Читаем config.php и опционально config.local.php (локальные переопределения)
 $aiConfig = [];
@@ -71,10 +73,16 @@ if (!empty($aiConfig['ai_api_key_fallback_2'])) {
         $rawKeys[] = $k;
     }
 }
+if (!empty($aiConfig['ai_api_key_fallback_3'])) {
+    $k = trim((string)$aiConfig['ai_api_key_fallback_3']);
+    if ($k !== '' && strpos($k, 'ВСТАВЬТЕ') !== 0) {
+        $rawKeys[] = $k;
+    }
+}
 
-// Гарантируем наличие трёх резервных ключей
+// Гарантируем наличие всех четырёх резервных ключей
 if (empty($rawKeys)) {
-    $rawKeys = [$defaultAiKey1, $defaultAiKey2, $defaultAiKey3];
+    $rawKeys = [$defaultAiKey1, $defaultAiKey2, $defaultAiKey3, $defaultAiKey4];
 } else {
     if (!in_array($defaultAiKey1, $rawKeys, true)) {
         $rawKeys[] = $defaultAiKey1;
@@ -85,9 +93,12 @@ if (empty($rawKeys)) {
     if (!in_array($defaultAiKey3, $rawKeys, true)) {
         $rawKeys[] = $defaultAiKey3;
     }
+    if (!in_array($defaultAiKey4, $rawKeys, true)) {
+        $rawKeys[] = $defaultAiKey4;
+    }
 }
 
-// Формируем уникальный список доступных ключей [$key1, $key2, $key3, ...]
+// Формируем уникальный список доступных ключей [$key1, $key2, $key3, $key4, ...]
 $validKeys = array_values(array_unique($rawKeys));
 
 $aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';

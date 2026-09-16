@@ -131,17 +131,17 @@ foreach ($files as $file) {
     if ($savedPhoto && isset($savedPhoto['owner_id'], $savedPhoto['id'])) {
         $attId = 'photo' . $savedPhoto['owner_id'] . '_' . $savedPhoto['id'];
         $stickersMap[$emo] = $attId;
-        echo "УСПЕХ -> {$attId}\n";
         $uploadedCount++;
+        echo "УСПЕХ -> {$attId}\n";
         
         // Сразу сохраняем прогресс в кэш
         file_put_contents($stickersCacheFile, json_encode($stickersMap, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     } else {
-        echo "ОШИБКА сохранения фото: {$saveRaw}\n";
+        echo "ОШИБКА сохранения: {$saveRaw}\n";
     }
 
-    // Небольшая задержка, чтобы соблюдать лимиты VK API
-    usleep(300000); // 300ms
+    // Задержка между загрузками для VK API
+    usleep(800000); // 800ms
 }
 
 // Итоговое сохранение кэша
