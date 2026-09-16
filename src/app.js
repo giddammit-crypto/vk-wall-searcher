@@ -3726,6 +3726,14 @@ function initApp() {
     // =========================================================================
     // 15. Run Initializers
     // =========================================================================
+    const _urlP = new URLSearchParams(window.location.search);
+    if (_urlP.get('mode') === 'shelf_recommend') {
+        // Standalone Reader Mode: читатель пришёл по QR-коду со стеллажа библиотеки.
+        // Полностью отменяем загрузку дашборда, Three.js, тяжелых сканов ВК, форм и 2D-маскота в углу!
+        console.log('[AURORA] Режим автономного книжного робота Космо активен. Инициализация служебного дашборда отменена.');
+        return;
+    }
+
     initFormInputs();
     updateServerKeyUI();
     initUpdater();
@@ -3737,7 +3745,6 @@ function initApp() {
     CosmicUniverse.init({ canvasId: 'cosmic-universe-canvas', containerId: 'cosmic-search-backdrop' });
 
     // Diagnostic / Preview helpers via URL params
-    const _urlP = new URLSearchParams(window.location.search);
     if (_urlP.get('preview_tab') === 'subscribers') {
         if (elements.resultsContainer) {
             elements.resultsContainer.classList.remove('hidden');
@@ -3751,17 +3758,6 @@ function initApp() {
         setTimeout(() => {
             openPromoModal();
         }, 200);
-    }
-    if (_urlP.get('mode') === 'shelf_recommend') {
-        document.documentElement.classList.add('reader-shelf-standalone');
-        document.body.classList.add('reader-shelf-standalone');
-        const shelfGenre = _urlP.get('genre') || 'universal';
-        const shelfBranch = _urlP.get('branch') || 'cgb';
-        setTimeout(() => {
-            if (Mascot && typeof Mascot.openShelfRecommendation === 'function') {
-                Mascot.openShelfRecommendation(shelfGenre, shelfBranch);
-            }
-        }, 30);
     }
     if (_urlP.get('mode') === 'league' || _urlP.get('preview_league') === '1') {
         setTimeout(() => {

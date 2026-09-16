@@ -9597,18 +9597,58 @@ html.reader-shelf-standalone .cosmo-chat-dialog {
     }
 }
 
-/* Скрытие SMM-кнопок, пресетов анализа ВК и отчётов методиста для читателей */
+/* Скрытие ВСЕХ служебных инструментов библиотекарей, SMM-кнопок, пресетов анализа ВК и отчётов методиста для читателей */
 html.reader-shelf-standalone .cosmo-chat-presets-btn,
 html.reader-shelf-standalone .cosmo-chat-presets-popover,
 html.reader-shelf-standalone .cosmo-chat-presets-backdrop,
 html.reader-shelf-standalone .cosmo-chat-quick-presets-bar,
 html.reader-shelf-standalone .cosmo-chat-close-btn,
+html.reader-shelf-standalone [data-chat-presets-toggle],
+html.reader-shelf-standalone [data-chat-export],
+html.reader-shelf-standalone [data-chat-clear],
+html.reader-shelf-standalone [data-chat-close],
+html.reader-shelf-standalone .cosmo-chat-attach-btn,
+html.reader-shelf-standalone [data-chat-attach],
+html.reader-shelf-standalone .cosmo-chat-attachment-bar,
+html.reader-shelf-standalone .post-metrics-badge,
+html.reader-shelf-standalone [data-copy-post],
+html.reader-shelf-standalone [data-regenerate-response],
 .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-btn,
 .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-popover,
 .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-backdrop,
 .cosmo-chat-dialog.reader-mode .cosmo-chat-quick-presets-bar,
-.cosmo-chat-dialog.reader-mode .cosmo-chat-close-btn {
+.cosmo-chat-dialog.reader-mode .cosmo-chat-close-btn,
+.cosmo-chat-dialog.reader-mode [data-chat-presets-toggle],
+.cosmo-chat-dialog.reader-mode [data-chat-export],
+.cosmo-chat-dialog.reader-mode [data-chat-clear],
+.cosmo-chat-dialog.reader-mode [data-chat-close],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-attach-btn,
+.cosmo-chat-dialog.reader-mode [data-chat-attach],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-attachment-bar,
+.cosmo-chat-dialog.reader-mode .post-metrics-badge,
+.cosmo-chat-dialog.reader-mode [data-copy-post],
+.cosmo-chat-dialog.reader-mode [data-regenerate-response] {
     display: none !important;
+    visibility: hidden !important;
+}
+
+/* Действия под рекомендацией книг для читателя со стеллажа */
+.shelf-reader-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+.shelf-reader-actions .cosmo-chat-action-btn {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+}
+.shelf-reader-actions .cosmo-chat-action-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #ffffff;
 }
 
 /* ==========================================================================

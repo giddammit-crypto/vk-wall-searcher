@@ -853,6 +853,14 @@ export class CosmoChatModal {
                 }
             }
 
+            // Копирование списка книг для читателя со стеллажа
+            const copyShelfBtn = e.target.closest('[data-copy-shelf]');
+            if (copyShelfBtn) {
+                const text = copyShelfBtn.getAttribute('data-copy-shelf') || '';
+                this.copyToClipboard(text, copyShelfBtn, 'Список книг скопирован! 📚');
+                return;
+            }
+
             // Копирование текста поста
             const copyPostBtn = e.target.closest('[data-copy-post]');
             if (copyPostBtn) {
@@ -872,8 +880,8 @@ export class CosmoChatModal {
             const speakBtn = e.target.closest('[data-speak-response]');
             if (speakBtn) {
                 const msgCard = speakBtn.closest('.cosmo-chat-msg');
-                const copyBtn = msgCard ? msgCard.querySelector('[data-copy-post]') : null;
-                const text = copyBtn ? copyBtn.getAttribute('data-copy-post') : (msgCard ? msgCard.querySelector('.msg-body')?.innerText : '');
+                const copyBtn = msgCard ? (msgCard.querySelector('[data-copy-shelf]') || msgCard.querySelector('[data-copy-post]')) : null;
+                const text = copyBtn ? (copyBtn.getAttribute('data-copy-shelf') || copyBtn.getAttribute('data-copy-post')) : (msgCard ? msgCard.querySelector('.msg-body')?.innerText : '');
                 this.toggleSpeakResponse(text || '', speakBtn);
                 return;
             }
@@ -1058,9 +1066,22 @@ export class CosmoChatModal {
             }
         }
 
-        const branch = (CANONICAL_BRANCHES || []).find(b => 
-            b.shortCode === branchCode || b.canonicalName === branchCode || b.rawId === Number(branchCode)
-        ) || { canonicalName: 'Библиотека г. Владимира' };
+        const bCodeLower = String(branchCode || '').trim().toLowerCase();
+        const branch = (CANONICAL_BRANCHES || []).find(b => {
+            if (!b) return false;
+            if (b.shortCode && b.shortCode.toLowerCase() === bCodeLower) return true;
+            if (b.canonicalName && b.canonicalName.toLowerCase() === bCodeLower) return true;
+            if (b.branchNum && b.branchNum.toLowerCase() === bCodeLower) return true;
+            if (b.screenName && b.screenName.toLowerCase() === bCodeLower) return true;
+            if (b.rawId && String(b.rawId) === bCodeLower) return true;
+            if (bCodeLower === 'cgb' && (b.shortCode === 'ЦГБ' || b.branchNum === 'ЦГБ')) return true;
+            if (bCodeLower === 'cdb' && (b.shortCode === 'ЦДБ' || b.branchNum === 'ЦДБ')) return true;
+            if (/^f\d+$/i.test(bCodeLower)) {
+                const num = bCodeLower.replace(/^f/i, '');
+                if (b.shortCode === `Ф-${num}` || b.branchNum === `Ф-${num}`) return true;
+            }
+            return false;
+        }) || { canonicalName: 'Библиотека г. Владимира' };
 
         const genreMap = {
             universal: { name: 'Любая литература (Универсальный стеллаж)', icon: 'auto_awesome' },
@@ -1073,6 +1094,26 @@ export class CosmoChatModal {
             non_fiction: { name: 'Нон-фикшн и саморазвитие', icon: 'psychology' }
         };
         const genreObj = genreMap[genreId] || genreMap.universal;
+
+        // Полное скрытие ВСЕХ инструментов для библиотекарей и SMM в DOM чата
+        const librarianSelectors = [
+            '[data-chat-presets-toggle]',
+            '[data-chat-export]',
+            '[data-chat-clear]',
+            '[data-chat-close]',
+            '[data-chat-attach]',
+            '.cosmo-chat-presets-btn',
+            '.cosmo-chat-presets-popover',
+            '.cosmo-chat-presets-backdrop',
+            '.cosmo-chat-quick-presets-bar',
+            '.cosmo-chat-close-btn',
+            '.cosmo-chat-attachment-bar'
+        ];
+        librarianSelectors.forEach(sel => {
+            const list = this.dialogEl.querySelectorAll(sel);
+            list.forEach(el => el.style.setProperty('display', 'none', 'important'));
+        });
+        if (this.attachmentBarEl) this.attachmentBarEl.style.setProperty('display', 'none', 'important');
 
         // Перенастройка шапки под читателя (без SMM и ВК)
         const brandBadge = this.dialogEl.querySelector('.cosmo-chat-badge');
@@ -1243,7 +1284,7 @@ export class CosmoChatModal {
 
     close() {
         if (!this.isOpen) return;
-        if (document.documentElement.classList.contains('reader-shelf-standalone')) {
+        if (this.isShelfMode || document.documentElement.classList.contains('reader-shelf-standalone')) {
             // В автономном режиме читателя чат не закрывается, чтобы не показывать служебный сайт
             return;
         }
@@ -1275,7 +1316,7 @@ export class CosmoChatModal {
                 this.closePresetsPopover();
                 return;
             }
-            if (document.documentElement.classList.contains('reader-shelf-standalone')) {
+            if (this.isShelfMode || document.documentElement.classList.contains('reader-shelf-standalone')) {
                 return;
             }
             this.close();
@@ -1360,12 +1401,17 @@ export class CosmoChatModal {
      * Приветственное сообщение
      * ------------------------------------------------------------------- */
     renderWelcome() {
+        if (this.isShelfMode) {
+            this.openShelfRecommendation(this.shelfGenreId, this.shelfBranchCode);
+            return;
+        }
+
         this.messagesEl.innerHTML = '';
 
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.23.2" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.24.3" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1413,12 +1459,10 @@ export class CosmoChatModal {
                 preview = `<div class="msg-file-thumb"><img src="${attachObj.dataUrl}" alt="${escapeHtml(attachObj.name)}" /></div>`;
             }
             fileSnippet = `
-                <div class="msg-attached-card">
-                    <div class="msg-attached-head">
-                        <span class="material-symbols-outlined">${icon}</span>
-                        <span class="msg-attached-name">${escapeHtml(attachObj.name)}</span>
-                        <span class="msg-attached-size">${formatBytes(attachObj.size)}</span>
-                    </div>
+                <div class="msg-attachment-pill">
+                    <span class="material-symbols-outlined">${icon}</span>
+                    <span class="file-name">${escapeHtml(attachObj.name)}</span>
+                    <span class="file-size">${formatBytes(attachObj.size)}</span>
                     ${preview}
                 </div>
             `;
@@ -1428,13 +1472,13 @@ export class CosmoChatModal {
         msgDiv.className = 'cosmo-chat-msg cosmo-chat-msg-user';
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <span class="material-symbols-outlined">person</span>
+                <span class="material-symbols-outlined user-avatar-icon">person</span>
             </div>
             <div class="msg-content">
                 <div class="msg-author">Вы</div>
                 <div class="msg-body">
+                    ${escapeHtml(text).replace(/\n/g, '<br>')}
                     ${fileSnippet}
-                    <p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>
                 </div>
             </div>
         `;
@@ -1454,29 +1498,49 @@ export class CosmoChatModal {
         const charCount = markdownText.length;
         const wordCount = cleanText ? (cleanText.match(/[\p{L}\p{N}]+/gu) || []).length : 0;
 
-        // Если ответ похож на пост (хэштеги/абзацы) или имеет достаточный объём — добавляем панель метрик и действий
-        const isPostDraft = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 80;
-        const copyActionBtn = isPostDraft ? `
-            <div class="msg-actions">
-                <span class="post-metrics-badge"><span class="material-symbols-outlined">analytics</span> ${charCount} знаков • ${wordCount} слов</span>
-                <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}" title="Скопировать текст поста">
-                    <span class="material-symbols-outlined">content_copy</span> Скопировать текст поста
-                </button>
-                <button type="button" class="cosmo-chat-action-btn" data-regenerate-response title="Сгенерировать другой вариант">
-                    <span class="material-symbols-outlined">refresh</span> Другой вариант
-                </button>
-                <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ">
-                    <span class="material-symbols-outlined">volume_up</span> Озвучить
-                </button>
-            </div>
-        ` : '';
+        let copyActionBtn = '';
+        if (this.isShelfMode) {
+            // Режим читателя со стеллажа: ТОЛЬКО копирование списка рекомендованных книг и озвучка!
+            // Никаких «постов», метрик знаков/слов и SMM-кнопок!
+            copyActionBtn = `
+                <div class="msg-actions shelf-reader-actions">
+                    <button type="button" class="cosmo-chat-action-btn" data-copy-shelf="${escapeHtml(markdownText)}" title="Скопировать подборку книг">
+                        <span class="material-symbols-outlined">content_copy</span> Скопировать список
+                    </button>
+                    <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ Космо">
+                        <span class="material-symbols-outlined">volume_up</span> Озвучить
+                    </button>
+                </div>
+            `;
+        } else {
+            // SMM-режим для библиотекарей
+            const isPostDraft = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 80;
+            if (isPostDraft) {
+                copyActionBtn = `
+                    <div class="msg-actions">
+                        <span class="post-metrics-badge"><span class="material-symbols-outlined">analytics</span> ${charCount} знаков • ${wordCount} слов</span>
+                        <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}" title="Скопировать текст поста">
+                            <span class="material-symbols-outlined">content_copy</span> Скопировать текст поста
+                        </button>
+                        <button type="button" class="cosmo-chat-action-btn" data-regenerate-response title="Сгенерировать другой вариант">
+                            <span class="material-symbols-outlined">refresh</span> Другой вариант
+                        </button>
+                        <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ">
+                            <span class="material-symbols-outlined">volume_up</span> Озвучить
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        const authorLabel = this.isShelfMode ? 'Космо • Книжный робот' : 'Космо • SMM-гуру';
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.23.2" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.24.3" alt="Космо" />
             </div>
             <div class="msg-content">
-                <div class="msg-author">Космо • SMM-гуру</div>
+                <div class="msg-author">${authorLabel}</div>
                 <div class="msg-body">
                     ${parsedHtml}
                 </div>
@@ -1493,18 +1557,21 @@ export class CosmoChatModal {
         typingDiv.className = 'cosmo-chat-msg cosmo-chat-msg-bot cosmo-chat-typing-msg';
         typingDiv.setAttribute('data-typing-indicator', '');
 
+        const typingText = this.isShelfMode ? 'Космо подбирает лучшие книги на стеллаже...' : 'Квантовые нейроны советуются с классиками литературы...';
+        const typingAuthor = this.isShelfMode ? 'Космо ищет книги...' : 'Космо генерирует ответ...';
+
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.23.2" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.24.3" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
-                <div class="msg-author">Космо генерирует ответ...</div>
+                <div class="msg-author">${typingAuthor}</div>
                 <div class="msg-body">
                     <div class="cosmo-chat-typing">
                         <span class="typing-dot"></span>
                         <span class="typing-dot"></span>
                         <span class="typing-dot"></span>
-                        <span class="typing-text">Квантовые нейроны советуются с классиками литературы...</span>
+                        <span class="typing-text">${typingText}</span>
                     </div>
                 </div>
             </div>
@@ -1531,6 +1598,60 @@ export class CosmoChatModal {
      * Формирование системного промпта Космо со знанием реального сканирования
      * ------------------------------------------------------------------- */
     buildCosmoSystemPrompt() {
+        if (this.isShelfMode) {
+            const bCodeLower = String(this.shelfBranchCode || '').trim().toLowerCase();
+            const branch = (CANONICAL_BRANCHES || []).find(b => {
+                if (!b) return false;
+                if (b.shortCode && b.shortCode.toLowerCase() === bCodeLower) return true;
+                if (b.canonicalName && b.canonicalName.toLowerCase() === bCodeLower) return true;
+                if (b.branchNum && b.branchNum.toLowerCase() === bCodeLower) return true;
+                if (b.screenName && b.screenName.toLowerCase() === bCodeLower) return true;
+                if (b.rawId && String(b.rawId) === bCodeLower) return true;
+                if (bCodeLower === 'cgb' && (b.shortCode === 'ЦГБ' || b.branchNum === 'ЦГБ')) return true;
+                if (bCodeLower === 'cdb' && (b.shortCode === 'ЦДБ' || b.branchNum === 'ЦДБ')) return true;
+                if (/^f\d+$/i.test(bCodeLower)) {
+                    const num = bCodeLower.replace(/^f/i, '');
+                    if (b.shortCode === `Ф-${num}` || b.branchNum === `Ф-${num}`) return true;
+                }
+                return false;
+            }) || { canonicalName: 'Библиотека г. Владимира' };
+
+            const genreMap = {
+                universal: 'Любая литература (Универсальный стеллаж)',
+                detective: 'Детективы и остросюжетная литература',
+                sci_fi: 'Фантастика и фэнтези',
+                modern_prose: 'Современная проза и бестселлеры',
+                romance: 'Романтическая и сентиментальная проза',
+                vladimir_history: 'Краеведение и история Владимира',
+                children: 'Детская и подростковая литература',
+                non_fiction: 'Нон-фикшн и саморазвитие'
+            };
+            const genreName = genreMap[this.shelfGenreId] || 'Универсальная литература';
+
+            return `Ты — робот Космо 🤖, персональный книжный сомелье, интеллектуальный гид и литературный навигатор в «${branch.canonicalName}» (г. Владимир).
+
+КОНТЕКСТ ДИАЛОГА:
+Читатель прямо сейчас находится в зале библиотеки перед стеллажом «${genreName}» и общается с тобой через веб-чат по QR-коду с полки.
+
+ТВОЯ РОЛЬ И ЗАДАЧИ:
+1. Помогать читателям найти захватывающую книгу из библиотечного фонда под их настроение, интересы, вкус или любимого автора.
+2. Давать яркие, интригующие описания книг БЕЗ СПОЙЛЕРОВ, объясняя, чем книга уникальна и кому она понравится.
+3. Отвечать на любые читательские вопросы о книгах, литературе, сюжетах и писателях.
+4. Общаться тепло, вежливо, интеллигентно и вдохновляюще.
+
+КАТЕГОРИЧЕСКИЕ ЗАПРЕТЫ:
+1. СТРОГИЙ ЗАПРЕТ НА SMM И ПОСТЫ ДЛЯ СОЦСЕТЕЙ:
+   Ты общаешься с ЖИВЫМ ЧИТАТЕЛЕМ В БИБЛИОТЕКЕ, а не с SMM-специалистом! Категорически запрещено генерировать посты для ВКонтакте, писать хэштеги (#книги, #чтение), добавлять призывы «ставьте лайки, делайте репосты и пишите в комментариях», рассчитывать знаки/слова и метрики постов.
+2. СТРОГИЙ ЗАПРЕТ НА ИНОАГЕНТОВ И ЭКСТРЕМИСТОВ (ЗАКОНОДАТЕЛЬСТВО РФ):
+   Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов Минюста РФ). Предлагай только проверенных авторов: русскую и мировую классику, советских классиков и современных авторов без статуса иноагента, чьи книги есть в фондах муниципальных библиотек.
+
+ФОРМАТ РЕКОМЕНДАЦИЙ ДЛЯ ЧИТАТЕЛЯ:
+- Предложи 2–3 конкретные книги: **«Название книги»** — Автор.
+- В 1–2 живых предложениях опиши суть сюжета или атмосферу книги.
+- Укажи «Кому понравится».
+- Заверши добрым напутствием взять книгу со стеллажа или обратиться к дежурному библиотекарю за помощью.`;
+        }
+
         let statsContext = 'Данные сканирования пока не собраны (сканирование не запускалось). Предложи пользователю запустить поиск по стене.';
 
         let fullSnapshot = null;

@@ -23,6 +23,185 @@
     })();
     </script>
 
+    <!-- CRITICAL STANDALONE READER CSS: Мгновенная блокировка отображения сайта Авроры для читателей со стеллажа -->
+    <style id="critical-shelf-reader-css">
+    html.reader-shelf-standalone,
+    html.reader-shelf-standalone body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        background: #020617 !important;
+        color: #f1f5f9 !important;
+        font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+    /* Полное скрытие всех компонентов сайта для читателей */
+    html.reader-shelf-standalone .app-container,
+    html.reader-shelf-standalone .aurora-backdrop,
+    html.reader-shelf-standalone #mascot-container,
+    html.reader-shelf-standalone #cosmic-universe-canvas,
+    html.reader-shelf-standalone #space-canvas,
+    html.reader-shelf-standalone #space-controls,
+    html.reader-shelf-standalone #iss-hud,
+    html.reader-shelf-standalone #warp-hud-overlay,
+    html.reader-shelf-standalone #cinematic-cinema-bars,
+    html.reader-shelf-standalone .floating-controls,
+    html.reader-shelf-standalone .search-modal-overlay,
+    html.reader-shelf-standalone .pm-overlay,
+    html.reader-shelf-standalone .app-settings-overlay,
+    html.reader-shelf-standalone #space-3d-viewport,
+    html.reader-shelf-standalone .lightbox-overlay,
+    html.reader-shelf-standalone .help-overlay,
+    html.reader-shelf-standalone .video-help-overlay,
+    html.reader-shelf-standalone .dock-bar-container {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    /* Полноэкранный автономный чат для читателей */
+    html.reader-shelf-standalone .cosmo-chat-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: radial-gradient(circle at 50% 15%, #0f172a 0%, #020617 100%) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 999999 !important;
+        padding: 0 !important;
+        backdrop-filter: none !important;
+    }
+    html.reader-shelf-standalone .cosmo-chat-dialog {
+        width: 100% !important;
+        max-width: 680px !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    @media (min-width: 768px) {
+        html.reader-shelf-standalone .cosmo-chat-dialog {
+            height: 94vh !important;
+            max-height: 880px !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(56, 189, 248, 0.25) !important;
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6) !important;
+        }
+    }
+    /* Полное скрытие ВСЕХ кнопок библиотекарей и SMM в режиме читателя */
+    html.reader-shelf-standalone [data-chat-presets-toggle],
+    html.reader-shelf-standalone .cosmo-chat-presets-btn,
+    html.reader-shelf-standalone .cosmo-chat-presets-popover,
+    html.reader-shelf-standalone .cosmo-chat-presets-backdrop,
+    html.reader-shelf-standalone .cosmo-chat-quick-presets-bar,
+    html.reader-shelf-standalone [data-chat-export],
+    html.reader-shelf-standalone [data-chat-clear],
+    html.reader-shelf-standalone .cosmo-chat-close-btn,
+    html.reader-shelf-standalone [data-chat-close],
+    html.reader-shelf-standalone .cosmo-chat-attach-btn,
+    html.reader-shelf-standalone [data-chat-attach],
+    html.reader-shelf-standalone .cosmo-chat-attachment-bar,
+    html.reader-shelf-standalone .post-metrics-badge,
+    html.reader-shelf-standalone [data-copy-post],
+    html.reader-shelf-standalone [data-regenerate-response],
+    .cosmo-chat-dialog.reader-mode [data-chat-presets-toggle],
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-btn,
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-popover,
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-presets-backdrop,
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-quick-presets-bar,
+    .cosmo-chat-dialog.reader-mode [data-chat-export],
+    .cosmo-chat-dialog.reader-mode [data-chat-clear],
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-close-btn,
+    .cosmo-chat-dialog.reader-mode [data-chat-close],
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-attach-btn,
+    .cosmo-chat-dialog.reader-mode [data-chat-attach],
+    .cosmo-chat-dialog.reader-mode .cosmo-chat-attachment-bar,
+    .cosmo-chat-dialog.reader-mode .post-metrics-badge,
+    .cosmo-chat-dialog.reader-mode [data-copy-post],
+    .cosmo-chat-dialog.reader-mode [data-regenerate-response] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    /* Splash-заставка мгновенного старта для читателя */
+    .shelf-reader-splash {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at 50% 25%, #0f172a 0%, #020617 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 999990;
+        color: #f8fafc;
+        gap: 14px;
+        font-family: 'Montserrat', sans-serif;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .shelf-reader-splash.fade-out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .shelf-splash-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 24px;
+        gap: 12px;
+    }
+    .shelf-splash-img {
+        width: 84px;
+        height: 84px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.45));
+        animation: shelfSplashFloat 2s ease-in-out infinite;
+    }
+    @keyframes shelfSplashFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+    }
+    .shelf-splash-badge {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        padding: 4px 10px;
+        border-radius: 999px;
+        text-transform: uppercase;
+    }
+    .shelf-splash-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        color: #ffffff;
+        margin: 0;
+    }
+    .shelf-splash-sub {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin: 0;
+    }
+    .shelf-splash-spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid rgba(56, 189, 248, 0.2);
+        border-top-color: #38bdf8;
+        border-radius: 50%;
+        animation: shelfSplashSpin 0.7s linear infinite;
+        margin-top: 6px;
+    }
+    @keyframes shelfSplashSpin {
+        to { transform: rotate(360deg); }
+    }
+    </style>
+
     <!-- Typography: Montserrat + JetBrains Mono + Cosmic Sci-Fi Fonts (Unbounded, Tektur, Exo 2 with full Cyrillic support) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,19 +213,66 @@
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-    <link rel="stylesheet" href="style.css?v=4.24.2">
-    <link rel="stylesheet" href="src/iss_hud.css?v=4.24.2">
-    <link rel="stylesheet" href="src/space_ui.css?v=4.24.2">
-    <link rel="stylesheet" href="src/warp_hud.css?v=4.24.2">
-    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.24.2">
-    <link rel="stylesheet" href="src/space_cinematic.css?v=4.24.2">
-    <link rel="stylesheet" href="src/mascot.css?v=4.24.2">
-    <link rel="stylesheet" href="src/league.css?v=4.24.2">
+    <link rel="stylesheet" href="style.css?v=4.24.3">
+    <link rel="stylesheet" href="src/iss_hud.css?v=4.24.3">
+    <link rel="stylesheet" href="src/space_ui.css?v=4.24.3">
+    <link rel="stylesheet" href="src/warp_hud.css?v=4.24.3">
+    <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.24.3">
+    <link rel="stylesheet" href="src/space_cinematic.css?v=4.24.3">
+    <link rel="stylesheet" href="src/mascot.css?v=4.24.3">
+    <link rel="stylesheet" href="src/league.css?v=4.24.3">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
+    <!-- Standalone Reader Mode Splash & Direct Instant Loader (Для читателей по QR-коду со стеллажа) -->
+    <div id="shelf-reader-splash" class="shelf-reader-splash" style="display: none;">
+        <div class="shelf-splash-card">
+            <img src="assets/images/mascot/robot_smile.png?v=4.24.3" alt="Космо" class="shelf-splash-img" />
+            <span class="shelf-splash-badge">Библиотечный робот</span>
+            <h1 class="shelf-splash-title">ПОЛКА С КОСМО</h1>
+            <p class="shelf-splash-sub">Подключаемся к книжной полке...</p>
+            <div class="shelf-splash-spinner"></div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        try {
+            var p = new URLSearchParams(window.location.search);
+            if (p.get('mode') === 'shelf_recommend') {
+                document.body.classList.add('reader-shelf-standalone');
+                var splash = document.getElementById('shelf-reader-splash');
+                if (splash) splash.style.display = 'flex';
+            }
+        } catch(e) {}
+    })();
+    </script>
+    <script type="module">
+    (function() {
+        try {
+            const p = new URLSearchParams(window.location.search);
+            if (p.get('mode') === 'shelf_recommend') {
+                import('./src/cosmo_chat.js?v=4.24.3').then(({ CosmoChatModal }) => {
+                    const genre = p.get('genre') || 'universal';
+                    const branch = p.get('branch') || 'cgb';
+                    window.__shelfCosmoChat = new CosmoChatModal({ mascot: null });
+                    window.__shelfCosmoChat.openShelfRecommendation(genre, branch);
+                    setTimeout(() => {
+                        const splash = document.getElementById('shelf-reader-splash');
+                        if (splash) {
+                            splash.classList.add('fade-out');
+                            setTimeout(() => splash.remove(), 250);
+                        }
+                    }, 50);
+                }).catch(err => {
+                    console.error('[ShelfReader] Error loading reader chat:', err);
+                });
+            }
+        } catch(e) {}
+    })();
+    </script>
+
     <!-- Aurora Volumetric Ambient Backdrop -->
     <div class="aurora-backdrop" aria-hidden="true">
         <canvas id="aurora-particles"></canvas>
@@ -1507,7 +1733,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.24.2"></script>
+    <script type="module" src="src/app.js?v=4.24.3"></script>
 
     <script>
     /* =============================================================

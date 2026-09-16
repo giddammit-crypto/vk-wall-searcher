@@ -4994,3 +4994,48 @@
         padding: 6px 11px;
     }
 }
+
+/* ==========================================================================
+   STANDALONE READER MODE: Hide all librarian / SMM buttons
+   ========================================================================== */
+html.reader-shelf-standalone [data-chat-presets-toggle],
+html.reader-shelf-standalone .cosmo-chat-presets-btn,
+html.reader-shelf-standalone .cosmo-chat-presets-popover,
+html.reader-shelf-standalone .cosmo-chat-presets-backdrop,
+html.reader-shelf-standalone .cosmo-chat-quick-presets-bar,
+html.reader-shelf-standalone [data-chat-export],
+html.reader-shelf-standalone [data-chat-clear],
+html.reader-shelf-standalone .cosmo-chat-close-btn,
+html.reader-shelf-standalone [data-chat-close],
+html.reader-shelf-standalone .cosmo-chat-attach-btn,
+html.reader-shelf-standalone [data-chat-attach],
+html.reader-shelf-standalone .cosmo-chat-attachment-bar,
+html.reader-shelf-standalone .post-metrics-badge,
+html.reader-shelf-standalone [data-copy-post],
+html.reader-shelf-standalone [data-regenerate-response],
+.cosmo-chat-dialog.reader-mode [data-chat-presets-toggle],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-btn,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-popover,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-backdrop,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-quick-presets-bar,
+.cosmo-chat-dialog.reader-mode [data-chat-export],
+.cosmo-chat-dialog.reader-mode [data-chat-clear],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-close-btn,
+.cosmo-chat-dialog.reader-mode [data-chat-close],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-attach-btn,
+.cosmo-chat-dialog.reader-mode [data-chat-attach],
+.cosmo-chat-dialog.reader-mode .cosmo-chat-attachment-bar,
+.cosmo-chat-dialog.reader-mode .post-metrics-badge,
+.cosmo-chat-dialog.reader-mode [data-copy-post],
+.cosmo-chat-dialog.reader-mode [data-regenerate-response] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+@media (max-width: 640px) {
+    .shelf-reader-actions .cosmo-chat-action-btn {
+        width: auto !important;
+        flex: 1 1 auto !important;
+    }
+}
+
