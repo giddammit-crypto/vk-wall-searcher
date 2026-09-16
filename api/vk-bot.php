@@ -428,6 +428,7 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
                     <br>• Нажмите кнопку <strong>Подтвердить</strong> в настройках ВКонтакте.
                 </li>
                 <li>Во вкладке <a href="https://vk.com/club<?= $vkGroupId ?>?act=api" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Типы событий</strong></a> отметьте галочку: <strong>«Входящие сообщения» (message_new)</strong>.</li>
+                <li><strong style="color: #f59e0b;">ОБЯЗАТЕЛЬНО ДЛЯ ПОЯВЛЕНИЯ КНОПОК:</strong> перейдите в <a href="https://vk.com/club<?= $vkGroupId ?>?act=messages" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Управление → Сообщения → Настройки для бота</strong></a> (справа подраздел меню) → переключите <em>«Возможности ботов»</em> в положение <strong>«Включены»</strong>, отметьте галочку <em>«Добавить кнопку "Начать"»</em> и сохраните. Без этой опции ВКонтакте отклоняет кнопки меню ошибкой 912!</li>
             </ol>
         </div>
 
@@ -547,6 +548,23 @@ $fromId  = isset($msgObj['from_id']) ? (int)$msgObj['from_id'] : 0;
 $userMsg = isset($msgObj['text']) ? trim((string)$msgObj['text']) : '';
 $payload = $msgObj['payload'] ?? null;
 
+// Обработка пустых сообщений, стикеров, медиавложений и нажатия «Начать»
+if ($userMsg === '' && empty($payload)) {
+    if (!empty($msgObj['attachments'])) {
+        $firstAtt = $msgObj['attachments'][0]['type'] ?? '';
+        if ($firstAtt === 'sticker') {
+            $userMsg = 'Привет, Космо!';
+            $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
+        } else {
+            $userMsg = 'Привет! Посоветуй, что почитать?';
+            $payload = json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE);
+        }
+    } else {
+        $userMsg = 'Привет, Космо!';
+        $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
+    }
+}
+
 // Если сообщение от группы/бота (from_id < 0) или не указан peer_id — выходим
 if ($peerId === 0 || $fromId < 0) {
     header('Content-Type: text/plain; charset=UTF-8');
@@ -613,6 +631,25 @@ function vk_bot_api_call($method, $params, $token)
     curl_close($ch);
 
     $json = is_string($resp) ? json_decode($resp, true) : null;
+    return [$httpCode, $json, $curlErr];
+}
+
+/**
+ * Надёжная отправка сообщения в диалог (с авто-восстановлением при ошибке 912)
+ */
+function vk_bot_send_message($params, $token)
+{
+    list($httpCode, $json, $curlErr) = vk_bot_api_call('messages.send', $params, $token);
+
+    // Ошибка 912: «This is a chat bot feature, change this status in settings: Chat bot feature»
+    // Возникает, если в Управление -> Сообщения -> Настройки для бота выключены «Возможности ботов».
+    // В этом случае повторяем отправку БЕЗ клавиатуры, чтобы сообщение гарантированно дошло читателю!
+    if (isset($json['error']['error_code']) && (int)$json['error']['error_code'] === 912) {
+        unset($params['keyboard']);
+        $params['message'] .= "\n\n💡 Чтобы в диалоге появились удобные кнопки меню, включите пункт «Возможности ботов» в настройках сообщества:\nУправление → Сообщения → Настройки для бота.";
+        list($httpCode, $json, $curlErr) = vk_bot_api_call('messages.send', $params, $token);
+    }
+
     return [$httpCode, $json, $curlErr];
 }
 
@@ -753,7 +790,7 @@ $lowerMsg = vk_bot_mb_strtolower($userMsg);
 // -----------------------------------------------------------------------------
 
 // Сценарий 1: Информация о роботе Космо
-if ($cmd === 'about' || preg_match('/^(кто ты|о роботе|о боте|космо|start|старт|начать|\/start|помощь|help)/ui', $userMsg)) {
+if ($cmd === 'about' || preg_match('/^(кто ты|о роботе|о боте|космо|привет|здравствуй|хай|хэй|ку|start|старт|начать|\/start|помощь|help)/ui', $userMsg)) {
     $reply = "Привет! Я Космо — библиотечный робот-помощник и книжный сомелье Централизованной библиотечной системы города Владимира! 🤖📚\n\n"
            . "Я помогаю читателям находить книги, в которые влюбляешься с первой страницы, ориентироваться в фондах городских библиотек и открывать новых авторов.\n\n"
            . "Чем я могу помочь вам прямо сейчас?\n"
@@ -761,7 +798,7 @@ if ($cmd === 'about' || preg_match('/^(кто ты|о роботе|о боте|�
            . "• Нажмите «🎲 Случайный шедевр», если хочется неожиданного открытия;\n"
            . "• Или просто напишите мне, какую последнюю книгу вы прочитали и что вам в ней понравилось! ✨";
 
-    vk_bot_api_call('messages.send', [
+    vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
@@ -787,7 +824,7 @@ if ($cmd === 'libraries' || preg_match('/^(где библиотек|адрес|
            . "• ул. Тракторная, 15\n\n"
            . "📖 Записаться в библиотеку и брать книги на дом можно абсолютно бесплатно — нужен только паспорт! Приходите за живыми страницами и тёплой атмосферой! ✨";
 
-    vk_bot_api_call('messages.send', [
+    vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
@@ -801,7 +838,7 @@ if ($cmd === 'libraries' || preg_match('/^(где библиотек|адрес|
 if ($cmd === 'recommend' || preg_match('/^(подобрать книгу|выбрать книгу|подборка книг)/ui', $userMsg)) {
     $reply = "📚 С радостью подберу для вас идеальную книгу! Выберите настроение кнопками ниже или просто напишите мне своими словами — какой жанр, эпоху или эмоцию вы ищете?";
 
-    vk_bot_api_call('messages.send', [
+    vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
@@ -1011,7 +1048,7 @@ if ($fh) {
 // -----------------------------------------------------------------------------
 // 9. Отправка ответа в диалог ВКонтакте через messages.send
 // -----------------------------------------------------------------------------
-vk_bot_api_call('messages.send', [
+vk_bot_send_message([
     'peer_id'          => $peerId,
     'message'          => $aiResponseText,
     'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
