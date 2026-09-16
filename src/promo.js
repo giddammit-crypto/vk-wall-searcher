@@ -550,6 +550,10 @@ export function initPromoModal() {
                         <span class="fold-portal">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
                     </div>
                     <div class="shelf-tent-front">
+                        <div class="shelf-tent-mascot-col">
+                            <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="shelf-tent-mascot-img" alt="Робот Космо" />
+                            <span class="shelf-mascot-caption">Привет! Я Космо 👍</span>
+                        </div>
                         <div class="shelf-tent-main">
                             <div class="shelf-badge-row">
                                 <span class="shelf-cosmo-badge">
@@ -1582,6 +1586,31 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 flex: 1;
                 padding: 0 1mm;
             }
+            .print-shelf-mascot-col {
+                width: 24mm;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                flex-shrink: 0;
+                gap: 1mm;
+            }
+            .print-shelf-mascot-img {
+                width: 21mm;
+                height: 21mm;
+                object-fit: contain;
+            }
+            .print-mascot-caption {
+                font-size: 5pt;
+                font-weight: 800;
+                color: #0284c7;
+                background: #f0f9ff;
+                border: 0.25mm solid #bae6fd;
+                padding: 0.4mm 1.5mm;
+                border-radius: 1mm;
+                white-space: nowrap;
+            }
             .print-shelf-main {
                 flex: 1;
                 text-align: left;
@@ -1805,6 +1834,16 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
             .print-theme-poetry .print-shelf-step-num { background: #be185d; }
             .print-theme-poetry .print-shelf-qr-cue { color: #be185d; }
             .print-theme-poetry .print-fold-cue { color: #be185d; }
+
+            .print-theme-swiss .print-mascot-caption { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+            .print-theme-bauhaus .print-mascot-caption { color: #c2410c; background: #fff7ed; border-color: #fed7aa; border-radius: 0; }
+            .print-theme-scandi .print-mascot-caption { color: #0f766e; background: #f0fdfa; border-color: #ccfbf1; }
+            .print-theme-editorial .print-mascot-caption { color: #831843; background: #fdf2f8; border-color: #fbcfe8; font-family: Georgia, serif; }
+            .print-theme-botanical .print-mascot-caption { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+            .print-theme-craft .print-mascot-caption { color: #991b1b; background: #f5ede0; border-color: #e6dac6; }
+            .print-theme-kids .print-mascot-caption { color: #ea580c; background: #fff7ed; border-color: #fed7aa; }
+            .print-theme-neo .print-mascot-caption { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+            .print-theme-poetry .print-mascot-caption { color: #be185d; background: #fdf2f8; border-color: #fbcfe8; }
         `;
 
         const renderPrintTent = () => `
@@ -1814,6 +1853,10 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                     <span class="print-fold-portal">МУНИЦИПАЛЬНЫЕ БИБЛИОТЕКИ ВЛАДИМИРА</span>
                 </div>
                 <div class="print-shelf-front">
+                    <div class="print-shelf-mascot-col">
+                        <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="print-shelf-mascot-img" alt="Робот Космо" />
+                        <span class="print-mascot-caption">Привет! Я Космо 👍</span>
+                    </div>
                     <div class="print-shelf-main">
                         <div class="print-shelf-badges">
                             <span class="print-shelf-badge-cosmo">

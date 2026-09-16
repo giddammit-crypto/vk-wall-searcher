@@ -3753,13 +3753,15 @@ function initApp() {
         }, 200);
     }
     if (_urlP.get('mode') === 'shelf_recommend') {
+        document.documentElement.classList.add('reader-shelf-standalone');
+        document.body.classList.add('reader-shelf-standalone');
         const shelfGenre = _urlP.get('genre') || 'universal';
         const shelfBranch = _urlP.get('branch') || 'cgb';
         setTimeout(() => {
             if (Mascot && typeof Mascot.openShelfRecommendation === 'function') {
                 Mascot.openShelfRecommendation(shelfGenre, shelfBranch);
             }
-        }, 500);
+        }, 30);
     }
     if (_urlP.get('mode') === 'league' || _urlP.get('preview_league') === '1') {
         setTimeout(() => {
@@ -3776,11 +3778,13 @@ function initApp() {
         CosmicUniverse.setWarp(true);
     }
 
-    // Initialize 3D Space Engine
-    try {
-        Space3D.init();
-    } catch (err) {
-        console.warn('[Space3D] Deferred init error:', err);
+    // Initialize 3D Space Engine (только для основного сайта, не в режиме читателя)
+    if (_urlP.get('mode') !== 'shelf_recommend') {
+        try {
+            Space3D.init();
+        } catch (err) {
+            console.warn('[Space3D] Deferred init error:', err);
+        }
     }
 
     // Передаём генератор полного аналитического снимка в робота-маскота Космо

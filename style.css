@@ -9205,9 +9205,40 @@ textarea:focus-visible,
     display: flex;
     align-items: stretch;
     justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
     padding: 10px 14px 12px;
     background: #ffffff;
+}
+
+.shelf-tent-mascot-col {
+    width: 76px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-shrink: 0;
+    gap: 3px;
+}
+
+.shelf-tent-mascot-img {
+    width: 66px;
+    height: 66px;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
+}
+
+.shelf-mascot-caption {
+    font-size: 7.5px;
+    font-weight: 800;
+    color: #0284c7;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    padding: 1.5px 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
 }
 
 .shelf-tent-main {
@@ -9417,6 +9448,16 @@ textarea:focus-visible,
         padding: 8px 10px;
         gap: 10px;
     }
+    .shelf-tent-mascot-col {
+        width: 62px;
+    }
+    .shelf-tent-mascot-img {
+        width: 54px;
+        height: 54px;
+    }
+    .shelf-mascot-caption {
+        font-size: 6.5px;
+    }
     .shelf-tent-title {
         font-size: 12px;
     }
@@ -9488,6 +9529,87 @@ textarea:focus-visible,
 .sheet-theme-poetry .shelf-step .step-num { background: #be185d; }
 .sheet-theme-poetry .shelf-qr-cue { color: #be185d; }
 
+.sheet-theme-swiss .shelf-mascot-caption { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+.sheet-theme-bauhaus .shelf-mascot-caption { color: #c2410c; background: #fff7ed; border-color: #fed7aa; border-radius: 0; }
+.sheet-theme-scandi .shelf-mascot-caption { color: #0f766e; background: #f0fdfa; border-color: #ccfbf1; }
+.sheet-theme-editorial .shelf-mascot-caption { color: #831843; background: #fdf2f8; border-color: #fbcfe8; font-family: Georgia, serif; }
+.sheet-theme-botanical .shelf-mascot-caption { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+.sheet-theme-craft .shelf-mascot-caption { color: #991b1b; background: #f5ede0; border-color: #e6dac6; }
+.sheet-theme-kids .shelf-mascot-caption { color: #ea580c; background: #fff7ed; border-color: #fed7aa; border-radius: 8px; }
+.sheet-theme-neo .shelf-mascot-caption { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+.sheet-theme-poetry .shelf-mascot-caption { color: #be185d; background: #fdf2f8; border-color: #fbcfe8; }
+
+/* ==========================================================================
+   STANDALONE READER CHAT MODE (Для читателей, перешедших по QR-коду со стеллажа)
+   Сайт полностью скрыт, читатели видят ТОЛЬКО чистый веб-чат с Космо!
+   ========================================================================== */
+html.reader-shelf-standalone,
+html.reader-shelf-standalone body {
+    overflow: hidden !important;
+    height: 100% !important;
+    background: #020617 !important;
+}
+
+html.reader-shelf-standalone .app-container,
+html.reader-shelf-standalone .aurora-backdrop,
+html.reader-shelf-standalone #mascot-container,
+html.reader-shelf-standalone #cosmic-universe-canvas,
+html.reader-shelf-standalone #space-canvas,
+html.reader-shelf-standalone #space-controls,
+html.reader-shelf-standalone #iss-hud,
+html.reader-shelf-standalone #warp-hud-overlay,
+html.reader-shelf-standalone #cinematic-cinema-bars,
+html.reader-shelf-standalone .floating-controls {
+    display: none !important;
+}
+
+html.reader-shelf-standalone .cosmo-chat-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: radial-gradient(circle at 50% 15%, #0f172a 0%, #020617 100%) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+}
+
+html.reader-shelf-standalone .cosmo-chat-dialog {
+    width: 100% !important;
+    max-width: 680px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+@media (min-width: 768px) {
+    html.reader-shelf-standalone .cosmo-chat-dialog {
+        height: 94vh !important;
+        max-height: 880px !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6) !important;
+    }
+}
+
+/* Скрытие SMM-кнопок, пресетов анализа ВК и отчётов методиста для читателей */
+html.reader-shelf-standalone .cosmo-chat-presets-btn,
+html.reader-shelf-standalone .cosmo-chat-presets-popover,
+html.reader-shelf-standalone .cosmo-chat-presets-backdrop,
+html.reader-shelf-standalone .cosmo-chat-quick-presets-bar,
+html.reader-shelf-standalone .cosmo-chat-close-btn,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-btn,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-popover,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-presets-backdrop,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-quick-presets-bar,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-close-btn {
+    display: none !important;
+}
 
 /* ==========================================================================
    10 HIGH-END EDITORIAL DESIGN TEMPLATES FOR PROMO MATERIALS

@@ -1037,10 +1037,15 @@ export class CosmoChatModal {
     openShelfRecommendation(genreId = 'universal', branchCode = 'cgb') {
         this.createDOM();
         this.isOpen = true;
+        this.isShelfMode = true;
+        this.shelfGenreId = genreId;
+        this.shelfBranchCode = branchCode;
 
         document.addEventListener('keydown', this.onEscKeyDown);
         document.body.classList.add('cosmo-chat-open');
         this.overlayEl.classList.add('is-open');
+        this.dialogEl.classList.add('reader-mode');
+        this.overlayEl.classList.add('reader-mode');
 
         this.messages = [];
         this.messagesEl.innerHTML = '';
@@ -1068,6 +1073,64 @@ export class CosmoChatModal {
             non_fiction: { name: 'Нон-фикшн и саморазвитие', icon: 'psychology' }
         };
         const genreObj = genreMap[genreId] || genreMap.universal;
+
+        // Перенастройка шапки под читателя (без SMM и ВК)
+        const brandBadge = this.dialogEl.querySelector('.cosmo-chat-badge');
+        if (brandBadge) brandBadge.textContent = 'КНИЖНЫЙ РОБОТ';
+        const brandTitle = this.dialogEl.querySelector('.cosmo-chat-title');
+        if (brandTitle) brandTitle.textContent = 'ПОЛКА С КОСМО';
+        const brandSub = this.dialogEl.querySelector('.cosmo-chat-subtitle');
+        if (brandSub) brandSub.innerHTML = `<span class="material-symbols-outlined">menu_book</span><span>${escapeHtml(branch.canonicalName)} &bull; Книжный гид</span>`;
+
+        // Кнопка «Заново» для перезапуска сценария рекомендаций
+        let restartBtn = this.dialogEl.querySelector('[data-shelf-restart]');
+        if (!restartBtn) {
+            restartBtn = document.createElement('button');
+            restartBtn.type = 'button';
+            restartBtn.className = 'cosmo-chat-tool-btn cosmo-shelf-restart-btn';
+            restartBtn.setAttribute('data-shelf-restart', '');
+            restartBtn.setAttribute('title', 'Начать подбор книг заново');
+            restartBtn.innerHTML = '<span class="material-symbols-outlined">restart_alt</span><span class="tool-btn-text">Заново</span>';
+            const actionsEl = this.dialogEl.querySelector('.cosmo-chat-header-actions');
+            if (actionsEl) {
+                actionsEl.insertBefore(restartBtn, actionsEl.firstChild);
+            }
+            restartBtn.addEventListener('click', () => {
+                this.openShelfRecommendation(this.shelfGenreId, this.shelfBranchCode);
+            });
+        }
+
+        // Замена SMM-чипсов на читательские подсказки
+        if (this.chipsContainerEl) {
+            this.chipsContainerEl.innerHTML = `
+                <button type="button" class="cosmo-chip" data-prompt="Порекомендуй ещё 3 захватывающие книги с этого стеллажа!">
+                    <span class="chip-icon">📖</span> Ещё 3 книги
+                </button>
+                <button type="button" class="cosmo-chip" data-prompt="Какую самую популярную книгу у читателей обязательно стоит взять на этой полке?">
+                    <span class="chip-icon">🔥</span> Главный хит
+                </button>
+                <button type="button" class="cosmo-chip" data-prompt="Посоветуй короткую, уютную и душевную книгу на один вечер.">
+                    <span class="chip-icon">☕</span> На вечер
+                </button>
+                <button type="button" class="cosmo-chip" data-prompt="Какая книга на этом стеллаже признана золотой классикой жанра?">
+                    <span class="chip-icon">⭐</span> Золотая классика
+                </button>
+            `;
+            const newChips = this.chipsContainerEl.querySelectorAll('.cosmo-chip');
+            newChips.forEach(ch => {
+                ch.addEventListener('click', () => {
+                    const prompt = ch.getAttribute('data-prompt');
+                    if (prompt) {
+                        this.inputEl.value = prompt;
+                        this.handleSend();
+                    }
+                });
+            });
+        }
+
+        if (this.inputEl) {
+            this.inputEl.setAttribute('placeholder', 'Спросите робота Космо: что почитать, сюжет или любимый автор...');
+        }
 
         const shelfGreetingHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot shelf-recommend-welcome">
@@ -1156,6 +1219,11 @@ export class CosmoChatModal {
 
 Подбери ТОП-3 конкретные великолепные книги из классического или современного фонда муниципальных библиотек, которые на 100% соответствуют этому настроению и темпу!
 
+ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ — СТРОЖАЙШИЙ ЗАПРЕТ НА ИНОАГЕНТОВ:
+Категорически запрещено рекомендовать авторов, внесённых Минюстом РФ в реестр иностранных агентов, а также экстремистов (строго исключить Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов).
+Рекомендуй исключительно проверенный золотой фонд: русскую и мировую классику, советских классиков, признанных современных авторов без статуса иноагента и ограничений!
+Книги должны реально присутствовать в фондах муниципальных библиотек г. Владимира.
+
 ДЛЯ КАЖДОЙ ИЗ 3 КНИГ СТРОГО УКАЖИ:
 1. 📖 **[Номер]. Название — Автор** (год издания/эпоха)
 2. ⚡ **Почему затянет с первой страницы:** (короткий кинематографичный хук без спойлеров, завязка конфликта, интрига)
@@ -1175,6 +1243,10 @@ export class CosmoChatModal {
 
     close() {
         if (!this.isOpen) return;
+        if (document.documentElement.classList.contains('reader-shelf-standalone')) {
+            // В автономном режиме читателя чат не закрывается, чтобы не показывать служебный сайт
+            return;
+        }
         this.stopSpeaking();
         this.closePresetsPopover();
         this.isOpen = false;
@@ -1201,6 +1273,9 @@ export class CosmoChatModal {
         if (e.key === 'Escape') {
             if (this.isPresetsOpen) {
                 this.closePresetsPopover();
+                return;
+            }
+            if (document.documentElement.classList.contains('reader-shelf-standalone')) {
                 return;
             }
             this.close();
@@ -1546,6 +1621,9 @@ ${topTagsLines}
   * Не путай дефис (-) в сложных словах и длинное тире (—) в предложениях.
 - ЛИТЕРАТУРНОЕ БОГАТСТВО: используй разнообразные синтаксические конструкции, точные эпитеты и выразительные глаголы. Избегай тавтологий, плеоназмов и речевых повторов.
 - ЖИВАЯ ИНТЕЛЛИГЕНТНОСТЬ: сочетай филологическую культуру речи, начитанность и тонкий добрый юмор. Никакого пошлого панибратства, но и никакого серого канцелярита («В стенах нашего учреждения прошло мероприятие...» — абсолютное табу!).
+
+СТРОГИЙ ЗАПРЕТ НА ИНОАГЕНТОВ (ЗАКОНОДАТЕЛЬСТВО РФ):
+- Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов Минюста РФ). В любых литературных подборках и рекомендациях используй исключительно проверенных авторов без статуса иноагента: русскую и мировую классику, выдающихся советских писателей и признанных современных авторов.
 
 КОНТЕКСТ ДАННЫХ:
 ${statsContext}
