@@ -570,11 +570,22 @@ if ($eventType === 'message_allow') {
     $payload = $msgObj['payload'] ?? null;
 }
 
+// Поиск голосового сообщения (audio_message) среди вложений
+$audioAttachment = null;
+if (!empty($msgObj['attachments']) && is_array($msgObj['attachments'])) {
+    foreach ($msgObj['attachments'] as $att) {
+        if (($att['type'] ?? '') === 'audio_message') {
+            $audioAttachment = $att;
+            break;
+        }
+    }
+}
+
 // Определение типа диалога: ЛС (peer_id < 2000000000) или групповая беседа (peer_id > 2000000000)
 $isChat = ($peerId > 2000000000);
 $chatAction = $msgObj['action'] ?? null;
 
-// Проверка: добавили ли робота Космо в беседу (chat_invite_user)
+// Проверка: добавили ли робота Космо в беседу (chat_invite_user) или вернулся забаненный участник
 $isBotInvited = false;
 if (is_array($chatAction)) {
     $actType = $chatAction['type'] ?? '';
@@ -584,6 +595,28 @@ if (is_array($chatAction)) {
         || $actType === 'chat_create') {
         $isBotInvited = true;
     }
+
+    // Если присоединился пользователь из чёрного списка беседы — мгновенный автокик
+    if ($isChat && ($actType === 'chat_invite_user' || $actType === 'chat_invite_user_by_link')) {
+        if ($memberId > 0 && vk_bot_is_user_banned($peerId, $memberId, $cacheDir)) {
+            $chatId = $peerId - 2000000000;
+            vk_bot_api_call('messages.removeChatUser', [
+                'chat_id'   => $chatId,
+                'member_id' => $memberId
+            ], $communityToken);
+
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => "🚫 [id{$memberId}|Пользователь] находится в чёрном списке этой беседы и был автоматически исключён.",
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo 'ok';
+            exit;
+        }
+    }
 }
 
 if ($isBotInvited) {
@@ -591,12 +624,59 @@ if ($isBotInvited) {
     $payload = json_encode(['cmd' => 'chat_welcome'], JSON_UNESCAPED_UNICODE);
 }
 
+// Если это групповая беседа (чат):
+if ($isChat) {
+    // 1. Проверка: находится ли отправитель в режиме молчания (муте)
+    $muteInfo = vk_bot_is_user_muted($peerId, $fromId, $cacheDir);
+    if ($muteInfo !== null) {
+        // Мгновенный ответ вебхуку ВК
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Connection: close');
+        header('Content-Length: 2');
+        echo 'ok';
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            if (ob_get_level() > 0) ob_end_flush();
+            if (function_exists('flush')) @flush();
+        }
+
+        // Удаляем сообщение нарушителя из чата для всех участников
+        $cmid = (int)($msgObj['conversation_message_id'] ?? 0);
+        if ($cmid > 0) {
+            vk_bot_delete_chat_message($peerId, $cmid, $communityToken, $vkGroupId);
+        }
+
+        // Предупреждение нарушителю (не чаще 1 раза в 120 сек, чтобы не спамить в чат)
+        $throttleFile = $cacheDir . '/vk_mute_warn_' . $peerId . '_' . $fromId . '.tmp';
+        $lastWarn = file_exists($throttleFile) ? (int)@file_get_contents($throttleFile) : 0;
+        if ((time() - $lastWarn) > 120) {
+            @file_put_contents($throttleFile, (string)time());
+            $remSec = (int)($muteInfo['muted_until'] ?? 0) - time();
+            $remText = vk_bot_format_remaining_time($remSec);
+            $reason = htmlspecialchars($muteInfo['reason'] ?? 'Нарушение правил');
+            $warnMsg = "🔇 [id{$fromId}|Участник], ваши сообщения удаляются — вы находитесь в режиме молчания ещё {$remText}!\nПричина: {$reason}";
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $warnMsg,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+        }
+        exit;
+    }
+}
+
 // Если это групповая беседа (чат) и не событие добавления бота:
 if ($isChat && !$isBotInvited) {
     $replyMsg = $msgObj['reply_message'] ?? null;
     $isReplyToBot = ($replyMsg && (int)($replyMsg['from_id'] ?? 0) === -$vkGroupId);
 
+    // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
+    $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
+
     $hasMention = (
+        $isModCmd ||
         preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $userMsg) ||
         preg_match('/@club' . $vkGroupId . '/ui', $userMsg) ||
         preg_match('/^\s*(космо|робот\s*космо|бот)[\s,!:—?]+/ui', $userMsg) ||
@@ -604,6 +684,7 @@ if ($isChat && !$isBotInvited) {
     );
 
     // В беседе игнорируем чужие сообщения между участниками, если бота не звали
+    // (включая чужие голосовые сообщения между участниками без реплая и упоминания)
     if (!$hasMention && !$isReplyToBot && empty($payload)) {
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'ok';
@@ -616,14 +697,14 @@ if ($isChat && !$isBotInvited) {
     $userMsg = preg_replace('/^\s*(космо|робот\s*космо|бот)[\s,!:—?]+/ui', '', $userMsg);
     $userMsg = trim($userMsg);
 
-    if ($userMsg === '' && empty($payload)) {
+    if ($userMsg === '' && empty($payload) && $audioAttachment === null && !$isModCmd) {
         $userMsg = 'Привет!';
         $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
     }
 }
 
 // Обработка пустых сообщений, стикеров, медиавложений и нажатия «Начать» (в ЛС)
-if ($userMsg === '' && empty($payload)) {
+if ($userMsg === '' && empty($payload) && $audioAttachment === null) {
     if (!empty($msgObj['attachments'])) {
         $firstAtt = $msgObj['attachments'][0]['type'] ?? '';
         if ($firstAtt === 'sticker') {
@@ -724,6 +805,655 @@ function vk_bot_set_typing($peerId, $token, $groupId)
 // Показываем стандартную анимацию «Печатает...» при любом запросе пользователя
 if ($botTyping && $peerId > 0) {
     vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+}
+
+/**
+ * Распознавание входящего голосового сообщения ВКонтакте (Voice-to-Text ASR)
+ * Использует нативную нейросеть расшифровки аудиосообщений VK API.
+ * При необходимости выполняет умный опрос до 4 попыток с интервалом 1.2 сек,
+ * так как сервер уже отдал быстрый ответ 'ok' вебхуку ВК.
+ */
+function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $token)
+{
+    $audio = $audioAttachment['audio_message'] ?? ($audioAttachment['doc'] ?? []);
+    if (empty($audio)) return null;
+
+    $transcript = isset($audio['transcript']) ? trim((string)$audio['transcript']) : '';
+    $state = $audio['transcript_state'] ?? '';
+
+    // Если нейросеть ВК уже завершила расшифровку
+    if ($state === 'done' && $transcript !== '') {
+        return $transcript;
+    }
+
+    $cmid = (int)($msgObj['conversation_message_id'] ?? 0);
+    $msgId = (int)($msgObj['id'] ?? 0);
+
+    if ($cmid <= 0 && $msgId <= 0) {
+        return $transcript !== '' ? $transcript : null;
+    }
+
+    // Фоновый опрос VK API (до 4 попыток с паузой 1.2с)
+    for ($attempt = 1; $attempt <= 4; $attempt++) {
+        usleep(1200000);
+
+        if ($cmid > 0) {
+            list($httpCode, $resp) = vk_bot_api_call('messages.getByConversationMessageId', [
+                'peer_id'                  => $peerId,
+                'conversation_message_ids' => $cmid
+            ], $token);
+        } else {
+            list($httpCode, $resp) = vk_bot_api_call('messages.getById', [
+                'message_ids' => $msgId
+            ], $token);
+        }
+
+        $item = $resp['response']['items'][0] ?? null;
+        if (!$item || empty($item['attachments'])) continue;
+
+        foreach ($item['attachments'] as $att) {
+            if (($att['type'] ?? '') === 'audio_message' && isset($att['audio_message'])) {
+                $curAudio = $att['audio_message'];
+                $curText = isset($curAudio['transcript']) ? trim((string)$curAudio['transcript']) : '';
+                $curState = $curAudio['transcript_state'] ?? '';
+
+                if ($curState === 'done' || $curText !== '') {
+                    return $curText !== '' ? $curText : null;
+                }
+            }
+        }
+    }
+
+    return $transcript !== '' ? $transcript : null;
+}
+
+/**
+ * Получение актуальной книги недели и глубоких тем для обсуждения книжного клуба
+ * Выбирается ротацией по номеру недели года
+ */
+function vk_bot_get_book_club_topic()
+{
+    $topics = [
+        [
+            'book'      => '«Мастер и Маргарита»',
+            'author'    => 'Михаил Булгаков',
+            'genre'     => 'Философская мистика, сатира, роман',
+            'idea'      => 'Сила подлинного творчества, верность любви и вечное равновесие добра и зла.',
+            'questions' => [
+                '1️⃣ Почему, на ваш взгляд, именно рукопись Мастера «не горит»? В чём сокровенный смысл этой метафоры?',
+                '2️⃣ Заслуживает ли Понтий Пилат сочувствия, или трусость — действительно самый тяжкий порок человека?',
+                '3️⃣ Какая линия романа вам ближе: искромётная сатира на московских обывателей или трагическая история любви и Ершалаима?'
+            ]
+        ],
+        [
+            'book'      => '«Цветы для Элджернона»',
+            'author'    => 'Дэниел Киз',
+            'genre'     => 'Научно-психологическая фантастика, драма',
+            'idea'      => 'Цена сверхразума, хрупкость человеческого достоинства и ценность душевной доброты.',
+            'questions' => [
+                '1️⃣ Был ли Чарли Гордон по-настоящему счастливее в начале пути или на вершине своего гениального интеллекта?',
+                '2️⃣ Почему общество и коллеги из пекарни с таким страхом и агрессией отнеслись к его стремительному развитию?',
+                '3️⃣ Имеет ли наука моральное право на эксперименты, кардинально меняющие человеческую личность?'
+            ]
+        ],
+        [
+            'book'      => '«Мы»',
+            'author'    => 'Евгений Замятин',
+            'genre'     => 'Классическая социально-философская антиутопия',
+            'idea'      => 'Живая душа и свобода воли против стерильной уравниловки Единого Государства.',
+            'questions' => [
+                '1️⃣ Возможно ли построить абсолютное человеческое счастье без права на ошибку, сомнения и личный выбор?',
+                '2️⃣ Что стало истинной искрой пробуждения души Д-503: музыка, древний дом или любовь к I-330?',
+                '3️⃣ Почему роман, написанный более века назад, звучит сегодня столь пророчески и злободневно?'
+            ]
+        ],
+        [
+            'book'      => '«Маленький принц»',
+            'author'    => 'Антуан де Сент-Экзюпери',
+            'genre'     => 'Философская сказка-притча для любого возраста',
+            'idea'      => 'Зоркость сердца, ценность бескорыстной дружбы и ответственность за тех, кого приручили.',
+            'questions' => [
+                '1️⃣ Какой из астероидов (Король, Честолюбец, Пьяница, Деловой человек, Фонарщик) точнее всего отражает современную суету?',
+                '2️⃣ Что для каждого из нас во взрослой жизни означает фраза: «Ты навсегда в ответе за всех, кого приручил»?',
+                '3️⃣ Как в ежедневной рутине не утратить способность видеть барашка сквозь отверстия в ящике?'
+            ]
+        ]
+    ];
+
+    $weekNum = (int)date('W');
+    $idx = $weekNum % count($topics);
+    return array_merge($topics[$idx], ['week' => $weekNum]);
+}
+
+/**
+ * Варианты книг для еженедельного интерактивного голосования читателей
+ */
+function vk_bot_get_book_club_vote_options()
+{
+    return [
+        1 => ['title' => '«Солярис»', 'author' => 'Станислав Лем', 'genre' => 'Философская фантастика'],
+        2 => ['title' => '«451° по Фаренгейту»', 'author' => 'Рэй Брэдбери', 'genre' => 'Антиутопия'],
+        3 => ['title' => '«Два капитана»', 'author' => 'Вениамин Каверин', 'genre' => 'Приключения, романтика подвига'],
+        4 => ['title' => '«Старик и море»', 'author' => 'Эрнест Хемингуэй', 'genre' => 'Повесть-притча о несгибаемости духа']
+    ];
+}
+
+/**
+ * Фиксация голоса участника в файле кэша беседы
+ */
+function vk_bot_record_book_club_vote($peerId, $fromId, $optNum, $cacheDir)
+{
+    if ($optNum < 1 || $optNum > 4 || $peerId <= 0 || $fromId <= 0) {
+        return false;
+    }
+
+    $voteFile = $cacheDir . '/vk_bookclub_vote_' . $peerId . '.json';
+    $currentWeek = (int)date('W');
+
+    $data = ['peer_id' => $peerId, 'week' => $currentWeek, 'votes' => []];
+    if (file_exists($voteFile)) {
+        $loaded = @json_decode(@file_get_contents($voteFile), true);
+        if (is_array($loaded) && ($loaded['week'] ?? 0) === $currentWeek) {
+            $data = $loaded;
+        }
+    }
+
+    $data['votes'][(string)$fromId] = $optNum;
+    $data['updated_at'] = time();
+
+    $fh = @fopen($voteFile, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Склонение слова «голос»
+ */
+function vk_bot_plural_votes($n)
+{
+    $n = abs((int)$n) % 100;
+    $n1 = $n % 10;
+    if ($n > 10 && $n < 20) return 'голосов';
+    if ($n1 > 1 && $n1 < 5) return 'голоса';
+    if ($n1 == 1) return 'голос';
+    return 'голосов';
+}
+
+/**
+ * Форматирование наглядных результатов голосования с визуальной шкалой прогресса
+ */
+function vk_bot_format_book_club_vote_results($peerId, $cacheDir)
+{
+    $options = vk_bot_get_book_club_vote_options();
+    $voteFile = $cacheDir . '/vk_bookclub_vote_' . $peerId . '.json';
+    $currentWeek = (int)date('W');
+
+    $counts = [1 => 0, 2 => 0, 3 => 0, 4 => 0];
+    $totalVotes = 0;
+
+    if (file_exists($voteFile)) {
+        $loaded = @json_decode(@file_get_contents($voteFile), true);
+        if (is_array($loaded) && ($loaded['week'] ?? 0) === $currentWeek && !empty($loaded['votes'])) {
+            foreach ($loaded['votes'] as $uid => $opt) {
+                $opt = (int)$opt;
+                if (isset($counts[$opt])) {
+                    $counts[$opt]++;
+                    $totalVotes++;
+                }
+            }
+        }
+    }
+
+    $out = "📊 Результаты голосования книжного клуба (Неделя №{$currentWeek}) 🗳️\n\n";
+    $out .= "Всего отдано голосов: {$totalVotes}\n\n";
+
+    $barWidth = 10;
+    $leaderOpt = null;
+    $maxVotes = -1;
+
+    foreach ($options as $num => $item) {
+        $cnt = $counts[$num];
+        $pct = $totalVotes > 0 ? round(($cnt / $totalVotes) * 100) : 0;
+        $filled = $totalVotes > 0 ? (int)round(($cnt / $totalVotes) * $barWidth) : 0;
+        $empty = $barWidth - $filled;
+        $bar = str_repeat('█', $filled) . str_repeat('░', $empty);
+
+        if ($cnt > $maxVotes && $cnt > 0) {
+            $maxVotes = $cnt;
+            $leaderOpt = $num;
+        }
+
+        $out .= "{$num}️⃣ {$item['title']} — {$item['author']}\n";
+        $out .= "   [{$bar}] {$pct}% ({$cnt} " . vk_bot_plural_votes($cnt) . ")\n\n";
+    }
+
+    if ($leaderOpt !== null) {
+        $l = $options[$leaderOpt];
+        $out .= "🏆 В данный момент лидирует: {$l['title']} ({$l['author']})!\n\n";
+    } else {
+        $out .= "💡 Вы можете проголосовать первым кнопками ниже или отправив номер книги (1, 2, 3 или 4)!\n\n";
+    }
+
+    $out .= "Итоги будут подведены в воскресенье, а книга-победитель станет главной темой следующей недели! ✨";
+    return $out;
+}
+
+/**
+ * Форматирование оставшегося времени ограничения в понятную строку
+ */
+function vk_bot_format_remaining_time($sec)
+{
+    if ($sec >= 315360000) return 'навсегда';
+    if ($sec <= 0) return '0 сек.';
+
+    $days = (int)floor($sec / 86400);
+    $hours = (int)floor(($sec % 86400) / 3600);
+    $minutes = (int)floor(($sec % 3600) / 60);
+
+    $parts = [];
+    if ($days > 0) $parts[] = "{$days} дн.";
+    if ($hours > 0) $parts[] = "{$hours} ч.";
+    if ($minutes > 0) $parts[] = "{$minutes} мин.";
+    if (empty($parts)) $parts[] = "меньше минуты";
+
+    return implode(' ', $parts);
+}
+
+/**
+ * Извлечение продолжительности ограничения и причины из текста команды
+ */
+function vk_bot_extract_duration_and_reason($rest)
+{
+    $rest = trim($rest);
+    if ($rest === '') return [null, null, ''];
+
+    // Навсегда
+    if (preg_match('/^(?:на\s*)?(?:навсегда|вечно|пермач|насовсем|перманентн[а-я]*)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        return [315360000, 'навсегда', trim($m[1] ?? '')];
+    }
+    // Месяцы
+    if (preg_match('/^(?:на\s*)?(\d+)?\s*(?:мес|месяц[а-я]*)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        $n = !empty($m[1]) ? (int)$m[1] : 1;
+        $label = $n === 1 ? '1 месяц' : "{$n} мес.";
+        return [$n * 30 * 86400, $label, trim($m[2] ?? '')];
+    }
+    // Недели
+    if (preg_match('/^(?:на\s*)?(\d+)?\s*(?:нед|недел[а-я]*)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        $n = !empty($m[1]) ? (int)$m[1] : 1;
+        $label = $n === 1 ? '1 неделю' : "{$n} нед.";
+        return [$n * 7 * 86400, $label, trim($m[2] ?? '')];
+    }
+    // Сутки / день
+    if (preg_match('/^(?:на\s*)?(\d+)?\s*(?:сут(?:ок|ки)?|дн(?:ей|я)?|день)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        $n = !empty($m[1]) ? (int)$m[1] : 1;
+        $label = $n === 1 ? 'сутки (24ч)' : "{$n} дн.";
+        return [$n * 86400, $label, trim($m[2] ?? '')];
+    }
+    // Часы
+    if (preg_match('/^(?:на\s*)?(\d+)?\s*(?:час[а-я]*|ч)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        $n = !empty($m[1]) ? (int)$m[1] : 1;
+        $label = $n === 1 ? '1 час' : ($n < 5 ? "{$n} часа" : "{$n} часов");
+        return [$n * 3600, $label, trim($m[2] ?? '')];
+    }
+    // Минуты
+    if (preg_match('/^(?:на\s*)?(\d+)\s*(?:мин[а-я]*|м)\b(?:\s*(?:за\s*)?(.*))?$/ui', $rest, $m)) {
+        $n = (int)$m[1];
+        return [$n * 60, "{$n} мин.", trim($m[2] ?? '')];
+    }
+
+    return [null, null, $rest];
+}
+
+/**
+ * Определение целевого пользователя (нарушителя) из реплая, пересланных сообщений или упоминания
+ */
+function vk_bot_extract_target_user($msgObj, $text)
+{
+    if (!empty($msgObj['reply_message']['from_id'])) {
+        return (int)$msgObj['reply_message']['from_id'];
+    }
+    if (!empty($msgObj['fwd_messages'][0]['from_id'])) {
+        return (int)$msgObj['fwd_messages'][0]['from_id'];
+    }
+    if (preg_match('/\[(?:id|club)(\d+)\|[^\]]+\]/ui', $text, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/(?:@|\*)id(\d+)/ui', $text, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/(?:vk\.com\/)?id(\d+)/ui', $text, $m)) {
+        return (int)$m[1];
+    }
+    return 0;
+}
+
+/**
+ * Парсинг модераторских команд (!мут, !кик, !бан, !размут, !разбан и т.п.)
+ */
+function vk_bot_parse_mod_command($userMsg, $msgObj)
+{
+    $clean = trim($userMsg);
+    $clean = preg_replace('/^\s*(?:космо|робот\s*космо|бот)[\s,!:—?]+/ui', '', $clean);
+
+    $type = null;
+    $rem = '';
+    if (preg_match('/^(?:[!|\/]|\b)(?:мут|mute|замутить|замут)\b/ui', $clean)) {
+        $type = 'mute';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:мут|mute|замутить|замут)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:размут|unmute|размутить)\b/ui', $clean)) {
+        $type = 'unmute';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:размут|unmute|размутить)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:кик|kick|исключи(?:ть)?|кикнуть)\b/ui', $clean)) {
+        $type = 'kick';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:кик|kick|исключи(?:ть)?|кикнуть)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:бан|ban|забань|забанить)\b/ui', $clean)) {
+        $type = 'ban';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:бан|ban|забань|забанить)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:разбан|unban|разбань|разбанить)\b/ui', $clean)) {
+        $type = 'unban';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:разбан|unban|разбань|разбанить)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:муты|список\s*мутов|muted)\b/ui', $clean)) {
+        $type = 'list_mutes';
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:баны|список\s*банов|banned)\b/ui', $clean)) {
+        $type = 'list_bans';
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:модераци[яи]|команды\s*модерации|помощь\s*модератора|modhelp)\b/ui', $clean)) {
+        $type = 'mod_help';
+    }
+
+    if ($type === null) return null;
+
+    $targetId = vk_bot_extract_target_user($msgObj, $rem);
+    $remWithoutTarget = preg_replace('/\[(?:id|club)\d+\|[^\]]+\]/ui', '', $rem);
+    $remWithoutTarget = preg_replace('/(?:@|\*)id\d+/ui', '', $remWithoutTarget);
+    $remWithoutTarget = preg_replace('/(?:https?:\/\/)?vk\.com\/[a-zA-Z0-9_.]+/ui', '', $remWithoutTarget);
+    $remWithoutTarget = trim($remWithoutTarget);
+
+    return [
+        'type'     => $type,
+        'target_id'=> $targetId,
+        'rest'     => $remWithoutTarget
+    ];
+}
+
+/**
+ * Получение списка участников и администраторов беседы
+ */
+function vk_bot_get_chat_members($peerId, $token, $cacheDir, $forceRefresh = false)
+{
+    $cacheFile = $cacheDir . '/vk_members_' . $peerId . '.json';
+    if (!$forceRefresh && file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 60) {
+        $data = @json_decode(@file_get_contents($cacheFile), true);
+        if (is_array($data) && !empty($data['items'])) {
+            return $data;
+        }
+    }
+
+    list($httpCode, $resp) = vk_bot_api_call('messages.getConversationMembers', [
+        'peer_id' => $peerId
+    ], $token);
+
+    if ($httpCode === 200 && is_array($resp) && !empty($resp['response']['items'])) {
+        $result = [
+            'items'    => $resp['response']['items'],
+            'profiles' => $resp['response']['profiles'] ?? [],
+            'groups'   => $resp['response']['groups'] ?? [],
+            'cached_at'=> time()
+        ];
+        @file_put_contents($cacheFile, json_encode($result, JSON_UNESCAPED_UNICODE));
+        return $result;
+    }
+
+    return null;
+}
+
+/**
+ * Получение информации об участнике беседы (роль, имя)
+ */
+function vk_bot_get_member_info($peerId, $userId, $token, $cacheDir)
+{
+    $data = vk_bot_get_chat_members($peerId, $token, $cacheDir);
+    if (!$data) return null;
+
+    $info = [
+        'user_id'  => $userId,
+        'is_admin' => false,
+        'is_owner' => false,
+        'name'     => 'Пользователь'
+    ];
+
+    foreach ($data['items'] as $item) {
+        if ((int)($item['member_id'] ?? 0) === $userId) {
+            $info['is_admin'] = !empty($item['is_admin']);
+            $info['is_owner'] = !empty($item['is_owner']);
+            break;
+        }
+    }
+
+    foreach ($data['profiles'] as $p) {
+        if ((int)($p['id'] ?? 0) === $userId) {
+            $info['name'] = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+            break;
+        }
+    }
+
+    return $info;
+}
+
+/**
+ * Проверка: является ли робот Космо администратором беседы
+ */
+function vk_bot_is_cosmo_admin($peerId, $vkGroupId, $token, $cacheDir)
+{
+    $data = vk_bot_get_chat_members($peerId, $token, $cacheDir);
+    if (!$data) return false;
+    $cosmoId = -$vkGroupId;
+
+    foreach ($data['items'] as $item) {
+        if ((int)($item['member_id'] ?? 0) === $cosmoId) {
+            return !empty($item['is_admin']);
+        }
+    }
+    return false;
+}
+
+/**
+ * Удаление сообщения из беседы для всех участников
+ */
+function vk_bot_delete_chat_message($peerId, $cmid, $token, $groupId)
+{
+    if ($peerId <= 0 || $cmid <= 0) return false;
+    list($code, $res) = vk_bot_api_call('messages.delete', [
+        'peer_id'                  => $peerId,
+        'conversation_message_ids' => $cmid,
+        'delete_for_all'           => 1,
+        'group_id'                 => $groupId
+    ], $token);
+    return ($code === 200 && empty($res['error']));
+}
+
+/**
+ * Проверка: находится ли пользователь в режиме молчания (муте)
+ */
+function vk_bot_is_user_muted($peerId, $userId, $cacheDir)
+{
+    if ($peerId <= 0 || $userId <= 0) return null;
+    $file = $cacheDir . '/vk_muted_' . $peerId . '.json';
+    if (!file_exists($file)) return null;
+
+    $data = @json_decode(@file_get_contents($file), true);
+    if (!is_array($data) || empty($data[(string)$userId])) return null;
+
+    $info = $data[(string)$userId];
+    $now = time();
+    if ($now < (int)($info['muted_until'] ?? 0)) {
+        return $info;
+    }
+
+    // Мут истёк — удаляем
+    unset($data[(string)$userId]);
+    @file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return null;
+}
+
+/**
+ * Сохранение пользователя в режиме молчания
+ */
+function vk_bot_mute_user($peerId, $targetId, $targetName, $adminId, $seconds, $label, $reason, $cacheDir)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+    $file = $cacheDir . '/vk_muted_' . $peerId . '.json';
+    $data = [];
+    if (file_exists($file)) {
+        $loaded = @json_decode(@file_get_contents($file), true);
+        if (is_array($loaded)) $data = $loaded;
+    }
+
+    $data[(string)$targetId] = [
+        'user_id'          => $targetId,
+        'user_name'        => $targetName,
+        'muted_by'         => $adminId,
+        'muted_at'         => time(),
+        'muted_until'      => time() + $seconds,
+        'duration_seconds' => $seconds,
+        'duration_label'   => $label,
+        'reason'           => $reason !== '' ? $reason : 'Нарушение правил беседы'
+    ];
+
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Досрочное снятие режима молчания
+ */
+function vk_bot_unmute_user($peerId, $targetId, $cacheDir)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+    $file = $cacheDir . '/vk_muted_' . $peerId . '.json';
+    if (!file_exists($file)) return false;
+
+    $data = @json_decode(@file_get_contents($file), true);
+    if (!is_array($data) || !isset($data[(string)$targetId])) return false;
+
+    unset($data[(string)$targetId]);
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Проверка: находится ли пользователь в чёрном списке беседы
+ */
+function vk_bot_is_user_banned($peerId, $userId, $cacheDir)
+{
+    if ($peerId <= 0 || $userId <= 0) return false;
+    $file = $cacheDir . '/vk_banned_' . $peerId . '.json';
+    if (!file_exists($file)) return false;
+
+    $data = @json_decode(@file_get_contents($file), true);
+    return is_array($data) && !empty($data[(string)$userId]);
+}
+
+/**
+ * Исключение пользователя и занесение в чёрный список беседы
+ */
+function vk_bot_ban_user($peerId, $targetId, $targetName, $adminId, $reason, $cacheDir, $token)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+
+    $chatId = $peerId - 2000000000;
+    vk_bot_api_call('messages.removeChatUser', [
+        'chat_id'   => $chatId,
+        'member_id' => $targetId
+    ], $token);
+
+    $file = $cacheDir . '/vk_banned_' . $peerId . '.json';
+    $data = [];
+    if (file_exists($file)) {
+        $loaded = @json_decode(@file_get_contents($file), true);
+        if (is_array($loaded)) $data = $loaded;
+    }
+
+    $data[(string)$targetId] = [
+        'user_id'   => $targetId,
+        'user_name' => $targetName,
+        'banned_by' => $adminId,
+        'banned_at' => time(),
+        'reason'    => $reason !== '' ? $reason : 'Нарушение правил беседы'
+    ];
+
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Удаление пользователя из чёрного списка беседы
+ */
+function vk_bot_unban_user($peerId, $targetId, $cacheDir)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+    $file = $cacheDir . '/vk_banned_' . $peerId . '.json';
+    if (!file_exists($file)) return false;
+
+    $data = @json_decode(@file_get_contents($file), true);
+    if (!is_array($data) || !isset($data[(string)$targetId])) return false;
+
+    unset($data[(string)$targetId]);
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -1366,6 +2096,24 @@ $persistentKeyboard = [
                 ],
                 'color' => 'secondary'
             ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_club'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📖 Книжный клуб'
+                ],
+                'color' => 'secondary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_of_day'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '⭐ Книга дня'
+                ],
+                'color' => 'secondary'
+            ]
         ]
     ]
 ];
@@ -1441,6 +2189,139 @@ $inlineMoodKeyboard = [
     ]
 ];
 
+// 3. Inline-клавиатура для групповых бесед (Книжный клуб читателей Владимира)
+$inlineChatKeyboard = [
+    'inline'  => true,
+    'buttons' => [
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_club_topic'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📖 Книга недели'
+                ],
+                'color' => 'primary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_club_vote'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🗳 Голосование'
+                ],
+                'color' => 'positive'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📚 Подобрать книгу'
+                ],
+                'color' => 'secondary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_club_rules'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📜 Кодекс клуба'
+                ],
+                'color' => 'secondary'
+            ]
+        ]
+    ]
+];
+
+// 4. Inline-клавиатура для интерактивного голосования книжного клуба
+$voteInlineKeyboard = [
+    'inline'  => true,
+    'buttons' => [
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'vote_cast', 'option' => 1], JSON_UNESCAPED_UNICODE),
+                    'label'   => '1️⃣ «Солярис»'
+                ],
+                'color' => 'secondary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'vote_cast', 'option' => 2], JSON_UNESCAPED_UNICODE),
+                    'label'   => '2️⃣ «451° Фаренгейт»'
+                ],
+                'color' => 'secondary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'vote_cast', 'option' => 3], JSON_UNESCAPED_UNICODE),
+                    'label'   => '3️⃣ «Два капитана»'
+                ],
+                'color' => 'secondary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'vote_cast', 'option' => 4], JSON_UNESCAPED_UNICODE),
+                    'label'   => '4️⃣ «Старик и море»'
+                ],
+                'color' => 'secondary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'book_club_results'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📊 Результаты голосования'
+                ],
+                'color' => 'primary'
+            ]
+        ]
+    ]
+];
+
+// =============================================================================
+// ОБРАБОТКА ГОЛОСОВОГО СООБЩЕНИЯ (VOICE-TO-TEXT ASR)
+// =============================================================================
+$isVoiceQuery = false;
+$voiceTranscribedText = '';
+
+if ($audioAttachment !== null) {
+    if ($botTyping && $peerId > 0) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+    $resolvedTranscript = vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $communityToken);
+    if ($resolvedTranscript !== null && trim($resolvedTranscript) !== '') {
+        $isVoiceQuery = true;
+        $voiceTranscribedText = trim($resolvedTranscript);
+        $userMsg = $voiceTranscribedText;
+        // Очищаем возможное обращение к боту в начале голосовой фразы
+        $userMsg = preg_replace('/^\s*(?:космо|робот\s*космо|бот)[\s,!:—?]+/ui', '', $userMsg);
+        $userMsg = trim($userMsg);
+        if ($userMsg === '') {
+            $userMsg = 'Привет, Космо!';
+        }
+    } else {
+        // Голосовое сообщение не удалось распознать (тишина, шум или ошибка ASR)
+        $unrecReply = "🎤 Я внимательно прослушал ваше голосовое сообщение, но, к сожалению, не смог разобрать слова из-за фонового шума или тишины.\n\n"
+                    . "Пожалуйста, запишите вопрос чуть громче и чётче или напишите текстом — я с радостью помогу вам и подберу прекрасную книгу! 🤖✨";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $unrecReply,
+            'attachment'       => $mascotStickers['sleep'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Парсинг команд и payload
 // -----------------------------------------------------------------------------
@@ -1477,23 +2358,427 @@ if (file_exists($dialogFile) && is_readable($dialogFile)) {
 // Статические сценарии (мгновенный ответ без задержки)
 // -----------------------------------------------------------------------------
 
+// =============================================================================
+// Сценарий 0-MOD: Команды модерации беседы (Бан, Кик, Мут, Размут, Разбан, Списки)
+// =============================================================================
+$parsedModCmd = $isChat ? vk_bot_parse_mod_command($userMsg, $msgObj) : null;
+$isQuickMute = ($cmd === 'mod_quick_mute');
+
+if ($parsedModCmd !== null || $isQuickMute) {
+    if (!$isChat) {
+        $reply = "⚠️ Команды модерации работают только в групповых беседах и публичных чатах ВКонтакте!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // 1. Проверяем: назначен ли робот Космо администратором беседы
+    if (!vk_bot_is_cosmo_admin($peerId, $vkGroupId, $communityToken, $cacheDir)) {
+        $reply = "⚠️ Чтобы я мог исключать и отправлять в режим молчания нарушителей, пожалуйста, назначьте меня администратором этой беседы с правами на управление участниками и удаление сообщений! 🤖🛡️";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // 2. Проверяем: является ли инициатор команды администратором или создателем беседы
+    $callerInfo = vk_bot_get_member_info($peerId, $fromId, $communityToken, $cacheDir);
+    if (!$callerInfo || (!$callerInfo['is_admin'] && !$callerInfo['is_owner'])) {
+        $reply = "⚠️ Команды модерации чата могут использовать только администраторы и создатель беседы!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['angry'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+    $callerName = htmlspecialchars($callerInfo['name'] ?? 'Администратор');
+
+    // Обработка кнопки быстрого мута
+    if ($isQuickMute) {
+        $targetId = (int)($payloadData['target_id'] ?? 0);
+        $durSec = (int)($payloadData['dur'] ?? 3600);
+        $durLabel = (string)($payloadData['label'] ?? '1 час');
+        $reason = trim((string)($payloadData['reason'] ?? ''));
+        if ($reason === '') $reason = 'Нарушение правил беседы';
+
+        $targetInfo = vk_bot_get_member_info($peerId, $targetId, $communityToken, $cacheDir);
+        $targetName = $targetInfo['name'] ?? ($payloadData['target_name'] ?? 'Пользователь');
+
+        if ($targetInfo && ($targetInfo['is_admin'] || $targetInfo['is_owner'])) {
+            $reply = "⚠️ Нельзя отправить в режим молчания администратора или создателя беседы!";
+        } else {
+            vk_bot_mute_user($peerId, $targetId, $targetName, $fromId, $durSec, $durLabel, $reason, $cacheDir);
+            $reply = "🔇 [id{$targetId}|{$targetName}] отправлен в режим молчания на {$durLabel} администратором [id{$fromId}|{$callerName}].\n"
+                   . "📌 Причина: {$reason}\n"
+                   . "Все сообщения нарушителя будут автоматически удаляться.";
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['sleep'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    $modType = $parsedModCmd['type'] ?? '';
+    $targetId = (int)($parsedModCmd['target_id'] ?? 0);
+    $rest = trim((string)($parsedModCmd['rest'] ?? ''));
+
+    // Справка по модерации
+    if ($modType === 'mod_help') {
+        $reply = "🛡️ Справка по командам модератора беседы (Космо 🤖):\n\n"
+               . "• !мут [время] [причина] — отправить участника в режим молчания (его сообщения в чате удаляются автоматически);\n"
+               . "  Примеры: !мут 1 час спам, !мут 2 часа, !мут 3 часа, !мут на сутки, !мут неделя, !мут месяц, !мут навсегда.\n"
+               . "  💡 Если написать «!мут» в ответ на сообщение без времени — появятся удобные кнопки выбора срока!\n"
+               . "• !размут [пользователь] — досрочно снять режим молчания;\n"
+               . "• !кик [причина] — исключить участника из беседы;\n"
+               . "• !бан [причина] — исключить участника с занесением в чёрный список (повторный вход по ссылке блокируется);\n"
+               . "• !разбан [пользователь] — удалить участника из чёрного списка беседы;\n"
+               . "• !муты — список текущих замученных участников со сроком окончания;\n"
+               . "• !баны — чёрный список участников беседы.\n\n"
+               . "📌 Команды можно писать через «!», «/» или словами: «Космо, мут на 2 часа». Доступно только администраторам чата.";
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Список активных мутов
+    if ($modType === 'list_mutes') {
+        $muteFile = $cacheDir . '/vk_muted_' . $peerId . '.json';
+        $mutes = file_exists($muteFile) ? @json_decode(@file_get_contents($muteFile), true) : [];
+        if (!is_array($mutes)) $mutes = [];
+
+        $activeMutes = [];
+        $now = time();
+        foreach ($mutes as $uid => $inf) {
+            $until = (int)($inf['muted_until'] ?? 0);
+            if ($until > $now) {
+                $rem = vk_bot_format_remaining_time($until - $now);
+                $uname = htmlspecialchars($inf['user_name'] ?? "id{$uid}");
+                $ureason = htmlspecialchars($inf['reason'] ?? 'Нарушение правил');
+                $activeMutes[] = "• [id{$uid}|{$uname}] — осталось {$rem} (Причина: {$ureason})";
+            }
+        }
+
+        if (empty($activeMutes)) {
+            $reply = "🕊️ В этой беседе сейчас нет участников в режиме молчания.";
+        } else {
+            $reply = "🔇 Участники беседы в режиме молчания (" . count($activeMutes) . "):\n\n"
+                   . implode("\n", $activeMutes) . "\n\n"
+                   . "Для досрочного снятия мута отправьте: !размут @id...";
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Список банов (чёрный список беседы)
+    if ($modType === 'list_bans') {
+        $banFile = $cacheDir . '/vk_banned_' . $peerId . '.json';
+        $bans = file_exists($banFile) ? @json_decode(@file_get_contents($banFile), true) : [];
+        if (!is_array($bans)) $bans = [];
+
+        if (empty($bans)) {
+            $reply = "🕊️ Чёрный список этой беседы пуст.";
+        } else {
+            $banRows = [];
+            foreach ($bans as $uid => $inf) {
+                $uname = htmlspecialchars($inf['user_name'] ?? "id{$uid}");
+                $bdate = isset($inf['banned_at']) ? date('d.m.Y H:i', (int)$inf['banned_at']) : '';
+                $breason = htmlspecialchars($inf['reason'] ?? 'Нарушение правил');
+                $banRows[] = "• [id{$uid}|{$uname}] (Забанен: {$bdate}, Причина: {$breason})";
+            }
+            $reply = "⛔ Чёрный список участников беседы (" . count($banRows) . "):\n\n"
+                   . implode("\n", $banRows) . "\n\n"
+                   . "Для разблокировки отправьте: !разбан @id...";
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Для остальных действий (мут, размут, кик, бан, разбан) требуется целевой пользователь
+    if ($targetId <= 0) {
+        $reply = "⚠️ Укажите пользователя для применения команды: ответьте на его сообщение (reply) или укажите ссылку/упоминание (например: !{$modType} @id12345).";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Проверка на применение команды к боту Космо
+    if ($targetId === -$vkGroupId) {
+        $reply = "🤖 Я не могу применить команду модерации к самому себе!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    $targetInfo = vk_bot_get_member_info($peerId, $targetId, $communityToken, $cacheDir);
+    $targetName = htmlspecialchars($targetInfo['name'] ?? "id{$targetId}");
+
+    // Снятие мута (!размут)
+    if ($modType === 'unmute') {
+        vk_bot_unmute_user($peerId, $targetId, $cacheDir);
+        $reply = "🔊 Режим молчания с пользователя [id{$targetId}|{$targetName}] успешно снят администратором [id{$fromId}|{$callerName}]!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Снятие бана (!разбан)
+    if ($modType === 'unban') {
+        vk_bot_unban_user($peerId, $targetId, $cacheDir);
+        $reply = "✅ Пользователь [id{$targetId}|{$targetName}] удалён из чёрного списка беседы администратором [id{$fromId}|{$callerName}] и теперь может вернуться в чат!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Защита: нельзя кикать, банить или мутить администраторов и создателя
+    if ($targetInfo && ($targetInfo['is_admin'] || $targetInfo['is_owner'])) {
+        $reply = "⚠️ Нельзя применить меры модерации к администратору или создателю беседы!";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['angry'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Исключение из чата (!кик)
+    if ($modType === 'kick') {
+        $reason = $rest !== '' ? $rest : 'Нарушение правил беседы';
+        $chatId = $peerId - 2000000000;
+        list($code, $res) = vk_bot_api_call('messages.removeChatUser', [
+            'chat_id'   => $chatId,
+            'member_id' => $targetId
+        ], $communityToken);
+
+        if (!empty($res['error']) && $res['error']['error_code'] == 935) {
+            $reply = "⚠️ Пользователь [id{$targetId}|{$targetName}] не найден в этой беседе.";
+        } else {
+            $reply = "🚪 [id{$targetId}|{$targetName}] исключён из беседы администратором [id{$fromId}|{$callerName}].\n"
+                   . "📌 Причина: {$reason}";
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['idle'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Бан в чате (!бан)
+    if ($modType === 'ban') {
+        $reason = $rest !== '' ? $rest : 'Нарушение правил беседы';
+        vk_bot_ban_user($peerId, $targetId, $targetName, $fromId, $reason, $cacheDir, $communityToken);
+
+        $reply = "⛔ [id{$targetId}|{$targetName}] заблокирован и исключён из беседы администратором [id{$fromId}|{$callerName}].\n"
+               . "📌 Причина: {$reason}\n"
+               . "Повторный вход по ссылке для этого пользователя заблокирован.";
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['angry'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Мут (!мут)
+    if ($modType === 'mute') {
+        list($durSec, $durLabel, $reason) = vk_bot_extract_duration_and_reason($rest);
+
+        if ($durSec !== null) {
+            if ($reason === '') $reason = 'Нарушение правил беседы';
+            vk_bot_mute_user($peerId, $targetId, $targetName, $fromId, $durSec, $durLabel, $reason, $cacheDir);
+
+            // Удаляем сообщение нарушителя, если был reply
+            if (!empty($msgObj['reply_message']['conversation_message_id'])) {
+                vk_bot_delete_chat_message($peerId, (int)$msgObj['reply_message']['conversation_message_id'], $communityToken, $vkGroupId);
+            }
+
+            $reply = "🔇 [id{$targetId}|{$targetName}] отправлен в режим молчания на {$durLabel} администратором [id{$fromId}|{$callerName}].\n"
+                   . "📌 Причина: {$reason}\n"
+                   . "Все сообщения нарушителя будут автоматически удаляться.";
+
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['sleep'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        } else {
+            // Длительность не указана — выводим удобные интерактивные кнопки
+            $reasonClean = trim($reason);
+            $quickMuteKeyboard = [
+                'inline'  => true,
+                'buttons' => [
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 3600, 'label' => '1 час', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 1 час'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 7200, 'label' => '2 часа', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 2 часа'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 10800, 'label' => '3 часа', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⏱️ 3 часа'
+                            ],
+                            'color' => 'secondary'
+                        ]
+                    ],
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 86400, 'label' => 'сутки (24ч)', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '📅 Сутки (24ч)'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 604800, 'label' => '1 неделю', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '📅 Неделя'
+                            ],
+                            'color' => 'secondary'
+                        ],
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 2592000, 'label' => '1 месяц', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '🗓️ Месяц'
+                            ],
+                            'color' => 'secondary'
+                        ]
+                    ],
+                    [
+                        [
+                            'action' => [
+                                'type'    => 'text',
+                                'payload' => json_encode(['cmd' => 'mod_quick_mute', 'target_id' => $targetId, 'target_name' => $targetName, 'dur' => 315360000, 'label' => 'навсегда', 'reason' => $reasonClean], JSON_UNESCAPED_UNICODE),
+                                'label'   => '⛔ Навсегда'
+                            ],
+                            'color' => 'negative'
+                        ]
+                    ]
+                ]
+            ];
+
+            $reply = "⏱️ Выберите срок режима молчания для [id{$targetId}|{$targetName}] кнопками ниже (или напишите, например: «!мут 2 часа»):\n"
+                   . ($reasonClean !== '' ? "📌 Причина: {$reasonClean}" : "");
+
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['thinking'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'keyboard'         => json_encode($quickMuteKeyboard, JSON_UNESCAPED_UNICODE),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        }
+    }
+}
+
 // Сценарий 0: Добавление робота Космо в беседу (чат)
 if ($cmd === 'chat_welcome' || $isBotInvited) {
     $reply = "👋 Всем привет! Я Космо 🤖📚 — библиотечный робот-помощник Централизованной библиотечной системы города Владимира!\n\n"
            . "Рад присоединиться к вашей беседе! Чем я могу быть полезен прямо в этом чате:\n"
-           . "• Порекомендую отличные книги под настроение или компанию;\n"
-           . "• Подскажу адреса, телефоны и график любого из 18 филиалов библиотек города;\n"
-           . "• Найду редкие и увлекательные литературные факты.\n\n"
+           . "• 📖 Модератор книжного клуба: объявляю книгу недели, подбрасываю глубокие темы для дискуссии и провожу голосования;\n"
+           . "• 📚 Порекомендую отличные книги под настроение или компанию;\n"
+           . "• 🏛 Подскажу адреса, телефоны и график любого из 18 филиалов библиотек города;\n"
+           . "• 🎤 Понимаю голосовые сообщения читателей на ходу.\n\n"
            . "💡 Как ко мне обращаться в беседе:\n"
-           . "• Напишите «Космо, ...» (например: «Космо, что почитать?» или «Космо, где библиотеки?»);\n"
+           . "• Нажмите интерактивные кнопки ниже прямо в чате;\n"
+           . "• Напишите «Космо, ...» (например: «Космо, книга недели» или «Космо, что почитать?»);\n"
            . "• Упомяните меня через @club241534292;\n"
-           . "• Или просто ответьте (reply) на любое моё сообщение! ✨";
+           . "• Или ответьте (reply) на любое моё сообщение текстом или голосом! ✨";
 
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'],
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1534,15 +2819,20 @@ if ($isWelcomeQuery) {
            . "У меня электронное сердце, любовь к чтению и доступ ко всем фондам городских библиотек.\n\n"
            . "✨ ЧЕМ Я МОГУ БЫТЬ ПОЛЕЗЕН:\n"
            . "• 📚 Подберу идеальную книгу под ваше настроение (уют, детектив, космос, классика или драйв);\n"
+           . "• 📖 Книжный клуб: объявляю книгу недели, глубокие темы для обсуждения и провожу голосования;\n"
+           . "• ⭐ Покажу «Книгу дня» — актуальную рекомендацию и цитату от Космо;\n"
            . "• 📰 Покажу «Новости филиалов» — свежие посты и анонсы библиотек Владимира за сегодня;\n"
            . "• 🏛 Подскажу адреса, телефоны и график работы всех 18 филиалов библиотек города;\n"
            . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
-           . "• 💡 Отвечу на любые вопросы о книгах, сюжетах и писателях.\n\n"
+           . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
-           . "• Нажимайте удобные кнопки меню внизу экрана («📚 Подобрать книгу», «📰 Новости филиалов», «🏛 Где библиотеки?», «🎲 Случайный шедевр», «🔄 Новый диалог»);\n"
-           . "• Или просто напишите мне своими словами: «Посоветуй уютную книгу на вечер», «Что нового в филиалах?» или «Где библиотека на Егорова?»;\n"
-           . "• Все книги в наших библиотеках выдаются бесплатно на дом по единому читательскому билету!\n\n"
-           . "Какую книгу вам подобрать сегодня? Выберите настроение кнопками ниже или напишите свой запрос! ✨";
+           . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «📖 Книжный клуб», «📰 Новости филиалов», «🏛 Где библиотеки?», «⭐ Книга дня», «🔄 Новый диалог»);\n"
+           . "• Или просто напишите мне или наговорите голосом: «Посоветуй уютную книгу на вечер», «Книга недели» или «Где библиотека на Егорова?».\n\n"
+           . "Какую книгу вам подобрать сегодня? Выберите настроение кнопками ниже или задайте свой вопрос! ✨";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
 
     if (!$isChat) {
         @file_put_contents($dialogFile, json_encode([
@@ -1559,7 +2849,7 @@ if ($isWelcomeQuery) {
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'],
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1576,18 +2866,24 @@ if ($isMenuQuery) {
     $reply = "📋 Главное меню робота Космо 🤖📚\n\n"
            . "Выберите нужный раздел на кнопках ниже или напишите свой вопрос:\n\n"
            . "• 📚 «Подобрать книгу» — персональная рекомендация под настроение или запрос;\n"
+           . "• 📖 «Книжный клуб» — книга недели, глубокие темы для обсуждения и голосования;\n"
+           . "• ⭐ «Книга дня» — актуальная книга и вдохновляющая цитата дня;\n"
            . "• 📰 «Новости филиалов» — свежие публикации библиотек Владимира за сутки;\n"
            . "• 🏛 «Где библиотеки?» — адреса, телефоны и режим работы всех 18 филиалов Владимира;\n"
            . "• 🎲 «Случайный шедевр» — неожиданная жемчужина классики или современной прозы;\n"
            . "• 🔄 «Новый диалог» — очистить контекст и начать общение заново.\n\n"
            . "Чем могу помочь вам прямо сейчас? ✨";
 
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1606,14 +2902,18 @@ if ($isResetQuery) {
     $history = [];
 
     $reply = "🔄 Контекст беседы очищен! Начинаем диалог с чистого листа.\n\n"
-           . "Я готов подобрать для вас новые книги, рассказать о новостях филиалов или подсказать адреса библиотек Владимира. О чём побеседуем? 🤖✨";
+           . "Я готов подобрать для вас новые книги, рассказать о книжном клубе, новостях филиалов или подсказать адреса библиотек Владимира. О чём побеседуем? 🤖✨";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
 
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1637,12 +2937,153 @@ if ($isBookOfDayQuery) {
            . "💡 Почему стоит прочитать:\n{$b['why_read']}\n\n"
            . "Хотите подобрать книгу под конкретное настроение? Нажмите «📚 Подобрать книгу»!";
 
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 2e: Книга недели и темы для обсуждения книжного клуба Владимира
+$isBookClubTopicQuery = (
+    $cmd === 'book_club_topic' ||
+    $cmd === 'book_club' ||
+    preg_match('/^(?:книга недели|тема недели|книжный клуб|обсуждение|тема для обсуждения|что обсуждаем|клуб читателей|клуб)[?!.]*$/ui', $cleanMsgForCmd) ||
+    preg_match('/(книг[а-я]* недели|тем[а-я]* недели|книжн[а-я]* клуб|что обсуждаем)/ui', $userMsg)
+);
+
+if ($isBookClubTopicQuery) {
+    $topic = vk_bot_get_book_club_topic();
+    $reply = "📖 Книга недели в Клубе читателей Владимира (Неделя №{$topic['week']}) 🏛️✨\n\n"
+           . "{$topic['book']} — {$topic['author']}\n"
+           . "📌 Жанр: {$topic['genre']}\n"
+           . "💡 Главная идея: {$topic['idea']}\n\n"
+           . "💬 ВОПРОСЫ И ТЕМЫ ДЛЯ СОВМЕСТНОГО ОБСУЖДЕНИЯ В ЧАТЕ:\n"
+           . implode("\n\n", $topic['questions']) . "\n\n"
+           . "Поделитесь своими мыслями, впечатлениями и любимыми цитатами в чате! А чтобы выбрать книгу на следующую неделю — нажмите кнопку «🗳 Голосование».";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['thinking'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 2f: Запуск голосования за выбор книги следующей недели
+$isBookClubVoteQuery = (
+    $cmd === 'book_club_vote' ||
+    preg_match('/^(?:голосование|выбрать книгу недели|опрос|голосовать|выбор книги|голосование за книгу)[?!.]*$/ui', $cleanMsgForCmd) ||
+    preg_match('/(голосован|выбрать книгу недели|опрос за книгу)/ui', $userMsg)
+);
+
+if ($isBookClubVoteQuery) {
+    $options = vk_bot_get_book_club_vote_options();
+    $currentWeek = (int)date('W');
+    $reply = "🗳️ Голосование книжного клуба читателей Владимира (Неделя №{$currentWeek})\n\n"
+           . "Какую книгу будем читать и обсуждать на следующей неделе? Выберите один из вариантов кнопками ниже или отправьте цифру 1, 2, 3 или 4 в ответ:\n\n";
+
+    foreach ($options as $num => $opt) {
+        $reply .= "{$num}️⃣ {$opt['title']} — {$opt['author']}\n"
+                . "   ({$opt['genre']})\n";
+    }
+
+    $reply .= "\n📊 Результаты обновляются в реальном времени. Каждый голос важен!";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($voteInlineKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 2g: Учёт голоса читателя или вывод текущих результатов голосования
+$isVoteCastQuery = ($cmd === 'vote_cast' && isset($payloadData['option']));
+$isResultsQuery = ($cmd === 'book_club_results' || preg_match('/^(?:результаты голосования|итоги голосования|результаты опроса|итоги опроса|результаты)[?!.]*$/ui', $cleanMsgForCmd));
+
+// Поддержка текстового ответа цифрой «1», «2», «3», «4»
+$digitVote = 0;
+if (preg_match('/^[1-4]$/', $cleanMsgForCmd)) {
+    $digitVote = (int)$cleanMsgForCmd;
+}
+
+if ($isVoteCastQuery || $isResultsQuery || $digitVote > 0) {
+    $selectedOption = $digitVote > 0 ? $digitVote : (int)($payloadData['option'] ?? 0);
+    $votedNotice = '';
+
+    if ($selectedOption >= 1 && $selectedOption <= 4) {
+        $options = vk_bot_get_book_club_vote_options();
+        $book = $options[$selectedOption];
+        vk_bot_record_book_club_vote($peerId, $fromId, $selectedOption, $cacheDir);
+        $votedNotice = "✅ Ваш голос за книгу {$book['title']} ({$book['author']}) успешно учтён!\n\n";
+    }
+
+    $resultsText = vk_bot_format_book_club_vote_results($peerId, $cacheDir);
+    $reply = $votedNotice . $resultsText;
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($voteInlineKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 2h: Кодекс книжного клуба и правила модератора
+$isBookClubRulesQuery = (
+    $cmd === 'book_club_rules' ||
+    preg_match('/^(?:кодекс клуба|правила клуба|кодекс модератора|правила чата|правила книжного клуба|кодекс)[?!.]*$/ui', $cleanMsgForCmd)
+);
+
+if ($isBookClubRulesQuery) {
+    $reply = "📜 Кодекс уюта Клуба читателей Владимира 🤖🕊️\n\n"
+           . "Я, робот Космо, бережно храню тёплую и вдохновляющую атмосферу нашего книжного сообщества. Вот наши главные принципы:\n\n"
+           . "1. 🤝 Взаимное уважение — в клубе нет «неправильных» мнений. Мы с интересом спорим об идеях и поступках персонажей, но никогда не переходим на личности;\n"
+           . "2. 🤫 Осторожно со спойлерами — если вы хотите раскрыть важный сюжетный поворот или финал, обязательно напишите перед этим «[Спойлер]»;\n"
+           . "3. 📅 Ритм недели — с понедельника по субботу мы делимся впечатлениями о книге недели, а по воскресеньям подводим итоги голосования;\n"
+           . "4. 🤖 Зовите меня в любое время — задавайте вопросы о книгах, авторах и филиалах текстом или голосовым сообщением!\n\n"
+           . "Уютного вам чтения и ярких бесед! ✨";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1663,12 +3104,16 @@ if ($isBranchNewsQuery) {
     $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken);
     $reply = vk_bot_format_branch_news_message($newsData);
 
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 0
     ], $communityToken);
     exit;
@@ -1683,11 +3128,15 @@ $isRecommendQuery = (
 if ($isRecommendQuery) {
     $reply = "📚 С радостью подберу для вас идеальную книгу! Выберите настроение кнопками ниже или просто напишите мне своими словами — какой жанр, эпоху или эмоцию вы ищете?";
 
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -1728,11 +3177,15 @@ if ($isLibrariesQuery) {
            . "🌐 Подробности, афиша событий и каталог: biblioteka33.ru\n"
            . "Ждём вас за книгами в любом удобном филиале!";
 
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
