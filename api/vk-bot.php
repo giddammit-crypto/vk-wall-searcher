@@ -675,8 +675,18 @@ if ($isChat && !$isBotInvited) {
     // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
     $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
 
+    // Проверяем команды квиза, опроса, счета или ввод цифры ответа
+    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги)\b#ui', $userMsg);
+    $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
+        file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
+        file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
+        file_exists($cacheDir . '/vk_bookclub_vote_' . $peerId . '.json')
+    ));
+
     $hasMention = (
         $isModCmd ||
+        $isQuizOrPollCmd ||
+        $isDigitReply ||
         preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $userMsg) ||
         preg_match('/@club' . $vkGroupId . '/ui', $userMsg) ||
         preg_match('/^\s*(космо|робот\s*космо|бот)[\s,!:—?]+/ui', $userMsg) ||
@@ -1457,6 +1467,910 @@ function vk_bot_unban_user($peerId, $targetId, $cacheDir)
 }
 
 /**
+ * Склонение слова «балл»
+ */
+function vk_bot_plural_points($n)
+{
+    $n = abs((int)$n) % 100;
+    $n1 = $n % 10;
+    if ($n > 10 && $n < 20) return 'баллов';
+    if ($n1 > 1 && $n1 < 5) return 'балла';
+    if ($n1 == 1) return 'балл';
+    return 'баллов';
+}
+
+/**
+ * Безопасное усечение текста для надписей на кнопках ВК (лимит 40 символов)
+ */
+function vk_bot_truncate_btn_label($str, $maxLen = 33)
+{
+    $str = trim(preg_replace('/\s+/u', ' ', (string)$str));
+    if (mb_strlen($str, 'UTF-8') <= $maxLen) {
+        return $str;
+    }
+    return mb_substr($str, 0, $maxLen - 1, 'UTF-8') . '…';
+}
+
+/**
+ * Универсальный вызов AI-модели с поддержкой ротации ключей и фонового typing в ВК
+ */
+function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0)
+{
+    if (empty($validAiKeys)) return '';
+    $activeIdx = 0;
+    if (file_exists($activeKeyIndexFile) && is_readable($activeKeyIndexFile)) {
+        $idxData = json_decode(@file_get_contents($activeKeyIndexFile), true);
+        if (is_array($idxData) && isset($idxData['active_index'])) {
+            $activeIdx = (int)$idxData['active_index'];
+            if ($activeIdx < 0 || $activeIdx >= count($validAiKeys)) $activeIdx = 0;
+        }
+    }
+
+    $payloadArr = [
+        'model'       => $aiModel,
+        'messages'    => $messages,
+        'max_tokens'  => $maxTokens,
+        'temperature' => $temperature
+    ];
+    $payloadJson = json_encode($payloadArr, JSON_UNESCAPED_UNICODE);
+
+    $attempts = 0;
+    $maxAttempts = count($validAiKeys);
+    $currentIdx = $activeIdx;
+    $botTyping = ($peerId > 0 && $communityToken !== '');
+    $lastTypingPing = microtime(true);
+    $aiResponseText = '';
+
+    while ($attempts < $maxAttempts) {
+        $currentApiKey = $validAiKeys[$currentIdx];
+
+        if ($botTyping) {
+            vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+        }
+
+        $ch = curl_init($aiBaseUrl . '/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payloadJson,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $aiTimeout,
+            CURLOPT_CONNECTTIMEOUT => 12,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.29.0',
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_NOPROGRESS     => false,
+            CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $vkGroupId, $botTyping) {
+                if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.0) {
+                    $lastTypingPing = microtime(true);
+                    vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+                }
+                return 0;
+            },
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'Authorization: Bearer ' . $currentApiKey
+            ]
+        ]);
+        $resp = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        $json = is_string($resp) ? json_decode($resp, true) : null;
+        $needFailover = ($resp === false || $httpCode === 0 || in_array($httpCode, [429, 401, 402, 403, 500, 502, 503, 504], true));
+        if (!$needFailover && is_array($json)) {
+            $errStr = '';
+            if (isset($json['error'])) {
+                $errStr .= is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE);
+            }
+            if (isset($json['message'])) {
+                $errStr .= ' ' . (string)$json['message'];
+            }
+            if ($errStr !== '' && preg_match('/quota|rate|limit|insufficient|unauthorized|credit|exceeded|busy/i', $errStr)) {
+                $needFailover = true;
+            }
+        }
+
+        if ($needFailover && count($validAiKeys) > 1 && $attempts < ($maxAttempts - 1)) {
+            $currentIdx = ($currentIdx + 1) % count($validAiKeys);
+            $attempts++;
+            $fh = @fopen($activeKeyIndexFile, 'c+');
+            if ($fh) {
+                if (@flock($fh, LOCK_EX)) {
+                    ftruncate($fh, 0);
+                    rewind($fh);
+                    fwrite($fh, json_encode([
+                        'active_index' => $currentIdx,
+                        'updated_at'   => time(),
+                        'updated_iso'  => date('c')
+                    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                    fflush($fh);
+                    @flock($fh, LOCK_UN);
+                }
+                fclose($fh);
+            }
+            continue;
+        }
+
+        if ($httpCode === 200 && is_array($json) && !empty($json['choices'][0]['message']['content'])) {
+            $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
+            if ($currentIdx !== $activeIdx) {
+                $fh = @fopen($activeKeyIndexFile, 'c+');
+                if ($fh) {
+                    if (@flock($fh, LOCK_EX)) {
+                        ftruncate($fh, 0);
+                        rewind($fh);
+                        fwrite($fh, json_encode([
+                            'active_index' => $currentIdx,
+                            'updated_at'   => time(),
+                            'updated_iso'  => date('c')
+                        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                        fflush($fh);
+                        @flock($fh, LOCK_UN);
+                    }
+                    fclose($fh);
+                }
+            }
+            break;
+        }
+
+        $attempts++;
+        $currentIdx = ($currentIdx + 1) % count($validAiKeys);
+    }
+
+    return $aiResponseText;
+}
+
+/**
+ * Резервный банк проверенных квизов по литературе
+ */
+function vk_bot_get_fallback_quizzes()
+{
+    return [
+        [
+            'topic' => 'Русская классика',
+            'question' => 'Какой предмет подарил Петр Гринев Емельяну Пугачеву во время метели в повести «Капитанская дочка»?',
+            'options' => ['Заячий тулупчик', 'Золотые часы', 'Шпагу отца', 'Шелковый платок'],
+            'correct_index' => 0,
+            'explanation' => 'Петр Гринев от чистого сердца подарил вожатому заячий тулупчик в знак благодарности за спасение в буране. Этот благородный жест позже спас Гриневу жизнь в захваченной Белогорской крепости!'
+        ],
+        [
+            'topic' => 'Мистическая классика',
+            'question' => 'На каких прудах Москвы начинаются события романа Михаила Булгакова «Мастер и Маргарита»?',
+            'options' => ['Чистые пруды', 'Патриаршие пруды', 'Новодевичьи пруды', 'Екатерининские пруды'],
+            'correct_index' => 1,
+            'explanation' => 'Знаменитый разговор Берлиоза и поэта Бездомного с Воландом происходит в час небывало жаркого весеннего заката именно на Патриарших прудах, где «Аннушка уже разлила масло».'
+        ],
+        [
+            'topic' => 'Великая драматургия',
+            'question' => 'Кто из героев пьесы Антона Чехова «Вишневый сад» выкупает родовое имение Раневской на торгах?',
+            'options' => ['Петя Трофимов', 'Леонид Гаев', 'Ермолай Лопахин', 'Борис Симеонов-Пищик'],
+            'correct_index' => 2,
+            'explanation' => 'Купец Ермолай Лопахин, чей отец и дед были крепостными в этом имении, покупает вишневый сад и объявляет: «Вишневый сад теперь мой! Мой!». Это ключевой поворот русской драматургии рубежа веков.'
+        ],
+        [
+            'topic' => 'Научная фантастика',
+            'question' => 'Как называется планета-океан, обладающая мыслящим разумом, в культовом романе Станислава Лема?',
+            'options' => ['Солярис', 'Арракис', 'Трантор', 'Гиперион'],
+            'correct_index' => 0,
+            'explanation' => '«Солярис» Станислава Лема — философская вершина научной фантастики, где исследователи сталкиваются с загадочным живым Океаном, материализующим сокровенные воспоминания человека.'
+        ],
+        [
+            'topic' => 'Отечественная фантастика',
+            'question' => 'В каком загадочном институте работают герои повести братьев Стругацких «Понедельник начинается в субботу»?',
+            'options' => ['НИИЧАВО', 'ЦАГИ', 'НИИОМТПБ', 'ВНИИЭМ'],
+            'correct_index' => 0,
+            'explanation' => 'Герои трудятся в НИИЧАВО — Научно-исследовательском институте Чародейства и Волшебства города Соловца, где исследуют счастье и человеческий дух через призму магии и науки.'
+        ],
+        [
+            'topic' => 'Классический детектив',
+            'question' => 'С помощью какого вещества преступник создавал зловещее свечение морды собаки в повести Конан Дойла «Собака Баскервилей»?',
+            'options' => ['Люминофор на цинке', 'Фосфорный состав', 'Радиевая краска', 'Светящиеся водоросли'],
+            'correct_index' => 1,
+            'explanation' => 'Джек Стэплтон использовал специально приготовленный состав на основе фосфора без запаха, чтобы внушать суеверный ужас и инсценировать древнюю легенду рода Баскервилей.'
+        ],
+        [
+            'topic' => 'Морские приключения',
+            'question' => 'Как звали отважного гарпунёра из Канады на борту фрегата «Авраам Линкольн» в романе Жюля Верна «20 000 лье под водой»?',
+            'options' => ['Нед Ленд', 'Дик Сэнд', 'Филеас Фогг', 'Джон Манглс'],
+            'correct_index' => 0,
+            'explanation' => 'Канадский гарпунёр Нед Ленд стал верным спутником профессора Аронакса и Конселя на борту легендарного подводного корабля капитана Немо «Наутилус».'
+        ],
+        [
+            'topic' => 'Русская поэзия и дуэль',
+            'question' => 'Кто был секундантом Печорина на роковой дуэли с Грушницким в романе «Герой нашего времени»?',
+            'options' => ['Доктор Вернер', 'Максим Максимыч', 'Капитан Вулич', 'Ротмистр Раевич'],
+            'correct_index' => 0,
+            'explanation' => 'Именно доктор Вернер был секундантом Печорина и пытался склонить стороны к примирению перед тем, как противники встали на узкую площадку над обрывом.'
+        ]
+    ];
+}
+
+/**
+ * Генерация вопроса квиза через ИИ с fallback-банком
+ */
+function vk_bot_generate_ai_quiz($topic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0)
+{
+    $topic = trim((string)$topic);
+    $curatedTopics = [
+        'Русская классическая литература',
+        'Космическая и научная фантастика',
+        'Шедевры мирового детектива',
+        'Приключения и морские путешествия',
+        'Герои сказок и фольклора',
+        'Поэзия Серебряного века',
+        'Тайны писателей и книжные юбилеи'
+    ];
+    if ($topic === '') {
+        $topic = $curatedTopics[array_rand($curatedTopics)];
+    }
+
+    $systemPrompt = "Ты — робот Космо, библиограф и ведущий книжного клуба городских библиотек г. Владимира.\n"
+                  . "Твоя задача — составить 1 увлекательный, познавательный и на 100% достоверный вопрос литературного квиза (викторины) по заданной теме.\n"
+                  . "Категорически запрещены: вымысел, несуществующие факты/книги, а также любые упоминания лиц-иноагентов!\n"
+                  . "Верни СТРОГО валидный JSON (без markdown-обёрток, без лишнего текста) следующей структуры:\n"
+                  . "{\n"
+                  . "  \"topic\": \"Короткое название темы (до 30 символов)\",\n"
+                  . "  \"question\": \"Текст вопроса (интересный, ясный, до 200 символов)\",\n"
+                  . "  \"options\": [\n"
+                  . "    \"Вариант 1 (до 30 символов)\",\n"
+                  . "    \"Вариант 2 (до 30 символов)\",\n"
+                  . "    \"Вариант 3 (до 30 символов)\",\n"
+                  . "    \"Вариант 4 (до 30 символов)\"\n"
+                  . "  ],\n"
+                  . "  \"correct_index\": 0,\n"
+                  . "  \"explanation\": \"Краткая увлекательная историко-литературная справка от Космо, почему этот ответ верный (2-3 предложения).\"\n"
+                  . "}\n"
+                  . "Важно: в массиве options должно быть ровно 4 варианта. correct_index — целое число от 0 до 3, указывающее на верный вариант.";
+
+    $userPrompt = "Составь вопрос квиза на тему: «{$topic}».";
+
+    $messages = [
+        ['role' => 'system', 'content' => $systemPrompt],
+        ['role' => 'user', 'content' => $userPrompt]
+    ];
+
+    $raw = vk_bot_call_ai_text($messages, 650, 0.3, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
+
+    $parsed = null;
+    if ($raw !== '' && preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
+        $parsed = json_decode($m[0], true);
+    }
+
+    if (
+        is_array($parsed) &&
+        !empty($parsed['question']) &&
+        !empty($parsed['options']) &&
+        is_array($parsed['options']) &&
+        count($parsed['options']) >= 4 &&
+        isset($parsed['correct_index']) &&
+        is_numeric($parsed['correct_index'])
+    ) {
+        $cleanOptions = [];
+        foreach (array_slice($parsed['options'], 0, 4) as $opt) {
+            $cleanOptions[] = trim(preg_replace('/\s+/u', ' ', (string)$opt));
+        }
+        $correctIdx = max(0, min(3, (int)$parsed['correct_index']));
+        $finalTopic = !empty($parsed['topic']) ? trim((string)$parsed['topic']) : $topic;
+        $explanation = !empty($parsed['explanation']) ? trim((string)$parsed['explanation']) : 'Верный ответ подтверждается библиографическими источниками!';
+
+        return [
+            'quiz_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 9999),
+            'topic'          => $finalTopic,
+            'question'       => trim((string)$parsed['question']),
+            'options'        => $cleanOptions,
+            'correct_index'  => $correctIdx,
+            'explanation'    => $explanation,
+            'created_at'     => time(),
+            'answered_users' => []
+        ];
+    }
+
+    // Резервный банк проверенных квизов при недоступности ИИ
+    $fallbackBank = vk_bot_get_fallback_quizzes();
+    $chosen = $fallbackBank[array_rand($fallbackBank)];
+    $chosen['quiz_id'] = (int)(microtime(true) * 1000) + mt_rand(1, 9999);
+    $chosen['created_at'] = time();
+    $chosen['answered_users'] = [];
+    return $chosen;
+}
+
+/**
+ * Сохранение квиза беседы
+ */
+function vk_bot_save_quiz($peerId, $quizData, $cacheDir)
+{
+    $file = $cacheDir . '/vk_quiz_' . $peerId . '.json';
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($quizData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Загрузка активного квиза беседы
+ */
+function vk_bot_get_quiz($peerId, $cacheDir)
+{
+    $file = $cacheDir . '/vk_quiz_' . $peerId . '.json';
+    if (!file_exists($file)) return null;
+    $data = @json_decode(@file_get_contents($file), true);
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * Фиксация ответа участника на вопрос квиза
+ */
+function vk_bot_record_quiz_answer($peerId, $userId, $userName, $selectedOpt, $cacheDir)
+{
+    $quiz = vk_bot_get_quiz($peerId, $cacheDir);
+    if (!$quiz) return null;
+
+    $uKey = (string)$userId;
+    $answeredUsers = $quiz['answered_users'] ?? [];
+
+    $scoresFile = $cacheDir . '/vk_quiz_scores_' . $peerId . '.json';
+    $scores = [];
+    if (file_exists($scoresFile)) {
+        $loaded = @json_decode(@file_get_contents($scoresFile), true);
+        if (is_array($loaded)) $scores = $loaded;
+    }
+
+    $currentScore = (int)($scores[$uKey]['correct'] ?? 0);
+
+    if (isset($answeredUsers[$uKey])) {
+        return [
+            'already_answered'    => true,
+            'selected_option'     => (int)$answeredUsers[$uKey]['selected_option'],
+            'is_correct'          => !empty($answeredUsers[$uKey]['is_correct']),
+            'correct_index'       => (int)$quiz['correct_index'],
+            'correct_option_text' => $quiz['options'][$quiz['correct_index']] ?? '',
+            'explanation'         => $quiz['explanation'] ?? '',
+            'user_score'          => $currentScore,
+            'topic'               => $quiz['topic'] ?? 'Литература'
+        ];
+    }
+
+    $correctIdx = (int)$quiz['correct_index'];
+    $isCorrect = ($selectedOpt === $correctIdx);
+
+    $answeredUsers[$uKey] = [
+        'user_name'       => $userName,
+        'selected_option' => $selectedOpt,
+        'is_correct'      => $isCorrect,
+        'answered_at'     => time()
+    ];
+    $quiz['answered_users'] = $answeredUsers;
+    vk_bot_save_quiz($peerId, $quiz, $cacheDir);
+
+    if (!isset($scores[$uKey])) {
+        $scores[$uKey] = [
+            'name'          => $userName,
+            'correct'       => 0,
+            'total'         => 0,
+            'last_activity' => time()
+        ];
+    }
+    $scores[$uKey]['name'] = $userName;
+    $scores[$uKey]['total'] = (int)($scores[$uKey]['total'] ?? 0) + 1;
+    if ($isCorrect) {
+        $scores[$uKey]['correct'] = (int)($scores[$uKey]['correct'] ?? 0) + 1;
+    }
+    $scores[$uKey]['last_activity'] = time();
+
+    $sf = @fopen($scoresFile, 'c+');
+    if ($sf) {
+        if (@flock($sf, LOCK_EX)) {
+            ftruncate($sf, 0);
+            rewind($sf);
+            fwrite($sf, json_encode($scores, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($sf);
+            @flock($sf, LOCK_UN);
+        }
+        fclose($sf);
+    }
+
+    return [
+        'already_answered'    => false,
+        'selected_option'     => $selectedOpt,
+        'is_correct'          => $isCorrect,
+        'correct_index'       => $correctIdx,
+        'correct_option_text' => $quiz['options'][$correctIdx] ?? '',
+        'explanation'         => $quiz['explanation'] ?? '',
+        'user_score'          => $scores[$uKey]['correct'],
+        'topic'               => $quiz['topic'] ?? 'Литература'
+    ];
+}
+
+/**
+ * Форматирование таблицы знатоков (лидеров квиза)
+ */
+function vk_bot_format_quiz_leaderboard($peerId, $cacheDir)
+{
+    $scoresFile = $cacheDir . '/vk_quiz_scores_' . $peerId . '.json';
+    if (!file_exists($scoresFile)) {
+        return "🏆 Доска почёта знатоков беседы 🤖✨\n\n"
+             . "Пока в этой беседе ещё никто не заработал очков! Отправьте «Космо, сделай квиз» и станьте первым эрудитом! 🎯📚";
+    }
+
+    $scores = @json_decode(@file_get_contents($scoresFile), true);
+    if (!is_array($scores) || empty($scores)) {
+        return "🏆 Доска почёта знатоков беседы 🤖✨\n\n"
+             . "Пока в этой беседе ещё никто не заработал очков! Отправьте «Космо, сделай квиз» и станьте первым эрудитом! 🎯📚";
+    }
+
+    uasort($scores, function($a, $b) {
+        $ca = (int)($a['correct'] ?? 0);
+        $cb = (int)($b['correct'] ?? 0);
+        if ($ca !== $cb) return $cb <=> $ca;
+        return ((int)($b['total'] ?? 0)) <=> ((int)($a['total'] ?? 0));
+    });
+
+    $medals = [1 => '🥇', 2 => '🥈', 3 => '🥉'];
+    $rows = [];
+    $rank = 1;
+
+    foreach ($scores as $uid => $row) {
+        if ($rank > 10) break;
+        $name = htmlspecialchars($row['name'] ?? "id{$uid}");
+        $pts = (int)($row['correct'] ?? 0);
+        $tot = (int)($row['total'] ?? 0);
+        $pct = $tot > 0 ? round(($pts / $tot) * 100) : 0;
+        $prefix = $medals[$rank] ?? "{$rank}.";
+        $ptsText = $pts . ' ' . vk_bot_plural_points($pts);
+        $rows[] = "{$prefix} [id{$uid}|{$name}] — {$ptsText} (точность {$pct}%, ответов: {$tot})";
+        $rank++;
+    }
+
+    return "🏆 Доска почёта знатоков беседы 🤖✨\n\n"
+         . implode("\n", $rows) . "\n\n"
+         . "Продолжайте интеллектуальную битву: нажмите «🎯 Новый вопрос квиза» или напишите «Космо, квиз»!";
+}
+
+/**
+ * Клавиатура с вариантами ответов на квиз
+ */
+function vk_bot_build_quiz_keyboard($quiz)
+{
+    $qId = $quiz['quiz_id'];
+    $opts = $quiz['options'];
+    $topic = $quiz['topic'] ?? 'Квиз';
+
+    $btnRows = [];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_answer', 'quiz_id' => $qId, 'opt' => 0], JSON_UNESCAPED_UNICODE),
+                'label'   => '1️⃣ ' . vk_bot_truncate_btn_label($opts[0] ?? '1', 34)
+            ],
+            'color' => 'secondary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_answer', 'quiz_id' => $qId, 'opt' => 1], JSON_UNESCAPED_UNICODE),
+                'label'   => '2️⃣ ' . vk_bot_truncate_btn_label($opts[1] ?? '2', 34)
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_answer', 'quiz_id' => $qId, 'opt' => 2], JSON_UNESCAPED_UNICODE),
+                'label'   => '3️⃣ ' . vk_bot_truncate_btn_label($opts[2] ?? '3', 34)
+            ],
+            'color' => 'secondary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_answer', 'quiz_id' => $qId, 'opt' => 3], JSON_UNESCAPED_UNICODE),
+                'label'   => '4️⃣ ' . vk_bot_truncate_btn_label($opts[3] ?? '4', 34)
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_leaderboard'], JSON_UNESCAPED_UNICODE),
+                'label'   => '🏆 Счёт знатоков'
+            ],
+            'color' => 'primary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'quiz_next', 'topic' => $topic], JSON_UNESCAPED_UNICODE),
+                'label'   => '⏭️ Другой вопрос'
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+
+    return ['inline' => true, 'buttons' => $btnRows];
+}
+
+/**
+ * Клавиатура после ответа на квиз
+ */
+function vk_bot_build_quiz_answered_keyboard($quizTopic)
+{
+    return [
+        'inline' => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'quiz_next', 'topic' => $quizTopic], JSON_UNESCAPED_UNICODE),
+                        'label'   => '⏭️ Следующий вопрос'
+                    ],
+                    'color' => 'primary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'quiz_leaderboard'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🏆 Счёт знатоков'
+                    ],
+                    'color' => 'secondary'
+                ]
+            ]
+        ]
+    ];
+}
+
+/**
+ * Резервный банк читательских опросов
+ */
+function vk_bot_get_fallback_polls()
+{
+    return [
+        [
+            'topic' => 'Книжные привычки ☕',
+            'question' => 'Какое время и место для чтения вы считаете самым уютным и вдохновляющим?',
+            'options' => [
+                'Вечер дома с пледом и горячим чаем ☕',
+                'Утренний кофе перед началом дня 🌅',
+                'В дороге: метро, поезд или автобус 🚆',
+                'В тихом читальном зале библиотеки 🏛️'
+            ]
+        ],
+        [
+            'topic' => 'Формат чтения 📖',
+            'question' => 'Какому книжному формату вы отдаете предпочтение в последнее время?',
+            'options' => [
+                'Бумажная книга с ароматом страниц 📚',
+                'Электронная книга (ридер/планшет) 📱',
+                'Аудиокниги на ходу и в дороге 🎧',
+                'Комбинирую все форматы под настроение ✨'
+            ]
+        ],
+        [
+            'topic' => 'Любимый жанр 🎭',
+            'question' => 'Книги какого жанра чаще всего заставляют вас забыть о времени?',
+            'options' => [
+                'Детективы и интеллектуальные тайны 🕵️‍♂️',
+                'Фантастика и космические миры 🚀',
+                'Глубокая классическая проза 📜',
+                'Уютные романы и добрые истории ☕'
+            ]
+        ],
+        [
+            'topic' => 'Магия библиотеки 🏛️',
+            'question' => 'Что для вас важнее всего при посещении современной библиотеки?',
+            'options' => [
+                'Огромный выбор новых книг и новинок 📚',
+                'Особая атмосфера тишины и уюта 🕊️',
+                'Интересные лекции, клубы и встречи 💡',
+                'Совет опытного библиотекаря 🤖'
+            ]
+        ]
+    ];
+}
+
+/**
+ * Генерация опроса через ИИ с fallback-банком
+ */
+function vk_bot_generate_ai_poll($topic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0)
+{
+    $topic = trim((string)$topic);
+    $curatedTopics = [
+        'Любимый книжный жанр',
+        'Идеальное место и время для чтения',
+        'Формат книг: бумага, цифра или аудио',
+        'Чего не хватает в современных библиотеках',
+        'Какую книгу вы перечитывали больше всего',
+        'Книжные экранизации и сериалы'
+    ];
+    if ($topic === '') {
+        $topic = $curatedTopics[array_rand($curatedTopics)];
+    }
+
+    $systemPrompt = "Ты — робот Космо, модератор книжного клуба городских библиотек г. Владимира.\n"
+                  . "Твоя задача — составить 1 добрый, вовлекающий читательский опрос (голосование) для беседы книголюбов по заданной теме.\n"
+                  . "Опрос должен объединять участников и пробуждать интерес к книгам, чтению и литературным привычкам. Никаких иноагентов!\n"
+                  . "Верни СТРОГО валидный JSON (без markdown-обёрток, без лишнего текста) следующей структуры:\n"
+                  . "{\n"
+                  . "  \"topic\": \"Короткое название темы (до 30 символов)\",\n"
+                  . "  \"question\": \"Текст вопроса для голосования (до 200 символов)\",\n"
+                  . "  \"options\": [\n"
+                  . "    \"Вариант 1 (с эмодзи, до 35 символов)\",\n"
+                  . "    \"Вариант 2 (с эмодзи, до 35 символов)\",\n"
+                  . "    \"Вариант 3 (с эмодзи, до 35 символов)\",\n"
+                  . "    \"Вариант 4 (с эмодзи, до 35 символов)\"\n"
+                  . "  ]\n"
+                  . "}\n"
+                  . "Важно: в массиве options должно быть ровно 4 варианта (не больше и не меньше!).";
+
+    $userPrompt = "Составь читательский опрос на тему: «{$topic}».";
+
+    $messages = [
+        ['role' => 'system', 'content' => $systemPrompt],
+        ['role' => 'user', 'content' => $userPrompt]
+    ];
+
+    $raw = vk_bot_call_ai_text($messages, 650, 0.3, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
+
+    $parsed = null;
+    if ($raw !== '' && preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
+        $parsed = json_decode($m[0], true);
+    }
+
+    if (
+        is_array($parsed) &&
+        !empty($parsed['question']) &&
+        !empty($parsed['options']) &&
+        is_array($parsed['options']) &&
+        count($parsed['options']) >= 4
+    ) {
+        $cleanOptions = [];
+        foreach (array_slice($parsed['options'], 0, 4) as $opt) {
+            $cleanOptions[] = trim(preg_replace('/\s+/u', ' ', (string)$opt));
+        }
+        $finalTopic = !empty($parsed['topic']) ? trim((string)$parsed['topic']) : $topic;
+
+        return [
+            'poll_id'    => (int)(microtime(true) * 1000) + mt_rand(1, 9999),
+            'topic'      => $finalTopic,
+            'question'   => trim((string)$parsed['question']),
+            'options'    => $cleanOptions,
+            'created_at' => time(),
+            'votes'      => []
+        ];
+    }
+
+    $fallbackBank = vk_bot_get_fallback_polls();
+    $chosen = $fallbackBank[array_rand($fallbackBank)];
+    $chosen['poll_id'] = (int)(microtime(true) * 1000) + mt_rand(1, 9999);
+    $chosen['created_at'] = time();
+    $chosen['votes'] = [];
+    return $chosen;
+}
+
+/**
+ * Сохранение опроса беседы
+ */
+function vk_bot_save_poll($peerId, $pollData, $cacheDir)
+{
+    $file = $cacheDir . '/vk_poll_' . $peerId . '.json';
+    $fh = @fopen($file, 'c+');
+    if ($fh) {
+        if (@flock($fh, LOCK_EX)) {
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($pollData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            fflush($fh);
+            @flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Загрузка опроса беседы
+ */
+function vk_bot_get_poll($peerId, $cacheDir)
+{
+    $file = $cacheDir . '/vk_poll_' . $peerId . '.json';
+    if (!file_exists($file)) return null;
+    $data = @json_decode(@file_get_contents($file), true);
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * Фиксация голоса участника в опросе
+ */
+function vk_bot_record_poll_vote($peerId, $userId, $optNum, $cacheDir)
+{
+    $poll = vk_bot_get_poll($peerId, $cacheDir);
+    if (!$poll) return false;
+
+    if (!isset($poll['votes']) || !is_array($poll['votes'])) {
+        $poll['votes'] = [];
+    }
+    $poll['votes'][(string)$userId] = (int)$optNum;
+    $poll['updated_at'] = time();
+
+    vk_bot_save_poll($peerId, $poll, $cacheDir);
+    return true;
+}
+
+/**
+ * Форматирование результатов опроса со шкалой прогресса
+ */
+function vk_bot_format_poll_results($peerId, $cacheDir)
+{
+    $poll = vk_bot_get_poll($peerId, $cacheDir);
+    if (!$poll) {
+        return "📊 В этой беседе пока нет активного опроса!\n\nСоздайте новый опрос прямо сейчас командой «Космо, сделай опрос на тему [...]» или «!опрос»! 🤖🗳️";
+    }
+
+    $options = $poll['options'] ?? [];
+    $votes = $poll['votes'] ?? [];
+    $totalVotes = count($votes);
+
+    $counts = [0 => 0, 1 => 0, 2 => 0, 3 => 0];
+    foreach ($votes as $uid => $opt) {
+        $opt = (int)$opt;
+        if (isset($counts[$opt])) {
+            $counts[$opt]++;
+        }
+    }
+
+    $barWidth = 10;
+    $leaderOpt = null;
+    $maxVotes = -1;
+
+    $out = "📊 Результаты читательского опроса от Космо 🤖🗳️\n"
+         . "📌 Тема: " . ($poll['topic'] ?? 'Опрос') . "\n"
+         . "❓ " . ($poll['question'] ?? '') . "\n\n"
+         . "Всего проголосовало: {$totalVotes} " . vk_bot_plural_votes($totalVotes) . "\n\n";
+
+    $numIcons = [0 => '1️⃣', 1 => '2️⃣', 2 => '3️⃣', 3 => '4️⃣'];
+
+    foreach ($options as $idx => $optText) {
+        $cnt = $counts[$idx] ?? 0;
+        $pct = $totalVotes > 0 ? round(($cnt / $totalVotes) * 100) : 0;
+        $filled = $totalVotes > 0 ? (int)round(($cnt / $totalVotes) * $barWidth) : 0;
+        $empty = $barWidth - $filled;
+        $bar = str_repeat('█', $filled) . str_repeat('░', $empty);
+
+        if ($cnt > $maxVotes && $cnt > 0) {
+            $maxVotes = $cnt;
+            $leaderOpt = $idx;
+        }
+
+        $icon = $numIcons[$idx] ?? ($idx + 1) . '.';
+        $out .= "{$icon} {$optText}\n";
+        $out .= "   [{$bar}] {$pct}% ({$cnt} " . vk_bot_plural_votes($cnt) . ")\n\n";
+    }
+
+    if ($leaderOpt !== null) {
+        $leaderText = $options[$leaderOpt] ?? '';
+        $out .= "🏆 Лидирует: «{$leaderText}»! ✨";
+    } else {
+        $out .= "💡 Вы можете проголосовать первым кнопками ниже или отправив номер ответа (1, 2, 3 или 4)!";
+    }
+
+    return $out;
+}
+
+/**
+ * Клавиатура для голосования в опросе
+ */
+function vk_bot_build_poll_keyboard($poll)
+{
+    $pId = $poll['poll_id'];
+    $opts = $poll['options'];
+
+    $btnRows = [];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_vote', 'poll_id' => $pId, 'opt' => 0], JSON_UNESCAPED_UNICODE),
+                'label'   => '1️⃣ ' . vk_bot_truncate_btn_label($opts[0] ?? '1', 34)
+            ],
+            'color' => 'secondary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_vote', 'poll_id' => $pId, 'opt' => 1], JSON_UNESCAPED_UNICODE),
+                'label'   => '2️⃣ ' . vk_bot_truncate_btn_label($opts[1] ?? '2', 34)
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_vote', 'poll_id' => $pId, 'opt' => 2], JSON_UNESCAPED_UNICODE),
+                'label'   => '3️⃣ ' . vk_bot_truncate_btn_label($opts[2] ?? '3', 34)
+            ],
+            'color' => 'secondary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_vote', 'poll_id' => $pId, 'opt' => 3], JSON_UNESCAPED_UNICODE),
+                'label'   => '4️⃣ ' . vk_bot_truncate_btn_label($opts[3] ?? '4', 34)
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+    $btnRows[] = [
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_results', 'poll_id' => $pId], JSON_UNESCAPED_UNICODE),
+                'label'   => '📊 Результаты опроса'
+            ],
+            'color' => 'primary'
+        ],
+        [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode(['cmd' => 'poll_new'], JSON_UNESCAPED_UNICODE),
+                'label'   => '✨ Новый опрос'
+            ],
+            'color' => 'secondary'
+        ]
+    ];
+
+    return ['inline' => true, 'buttons' => $btnRows];
+}
+
+/**
+ * Клавиатура для просмотра и обновления результатов опроса
+ */
+function vk_bot_build_poll_results_keyboard($poll)
+{
+    $pId = $poll['poll_id'] ?? 0;
+    return [
+        'inline' => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'poll_results', 'poll_id' => $pId], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🔄 Обновить итоги'
+                    ],
+                    'color' => 'secondary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'poll_new'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '✨ Новый опрос'
+                    ],
+                    'color' => 'primary'
+                ]
+            ]
+        ]
+    ];
+}
+
+/**
  * Проверка запроса на авторов-иноагентов, их произведения и запросы информации об иноагентах
  */
 function vk_bot_is_foreign_agent_query($text)
@@ -2225,6 +3139,24 @@ $inlineChatKeyboard = [
                     'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'book_club_rules'], JSON_UNESCAPED_UNICODE),
                     'label'   => '📜 Кодекс клуба'
+                ],
+                'color' => 'secondary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'quiz_new'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🎯 Квиз'
+                ],
+                'color' => 'primary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'poll_new'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📊 Опрос'
                 ],
                 'color' => 'secondary'
             ]
@@ -3020,9 +3952,326 @@ if ($isBookClubVoteQuery) {
     exit;
 }
 
+// =============================================================================
+// Сценарий 2i: Интерактивный Квиз (Литературная викторина) от робота Космо
+// =============================================================================
+
+// Проверка команды создания квиза
+$isQuizCreateQuery = false;
+$quizTopic = '';
+
+if ($cmd === 'quiz_new' || $cmd === 'quiz_next') {
+    $isQuizCreateQuery = true;
+    $quizTopic = trim((string)($payloadData['topic'] ?? ''));
+} elseif (preg_match('#^(?:[!/](?:квиз|quiz|викторина))\b\s*(.*)$#ui', $cleanMsgForCmd, $qm)) {
+    $isQuizCreateQuery = true;
+    $quizTopic = trim($qm[1] ?? '');
+} elseif (preg_match('#(?:^|\s)(?:сделай|создай|запусти|проведи|хочу|давай)?\s*(?:квиз|викторин[уа])(?:\s+(?:на\s+тему|по\s+теме|про|по|о))\s+(.+)$#ui', $cleanMsgForCmd, $qm)) {
+    $isQuizCreateQuery = true;
+    $quizTopic = trim($qm[1] ?? '');
+} elseif (preg_match('#^(?:сделай\s+квиз|создай\s+квиз|запусти\s+квиз|проведи\s+квиз|квиз|викторина|хочу\s+квиз|литературный\s+квиз)[?!.]*$#ui', $cleanMsgForCmd)) {
+    $isQuizCreateQuery = true;
+    $quizTopic = '';
+}
+
+// Проверка запроса таблицы лидеров знатоков
+$isQuizLeaderboardQuery = (
+    $cmd === 'quiz_leaderboard' ||
+    preg_match('/^(?:[!/](?:счет|счёт|топ|лидеры)|счет квиза|счёт квиза|таблица знатоков|знатоки|доска почета|доска почёта)[?!.]*$/ui', $cleanMsgForCmd)
+);
+
+// Проверка активного квиза в беседе
+$activeQuiz = vk_bot_get_quiz($peerId, $cacheDir);
+$isQuizRecent = ($activeQuiz && (time() - (int)($activeQuiz['created_at'] ?? 0)) < 3600);
+$userHasAnsweredQuiz = ($isQuizRecent && isset($activeQuiz['answered_users'][(string)$fromId]));
+
+// Проверка ответа на квиз (кнопка или цифра 1-4)
+$isQuizAnswerQuery = false;
+$quizAnswerOpt = null;
+
+if ($cmd === 'quiz_answer' && isset($payloadData['opt'])) {
+    $isQuizAnswerQuery = true;
+    $quizAnswerOpt = (int)$payloadData['opt'];
+} elseif (preg_match('/^[1-4]$/', $cleanMsgForCmd) && $isQuizRecent && !$userHasAnsweredQuiz) {
+    $isQuizAnswerQuery = true;
+    $quizAnswerOpt = (int)$cleanMsgForCmd - 1; // 0..3
+}
+
+// 1. Создание нового вопроса квиза
+if ($isQuizCreateQuery) {
+    // Фильтрация иноагентов в теме квиза
+    if ($quizTopic !== '' && vk_bot_is_foreign_agent_query($quizTopic)) {
+        $reply = "🛡️ Как робот муниципальных библиотек г. Владимира, я строго следую законодательству РФ и правилам книжного клуба: я не составляю викторины по авторам, признанным иностранными агентами.\n\n"
+               . "Давайте лучше проведём увлекательный квиз по шедеврам признанной классики или легендарной фантастики! 📚✨";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    if ($botTyping) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+
+    $quiz = vk_bot_generate_ai_quiz($quizTopic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
+    vk_bot_save_quiz($peerId, $quiz, $cacheDir);
+
+    $reply = "🎯 Литературный квиз от Космо 🤖✨\n"
+           . "📌 Тема: {$quiz['topic']}\n\n"
+           . "❓ Вопрос:\n"
+           . "{$quiz['question']}\n\n"
+           . "1️⃣ " . $quiz['options'][0] . "\n"
+           . "2️⃣ " . $quiz['options'][1] . "\n"
+           . "3️⃣ " . $quiz['options'][2] . "\n"
+           . "4️⃣ " . $quiz['options'][3] . "\n\n"
+           . "Выберите вариант кнопками ниже или напишите цифру 1-4 в чат!";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    $quizKeyboard = vk_bot_build_quiz_keyboard($quiz);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($quizKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// 2. Обработка ответа на квиз
+if ($isQuizAnswerQuery && $quizAnswerOpt !== null) {
+    $callerInfo = $isChat ? vk_bot_get_member_info($peerId, $fromId, $communityToken, $cacheDir) : null;
+    $callerName = !empty($callerInfo['name']) ? $callerInfo['name'] : 'Читатель';
+
+    $ansRes = vk_bot_record_quiz_answer($peerId, $fromId, $callerName, $quizAnswerOpt, $cacheDir);
+
+    if ($ansRes === null) {
+        $reply = "⚠️ Активный квиз не найден или время раунда истекло! Напишите «Космо, сделай квиз», чтобы начать новую викторину 🎯";
+        $replyKb = $isChat ? $inlineChatKeyboard : $persistentKeyboard;
+    } elseif ($ansRes['already_answered']) {
+        $prevCorrect = $ansRes['is_correct'] ? 'правильный' : 'неверный';
+        $reply = "ℹ️ [id{$fromId}|{$callerName}], вы уже дали свой ответ в этом раунде (он был {$prevCorrect})! Дождитесь следующего вопроса 🙂\n\n"
+               . "💡 Ваш текущий счёт: {$ansRes['user_score']} " . vk_bot_plural_points($ansRes['user_score']);
+        $replyKb = vk_bot_build_quiz_answered_keyboard($ansRes['topic'] ?? 'Квиз');
+    } else {
+        $selectedHumanNum = $quizAnswerOpt + 1;
+        $scoreText = $ansRes['user_score'] . ' ' . vk_bot_plural_points($ansRes['user_score']);
+
+        if ($ansRes['is_correct']) {
+            $reply = "🎉 Браво, [id{$fromId}|{$callerName}]! Вариант №{$selectedHumanNum} («" . $ansRes['correct_option_text'] . "») — абсолютно верный ответ! 🌟 (+1 балл знатока)\n\n"
+                   . "💡 Историческая справка от Космо:\n" . $ansRes['explanation'] . "\n\n"
+                   . "📊 Ваш счёт: {$scoreText}!";
+        } else {
+            $correctHumanNum = $ansRes['correct_index'] + 1;
+            $reply = "Увы, [id{$fromId}|{$callerName}], вариант №{$selectedHumanNum} неверен! 🧐\n\n"
+                   . "Правильный ответ — №{$correctHumanNum} («" . $ansRes['correct_option_text'] . "»).\n\n"
+                   . "💡 Заметка от Космо:\n" . $ansRes['explanation'] . "\n\n"
+                   . "📊 Ваш счёт: {$scoreText}. Не расстраивайтесь, впереди ещё много вопросов!";
+        }
+        $replyKb = vk_bot_build_quiz_answered_keyboard($ansRes['topic'] ?? 'Квиз');
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => !empty($ansRes['is_correct']) ? ($mascotStickers['smile'] ?? null) : ($mascotStickers['thinking'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($replyKb, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// 3. Таблица лидеров квиза (доска почёта)
+if ($isQuizLeaderboardQuery) {
+    $reply = vk_bot_format_quiz_leaderboard($peerId, $cacheDir);
+    $boardKb = [
+        'inline' => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'quiz_new'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎯 Новый вопрос квиза'
+                    ],
+                    'color' => 'primary'
+                ]
+            ]
+        ]
+    ];
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($boardKb, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// =============================================================================
+// Сценарий 2j: Читательский Опрос (Тематическое голосование) от робота Космо
+// =============================================================================
+
+// Проверка команды создания опроса
+$isPollCreateQuery = false;
+$pollTopic = '';
+
+if ($cmd === 'poll_new') {
+    $isPollCreateQuery = true;
+    $pollTopic = '';
+} elseif (preg_match('#^(?:[!/](?:опрос|poll))\b\s*(.*)$#ui', $cleanMsgForCmd, $pm)) {
+    $isPollCreateQuery = true;
+    $pollTopic = trim($pm[1] ?? '');
+} elseif (preg_match('#(?:^|\s)(?:сделай|создай|запусти|проведи|хочу|давай)?\s*(?:опрос|голосовани[ея])(?:\s+(?:на\s+тему|по\s+теме|про|по|о))\s+(.+)$#ui', $cleanMsgForCmd, $pm)) {
+    $isPollCreateQuery = true;
+    $pollTopic = trim($pm[1] ?? '');
+} elseif (preg_match('#^(?:сделай\s+опрос|создай\s+опрос|запусти\s+опрос|проведи\s+опрос|опрос|голосование|хочу\s+опрос|читательский\s+опрос)[?!.]*$#ui', $cleanMsgForCmd)) {
+    $isPollCreateQuery = true;
+    $pollTopic = '';
+}
+
+// Проверка запроса результатов опроса
+$isPollResultsQuery = (
+    $cmd === 'poll_results' ||
+    preg_match('/^(?:[!/](?:результаты|итоги)|результаты опроса|итоги опроса)[?!.]*$/ui', $cleanMsgForCmd)
+);
+
+// Проверка активного опроса в беседе
+$activePoll = vk_bot_get_poll($peerId, $cacheDir);
+$isPollRecent = ($activePoll && (time() - (int)($activePoll['created_at'] ?? 0)) < 21600);
+
+// Проверка голосования в опросе (кнопка или цифра 1-4)
+$isPollVoteQuery = false;
+$pollVoteOpt = null;
+
+if ($cmd === 'poll_vote' && isset($payloadData['opt'])) {
+    $isPollVoteQuery = true;
+    $pollVoteOpt = (int)$payloadData['opt'];
+} elseif (preg_match('/^[1-4]$/', $cleanMsgForCmd) && $isPollRecent) {
+    $isPollVoteQuery = true;
+    $pollVoteOpt = (int)$cleanMsgForCmd - 1; // 0..3
+}
+
+// 1. Создание нового опроса
+if ($isPollCreateQuery) {
+    // Фильтрация иноагентов в теме опроса
+    if ($pollTopic !== '' && vk_bot_is_foreign_agent_query($pollTopic)) {
+        $reply = "🛡️ Как робот муниципальных библиотек г. Владимира, я строго следую законодательству РФ и правилам книжного клуба: я не составляю опросы по авторам, признанным иностранными агентами.\n\n"
+               . "Давайте лучше проведём добрый опрос о любимых книжных жанрах, экранизациях или привычках чтения! 📚✨";
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['thinking'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    if ($botTyping) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+
+    $poll = vk_bot_generate_ai_poll($pollTopic, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
+    vk_bot_save_poll($peerId, $poll, $cacheDir);
+
+    $reply = "📊 Читательский опрос от Космо 🤖🗳️\n"
+           . "📌 Тема: {$poll['topic']}\n\n"
+           . "❓ Вопрос:\n"
+           . "{$poll['question']}\n\n"
+           . "1️⃣ " . $poll['options'][0] . "\n"
+           . "2️⃣ " . $poll['options'][1] . "\n"
+           . "3️⃣ " . $poll['options'][2] . "\n"
+           . "4️⃣ " . $poll['options'][3] . "\n\n"
+           . "Голосуйте кнопками ниже или отправьте цифру 1-4 в чат!";
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    $pollKeyboard = vk_bot_build_poll_keyboard($poll);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($pollKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// 2. Учёт голоса в опросе
+if ($isPollVoteQuery && $pollVoteOpt !== null) {
+    $callerInfo = $isChat ? vk_bot_get_member_info($peerId, $fromId, $communityToken, $cacheDir) : null;
+    $callerName = !empty($callerInfo['name']) ? $callerInfo['name'] : 'Читатель';
+
+    vk_bot_record_poll_vote($peerId, $fromId, $pollVoteOpt, $cacheDir);
+
+    $poll = vk_bot_get_poll($peerId, $cacheDir);
+    $selectedOptionText = $poll['options'][$pollVoteOpt] ?? '';
+
+    $resultsText = vk_bot_format_poll_results($peerId, $cacheDir);
+    $reply = "✅ [id{$fromId}|{$callerName}], ваш голос учтён: «{$selectedOptionText}»!\n\n" . $resultsText;
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    $resultsKeyboard = vk_bot_build_poll_results_keyboard($poll);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($resultsKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// 3. Вывод результатов опроса
+if ($isPollResultsQuery) {
+    $poll = vk_bot_get_poll($peerId, $cacheDir);
+    $reply = vk_bot_format_poll_results($peerId, $cacheDir);
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    $resultsKeyboard = $poll ? vk_bot_build_poll_results_keyboard($poll) : ($isChat ? $inlineChatKeyboard : $persistentKeyboard);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($resultsKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
 // Сценарий 2g: Учёт голоса читателя или вывод текущих результатов голосования
 $isVoteCastQuery = ($cmd === 'vote_cast' && isset($payloadData['option']));
-$isResultsQuery = ($cmd === 'book_club_results' || preg_match('/^(?:результаты голосования|итоги голосования|результаты опроса|итоги опроса|результаты)[?!.]*$/ui', $cleanMsgForCmd));
+$isResultsQuery = ($cmd === 'book_club_results' || preg_match('/^(?:результаты голосования|итоги голосования|результаты клуба)[?!.]*$/ui', $cleanMsgForCmd));
 
 // Поддержка текстового ответа цифрой «1», «2», «3», «4»
 $digitVote = 0;
@@ -3379,121 +4628,7 @@ if (file_exists($activeKeyIndexFile) && is_readable($activeKeyIndexFile)) {
     }
 }
 
-$payloadArr = [
-    'model'       => $aiModel,
-    'messages'    => $aiMessages,
-    'max_tokens'  => $aiMaxTok,
-    'temperature' => 0.3
-];
-$payloadJson = json_encode($payloadArr, JSON_UNESCAPED_UNICODE);
-
-$attempts = 0;
-$maxAttempts = count($validAiKeys);
-$currentIdx = $activeIdx;
-
-while ($attempts < $maxAttempts) {
-    $currentApiKey = $validAiKeys[$currentIdx];
-
-    // Непрерывный индикатор «Космо печатает...» пока ИИ генерирует ответ
-    if ($botTyping) {
-        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-    }
-    $lastTypingPing = microtime(true);
-
-    $ch = curl_init($aiBaseUrl . '/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payloadJson,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => $aiTimeout,
-        CURLOPT_CONNECTTIMEOUT => 12,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.25.2',
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_NOPROGRESS     => false,
-        CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $vkGroupId, $botTyping) {
-            if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.0) {
-                $lastTypingPing = microtime(true);
-                vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-            }
-            return 0;
-        },
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Authorization: Bearer ' . $currentApiKey
-        ]
-    ]);
-    $resp = curl_exec($ch);
-    $curlErr = curl_error($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
-
-    $json = is_string($resp) ? json_decode($resp, true) : null;
-
-    // Проверка необходимости failover (сеть, квоты, лимиты, перегрузка)
-    $needFailover = ($resp === false || $httpCode === 0 || in_array($httpCode, [429, 401, 402, 403, 500, 502, 503, 504], true));
-    if (!$needFailover && is_array($json)) {
-        $errStr = '';
-        if (isset($json['error'])) {
-            $errStr .= is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE);
-        }
-        if (isset($json['message'])) {
-            $errStr .= ' ' . (string)$json['message'];
-        }
-        if ($errStr !== '' && preg_match('/quota|rate|limit|insufficient|unauthorized|credit|exceeded|busy/i', $errStr)) {
-            $needFailover = true;
-        }
-    }
-
-    if ($needFailover && count($validAiKeys) > 1 && $attempts < ($maxAttempts - 1)) {
-        $currentIdx = ($currentIdx + 1) % count($validAiKeys);
-        $attempts++;
-        // Немедленно кэшируем рабочий ключ через flock
-        $fh = @fopen($activeKeyIndexFile, 'c+');
-        if ($fh) {
-            if (@flock($fh, LOCK_EX)) {
-                ftruncate($fh, 0);
-                rewind($fh);
-                fwrite($fh, json_encode([
-                    'active_index' => $currentIdx,
-                    'updated_at'   => time(),
-                    'updated_iso'  => date('c')
-                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                fflush($fh);
-                @flock($fh, LOCK_UN);
-            }
-            fclose($fh);
-        }
-        continue;
-    }
-
-    if ($httpCode === 200 && is_array($json) && !empty($json['choices'][0]['message']['content'])) {
-        $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
-        // Сохраняем рабочий индекс ключа
-        if ($currentIdx !== $activeIdx) {
-            $fh = @fopen($activeKeyIndexFile, 'c+');
-            if ($fh) {
-                if (@flock($fh, LOCK_EX)) {
-                    ftruncate($fh, 0);
-                    rewind($fh);
-                    fwrite($fh, json_encode([
-                        'active_index' => $currentIdx,
-                        'updated_at'   => time(),
-                        'updated_iso'  => date('c')
-                    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                    fflush($fh);
-                    @flock($fh, LOCK_UN);
-                }
-                fclose($fh);
-            }
-        }
-        break;
-    }
-
-    $attempts++;
-    $currentIdx = ($currentIdx + 1) % count($validAiKeys);
-}
+$aiResponseText = vk_bot_call_ai_text($aiMessages, $aiMaxTok, 0.3, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
 
 // Если ИИ временно недоступен — резервный приветливый ответ
 if ($aiResponseText === '') {
