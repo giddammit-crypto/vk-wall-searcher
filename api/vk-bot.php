@@ -92,6 +92,9 @@ $secretKey        = trim((string)($config['vk_secret_key'] ?? ''));
 $botEnabled       = (bool)($config['vk_bot_enabled'] ?? true);
 $botTyping        = (bool)($config['vk_bot_typing'] ?? true);
 $apiVersion       = trim((string)($config['api_version'] ?? '5.131'));
+$vkGroupUrl       = trim((string)($config['vk_group_url'] ?? 'https://vk.ru/club241534292'));
+$vkGroupId        = (int)($config['vk_group_id'] ?? 241534292);
+$directDialogUrl  = 'https://vk.me/club' . $vkGroupId;
 
 // Пул ключей ИИ
 $defaultAiKeys = [
@@ -153,6 +156,9 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
             'has_community_token'  => ($communityToken !== ''),
             'has_confirmation_code'=> ($confirmationCode !== ''),
             'has_secret_key'       => ($secretKey !== ''),
+            'group_url'            => $vkGroupUrl,
+            'group_id'             => $vkGroupId,
+            'direct_dialog_url'    => $directDialogUrl,
             'webhook_url'          => $currentWebhookUrl,
             'api_version'          => $apiVersion,
             'ai_configured'        => (count($validAiKeys) > 0),
@@ -340,6 +346,19 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
             </div>
         </div>
 
+        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #93c5fd; font-weight: 600;">Подключенная группа ВКонтакте:</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #fff; margin-top: 2px;">
+                    <a href="<?= htmlspecialchars($vkGroupUrl) ?>" target="_blank" style="color: #60a5fa; text-decoration: underline;">club<?= $vkGroupId ?> (<?= htmlspecialchars($vkGroupUrl) ?>)</a>
+                </div>
+            </div>
+            <a href="https://vk.me/club<?= $vkGroupId ?>" target="_blank" class="btn" style="background: #2563eb; text-decoration: none; padding: 8px 14px; font-size: 0.84rem;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">chat</span>
+                <span>Написать Космо в ВК</span>
+            </a>
+        </div>
+
         <div class="grid">
             <div class="status-box">
                 <span class="status-label">Статус бота</span>
@@ -385,16 +404,16 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
         </div>
 
         <div class="steps">
-            <h2><span class="material-symbols-outlined" style="color: #60a5fa;">settings</span> Как подключить бота к вашей группе:</h2>
+            <h2><span class="material-symbols-outlined" style="color: #60a5fa;">settings</span> Как подключить бота к вашей группе (быстрые ссылки):</h2>
             <ol>
-                <li>В сообществе ВК перейдите в <strong>Управление</strong> → <strong>Сообщения</strong> → установите <strong>Включены</strong>.</li>
-                <li>Перейдите в <strong>Управление</strong> → <strong>Работа с API</strong> → <strong>Ключи доступа</strong> → нажмите <strong>Создать ключ</strong>, отметьте <em>«Разрешить доступ к сообщениям сообщества»</em>. Скопируйте ключ и вставьте в <code>api/config.php</code> как <code>'vk_community_token'</code>.</li>
-                <li>Перейдите во вкладку <strong>Callback API</strong>:
+                <li>В группе перейдите в <a href="https://vk.com/club<?= $vkGroupId ?>?act=messages" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Управление → Сообщения</strong></a> → установите <strong>Включены</strong>.</li>
+                <li>Откройте <a href="https://vk.com/club<?= $vkGroupId ?>?act=tokens" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Управление → Работа с API → Ключи доступа</strong></a> → нажмите <strong>Создать ключ</strong>, отметьте <em>«Разрешить доступ к сообщениям сообщества»</em>. Скопируйте ключ и вставьте в <code>api/config.php</code> как <code>'vk_community_token'</code>.</li>
+                <li>Перейдите во вкладку <a href="https://vk.com/club<?= $vkGroupId ?>?act=api" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Callback API</strong></a>:
                     <br>• Вставьте адрес сервера из поля выше;
                     <br>• Скопируйте <em>«Строку, которую должен вернуть сервер»</em> и вставьте её в <code>api/config.php</code> в поле <code>'vk_confirmation_code'</code>;
                     <br>• Нажмите кнопку <strong>Подтвердить</strong> в настройках ВКонтакте.
                 </li>
-                <li>Во вкладке <strong>Типы событий</strong> отметьте галочку: <strong>«Входящие сообщения» (message_new)</strong>.</li>
+                <li>Во вкладке <a href="https://vk.com/club<?= $vkGroupId ?>?act=api" target="_blank" style="color: #60a5fa; text-decoration: underline;"><strong>Типы событий</strong></a> отметьте галочку: <strong>«Входящие сообщения» (message_new)</strong>.</li>
             </ol>
         </div>
 

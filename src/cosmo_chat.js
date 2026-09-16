@@ -1084,7 +1084,7 @@ export class CosmoChatModal {
         }) || { canonicalName: 'Библиотека г. Владимира' };
 
         const genreMap = {
-            universal: { name: 'Любая литература (Универсальный стеллаж)', icon: 'auto_awesome' },
+            universal: { name: 'Любая литература (Универсальный подбор)', icon: 'auto_awesome' },
             detective: { name: 'Детективы и остросюжетная литература', icon: 'search' },
             sci_fi: { name: 'Фантастика и фэнтези', icon: 'rocket_launch' },
             modern_prose: { name: 'Современная проза и бестселлеры', icon: 'menu_book' },
@@ -1144,16 +1144,16 @@ export class CosmoChatModal {
         // Замена SMM-чипсов на читательские подсказки
         if (this.chipsContainerEl) {
             this.chipsContainerEl.innerHTML = `
-                <button type="button" class="cosmo-chip" data-prompt="Порекомендуй ещё 3 захватывающие книги с этого стеллажа!">
+                <button type="button" class="cosmo-chip" data-prompt="Посоветуй ещё 3 захватывающие книги!">
                     <span class="chip-icon">📖</span> Ещё 3 книги
                 </button>
-                <button type="button" class="cosmo-chip" data-prompt="Какую самую популярную книгу у читателей обязательно стоит взять на этой полке?">
+                <button type="button" class="cosmo-chip" data-prompt="Какую самую популярную книгу у читателей обязательно стоит прочитать?">
                     <span class="chip-icon">🔥</span> Главный хит
                 </button>
                 <button type="button" class="cosmo-chip" data-prompt="Посоветуй короткую, уютную и душевную книгу на один вечер.">
                     <span class="chip-icon">☕</span> На вечер
                 </button>
-                <button type="button" class="cosmo-chip" data-prompt="Какая книга на этом стеллаже признана золотой классикой жанра?">
+                <button type="button" class="cosmo-chip" data-prompt="Какая книга в этом направлении признана золотой классикой?">
                     <span class="chip-icon">⭐</span> Золотая классика
                 </button>
             `;
@@ -1182,7 +1182,7 @@ export class CosmoChatModal {
                     <div class="msg-author">Космо • Книжный сомелье</div>
                     <div class="msg-body">
                         <p>Привет! 🤖 Я библиотечный робот <strong>Космо</strong>, твой персональный книжный сомелье в <strong>${escapeHtml(branch.canonicalName)}</strong>!</p>
-                        <p>Вижу, ты стоишь прямо у стеллажа <strong>«${escapeHtml(genreObj.name)}»</strong>. Не знаешь, что выбрать? Ответь всего на 2 быстрых вопроса, и я подберу ТОП-3 книги из фонда с цепляющим описанием без спойлеров!</p>
+                        <p>Не знаешь, что выбрать? Я с радостью подберу, что почитать! Ответь всего на 2 быстрых вопроса, и я предложу отличные книги под твоё настроение с цепляющим описанием без спойлеров!</p>
                         <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.15); margin: 10px 0;">
                         <p style="margin-bottom: 8px;"><strong>Вопрос 1 из 2: Какое настроение и ощущение ты ищешь?</strong></p>
                         <div class="shelf-mood-chips-container" id="shelf-q1-mood-chips">
@@ -1192,6 +1192,10 @@ export class CosmoChatModal {
                             <button type="button" class="shelf-mood-chip-btn" data-mood="Глубокая драма, сильные переживания, до слёз">😭 До слёз</button>
                             <button type="button" class="shelf-mood-chip-btn" data-mood="Инсайты, новые знания, развитие и расширение кругозора">💡 Инсайты</button>
                             <button type="button" class="shelf-mood-chip-btn" data-mood="Юмор, лёгкость, ирония и позитив">😂 Юмор и смех</button>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.78rem; opacity: 0.75; display: flex; align-items: center; gap: 6px;">
+                            <span>💬 Наша группа ВКонтакте:</span>
+                            <a href="https://vk.ru/club241534292" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">vk.ru/club241534292</a>
                         </div>
                     </div>
                 </div>
@@ -1253,12 +1257,12 @@ export class CosmoChatModal {
                             this.messages.push({ role: 'user', content: `Темп чтения: ${paceText}` });
 
                             const finalPrompt = `Ты — Космо, экспертный библиотечный робот и книжный сомелье библиотечной сети г. Владимира.
-Читатель прямо сейчас находится в библиотеке: «${branch.canonicalName}», у стеллажа жанра: «${genreObj.name}».
+Читатель обратился за книжной рекомендацией в библиотеке: «${branch.canonicalName}» (интересует направление: «${genreObj.name}»).
 Его запрос:
 • Настроение: ${moodText}
 • Темп чтения: ${paceText}
 
-Подбери ТОП-3 конкретные великолепные книги из классического или современного фонда муниципальных библиотек, которые на 100% соответствуют этому настроению и темпу!
+Подбери, что почитать: ТОП-3 конкретные великолепные книги из классического или современного фонда муниципальных библиотек, которые на 100% соответствуют этому настроению и темпу!
 
 ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ — СТРОЖАЙШИЙ ЗАПРЕТ НА ИНОАГЕНТОВ:
 Категорически запрещено рекомендовать авторов, внесённых Минюстом РФ в реестр иностранных агентов, а также экстремистов (строго исключить Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов).
@@ -1271,7 +1275,7 @@ export class CosmoChatModal {
 3. 🎯 **Кому особенно зайдёт:** (1-2 похожие книги или авторы)
 4. 🤖 **Лайфхак от Космо:** как лучше читать эту книгу (с чаем, в тишине, вечером).
 
-В конце добавь тёплый совет обратиться к библиотекарю на абонементе или у стойки выдачи — книга наверняка ждёт читателя прямо на этой полке!`;
+В конце добавь тёплый совет обратиться к библиотекарю на абонементе или у стойки выдачи — эти книги наверняка ждут читателя в библиотеке!`;
 
                             this.messages.push({ role: 'user', content: finalPrompt });
                             await this.executeAiRequest({ maxTokens: 2500, temperature: 0.7 });
@@ -1411,7 +1415,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.24.4" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • SMM-гуру библиотек</div>
@@ -1537,7 +1541,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.24.4" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${authorLabel}</div>
@@ -1557,12 +1561,12 @@ export class CosmoChatModal {
         typingDiv.className = 'cosmo-chat-msg cosmo-chat-msg-bot cosmo-chat-typing-msg';
         typingDiv.setAttribute('data-typing-indicator', '');
 
-        const typingText = this.isShelfMode ? 'Космо подбирает лучшие книги на стеллаже...' : 'Квантовые нейроны советуются с классиками литературы...';
+        const typingText = this.isShelfMode ? 'Космо подбирает, что почитать...' : 'Квантовые нейроны советуются с классиками литературы...';
         const typingAuthor = this.isShelfMode ? 'Космо ищет книги...' : 'Космо генерирует ответ...';
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.24.4" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.24.5" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${typingAuthor}</div>
@@ -1617,7 +1621,7 @@ export class CosmoChatModal {
             }) || { canonicalName: 'Библиотека г. Владимира' };
 
             const genreMap = {
-                universal: 'Любая литература (Универсальный стеллаж)',
+                universal: 'Любая литература (Универсальный подбор)',
                 detective: 'Детективы и остросюжетная литература',
                 sci_fi: 'Фантастика и фэнтези',
                 modern_prose: 'Современная проза и бестселлеры',
@@ -1631,10 +1635,10 @@ export class CosmoChatModal {
             return `Ты — робот Космо 🤖, персональный книжный сомелье, интеллектуальный гид и литературный навигатор в «${branch.canonicalName}» (г. Владимир).
 
 КОНТЕКСТ ДИАЛОГА:
-Читатель прямо сейчас находится в зале библиотеки перед стеллажом «${genreName}» и общается с тобой через веб-чат по QR-коду с полки.
+Читатель общается с тобой в библиотеке через веб-чат «Полка с Космо» и просит подобрать, что почитать (направление: «${genreName}»).
 
 ТВОЯ РОЛЬ И ЗАДАЧИ:
-1. Помогать читателям найти захватывающую книгу из библиотечного фонда под их настроение, интересы, вкус или любимого автора.
+1. Помогать читателям подобрать, что почитать из библиотечного фонда под их настроение, интересы, вкус или любимого автора.
 2. Давать яркие, интригующие описания книг БЕЗ СПОЙЛЕРОВ, объясняя, чем книга уникальна и кому она понравится.
 3. Отвечать на любые читательские вопросы о книгах, литературе, сюжетах и писателях.
 4. Общаться тепло, вежливо, интеллигентно и вдохновляюще.
@@ -1649,7 +1653,7 @@ export class CosmoChatModal {
 - Предложи 2–3 конкретные книги: **«Название книги»** — Автор.
 - В 1–2 живых предложениях опиши суть сюжета или атмосферу книги.
 - Укажи «Кому понравится».
-- Заверши добрым напутствием взять книгу со стеллажа или обратиться к дежурному библиотекарю за помощью.`;
+- Заверши добрым приглашением взять понравившуюся книгу в библиотеке или обратиться к дежурному библиотекарю за помощью.`;
         }
 
         let statsContext = 'Данные сканирования пока не собраны (сканирование не запускалось). Предложи пользователю запустить поиск по стене.';

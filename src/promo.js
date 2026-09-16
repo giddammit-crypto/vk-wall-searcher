@@ -310,7 +310,7 @@ export function initPromoModal() {
                     </div>
 
                     <div class="form-group shelf-genre-group" id="shelf-genre-group" style="display: none;">
-                        <label class="promo-label">Жанр / тематика книжного стеллажа:</label>
+                        <label class="promo-label">Жанр / направление литературы:</label>
                         <select id="shelf-genre-select" class="promo-select">
                             ${SHELF_GENRES.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('')}
                         </select>
@@ -566,13 +566,13 @@ export function initPromoModal() {
                                 </span>
                             </div>
                             <h3 class="shelf-tent-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h3>
-                            <p class="shelf-tent-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
+                            <p class="shelf-tent-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально подберёт, что почитать под твоё настроение и темп чтения.</p>
                             <div class="shelf-steps-row">
                                 <span class="shelf-step"><span class="step-num">1</span> Сканируй QR</span>
                                 <span class="shelf-step-arrow">→</span>
                                 <span class="shelf-step"><span class="step-num">2</span> 2 вопроса от Космо</span>
                                 <span class="shelf-step-arrow">→</span>
-                                <span class="shelf-step"><span class="step-num">3</span> ТОП-3 книги на полке</span>
+                                <span class="shelf-step"><span class="step-num">3</span> Подберу, что почитать</span>
                             </div>
                             <div class="shelf-org-tag">🏛 ${escapeHtml(currentBranch.canonicalName)}${currentBranch.address ? ' &bull; ' + escapeHtml(currentBranch.address) : ''}</div>
                         </div>
@@ -1866,13 +1866,13 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                             <span class="print-shelf-badge-genre">${escapeHtml(genreObj.name)}</span>
                         </div>
                         <h2 class="print-shelf-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h2>
-                        <p class="print-shelf-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твоё настроение и темп чтения.</p>
+                        <p class="print-shelf-sub">Библиотечный робот Космо задаст 2 быстрых вопроса и моментально подберёт, что почитать под твоё настроение и темп чтения.</p>
                         <div class="print-shelf-steps">
                             <span class="print-shelf-step"><span class="print-shelf-step-num">1</span> Сканируй QR</span>
                             <span class="print-shelf-step-arrow">→</span>
                             <span class="print-shelf-step"><span class="print-shelf-step-num">2</span> 2 вопроса от Космо</span>
                             <span class="print-shelf-step-arrow">→</span>
-                            <span class="print-shelf-step"><span class="print-shelf-step-num">3</span> ТОП-3 книги на полке</span>
+                            <span class="print-shelf-step"><span class="print-shelf-step-num">3</span> Подберу, что почитать</span>
                         </div>
                         <div class="print-shelf-branch">🏛 ${escapeHtml(branch.canonicalName)}${branch.address ? ' &bull; ' + escapeHtml(branch.address) : ''}</div>
                     </div>
