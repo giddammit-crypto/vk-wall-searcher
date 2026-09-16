@@ -1,8 +1,8 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.24.7",
+    "version": "4.24.8",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-16T12:37:00+03:00",
-    "release_name": "AURORA 4.24.7 — Автовосстановление клавиатур при ошибке 912 и поддержка стикеров в ЛС Космо"
+    "commit_date": "2026-09-16T13:04:00+03:00",
+    "release_name": "AURORA 4.24.8 — Полный каноничный справочник всех 18 филиалов библиотек Владимира в боте Космо"
 }
