@@ -1785,7 +1785,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.25.2" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.25.3" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • Библиотечный робот и ИИ-сомелье</div>

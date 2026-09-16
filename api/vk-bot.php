@@ -871,26 +871,93 @@ if (file_exists($stickersFile) && is_readable($stickersFile)) {
 // -----------------------------------------------------------------------------
 // Сканирование постов 16 групп филиалов за текущие сутки
 // -----------------------------------------------------------------------------
+function vk_bot_format_cosmo_annotation($text)
+{
+    // 1. Очищаем хэштеги, внешние URL и вики-разметку ВКонтакте
+    $t = preg_replace('/#[a-zA-Zа-яА-Я0-9_@]+/u', '', $text);
+    $t = preg_replace('/https?:\/\/\S+/u', '', $t);
+    $t = preg_replace('/\[(?:club|id)\d+\|([^\]]+)\]/u', '$1', $t);
+
+    // 2. Убираем пустые строки и нормализуем пробелы
+    $lines = explode("\n", $t);
+    $cleanLines = [];
+    foreach ($lines as $l) {
+        $l = trim($l);
+        if ($l !== '' && mb_strlen($l) > 5) {
+            $cleanLines[] = $l;
+        }
+    }
+    $text = implode(' ', $cleanLines);
+    $text = preg_replace('/\s+/u', ' ', $text);
+    $text = trim($text);
+
+    if ($text === '') {
+        return 'Библиотекари опубликовали новые фотографии и анонс событий. Читайте подробнее по ссылке на пост!';
+    }
+
+    // 3. Выделяем компактную выразительную аннотацию (160–210 символов) по границе предложения
+    if (mb_strlen($text) > 210) {
+        $sub = mb_substr($text, 0, 205);
+        $dotPos = mb_strrpos($sub, '.');
+        $exclPos = mb_strrpos($sub, '!');
+        $bestPunct = max($dotPos !== false && $dotPos > 90 ? $dotPos : 0, $exclPos !== false && $exclPos > 90 ? $exclPos : 0);
+        if ($bestPunct > 90) {
+            $text = mb_substr($sub, 0, $bestPunct + 1);
+        } else {
+            $lastSpace = mb_strrpos($sub, ' ');
+            if ($lastSpace !== false && $lastSpace > 140) {
+                $sub = mb_substr($sub, 0, $lastSpace);
+            }
+            $text = rtrim($sub, ".,!?:;— ") . '...';
+        }
+    }
+
+    return $text;
+}
+
 function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
 {
+    // Загружаем актуальные ссылки на группы и адреса из конфига сайта branches_cache.json
+    $cacheFile = __DIR__ . '/../branches_cache.json';
+    $cachedList = [];
+    if (file_exists($cacheFile) && is_readable($cacheFile)) {
+        $cachedList = json_decode(@file_get_contents($cacheFile), true) ?: [];
+    }
+
     $branches = [
-        ['id' => -51714771,  'code' => 'ЦГБ',  'name' => 'Центральная городская библиотека', 'addr' => 'Суздальский пр-т, 2'],
-        ['id' => -168804106, 'code' => 'ЦДБ',  'name' => 'Центральная детская библиотека',   'addr' => 'ул. Большая Московская, 31'],
-        ['id' => -145883298, 'code' => 'Ф-1',  'name' => 'Библиотека — филиал №1',           'addr' => 'пр-т Строителей, 38 «а»'],
-        ['id' => -53422825,  'code' => 'Ф-2',  'name' => 'Библиотека — филиал №2',           'addr' => 'пр-т Ленина, 12'],
-        ['id' => -189953509, 'code' => 'Ф-3',  'name' => 'Библиотека — филиал №3',           'addr' => 'мкр. Юрьевец, Школьный пр., 4'],
-        ['id' => 474771380,  'code' => 'Ф-4',  'name' => 'Библиотека — филиал №4',           'addr' => 'ул. Егорова, 10'],
-        ['id' => -145827789, 'code' => 'Ф-5',  'name' => 'Библиотека — филиал №5',           'addr' => 'ул. Верхняя Дуброва, 10'],
-        ['id' => -197036990, 'code' => 'Ф-6',  'name' => 'Библиотека — филиал №6',           'addr' => 'мкр. Юрьевец, Институтский гор., 2'],
-        ['id' => 428880688,  'code' => 'Ф-7',  'name' => 'Библиотека — филиал №7',           'addr' => 'ул. Мира, 55'],
-        ['id' => -168966246, 'code' => 'Ф-8',  'name' => 'Библиотека — филиал №8',           'addr' => 'ул. Сурикова, 26'],
-        ['id' => -184449519, 'code' => 'Ф-9',  'name' => 'Библиотека — филиал №9',           'addr' => 'ул. Юбилейная, 38'],
-        ['id' => -193785811, 'code' => 'Ф-11', 'name' => 'Библиотека — филиал №11',          'addr' => 'мкр. Лесной, ул. Лесная, 10 «А»'],
-        ['id' => -198438621, 'code' => 'Ф-12', 'name' => 'Библиотека — филиал №12',          'addr' => 'мкр. Энергетик, ул. Энергетиков, 27'],
-        ['id' => -170634092, 'code' => 'Ф-13', 'name' => 'Библиотека — филиал №13',          'addr' => 'ул. Горького, 69'],
-        ['id' => -197329237, 'code' => 'Ф-15', 'name' => 'Библиотека — филиал №15',          'addr' => 'пос. Заклязьменский, ул. Центральная, 11 «А»'],
-        ['id' => -158118947, 'code' => 'Ф-16', 'name' => 'Библиотека — филиал №16',          'addr' => 'мкр. Коммунар, ул. Песочная, 15']
+        ['id' => -51714771,  'code' => 'ЦГБ',  'name' => 'Центральная городская библиотека', 'addr' => 'Суздальский пр-т, 2', 'vk' => 'https://vk.com/vladcgb'],
+        ['id' => -168804106, 'code' => 'ЦДБ',  'name' => 'Центральная детская библиотека',   'addr' => 'ул. Большая Московская, 31', 'vk' => 'https://vk.com/cdbvladimir'],
+        ['id' => -145883298, 'code' => 'Ф-1',  'name' => 'Библиотека — филиал №1',           'addr' => 'пр-т Строителей, 38 «а»', 'vk' => 'https://vk.com/club145883298'],
+        ['id' => -53422825,  'code' => 'Ф-2',  'name' => 'Библиотека — филиал №2',           'addr' => 'пр-т Ленина, 12', 'vk' => 'https://vk.com/biblfil2'],
+        ['id' => -189953509, 'code' => 'Ф-3',  'name' => 'Библиотека — филиал №3',           'addr' => 'мкр. Юрьевец, Школьный пр., 4', 'vk' => 'https://vk.com/public189953509'],
+        ['id' => 474771380,  'code' => 'Ф-4',  'name' => 'Библиотека — филиал №4',           'addr' => 'ул. Егорова, 10', 'vk' => 'https://vk.com/id474771380'],
+        ['id' => -145827789, 'code' => 'Ф-5',  'name' => 'Библиотека — филиал №5',           'addr' => 'ул. Верхняя Дуброва, 10', 'vk' => 'https://vk.com/biblfil5'],
+        ['id' => -197036990, 'code' => 'Ф-6',  'name' => 'Библиотека — филиал №6',           'addr' => 'мкр. Юрьевец, Институтский гор., 2', 'vk' => 'https://vk.com/public197036990'],
+        ['id' => 428880688,  'code' => 'Ф-7',  'name' => 'Библиотека — филиал №7',           'addr' => 'ул. Мира, 55', 'vk' => 'https://vk.com/id428880688'],
+        ['id' => -168966246, 'code' => 'Ф-8',  'name' => 'Библиотека — филиал №8',           'addr' => 'ул. Сурикова, 26', 'vk' => 'https://vk.com/filial8cgb'],
+        ['id' => -184449519, 'code' => 'Ф-9',  'name' => 'Библиотека — филиал №9',           'addr' => 'ул. Юбилейная, 38', 'vk' => 'https://vk.com/dobrolit'],
+        ['id' => -193785811, 'code' => 'Ф-11', 'name' => 'Библиотека — филиал №11',          'addr' => 'мкр. Лесной, ул. Лесная, 10 «А»', 'vk' => 'https://vk.com/club193785811'],
+        ['id' => -198438621, 'code' => 'Ф-12', 'name' => 'Библиотека — филиал №12',          'addr' => 'мкр. Энергетик, ул. Энергетиков, 27', 'vk' => 'https://vk.com/public198438621'],
+        ['id' => -170634092, 'code' => 'Ф-13', 'name' => 'Библиотека — филиал №13',          'addr' => 'ул. Горького, 69', 'vk' => 'https://vk.com/club170634092'],
+        ['id' => -197329237, 'code' => 'Ф-15', 'name' => 'Библиотека — филиал №15',          'addr' => 'пос. Заклязьменский, ул. Центральная, 11 «А»', 'vk' => 'https://vk.com/club197329237'],
+        ['id' => -158118947, 'code' => 'Ф-16', 'name' => 'Библиотека — филиал №16',          'addr' => 'мкр. Коммунар, ул. Песочная, 15', 'vk' => 'https://vk.com/club158118947']
     ];
+
+    if (!empty($cachedList)) {
+        $byNum = [];
+        foreach ($cachedList as $cb) {
+            $byNum[$cb['branch_num']] = $cb;
+        }
+        foreach ($branches as &$b) {
+            if (isset($byNum[$b['code']])) {
+                $cb = $byNum[$b['code']];
+                if (!empty($cb['branch_name'])) $b['name'] = $cb['branch_name'];
+                if (!empty($cb['address'])) $b['addr'] = $cb['address'];
+                if (!empty($cb['vk_links'][0])) $b['vk'] = $cb['vk_links'][0];
+            }
+        }
+        unset($b);
+    }
 
     $ids = array_column($branches, 'id');
     $branchMap = [];
@@ -899,7 +966,11 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     }
 
     $activeToken = $serviceToken ?: $communityToken;
-    $code = 'var ids = ' . json_encode($ids) . '; var res = []; var i = 0; while (i < ids.length) { var p = API.wall.get({owner_id: ids[i], count: 5, filter: "owner"}); res.push({owner_id: ids[i], items: p.items}); i = i + 1; } return res;';
+    $codeParts = [];
+    foreach ($ids as $idx => $gid) {
+        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 3})';
+    }
+    $code = 'return {' . implode(',', $codeParts) . '};';
 
     list($httpCode, $json, $curlErr) = vk_bot_api_call('execute', [
         'code' => $code
@@ -920,10 +991,13 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     $recent24hPosts = [];
 
     if (is_array($json) && isset($json['response']) && is_array($json['response'])) {
-        foreach ($json['response'] as $group) {
-            $ownerId = (int)($group['owner_id'] ?? 0);
-            $bInfo = $branchMap[$ownerId] ?? null;
-            if (!$bInfo || empty($group['items']) || !is_array($group['items'])) continue;
+        foreach ($ids as $idx => $gid) {
+            $key = 'g' . $idx;
+            $group = $json['response'][$key] ?? null;
+            if (!$group || empty($group['items']) || !is_array($group['items'])) continue;
+
+            $bInfo = $branchMap[$gid] ?? null;
+            if (!$bInfo) continue;
 
             foreach ($group['items'] as $item) {
                 $postDate = (int)($item['date'] ?? 0);
@@ -932,7 +1006,7 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
                 if ($postId <= 0 || $postText === '') continue;
 
                 $postData = [
-                    'owner_id' => $ownerId,
+                    'owner_id' => $item['owner_id'] ?? $gid,
                     'id'       => $postId,
                     'date'     => $postDate,
                     'text'     => $postText,
@@ -981,7 +1055,7 @@ function vk_bot_format_branch_news_message($newsData)
     $todayDateStr = date('j') . ' ' . ($monthsRu[(int)date('n')] ?? '');
 
     $header = $isToday
-        ? "📰 Свежие новости филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
+        ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
         : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за прошедшие 24 часа:\n\n";
 
     $blocks = [];
@@ -989,34 +1063,23 @@ function vk_bot_format_branch_news_message($newsData)
 
     foreach ($items as $p) {
         $bName = $p['branch']['name'] ?? 'Филиал';
-        $bAddr = $p['branch']['addr'] ?? '';
+        $bVk   = $p['branch']['vk'] ?? '';
         $timeStr = date('H:i', $p['date']);
         $link = 'https://vk.com/wall' . $p['owner_id'] . '_' . $p['id'];
+        $annot = vk_bot_format_cosmo_annotation($p['text']);
 
-        $clean = $p['text'];
-        $clean = preg_replace('/#[a-zA-Zа-яА-Я0-9_@]+/u', '', $clean);
-        $clean = preg_replace('/https?:\/\/\S+/u', '', $clean);
-        $clean = preg_replace('/\[(?:club|id)\d+\|([^\]]+)\]/u', '$1', $clean);
-        $clean = trim(preg_replace('/\s+/u', ' ', $clean));
-
-        if (mb_strlen($clean) > 165) {
-            $cut = mb_substr($clean, 0, 160);
-            $lastSpace = mb_strrpos($cut, ' ');
-            if ($lastSpace !== false && $lastSpace > 120) {
-                $cut = mb_substr($cut, 0, $lastSpace);
-            }
-            $clean = rtrim($cut, '.,!?:;—') . '...';
+        $block = "🏛 " . $bName . "\n"
+               . "⏰ Опубликовано: " . $timeStr . "\n"
+               . "🤖 Аннотация от Космо: " . $annot . "\n"
+               . "🔗 Ссылка на пост: " . $link;
+        if ($bVk !== '') {
+            $block .= "\n👥 Группа: " . $bVk;
         }
-
-        $block = "🏛 {$bName}" . ($bAddr ? " ({$bAddr})" : "") . "\n"
-               . "⏰ {$timeStr}\n"
-               . "📝 {$clean}\n"
-               . "🔗 {$link}";
         $blocks[] = $block;
     }
 
     $body = implode("\n\n────────────────\n\n", $blocks);
-    $footer = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком!";
+    $footer = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
 
     return $header . $body . $footer;
 }
@@ -1213,13 +1276,16 @@ if (vk_bot_is_foreign_agent_query($userMsg)) {
     exit;
 }
 
+// Нормализованное сообщение без эмодзи для надёжного матчинга команд кнопок
+$cleanMsgForCmd = trim(preg_replace('/[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $userMsg));
+
 // Сценарий 2: Приветственное сообщение при первом заходе / «Начать» / «Кто ты, Космо?» / Информация о роботе
 $isWelcomeQuery = (
     $cmd === 'welcome' ||
     $cmd === 'start' ||
     $cmd === 'about' ||
     (isset($payloadData['command']) && $payloadData['command'] === 'start') ||
-    preg_match('/^(?:начать|старт|start|\/start|кто ты|о роботе|о боте|космо|помощь|help)$/ui', $userMsg) ||
+    preg_match('/^(?:начать|старт|start|\/start|кто ты|о роботе|о боте|космо|помощь|help)$/ui', $cleanMsgForCmd) ||
     ($isFirstVisit && preg_match('/^(?:привет|здравствуй|здравствуйте|добрый день|добрый вечер|доброе утро|хай|хэй|салют|ку|start|старт|начать|\/start|.*космо.*)?$/ui', $userMsg))
 );
 
@@ -1259,8 +1325,59 @@ if ($isWelcomeQuery) {
     exit;
 }
 
-// Сценарий 2: Где библиотеки Владимира — полный список всех 18 филиалов
-if ($cmd === 'libraries' || preg_match('/(где библиотек|адрес|филиал|библиотек|куда прийти|режим работ|как записаться|часы работ)/ui', $userMsg)) {
+// Сценарий 3: Новости филиалов — сканирование всех 16 групп библиотек за текущие сутки
+$isBranchNewsQuery = (
+    $cmd === 'branch_news' ||
+    preg_match('/^(?:новости филиалов|новости|посты филиалов|лента филиалов|новости библиотек|посты библиотек|лента|дайджест|свежие посты|посты|новости за сутки|посты за сутки)[?!.]*$/ui', $cleanMsgForCmd) ||
+    (preg_match('/(новост|лент|дайджест|что нов|свежие запис|последние посты|посты за)/ui', $userMsg) && preg_match('/(филиал|библиотек|город|сегодн|суток|сутки|групп)/ui', $userMsg))
+);
+
+if ($isBranchNewsQuery) {
+    if ($botTyping) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+
+    $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken);
+    $reply = vk_bot_format_branch_news_message($newsData);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 4: Запрос подбора книги (показ палитры настроений)
+$isRecommendQuery = (
+    $cmd === 'recommend' ||
+    preg_match('/^(?:подобрать книгу|выбрать книгу|подборка книг|посоветуй книгу|что почитать)[?!.]*$/ui', $cleanMsgForCmd)
+);
+
+if ($isRecommendQuery) {
+    $reply = "📚 С радостью подберу для вас идеальную книгу! Выберите настроение кнопками ниже или просто напишите мне своими словами — какой жанр, эпоху или эмоцию вы ищете?";
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? null : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+// Сценарий 5: Где библиотеки Владимира — полный список всех 18 филиалов
+$isLibrariesQuery = (
+    $cmd === 'libraries' ||
+    preg_match('/^(?:где библиотеки|где библиотека|адреса|адрес|список библиотек|контакты|режим работы|часы работы|график работы)[?!.]*$/ui', $cleanMsgForCmd) ||
+    (preg_match('/(где (?:находитс|расположен|взят)|какой адрес|адрес[а-я]* филиал|список филиал|контакт[ы]? филиал|график филиал|режим работ|часы работ|куда прийти)/ui', $userMsg) && !preg_match('/(новост|пост|лент|дайджест)/ui', $userMsg))
+);
+
+if ($isLibrariesQuery) {
     $reply = "🏛 Муниципальные библиотеки города Владимира (МБУК «ЦГБ»)\n\n"
            . "Мы всегда рады читателям во всех районах города! Запись и выдача книг на дом бесплатная — нужен только паспорт. ✨\n\n"
            . "📍 ЦЕНТРАЛЬНЫЕ БИБЛИОТЕКИ:\n"
@@ -1291,46 +1408,6 @@ if ($cmd === 'libraries' || preg_match('/(где библиотек|адрес|�
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 1
-    ], $communityToken);
-    exit;
-}
-
-// Сценарий 3: Запрос подбора книги (показ палитры настроений)
-if ($cmd === 'recommend' || preg_match('/^(подобрать книгу|выбрать книгу|подборка книг)/ui', $userMsg)) {
-    $reply = "📚 С радостью подберу для вас идеальную книгу! Выберите настроение кнопками ниже или просто напишите мне своими словами — какой жанр, эпоху или эмоцию вы ищете?";
-
-    vk_bot_send_message([
-        'peer_id'          => $peerId,
-        'message'          => $reply,
-        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 1
-    ], $communityToken);
-    exit;
-}
-
-// Сценарий 4: Новости филиалов — сканирование всех 16 групп библиотек за текущие сутки
-$isBranchNewsQuery = (
-    $cmd === 'branch_news' ||
-    preg_match('/^(?:новости филиалов|новости|посты филиалов|лента филиалов|новости библиотек)$/ui', trim($userMsg)) ||
-    (preg_match('/(новост|пост|лент|что нов|публикац)/ui', $userMsg) && preg_match('/(филиал|библиотек|город|сегодн)/ui', $userMsg))
-);
-
-if ($isBranchNewsQuery) {
-    if ($botTyping) {
-        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-    }
-
-    $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken);
-    $reply = vk_bot_format_branch_news_message($newsData);
-
-    vk_bot_send_message([
-        'peer_id'          => $peerId,
-        'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
