@@ -97,6 +97,11 @@ if ($communityToken === '' || strpos($communityToken, 'ВСТАВЬТЕ') === 0)
     $communityToken = $defaultCommunityToken;
 }
 
+$serviceToken     = trim((string)($config['vk_service_token'] ?? ''));
+if ($serviceToken === '' || strpos($serviceToken, 'ВСТАВЬТЕ') === 0) {
+    $serviceToken = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
+}
+
 $confirmationCode = trim((string)($config['vk_confirmation_code'] ?? ''));
 if ($confirmationCode === '') {
     $confirmationCode = $defaultConfirmationCode;
@@ -694,6 +699,24 @@ function vk_bot_api_call($method, $params, $token)
 }
 
 /**
+ * Установка индикатора «Космо печатает...» в диалоге ВКонтакте
+ */
+function vk_bot_set_typing($peerId, $token, $groupId)
+{
+    if (!$peerId || !$token) return false;
+    return vk_bot_api_call('messages.setActivity', [
+        'peer_id'  => $peerId,
+        'group_id' => $groupId,
+        'type'     => 'typing'
+    ], $token);
+}
+
+// Показываем стандартную анимацию «Печатает...» при любом запросе пользователя
+if ($botTyping && $peerId > 0) {
+    vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+}
+
+/**
  * Проверка запроса на авторов-иноагентов и их произведения
  */
 function vk_bot_is_foreign_agent_query($text)
@@ -720,7 +743,7 @@ function vk_bot_sanitize_foreign_agents($text)
     if (preg_match($pattern, $text)) {
         return "✨ Рекомендую обратить внимание на признанную классику из фондов наших городских библиотек — «Белая гвардия» Михаила Булгакова или увлекательные исторические детективы Николая Свечина (цикл об Алексее Лыкове)!\n\n"
              . "Это проверенная литература высочайшего художественного уровня с великолепным языком и непередаваемой атмосферой.\n\n"
-             . "📍 В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!";
+             . "📍 В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету!";
     }
     return $text;
 }
@@ -823,16 +846,6 @@ function vk_bot_send_message($params, $token)
     return [$httpCode, $json, $curlErr];
 }
 
-/**
- * Индикатор набора текста «Космо печатает...»
- */
-if ($botTyping) {
-    vk_bot_api_call('messages.setActivity', [
-        'peer_id' => $peerId,
-        'type'    => 'typing'
-    ], $communityToken);
-}
-
 // -----------------------------------------------------------------------------
 // Фирменные стикеры-эмоции робота Космо (из официального альбома сообщества)
 // -----------------------------------------------------------------------------
@@ -856,6 +869,159 @@ if (file_exists($stickersFile) && is_readable($stickersFile)) {
 }
 
 // -----------------------------------------------------------------------------
+// Сканирование постов 16 групп филиалов за текущие сутки
+// -----------------------------------------------------------------------------
+function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
+{
+    $branches = [
+        ['id' => -51714771,  'code' => 'ЦГБ',  'name' => 'Центральная городская библиотека', 'addr' => 'Суздальский пр-т, 2'],
+        ['id' => -168804106, 'code' => 'ЦДБ',  'name' => 'Центральная детская библиотека',   'addr' => 'ул. Большая Московская, 31'],
+        ['id' => -145883298, 'code' => 'Ф-1',  'name' => 'Библиотека — филиал №1',           'addr' => 'пр-т Строителей, 38 «а»'],
+        ['id' => -53422825,  'code' => 'Ф-2',  'name' => 'Библиотека — филиал №2',           'addr' => 'пр-т Ленина, 12'],
+        ['id' => -189953509, 'code' => 'Ф-3',  'name' => 'Библиотека — филиал №3',           'addr' => 'мкр. Юрьевец, Школьный пр., 4'],
+        ['id' => 474771380,  'code' => 'Ф-4',  'name' => 'Библиотека — филиал №4',           'addr' => 'ул. Егорова, 10'],
+        ['id' => -145827789, 'code' => 'Ф-5',  'name' => 'Библиотека — филиал №5',           'addr' => 'ул. Верхняя Дуброва, 10'],
+        ['id' => -197036990, 'code' => 'Ф-6',  'name' => 'Библиотека — филиал №6',           'addr' => 'мкр. Юрьевец, Институтский гор., 2'],
+        ['id' => 428880688,  'code' => 'Ф-7',  'name' => 'Библиотека — филиал №7',           'addr' => 'ул. Мира, 55'],
+        ['id' => -168966246, 'code' => 'Ф-8',  'name' => 'Библиотека — филиал №8',           'addr' => 'ул. Сурикова, 26'],
+        ['id' => -184449519, 'code' => 'Ф-9',  'name' => 'Библиотека — филиал №9',           'addr' => 'ул. Юбилейная, 38'],
+        ['id' => -193785811, 'code' => 'Ф-11', 'name' => 'Библиотека — филиал №11',          'addr' => 'мкр. Лесной, ул. Лесная, 10 «А»'],
+        ['id' => -198438621, 'code' => 'Ф-12', 'name' => 'Библиотека — филиал №12',          'addr' => 'мкр. Энергетик, ул. Энергетиков, 27'],
+        ['id' => -170634092, 'code' => 'Ф-13', 'name' => 'Библиотека — филиал №13',          'addr' => 'ул. Горького, 69'],
+        ['id' => -197329237, 'code' => 'Ф-15', 'name' => 'Библиотека — филиал №15',          'addr' => 'пос. Заклязьменский, ул. Центральная, 11 «А»'],
+        ['id' => -158118947, 'code' => 'Ф-16', 'name' => 'Библиотека — филиал №16',          'addr' => 'мкр. Коммунар, ул. Песочная, 15']
+    ];
+
+    $ids = array_column($branches, 'id');
+    $branchMap = [];
+    foreach ($branches as $b) {
+        $branchMap[$b['id']] = $b;
+    }
+
+    $activeToken = $serviceToken ?: $communityToken;
+    $code = 'var ids = ' . json_encode($ids) . '; var res = []; var i = 0; while (i < ids.length) { var p = API.wall.get({owner_id: ids[i], count: 5, filter: "owner"}); res.push({owner_id: ids[i], items: p.items}); i = i + 1; } return res;';
+
+    list($httpCode, $json, $curlErr) = vk_bot_api_call('execute', [
+        'code' => $code
+    ], $activeToken);
+
+    if (!is_array($json) || !isset($json['response']) || !is_array($json['response'])) {
+        if ($activeToken !== $communityToken && $communityToken !== '') {
+            list($httpCode, $json, $curlErr) = vk_bot_api_call('execute', [
+                'code' => $code
+            ], $communityToken);
+        }
+    }
+
+    $todayStart = strtotime('today midnight');
+    $last24h    = time() - 86400;
+
+    $todayPosts     = [];
+    $recent24hPosts = [];
+
+    if (is_array($json) && isset($json['response']) && is_array($json['response'])) {
+        foreach ($json['response'] as $group) {
+            $ownerId = (int)($group['owner_id'] ?? 0);
+            $bInfo = $branchMap[$ownerId] ?? null;
+            if (!$bInfo || empty($group['items']) || !is_array($group['items'])) continue;
+
+            foreach ($group['items'] as $item) {
+                $postDate = (int)($item['date'] ?? 0);
+                $postText = trim((string)($item['text'] ?? ''));
+                $postId   = (int)($item['id'] ?? 0);
+                if ($postId <= 0 || $postText === '') continue;
+
+                $postData = [
+                    'owner_id' => $ownerId,
+                    'id'       => $postId,
+                    'date'     => $postDate,
+                    'text'     => $postText,
+                    'branch'   => $bInfo
+                ];
+
+                if ($postDate >= $todayStart) {
+                    $todayPosts[] = $postData;
+                } elseif ($postDate >= $last24h) {
+                    $recent24hPosts[] = $postData;
+                }
+            }
+        }
+    }
+
+    usort($todayPosts, function($a, $b) { return $b['date'] - $a['date']; });
+    usort($recent24hPosts, function($a, $b) { return $b['date'] - $a['date']; });
+
+    return [
+        'today'    => $todayPosts,
+        'last_24h' => $recent24hPosts
+    ];
+}
+
+/**
+ * Форматирование новостей филиалов с краткими аннотациями и ссылками
+ */
+function vk_bot_format_branch_news_message($newsData)
+{
+    $todayPosts = $newsData['today'] ?? [];
+    $recentPosts = $newsData['last_24h'] ?? [];
+
+    $isToday = count($todayPosts) > 0;
+    $postsToShow = $isToday ? $todayPosts : $recentPosts;
+
+    if (empty($postsToShow)) {
+        return "📰 В группах 16 филиалов библиотек города Владимира за последние сутки пока нет новых записей.\n\n"
+             . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Где библиотеки?». ✨";
+    }
+
+    $monthsRu = [
+        1 => 'января', 2 => 'февраля', 3 => 'марта', 4 => 'апреля',
+        5 => 'мая', 6 => 'июня', 7 => 'июля', 8 => 'августа',
+        9 => 'сентября', 10 => 'октября', 11 => 'ноября', 12 => 'декабря'
+    ];
+    $todayDateStr = date('j') . ' ' . ($monthsRu[(int)date('n')] ?? '');
+
+    $header = $isToday
+        ? "📰 Свежие новости филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
+        : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за прошедшие 24 часа:\n\n";
+
+    $blocks = [];
+    $items = array_slice($postsToShow, 0, 8);
+
+    foreach ($items as $p) {
+        $bName = $p['branch']['name'] ?? 'Филиал';
+        $bAddr = $p['branch']['addr'] ?? '';
+        $timeStr = date('H:i', $p['date']);
+        $link = 'https://vk.com/wall' . $p['owner_id'] . '_' . $p['id'];
+
+        $clean = $p['text'];
+        $clean = preg_replace('/#[a-zA-Zа-яА-Я0-9_@]+/u', '', $clean);
+        $clean = preg_replace('/https?:\/\/\S+/u', '', $clean);
+        $clean = preg_replace('/\[(?:club|id)\d+\|([^\]]+)\]/u', '$1', $clean);
+        $clean = trim(preg_replace('/\s+/u', ' ', $clean));
+
+        if (mb_strlen($clean) > 165) {
+            $cut = mb_substr($clean, 0, 160);
+            $lastSpace = mb_strrpos($cut, ' ');
+            if ($lastSpace !== false && $lastSpace > 120) {
+                $cut = mb_substr($cut, 0, $lastSpace);
+            }
+            $clean = rtrim($cut, '.,!?:;—') . '...';
+        }
+
+        $block = "🏛 {$bName}" . ($bAddr ? " ({$bAddr})" : "") . "\n"
+               . "⏰ {$timeStr}\n"
+               . "📝 {$clean}\n"
+               . "🔗 {$link}";
+        $blocks[] = $block;
+    }
+
+    $body = implode("\n\n────────────────\n\n", $blocks);
+    $footer = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком!";
+
+    return $header . $body . $footer;
+}
+
+// -----------------------------------------------------------------------------
 // Формирование интерактивных клавиатур ВКонтакте
 // -----------------------------------------------------------------------------
 // 1. Постоянная навигационная клавиатура
@@ -874,10 +1040,10 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'random'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🎲 Случайный шедевр'
+                    'payload' => json_encode(['cmd' => 'branch_news'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📰 Новости филиалов'
                 ],
-                'color' => 'secondary'
+                'color' => 'positive'
             ]
         ],
         [
@@ -889,6 +1055,16 @@ $persistentKeyboard = [
                 ],
                 'color' => 'secondary'
             ],
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'random'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🎲 Случайный шедевр'
+                ],
+                'color' => 'secondary'
+            ]
+        ],
+        [
             [
                 'action' => [
                     'type'    => 'text',
@@ -1052,12 +1228,13 @@ if ($isWelcomeQuery) {
            . "У меня электронное сердце, любовь к чтению и доступ ко всем фондам городских библиотек.\n\n"
            . "✨ ЧЕМ Я МОГУ БЫТЬ ПОЛЕЗЕН:\n"
            . "• 📚 Подберу идеальную книгу под ваше настроение (уют, детектив, космос, классика или динамичный сюжет);\n"
+           . "• 📰 Покажу «Новости филиалов» — свежие посты и анонсы 16 библиотек Владимира за сегодня;\n"
            . "• 🏛 Подскажу адреса, телефоны и график работы любого из 18 филиалов библиотек города Владимира;\n"
            . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
            . "• 💡 Отвечу на любые вопросы о книгах, сюжетах и писателях.\n\n"
            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
-           . "• Жмите удобные кнопки меню внизу экрана («📚 Подобрать книгу», «🏛 Где библиотеки?», «🎲 Случайный шедевр»);\n"
-           . "• Или просто напишите мне своими словами, как живому библиотекарю: «Посоветуй уютную книгу на вечер», «Хочу что-то вроде Шерлока Холмса» или «Где библиотека на Егорова?»;\n"
+           . "• Жмите удобные кнопки меню внизу экрана («📚 Подобрать книгу», «📰 Новости филиалов», «🏛 Где библиотеки?», «🎲 Случайный шедевр»);\n"
+           . "• Или просто напишите мне своими словами, как живому библиотекарю: «Посоветуй уютную книгу на вечер», «Что нового в филиалах?» или «Где библиотека на Егорова?»;\n"
            . "• Все книги в наших библиотеках выдаются бесплатно на дом по единому читательскому билету!\n\n"
            . "Какую книгу вам подобрать сегодня? ✨";
 
@@ -1135,6 +1312,32 @@ if ($cmd === 'recommend' || preg_match('/^(подобрать книгу|выб�
     exit;
 }
 
+// Сценарий 4: Новости филиалов — сканирование всех 16 групп библиотек за текущие сутки
+$isBranchNewsQuery = (
+    $cmd === 'branch_news' ||
+    preg_match('/^(?:новости филиалов|новости|посты филиалов|лента филиалов|новости библиотек)$/ui', trim($userMsg)) ||
+    (preg_match('/(новост|пост|лент|что нов|публикац)/ui', $userMsg) && preg_match('/(филиал|библиотек|город|сегодн)/ui', $userMsg))
+);
+
+if ($isBranchNewsQuery) {
+    if ($botTyping) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+
+    $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken);
+    $reply = vk_bot_format_branch_news_message($newsData);
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? null,
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
 // -----------------------------------------------------------------------------
 // 6. Формирование запроса к нейросети (Mistral Large / OpenAI Gateway)
 // -----------------------------------------------------------------------------
@@ -1189,9 +1392,10 @@ $systemPrompt = <<<SYS
      У нас НЕТ электронного портала и НЕТ электронной библиотеки! Книги выдаются ТОЛЬКО в печатном виде в библиотеках города.
    - СТРОЖАЙШЕ ЗАПРЕЩЕНО выдумывать названия отделов («Классика зарубежной литературы»), номера полок («Х.11»), каталожные индексы и чужие сайты («vladimir-lib.ru»)!
    - Единственный официальный сайт нашей библиотечной сети: biblioteka33.ru.
-   - В конце КАЖДОЙ рекомендации пиши строго одну фразу:
-     «В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!»
-   - СТРОЖАЙШИЙ ЗАПРЕТ НА MARKDOWN СИМВОЛЫ «##» и «**»:
+    - В конце КАЖДОЙ рекомендации книг пиши строго фразу:
+      «В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету!»
+      СТРОЖАЙШЕ ЗАПРЕЩЕНО добавлять слова «— ждём вас за чтением!», «ждём вас за чтением» или подобные! Не пиши их никогда!
+    - СТРОЖАЙШИЙ ЗАПРЕТ НА MARKDOWN СИМВОЛЫ «##» и «**»:
      ВКонтакте НЕ поддерживает Markdown! КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать в сообщении «##», «###», «**», «*», «__» вокруг слов!
      Оформляй заголовки с помощью эмодзи (📌, ✨, 📚), названия книг пиши в обычных кавычках «...», списки делай через символ •.
    - Оптимальный объём ответа: от 400 до 800 знаков (удобно читать со смартфона в ВК).
@@ -1280,10 +1484,7 @@ while ($attempts < $maxAttempts) {
 
     // Непрерывный индикатор «Космо печатает...» пока ИИ генерирует ответ
     if ($botTyping) {
-        vk_bot_api_call('messages.setActivity', [
-            'peer_id' => $peerId,
-            'type'    => 'typing'
-        ], $communityToken);
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
     }
     $lastTypingPing = microtime(true);
 
@@ -1294,17 +1495,14 @@ while ($attempts < $maxAttempts) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => $aiTimeout,
         CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.24.9',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.25.2',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_NOPROGRESS     => false,
-        CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $botTyping) {
-            if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.5) {
+        CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $vkGroupId, $botTyping) {
+            if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.0) {
                 $lastTypingPing = microtime(true);
-                vk_bot_api_call('messages.setActivity', [
-                    'peer_id' => $peerId,
-                    'type'    => 'typing'
-                ], $communityToken);
+                vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
             }
             return 0;
         },
@@ -1356,14 +1554,18 @@ while ($attempts < $maxAttempts) {
 if ($aiResponseText === '') {
     $aiResponseText = "Прошу прощения, мои нейронные контуры сейчас перезагружаются после обработки гигантского каталога книг! 🤖⚡\n\n"
                     . "Но я всегда готов порекомендовать вам что-то из проверенной классики! Загляните в Центральную городскую библиотеку (Суздальский пр-т, 2) — наши библиотекари с радостью подберут книгу для вас!\n\n"
-                    . "В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!";
+                    . "В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету!";
 }
 
 // Санитизируем ответ от любых случайных упоминаний авторов-иноагентов и их произведений
 $aiResponseText = vk_bot_sanitize_foreign_agents($aiResponseText);
 
+// Строго удаляем фразу «— ждём вас за чтением!» из любого ответа
+$aiResponseText = preg_replace('/\s*[-—–]?\s*жд[её]м\s+вас\s+за\s+чтением[.!]*\s*/ui', '', $aiResponseText);
+$aiResponseText = trim($aiResponseText);
+
 // Гарантируем каноничную концовку для рекомендаций книг
-$standardEnding = "В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!";
+$standardEnding = "В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету!";
 if (strpos($aiResponseText, 'В наших библиотеках-филиалах') === false && (strpos($aiResponseText, '«') !== false || preg_match('/(книг|роман|повест|автор)/ui', $aiResponseText))) {
     $aiResponseText .= "\n\n" . $standardEnding;
 }
