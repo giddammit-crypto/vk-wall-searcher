@@ -86,14 +86,28 @@ foreach ([__DIR__ . '/config.php', __DIR__ . '/config.local.php'] as $cfgFile) {
     }
 }
 
+// Встроенные параметры сообщества (по умолчанию для https://vk.ru/club241534292)
+$defaultCommunityToken   = 'vk1.a.ju2kZ7qPSBnKqy9r_GkNCyhr5F2WwC7SkVYYU_921TAAk7qu5svlGo7HMXcgbLBsh3qyHhuYmll8BSA0UHeVkn95rLjUVbGzWNDP3huyHqugUophS3it44EOY1o9Ov5iNh-y_iOpZ6l5WKgBwMtozY8qBZoLRpbiLjd7akbL3MELkkisZQPkFG8v1HnGMRsNaosd5YHSXRx7y8F0bFK1Pg';
+$defaultConfirmationCode = 'd78ee50f';
+$defaultGroupId          = 241534292;
+$defaultGroupUrl         = 'https://vk.ru/club241534292';
+
 $communityToken   = trim((string)($config['vk_community_token'] ?? ''));
+if ($communityToken === '' || strpos($communityToken, 'ВСТАВЬТЕ') === 0) {
+    $communityToken = $defaultCommunityToken;
+}
+
 $confirmationCode = trim((string)($config['vk_confirmation_code'] ?? ''));
+if ($confirmationCode === '') {
+    $confirmationCode = $defaultConfirmationCode;
+}
+
 $secretKey        = trim((string)($config['vk_secret_key'] ?? ''));
 $botEnabled       = (bool)($config['vk_bot_enabled'] ?? true);
 $botTyping        = (bool)($config['vk_bot_typing'] ?? true);
 $apiVersion       = trim((string)($config['api_version'] ?? '5.131'));
-$vkGroupUrl       = trim((string)($config['vk_group_url'] ?? 'https://vk.ru/club241534292'));
-$vkGroupId        = (int)($config['vk_group_id'] ?? 241534292);
+$vkGroupUrl       = trim((string)($config['vk_group_url'] ?? $defaultGroupUrl));
+$vkGroupId        = (int)($config['vk_group_id'] ?? $defaultGroupId);
 $directDialogUrl  = 'https://vk.me/club' . $vkGroupId;
 
 // Пул ключей ИИ
@@ -446,6 +460,45 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
 // -----------------------------------------------------------------------------
 $rawInput = file_get_contents('php://input');
 $event = vk_bot_json_decode($rawInput);
+
+// Опциональная синхронизация конфигурации администратором
+if (is_array($event) && isset($event['action']) && $event['action'] === 'sync_config') {
+    header('Content-Type: application/json; charset=UTF-8');
+    $adminToken = (string)($event['token'] ?? '');
+    $validToken = (string)($config['update_token'] ?? '1Radio14881!');
+    if ($adminToken === '' || !hash_equals($validToken, $adminToken)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Forbidden: invalid admin token'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $cfgFile = __DIR__ . '/config.php';
+    $diskUpdated = false;
+    if (is_file($cfgFile) && is_writable($cfgFile)) {
+        $existing = file_get_contents($cfgFile);
+        $updated = $existing;
+        if (!empty($event['vk_community_token'])) {
+            $newToken = addslashes((string)$event['vk_community_token']);
+            $updated = preg_replace("/'vk_community_token'\s*=>\s*'.*?'/", "'vk_community_token'   => '{$newToken}'", $updated);
+        }
+        if (!empty($event['vk_confirmation_code'])) {
+            $newCode = addslashes((string)$event['vk_confirmation_code']);
+            $updated = preg_replace("/'vk_confirmation_code'\s*=>\s*'.*?'/", "'vk_confirmation_code' => '{$newCode}'", $updated);
+        }
+        if ($updated !== $existing) {
+            $diskUpdated = (file_put_contents($cfgFile, $updated) !== false);
+        }
+    }
+
+    echo json_encode([
+        'ok'                => true,
+        'disk_updated'      => $diskUpdated,
+        'community_token'   => substr($communityToken, 0, 10) . '...',
+        'confirmation_code' => $confirmationCode,
+        'group_id'          => $vkGroupId
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
+}
 
 if (!is_array($event) || empty($event['type'])) {
     http_response_code(400);
