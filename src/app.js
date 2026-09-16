@@ -94,19 +94,26 @@ import {
     initPromoModal,
     openPromoModal,
     closePromoModal
-} from './promo.js?v=4.24.1';
+} from './promo.js?v=4.24.2';
+
+import {
+    initLeagueModal,
+    openLeagueModal,
+    closeLeagueModal,
+    renderLeagueSection
+} from './league.js?v=4.24.2';
 
 import {
     renderRadarSection
-} from './radar.js?v=4.23.2';
+} from './radar.js?v=4.24.2';
 
-import { Space3D } from './space3d.js?v=4.23.3';
-import { SpaceWarp } from './space_warp.js?v=4.23.2';
-import { SpaceAudio } from './space_audio.js?v=4.23.2';
-import { Mascot } from './mascot.js?v=4.24.1';
+import { Space3D } from './space3d.js?v=4.24.2';
+import { SpaceWarp } from './space_warp.js?v=4.24.2';
+import { SpaceAudio } from './space_audio.js?v=4.24.2';
+import { Mascot } from './mascot.js?v=4.24.2';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.24.1';
+export const APP_VERSION = '4.24.2';
 
 function initApp() {
 
@@ -233,6 +240,7 @@ function initApp() {
         countAnalytics: document.getElementById('count-analytics'),
         countSummary: document.getElementById('count-summary'),
         promoModalBtn: document.getElementById('promo-modal-btn'),
+        leagueModalBtn: document.getElementById('league-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
         postsGrid: document.getElementById('posts-grid'),
@@ -2082,6 +2090,12 @@ function initApp() {
             const hData = computeTimingHeatmap(state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts);
             renderTimingHeatmapSection(heatmapContainer, hData);
         }
+
+        // v4.24.2: «Лига филиалов»: Геймификация и рейтинг активности
+        const leagueMount = document.getElementById('league-mount');
+        if (leagueMount) {
+            renderLeagueSection(leagueMount, stats, state.matchedPosts || []);
+        }
     }
 
     function renderAnalyticsChart(stats) {
@@ -3497,6 +3511,13 @@ function initApp() {
     }
     window.__openPromoModal = openPromoModal;
 
+    if (elements.leagueModalBtn) {
+        elements.leagueModalBtn.addEventListener('click', () => {
+            openLeagueModal(state.stats, state.matchedPosts);
+        });
+    }
+    window.__openLeagueModal = () => openLeagueModal(state.stats, state.matchedPosts);
+
     if (elements.appSettingsBtn) {
         elements.appSettingsBtn.addEventListener('click', () => openSettingsWithAuth(openAppSettings));
     }
@@ -3730,6 +3751,20 @@ function initApp() {
         setTimeout(() => {
             openPromoModal();
         }, 200);
+    }
+    if (_urlP.get('mode') === 'shelf_recommend') {
+        const shelfGenre = _urlP.get('genre') || 'universal';
+        const shelfBranch = _urlP.get('branch') || 'cgb';
+        setTimeout(() => {
+            if (Mascot && typeof Mascot.openShelfRecommendation === 'function') {
+                Mascot.openShelfRecommendation(shelfGenre, shelfBranch);
+            }
+        }, 500);
+    }
+    if (_urlP.get('mode') === 'league' || _urlP.get('preview_league') === '1') {
+        setTimeout(() => {
+            openLeagueModal(state.stats, state.matchedPosts);
+        }, 250);
     }
     if (_urlP.get('preview_cosmic') === '1') {
         if (elements.searchModalOverlay) {

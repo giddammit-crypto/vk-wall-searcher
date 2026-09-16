@@ -4909,3 +4909,88 @@
     background: rgba(0, 0, 0, 0.04);
     border: 1px solid rgba(0, 0, 0, 0.08);
 }
+
+/* ============================================================================
+ * КНИЖНАЯ ПОЛКА С КОСМО: ЧИПСЫ НАСТРОЕНИЯ И ТЕМПА В ЧАТЕ
+ * ========================================================================== */
+.shelf-recommend-welcome {
+    border-left: 3px solid #38bdf8 !important;
+}
+
+.shelf-mood-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.shelf-mood-chip-btn {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    line-height: 1.3;
+}
+
+.shelf-mood-chip-btn:hover:not(:disabled) {
+    background: rgba(56, 189, 248, 0.24);
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+    color: #ffffff;
+}
+
+.shelf-mood-chip-btn.selected {
+    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+    opacity: 1 !important;
+    cursor: default;
+}
+
+.shelf-mood-chip-btn:disabled:not(.selected) {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+}
+
+[data-theme="light"] .shelf-mood-chip-btn {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
+}
+
+[data-theme="light"] .shelf-mood-chip-btn:hover:not(:disabled) {
+    background: #bae6fd;
+    border-color: #0284c7;
+    color: #0c4a6e;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+[data-theme="light"] .shelf-mood-chip-btn.selected {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    color: #ffffff !important;
+}
+
+@media (max-width: 640px) {
+    .shelf-mood-chips-container {
+        gap: 6px;
+    }
+    .shelf-mood-chip-btn {
+        font-size: 11.5px;
+        padding: 6px 11px;
+    }
+}

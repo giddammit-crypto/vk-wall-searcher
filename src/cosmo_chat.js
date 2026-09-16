@@ -12,7 +12,8 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.2';
+import { resolveApiUrl } from './api.js?v=4.24.2';
+import { CANONICAL_BRANCHES } from './branches.js?v=4.24.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -411,6 +412,28 @@ export const VK_GROUP_PRESETS = [
 - Визуальное решение (фото библиотекаря, книжная полка, мем, карусель цитат);
 - 3-4 рекомендованных хэштега.
 Сделай контент живым, душевным и свободным от канцеляризмов!`
+    },
+    {
+        id: 'league-awards',
+        icon: 'military_tech',
+        category: 'Лига филиалов',
+        title: 'Итоги Лиги филиалов и награды Космо',
+        desc: 'Рейтинг активности, дивизионы (Космическая/Золотая/Серебряная лига) и персональные номинации для каждого филиала.',
+        badge: 'ЛИГА XP',
+        prompt: `Проанализируй текущие показатели активности филиалов в рамках «Лиги филиалов» и распредели награды от Космо:
+1. ### Космическая Лига (Высший дивизион)
+   Назови лидеров общего зачёта по совокупности баллов XP (регулярность, охват, вовлечённость, визуал).
+2. ### Награды и специальные номинации от Космо:
+   - ⚡ «Мастер виральности недели» (максимум репостов и пересылок);
+   - ⏳ «Самый стабильный постинг» (идеальный график и ритмичность);
+   - 🛡️ «Гроза умной ленты» (высокий охват и чистый авторский стиль);
+   - 🎨 «Мультимедийный гений» (лучшая работа с фото и клипами);
+   - 💬 «Сердце сообщества» (живая дискуссия и глубина комментариев);
+   - 🚀 «Главный прорыв недели» (наибольший скачок показателей).
+3. ### Динамика дивизионов:
+   Кто готов к переходу в Высшую лигу, а кому требуется усилить регулярность?
+4. ### Напутствие от Космо:
+   Вдохновляющее послание каждому филиалу для дальнейшего роста.`
     }
 ];
 
@@ -1006,6 +1029,148 @@ export class CosmoChatModal {
                 }
             }
         }, 150);
+    }
+
+    /**
+     * Интерактивный подбор книг со стеллажа («Книжная полка с Космо»)
+     */
+    openShelfRecommendation(genreId = 'universal', branchCode = 'cgb') {
+        this.createDOM();
+        this.isOpen = true;
+
+        document.addEventListener('keydown', this.onEscKeyDown);
+        document.body.classList.add('cosmo-chat-open');
+        this.overlayEl.classList.add('is-open');
+
+        this.messages = [];
+        this.messagesEl.innerHTML = '';
+
+        if (this.mascot) {
+            this.mascot.setState('smile');
+            this.mascot.setMoodBadge('📚', 5000);
+            if (this.mascot.playVoice) {
+                this.mascot.playVoice('post_scan_10', true);
+            }
+        }
+
+        const branch = (CANONICAL_BRANCHES || []).find(b => 
+            b.shortCode === branchCode || b.canonicalName === branchCode || b.rawId === Number(branchCode)
+        ) || { canonicalName: 'Библиотека г. Владимира' };
+
+        const genreMap = {
+            universal: { name: 'Любая литература (Универсальный стеллаж)', icon: 'auto_awesome' },
+            detective: { name: 'Детективы и остросюжетная литература', icon: 'search' },
+            sci_fi: { name: 'Фантастика и фэнтези', icon: 'rocket_launch' },
+            modern_prose: { name: 'Современная проза и бестселлеры', icon: 'menu_book' },
+            romance: { name: 'Романтическая и сентиментальная проза', icon: 'favorite' },
+            vladimir_history: { name: 'Краеведение и история Владимира', icon: 'account_balance' },
+            children: { name: 'Детская и подростковая литература', icon: 'face' },
+            non_fiction: { name: 'Нон-фикшн и саморазвитие', icon: 'psychology' }
+        };
+        const genreObj = genreMap[genreId] || genreMap.universal;
+
+        const shelfGreetingHtml = `
+            <div class="cosmo-chat-msg cosmo-chat-msg-bot shelf-recommend-welcome">
+                <div class="msg-avatar">
+                    <img src="assets/images/mascot/robot_smile.png?v=4.24.2" alt="Космо" />
+                </div>
+                <div class="msg-content">
+                    <div class="msg-author">Космо • Книжный сомелье</div>
+                    <div class="msg-body">
+                        <p>Мяу-привет! 🐾 Я робокот <strong>Космо</strong>, твой персональный книжный сомелье в <strong>${escapeHtml(branch.canonicalName)}</strong>!</p>
+                        <p>Вижу, ты стоишь прямо у стеллажа <strong>«${escapeHtml(genreObj.name)}»</strong>. Не знаешь, что выбрать? Ответь всего на 2 быстрых вопроса, и я подберу ТОП-3 книги из фонда с цепляющим описанием без спойлеров!</p>
+                        <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.15); margin: 10px 0;">
+                        <p style="margin-bottom: 8px;"><strong>Вопрос 1 из 2: Какое настроение и ощущение ты ищешь?</strong></p>
+                        <div class="shelf-mood-chips-container" id="shelf-q1-mood-chips">
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Драйв, острый сюжет, адреналин и напряжение">🔥 Драйв и экшен</button>
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Уют, душевное тепло, доброта и спокойствие">☕ Уют и тепло</button>
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Загадки, интеллектуальный лабиринт и интрига">🧩 Загадка и интрига</button>
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Глубокая драма, сильные переживания, до слёз">😭 До слёз</button>
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Инсайты, новые знания, развитие и расширение кругозора">💡 Инсайты</button>
+                            <button type="button" class="shelf-mood-chip-btn" data-mood="Юмор, лёгкость, ирония и позитив">😂 Юмор и смех</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.messagesEl.innerHTML = shelfGreetingHtml;
+        this.scrollToBottom();
+
+        // Обработка вопроса 1
+        const q1Chips = this.messagesEl.querySelectorAll('#shelf-q1-mood-chips .shelf-mood-chip-btn');
+        q1Chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const moodText = chip.getAttribute('data-mood');
+                q1Chips.forEach(c => {
+                    c.disabled = true;
+                    if (c === chip) c.classList.add('selected');
+                });
+
+                this.appendUserMessage(`Настроение: ${chip.textContent.trim()}`);
+                this.messages.push({ role: 'user', content: `Моё настроение: ${moodText}` });
+
+                // Задаем вопрос 2 (Темп чтения)
+                setTimeout(() => {
+                    const q2Html = `
+                        <div class="cosmo-chat-msg cosmo-chat-msg-bot">
+                            <div class="msg-avatar">
+                                <img src="assets/images/mascot/robot_smile.png?v=4.24.2" alt="Космо" />
+                            </div>
+                            <div class="msg-content">
+                                <div class="msg-author">Космо • Книжный сомелье</div>
+                                <div class="msg-body">
+                                    <p>Отличный выбор! 🚀 Теперь <strong>Вопрос 2 из 2: Какой темп чтения тебе сейчас ближе?</strong></p>
+                                    <div class="shelf-mood-chips-container" id="shelf-q2-pace-chips">
+                                        <button type="button" class="shelf-mood-chip-btn" data-pace="Быстрое динамичное чтение (на одном дыхании, короткие главы, не оторваться)">⚡ Динамичный (залпом)</button>
+                                        <button type="button" class="shelf-mood-chip-btn" data-pace="Размеренное погружение (богатый язык, неспешное смакование деталей)">📖 Глубокое погружение</button>
+                                        <button type="button" class="shelf-mood-chip-btn" data-pace="Компактный объём (повесть, сборник коротких рассказов на вечер)">☕ Короткий формат</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    const q2Div = document.createElement('div');
+                    q2Div.innerHTML = q2Html;
+                    const q2El = q2Div.firstElementChild;
+                    this.messagesEl.appendChild(q2El);
+                    this.scrollToBottom();
+
+                    // Обработка вопроса 2
+                    const q2Chips = q2El.querySelectorAll('#shelf-q2-pace-chips .shelf-mood-chip-btn');
+                    q2Chips.forEach(pChip => {
+                        pChip.addEventListener('click', async () => {
+                            const paceText = pChip.getAttribute('data-pace');
+                            q2Chips.forEach(c => {
+                                c.disabled = true;
+                                if (c === pChip) c.classList.add('selected');
+                            });
+
+                            this.appendUserMessage(`Темп чтения: ${pChip.textContent.trim()}`);
+                            this.messages.push({ role: 'user', content: `Темп чтения: ${paceText}` });
+
+                            const finalPrompt = `Ты — Космо, экспертный библиотечный робокот и книжный сомелье библиотечной сети г. Владимира.
+Читатель прямо сейчас находится в библиотеке: «${branch.canonicalName}», у стеллажа жанра: «${genreObj.name}».
+Его запрос:
+• Настроение: ${moodText}
+• Темп чтения: ${paceText}
+
+Подбери ТОП-3 конкретные великолепные книги из классического или современного фонда муниципальных библиотек, которые на 100% соответствуют этому настроению и темпу!
+
+ДЛЯ КАЖДОЙ ИЗ 3 КНИГ СТРОГО УКАЖИ:
+1. 📖 **[Номер]. Название — Автор** (год издания/эпоха)
+2. ⚡ **Почему затянет с первой страницы:** (короткий кинематографичный хук без спойлеров, завязка конфликта, интрига)
+3. 🎯 **Кому особенно зайдёт:** (1-2 похожие книги или авторы)
+4. 🐱 **Лайфхак от Космо:** как лучше читать эту книгу (с чаем, в тишине, вечером).
+
+В конце добавь тёплый совет обратиться к библиотекарю на абонементе или у стойки выдачи — книга наверняка ждёт читателя прямо на этой полке!`;
+
+                            this.messages.push({ role: 'user', content: finalPrompt });
+                            await this.executeAiRequest({ maxTokens: 2500, temperature: 0.7 });
+                        });
+                    });
+                }, 400);
+            });
+        });
     }
 
     close() {

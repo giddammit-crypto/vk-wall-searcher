@@ -21,6 +21,17 @@ export const PROMO_SLOGANS = [
     'Книга — это диалог сквозь время. Присоединяйтесь к читателям Владимира!'
 ];
 
+export const SHELF_GENRES = [
+    { id: 'universal', name: 'Любая литература (Универсальная)', icon: 'auto_awesome', desc: 'Универсальный помощник по чтению' },
+    { id: 'detective', name: 'Детективы и остросюжетная литература', icon: 'search', desc: 'Загадки, расследования и саспенс' },
+    { id: 'sci_fi', name: 'Фантастика и фэнтези', icon: 'rocket_launch', desc: 'Космос, магия и путешествия во времени' },
+    { id: 'modern_prose', name: 'Современная проза и бестселлеры', icon: 'menu_book', desc: 'Глубокие сюжеты, лауреаты литературных премий' },
+    { id: 'romance', name: 'Романтическая и сентиментальная проза', icon: 'favorite', desc: 'Любовь, искренние чувства и тёплые истории' },
+    { id: 'vladimir_history', name: 'Краеведение и история Владимира', icon: 'account_balance', desc: 'Владимирский край, летописи и исторические тайны' },
+    { id: 'children', name: 'Детская и подростковая литература', icon: 'face', desc: 'Сказки, приключения и YA-литература' },
+    { id: 'non_fiction', name: 'Нон-фикшн и саморазвитие', icon: 'psychology', desc: 'Психология, наука, продуктивность и мотивация' }
+];
+
 export const PROMO_TEMPLATES = [
     {
         id: 'swiss',
@@ -192,6 +203,12 @@ function getDisplayUrl(branch) {
     return 'biblioteka33.ru';
 }
 
+export function getShelfUrl(branch, genreId = 'universal') {
+    const branchCode = (branch && (branch.shortCode || branch.canonicalName)) ? (branch.shortCode || branch.canonicalName) : 'cgb';
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?mode=shelf_recommend&genre=${encodeURIComponent(genreId)}&branch=${encodeURIComponent(branchCode)}`;
+}
+
 function getBookmarkSlogans(chosenSlogan) {
     if (chosenSlogan === PROMO_SLOGANS[0]) {
         return [
@@ -269,6 +286,12 @@ export function initPromoModal() {
                                 <span class="promo-format-name">Закладки (4 шт/А4)</span>
                                 <span class="promo-format-desc">Альбомный лист А4 (линии реза)</span>
                             </label>
+                            <label class="promo-format-card">
+                                <input type="radio" name="promo-format" value="shelf">
+                                <span class="material-symbols-outlined format-ico">shelves</span>
+                                <span class="promo-format-name">Полка с Космо</span>
+                                <span class="promo-format-desc">Тейблтент/наклейка (3 шт/А4)</span>
+                            </label>
                         </div>
                     </div>
 
@@ -283,6 +306,17 @@ export function initPromoModal() {
                         <div class="promo-scale-info">
                             <span class="material-symbols-outlined scale-info-ico">tune</span>
                             <span>Пользовательский масштаб <strong>125%</strong> выставлен по умолчанию (оптимально для листа А4 и уверенного считывания QR-кода)</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group shelf-genre-group" id="shelf-genre-group" style="display: none;">
+                        <label class="promo-label">Жанр / тематика книжного стеллажа:</label>
+                        <select id="shelf-genre-select" class="promo-select">
+                            ${SHELF_GENRES.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('')}
+                        </select>
+                        <div class="promo-scale-info" style="margin-top: 6px;">
+                            <span class="material-symbols-outlined scale-info-ico">qr_code_scanner</span>
+                            <span>QR-код направит читателя к Космо с предвыбранным жанром и библиотекой</span>
                         </div>
                     </div>
 
@@ -352,6 +386,7 @@ export function initPromoModal() {
     let currentBranch = CANONICAL_BRANCHES[0];
     let currentFormat = 'a4';
     let currentBookmarkScale = 1.25;
+    let currentShelfGenre = 'universal';
     let currentSlogan = PROMO_SLOGANS[0];
     let currentTemplate = PROMO_TEMPLATES[0];
 
@@ -503,6 +538,59 @@ export function initPromoModal() {
                     </div>
                 </div>
             `;
+        } else if (currentFormat === 'shelf') {
+            const shelfUrl = getShelfUrl(currentBranch, currentShelfGenre);
+            const genreObj = SHELF_GENRES.find(g => g.id === currentShelfGenre) || SHELF_GENRES[0];
+            const qrSvgShelf = createQrSvg(shelfUrl, { size: 74, foreground: qrFg, background: qrBg, margin: 2 });
+
+            const renderTentCard = () => `
+                <div class="shelf-tent-card">
+                    <div class="shelf-tent-fold-guide">- - - - - - - - ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ ШАЛАШИКОМ) - - - - - - - -</div>
+                    <div class="shelf-tent-front">
+                        <div class="shelf-tent-main">
+                            <div class="shelf-badge-row">
+                                <span class="shelf-cosmo-badge"><span class="material-symbols-outlined">smart_toy</span> КНИЖНАЯ ПОЛКА С КОСМО</span>
+                                <span class="shelf-genre-pill"><span class="material-symbols-outlined">${genreObj.icon}</span> ${escapeHtml(genreObj.name)}</span>
+                            </div>
+                            <h3 class="shelf-tent-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу по настроению!</h3>
+                            <p class="shelf-tent-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и моментально порекомендует ТОП-3 книги с этого стеллажа под твой темп и настроение.</p>
+                            <div class="shelf-steps-row">
+                                <span class="shelf-step"><span class="step-num">1</span> Сканируй QR</span>
+                                <span class="shelf-step-arrow">→</span>
+                                <span class="shelf-step"><span class="step-num">2</span> 2 вопроса от Космо</span>
+                                <span class="shelf-step-arrow">→</span>
+                                <span class="shelf-step"><span class="step-num">3</span> ТОП-3 книги на полке</span>
+                            </div>
+                            <div class="shelf-org-tag">${escapeHtml(currentBranch.canonicalName)}</div>
+                        </div>
+                        <div class="shelf-tent-qr-col">
+                            <div class="shelf-qr-frame">
+                                ${qrSvgShelf}
+                            </div>
+                            <div class="shelf-qr-cue">ВЕБ-ЧАТ С КОСМО</div>
+                            <div class="shelf-qr-sub">Без установки приложений</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            viewport.innerHTML = `
+                <div class="poster-sheet sheet-shelf sheet-theme-${currentTemplate.id}">
+                    ${renderTentCard()}
+                    <div class="shelf-cut-guide">
+                        <span class="shelf-cut-line"></span>
+                        <span>✂ ЛИНИЯ РЕЗА (3 МИНИ-ТЕЙБЛТЕНТА НА ЛИСТ А4)</span>
+                        <span class="shelf-cut-line"></span>
+                    </div>
+                    ${renderTentCard()}
+                    <div class="shelf-cut-guide">
+                        <span class="shelf-cut-line"></span>
+                        <span>✂ ЛИНИЯ РЕЗА</span>
+                        <span class="shelf-cut-line"></span>
+                    </div>
+                    ${renderTentCard()}
+                </div>
+            `;
         } else {
             // Плакат А4
             const targetUrl = (currentBranch.vkLink && currentBranch.vkLink.trim()) || currentBranch.branch_url || 'https://biblioteka33.ru';
@@ -619,9 +707,21 @@ export function initPromoModal() {
             if (scaleGroup) {
                 scaleGroup.style.display = currentFormat === 'bookmark' ? 'block' : 'none';
             }
+            const shelfGroup = modal.querySelector('#shelf-genre-group');
+            if (shelfGroup) {
+                shelfGroup.style.display = currentFormat === 'shelf' ? 'block' : 'none';
+            }
             updatePreview();
         });
     });
+
+    const shelfGenreSelect = modal.querySelector('#shelf-genre-select');
+    if (shelfGenreSelect) {
+        shelfGenreSelect.addEventListener('change', () => {
+            currentShelfGenre = shelfGenreSelect.value;
+            updatePreview();
+        });
+    }
 
     const scaleChips = modal.querySelectorAll('.promo-scale-chip');
     scaleChips.forEach(chip => {
@@ -667,7 +767,7 @@ export function initPromoModal() {
     });
 
     printBtn.addEventListener('click', () => {
-        printPromoPoster(currentBranch, currentFormat, currentSlogan, currentTemplate, currentBookmarkScale);
+        printPromoPoster(currentBranch, currentFormat, currentSlogan, currentTemplate, currentBookmarkScale, currentShelfGenre);
     });
 
     updatePreview();
@@ -708,7 +808,7 @@ export function closePromoModal() {
 /**
  * Открывает окно типографской печати плаката / тейблтента / закладок
  */
-export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLATES[0], bookmarkScale = 1.25) {
+export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLATES[0], bookmarkScale = 1.25, shelfGenre = 'universal') {
     const printWin = window.open('', '_blank', 'width=1000,height=1150');
     if (!printWin) {
         alert('Пожалуйста, разрешите всплывающие окна для печати промо-материалов');
@@ -1385,6 +1485,249 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                     <div class="a5-foot-item"><b>Телефон:</b> ${escapeHtml(branch.phone)}</div>
                     <div class="a5-foot-item"><b>Портал:</b> https://biblioteka33.ru</div>
                 </footer>
+            </div>
+        `;
+    } else if (format === 'shelf') {
+        const shelfUrl = getShelfUrl(branch, shelfGenre);
+        const genreObj = SHELF_GENRES.find(g => g.id === shelfGenre) || SHELF_GENRES[0];
+        const qrSvgShelf = createQrSvg(shelfUrl, { size: 90, foreground: qrFg, background: qrBg, margin: 2 });
+
+        pageCss = `
+            @page {
+                size: A4 portrait;
+                margin: 6mm 8mm 6mm 8mm;
+            }
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body {
+                background: #ffffff !important;
+                color: #0a0f1d;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                box-sizing: border-box;
+                padding: 0;
+            }
+            .print-shelf-container {
+                width: 100%;
+                max-width: 194mm;
+                height: 282mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                box-sizing: border-box;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            .print-shelf-card {
+                height: 87mm;
+                border: 0.4mm solid #cbd5e1;
+                border-radius: 3mm;
+                padding: 3.5mm 5mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                box-sizing: border-box;
+                background: #ffffff !important;
+                position: relative;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            .print-shelf-fold {
+                border-top: 0.3mm dashed #94a3b8;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 6.5pt;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+                text-align: center;
+                padding-top: 1mm;
+                margin-bottom: 2mm;
+            }
+            .print-shelf-front {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 5mm;
+                flex: 1;
+            }
+            .print-shelf-main {
+                flex: 1;
+                text-align: left;
+            }
+            .print-shelf-badges {
+                display: flex;
+                align-items: center;
+                gap: 2.5mm;
+                margin-bottom: 2mm;
+            }
+            .print-shelf-badge-cosmo {
+                font-size: 7.5pt;
+                font-weight: 800;
+                background: #e0f2fe;
+                color: #0284c7;
+                padding: 1mm 2.5mm;
+                border-radius: 1.5mm;
+                letter-spacing: 0.04em;
+                display: inline-block;
+            }
+            .print-shelf-badge-genre {
+                font-size: 7pt;
+                font-weight: 700;
+                background: #f1f5f9;
+                color: #0f172a;
+                border: 0.25mm solid #cbd5e1;
+                padding: 1mm 2.5mm;
+                border-radius: 1.5mm;
+                display: inline-block;
+            }
+            .print-shelf-title {
+                font-size: 11pt;
+                font-weight: 900;
+                line-height: 1.25;
+                color: #0f172a;
+                margin: 0 0 1.5mm 0;
+            }
+            .print-shelf-sub {
+                font-size: 7.5pt;
+                line-height: 1.35;
+                color: #334155;
+                margin: 0 0 2.5mm 0;
+            }
+            .print-shelf-steps {
+                display: flex;
+                align-items: center;
+                gap: 2mm;
+                font-size: 6.5pt;
+                font-weight: 700;
+                color: #0284c7;
+                margin-bottom: 2mm;
+            }
+            .print-shelf-step-num {
+                display: inline-block;
+                width: 3.5mm;
+                height: 3.5mm;
+                line-height: 3.5mm;
+                background: #0284c7;
+                color: #ffffff;
+                border-radius: 50%;
+                text-align: center;
+                font-size: 5.5pt;
+                margin-right: 0.8mm;
+            }
+            .print-shelf-branch {
+                font-size: 6.5pt;
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            .print-shelf-qr-box {
+                width: 30mm;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                flex-shrink: 0;
+            }
+            .print-shelf-qr-frame {
+                width: 26mm;
+                height: 26mm;
+                padding: 1mm;
+                border: 0.3mm solid #cbd5e1;
+                border-radius: 1.5mm;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #ffffff;
+            }
+            .print-shelf-qr-frame svg {
+                width: 24mm;
+                height: 24mm;
+            }
+            .print-shelf-qr-cue {
+                font-size: 6pt;
+                font-weight: 800;
+                color: #0284c7;
+                margin-top: 1mm;
+                letter-spacing: 0.04em;
+            }
+            .print-shelf-qr-sub {
+                font-size: 5pt;
+                color: #64748b;
+            }
+            .print-shelf-cut-guide {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 3mm;
+                font-size: 6.5pt;
+                color: #94a3b8;
+                height: 4mm;
+                user-select: none;
+            }
+            .print-shelf-cut-line {
+                flex: 1;
+                border-top: 0.3mm dashed #cbd5e1;
+                height: 0;
+            }
+        `;
+
+        const renderPrintTent = () => `
+            <div class="print-shelf-card">
+                <div class="print-shelf-fold">- - - - - - - - ЛИНИЯ СГИБА ТЕЙБЛТЕНТА (ПОСТАВИТЬ НА ПОЛКУ) - - - - - - - -</div>
+                <div class="print-shelf-front">
+                    <div class="print-shelf-main">
+                        <div class="print-shelf-badges">
+                            <span class="print-shelf-badge-cosmo">КНИЖНАЯ ПОЛКА С КОСМО</span>
+                            <span class="print-shelf-badge-genre">${escapeHtml(genreObj.name)}</span>
+                        </div>
+                        <h2 class="print-shelf-title">Не знаешь, что почитать? Наведи камеру — Космо подберёт книгу!</h2>
+                        <p class="print-shelf-sub">Библиотечный робокот Космо задаст 2 быстрых вопроса и подберёт ТОП-3 книги с этого стеллажа под твой темп и настроение.</p>
+                        <div class="print-shelf-steps">
+                            <span><span class="print-shelf-step-num">1</span>Сканируй QR</span>
+                            <span>→</span>
+                            <span><span class="print-shelf-step-num">2</span>2 вопроса от Космо</span>
+                            <span>→</span>
+                            <span><span class="print-shelf-step-num">3</span>ТОП-3 книги на полке</span>
+                        </div>
+                        <div class="print-shelf-branch">${escapeHtml(branch.canonicalName)} • https://biblioteka33.ru</div>
+                    </div>
+                    <div class="print-shelf-qr-box">
+                        <div class="print-shelf-qr-frame">
+                            ${qrSvgShelf}
+                        </div>
+                        <div class="print-shelf-qr-cue">ВЕБ-ЧАТ С КОСМО</div>
+                        <div class="print-shelf-qr-sub">Без приложений</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        bodyContent = `
+            <div class="print-shelf-container print-theme-${template.id}">
+                ${renderPrintTent()}
+                <div class="print-shelf-cut-guide">
+                    <span class="print-shelf-cut-line"></span>
+                    <span>✂ ЛИНИЯ РЕЗА (3 МАКЕТА НА А4)</span>
+                    <span class="print-shelf-cut-line"></span>
+                </div>
+                ${renderPrintTent()}
+                <div class="print-shelf-cut-guide">
+                    <span class="print-shelf-cut-line"></span>
+                    <span>✂ ЛИНИЯ РЕЗА</span>
+                    <span class="print-shelf-cut-line"></span>
+                </div>
+                ${renderPrintTent()}
             </div>
         `;
     } else {

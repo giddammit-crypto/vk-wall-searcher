@@ -9105,7 +9105,225 @@ textarea:focus-visible,
     .bm-quote-container {
         font-size: 7.5px !important;
     }
+/* ==========================================================================
+   FORMAT D: КНИЖНАЯ ПОЛКА С КОСМО (3 тейблтента / наклейки на А4)
+   ========================================================================== */
+.sheet-shelf {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 14px;
+    background: #ffffff !important;
+    color: #0f172a;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
+
+.sheet-shelf .shelf-cut-guide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #94a3b8;
+    user-select: none;
+    padding: 2px 0;
+}
+
+.sheet-shelf .shelf-cut-line {
+    border-top: 1.5px dashed #cbd5e1;
+    flex: 1;
+    height: 0;
+}
+
+.shelf-tent-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.shelf-tent-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.15);
+}
+
+.shelf-tent-fold-guide {
+    border-top: 1px dashed #cbd5e1;
+    font-size: 8px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+    padding-top: 4px;
+    margin-bottom: 4px;
+}
+
+.shelf-tent-front {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.shelf-tent-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.shelf-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.shelf-cosmo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+}
+
+.shelf-cosmo-badge .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.shelf-genre-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.shelf-genre-pill .material-symbols-outlined {
+    font-size: 13px;
+    color: #0284c7;
+}
+
+.shelf-tent-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.shelf-tent-sub {
+    font-size: 10px;
+    color: #475569;
+    line-height: 1.35;
+    margin: 0 0 6px 0;
+}
+
+.shelf-steps-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    color: #0284c7;
+    font-weight: 700;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.shelf-step .step-num {
+    background: #0284c7;
+    color: #ffffff;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    margin-right: 2px;
+}
+
+.shelf-step-arrow {
+    color: #94a3b8;
+    font-size: 9px;
+}
+
+.shelf-org-tag {
+    font-size: 8px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.shelf-tent-qr-col {
+    width: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.shelf-qr-frame {
+    width: 78px;
+    height: 78px;
+    padding: 4px;
+    background: #ffffff;
+    border-radius: 6px;
+}
+
+.shelf-qr-frame svg {
+    width: 70px;
+    height: 70px;
+}
+
+.shelf-qr-cue {
+    font-size: 8px;
+    font-weight: 800;
+    color: #0284c7;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+}
+
+.shelf-qr-sub {
+    font-size: 7px;
+    color: #64748b;
+}
+
+.shelf-genre-group {
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+}
+
+[data-theme="dark"] .shelf-genre-group {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
 
 /* ==========================================================================
    10 HIGH-END EDITORIAL DESIGN TEMPLATES FOR PROMO MATERIALS

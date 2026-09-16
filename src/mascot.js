@@ -3716,6 +3716,19 @@ export class AuroraMascot {
         this.startChatCompanionLoop();
     }
 
+    openShelfRecommendation(genreId = 'universal', branchCode = 'cgb') {
+        if (this.isSleeping) {
+            this.wakeUp();
+        }
+        this.hideBubble();
+        this.triggerEasterBackflip(false);
+        if (!this.chatModal) {
+            this.chatModal = new CosmoChatModal({ mascot: this });
+        }
+        this.chatModal.openShelfRecommendation(genreId, branchCode);
+        this.startChatCompanionLoop();
+    }
+
     closeCosmoChat() {
         this.stopChatCompanionLoop();
         if (this.chatModal) {
