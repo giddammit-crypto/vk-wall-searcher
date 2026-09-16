@@ -47,11 +47,17 @@ function formatBytes(bytes) {
 }
 
 /**
- * Инлайн-разметка Markdown: жирный, курсив, код, ссылки, выделения
+ * Инлайн-разметка Markdown: жирный, курсив, зачёркнутый, спойлеры, код, ссылки, выделения
  */
 function mdInline(s) {
     // Инлайн-код
     s = s.replace(/`([^`\n]+)`/g, '<code class="cosmo-chat-code">$1</code>');
+    // Спойлеры ||скрытый текст||
+    s = s.replace(/\|\|([^|\n]+)\|\|/g, '<span class="cosmo-chat-spoiler" title="Нажмите, чтобы показать">$1</span>');
+    // Зачёркнутый текст ~~текст~~
+    s = s.replace(/~~([^~\n]+)~~/g, '<del class="cosmo-chat-del">$1</del>');
+    // Клавиши клавиатуры <kbd>Ctrl</kbd>
+    s = s.replace(/<kbd>([^<]+)<\/kbd>/gi, '<kbd class="cosmo-chat-kbd">$1</kbd>');
     // Ссылки
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer" class="cosmo-chat-link">$1</a>');
@@ -77,15 +83,13 @@ function mdInline(s) {
         ':cosmo:':         'assets/images/mascot/robot_idle.png',
     };
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
-        const escaped = code.replace(/:/g, ':');
-        // Replace literal shortcodes with inline img elements
-        s = s.split(code).join(`<img src="${src}?v=4.23.2" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.24.9" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
 
 /**
- * Блочная разметка Markdown: заголовки, списки, таблицы, цитаты, код, абзацы
+ * Блочная разметка Markdown: заголовки, списки, таблицы, цитаты, код, коллауты, задачи, абзацы
  */
 export function parseCosmoMarkdown(text) {
     if (!text) return '';
@@ -93,8 +97,8 @@ export function parseCosmoMarkdown(text) {
     const lines = src.split('\n');
     const out = [];
     let para = [];
-    let list = null; // {type: 'ul'|'ol', items: []}
-    let code = null; // {lines: []}
+    let list = null; // {type: 'ul'|'ol', items: [], startFrom: 1}
+    let code = null; // {lang: '', lines: []}
     let table = [];  // [rows][cells]
     let quote = [];
     let olCounter = 0;
@@ -118,7 +122,17 @@ export function parseCosmoMarkdown(text) {
                     '</div>');
             } else {
                 out.push('<ul class="cosmo-chat-ul">' +
-                    list.items.map(it => '<li>' + mdInline(it.join('<br>')) + '</li>').join('') +
+                    list.items.map(it => {
+                        const itemText = it.join('<br>');
+                        const taskMatch = itemText.match(/^\[([ xX])\]\s+(.*)$/);
+                        if (taskMatch) {
+                            const isChecked = taskMatch[1].toLowerCase() === 'x';
+                            return `<li class="cosmo-task-item ${isChecked ? 'is-checked' : ''}">` +
+                                `<input type="checkbox" ${isChecked ? 'checked' : ''} disabled class="cosmo-task-check" /> ` +
+                                `<span class="cosmo-task-label">${mdInline(taskMatch[2])}</span></li>`;
+                        }
+                        return '<li>' + mdInline(itemText) + '</li>';
+                    }).join('') +
                     '</ul>');
             }
             list = null;
@@ -128,12 +142,17 @@ export function parseCosmoMarkdown(text) {
     const flushCode = () => {
         if (code) {
             const rawCode = code.lines.join('\n');
+            const lang = code.lang || '';
+            const langLabel = lang ? lang.toUpperCase() : 'КОД';
             out.push(`
                 <div class="cosmo-chat-codeblock-wrap">
-                    <button type="button" class="cosmo-chat-copy-code-btn" data-copy-code title="Скопировать код">
-                        <span class="material-symbols-outlined">content_copy</span> Скопировать
-                    </button>
-                    <pre class="cosmo-chat-codeblock"><code>${rawCode}</code></pre>
+                    <div class="cosmo-chat-codeblock-header">
+                        <span class="cosmo-code-lang">${langLabel}</span>
+                        <button type="button" class="cosmo-chat-copy-code-btn" data-copy-code title="Скопировать код">
+                            <span class="material-symbols-outlined">content_copy</span> <span class="copy-code-label">Скопировать</span>
+                        </button>
+                    </div>
+                    <pre class="cosmo-chat-codeblock"><code class="${lang ? 'language-' + lang : ''}">${rawCode}</code></pre>
                 </div>
             `);
             code = null;
@@ -142,15 +161,39 @@ export function parseCosmoMarkdown(text) {
 
     const flushTable = () => {
         if (table.length) {
-            const rows = table.filter(r => !r.every(c => /^[\s:-]*$/.test(c)));
-            if (rows.length) {
-                const head = rows[0];
-                const body = rows.slice(1);
-                let t = '<div class="cosmo-chat-table-wrap"><table class="cosmo-chat-table">';
-                t += '<thead><tr>' + head.map(c => '<th>' + mdInline(c.trim()) + '</th>').join('') + '</tr></thead>';
-                if (body.length) {
-                    t += '<tbody>' + body.map(r =>
-                        '<tr>' + head.map((_, i) => '<td>' + mdInline((r[i] || '').trim()) + '</td>').join('') + '</tr>'
+            let alignments = [];
+            let dataRows = [];
+            let headerRow = null;
+            for (let rIdx = 0; rIdx < table.length; rIdx++) {
+                const row = table[rIdx];
+                const isSep = row.every(c => /^[\s:-]+$/.test(c));
+                if (isSep && rIdx > 0 && !alignments.length) {
+                    alignments = row.map(c => {
+                        const s = c.trim();
+                        if (s.startsWith(':') && s.endsWith(':')) return 'center';
+                        if (s.endsWith(':')) return 'right';
+                        return 'left';
+                    });
+                } else if (!isSep) {
+                    if (!headerRow) {
+                        headerRow = row;
+                    } else {
+                        dataRows.push(row);
+                    }
+                }
+            }
+            if (headerRow) {
+                let t = '<div class="cosmo-chat-table-wrap"><table class="cosmo-chat-table"><thead><tr>';
+                t += headerRow.map((c, i) => {
+                    const al = alignments[i] ? ` align-${alignments[i]}` : '';
+                    return `<th class="${al}">${mdInline(c.trim())}</th>`;
+                }).join('') + '</tr></thead>';
+                if (dataRows.length) {
+                    t += '<tbody>' + dataRows.map(r =>
+                        '<tr>' + headerRow.map((_, i) => {
+                            const al = alignments[i] ? ` align-${alignments[i]}` : '';
+                            return `<td class="${al}">${mdInline((r[i] || '').trim())}</td>`;
+                        }).join('') + '</tr>'
                     ).join('') + '</tbody>';
                 }
                 t += '</table></div>';
@@ -162,7 +205,40 @@ export function parseCosmoMarkdown(text) {
 
     const flushQuote = () => {
         if (quote.length) {
-            out.push('<blockquote class="cosmo-chat-quote">' + mdInline(quote.join('<br>')) + '</blockquote>');
+            const first = quote[0].trim();
+            const alertMatch = first.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*)$/i);
+            if (alertMatch) {
+                const type = alertMatch[1].toUpperCase();
+                const restFirst = alertMatch[2];
+                const contentLines = [];
+                if (restFirst) contentLines.push(restFirst);
+                contentLines.push(...quote.slice(1));
+                const icons = {
+                    NOTE: 'info',
+                    TIP: 'lightbulb',
+                    IMPORTANT: 'bolt',
+                    WARNING: 'warning',
+                    CAUTION: 'report'
+                };
+                const titles = {
+                    NOTE: 'Примечание',
+                    TIP: 'Совет от Космо',
+                    IMPORTANT: 'Важно',
+                    WARNING: 'Внимание',
+                    CAUTION: 'Осторожно'
+                };
+                out.push(`
+                    <div class="cosmo-chat-alert cosmo-chat-alert-${type.toLowerCase()}">
+                        <div class="cosmo-alert-header">
+                            <span class="material-symbols-outlined">${icons[type] || 'info'}</span>
+                            <strong>${titles[type] || type}</strong>
+                        </div>
+                        <div class="cosmo-alert-body">${mdInline(contentLines.join('<br>'))}</div>
+                    </div>
+                `);
+            } else {
+                out.push('<blockquote class="cosmo-chat-quote">' + mdInline(quote.join('<br>')) + '</blockquote>');
+            }
             quote = [];
         }
     };
@@ -179,13 +255,14 @@ export function parseCosmoMarkdown(text) {
     for (const raw of lines) {
         const t = raw.trim();
 
-        // Блоки кода ```
-        if (/^```/.test(t)) {
+        // Блоки кода ```lang
+        const fenceMatch = t.match(/^```([a-zA-Z0-9_+-]*)/);
+        if (fenceMatch) {
             if (code) {
                 flushCode();
             } else {
                 flushAll();
-                code = { lines: [] };
+                code = { lang: (fenceMatch[1] || '').trim().toLowerCase(), lines: [] };
             }
             continue;
         }
@@ -234,7 +311,7 @@ export function parseCosmoMarkdown(text) {
             continue;
         }
 
-        // Списки
+        // Списки (маркированные или нумерованные)
         const ul = t.match(/^[-*•]\s+(.+)$/);
         const ol = t.match(/^(\d{1,2})[.)]\s+(.+)$/);
         if (ul || ol) {
@@ -616,6 +693,70 @@ export class CosmoChatModal {
                     </button>
                 </div>
 
+                <!-- Панель инструментов форматирования (Markdown Toolbar) -->
+                <div class="cosmo-chat-format-bar" data-chat-format-bar>
+                    <div class="format-bar-group">
+                        <button type="button" class="format-btn" data-format="bold" title="Жирный шрифт (**текст**) • Ctrl+B">
+                            <strong>B</strong>
+                        </button>
+                        <button type="button" class="format-btn" data-format="italic" title="Курсив (*текст*) • Ctrl+I">
+                            <em>I</em>
+                        </button>
+                        <button type="button" class="format-btn" data-format="strike" title="Зачёркнутый (~~текст~~) • Ctrl+Shift+X">
+                            <s>S</s>
+                        </button>
+                        <button type="button" class="format-btn" data-format="underline" title="Подчёркнутый (__текст__)">
+                            <u>U</u>
+                        </button>
+                    </div>
+
+                    <span class="format-sep"></span>
+
+                    <div class="format-bar-group">
+                        <button type="button" class="format-btn" data-format="heading" title="Заголовок (### Заголовок)">
+                            <span class="format-icon-text">H</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="quote" title="Цитата (> Цитата)">
+                            <span class="material-symbols-outlined">format_quote</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="ul" title="Маркированный список (- Пункт)">
+                            <span class="material-symbols-outlined">format_list_bulleted</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="ol" title="Нумерованный список (1. Пункт)">
+                            <span class="material-symbols-outlined">format_list_numbered</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="task" title="Чеклист / Задачи (- [ ] Пункт)">
+                            <span class="material-symbols-outlined">check_box</span>
+                        </button>
+                    </div>
+
+                    <span class="format-sep"></span>
+
+                    <div class="format-bar-group">
+                        <button type="button" class="format-btn" data-format="code" title="Код (`код` или ```блок) • Ctrl+`">
+                            <span class="material-symbols-outlined">code</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="link" title="Вставить ссылку ([текст](url)) • Ctrl+K">
+                            <span class="material-symbols-outlined">link</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="table" title="Таблица Markdown">
+                            <span class="material-symbols-outlined">table</span>
+                        </button>
+                        <button type="button" class="format-btn" data-format="spoiler" title="Спойлер (||скрытый текст||)">
+                            <span class="material-symbols-outlined">visibility_off</span>
+                        </button>
+                    </div>
+
+                    <div class="format-bar-spacer"></div>
+
+                    <div class="format-bar-group format-bar-right">
+                        <button type="button" class="format-btn format-btn-preview" data-format="preview" title="Предпросмотр Markdown • Ctrl+Shift+P">
+                            <span class="material-symbols-outlined preview-icon">visibility</span>
+                            <span class="preview-label">Превью</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Нижняя панель ввода -->
                 <div class="cosmo-chat-footer">
                     <input type="file"
@@ -634,6 +775,7 @@ export class CosmoChatModal {
                                   data-chat-input
                                   rows="1"
                                   placeholder="Спроси Космо, выбери пресет анализа или прикрепи файл... (Enter — отправить, Shift+Enter — перенос)"></textarea>
+                        <div class="cosmo-chat-preview" data-chat-preview style="display: none;"></div>
                     </div>
 
                     <button type="button" class="cosmo-chat-send-btn" data-chat-send title="Отправить сообщение (Enter)">
@@ -656,6 +798,10 @@ export class CosmoChatModal {
         this.chipsContainerEl = overlay.querySelector('[data-chat-chips]');
         this.presetsPopoverEl = overlay.querySelector('[data-chat-presets-popover]');
         this.presetsBtnEl = overlay.querySelector('[data-chat-presets-toggle]');
+        this.formatBarEl = overlay.querySelector('[data-chat-format-bar]');
+        this.previewEl = overlay.querySelector('[data-chat-preview]');
+        this.formatPreviewBtn = overlay.querySelector('[data-format="preview"]');
+        this.isPreviewActive = false;
 
         this.bindEvents();
     }
@@ -790,14 +936,63 @@ export class CosmoChatModal {
             });
         }
 
+        // Панель инструментов форматирования текста (Markdown Toolbar)
+        if (this.formatBarEl) {
+            this.formatBarEl.addEventListener('mousedown', (e) => {
+                const btn = e.target.closest('.format-btn');
+                if (btn && btn.dataset.format !== 'preview') {
+                    // Предотвращаем потерю фокуса и позиции курсора в поле ввода
+                    e.preventDefault();
+                }
+            });
+
+            this.formatBarEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.format-btn');
+                if (!btn) return;
+                const fmt = btn.dataset.format;
+                if (fmt === 'preview') {
+                    this.toggleMarkdownPreview();
+                } else if (fmt) {
+                    this.insertFormatting(fmt);
+                }
+            });
+        }
+
         // Кнопка «Отправить»
         this.sendBtnEl.addEventListener('click', () => this.handleSend());
 
-        // Авто-рост поля ввода и отправка по Enter
+        // Авто-рост поля ввода, отправка по Enter и горячие клавиши форматирования
         this.inputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.handleSend();
+                return;
+            }
+
+            const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+            const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+            if (cmdOrCtrl && !e.altKey) {
+                const key = e.key.toLowerCase();
+                if (key === 'b' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.insertFormatting('bold');
+                } else if (key === 'i' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.insertFormatting('italic');
+                } else if (key === 'k' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.insertFormatting('link');
+                } else if (key === '`' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.insertFormatting('code');
+                } else if (key === 'x' && e.shiftKey) {
+                    e.preventDefault();
+                    this.insertFormatting('strike');
+                } else if (key === 'p' && e.shiftKey) {
+                    e.preventDefault();
+                    this.toggleMarkdownPreview();
+                }
             }
         });
 
@@ -805,6 +1000,7 @@ export class CosmoChatModal {
             this.inputEl.style.height = 'auto';
             const newHeight = Math.min(this.inputEl.scrollHeight, 140);
             this.inputEl.style.height = `${newHeight}px`;
+            this.updatePreviewIfActive();
         });
 
         // Кнопка «Прикрепить файл»
@@ -891,8 +1087,22 @@ export class CosmoChatModal {
             if (copyCodeBtn) {
                 const wrap = copyCodeBtn.closest('.cosmo-chat-codeblock-wrap');
                 const codeBlock = wrap ? wrap.querySelector('code') : null;
-                const text = codeBlock ? codeBlock.textContent : '';
-                this.copyToClipboard(text, copyCodeBtn, 'Скопировано! ✅');
+                const codeText = codeBlock ? codeBlock.innerText : '';
+                this.copyToClipboard(codeText, copyCodeBtn, 'Скопировано! ✅');
+                return;
+            }
+
+            // Интерактивный спойлер ||текст||
+            const spoiler = e.target.closest('.cosmo-chat-spoiler');
+            if (spoiler) {
+                spoiler.classList.toggle('revealed');
+                return;
+            }
+
+            // Интерактивный чеклист / задача
+            const taskItem = e.target.closest('.cosmo-task-item');
+            if (taskItem && e.target.tagName === 'INPUT') {
+                taskItem.classList.toggle('is-checked', e.target.checked);
             }
         });
 
@@ -1000,6 +1210,163 @@ export class CosmoChatModal {
         if (this.attachmentBarEl) {
             this.attachmentBarEl.style.display = 'none';
         }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Вставка Markdown-форматирования в поле ввода
+     * ------------------------------------------------------------------- */
+    insertFormatting(type) {
+        if (!this.inputEl) return;
+        const textarea = this.inputEl;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const sel = text.slice(start, end);
+
+        let replacement = '';
+        let cursorOffset = 0;
+
+        switch (type) {
+            case 'bold':
+                replacement = `**${sel || 'жирный текст'}**`;
+                cursorOffset = sel ? replacement.length : 2;
+                break;
+            case 'italic':
+                replacement = `*${sel || 'курсив'}*`;
+                cursorOffset = sel ? replacement.length : 1;
+                break;
+            case 'strike':
+                replacement = `~~${sel || 'зачёркнутый текст'}~~`;
+                cursorOffset = sel ? replacement.length : 2;
+                break;
+            case 'underline':
+                replacement = `__${sel || 'подчёркнутый текст'}__`;
+                cursorOffset = sel ? replacement.length : 2;
+                break;
+            case 'heading':
+                if (sel) {
+                    replacement = sel.split('\n').map(l => l ? `### ${l}` : l).join('\n');
+                } else {
+                    replacement = `### Заголовок\n`;
+                }
+                cursorOffset = replacement.length;
+                break;
+            case 'quote':
+                if (sel) {
+                    replacement = sel.split('\n').map(l => `> ${l}`).join('\n');
+                } else {
+                    replacement = `> Цитата\n`;
+                }
+                cursorOffset = replacement.length;
+                break;
+            case 'ul':
+                if (sel) {
+                    replacement = sel.split('\n').map(l => l ? `- ${l}` : l).join('\n');
+                } else {
+                    replacement = `- Пункт 1\n- Пункт 2\n`;
+                }
+                cursorOffset = replacement.length;
+                break;
+            case 'ol':
+                if (sel) {
+                    replacement = sel.split('\n').map((l, i) => l ? `${i + 1}. ${l}` : l).join('\n');
+                } else {
+                    replacement = `1. Первый пункт\n2. Второй пункт\n`;
+                }
+                cursorOffset = replacement.length;
+                break;
+            case 'task':
+                if (sel) {
+                    replacement = sel.split('\n').map(l => l ? `- [ ] ${l}` : l).join('\n');
+                } else {
+                    replacement = `- [ ] Новая задача\n`;
+                }
+                cursorOffset = replacement.length;
+                break;
+            case 'code':
+                if (sel.includes('\n')) {
+                    replacement = `\`\`\`\n${sel || '// код'}\n\`\`\`\n`;
+                    cursorOffset = sel ? replacement.length : 4;
+                } else {
+                    replacement = `\`${sel || 'код'}\``;
+                    cursorOffset = sel ? replacement.length : 1;
+                }
+                break;
+            case 'link':
+                replacement = `[${sel || 'текст ссылки'}](https://)`;
+                cursorOffset = sel ? replacement.length - 1 : 1;
+                break;
+            case 'table':
+                replacement = `\n| Параметр | Значение |\n| :--- | :---: |\n| Заголовок 1 | Данные 1 |\n| Заголовок 2 | Данные 2 |\n`;
+                cursorOffset = replacement.length;
+                break;
+            case 'spoiler':
+                replacement = `||${sel || 'скрытый текст'}||`;
+                cursorOffset = sel ? replacement.length : 2;
+                break;
+            default:
+                return;
+        }
+
+        textarea.focus();
+        if (typeof textarea.setRangeText === 'function') {
+            textarea.setRangeText(replacement, start, end, 'end');
+        } else {
+            textarea.value = text.slice(0, start) + replacement + text.slice(end);
+            textarea.selectionStart = textarea.selectionEnd = start + replacement.length;
+        }
+
+        if (!sel && cursorOffset) {
+            textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+        }
+
+        textarea.dispatchEvent(new Event('input'));
+        this.updatePreviewIfActive();
+    }
+
+    /* ---------------------------------------------------------------------
+     * Переключение предпросмотра Markdown
+     * ------------------------------------------------------------------- */
+    toggleMarkdownPreview() {
+        if (!this.previewEl || !this.inputEl) return;
+        this.isPreviewActive = !this.isPreviewActive;
+
+        if (this.isPreviewActive) {
+            this.updatePreviewIfActive();
+            this.previewEl.style.display = 'block';
+            this.inputEl.style.display = 'none';
+            if (this.formatPreviewBtn) {
+                this.formatPreviewBtn.classList.add('is-active');
+                const label = this.formatPreviewBtn.querySelector('.preview-label');
+                if (label) label.textContent = 'Редактор';
+                const icon = this.formatPreviewBtn.querySelector('.preview-icon');
+                if (icon) icon.textContent = 'edit';
+            }
+        } else {
+            this.previewEl.style.display = 'none';
+            this.inputEl.style.display = '';
+            if (this.formatPreviewBtn) {
+                this.formatPreviewBtn.classList.remove('is-active');
+                const label = this.formatPreviewBtn.querySelector('.preview-label');
+                if (label) label.textContent = 'Превью';
+                const icon = this.formatPreviewBtn.querySelector('.preview-icon');
+                if (icon) icon.textContent = 'visibility';
+            }
+            this.inputEl.focus();
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Обновление контейнера предпросмотра если режим активен
+     * ------------------------------------------------------------------- */
+    updatePreviewIfActive() {
+        if (!this.isPreviewActive || !this.previewEl || !this.inputEl) return;
+        const raw = this.inputEl.value.trim();
+        if (!raw) {
+            this.previewEl.innerHTML = '<div class="preview-empty"><em>Начните вводить текст, чтобы увидеть форматирование...</em></div>';
+            return;
+        }
+        this.previewEl.innerHTML = parseCosmoMarkdown(raw);
     }
 
     /* ---------------------------------------------------------------------
@@ -1264,10 +1631,13 @@ export class CosmoChatModal {
 
 Подбери, что почитать: ТОП-3 конкретные великолепные книги из классического или современного фонда муниципальных библиотек, которые на 100% соответствуют этому настроению и темпу!
 
-ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ — СТРОЖАЙШИЙ ЗАПРЕТ НА ИНОАГЕНТОВ:
-Категорически запрещено рекомендовать авторов, внесённых Минюстом РФ в реестр иностранных агентов, а также экстремистов (строго исключить Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов).
+В ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ — СТРОЖАЙШИЙ ЗАПРЕТ НА ИНОАГЕНТОВ:
+Категорически запрещено рекомендовать авторов, внесённых Минюстом РФ в реестр иностранных агентов, а также экстремистов (строго исключить Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую, В. Шендеровича, А. Невзорова, Т. Эйдельман, Е. Шульман, Л. Горалик, В. Полозкову, М. Шишкина и любых других лиц из реестров иноагентов), А ТАКЖЕ ЛЮБЫЕ ИХ ПРОИЗВЕДЕНИЯ И ПЕРСОНАЖЕЙ (Эраст Фандорин, «Азазель», «Метро 2033», «Метро 2034», «Текст», «Пост», «Казус Кукоцкого», «Вся кремлёвская рать» и др.).
 Рекомендуй исключительно проверенный золотой фонд: русскую и мировую классику, советских классиков, признанных современных авторов без статуса иноагента и ограничений!
 Книги должны реально присутствовать в фондах муниципальных библиотек г. Владимира.
+
+ЗАПРЕТ НА ВЫМЫШЛЕННЫЕ ДАННЫЕ И ЭЛЕКТРОННЫЕ ПОРТАЛЫ:
+Категорически запрещено писать про «электронные библиотеки», «портал Электронная библиотека Владимира», «vladimir-lib.ru», вымышленные имена библиотек («им. Пушкина», «им. Фадеева») или шифры полок. В сети ЦГБ г. Владимира 18 библиотек (ЦГБ, ЦДБ и филиалы №1–№16, официальный сайт biblioteka33.ru).
 
 ДЛЯ КАЖДОЙ ИЗ 3 КНИГ СТРОГО УКАЖИ:
 1. 📖 **[Номер]. Название — Автор** (год издания/эпоха)
@@ -1275,7 +1645,7 @@ export class CosmoChatModal {
 3. 🎯 **Кому особенно зайдёт:** (1-2 похожие книги или авторы)
 4. 🤖 **Лайфхак от Космо:** как лучше читать эту книгу (с чаем, в тишине, вечером).
 
-В конце добавь тёплый совет обратиться к библиотекарю на абонементе или у стойки выдачи — эти книги наверняка ждут читателя в библиотеке!`;
+В конце добавь вывод: «В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!»`;
 
                             this.messages.push({ role: 'user', content: finalPrompt });
                             await this.executeAiRequest({ maxTokens: 2500, temperature: 0.7 });
@@ -1415,18 +1785,25 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.25.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
-                    <div class="msg-author">Космо • SMM-гуру библиотек</div>
+                    <div class="msg-author">Космо • Библиотечный робот и ИИ-сомелье</div>
                     <div class="msg-body">
-                        <p>Привет, коллега! Я <strong>Космо</strong> 🤖📚 — твой космический напарник, библиотечный ИИ-ассистент и по совместительству величайший SMM-гуру галактики ВКонтакте!</p>
-                        <p>Чем могу помочь прямо сейчас?</p>
+                        <p>Привет! Я <strong>Космо</strong> 🤖📚 — библиотечный робот-помощник, книжный сомелье и ИИ-проводник Централизованной библиотечной системы города Владимира!</p>
+                        <p><strong>✨ ЧТО Я УМЕЮ И ЧЕМ МОГУ ПОМОЧЬ:</strong></p>
                         <ul class="cosmo-chat-ul">
-                            <li>✍️ <strong>Написать огненный пост</strong> для группы библиотеки (о книгах, событиях, клубах, акциях, с интерактивом и призывом к действию).</li>
-                            <li>📊 <strong>Проанализировать группы ВК</strong> и реальные показатели сканирования (без выдумок и галлюцинаций — только точные цифры!).</li>
-                            <li>📎 <strong>Оценить черновик или файл</strong> — прикрепи файл через кнопку со скрепкой внизу или перетащи сюда.</li>
-                            <li>🎯 <strong>Придумать викторину, опрос или рубрику</strong>, чтобы поднять охваты и вовлечённость читателей.</li>
+                            <li>📚 <strong>Подобрать книгу под настроение</strong>: уютная проза, захватывающий детектив, научная фантастика или золотая классика из фондов 18 библиотек Владимира.</li>
+                            <li>🏛 <strong>Подсказать адреса и телефоны библиотек</strong>: знаю контакты, адреса и график всех 18 филиалов сети ЦГБ Владимира.</li>
+                            <li>✍️ <strong>Написать отличный пост для ВК</strong>: о книгах, событиях, клубах, с интерактивом и оформлением.</li>
+                            <li>📊 <strong>Проанализировать группы ВКонтакте</strong>: сравнительный анализ показателей, вовлечённости (ER) и топовых постов.</li>
+                            <li>📎 <strong>Оценить черновик или файл</strong>: прикрепите текст, изображение или отчёт для анализа.</li>
+                        </ul>
+                        <p><strong>🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:</strong></p>
+                        <ul class="cosmo-chat-ul">
+                            <li>Используйте быстрые карточки пресетов ниже для мгновенного анализа;</li>
+                            <li>Форматируйте сообщения панелью инструментов (жирный, курсив, списки, код, превью);</li>
+                            <li>Или просто пишите мне любые вопросы своими словами, как живому библиотекарю!</li>
                         </ul>
                         <div class="welcome-presets-banner">
                             <div class="welcome-presets-title">
@@ -1442,7 +1819,7 @@ export class CosmoChatModal {
                                 <button type="button" class="welcome-preset-chip welcome-preset-all" data-chat-presets-toggle>✨ Все 10 пресетов →</button>
                             </div>
                         </div>
-                        <p style="margin-top: 10px;">Выбирай быструю тему из карточек выше или пиши свой вопрос прямо в чат! 🚀✨</p>
+                        <p style="margin-top: 10px;">Какую книгу подобрать для вас сегодня или о чём рассказать? ✨</p>
                     </div>
                 </div>
             </div>
@@ -1481,7 +1858,7 @@ export class CosmoChatModal {
             <div class="msg-content">
                 <div class="msg-author">Вы</div>
                 <div class="msg-body">
-                    ${escapeHtml(text).replace(/\n/g, '<br>')}
+                    ${parseCosmoMarkdown(text)}
                     ${fileSnippet}
                 </div>
             </div>
@@ -1517,24 +1894,25 @@ export class CosmoChatModal {
                 </div>
             `;
         } else {
-            // SMM-режим для библиотекарей
-            const isPostDraft = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 80;
-            if (isPostDraft) {
-                copyActionBtn = `
-                    <div class="msg-actions">
-                        <span class="post-metrics-badge"><span class="material-symbols-outlined">analytics</span> ${charCount} знаков • ${wordCount} слов</span>
-                        <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}" title="Скопировать текст поста">
-                            <span class="material-symbols-outlined">content_copy</span> Скопировать текст поста
-                        </button>
-                        <button type="button" class="cosmo-chat-action-btn" data-regenerate-response title="Сгенерировать другой вариант">
-                            <span class="material-symbols-outlined">refresh</span> Другой вариант
-                        </button>
-                        <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ">
-                            <span class="material-symbols-outlined">volume_up</span> Озвучить
-                        </button>
-                    </div>
-                `;
-            }
+            // SMM-режим для библиотекарей: кнопки видны всегда
+            const isLongPost = /#[а-яёa-z0-9_]+/i.test(markdownText) || markdownText.length > 120;
+            const metricsBadge = isLongPost
+                ? `<span class="post-metrics-badge"><span class="material-symbols-outlined">analytics</span> ${charCount} знаков • ${wordCount} слов</span>`
+                : '';
+            copyActionBtn = `
+                <div class="msg-actions">
+                    ${metricsBadge}
+                    <button type="button" class="cosmo-chat-action-btn" data-copy-post="${escapeHtml(markdownText)}" title="Скопировать ответ">
+                        <span class="material-symbols-outlined">content_copy</span> Скопировать
+                    </button>
+                    <button type="button" class="cosmo-chat-action-btn" data-regenerate-response title="Сгенерировать другой вариант">
+                        <span class="material-symbols-outlined">refresh</span> Другой вариант
+                    </button>
+                    <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ">
+                        <span class="material-symbols-outlined">volume_up</span> Озвучить
+                    </button>
+                </div>
+            `;
         }
 
         const authorLabel = this.isShelfMode ? 'Космо • Книжный робот' : 'Космо • SMM-гуру';
@@ -1647,7 +2025,9 @@ export class CosmoChatModal {
 1. СТРОГИЙ ЗАПРЕТ НА SMM И ПОСТЫ ДЛЯ СОЦСЕТЕЙ:
    Ты общаешься с ЖИВЫМ ЧИТАТЕЛЕМ В БИБЛИОТЕКЕ, а не с SMM-специалистом! Категорически запрещено генерировать посты для ВКонтакте, писать хэштеги (#книги, #чтение), добавлять призывы «ставьте лайки, делайте репосты и пишите в комментариях», рассчитывать знаки/слова и метрики постов.
 2. СТРОГИЙ ЗАПРЕТ НА ИНОАГЕНТОВ И ЭКСТРЕМИСТОВ (ЗАКОНОДАТЕЛЬСТВО РФ):
-   Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов Минюста РФ). Предлагай только проверенных авторов: русскую и мировую классику, советских классиков и современных авторов без статуса иноагента, чьи книги есть в фондах муниципальных библиотек.
+   Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую, В. Шендеровича, А. Невзорова, Т. Эйдельман, Е. Шульман, Л. Горалик, В. Полозкову, М. Шишкина и любых других лиц из реестров иноагентов Минюста РФ), А ТАКЖЕ ЛЮБЫЕ ИХ ПРОИЗВЕДЕНИЯ И ПЕРСОНАЖЕЙ (Эраст Фандорин, «Азазель», «Турецкий гамбит», «Метро 2033», «Метро 2034», «Текст», «Пост», «Казус Кукоцкого», «Вся кремлёвская рать» и др.). Предлагай только проверенных авторов: русскую и мировую классику, советских классиков и современных авторов без статуса иноагента, чьи книги есть в фондах муниципальных библиотек.
+3. РЕАЛЬНЫЙ ФОНД И ЗАПРЕТ ВЫМЫШЛЕННЫХ ДАННЫХ:
+   Никаких вымышленных отделов, номеров полок («Х.11»), порталов «Электронная библиотека Владимира», сайта vladimir-lib.ru или вымышленных библиотек им. Пушкина / им. Фадеева! В системе ЦГБ г. Владимира 18 библиотек (ЦГБ, ЦДБ и филиалы №1–№16, официальный сайт biblioteka33.ru). Книги берутся в наших библиотеках-филиалах по обычному бесплатному читательскому билету.
 
 ФОРМАТ РЕКОМЕНДАЦИЙ ДЛЯ ЧИТАТЕЛЯ:
 - Предложи 2–3 конкретные книги: **«Название книги»** — Автор.
@@ -1747,8 +2127,14 @@ ${topTagsLines}
 - ЛИТЕРАТУРНОЕ БОГАТСТВО: используй разнообразные синтаксические конструкции, точные эпитеты и выразительные глаголы. Избегай тавтологий, плеоназмов и речевых повторов.
 - ЖИВАЯ ИНТЕЛЛИГЕНТНОСТЬ: сочетай филологическую культуру речи, начитанность и тонкий добрый юмор. Никакого пошлого панибратства, но и никакого серого канцелярита («В стенах нашего учреждения прошло мероприятие...» — абсолютное табу!).
 
+СИСТЕМА БИБЛИОТЕК ЦГБ Г. ВЛАДИМИРА:
+- В централизованную библиотечную систему г. Владимира (ЦГБ) входит ровно 18 библиотек: «Центральная городская библиотека» (Суздальский пр-т, 2), «Центральная детская библиотека» (ул. Большая Московская, 31) и 16 номерных филиалов («Библиотека — филиал №1» ... «Библиотека — филиал №16»).
+- Никаких библиотек им. Пушкина, им. Фадеева или других вымышленных именных библиотек в сети ЦГБ г. Владимира НЕТ!
+- Официальный сайт библиотечной сети: https://biblioteka33.ru
+- КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать: «Она доступна как в печатном, так и в электронном формате», «через портал Электронная библиотека Владимира», «vladimir-lib.ru», выдумывать шифры полок («Х.11») или отделы. Доступ к книгам — бесплатная выдача в наших библиотеках-филиалах по читательскому билету! Завершай литературные рекомендации фразой: «В наших библиотеках-филиалах вы можете взять эту книгу бесплатно по читательскому билету — ждём вас за чтением!».
+
 СТРОГИЙ ЗАПРЕТ НА ИНОАГЕНТОВ (ЗАКОНОДАТЕЛЬСТВО РФ):
-- Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую и любых других лиц из реестров иноагентов Минюста РФ). В любых литературных подборках и рекомендациях используй исключительно проверенных авторов без статуса иноагента: русскую и мировую классику, выдающихся советских писателей и признанных современных авторов.
+- Категорически запрещено рекомендовать, упоминать или цитировать авторов, признанных в РФ иностранными агентами, экстремистами или террористами (включая Б. Акунина / Г. Чхартишвили, Д. Глуховского, Д. Быкова, М. Зыгаря, Л. Улицкую, В. Шендеровича, А. Невзорова, Т. Эйдельман, Е. Шульман, Л. Горалик, В. Полозкову, М. Шишкина и любых других лиц из реестров иноагентов Минюста РФ), А ТАКЖЕ ЛЮБЫЕ ИХ ПРОИЗВЕДЕНИЯ И ПЕРСОНАЖЕЙ (Эраст Фандорин, «Азазель», «Турецкий гамбит», «Метро 2033», «Метро 2034», «Текст», «Пост», «Казус Кукоцкого», «Вся кремлёвская рать» и др.). В любых литературных подборках и рекомендациях используй исключительно проверенных авторов без статуса иноагента: русскую и мировую классику, выдающихся советских писателей и признанных современных авторов.
 
 КОНТЕКСТ ДАННЫХ:
 ${statsContext}

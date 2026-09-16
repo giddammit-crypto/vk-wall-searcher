@@ -3136,6 +3136,179 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Markdown: спойлеры, зачёркнутый текст, клавиши, списки задач, коллауты/alert */
+.cosmo-chat-spoiler {
+    background: rgba(30, 41, 59, 0.95);
+    color: transparent;
+    border-radius: 4px;
+    padding: 1px 6px;
+    cursor: pointer;
+    user-select: none;
+    filter: blur(5px);
+    transition: filter 0.2s ease, color 0.2s ease, background 0.2s ease;
+    display: inline-block;
+}
+.cosmo-chat-spoiler:hover,
+.cosmo-chat-spoiler.revealed,
+.cosmo-chat-spoiler:active {
+    filter: none;
+    color: #e2e8f0;
+    background: rgba(51, 65, 85, 0.7);
+    user-select: text;
+}
+
+.cosmo-chat-del {
+    text-decoration: line-through;
+    color: #94a3b8;
+    opacity: 0.85;
+}
+
+.cosmo-chat-u {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cosmo-chat-kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 0.78em;
+    font-family: inherit;
+    color: #e2e8f0;
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Списки задач / чеклисты */
+.cosmo-task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    list-style: none !important;
+    margin: 4px 0;
+}
+.cosmo-task-check {
+    margin-top: 3px;
+    accent-color: #0284c7;
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+}
+.cosmo-task-label {
+    flex: 1 1 auto;
+}
+.cosmo-task-item.is-checked .cosmo-task-label {
+    text-decoration: line-through;
+    color: #64748b;
+}
+
+/* Заголовок блока с кодом */
+.cosmo-chat-codeblock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: #0b1329;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+}
+.cosmo-code-lang {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: 0.06em;
+}
+.cosmo-chat-codeblock-header .cosmo-chat-copy-code-btn {
+    position: static;
+    margin-left: auto;
+}
+.cosmo-chat-codeblock-wrap .cosmo-chat-codeblock {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: none;
+}
+
+/* Коллауты / Алерты в стиле GitHub ([!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]) */
+.cosmo-chat-alert {
+    margin: 12px 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 4px solid #38bdf8;
+    background: rgba(2, 132, 199, 0.1);
+}
+.cosmo-alert-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.cosmo-alert-header .material-symbols-outlined {
+    font-size: 18px;
+}
+.cosmo-alert-body {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #e2e8f0;
+}
+
+.cosmo-chat-alert-note {
+    border-left-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+}
+.cosmo-chat-alert-note .cosmo-alert-header {
+    color: #38bdf8;
+}
+
+.cosmo-chat-alert-tip {
+    border-left-color: #34d399;
+    background: rgba(52, 211, 153, 0.08);
+}
+.cosmo-chat-alert-tip .cosmo-alert-header {
+    color: #34d399;
+}
+
+.cosmo-chat-alert-important {
+    border-left-color: #c084fc;
+    background: rgba(192, 132, 252, 0.08);
+}
+.cosmo-chat-alert-important .cosmo-alert-header {
+    color: #c084fc;
+}
+
+.cosmo-chat-alert-warning {
+    border-left-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+}
+.cosmo-chat-alert-warning .cosmo-alert-header {
+    color: #fbbf24;
+}
+
+.cosmo-chat-alert-caution {
+    border-left-color: #f87171;
+    background: rgba(248, 113, 113, 0.08);
+}
+.cosmo-chat-alert-caution .cosmo-alert-header {
+    color: #f87171;
+}
+
+/* Выравнивание таблиц Markdown */
+.cosmo-chat-table th.align-center,
+.cosmo-chat-table td.align-center {
+    text-align: center;
+}
+.cosmo-chat-table th.align-right,
+.cosmo-chat-table td.align-right {
+    text-align: right;
+}
+.cosmo-chat-table th.align-left,
+.cosmo-chat-table td.align-left {
+    text-align: left;
+}
+
 /* Карточка прикреплённого файла внутри сообщения пользователя */
 .msg-attached-card {
     display: flex;
@@ -3507,6 +3680,95 @@
     font-size: 16px;
 }
 
+/* Панель инструментов Markdown форматирования */
+.cosmo-chat-format-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 6px 14px;
+    background: rgba(10, 17, 38, 0.95);
+    border-top: 1px solid rgba(0, 240, 255, 0.14);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.08);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.format-bar-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.format-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.format-btn:hover {
+    color: #38bdf8;
+    background: rgba(0, 240, 255, 0.12);
+    border-color: rgba(0, 240, 255, 0.25);
+}
+.format-btn:active {
+    background: rgba(0, 240, 255, 0.22);
+    transform: scale(0.96);
+}
+.format-btn .material-symbols-outlined {
+    font-size: 17px;
+}
+.format-icon-text {
+    font-weight: 800;
+    font-size: 0.85rem;
+}
+
+.format-sep {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: rgba(148, 163, 184, 0.25);
+    margin: 0 4px;
+}
+
+.format-bar-spacer {
+    flex: 1 1 auto;
+}
+
+.format-btn-preview {
+    gap: 5px;
+    padding: 0 10px;
+    font-weight: 700;
+    font-size: 0.76rem;
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    background: rgba(0, 240, 255, 0.08);
+    color: #38bdf8;
+}
+.format-btn-preview .preview-icon {
+    font-size: 16px;
+}
+.format-btn-preview:hover {
+    background: rgba(0, 240, 255, 0.18);
+    color: #ffffff;
+    border-color: #00f0ff;
+}
+.format-btn-preview.is-active {
+    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+    color: #020617;
+    border-color: #38bdf8;
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+}
+
 /* Нижняя панель ввода */
 .cosmo-chat-footer {
     display: flex;
@@ -3573,6 +3835,27 @@
 .cosmo-chat-input:focus {
     border-color: #00f0ff;
     box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+}
+
+/* Контейнер интерактивного предпросмотра Markdown */
+.cosmo-chat-preview {
+    width: 100%;
+    min-height: 80px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    background: rgba(15, 23, 42, 0.95);
+    color: #f8fafc;
+    font-family: inherit;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    box-sizing: border-box;
+}
+.cosmo-chat-preview .preview-empty {
+    color: #94a3b8;
+    font-style: italic;
 }
 
 .cosmo-chat-send-btn {
@@ -3712,6 +3995,107 @@
 [data-theme="light"] .cosmo-chat-link {
     color: #0284c7;
 }
+[data-theme="light"] .cosmo-chat-codeblock-header {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+[data-theme="light"] .cosmo-code-lang {
+    color: #0284c7;
+}
+[data-theme="light"] .cosmo-chat-spoiler {
+    background: #cbd5e1;
+}
+[data-theme="light"] .cosmo-chat-spoiler:hover,
+[data-theme="light"] .cosmo-chat-spoiler.revealed {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+[data-theme="light"] .cosmo-chat-del {
+    color: #94a3b8;
+}
+[data-theme="light"] .cosmo-chat-kbd {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+[data-theme="light"] .cosmo-task-item.is-checked .cosmo-task-label {
+    color: #94a3b8;
+}
+[data-theme="light"] .cosmo-chat-alert-note {
+    background: #f0f9ff;
+    border-left-color: #0284c7;
+}
+[data-theme="light"] .cosmo-chat-alert-note .cosmo-alert-header {
+    color: #0284c7;
+}
+[data-theme="light"] .cosmo-chat-alert-tip {
+    background: #ecfdf5;
+    border-left-color: #059669;
+}
+[data-theme="light"] .cosmo-chat-alert-tip .cosmo-alert-header {
+    color: #059669;
+}
+[data-theme="light"] .cosmo-chat-alert-important {
+    background: #faf5ff;
+    border-left-color: #9333ea;
+}
+[data-theme="light"] .cosmo-chat-alert-important .cosmo-alert-header {
+    color: #9333ea;
+}
+[data-theme="light"] .cosmo-chat-alert-warning {
+    background: #fffbeb;
+    border-left-color: #d97706;
+}
+[data-theme="light"] .cosmo-chat-alert-warning .cosmo-alert-header {
+    color: #d97706;
+}
+[data-theme="light"] .cosmo-chat-alert-caution {
+    background: #fef2f2;
+    border-left-color: #dc2626;
+}
+[data-theme="light"] .cosmo-chat-alert-caution .cosmo-alert-header {
+    color: #dc2626;
+}
+[data-theme="light"] .cosmo-alert-body {
+    color: #1e293b;
+}
+
+/* Светлая тема: Панель инструментов форматирования и превью */
+[data-theme="light"] .cosmo-chat-format-bar {
+    background: #f8fafc;
+    border-top-color: #e2e8f0;
+    border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .format-btn {
+    color: #64748b;
+}
+[data-theme="light"] .format-btn:hover {
+    background: #e2e8f0;
+    color: #0284c7;
+    border-color: #cbd5e1;
+}
+[data-theme="light"] .format-sep {
+    background: #cbd5e1;
+}
+[data-theme="light"] .format-btn-preview {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+    color: #0284c7;
+}
+[data-theme="light"] .format-btn-preview.is-active {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.35);
+}
+[data-theme="light"] .cosmo-chat-preview {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.35);
+    color: #0f172a;
+}
+[data-theme="light"] .cosmo-chat-preview .preview-empty {
+    color: #94a3b8;
+}
+
 [data-theme="light"] .cosmo-chat-footer {
     background: #f1f5f9;
     border-top-color: rgba(2, 132, 199, 0.2);
@@ -5027,15 +5411,33 @@ html.reader-shelf-standalone [data-regenerate-response],
 .cosmo-chat-dialog.reader-mode .cosmo-chat-attachment-bar,
 .cosmo-chat-dialog.reader-mode .post-metrics-badge,
 .cosmo-chat-dialog.reader-mode [data-copy-post],
-.cosmo-chat-dialog.reader-mode [data-regenerate-response] {
+.cosmo-chat-dialog.reader-mode [data-regenerate-response],
+html.reader-shelf-standalone .cosmo-chat-format-bar,
+.cosmo-chat-dialog.reader-mode .cosmo-chat-format-bar {
     display: none !important;
     visibility: hidden !important;
 }
 
 @media (max-width: 640px) {
+    .cosmo-chat-format-bar {
+        padding: 4px 8px !important;
+        gap: 2px !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .format-btn {
+        min-width: 26px !important;
+        height: 26px !important;
+        padding: 0 4px !important;
+    }
+    .format-btn-preview .preview-label {
+        display: none !important;
+    }
     .shelf-reader-actions .cosmo-chat-action-btn {
         width: auto !important;
         flex: 1 1 auto !important;
     }
 }
+
 
