@@ -682,8 +682,8 @@ if ($isChat && !$isBotInvited) {
     // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
     $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
 
-    // Проверяем команды квиза, опроса, счета, хохмы, статьи или ввод цифры ответа
-    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата|статья|статью|article)\b#ui', $userMsg);
+    // Проверяем команды квиза, опроса, счета, хохмы, статьи, стикеров или ввод цифры ответа
+    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата|статья|статью|article|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
     $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
         file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
@@ -3217,10 +3217,119 @@ $defaultMascotStickers = [
     'tired'    => 'photo-241534292_457239034',
     'yawn'     => 'photo-241534292_457239035',
     'idle'     => 'photo-241534292_457239036',
-    'angry'    => 'photo-241534292_457239039',
     'sleep'    => 'photo-241534292_457239037',
-    'thinking' => 'photo-241534292_457239038'
+    'thinking' => 'photo-241534292_457239038',
+    'angry'    => 'photo-241534292_457239039',
+    'cool'     => 'photo-241534292_457239040',
+    'idea'     => 'photo-241534292_457239041',
+    'laugh'    => 'photo-241534292_457239042',
+    'party'    => 'photo-241534292_457239043',
+    'read'     => 'photo-241534292_457239044',
+    'shock'    => 'photo-241534292_457239045',
+    'waving'   => 'photo-241534292_457239046',
+    'wink'     => 'photo-241534292_457239047',
+    'sad'      => 'photo-241534292_457239048',
+    'love'     => 'photo-241534292_457239049'
 ];
+
+/**
+ * Автоматическая синхронизация и загрузка мини-стикеров робота Космо в сообщество ВКонтакте
+ */
+function vk_bot_sync_mascot_stickers($communityToken, $cacheDir, $mascotVkDir = '')
+{
+    global $defaultMascotStickers;
+    if ($mascotVkDir === '') {
+        $mascotVkDir = dirname(__DIR__) . '/assets/images/mascot_vk';
+    }
+    $stickersCacheFile = $cacheDir . '/vk_mascot_stickers.json';
+    $stickersMap = [];
+    if (file_exists($stickersCacheFile) && is_readable($stickersCacheFile)) {
+        $existing = json_decode(@file_get_contents($stickersCacheFile), true);
+        if (is_array($existing)) {
+            $stickersMap = $existing;
+        }
+    }
+    if (is_array($defaultMascotStickers)) {
+        foreach ($defaultMascotStickers as $k => $v) {
+            if (empty($stickersMap[$k])) {
+                $stickersMap[$k] = $v;
+            }
+        }
+    }
+
+    if (!is_dir($mascotVkDir) || empty($communityToken)) {
+        return ['ok' => true, 'uploaded' => 0, 'stickers' => $stickersMap];
+    }
+
+    $files = glob($mascotVkDir . '/robot_*.png');
+    if (!$files) {
+        return ['ok' => true, 'uploaded' => 0, 'stickers' => $stickersMap];
+    }
+
+    $uploadedCount = 0;
+    foreach ($files as $file) {
+        $baseName = basename($file, '.png');
+        $emo = preg_replace('/^robot_/', '', $baseName);
+
+        if (!empty($stickersMap[$emo]) && strpos($stickersMap[$emo], 'photo-241534292_') === 0) {
+            continue;
+        }
+
+        // 1. Получаем upload_url
+        $srvRaw = @file_get_contents("https://api.vk.com/method/photos.getMessagesUploadServer?v=5.131&access_token=" . urlencode($communityToken));
+        $srvJson = json_decode((string)$srvRaw, true);
+        $uploadUrl = $srvJson['response']['upload_url'] ?? '';
+        if (!$uploadUrl) continue;
+
+        // 2. Загружаем файл
+        $cFile = new CURLFile(realpath($file), 'image/png', basename($file));
+        $ch = curl_init($uploadUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => ['photo' => $cFile],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 25
+        ]);
+        $upRaw = curl_exec($ch);
+        curl_close($ch);
+        $upJson = json_decode((string)$upRaw, true);
+        if (empty($upJson['photo']) || empty($upJson['server']) || empty($upJson['hash'])) continue;
+
+        // 3. Сохраняем фото в сообщество
+        $saveUrl = "https://api.vk.com/method/photos.saveMessagesPhoto";
+        $saveData = [
+            'photo'        => $upJson['photo'],
+            'server'       => $upJson['server'],
+            'hash'         => $upJson['hash'],
+            'v'            => '5.131',
+            'access_token' => $communityToken
+        ];
+        $ch = curl_init($saveUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => http_build_query($saveData),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 20
+        ]);
+        $saveRaw = curl_exec($ch);
+        curl_close($ch);
+        $saveJson = json_decode((string)$saveRaw, true);
+        $savedPhoto = $saveJson['response'][0] ?? null;
+        if ($savedPhoto && isset($savedPhoto['owner_id'], $savedPhoto['id'])) {
+            $attId = 'photo' . $savedPhoto['owner_id'] . '_' . $savedPhoto['id'];
+            $stickersMap[$emo] = $attId;
+            $uploadedCount++;
+            @file_put_contents($stickersCacheFile, json_encode($stickersMap, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+        usleep(250000);
+    }
+
+    if ($uploadedCount > 0) {
+        @file_put_contents($stickersCacheFile, json_encode($stickersMap, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    return ['ok' => true, 'uploaded' => $uploadedCount, 'stickers' => $stickersMap];
+}
 
 $stickersFile = $cacheDir . '/vk_mascot_stickers.json';
 $mascotStickers = $defaultMascotStickers;
@@ -3591,6 +3700,16 @@ $persistentKeyboard = [
                 ],
                 'color' => 'primary'
             ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🖼️ Стикеры Космо'
+                ],
+                'color' => 'secondary'
+            ]
         ]
     ]
 ];
@@ -3740,6 +3859,16 @@ $inlineChatKeyboard = [
                     'label'   => '📄 !статья'
                 ],
                 'color' => 'primary'
+            ]
+        ],
+        [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🖼️ !стикеры'
+                ],
+                'color' => 'secondary'
             ]
         ]
     ]
@@ -4484,9 +4613,12 @@ if ($isWelcomeQuery) {
            . "• 📰 Покажу «Новости филиалов» — свежие посты и анонсы библиотек Владимира за сегодня;\n"
            . "• 🏛 Подскажу адреса, телефоны и график работы всех 18 филиалов библиотек города;\n"
            . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
+           . "• 🖼️ Стикеры Космо — 17 живых эмоций робота для чатов («!стикеры», «!стикер читаю»);\n"
+           . "• 😄 Литературная хохма — смешные книжные шутки и цитаты («!хохма»);\n"
+           . "• 📄 Веб-статьи — создаю авторские лонгриды на сайте («!статья»);\n"
            . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
-           . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «📖 Книжный клуб», «📰 Новости филиалов», «🏛 Где библиотеки?», «⭐ Книга дня», «🔄 Новый диалог»);\n"
+           . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «🎯 Квиз», «📊 Опрос», «🖼️ Стикеры Космо», «⭐ Книга дня»);\n"
            . "• Или просто напишите мне или наговорите голосом: «Посоветуй уютную книгу на вечер», «Книга недели» или «Где библиотека на Егорова?».\n\n"
            . "Какую книгу вам подобрать сегодня? Выберите настроение кнопками ниже или задайте свой вопрос! ✨";
 
@@ -4507,7 +4639,7 @@ if ($isWelcomeQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'],
+        'attachment'       => $mascotStickers['waving'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -4604,7 +4736,7 @@ if ($isBookOfDayQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'] ?? null,
+        'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -4637,7 +4769,7 @@ if ($isBookClubTopicQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => $mascotStickers['thinking'] ?? null,
+        'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['thinking'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -4812,7 +4944,7 @@ if ($isQuizAnswerQuery && $quizAnswerOpt !== null) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => !empty($ansRes['is_correct']) ? ($mascotStickers['smile'] ?? null) : ($mascotStickers['thinking'] ?? null),
+        'attachment'       => !empty($ansRes['is_correct']) ? ($mascotStickers['party'] ?? ($mascotStickers['smile'] ?? null)) : ($mascotStickers['thinking'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($replyKb, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -5140,7 +5272,7 @@ if ($isHohmaQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'] ?? null,
+        'attachment'       => $mascotStickers['laugh'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($hohmaKb, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
@@ -5373,10 +5505,303 @@ if ($isArticleQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
-        'attachment'       => $mascotStickers['smile'] ?? null,
+        'attachment'       => $mascotStickers['idea'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => json_encode($articleKb, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 0
+    ], $communityToken);
+    exit;
+}
+
+// =============================================================================
+// Сценарий 2m: Фирменные стикеры робота Космо в сообществе (витрина, каталог эмоций, автозагрузка)
+// =============================================================================
+$isStickersQuery = false;
+$isStickersSyncQuery = false;
+$specificStickerEmo = '';
+
+if ($cmd === 'stickers' || $cmd === 'stickers_show') {
+    $isStickersQuery = true;
+} elseif ($cmd === 'stickers_sync') {
+    $isStickersSyncQuery = true;
+} elseif ($cmd === 'sticker_send' && !empty($payloadData['emo'])) {
+    $specificStickerEmo = strtolower(trim((string)$payloadData['emo']));
+} elseif (preg_match('#^(?:[!/](?:стикеры_синк|синк_стикеры|sync_stickers))\b#ui', $cleanMsgForCmd)) {
+    $isStickersSyncQuery = true;
+} elseif (preg_match('#^(?:[!/](?:стикер|sticker))\s+([a-zа-яё0-9_]+)$#ui', $cleanMsgForCmd, $sm)) {
+    $specificStickerEmo = strtolower(trim($sm[1]));
+} elseif (preg_match('#^(?:[!/](?:стикеры|стикерпак|stickers|стикер))\b#ui', $cleanMsgForCmd)) {
+    $isStickersQuery = true;
+} elseif (preg_match('#^(?:стикеры|стикерпак|стикеры сообщества|стикеры космо|покажи стикеры|набор стикеров|стикер)[?!.]*$#ui', $cleanMsgForCmd)) {
+    $isStickersQuery = true;
+}
+
+if ($isStickersSyncQuery) {
+    $syncRes = vk_bot_sync_mascot_stickers($communityToken, $cacheDir);
+    $totalCount = count($syncRes['stickers'] ?? []);
+    $newUploaded = (int)($syncRes['uploaded'] ?? 0);
+
+    $reply = "🔄 Автоматическая синхронизация стикеров сообщества выполнена! 🤖✨\n\n"
+           . "📂 Каталог: assets/images/mascot_vk/ (SSAA Lanczos 200×200 RGBA)\n"
+           . "✨ Новых загружено в сообщество: {$newUploaded}\n"
+           . "🖼️ Всего стикеров сообщества онлайн: {$totalCount} из 17 каноничных эмоций!\n\n"
+           . "Все идентификаторы attachment сохранены и готовы к мгновенной отправке в беседы и диалоги.";
+
+    $syncKb = [
+        'inline'  => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🖼️ Витрина стикеров'
+                    ],
+                    'color' => 'primary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'party'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎉 Салют!'
+                    ],
+                    'color' => 'positive'
+                ]
+            ]
+        ]
+    ];
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['idea'] ?? ($mascotStickers['smile'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($syncKb, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+if ($specificStickerEmo !== '') {
+    $emoAliasMap = [
+        'смех' => 'laugh', 'хохма' => 'laugh', 'хаха' => 'laugh', 'laugh' => 'laugh',
+        'читаю' => 'read', 'книга' => 'read', 'книги' => 'read', 'чтение' => 'read', 'read' => 'read',
+        'идея' => 'idea', 'лампа' => 'idea', 'эврика' => 'idea', 'мысль' => 'idea', 'idea' => 'idea',
+        'любовь' => 'love', 'сердце' => 'love', 'сердечко' => 'love', 'сердечки' => 'love', 'love' => 'love',
+        'крутой' => 'cool', 'очки' => 'cool', 'стиль' => 'cool', 'cool' => 'cool',
+        'праздник' => 'party', 'вечеринка' => 'party', 'салют' => 'party', 'конфетти' => 'party', 'party' => 'party',
+        'привет' => 'waving', 'машет' => 'waving', 'лапка' => 'waving', 'хай' => 'waving', 'waving' => 'waving',
+        'подмигивание' => 'wink', 'мигает' => 'wink', 'хитрый' => 'wink', 'wink' => 'wink',
+        'улыбка' => 'smile', 'радость' => 'smile', 'класс' => 'smile', 'smile' => 'smile',
+        'думает' => 'thinking', 'мысли' => 'thinking', 'детектив' => 'thinking', 'thinking' => 'thinking',
+        'шок' => 'shock', 'удивление' => 'shock', 'молния' => 'shock', 'shock' => 'shock',
+        'грусть' => 'sad', 'слеза' => 'sad', 'плачет' => 'sad', 'тоска' => 'sad', 'sad' => 'sad',
+        'устал' => 'tired', 'усталость' => 'tired', 'вымотан' => 'tired', 'tired' => 'tired',
+        'зевает' => 'yawn', 'зевок' => 'yawn', 'yawn' => 'yawn',
+        'сон' => 'sleep', 'спит' => 'sleep', 'баю' => 'sleep', 'ночь' => 'sleep', 'sleep' => 'sleep',
+        'злой' => 'angry', 'негодование' => 'angry', 'стоп' => 'angry', 'angry' => 'angry',
+        'робот' => 'idle', 'спокоен' => 'idle', 'онлайн' => 'idle', 'idle' => 'idle'
+    ];
+
+    if ($specificStickerEmo === 'random' || $specificStickerEmo === 'рандом' || $specificStickerEmo === 'случайный') {
+        $keys = array_keys($mascotStickers);
+        $targetEmo = $keys[array_rand($keys)];
+    } else {
+        $targetEmo = $emoAliasMap[$specificStickerEmo] ?? $specificStickerEmo;
+    }
+
+    if (!isset($mascotStickers[$targetEmo])) {
+        $targetEmo = 'smile';
+    }
+
+    $emoDescriptions = [
+        'laugh'    => '😄 Космо заливисто смеётся над книжной хохмой!',
+        'read'     => '📖 Космо с упоением читает книгу в тишине читального зала.',
+        'idea'     => '💡 Эврика! Книжное озарение посетило нашего робота!',
+        'love'     => '❤️ Космо дарит лучи добра и любви к книгам и читателям!',
+        'cool'     => '😎 Литературный стиль в тёмных очках — Космо знает толк в классике!',
+        'party'    => '🎉 Ура! Праздник книги, конфетти и радость победы!',
+        'waving'   => '👋 Привет-привет! Космо радостно приветствует вас лапкой!',
+        'wink'     => '😉 Озорное книжное подмигивание: «Готовы к новой главе?»',
+        'smile'    => '👍 Робот Космо одобряет ваш литературный вкус!',
+        'thinking' => '🤔 Космо погрузился в глубокие раздумья над загадкой сюжета...',
+        'shock'    => '⚡ Вот это неожиданный сюжетный твист! Космо поражён!',
+        'sad'      => '😢 Драматичный финал повести растрогал электронное сердце...',
+        'tired'    => '🥱 Тяжёлая смена среди тысяч фолиантов... Космо немного устал.',
+        'yawn'     => '😴 Космо сладко зевает: «Кажется, пора закрывать страницу...»',
+        'sleep'    => '💤 Космо сладко спит. Спокойной ночи и сказочных снов!',
+        'angry'    => '🚫 Стоп! Робот Космо строго стоит на страже закона и библиотечного кодекса!',
+        'idle'     => '🤖 Робот-библиотекарь Космо на связи и готов помочь!'
+    ];
+
+    $caption = $emoDescriptions[$targetEmo] ?? "🤖 Стикер Космо: {$targetEmo}!";
+
+    $singleKb = [
+        'inline'  => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'random'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎲 Ещё стикер'
+                    ],
+                    'color' => 'primary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'stickers'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🖼️ Все 17 стикеров'
+                    ],
+                    'color' => 'secondary'
+                ]
+            ]
+        ]
+    ];
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $caption,
+        'attachment'       => $mascotStickers[$targetEmo] ?? $mascotStickers['smile'],
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($singleKb, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
+if ($isStickersQuery) {
+    $reply = "🖼️ Официальная коллекция стикеров робота Космо сообщества! 🤖✨\n\n"
+           . "Все 17 живых эмоций отрисованы в каноничном стиле и синхронизированы с сообществом (200×200 RGBA):\n\n"
+           . "1. 😄 !стикер laugh (хохма, смех)\n"
+           . "2. 📖 !стикер read (чтение, книга)\n"
+           . "3. 💡 !стикер idea (озарение, эврика)\n"
+           . "4. ❤️ !стикер love (любовь, сердечко)\n"
+           . "5. 😎 !стикер cool (крутой, стиль)\n"
+           . "6. 🎉 !стикер party (праздник, победа)\n"
+           . "7. 👋 !стикер waving (привет, лапка)\n"
+           . "8. 😉 !стикер wink (подмигивание)\n"
+           . "9. 👍 !стикер smile (радость, улыбка)\n"
+           . "10. 🤔 !стикер thinking (размышления)\n"
+           . "11. ⚡ !стикер shock (удивление, шок)\n"
+           . "12. 😢 !стикер sad (грусть, слезинка)\n"
+           . "13. 🥱 !стикер tired (усталость)\n"
+           . "14. 😴 !стикер yawn (зевок)\n"
+           . "15. 💤 !стикер sleep (сон, ночь)\n"
+           . "16. 🚫 !стикер angry (строгость, стоп)\n"
+           . "17. 🤖 !стикер idle (спокойствие, онлайн)\n\n"
+           . "💡 Чтобы отправить стикер, нажмите кнопку ниже или введите команду, например: «!стикер read», «!стикер laugh» или «!стикер party»!";
+
+    $stickersShowKb = [
+        'inline'  => true,
+        'buttons' => [
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'laugh'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '😄 Хохма'
+                    ],
+                    'color' => 'positive'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'read'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '📖 Читаю'
+                    ],
+                    'color' => 'primary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'idea'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '💡 Идея'
+                    ],
+                    'color' => 'secondary'
+                ]
+            ],
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'love'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '❤️ Любовь'
+                    ],
+                    'color' => 'negative'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'cool'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '😎 Стиль'
+                    ],
+                    'color' => 'secondary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'party'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎉 Праздник'
+                    ],
+                    'color' => 'primary'
+                ]
+            ],
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'waving'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '👋 Привет'
+                    ],
+                    'color' => 'secondary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'wink'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '😉 Подмигнуть'
+                    ],
+                    'color' => 'secondary'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'sleep'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '💤 Сон'
+                    ],
+                    'color' => 'secondary'
+                ]
+            ],
+            [
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'random'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🎲 Случайный стикер'
+                    ],
+                    'color' => 'positive'
+                ],
+                [
+                    'action' => [
+                        'type'    => 'text',
+                        'payload' => json_encode(['cmd' => 'stickers_sync'], JSON_UNESCAPED_UNICODE),
+                        'label'   => '🔄 Синхронизация'
+                    ],
+                    'color' => 'secondary'
+                ]
+            ]
+        ]
+    ];
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['cool'] ?? ($mascotStickers['smile'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => json_encode($stickersShowKb, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
     ], $communityToken);
     exit;
 }
@@ -5623,14 +6048,24 @@ $systemPrompt = <<<SYS
    - Филиал №15: пос. Заклязьменский, ул. Центральная, 11 «А» (тел. 42-53-96)
    - Филиал №16: мкр. Коммунар, ул. Песочная, 15, кв. 21 (тел. 42-53-95)
 
-7. ФИРМЕННЫЕ СТИКЕРЫ-ЭМОЦИИ РОБОТА КОСМО (наши иллюстрации):
+7. ФИРМЕННЫЕ СТИКЕРЫ-ЭМОЦИИ РОБОТА КОСМО (наши иллюстрации сообщества):
    Ты можешь прикреплять к сообщению свою фирменную иллюстрацию! Для этого добавь в начале или в самом конце ответа тег эмоции:
    - [emotion:smile] — радость, тёплое приветствие, отличная рекомендация (робот показывает палец вверх 👍);
-   - [emotion:thinking] — загадка, детектив, глубокий анализ сюжета, сложные размышления;
-   - [emotion:sleep] — уютное вечернее чтение, книги перед сном, согревающие душевные истории;
-   - [emotion:tired] или [emotion:yawn] — лёгкая книжная усталость, неспешный медленный ритм;
-   - [emotion:angry] — строгое вежливое электронное негодование (если спросили про авторов-иноагентов);
-   - [emotion:idle] — спокойный робот-проводник, общая справка.
+   - [emotion:read] — увлечённое чтение открытой книги, литературный совет, цитирование фолиантов 📖;
+   - [emotion:idea] — озарение, эврика, светящаяся лампочка, вдохновляющая мысль 💡;
+   - [emotion:laugh] — заливистый смех, литературная хохма, весёлая книга, юмор 😄;
+   - [emotion:thinking] — загадка, детектив, глубокий анализ сюжета, сложные размышления 🤔;
+   - [emotion:love] — сердечки, любовь к чтению, читателям, библиотекам и классикам ❤️;
+   - [emotion:cool] — стиль, тёмные очки, уверенность, крутая подборка новинок 😎;
+   - [emotion:party] — праздник, конфетти, победа в квизе, радостное торжество 🎉;
+   - [emotion:waving] — приветствие, машет лапкой читателю, радушная встреча 👋;
+   - [emotion:wink] — озорное подмигивание, книжная хитринка, дружеский жест 😉;
+   - [emotion:shock] — шок от неожиданного сюжетного поворота, удивление ⚡;
+   - [emotion:sad] — грусть, сопереживание драматическому финалу или потерянной книге 😢;
+   - [emotion:tired] или [emotion:yawn] — лёгкая книжная усталость, неспешный медленный ритм, зевок 🥱;
+   - [emotion:sleep] — уютное вечернее чтение, книги перед сном, согревающие душевные истории 💤;
+   - [emotion:angry] — строгое вежливое электронное негодование (если спросили про авторов-иноагентов) 🚫;
+   - [emotion:idle] — спокойный робот-проводник, справочная информация 🤖.
 SYS;
 
 // Собираем сообщения для LLM (последние реплики диалога)
@@ -5722,7 +6157,7 @@ if ($fh) {
 // 9. Отправка ответа в диалог ВКонтакте со стикером-эмоцией Космо
 // -----------------------------------------------------------------------------
 $chosenEmotion = 'smile';
-if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle)\]/i', $aiResponseText, $m)) {
+if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle|laugh|read|idea|love|cool|party|waving|wink|shock|sad)\]/i', $aiResponseText, $m)) {
     $rawEmo = strtolower($m[1]);
     if ($rawEmo === 'cozy') $rawEmo = 'sleep';
     $chosenEmotion = $rawEmo;
@@ -5733,14 +6168,26 @@ if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle)\]/i
         $chosenEmotion = 'sleep';
     } elseif ($mood === 'detective' || $mood === 'scifi') {
         $chosenEmotion = 'thinking';
-    } elseif ($mood === 'action' || $mood === 'classic') {
-        $chosenEmotion = 'smile';
+    } elseif ($mood === 'action') {
+        $chosenEmotion = 'cool';
+    } elseif ($mood === 'classic') {
+        $chosenEmotion = 'read';
     } elseif ($cmd === 'random') {
-        $chosenEmotion = 'thinking';
+        $chosenEmotion = 'idea';
     } elseif (preg_match('/(спокойной ночи|на ночь|засыпа|сон|уютн)/ui', $userMsg . ' ' . $aiResponseText)) {
         $chosenEmotion = 'sleep';
     } elseif (preg_match('/(загад|тайн|почему|сложн|подума|философ|расследован)/ui', $userMsg . ' ' . $aiResponseText)) {
         $chosenEmotion = 'thinking';
+    } elseif (preg_match('/(смешн|анекдот|хохм|юмор|хаха|шутк)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'laugh';
+    } elseif (preg_match('/(любл|обожа|сердц|восхитит|прекрасн)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'love';
+    } elseif (preg_match('/(привет|здравствуй|добрый|хэй|хай)/ui', $userMsg)) {
+        $chosenEmotion = 'waving';
+    } elseif (preg_match('/(эврик|иде[яе]|придум|мысль|вдохновен)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'idea';
+    } elseif (preg_match('/(книг|чита|роман|повест|автор|библио)/ui', $userMsg . ' ' . $aiResponseText)) {
+        $chosenEmotion = 'read';
     } elseif (preg_match('/(устал|зева|вымотан|тяжел)/ui', $userMsg . ' ' . $aiResponseText)) {
         $chosenEmotion = 'tired';
     } elseif (preg_match('/(иноагент|запрещ|акунин|быков|глуховск)/ui', $userMsg)) {
@@ -5751,7 +6198,7 @@ if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle)\]/i
 }
 // Отправляем фото-вложение маскота только если пользователь явно попросил фото/стикер или спросил внешность,
 // чтобы не загромождать диалог и беседу гигантскими полноэкранными картинками
-$shouldAttachPhoto = !$isChat && preg_match('/(как ты выглядишь|покажись|твое фото|твоё фото|аватар|стикер|картинк|портрет|скинь фото|фото маскота)/ui', $userMsg);
+$shouldAttachPhoto = !$isChat && preg_match('/(как ты выглядишь|покажись|твое фото|твоё фото|аватар|стикер|стикеры|стикерпак|картинк|портрет|скинь фото|фото маскота|покажи эмоци)/ui', $userMsg);
 $mascotAttachment = $shouldAttachPhoto ? ($mascotStickers[$chosenEmotion] ?? $mascotStickers['smile']) : null;
 
 vk_bot_send_message([

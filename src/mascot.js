@@ -38,13 +38,23 @@ const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.23.2',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.23.2',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.23.2',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.23.2',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.23.2',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.23.2',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.23.2'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.33.0',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.33.0',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.33.0',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.33.0',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.33.0',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.33.0',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.33.0',
+    cool: 'assets/images/mascot/robot_cool.png?v=4.33.0',
+    idea: 'assets/images/mascot/robot_idea.png?v=4.33.0',
+    laugh: 'assets/images/mascot/robot_laugh.png?v=4.33.0',
+    party: 'assets/images/mascot/robot_party.png?v=4.33.0',
+    read: 'assets/images/mascot/robot_read.png?v=4.33.0',
+    shock: 'assets/images/mascot/robot_shock.png?v=4.33.0',
+    waving: 'assets/images/mascot/robot_waving.png?v=4.33.0',
+    wink: 'assets/images/mascot/robot_wink.png?v=4.33.0',
+    sad: 'assets/images/mascot/robot_sad.png?v=4.33.0',
+    love: 'assets/images/mascot/robot_love.png?v=4.33.0'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
@@ -148,7 +158,16 @@ const MOOD_EMOJIS = {
     crown: '👑',
     wave: '👋',
     telescope: '🔭',
-    scan: '🔍'
+    scan: '🔍',
+    laugh: '😄',
+    read: '📖',
+    idea: '💡',
+    party: '🎉',
+    waving: '👋',
+    wink: '😉',
+    shock: '⚡',
+    sad: '😢',
+    love: '❤️'
 };
 
 function escapeHtml(text) {

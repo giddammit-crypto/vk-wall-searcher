@@ -80,10 +80,20 @@ function mdInline(s) {
         ':cosmo_angry:':   'assets/images/mascot/robot_angry.png',
         ':cosmo_sleep:':   'assets/images/mascot/robot_sleep.png',
         ':cosmo_tired:':   'assets/images/mascot/robot_tired.png',
+        ':cosmo_cool:':    'assets/images/mascot/robot_cool.png',
+        ':cosmo_idea:':    'assets/images/mascot/robot_idea.png',
+        ':cosmo_laugh:':   'assets/images/mascot/robot_laugh.png',
+        ':cosmo_party:':   'assets/images/mascot/robot_party.png',
+        ':cosmo_read:':    'assets/images/mascot/robot_read.png',
+        ':cosmo_shock:':   'assets/images/mascot/robot_shock.png',
+        ':cosmo_waving:':  'assets/images/mascot/robot_waving.png',
+        ':cosmo_wink:':    'assets/images/mascot/robot_wink.png',
+        ':cosmo_sad:':     'assets/images/mascot/robot_sad.png',
+        ':cosmo_love:':    'assets/images/mascot/robot_love.png',
         ':cosmo:':         'assets/images/mascot/robot_idle.png',
     };
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
-        s = s.split(code).join(`<img src="${src}?v=4.24.9" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}?v=4.33.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
