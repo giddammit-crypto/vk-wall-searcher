@@ -146,6 +146,11 @@ $aiModel    = isset($config['ai_model']) ? trim((string)$config['ai_model']) : '
 $aiMaxTok   = isset($config['ai_max_tokens']) ? max(300, (int)$config['ai_max_tokens']) : 2048;
 $aiTimeout  = isset($config['ai_timeout']) ? max(15, (int)$config['ai_timeout']) : 90;
 
+$elevenlabsApiKey = trim((string)($config['elevenlabs_api_key'] ?? ''));
+if ($elevenlabsApiKey === '' || strpos($elevenlabsApiKey, 'ВСТАВЬТЕ') === 0) {
+    $elevenlabsApiKey = 'sk_4db51c71946165f5132f0276283047de69abfe24da40bc3e';
+}
+
 $cacheDir = dirname(__DIR__) . '/cache';
 if (!is_dir($cacheDir)) {
     @mkdir($cacheDir, 0775, true);
@@ -571,13 +576,54 @@ if ($eventType === 'message_allow') {
     $payload = $msgObj['payload'] ?? null;
 }
 
-// Поиск голосового сообщения (audio_message) среди вложений
+// Поиск голосового сообщения (audio_message) среди вложений сообщения, реплая или пересланных
 $audioAttachment = null;
 if (!empty($msgObj['attachments']) && is_array($msgObj['attachments'])) {
     foreach ($msgObj['attachments'] as $att) {
-        if (($att['type'] ?? '') === 'audio_message') {
+        $type = $att['type'] ?? '';
+        if ($type === 'audio_message') {
             $audioAttachment = $att;
             break;
+        } elseif ($type === 'doc' && isset($att['doc']['preview']['audio_msg'])) {
+            $audioAttachment = [
+                'type'          => 'audio_message',
+                'audio_message' => $att['doc']['preview']['audio_msg']
+            ];
+            break;
+        }
+    }
+}
+if ($audioAttachment === null && !empty($msgObj['reply_message']['attachments']) && is_array($msgObj['reply_message']['attachments'])) {
+    foreach ($msgObj['reply_message']['attachments'] as $att) {
+        $type = $att['type'] ?? '';
+        if ($type === 'audio_message') {
+            $audioAttachment = $att;
+            break;
+        } elseif ($type === 'doc' && isset($att['doc']['preview']['audio_msg'])) {
+            $audioAttachment = [
+                'type'          => 'audio_message',
+                'audio_message' => $att['doc']['preview']['audio_msg']
+            ];
+            break;
+        }
+    }
+}
+if ($audioAttachment === null && !empty($msgObj['fwd_messages']) && is_array($msgObj['fwd_messages'])) {
+    foreach ($msgObj['fwd_messages'] as $fwd) {
+        if (!empty($fwd['attachments']) && is_array($fwd['attachments'])) {
+            foreach ($fwd['attachments'] as $att) {
+                $type = $att['type'] ?? '';
+                if ($type === 'audio_message') {
+                    $audioAttachment = $att;
+                    break 2;
+                } elseif ($type === 'doc' && isset($att['doc']['preview']['audio_msg'])) {
+                    $audioAttachment = [
+                        'type'          => 'audio_message',
+                        'audio_message' => $att['doc']['preview']['audio_msg']
+                    ];
+                    break 2;
+                }
+            }
         }
     }
 }
@@ -700,9 +746,10 @@ if ($isChat && !$isBotInvited) {
         preg_match('/\b(?:космо|космос)\b/ui', $userMsg)
     );
 
-    // В беседе игнорируем чужие сообщения между участниками, если бота не звали
-    // (включая чужие голосовые сообщения между участниками без реплая и упоминания)
-    if (!$hasMention && !$isReplyToBot && empty($payload)) {
+    // В беседе игнорируем чужие сообщения между участниками, если бота не звали.
+    // ВНИМАНИЕ: если есть голосовое сообщение ($audioAttachment !== null), пропускаем его в фоновый режим:
+    // транскрипция речи определит, звали ли Космо голосом (например: «Космос, кто написал...»).
+    if (!$hasMention && !$isReplyToBot && empty($payload) && $audioAttachment === null) {
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'ok';
         exit;
@@ -826,62 +873,138 @@ if ($botTyping && $peerId > 0) {
 
 /**
  * Распознавание входящего голосового сообщения ВКонтакте (Voice-to-Text ASR)
- * Использует нативную нейросеть расшифровки аудиосообщений VK API.
- * При необходимости выполняет умный опрос до 4 попыток с интервалом 1.2 сек,
- * так как сервер уже отдал быстрый ответ 'ok' вебхуку ВК.
+ * Многоуровневый отказоустойчивый конвейер:
+ * 1. Нативная расшифровка VK API (если заполнена в объекте).
+ * 2. ElevenLabs Scribe STT (https://api.elevenlabs.io/v1/speech-to-text) — напрямую с MP3/OGG, русская модель scribe_v1.
+ * 3. Google Speech API v2 (Chromium FLAC 16kHz mono через ffmpeg).
  */
-function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $token)
+function vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $token, $elevenlabsApiKey = '')
 {
     $audio = $audioAttachment['audio_message'] ?? ($audioAttachment['doc'] ?? []);
     if (empty($audio)) return null;
 
+    // Уровень 1: Нативная расшифровка VK API (если вдруг заполнена)
     $transcript = isset($audio['transcript']) ? trim((string)$audio['transcript']) : '';
     $state = $audio['transcript_state'] ?? '';
-
-    // Если нейросеть ВК уже завершила расшифровку
-    if ($state === 'done' && $transcript !== '') {
+    if (($state === 'done' || $transcript !== '') && !preg_match('/^\[(?:шум|тишина|музыка|неразборчиво)\]$/ui', $transcript)) {
         return $transcript;
     }
 
-    $cmid = (int)($msgObj['conversation_message_id'] ?? 0);
-    $msgId = (int)($msgObj['id'] ?? 0);
+    // Получаем прямую CDN-ссылку на аудиофайл (VK Callback всегда отдаёт link_mp3 или link_ogg)
+    $audioUrl = $audio['link_mp3'] ?? ($audio['link_ogg'] ?? '');
+    if ($audioUrl === '') return null;
 
-    if ($cmid <= 0 && $msgId <= 0) {
-        return $transcript !== '' ? $transcript : null;
+    // Скачиваем аудио во временный файл
+    $tmpDir = sys_get_temp_dir();
+    $uniq = uniqid('vk_voice_', true);
+    $ext = (strpos($audioUrl, '.ogg') !== false || (isset($audio['link_ogg']) && $audioUrl === $audio['link_ogg'])) ? 'ogg' : 'mp3';
+    $tmpAudioFile = $tmpDir . '/' . $uniq . '.' . $ext;
+
+    $chDl = curl_init($audioUrl);
+    $fp = @fopen($tmpAudioFile, 'w+');
+    if (!$fp) return null;
+
+    curl_setopt_array($chDl, [
+        CURLOPT_FILE           => $fp,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AURORA-Cosmo-Voice/4.34.0',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false
+    ]);
+    curl_exec($chDl);
+    $dlCode = (int)curl_getinfo($chDl, CURLINFO_RESPONSE_CODE);
+    curl_close($chDl);
+    @fclose($fp);
+
+    if ($dlCode !== 200 || !file_exists($tmpAudioFile) || filesize($tmpAudioFile) < 100) {
+        if (file_exists($tmpAudioFile)) @unlink($tmpAudioFile);
+        return null;
     }
 
-    // Фоновый опрос VK API (до 4 попыток с паузой 1.2с)
-    for ($attempt = 1; $attempt <= 4; $attempt++) {
-        usleep(1200000);
+    // Уровень 2: ElevenLabs Scribe STT (Основной сверхточный русскоязычный ASR)
+    if ($elevenlabsApiKey !== '') {
+        $cfile = new CURLFile($tmpAudioFile, ($ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg'), 'voice.' . $ext);
+        $chStt = curl_init('https://api.elevenlabs.io/v1/speech-to-text');
+        curl_setopt_array($chStt, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => [
+                'file'          => $cfile,
+                'model_id'      => 'scribe_v1',
+                'language_code' => 'rus'
+            ],
+            CURLOPT_HTTPHEADER     => [
+                'xi-api-key: ' . $elevenlabsApiKey
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 25,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_USERAGENT      => 'AURORA-Cosmo-Voice/4.34.0',
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
+        $sttResp = curl_exec($chStt);
+        $sttCode = (int)curl_getinfo($chStt, CURLINFO_RESPONSE_CODE);
+        curl_close($chStt);
 
-        if ($cmid > 0) {
-            list($httpCode, $resp) = vk_bot_api_call('messages.getByConversationMessageId', [
-                'peer_id'                  => $peerId,
-                'conversation_message_ids' => $cmid
-            ], $token);
-        } else {
-            list($httpCode, $resp) = vk_bot_api_call('messages.getById', [
-                'message_ids' => $msgId
-            ], $token);
-        }
-
-        $item = $resp['response']['items'][0] ?? null;
-        if (!$item || empty($item['attachments'])) continue;
-
-        foreach ($item['attachments'] as $att) {
-            if (($att['type'] ?? '') === 'audio_message' && isset($att['audio_message'])) {
-                $curAudio = $att['audio_message'];
-                $curText = isset($curAudio['transcript']) ? trim((string)$curAudio['transcript']) : '';
-                $curState = $curAudio['transcript_state'] ?? '';
-
-                if ($curState === 'done' || $curText !== '') {
-                    return $curText !== '' ? $curText : null;
+        if ($sttCode === 200 && is_string($sttResp)) {
+            $sttJson = json_decode($sttResp, true);
+            if (is_array($sttJson) && isset($sttJson['text'])) {
+                $rawText = trim((string)$sttJson['text']);
+                // Проверяем: не является ли результат только маркером шума/тишины
+                $cleanedText = trim(preg_replace('/\[(?:шум|тишина|музыка|вздох|кашель|неразборчиво|аплодисменты|смех)\]/ui', '', $rawText));
+                if ($cleanedText === '' && $rawText !== '') {
+                    @unlink($tmpAudioFile);
+                    return null; // В аудио лишь шум или тишина
+                }
+                if ($rawText !== '') {
+                    @unlink($tmpAudioFile);
+                    return $rawText;
                 }
             }
         }
     }
 
-    return $transcript !== '' ? $transcript : null;
+    // Уровень 3: Google Speech API v2 (Резервный ASR через Chromium API)
+    $tmpFlac = $tmpDir . '/' . $uniq . '.flac';
+    exec('ffmpeg -y -i ' . escapeshellarg($tmpAudioFile) . ' -ar 16000 -ac 1 ' . escapeshellarg($tmpFlac) . ' 2>&1', $ffOut, $ffRet);
+    if ($ffRet === 0 && file_exists($tmpFlac) && filesize($tmpFlac) > 100) {
+        $flacData = @file_get_contents($tmpFlac);
+        if ($flacData !== false && strlen($flacData) > 0) {
+            $chG = curl_init('https://www.google.com/speech-api/v2/recognize?output=json&lang=ru-RU&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw');
+            curl_setopt_array($chG, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $flacData,
+                CURLOPT_HTTPHEADER     => ['Content-Type: audio/x-flac; rate=16000'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ]);
+            $gResp = curl_exec($chG);
+            $gCode = (int)curl_getinfo($chG, CURLINFO_RESPONSE_CODE);
+            curl_close($chG);
+
+            if ($gCode === 200 && is_string($gResp)) {
+                $lines = explode("\n", trim($gResp));
+                foreach (array_reverse($lines) as $gLine) {
+                    $gJson = json_decode($gLine, true);
+                    if (is_array($gJson) && !empty($gJson['result'][0]['alternative'][0]['transcript'])) {
+                        $gText = trim((string)$gJson['result'][0]['alternative'][0]['transcript']);
+                        if ($gText !== '') {
+                            @unlink($tmpAudioFile);
+                            @unlink($tmpFlac);
+                            return $gText;
+                        }
+                    }
+                }
+            }
+        }
+        if (file_exists($tmpFlac)) @unlink($tmpFlac);
+    }
+
+    if (file_exists($tmpAudioFile)) @unlink($tmpAudioFile);
+    return null;
 }
 
 /**
@@ -3937,18 +4060,46 @@ if ($audioAttachment !== null) {
     if ($botTyping && $peerId > 0) {
         vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
     }
-    $resolvedTranscript = vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $communityToken);
+    $resolvedTranscript = vk_bot_resolve_audio_transcript($audioAttachment, $msgObj, $peerId, $communityToken, $elevenlabsApiKey);
     if ($resolvedTranscript !== null && trim($resolvedTranscript) !== '') {
-        $isVoiceQuery = true;
         $voiceTranscribedText = trim($resolvedTranscript);
+
+        // В групповых беседах проверяем: было ли обращение к боту в голосовом сообщении
+        if ($isChat) {
+            $replyMsg = $msgObj['reply_message'] ?? null;
+            $isReplyToBot = ($replyMsg && (int)($replyMsg['from_id'] ?? 0) === -$vkGroupId);
+            $hasVoiceMention = (
+                $isReplyToBot ||
+                preg_match('/(?:космос|космо|cosmo|cosma|\bробот\s*космо\b|\bбот\b|\bаврора\b)/ui', $voiceTranscribedText) ||
+                preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $voiceTranscribedText) ||
+                preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|статья|стикер)#ui', $voiceTranscribedText)
+            );
+
+            if (!$hasVoiceMention && empty($payload)) {
+                // В беседе участники общались голосовыми между собой без упоминания бота — тихо игнорируем
+                exit;
+            }
+        }
+
+        $isVoiceQuery = true;
         $userMsg = $voiceTranscribedText;
-        // Очищаем возможное обращение к боту в начале голосовой фразы
-        $userMsg = preg_replace('/^\s*(?:космо|робот\s*космо|бот)[\s,!:—?]+/ui', '', $userMsg);
+
+        // Очищаем обращение к боту для корректной работы команд и ИИ
+        $userMsg = preg_replace('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', '', $userMsg);
+        $userMsg = preg_replace('/@club' . $vkGroupId . '/ui', '', $userMsg);
+        $userMsg = preg_replace('/^\s*(?:космос|космо|cosmo|cosma|робот\s*космо|бот)[\s,!:—?]*/ui', '', $userMsg);
         $userMsg = trim($userMsg);
         if ($userMsg === '') {
             $userMsg = 'Привет, Космо!';
         }
     } else {
+        // Если это беседа и в голосовом тишина/шум: отправляем ошибку только если было прямое обращение (реплай) к боту
+        $replyMsg = $msgObj['reply_message'] ?? null;
+        $isReplyToBot = ($replyMsg && (int)($replyMsg['from_id'] ?? 0) === -$vkGroupId);
+        if ($isChat && !$isReplyToBot) {
+            exit;
+        }
+
         // Голосовое сообщение не удалось распознать (тишина, шум или ошибка ASR)
         $unrecReply = "🎤 Я внимательно прослушал ваше голосовое сообщение, но, к сожалению, не смог разобрать слова из-за фонового шума или тишины.\n\n"
                     . "Пожалуйста, запишите вопрос чуть громче и чётче или напишите текстом — я с радостью помогу вам и подберу прекрасную книгу! 🤖✨";
@@ -3978,6 +4129,7 @@ $cmd = $payloadData['cmd'] ?? ($payloadData['button'] ?? '');
 $mood = $payloadData['mood'] ?? '';
 
 $lowerMsg = vk_bot_mb_strtolower($userMsg);
+$cleanMsgForCmd = trim(preg_replace('/[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $userMsg));
 
 // -----------------------------------------------------------------------------
 // Диалоговая память и проверка на первый визит пользователя
@@ -6199,11 +6351,14 @@ if (preg_match('/\[emotion:(smile|thinking|sleep|cozy|tired|yawn|angry|idle|laug
 // Отправляем фото-вложение маскота только если пользователь явно попросил фото/стикер или спросил внешность,
 // чтобы не загромождать диалог и беседу гигантскими полноэкранными картинками
 $shouldAttachPhoto = !$isChat && preg_match('/(как ты выглядишь|покажись|твое фото|твоё фото|аватар|стикер|стикеры|стикерпак|картинк|портрет|скинь фото|фото маскота|покажи эмоци)/ui', $userMsg);
-$mascotAttachment = $shouldAttachPhoto ? ($mascotStickers[$chosenEmotion] ?? $mascotStickers['smile']) : null;
+$finalAiText = $aiResponseText;
+if ($isVoiceQuery && $voiceTranscribedText !== '') {
+    $finalAiText = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $finalAiText;
+}
 
 vk_bot_send_message([
     'peer_id'          => $peerId,
-    'message'          => $aiResponseText,
+    'message'          => $finalAiText,
     'attachment'       => $mascotAttachment,
     'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
     'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
