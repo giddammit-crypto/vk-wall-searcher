@@ -279,27 +279,28 @@
     text-overflow: ellipsis;
 }
 
-/* Кнопка закрытия модалки (.opac-close-btn) с эффектом поворота и подсветки */
+/* Кнопка закрытия модалки (.opac-close-btn) — высококонтрастный БЕЛЫЙ крестик */
 .opac-close-btn,
 .opac-modal-close-btn {
     position: absolute;
     top: 16px;
     right: 18px;
-    z-index: 10;
-    width: 38px;
-    height: 38px;
+    z-index: 20;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.82) !important;
+    border: 2px solid rgba(255, 255, 255, 0.75) !important;
+    color: #ffffff !important;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     outline: none;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.35) !important;
     transition: transform 0.25s var(--opac-spring-easing),
                 background-color 0.2s ease,
                 border-color 0.2s ease,
@@ -309,17 +310,26 @@
 
 .opac-close-btn .material-symbols-outlined,
 .opac-modal-close-btn .material-symbols-outlined {
-    font-size: 20px;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    line-height: 1;
+    display: block;
     transition: transform 0.25s var(--opac-spring-easing);
 }
 
 .opac-close-btn:hover,
 .opac-modal-close-btn:hover {
     transform: rotate(90deg) scale(1.12);
-    background: rgba(239, 68, 68, 0.22);
-    border-color: rgba(239, 68, 68, 0.55);
-    color: #fca5a5;
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.45);
+    background: rgba(239, 68, 68, 0.95) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.opac-close-btn:hover .material-symbols-outlined,
+.opac-modal-close-btn:hover .material-symbols-outlined {
+    color: #ffffff !important;
 }
 
 .opac-close-btn:active,
@@ -1572,24 +1582,37 @@ button.opac-search-btn,
     position: absolute;
     top: 14px;
     right: 14px;
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.85) !important;
+    border: 2px solid rgba(255, 255, 255, 0.75) !important;
+    color: #ffffff !important;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.35) !important;
     transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.opac-cover-zoom-close .material-symbols-outlined {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
 }
 
 .opac-cover-zoom-close:hover {
-    background: rgba(239, 68, 68, 0.25);
-    border-color: #ef4444;
-    color: #ffffff;
-    transform: rotate(90deg);
+    background: rgba(239, 68, 68, 0.95) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8) !important;
+    transform: rotate(90deg) scale(1.12);
+}
+
+.opac-cover-zoom-close:hover .material-symbols-outlined {
+    color: #ffffff !important;
 }
 
 .opac-cover-zoom-card {
@@ -2118,17 +2141,30 @@ button.opac-search-btn,
 
 [data-theme="light"] .opac-close-btn,
 [data-theme="light"] .opac-modal-close-btn {
-    background: rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.1);
-    color: #475569;
+    background: rgba(15, 23, 42, 0.85) !important;
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="light"] .opac-close-btn .material-symbols-outlined,
+[data-theme="light"] .opac-modal-close-btn .material-symbols-outlined {
+    color: #ffffff !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
 }
 
 [data-theme="light"] .opac-close-btn:hover,
 [data-theme="light"] .opac-modal-close-btn:hover {
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.35);
-    color: #dc2626;
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.95) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="light"] .opac-close-btn:hover .material-symbols-outlined,
+[data-theme="light"] .opac-modal-close-btn:hover .material-symbols-outlined {
+    color: #ffffff !important;
 }
 
 /* Поиск в светлой теме */
@@ -2593,9 +2629,27 @@ button.opac-search-btn,
 }
 
 [data-theme="light"] .opac-cover-zoom-close {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #475569;
+    background: rgba(15, 23, 42, 0.85) !important;
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="light"] .opac-cover-zoom-close .material-symbols-outlined {
+    color: #ffffff !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .opac-cover-zoom-close:hover {
+    background: rgba(239, 68, 68, 0.95) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8) !important;
+}
+
+[data-theme="light"] .opac-cover-zoom-close:hover .material-symbols-outlined {
+    color: #ffffff !important;
 }
 
 [data-theme="light"] .opac-cover-zoom-title {

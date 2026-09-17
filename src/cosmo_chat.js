@@ -1873,6 +1873,13 @@ export class CosmoChatModal {
     }
 
     /**
+     * Алиас для открытия чата с готовым сообщением
+     */
+    openWithMessage(query = '') {
+        return this.open(query);
+    }
+
+    /**
      * Интерактивный подбор книг со стеллажа («Книжная полка с Космо»)
      */
     openShelfRecommendation(genreId = 'universal', branchCode = 'cgb') {

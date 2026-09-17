@@ -100,7 +100,7 @@ import {
     initOpacModal,
     openOpacModal,
     closeOpacModal
-} from './opac_modal.js?v=4.48.0';
+} from './opac_modal.js?v=4.50.0';
 
 import {
     initLeagueModal,

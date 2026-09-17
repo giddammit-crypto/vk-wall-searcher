@@ -873,6 +873,24 @@ function bindModalEvents() {
         closeOpacModal();
     }));
 
+    // Закрытие по клавише Escape (сначала окно увеличенной обложки, затем модалка каталога)
+    if (!window.__opacEscBound) {
+        window.__opacEscBound = true;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (coverZoomModalEl && coverZoomModalEl.classList.contains('is-open')) {
+                    e.preventDefault();
+                    closeCoverZoomModal();
+                    return;
+                }
+                if (opacModalEl && opacModalEl.classList.contains('is-open')) {
+                    e.preventDefault();
+                    closeOpacModal();
+                }
+            }
+        });
+    }
+
     // Защита от прокликивания насквозь и запрет закрытия по клику на пустое место
     opacModalEl.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -973,16 +991,30 @@ function bindModalEvents() {
         });
     }
 
-    // Клик по тематическим карточкам начального экрана
+    // Клик и навигация с клавиатуры (Enter/Space) по тематическим карточкам начального экрана
     if (opacGridEl) {
+        const handleQuickCard = (card) => {
+            const action = card.getAttribute('data-quick-action');
+            if (action && opacInputEl) {
+                opacInputEl.value = action;
+                if (opacClearBtnEl) opacClearBtnEl.classList.remove('hidden');
+                executeOpacSearch(action);
+            }
+        };
+
         opacGridEl.addEventListener('click', (e) => {
             const card = e.target.closest('[data-quick-action]');
             if (card) {
-                const action = card.getAttribute('data-quick-action');
-                if (action && opacInputEl) {
-                    opacInputEl.value = action;
-                    if (opacClearBtnEl) opacClearBtnEl.classList.remove('hidden');
-                    executeOpacSearch(action);
+                handleQuickCard(card);
+            }
+        });
+
+        opacGridEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const card = e.target.closest('[data-quick-action]');
+                if (card) {
+                    e.preventDefault();
+                    handleQuickCard(card);
                 }
             }
         });
@@ -995,6 +1027,7 @@ function bindModalEvents() {
 function renderInitialState() {
     if (!opacGridEl || !opacStatusEl) return;
 
+    if (opacPaginationEl) opacPaginationEl.innerHTML = '';
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
         <div class="opac-welcome-hero">
@@ -1066,6 +1099,7 @@ function renderInitialState() {
 function renderShortQueryState() {
     if (!opacGridEl || !opacStatusEl) return;
 
+    if (opacPaginationEl) opacPaginationEl.innerHTML = '';
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
         <div class="opac-notice-card">
@@ -1091,6 +1125,7 @@ function renderShortQueryState() {
 function renderSkeletons() {
     if (!opacGridEl || !opacStatusEl) return;
 
+    if (opacPaginationEl) opacPaginationEl.innerHTML = '';
     opacStatusEl.innerHTML = `
         <div class="opac-status-loading">
             <span class="material-symbols-outlined opac-spin-icon">sync</span>
@@ -1195,6 +1230,7 @@ async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false)
         currentSearchAbortCtrl.abort();
     }
     currentSearchAbortCtrl = new AbortController();
+    coverTaskQueue.length = 0; // Сбрасываем очередь обложек старого поиска/страницы
 
     isSearchInProgress = true;
     setSearchBtnLoading(true);
@@ -1407,6 +1443,90 @@ function bindPaginationEvents(container, query) {
             executeOpacSearch(query, targetPage);
         });
     });
+}
+
+/**
+ * Проверка соответствия экземпляра или филиала выбранному фильтру филиалов
+ * Поддерживает все 18 филиалов Владимира (ЦГБ, ЦДБ, Доброе/Филиал №4, ф1..ф16)
+ * @param {Object} copy Экземпляр книги или агрегированный объект филиала
+ * @param {string} filter Код филиала ('all', 'cgb', 'cdb', 'f4', 'dobroye', 'f1'..'f16')
+ * @returns {boolean}
+ */
+function matchesBranchFilter(copy, filter) {
+    if (!copy || !filter || filter === 'all') return true;
+    const item = copy.rawCopy || copy;
+    const filterKey = String(filter).trim().toLowerCase();
+    if (!filterKey || filterKey === 'all') return true;
+
+    const sub = String(item.subfield_b || '').trim().toLowerCase();
+    const code = String(item.branch_code || '').trim().toLowerCase();
+    const name = String(item.branch_name || '').trim().toLowerCase();
+    const loc = String(item.permanent_location || item.location || '').trim().toLowerCase();
+    const addr = String(item.branch_address || '').trim().toLowerCase();
+
+    // 1. ЦГБ (Центральная городская библиотека, Суздальский пр., 2)
+    if (filterKey === 'cgb' || filterKey === 'цгб') {
+        return code.includes('цгб') ||
+               ['аб', 'чз', 'до', 'кх'].includes(sub) ||
+               name.includes('цгб') ||
+               name.includes('суздальский') ||
+               loc.includes('цгб') ||
+               addr.includes('суздальск');
+    }
+
+    // 2. ЦДБ (Центральная детская библиотека, Большая Московская, 31)
+    if (filterKey === 'cdb' || filterKey === 'цдб') {
+        return item.is_center === true ||
+               sub === 'цдб' ||
+               code.includes('цдб') ||
+               name.includes('цдб') ||
+               name.includes('детская') ||
+               loc.includes('цдб') ||
+               addr.includes('большая московская');
+    }
+
+    // 3. Филиал №4 / Доброе (ул. Егорова, 10)
+    if (filterKey === 'dobroye' || filterKey === 'доброе' || filterKey === 'f4' || filterKey === 'ф4') {
+        return item.is_dobroye === true ||
+               sub === 'ф4' ||
+               code.includes('№4') ||
+               code.includes('филиал 4') ||
+               name.includes('доброе') ||
+               name.includes('филиал №4') ||
+               name.includes('филиал 4') ||
+               loc.includes('ф4') ||
+               addr.includes('егорова');
+    }
+
+    // 4. Филиалы по номеру: f1..f16, ф1..ф16
+    const fMatch = filterKey.match(/^[fф]-?(\d+)$/i);
+    if (fMatch) {
+        const num = parseInt(fMatch[1], 10);
+        const sigla = 'ф' + num;
+        const filialNum = '№' + num;
+        const filialStr = 'филиал ' + num;
+        const filialNoStr = 'филиал №' + num;
+
+        if (sub === sigla || sub.startsWith(sigla + ' ') || sub.endsWith(' ' + sigla)) {
+            return true;
+        }
+        if (code === filialNoStr || code.includes(filialNum) || code.includes(filialStr)) {
+            return true;
+        }
+        if (name.includes(filialNum) || name.includes(filialStr)) {
+            return true;
+        }
+        if (loc.includes(sigla) || loc.includes(filialNum)) {
+            return true;
+        }
+        return false;
+    }
+
+    return sub.includes(filterKey) ||
+           code.includes(filterKey) ||
+           name.includes(filterKey) ||
+           loc.includes(filterKey) ||
+           addr.includes(filterKey);
 }
 
 /**
@@ -1805,7 +1925,9 @@ function triggerCosmoChatQuery(title, author) {
         ? `Расскажи о книге «${title}» автора ${author}: сюжет без спойлеров, главная мысль, почему стоит прочитать и кому она понравится?`
         : `Расскажи о книге «${title}»: сюжет, жанр и почему её стоит прочитать?`;
 
-    if (window.__cosmoChatModal && typeof window.__cosmoChatModal.openWithMessage === 'function') {
+    if (window.__cosmoChatModal && typeof window.__cosmoChatModal.open === 'function') {
+        window.__cosmoChatModal.open(prompt);
+    } else if (window.__cosmoChatModal && typeof window.__cosmoChatModal.openWithMessage === 'function') {
         window.__cosmoChatModal.openWithMessage(prompt);
     } else if (typeof window.openCosmoChat === 'function') {
         window.openCosmoChat();
