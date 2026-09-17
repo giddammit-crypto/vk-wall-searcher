@@ -4681,7 +4681,37 @@ function vk_bot_parse_book_query($text)
     $isCmd = false;
     $query = '';
 
-    // 1. Явные команды бота: /книга, !книга, /поиск, !поиск, /opac, /опак, /к, !к
+    // 1. Поиск по инвентарному номеру: /инв, !инв, /inv, "Инв. 146942", "инвентарный номер 146942"
+    if (preg_match('/^[\/!](?:инвентарный|инвентарь|инв\.?|inv)(?:\s+|$|\s*[:№#]?\s*)(.+)$/ui', $raw, $m)) {
+        $invNum = trim($m[1]);
+        $invNum = trim(preg_replace('/^[№#:]+\s*/u', '', $invNum));
+        if ($invNum !== '') {
+            return [
+                'is_command'    => true,
+                'query'         => "IN {$invNum}",
+                'branch_filter' => null,
+                'is_inventory'  => true,
+                'raw_inventory' => $invNum
+            ];
+        }
+    }
+
+    if (preg_match('/^(?:космо,?\s*)?(?:найди|поищи|поиск|где|покажи)?\s*(?:книгу|книги|издание)?\s*(?:по\s+)?(?:инвентарному\s+номеру|инвентарный\s+номер|инвентарному|инвентарный|инв\.?\s*номер|инв\.?|инвентарь)\s*[:№#\s.]+\s*([a-zа-я0-9\/-]+)$/ui', $raw, $m)
+        || preg_match('/^(?:инвентарный\s+номер|инвентарный|инв\.?\s*номер|инв\.?)\s*[:№#\s.]*\s*([a-zа-я0-9\/-]+)$/ui', $raw, $m)
+    ) {
+        $invNum = trim($m[1]);
+        if ($invNum !== '') {
+            return [
+                'is_command'    => false,
+                'query'         => "IN {$invNum}",
+                'branch_filter' => null,
+                'is_inventory'  => true,
+                'raw_inventory' => $invNum
+            ];
+        }
+    }
+
+    // 2. Явные команды бота: /книга, !книга, /поиск, !поиск, /opac, /опак, /к, !к
     if (preg_match('/^[\/!](?:книга|поиск|opac|опак|к)\b\s*(.*)$/ui', $raw, $m)) {
         $isCmd = true;
         $query = trim($m[1]);
@@ -4773,7 +4803,14 @@ function vk_bot_parse_book_query($text)
  */
 function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель', $page = 1, $perPage = 3)
 {
+    $isInvSearch = preg_match('/^IN\s+/i', $query);
+    $displayQuery = $isInvSearch ? trim(preg_replace('/^IN\s+/i', '', $query)) : $query;
+
     if (!$res || empty($res['ok']) || empty($res['items'])) {
+        if ($isInvSearch) {
+            return "🤖📚 Уважаемый [id0|{$callerName}], по инвентарному номеру «№{$displayQuery}» в электронном каталоге библиотек Владимира книга пока не найдена.\n\n"
+                 . "💡 Пожалуйста, перепроверьте цифры инвентарного номера или найдите книгу по автору/названию (например: «/поиск Чехов» или «/книга Мастер и Маргарита»). 📖✨";
+        }
         return "🤖📚 Уважаемый [id0|{$callerName}], по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
              . "💡 Совет от робота Космо:\n"
              . "• Проверьте, нет ли опечатки в названии книги или фамилии автора;\n"
@@ -4791,9 +4828,13 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
     $bookWord = ($mod10 === 1 && $mod100 !== 11) ? 'издание' : (($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 10 || $mod100 >= 20)) ? 'издания' : 'изданий');
 
     $pageStr = ($totalPages > 1) ? " • Стр. {$page}/{$totalPages}" : '';
+    $queryLine = $isInvSearch
+        ? "🏷️ Инв. номер: «№{$displayQuery}» • Найдено в каталоге: {$totalFound} {$bookWord}{$pageStr}\n"
+        : "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}{$pageStr}\n";
+
     $header = "✨📖 ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА 📖✨\n"
             . "🤖 Робот Космо нашёл для [id0|{$callerName}]:\n"
-            . "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}{$pageStr}\n"
+            . $queryLine
             . "════════════════════════════════\n\n";
 
     $blocks = [];
@@ -4811,6 +4852,9 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         }
         if (!empty($item['id'])) {
             $block .= "   🆔 Запись OPAC: {$item['id']} (БД 62 ЦГБ)\n";
+        }
+        if (!empty($item['inventory'])) {
+            $block .= "   📦 Инв. номер: {$item['inventory']}\n";
         }
         $locations = $item['locations'] ?? [];
         if (!empty($locations)) {

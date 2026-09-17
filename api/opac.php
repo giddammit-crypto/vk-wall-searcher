@@ -1047,6 +1047,14 @@ function opac_format_query($query)
         return '';
     }
 
+    // Поиск по инвентарному номеру: /инв, инв., инв.номер, инвентарный номер, inv...
+    if (preg_match('/^(?:\/)?(?:инвентарный\s+номер|инвентарный|инвентарь|инв\.?\s*номер|инв\.?|inv)\s*[:№#\s.]*\s*([a-zа-я0-9\/-]+)$/ui', $q, $mInv)) {
+        $invClean = trim($mInv[1]);
+        if ($invClean !== '') {
+            return "IN {$invClean}";
+        }
+    }
+
     // Если запрос уже содержит метки OPAC или операторы в скобках
     if (preg_match('/^(?:FT|TI|AU|SH|BC|IN|PU|PY|LA|FD)\s+/i', $q) ||
         preg_match('/^\s*\(\s*(?:FT|TI|AU|SH|BC|IN|PU|PY)/i', $q)
@@ -1341,6 +1349,15 @@ function opac_cascade_search($query, $length = 5, $start = 0)
         return $res1;
     }
 
+    // Каскад инвентарного номера: если запрос состоит из цифр (например: "146942" или "ф4-146942")
+    if (preg_match('/^(?:(?:ф|f)\d+[\/-])?[0-9]{4,10}(?:[\/-][0-9]+)?$/ui', $clean)) {
+        $resInv = opac_search_raw("IN {$clean}", $length, $start);
+        if (!empty($resInv['ok']) && ($resInv['total_found'] ?? 0) > 0) {
+            $resInv['cascade_tier'] = 'inv';
+            return $resInv;
+        }
+    }
+
     // 2-й каскад: фразовый поиск в кавычках FT '...'
     $phraseQuery = "FT '" . str_replace(["'", '"'], '', $clean) . "'";
     $res2 = opac_search_raw($phraseQuery, $length, $start);
@@ -1427,6 +1444,73 @@ function opac_resolve_branch($branchCode, $locationStr = '')
  * @param string $isbn ISBN книги
  * @return array
  */
+/**
+ * Строгая проверка совпадения названия и автора книги для обложки (защита от чужих обложек)
+ */
+function opac_is_strict_cover_match($foundTitle, $foundAuthors, $targetTitle, $targetAuthor)
+{
+    if (empty($foundTitle) || empty($targetTitle)) {
+        return false;
+    }
+
+    $norm = function ($str) {
+        $s = mb_strtolower((string)$str, 'UTF-8');
+        $s = str_replace('ё', 'е', $s);
+        $s = preg_replace('/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”]/u', ' ', $s);
+        $s = preg_replace('/\s+/u', ' ', $s);
+        return trim($s);
+    };
+
+    $tTitle = $norm($targetTitle);
+    $fTitle = $norm($foundTitle);
+    if ($tTitle === '' || $fTitle === '') {
+        return false;
+    }
+
+    // 1. Проверка автора (если автор указан в каталоге)
+    $cleanTargetAuthor = trim((string)$targetAuthor);
+    if ($cleanTargetAuthor !== '') {
+        $tAuthorClean = $norm($cleanTargetAuthor);
+        $parts = explode(' ', $tAuthorClean);
+        $tSurname = $parts[0] ?? '';
+        $fAuthorsClean = $norm($foundAuthors);
+
+        // Фамилия автора должна строго присутствовать в авторах найденной книги
+        if (mb_strlen($tSurname, 'UTF-8') >= 3 && mb_strpos($fAuthorsClean, $tSurname) === false) {
+            return false;
+        }
+    }
+
+    // 2. Проверка названия
+    if ($fTitle === $tTitle) {
+        return true;
+    }
+
+    $tShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $tTitle)[0] ?? $tTitle);
+    $fShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $fTitle)[0] ?? $fTitle);
+    if ($tShort !== '' && $tShort === $fShort) {
+        return true;
+    }
+
+    if (mb_strpos($fTitle, $tTitle) === 0 || mb_strpos($tTitle, $fTitle) === 0) {
+        if (abs(mb_strlen($fTitle, 'UTF-8') - mb_strlen($tTitle, 'UTF-8')) <= 25) {
+            return true;
+        }
+    }
+
+    $tWords = array_filter(explode(' ', $tTitle), function ($w) { return mb_strlen($w, 'UTF-8') > 2; });
+    $fWords = array_filter(explode(' ', $fTitle), function ($w) { return mb_strlen($w, 'UTF-8') > 2; });
+    if (!empty($tWords)) {
+        $matched = array_intersect($tWords, $fWords);
+        $ratio = count($matched) / count($tWords);
+        if ($ratio >= 0.8 && abs(count($tWords) - count($fWords)) <= 2) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
 {
     $title = trim((string)$rawTitle);
@@ -1438,20 +1522,28 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
     }
 
     // Очистка заглавия и автора от библиографического мусора OPAC
-    $cleanTitle = preg_replace('/\[.*$/u', '', $title);
+    $cleanTitle = preg_replace('/\[\/?color[^\]]*\]/ui', '', $title);
+    $cleanTitle = preg_replace('/<[^>]+>/u', '', $cleanTitle);
+    $cleanTitle = preg_replace('/\[.*?\]/u', ' ', $cleanTitle);
+    $cleanTitle = preg_replace('/\(.*?\)/u', ' ', $cleanTitle);
+    $cleanTitle = preg_replace('/\[.*$/u', '', $cleanTitle);
     $cleanTitle = preg_replace('/\(.*$/u', '', $cleanTitle);
-    $parts = preg_split('/[:;–—]/u', $cleanTitle);
+    $parts = preg_split('/[:;–—\/]/u', $cleanTitle);
     $cleanTitle = trim($parts[0] ?? $cleanTitle);
-    $cleanTitle = preg_replace('/[\"\'«»]/u', '', $cleanTitle);
-    $cleanTitle = trim(preg_replace('/\s*\/\s*.*$/u', '', $cleanTitle));
+    if (preg_match('/\.\s+[А-ЯA-Z]/u', $cleanTitle)) {
+        $cleanTitle = trim(explode('. ', $cleanTitle)[0]);
+    }
+    $cleanTitle = preg_replace('/[\"\'«»“”]/u', '', $cleanTitle);
+    $cleanTitle = trim(preg_replace('/[,.]\s*$/u', '', $cleanTitle));
 
     $cleanAuthor = preg_replace('/\s+[А-ЯA-Z]\.?\s*[А-ЯA-Z]?\.?$/u', '', $author);
     $authorParts = explode(',', $cleanAuthor);
     $cleanAuthor = trim($authorParts[0] ?? $cleanAuthor);
 
+    // Префикс кэша v4 для сброса старых неточных кэшей
     $cacheKey = md5(mb_strtolower($cleanTitle . '|' . $cleanAuthor . '|' . $isbn, 'UTF-8'));
     $cacheDir = opac_get_cache_dir();
-    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_cov_' . $cacheKey . '.json';
+    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_cov_v4_' . $cacheKey . '.json';
 
     // 1. Проверка серверного кэша (TTL 7 дней = 604800 сек)
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 604800)) {
@@ -1480,58 +1572,29 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
         if ($res) {
             $data = @json_decode($res, true);
             if (!empty($data['objects']) && is_array($data['objects'])) {
-                $targetTitle  = mb_strtolower($cleanTitle, 'UTF-8');
-                $targetAuthor = mb_strtolower($cleanAuthor, 'UTF-8');
-                $bestObj = null;
-                $bestScore = -1;
-
                 foreach ($data['objects'] as $obj) {
                     if (empty($obj['cover']['large']) && empty($obj['cover']['small'])) {
                         continue;
                     }
-                    $objTitle   = mb_strtolower(trim($obj['title'] ?? ''), 'UTF-8');
-                    $objAuthors = mb_strtolower(trim($obj['authors'] ?? ''), 'UTF-8');
-                    $score = 10;
+                    $objTitle   = trim($obj['title'] ?? '');
+                    $objAuthors = trim($obj['authors'] ?? '');
 
-                    if ($objTitle === $targetTitle) {
-                        $score += 100;
-                    } elseif (mb_strpos($objTitle, $targetTitle) === 0) {
-                        $score += 50;
-                    } elseif (mb_strpos($objTitle, $targetTitle) !== false) {
-                        $score += 25;
+                    // Строгая проверка соответствия названия и автора
+                    if (opac_is_strict_cover_match($objTitle, $objAuthors, $cleanTitle, $cleanAuthor)) {
+                        $coverUrl = $obj['cover']['large'] ?? $obj['cover']['small'];
+                        $out = [
+                            'ok'        => true,
+                            'found'     => true,
+                            'url'       => $coverUrl,
+                            'source'    => 'Яндекс Книги',
+                            'source_id' => 'yandex',
+                            'color'     => $obj['cover']['background_color_hex'] ?? null,
+                            'title'     => $objTitle,
+                            'author'    => $objAuthors,
+                        ];
+                        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                        return $out;
                     }
-
-                    if ($targetAuthor !== '' && $objAuthors !== '') {
-                        if (mb_strpos($objAuthors, $targetAuthor) !== false) {
-                            $score += 50;
-                        }
-                    }
-
-                    // Штраф для статей, кратких пересказов и сторонних комментариев
-                    if (preg_match('/кратк|комментар|пересказ|стать|анализ|пьес/ui', $objTitle)) {
-                        $score -= 40;
-                    }
-
-                    if ($score > $bestScore) {
-                        $bestScore = $score;
-                        $bestObj = $obj;
-                    }
-                }
-
-                if ($bestObj !== null && $bestScore > 0) {
-                    $coverUrl = $bestObj['cover']['large'] ?? $bestObj['cover']['small'];
-                    $out = [
-                        'ok'        => true,
-                        'found'     => true,
-                        'url'       => $coverUrl,
-                        'source'    => 'Яндекс Книги',
-                        'source_id' => 'yandex',
-                        'color'     => $bestObj['cover']['background_color_hex'] ?? null,
-                        'title'     => $bestObj['title'] ?? $title,
-                        'author'    => $bestObj['authors'] ?? $author,
-                    ];
-                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                    return $out;
                 }
             }
         }
@@ -1554,57 +1617,43 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
             $data = @json_decode($res, true);
             $items = $data['payload']['data'] ?? [];
             if (is_array($items) && !empty($items)) {
-                $targetTitle  = mb_strtolower($cleanTitle, 'UTF-8');
-                $targetAuthor = mb_strtolower($cleanAuthor, 'UTF-8');
-                $bestInst = null;
-                $bestScore = -1;
-
                 foreach ($items as $item) {
                     $inst = $item['instance'] ?? [];
                     if (empty($inst['cover_url'])) continue;
 
-                    $iTitle = mb_strtolower(trim($inst['title'] ?? ''), 'UTF-8');
-                    $score = 10;
-
-                    if ($iTitle === $targetTitle) {
-                        $score += 100;
-                    } elseif (mb_strpos($iTitle, $targetTitle) === 0) {
-                        $score += 50;
-                    } elseif (mb_strpos($iTitle, $targetTitle) !== false) {
-                        $score += 25;
+                    $iTitle = trim($inst['title'] ?? '');
+                    $iAuthors = '';
+                    if (!empty($inst['persons']) && is_array($inst['persons'])) {
+                        $pNames = [];
+                        foreach ($inst['persons'] as $p) {
+                            if (!empty($p['full_name'])) $pNames[] = $p['full_name'];
+                        }
+                        $iAuthors = implode(', ', $pNames);
                     }
 
-                    if (preg_match('/кратк|комментар|пересказ|стать|анализ/ui', $iTitle)) {
-                        $score -= 40;
+                    // Строгая проверка соответствия названия и автора
+                    if (opac_is_strict_cover_match($iTitle, $iAuthors, $cleanTitle, $cleanAuthor)) {
+                        $out = [
+                            'ok'        => true,
+                            'found'     => true,
+                            'url'       => 'https://cdn.litres.ru' . $inst['cover_url'],
+                            'source'    => 'ЛитРес',
+                            'source_id' => 'litres',
+                            'color'     => null,
+                            'title'     => $iTitle,
+                            'author'    => $iAuthors ?: $author,
+                        ];
+                        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                        return $out;
                     }
-
-                    if ($score > $bestScore) {
-                        $bestScore = $score;
-                        $bestInst = $inst;
-                    }
-                }
-
-                if ($bestInst !== null && $bestScore > 0) {
-                    $out = [
-                        'ok'        => true,
-                        'found'     => true,
-                        'url'       => 'https://cdn.litres.ru' . $bestInst['cover_url'],
-                        'source'    => 'ЛитРес',
-                        'source_id' => 'litres',
-                        'color'     => null,
-                        'title'     => $bestInst['title'] ?? $title,
-                        'author'    => $author,
-                    ];
-                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                    return $out;
                 }
             }
         }
     }
 
-    // 4. Источник: Google Books API
+    // 4. Источник: Google Books API (со строгой проверкой)
     $gbQ = $cleanAuthor !== '' ? 'intitle:' . urlencode($cleanTitle) . '+inauthor:' . urlencode($cleanAuthor) : urlencode($cleanTitle);
-    $ch = curl_init('https://www.googleapis.com/books/v1/volumes?q=' . $gbQ . '&maxResults=1&printType=books');
+    $ch = curl_init('https://www.googleapis.com/books/v1/volumes?q=' . $gbQ . '&maxResults=5&printType=books');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 4,
@@ -1616,31 +1665,41 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
     curl_close($ch);
     if ($res) {
         $data = @json_decode($res, true);
-        if (!empty($data['items'][0]['volumeInfo']['imageLinks'])) {
-            $links = $data['items'][0]['volumeInfo']['imageLinks'];
-            $img = $links['extraLarge'] ?? $links['large'] ?? $links['medium'] ?? $links['thumbnail'] ?? $links['smallThumbnail'] ?? null;
-            if ($img) {
-                $img = str_replace('http://', 'https://', $img);
-                $img = str_replace(['&edge=curl', 'zoom=1', 'zoom=5'], ['', 'zoom=2', 'zoom=2'], $img);
-                $out = [
-                    'ok'        => true,
-                    'found'     => true,
-                    'url'       => $img,
-                    'source'    => 'Google Книги',
-                    'source_id' => 'google',
-                    'color'     => null,
-                    'title'     => $data['items'][0]['volumeInfo']['title'] ?? $title,
-                    'author'    => $author,
-                ];
-                @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                return $out;
+        if (!empty($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $gbItem) {
+                $vol = $gbItem['volumeInfo'] ?? [];
+                if (empty($vol['imageLinks'])) continue;
+
+                $gTitle = trim($vol['title'] ?? '');
+                $gAuthors = !empty($vol['authors']) ? implode(', ', $vol['authors']) : '';
+
+                if (opac_is_strict_cover_match($gTitle, $gAuthors, $cleanTitle, $cleanAuthor)) {
+                    $links = $vol['imageLinks'];
+                    $img = $links['extraLarge'] ?? $links['large'] ?? $links['medium'] ?? $links['thumbnail'] ?? $links['smallThumbnail'] ?? null;
+                    if ($img) {
+                        $img = str_replace('http://', 'https://', $img);
+                        $img = str_replace(['&edge=curl', 'zoom=1', 'zoom=5'], ['', 'zoom=2', 'zoom=2'], $img);
+                        $out = [
+                            'ok'        => true,
+                            'found'     => true,
+                            'url'       => $img,
+                            'source'    => 'Google Книги',
+                            'source_id' => 'google',
+                            'color'     => null,
+                            'title'     => $gTitle,
+                            'author'    => $gAuthors ?: $author,
+                        ];
+                        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                        return $out;
+                    }
+                }
             }
         }
     }
 
-    // 5. Источник: OpenLibrary
+    // 5. Источник: OpenLibrary (со строгой проверкой)
     $olQ = urlencode($cleanTitle . ' ' . $cleanAuthor);
-    $ch = curl_init('https://openlibrary.org/search.json?q=' . $olQ . '&limit=4');
+    $ch = curl_init('https://openlibrary.org/search.json?q=' . $olQ . '&limit=6');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 4,
@@ -1654,7 +1713,12 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
         $data = @json_decode($res, true);
         if (!empty($data['docs']) && is_array($data['docs'])) {
             foreach ($data['docs'] as $doc) {
-                if (!empty($doc['cover_i'])) {
+                if (empty($doc['cover_i'])) continue;
+
+                $olTitle = trim($doc['title'] ?? '');
+                $olAuthors = !empty($doc['author_name']) ? implode(', ', $doc['author_name']) : '';
+
+                if (opac_is_strict_cover_match($olTitle, $olAuthors, $cleanTitle, $cleanAuthor)) {
                     $coverUrl = 'https://covers.openlibrary.org/b/id/' . (int)$doc['cover_i'] . '-L.jpg';
                     $out = [
                         'ok'        => true,
@@ -1663,8 +1727,8 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
                         'source'    => 'OpenLibrary',
                         'source_id' => 'openlibrary',
                         'color'     => null,
-                        'title'     => $doc['title'] ?? $title,
-                        'author'    => $author,
+                        'title'     => $olTitle,
+                        'author'    => $olAuthors ?: $author,
                     ];
                     @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
                     return $out;
@@ -1868,16 +1932,17 @@ function opac_handle_http_request()
             opac_rate_limit('search', 30, 150);
 
             $query         = isset($params['query']) ? (string)$params['query'] : (string)($params['q'] ?? '');
-            $length        = isset($params['length']) ? (int)$params['length'] : 6;
-            $start         = isset($params['start']) ? (int)$params['start'] : 0;
+            $page          = max(1, (int)($params['page'] ?? 1));
+            $length        = isset($params['length']) ? (int)$params['length'] : 4;
+            $start         = isset($params['start']) ? (int)$params['start'] : (($page - 1) * $length);
             $cascade       = isset($params['cascade']) ? !empty($params['cascade']) : true;
             $includeCopies = !empty($params['include_copies']) || !empty($params['include_holdings']) || !empty($params['copies']);
             $branchFilter  = isset($params['branch']) ? trim((string)$params['branch']) : '';
             $onlyAvailable = !empty($params['only_available']) || !empty($params['available']);
 
-            // Защита сервера OPAC: при include_copies жестко ограничиваем длину максимум 8 записями
+            // Защита сервера OPAC: при include_copies жестко ограничиваем длину максимум 6 записями (по умолчанию 4)
             if ($includeCopies) {
-                $length = max(1, min(8, $length));
+                $length = max(1, min(6, $length));
             } else {
                 $length = max(1, min(20, $length));
             }
@@ -1912,9 +1977,16 @@ function opac_handle_http_request()
                 $result = opac_search_raw($query, $length, $start);
             }
 
+            // Добавляем метаданные пагинации
+            $result['page']        = $page;
+            $result['per_page']    = $length;
+            $totalFound            = (int)($result['total_found'] ?? 0);
+            $result['total_pages'] = $totalFound > 0 ? (int)ceil($totalFound / $length) : 1;
+            $result['start']       = $start;
+
             // Пакетное обогащение экземплярами (holdings) с защитой от перегрузки OPAC
             if ($includeCopies && !empty($result['ok']) && !empty($result['items'])) {
-                $maxEnrichItems = 6;
+                $maxEnrichItems = $length;
                 $enrichedCount = 0;
 
                 foreach ($result['items'] as &$item) {

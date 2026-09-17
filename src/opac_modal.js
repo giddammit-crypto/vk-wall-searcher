@@ -22,8 +22,13 @@ let opacClearBtnEl = null;
 let opacGridEl = null;
 let opacStatusEl = null;
 let opacOnlyAvailableEl = null;
+let opacPaginationEl = null;
 let currentBranchFilter = 'all';
 let opacSearchBtnEl = null;
+
+const CARDS_PER_PAGE = 4;
+let currentOpacPage = 1;
+let lastSearchQuery = '';
 
 let currentSearchAbortCtrl = null;
 let searchResultsCache = new Map();
@@ -35,12 +40,19 @@ const bookCoversCache = new Map();
 function cleanSearchTerm(text) {
     if (!text) return '';
     let t = String(text);
-    // Отрезаем незакрытые скобки OPAC [..., (...
+    // Очистка BBCode [color] и HTML-тегов
+    t = t.replace(/\[\/?color[^\]]*\]/gi, '').replace(/<[^>]+>/g, '');
+    // Отрезаем скобочный мусор OPAC: [роман], (сборник)
+    t = t.replace(/\[.*?\]/g, ' ').replace(/\(.*?\)/g, ' ');
     t = t.replace(/\[.*$/, '').replace(/\(.*$/, '');
-    // Отрезаем подзаголовки через двоеточие, тире или точку с запятой
-    t = t.split(/[:;–—]/)[0];
-    // Удаляем кавычки, слэши, знаки препинания в конце
-    t = t.replace(/[\"\'«»]/g, '').replace(/\s*\/\s*.*$/, '').replace(/[,.]\s*$/g, '');
+    // Отрезаем подзаголовки через двоеточие, тире, слэш ответственности или точку с запятой
+    t = t.split(/[:;–—\/]/)[0];
+    // Отрезаем подзаголовки после точки, если они начинаются с заглавной буквы (. Драмы, . Роман)
+    if (/\.\s+[А-ЯA-Z]/u.test(t)) {
+        t = t.split(/\.\s+/)[0];
+    }
+    // Удаляем кавычки и знаки препинания по краям
+    t = t.replace(/[\"\'«»“”]/g, '').replace(/[,.]\s*$/g, '');
     return t.trim();
 }
 
@@ -58,81 +70,116 @@ function cleanAuthorForCover(rawAuthor) {
 }
 
 /**
- * Источник 1: Яндекс Книги (Bookmate API)
- * Открытый CORS (*), HD retina-обложки (cover.large), фоновый цвет cover.background_color_hex
+ * Строгая проверка совпадения названия и автора книги для обложки (защита от чужих обложек)
+ */
+function isStrictBookCoverMatch(foundTitle, foundAuthors, targetTitle, targetAuthor) {
+    if (!foundTitle || !targetTitle) return false;
+
+    const norm = (str) => String(str || '')
+        .toLowerCase()
+        .replace(/ё/g, 'е')
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const tTitle = norm(targetTitle);
+    const fTitle = norm(foundTitle);
+
+    if (!tTitle || !fTitle) return false;
+
+    // 1. Проверка автора (если автор указан в каталоге)
+    const cleanTargetAuthor = String(targetAuthor || '').trim();
+    if (cleanTargetAuthor.length > 1) {
+        const tAuthorClean = norm(cleanAuthorForCover(cleanTargetAuthor));
+        const parts = tAuthorClean.split(' ');
+        const tSurname = parts[0] || '';
+        const fAuthorsClean = norm(foundAuthors);
+
+        // Фамилия автора (мин. 3 символа) должна строго присутствовать в авторах найденной книги
+        if (tSurname.length >= 3 && !fAuthorsClean.includes(tSurname)) {
+            return false;
+        }
+    }
+
+    // 2. Проверка названия
+    if (fTitle === tTitle) return true;
+
+    // Сравнение без указания тома/части/книги
+    const tShort = tTitle.split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
+    const fShort = fTitle.split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
+    if (tShort && tShort === fShort) return true;
+
+    // Одно название начинается с другого с разницей в длине не более 25 символов
+    if (fTitle.startsWith(tTitle) || tTitle.startsWith(fTitle)) {
+        if (Math.abs(fTitle.length - tTitle.length) <= 25) {
+            return true;
+        }
+    }
+
+    // Проверка ключевых слов
+    const tWords = tTitle.split(' ').filter(w => w.length > 2);
+    const fWords = fTitle.split(' ').filter(w => w.length > 2);
+    if (tWords.length > 0) {
+        const matched = tWords.filter(w => fWords.includes(w));
+        const ratio = matched.length / tWords.length;
+        if (ratio >= 0.8 && Math.abs(tWords.length - fWords.length) <= 2) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Источник 1: Яндекс Книги (Bookmate API) со строгой проверкой названия и автора
  */
 async function fetchYandexBookmateCover(cleanTitle, cleanAuthor) {
     try {
-        const query = cleanAuthor ? `${cleanTitle} ${cleanAuthor}` : cleanTitle;
-        const url = `https://api.bookmate.com/api/v5/books/search?query=${encodeURIComponent(query)}`;
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3500);
+        const queries = cleanAuthor ? [`${cleanTitle} ${cleanAuthor}`, cleanTitle] : [cleanTitle];
+        for (const query of queries) {
+            const url = `https://api.bookmate.com/api/v5/books/search?query=${encodeURIComponent(query)}`;
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 3500);
 
-        const res = await fetch(url, {
-            signal: ctrl.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-        clearTimeout(timer);
+            const res = await fetch(url, {
+                signal: ctrl.signal,
+                headers: { 'Accept': 'application/json' }
+            });
+            clearTimeout(timer);
 
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!data || !Array.isArray(data.objects) || data.objects.length === 0) return null;
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (!data || !Array.isArray(data.objects) || data.objects.length === 0) continue;
 
-        const targetTitle = cleanTitle.toLowerCase();
-        const targetAuthor = cleanAuthor.toLowerCase();
-        let bestObj = null;
-        let bestScore = -1;
+            for (const obj of data.objects) {
+                if (!obj || !obj.cover) continue;
+                const coverUrl = obj.cover.large || obj.cover.small;
+                if (!coverUrl) continue;
 
-        for (const obj of data.objects) {
-            if (!obj || !obj.cover) continue;
-            const coverUrl = obj.cover.large || obj.cover.small;
-            if (!coverUrl) continue;
+                const objTitle = String(obj.title || '').trim();
+                const objAuthors = String(obj.authors || '').trim();
 
-            const objTitle = String(obj.title || '').trim().toLowerCase();
-            const objAuthors = String(obj.authors || '').trim().toLowerCase();
-            let score = 10;
+                // Исключаем статьи, краткие пересказы и сторонние анализы
+                if (/кратк|комментар|пересказ|стать|анализ/i.test(objTitle)) {
+                    continue;
+                }
 
-            if (objTitle === targetTitle) {
-                score += 100;
-            } else if (objTitle.startsWith(targetTitle)) {
-                score += 50;
-            } else if (objTitle.includes(targetTitle)) {
-                score += 25;
-            }
-
-            if (targetAuthor && objAuthors) {
-                if (objAuthors.includes(targetAuthor)) {
-                    score += 50;
+                if (isStrictBookCoverMatch(objTitle, objAuthors, cleanTitle, cleanAuthor)) {
+                    return {
+                        url: coverUrl.replace(/^http:\/\//i, 'https://'),
+                        source: 'Яндекс Книги',
+                        sourceId: 'yandex',
+                        color: obj.cover.background_color_hex || null
+                    };
                 }
             }
-
-            // Штраф для кратких пересказов, анализов и статей
-            if (/кратк|комментар|пересказ|стать|анализ|пьес/i.test(objTitle)) {
-                score -= 40;
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestObj = obj;
-            }
-        }
-
-        if (bestObj && bestScore > 0) {
-            const finalUrl = bestObj.cover.large || bestObj.cover.small;
-            return {
-                url: finalUrl.replace(/^http:\/\//i, 'https://'),
-                source: 'Яндекс Книги',
-                sourceId: 'yandex',
-                color: bestObj.cover.background_color_hex || null
-            };
         }
     } catch (e) {}
     return null;
 }
 
 /**
- * Источник 2: Google Книги API
- * С улучшением резкости (удаление &edge=curl, замена zoom=1 на zoom=2)
+ * Источник 2: Google Книги API со строгой проверкой
  */
 async function fetchGoogleBooksCoverEnhanced(cleanTitle, cleanAuthor) {
     try {
@@ -140,7 +187,7 @@ async function fetchGoogleBooksCoverEnhanced(cleanTitle, cleanAuthor) {
         if (cleanAuthor) {
             q += `+inauthor:"${encodeURIComponent(cleanAuthor)}"`;
         }
-        const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&printType=books`;
+        const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&printType=books`;
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 3500);
 
@@ -152,62 +199,36 @@ async function fetchGoogleBooksCoverEnhanced(cleanTitle, cleanAuthor) {
 
         if (res.ok) {
             const data = await res.json();
-            const vol = data?.items?.[0]?.volumeInfo;
-            if (vol?.imageLinks) {
-                let img = vol.imageLinks.extraLarge || vol.imageLinks.large || vol.imageLinks.medium || vol.imageLinks.thumbnail || vol.imageLinks.smallThumbnail;
-                if (img) {
-                    img = img.replace(/^http:\/\//i, 'https://');
-                    img = img.replace(/&edge=curl/g, '');
-                    img = img.replace(/zoom=[15]/g, 'zoom=2');
-                    return {
-                        url: img,
-                        source: 'Google Книги',
-                        sourceId: 'google',
-                        color: null
-                    };
+            if (data && Array.isArray(data.items)) {
+                for (const item of data.items) {
+                    const vol = item.volumeInfo;
+                    if (!vol || !vol.imageLinks) continue;
+                    const gTitle = String(vol.title || '').trim();
+                    const gAuthors = Array.isArray(vol.authors) ? vol.authors.join(', ') : '';
+
+                    if (isStrictBookCoverMatch(gTitle, gAuthors, cleanTitle, cleanAuthor)) {
+                        let img = vol.imageLinks.extraLarge || vol.imageLinks.large || vol.imageLinks.medium || vol.imageLinks.thumbnail || vol.imageLinks.smallThumbnail;
+                        if (img) {
+                            img = img.replace(/^http:\/\//i, 'https://');
+                            img = img.replace(/&edge=curl/g, '');
+                            img = img.replace(/zoom=[15]/g, 'zoom=2');
+                            return {
+                                url: img,
+                                source: 'Google Книги',
+                                sourceId: 'google',
+                                color: null
+                            };
+                        }
+                    }
                 }
             }
         }
     } catch (e) {}
-
-    // Общий поисковый запрос Google Books
-    try {
-        const queryText = encodeURIComponent(`${cleanTitle} ${cleanAuthor}`.trim());
-        const gbFallbackUrl = `https://www.googleapis.com/books/v1/volumes?q=${queryText}&maxResults=1&printType=books`;
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3500);
-
-        const res = await fetch(gbFallbackUrl, {
-            signal: ctrl.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-        clearTimeout(timer);
-
-        if (res.ok) {
-            const data = await res.json();
-            const vol = data?.items?.[0]?.volumeInfo;
-            if (vol?.imageLinks) {
-                let img = vol.imageLinks.extraLarge || vol.imageLinks.large || vol.imageLinks.medium || vol.imageLinks.thumbnail || vol.imageLinks.smallThumbnail;
-                if (img) {
-                    img = img.replace(/^http:\/\//i, 'https://');
-                    img = img.replace(/&edge=curl/g, '');
-                    img = img.replace(/zoom=[15]/g, 'zoom=2');
-                    return {
-                        url: img,
-                        source: 'Google Книги',
-                        sourceId: 'google',
-                        color: null
-                    };
-                }
-            }
-        }
-    } catch (e) {}
-
     return null;
 }
 
 /**
- * Источник 3: Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover)
+ * Источник 3: Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover) со строгой проверкой
  */
 async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '') {
     try {
@@ -245,12 +266,12 @@ async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '') {
 }
 
 /**
- * Источник 4: OpenLibrary Covers API (-L.jpg)
+ * Источник 4: OpenLibrary Covers API (-L.jpg) со строгой проверкой
  */
 async function fetchOpenLibraryCover(cleanTitle, cleanAuthor) {
     try {
         const olQuery = encodeURIComponent(`${cleanTitle} ${cleanAuthor}`.trim());
-        const olUrl = `https://openlibrary.org/search.json?q=${olQuery}&limit=5`;
+        const olUrl = `https://openlibrary.org/search.json?q=${olQuery}&limit=6`;
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 3500);
 
@@ -264,7 +285,11 @@ async function fetchOpenLibraryCover(cleanTitle, cleanAuthor) {
             const data = await res.json();
             if (data && Array.isArray(data.docs)) {
                 for (const doc of data.docs) {
-                    if (doc.cover_i) {
+                    if (!doc.cover_i) continue;
+                    const oTitle = String(doc.title || '').trim();
+                    const oAuthors = Array.isArray(doc.author_name) ? doc.author_name.join(', ') : '';
+
+                    if (isStrictBookCoverMatch(oTitle, oAuthors, cleanTitle, cleanAuthor)) {
                         return {
                             url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
                             source: 'OpenLibrary',
@@ -281,49 +306,7 @@ async function fetchOpenLibraryCover(cleanTitle, cleanAuthor) {
 }
 
 /**
- * Источник 5: Русская Википедия REST API (для классики и мировых авторов)
- */
-async function fetchWikipediaCover(cleanTitle) {
-    try {
-        const wikiUrl = `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTitle)}`;
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 3000);
-
-        const res = await fetch(wikiUrl, {
-            signal: ctrl.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-        clearTimeout(timer);
-
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.thumbnail && data.thumbnail.source) {
-                return {
-                    url: data.thumbnail.source.replace(/^http:\/\//i, 'https://'),
-                    source: 'Википедия',
-                    sourceId: 'wikipedia',
-                    color: null
-                };
-            }
-        }
-    } catch (e) {}
-
-    return null;
-}
-
-/**
- * Полный многоуровневый каскад поиска обложек книги с двухуровневым кэшированием
- *   1. Двухуровневый кэш (Map в памяти + sessionStorage)
- *   2. Источник 1: Яндекс Книги (Bookmate API) — HD retina + фон
- *   3. Источник 2: Google Книги API — резкий HD зум
- *   4. Источник 3: Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover)
- *   5. Источник 4: OpenLibrary Covers API (-L.jpg)
- *   6. Источник 5: Русская Википедия REST API
- *
- * @param {string} rawTitle Заглавие книги
- * @param {string} rawAuthor Автор книги
- * @param {string} rawIsbn ISBN (опционально)
- * @returns {Promise<{url: string, source: string, sourceId: string, color: string|null}|null>}
+ * Полный многоуровневый каскад поиска обложек книги с двухуровневым кэшированием (префикс v4)
  */
 async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
     const title = cleanSearchTerm(rawTitle);
@@ -338,9 +321,9 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
         return bookCoversCache.get(cacheKey);
     }
 
-    // 2. Проверка localStorage (кэш на 7 дней)
+    // 2. Проверка localStorage (кэш v4 на 7 дней)
     try {
-        const stored = localStorage.getItem(`opac_cov_v2_${cacheKey}`);
+        const stored = localStorage.getItem(`opac_cov_v4_${cacheKey}`);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && (!parsed.exp || parsed.exp > Date.now())) {
@@ -353,7 +336,7 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
     const saveToCache = (result) => {
         bookCoversCache.set(cacheKey, result);
         try {
-            localStorage.setItem(`opac_cov_v2_${cacheKey}`, JSON.stringify({
+            localStorage.setItem(`opac_cov_v4_${cacheKey}`, JSON.stringify({
                 data: result,
                 exp: Date.now() + (result ? 7 * 86400 * 1000 : 24 * 3600 * 1000)
             }));
@@ -361,34 +344,28 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
         return result;
     };
 
-    // 1. Яндекс Книги (Bookmate API) — прямой CORS из браузера
+    // 1. Яндекс Книги (Bookmate API) — открытый CORS, точные обложки
     const yandexRes = await fetchYandexBookmateCover(title, author);
     if (yandexRes && yandexRes.url) {
         return saveToCache(yandexRes);
     }
 
-    // 2. Google Книги API — прямой CORS из браузера
+    // 2. Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover)
+    const backendRes = await fetchBackendGatewayCover(title, author, rawIsbn);
+    if (backendRes && backendRes.url) {
+        return saveToCache(backendRes);
+    }
+
+    // 3. Google Книги API
     const googleRes = await fetchGoogleBooksCoverEnhanced(title, author);
     if (googleRes && googleRes.url) {
         return saveToCache(googleRes);
     }
 
-    // 3. OpenLibrary Covers API — прямой CORS из браузера
+    // 4. OpenLibrary Covers API (-L.jpg)
     const olRes = await fetchOpenLibraryCover(title, author);
     if (olRes && olRes.url) {
         return saveToCache(olRes);
-    }
-
-    // 4. Русская Википедия REST API — прямой CORS из браузера
-    const wikiRes = await fetchWikipediaCover(title);
-    if (wikiRes && wikiRes.url) {
-        return saveToCache(wikiRes);
-    }
-
-    // 5. Серверный шлюз ЛитРес / Авроры (только если остальные источники не дали результат)
-    const backendRes = await fetchBackendGatewayCover(title, author, rawIsbn);
-    if (backendRes && backendRes.url) {
-        return saveToCache(backendRes);
     }
 
     // Запоминаем null на 24 часа, чтобы исключить повторный перебор
@@ -475,38 +452,19 @@ function queueCoverElementLoad(coverEl) {
 let coverIntersectionObserver = null;
 
 /**
- * Асинхронная загрузка обложек через IntersectionObserver (только видимые карточки)
+ * Асинхронная загрузка обложек (для порции из 4 карточек страницы запускаем напрямую)
  */
 function loadBookCovers(container) {
     if (!container) return;
     const coverEls = container.querySelectorAll('.opac-book-cover[data-title]');
-
-    if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
-        if (!coverIntersectionObserver) {
-            coverIntersectionObserver = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        observer.unobserve(entry.target);
-                        queueCoverElementLoad(entry.target);
-                    }
-                });
-            }, { rootMargin: '150px 0px' });
-        }
-        coverEls.forEach(el => {
-            if (el.dataset.coverQueued !== 'true') {
-                coverIntersectionObserver.observe(el);
-            }
-        });
-    } else {
-        coverEls.forEach(el => queueCoverElementLoad(el));
-    }
+    coverEls.forEach(el => queueCoverElementLoad(el));
 }
 
 // Алиас для обратной совместимости
 const loadGoogleBooksCovers = loadBookCovers;
 
 /**
- * Singleton модального окна увеличенного 3D-просмотра обложки в HD качестве
+ * Singleton модального окна подробного просмотра книги и обложки
  */
 let coverZoomModalEl = null;
 
@@ -517,29 +475,60 @@ function initCoverZoomModal() {
     modal.id = 'opac-cover-zoom-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
-    modal.setAttribute('aria-label', 'Увеличенный просмотр обложки книги');
+    modal.setAttribute('aria-label', 'Подробные сведения об издании и наличии в библиотеках');
     modal.innerHTML = `
-        <div class="opac-cover-zoom-backdrop" data-zoom-close></div>
+        <div class="opac-cover-zoom-backdrop"></div>
         <div class="opac-cover-zoom-dialog">
-            <button type="button" class="opac-cover-zoom-close" data-zoom-close aria-label="Закрыть (Esc)">
+            <button type="button" class="opac-cover-zoom-close" data-zoom-close aria-label="Закрыть окно (Esc)" title="Закрыть (Esc)">
                 <span class="material-symbols-outlined">close</span>
             </button>
             <div class="opac-cover-zoom-card">
-                <div class="opac-cover-zoom-3d-wrap">
-                    <div class="opac-zoom-spine-fold"></div>
-                    <div class="opac-zoom-pages-edge"></div>
-                    <img class="opac-cover-zoom-img" src="" alt="Обложка книги" />
+                <div class="opac-cover-zoom-left">
+                    <div class="opac-cover-zoom-3d-wrap">
+                        <div class="opac-zoom-spine-fold"></div>
+                        <div class="opac-zoom-pages-edge"></div>
+                        <img class="opac-cover-zoom-img" src="" alt="Обложка книги" style="display: none;" />
+                        <div class="opac-cover-zoom-fallback" style="display: flex;">
+                            <div class="opac-zoom-fallback-border">
+                                <span class="material-symbols-outlined opac-zoom-genre-icon" data-zoom-genre-icon>menu_book</span>
+                                <span class="opac-zoom-title-preview" data-zoom-fallback-title></span>
+                                <span class="opac-zoom-year" data-zoom-fallback-year></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="opac-cover-zoom-source-badge" data-zoom-source style="display: none;"></div>
                 </div>
+
                 <div class="opac-cover-zoom-meta">
-                    <div class="opac-cover-zoom-source-badge" data-zoom-source></div>
-                    <h3 class="opac-cover-zoom-title" data-zoom-title></h3>
-                    <div class="opac-cover-zoom-author" data-zoom-author></div>
+                    <div class="opac-cover-zoom-header-block">
+                        <h3 class="opac-cover-zoom-title" data-zoom-title></h3>
+                        <div class="opac-cover-zoom-author" data-zoom-author></div>
+                        <div class="opac-cover-zoom-imprint" data-zoom-imprint></div>
+                    </div>
+
+                    <!-- Мета-бейджи: ББК, IDBR, Сиглы -->
                     <div class="opac-cover-zoom-extra" data-zoom-extra></div>
+
+                    <!-- Блок экземпляров: какой филиал, адрес, телефон, наличие, инвентарь -->
+                    <div class="opac-cover-zoom-copies-wrap">
+                        <div class="opac-copies-header">
+                            <span class="material-symbols-outlined icon">account_balance</span>
+                            <strong data-zoom-copies-header>Экземпляры в библиотеках Владимира:</strong>
+                        </div>
+                        <div class="opac-copies-list opac-zoom-copies-list" data-zoom-copies-list>
+                            <!-- Список экземпляров -->
+                        </div>
+                    </div>
+
                     <div class="opac-cover-zoom-actions">
-                        <button type="button" class="opac-zoom-ask-btn" data-zoom-ask>
+                        <button type="button" class="opac-zoom-ask-btn" data-zoom-ask title="Спросить рецензию и сюжет у робота Космо">
                             <span class="material-symbols-outlined icon">smart_toy</span>
-                            <span>Спросить у Космо об этой книге</span>
+                            <span>Спросить у Космо</span>
                         </button>
+                        <a href="http://library.vladimir.ru/rguest_vlad_cgb.htm" target="_blank" rel="noopener noreferrer" class="opac-direct-link-btn" title="Проверить в каталоге ЦГБ">
+                            <span class="material-symbols-outlined icon">open_in_new</span>
+                            <span class="btn-text">OPAC-Global</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -548,43 +537,107 @@ function initCoverZoomModal() {
     document.body.appendChild(modal);
     coverZoomModalEl = modal;
 
+    // Закрытие ТОЛЬКО по кнопке закрытия (крестику)
     const closeBtns = modal.querySelectorAll('[data-zoom-close]');
-    closeBtns.forEach(b => b.addEventListener('click', closeCoverZoomModal));
+    closeBtns.forEach(b => b.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeCoverZoomModal();
+    }));
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && coverZoomModalEl && coverZoomModalEl.classList.contains('is-open')) {
-            closeCoverZoomModal();
-        }
-    });
+    // Защита от прокликивания насквозь и закрытия по клику на пустое место
+    modal.addEventListener('click', (e) => e.stopPropagation());
+    modal.addEventListener('pointerdown', (e) => e.stopPropagation());
+    modal.addEventListener('mousedown', (e) => e.stopPropagation());
 }
 
-function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark }) {
+function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark, idbr, imprint, locations, copies, genre, inventory, targetInventory }) {
     initCoverZoomModal();
     if (!coverZoomModalEl) return;
 
     const imgEl = coverZoomModalEl.querySelector('.opac-cover-zoom-img');
+    const fallbackEl = coverZoomModalEl.querySelector('.opac-cover-zoom-fallback');
+    const fallbackTitleEl = coverZoomModalEl.querySelector('[data-zoom-fallback-title]');
+    const fallbackYearEl = coverZoomModalEl.querySelector('[data-zoom-fallback-year]');
+    const genreIconEl = coverZoomModalEl.querySelector('[data-zoom-genre-icon]');
+
     const titleEl = coverZoomModalEl.querySelector('[data-zoom-title]');
     const authorEl = coverZoomModalEl.querySelector('[data-zoom-author]');
+    const imprintEl = coverZoomModalEl.querySelector('[data-zoom-imprint]');
     const sourceEl = coverZoomModalEl.querySelector('[data-zoom-source]');
     const extraEl = coverZoomModalEl.querySelector('[data-zoom-extra]');
+    const copiesHeaderEl = coverZoomModalEl.querySelector('[data-zoom-copies-header]');
+    const copiesListEl = coverZoomModalEl.querySelector('[data-zoom-copies-list]');
     const askBtn = coverZoomModalEl.querySelector('[data-zoom-ask]');
 
-    if (imgEl) imgEl.src = coverUrl || '';
+    // Обложка или 3D-фолбэк
+    if (coverUrl) {
+        if (imgEl) {
+            imgEl.src = coverUrl;
+            imgEl.style.display = 'block';
+        }
+        if (fallbackEl) fallbackEl.style.display = 'none';
+    } else {
+        if (imgEl) {
+            imgEl.src = '';
+            imgEl.style.display = 'none';
+        }
+        if (fallbackEl) {
+            fallbackEl.style.display = 'flex';
+            if (fallbackTitleEl) fallbackTitleEl.textContent = title || 'Книга без названия';
+            if (fallbackYearEl) fallbackYearEl.textContent = year || '';
+            if (genreIconEl && genre) {
+                genreIconEl.textContent = getGenreIcon(genre);
+            }
+        }
+    }
+
     if (titleEl) titleEl.textContent = title || 'Без названия';
     if (authorEl) authorEl.textContent = author ? `✍️ ${author}` : '';
+    if (imprintEl) {
+        if (imprint) {
+            imprintEl.textContent = `🏛 ${imprint}`;
+            imprintEl.style.display = 'block';
+        } else {
+            imprintEl.style.display = 'none';
+        }
+    }
+
     if (sourceEl) {
-        if (source) {
+        if (source && coverUrl) {
             sourceEl.textContent = `Источник обложки: ${source}`;
             sourceEl.style.display = 'inline-flex';
         } else {
             sourceEl.style.display = 'none';
         }
     }
+
+    // Мета-бейджи (ББК, OPAC ID, Год, Инвентарный номер, Сиглы с очисткой от BBCode/HTML)
     if (extraEl) {
         let metaHtml = '';
-        if (year) metaHtml += `<span class="opac-badge-bbk">Год: ${escapeHtml(year)}</span>`;
-        if (shelfmark) metaHtml += `<span class="opac-badge-bbk">ББК: ${escapeHtml(shelfmark)}</span>`;
+        if (year) metaHtml += `<span class="opac-badge-bbk" title="Год издания">📅 ${escapeHtml(year)}</span>`;
+        if (shelfmark) metaHtml += `<span class="opac-badge-bbk" title="Шифр классификации ББК">🔖 ${escapeHtml(shelfmark)}</span>`;
+        if (idbr) metaHtml += `<span class="opac-badge-idbr" title="Системный ID в OPAC">🆔 ${escapeHtml(idbr)}</span>`;
+        const activeInv = targetInventory || inventory;
+        if (activeInv) {
+            metaHtml += `<span class="opac-badge-inv ${targetInventory ? 'is-target-inventory' : ''}" title="Инвентарный номер издания">🏷️ Инв. №${escapeHtml(activeInv)}</span>`;
+        }
+        if (locations && locations.length > 0) {
+            const cleanLocs = locations.map(loc => String(loc).replace(/\[\/?color[^\]]*\]/gi, '').replace(/<[^>]+>/g, '').trim()).filter(Boolean);
+            if (cleanLocs.length > 0) {
+                metaHtml += `<span class="opac-badge-sigla" title="Сигла подразделений хранения">📦 ${escapeHtml(cleanLocs.join(', '))}</span>`;
+            }
+        }
         extraEl.innerHTML = metaHtml;
+    }
+
+    // Экземпляры и филиалы (Какой филиал, адрес, телефон, наличие, инвентарь)
+    const copiesList = copies || [];
+    if (copiesHeaderEl) {
+        copiesHeaderEl.textContent = `Экземпляры в библиотеках (${copiesList.length}):`;
+    }
+    if (copiesListEl) {
+        copiesListEl.innerHTML = renderCopiesListHtml(copiesList, currentBranchFilter, targetInventory);
     }
 
     if (askBtn) {
@@ -784,6 +837,7 @@ export function initOpacModal() {
                 <div class="opac-results-container">
                     <div class="opac-results-status" data-opac-status></div>
                     <div class="opac-books-grid" data-opac-grid></div>
+                    <div class="opac-pagination-wrap" data-opac-pagination></div>
                 </div>
             </div>
         </div>
@@ -809,23 +863,25 @@ function bindModalEvents() {
     opacGridEl = opacModalEl.querySelector('[data-opac-grid]');
     opacStatusEl = opacModalEl.querySelector('[data-opac-status]');
     opacOnlyAvailableEl = opacModalEl.querySelector('[data-opac-only-available]');
+    opacPaginationEl = opacModalEl.querySelector('[data-opac-pagination]');
 
-    // Кнопка закрытия
+    // Кнопка закрытия (крестик) — ЕДИНСТВЕННЫЙ способ закрытия по клику
     const closeBtns = opacModalEl.querySelectorAll('[data-opac-close]');
-    closeBtns.forEach(btn => btn.addEventListener('click', closeOpacModal));
+    closeBtns.forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeOpacModal();
+    }));
 
-    // Закрытие по клику на оверлей
+    // Защита от прокликивания насквозь и запрет закрытия по клику на пустое место
     opacModalEl.addEventListener('click', (e) => {
-        if (e.target === opacModalEl) {
-            closeOpacModal();
-        }
+        e.stopPropagation();
     });
-
-    // Закрытие по Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && opacModalEl.classList.contains('is-open')) {
-            closeOpacModal();
-        }
+    opacModalEl.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+    });
+    opacModalEl.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
     });
 
     opacSearchBtnEl = opacModalEl.querySelector('[data-opac-search]');
@@ -1084,9 +1140,9 @@ function setSearchBtnLoading(loading) {
 }
 
 /**
- * Выполнение асинхронного поиска через API с защитой от флуда и двухуровневым кэшированием
+ * Выполнение асинхронного поиска через API с постраничной пагинацией (CARDS_PER_PAGE = 4)
  */
-async function executeOpacSearch(query, forceRefresh = false) {
+async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false) {
     if (!query || query.trim().length < 2) {
         if (!query || query.trim().length === 0) {
             renderInitialState();
@@ -1096,14 +1152,25 @@ async function executeOpacSearch(query, forceRefresh = false) {
         return;
     }
 
+    let page = 1;
+    if (typeof pageOrRefresh === 'number') {
+        page = Math.max(1, pageOrRefresh);
+    } else if (typeof pageOrRefresh === 'boolean') {
+        forceRefresh = pageOrRefresh;
+        page = 1;
+    }
+
+    currentOpacPage = page;
+    lastSearchQuery = query;
+
     const now = Date.now();
-    if (isSearchInProgress && now - lastSearchTimestamp < 800) {
+    if (isSearchInProgress && now - lastSearchTimestamp < 500) {
         return;
     }
     lastSearchTimestamp = now;
 
     const onlyAvailable = opacOnlyAvailableEl && opacOnlyAvailableEl.checked;
-    const cacheKey = `${query.trim().toLowerCase()}|${currentBranchFilter}|${onlyAvailable ? 1 : 0}`;
+    const cacheKey = `${query.trim().toLowerCase()}|${currentBranchFilter}|${onlyAvailable ? 1 : 0}|p${page}`;
 
     // 1. Проверка памяти Map и sessionStorage (0мс без сети)
     if (!forceRefresh) {
@@ -1112,7 +1179,7 @@ async function executeOpacSearch(query, forceRefresh = false) {
             return;
         }
         try {
-            const stored = sessionStorage.getItem(`opac_q_v2_${cacheKey}`);
+            const stored = sessionStorage.getItem(`opac_q_v4_${cacheKey}`);
             if (stored) {
                 const parsed = JSON.parse(stored);
                 if (parsed && parsed.data) {
@@ -1134,10 +1201,13 @@ async function executeOpacSearch(query, forceRefresh = false) {
     renderSkeletons();
 
     try {
+        const start = (page - 1) * CARDS_PER_PAGE;
         const params = new URLSearchParams({
             action: 'search',
             q: query,
-            length: '6', // Безопасный лимит (6 книг), чтобы беречь сервер OPAC-Global
+            length: String(CARDS_PER_PAGE), // Строго 4 карточки на странице для защиты сервера OPAC
+            page: String(page),
+            start: String(start),
             include_copies: '1',
             cascade: '1'
         });
@@ -1175,9 +1245,13 @@ async function executeOpacSearch(query, forceRefresh = false) {
             return;
         }
 
+        // Гарантируем метаданные пагинации в ответе
+        data.page = page;
+        data.per_page = CARDS_PER_PAGE;
+
         searchResultsCache.set(cacheKey, data);
         try {
-            sessionStorage.setItem(`opac_q_v2_${cacheKey}`, JSON.stringify({ data, ts: Date.now() }));
+            sessionStorage.setItem(`opac_q_v4_${cacheKey}`, JSON.stringify({ data, ts: Date.now() }));
         } catch (e) {}
 
         renderSearchResults(data, query);
@@ -1196,6 +1270,7 @@ async function executeOpacSearch(query, forceRefresh = false) {
  */
 function renderRateLimitState(message) {
     if (!opacGridEl || !opacStatusEl) return;
+    if (opacPaginationEl) opacPaginationEl.innerHTML = '';
 
     opacStatusEl.innerHTML = `
         <div class="opac-status-empty" style="color: #f59e0b;">
@@ -1207,13 +1282,13 @@ function renderRateLimitState(message) {
     opacGridEl.innerHTML = `
         <div class="opac-notice-card is-warning">
             <div class="opac-notice-icon is-warning">
-                <span class="material-symbols-outlined">speed</span>
+                <span class="material-symbols-outlined">hourglass_top</span>
             </div>
             <div class="opac-notice-content">
-                <h3 class="opac-notice-title">Бережный режим каталога</h3>
+                <h3 class="opac-notice-title">Пауза для защиты каталога OPAC</h3>
                 <p class="opac-notice-desc">${escapeHtml(message)}</p>
                 <div class="opac-notice-meta">
-                    <span class="opac-tip-badge">🛡️ <strong>Защита от перегрузки:</strong> Для стабильности сервера библиотек Владимира установлена секундная пауза между частыми запросами.</span>
+                    <span class="opac-tip-badge">Сервер бережёт базу данных библиотек. Повторите запрос через 3-5 секунд.</span>
                 </div>
             </div>
         </div>
@@ -1221,28 +1296,29 @@ function renderRateLimitState(message) {
 }
 
 /**
- * Отрисовка состояния предохранителя (Circuit Breaker)
+ * Отрисовка состояния Circuit Breaker
  */
 function renderCircuitBreakerState(message) {
     if (!opacGridEl || !opacStatusEl) return;
+    if (opacPaginationEl) opacPaginationEl.innerHTML = '';
 
     opacStatusEl.innerHTML = `
-        <div class="opac-status-empty" style="color: #f59e0b;">
-            <span class="material-symbols-outlined" style="vertical-align: middle;">shield</span>
-            <span>Защитный кулдаун OPAC активен</span>
+        <div class="opac-status-empty" style="color: #ef4444;">
+            <span class="material-symbols-outlined" style="vertical-align: middle;">cloud_sync</span>
+            <span>Восстановление связи с ЦГБ</span>
         </div>
     `;
 
     opacGridEl.innerHTML = `
         <div class="opac-notice-card is-warning">
             <div class="opac-notice-icon is-warning">
-                <span class="material-symbols-outlined">shield</span>
+                <span class="material-symbols-outlined">network_check</span>
             </div>
             <div class="opac-notice-content">
-                <h3 class="opac-notice-title">Сервер каталога восстанавливает стабильность</h3>
+                <h3 class="opac-notice-title">Автоматическая стабилизация шлюза</h3>
                 <p class="opac-notice-desc">${escapeHtml(message)}</p>
                 <div class="opac-notice-meta">
-                    <span class="opac-tip-badge">🛡️ <strong>Защита от сбоев:</strong> Предохранитель защитил библиотечный сервер OPAC от перегрузки. Подождите около минуты и повторите запрос.</span>
+                    <span class="opac-tip-badge">Шлюз OPAC-Global восстанавливает соединение. Подождите несколько секунд.</span>
                 </div>
             </div>
         </div>
@@ -1250,43 +1326,100 @@ function renderCircuitBreakerState(message) {
 }
 
 /**
- * Проверка соответствия экземпляра книги выбранному фильтру филиала
+ * Отрисовка блока пагинации страниц
  */
-function matchesBranchFilter(copy, filter) {
-    if (!copy || !filter || filter === 'all') return true;
-    const f = String(filter).toLowerCase();
-    const sub = String(copy.subfield_b || '').toLowerCase();
-    const code = String(copy.branch_code || '').toLowerCase();
-    const name = String(copy.branch_name || '').toLowerCase();
-    const loc = String(copy.permanent_location || '').toLowerCase();
-    const addr = String(copy.branch_address || '').toLowerCase();
+function renderPaginationHtml(currentPage, totalPages, totalFound) {
+    if (totalPages <= 1) return '';
 
-    if (f === 'f4' || f === 'ф4') {
-        return sub === 'ф4' || sub === 'ф4д' || code.includes('4') || name.includes('4') || loc.includes('ф4') || addr.includes('егорова');
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
     }
-    if (f === 'cgb' || f === 'цгб') {
-        return ['аб', 'чз', 'до', 'кх', 'ибо', 'ооо'].includes(sub) || code === 'цгб' || name.includes('центральная городская') || loc.includes('цгб');
+
+    let html = `
+        <nav class="opac-pagination" aria-label="Пагинация результатов каталога">
+            <div class="opac-pagination-info">
+                Страница <strong>${currentPage}</strong> из <strong>${totalPages}</strong>
+                <span class="opac-pagination-total">(${totalFound.toLocaleString('ru-RU')} изданий)</span>
+            </div>
+            <div class="opac-pagination-controls">
+                <button type="button" class="opac-page-btn opac-page-prev" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''} aria-label="Предыдущая страница">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                    <span class="btn-text">Назад</span>
+                </button>
+                <div class="opac-pages-list">
+    `;
+
+    if (startPage > 1) {
+        html += `<button type="button" class="opac-page-num" data-page="1">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="opac-page-ellipsis">…</span>`;
+        }
     }
-    if (f === 'cdb' || f === 'цдб') {
-        return ['цдб', 'цдч', 'цди', 'цки'].includes(sub) || code === 'цдб' || name.includes('детская') || loc.includes('цдб');
+
+    for (let p = startPage; p <= endPage; p++) {
+        const isActive = p === currentPage;
+        html += `
+            <button type="button" class="opac-page-num ${isActive ? 'is-active' : ''}" data-page="${p}" ${isActive ? 'aria-current="page"' : ''}>
+                ${p}
+            </button>
+        `;
     }
-    if (f.startsWith('f') || f.startsWith('ф')) {
-        const num = f.replace(/^[fф]-?/i, '');
-        return sub === `ф${num}` || sub === `ф${num}д` || sub === `ф${num}н` || sub === `ф${num}нд` || code.includes(`№${num}`) || name.includes(`№${num}`) || loc.includes(`ф${num}`);
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="opac-page-ellipsis">…</span>`;
+        }
+        html += `<button type="button" class="opac-page-num" data-page="${totalPages}">${totalPages}</button>`;
     }
-    return sub.includes(f) || code.includes(f) || name.includes(f) || loc.includes(f);
+
+    html += `
+                </div>
+                <button type="button" class="opac-page-btn opac-page-next" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''} aria-label="Следующая страница">
+                    <span class="btn-text">Вперёд</span>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+        </nav>
+    `;
+    return html;
 }
 
 /**
- * Отрисовка результатов поиска
+ * Привязка кликов к кнопкам пагинации
+ */
+function bindPaginationEvents(container, query) {
+    if (!container) return;
+    const pageBtns = container.querySelectorAll('[data-page]');
+    pageBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetPage = parseInt(btn.getAttribute('data-page'), 10);
+            if (!targetPage || isNaN(targetPage) || btn.disabled || btn.classList.contains('is-active')) return;
+
+            const resultsContainer = opacModalEl ? opacModalEl.querySelector('.opac-results-container') : null;
+            if (resultsContainer) {
+                resultsContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            executeOpacSearch(query, targetPage);
+        });
+    });
+}
+
+/**
+ * Отрисовка результатов поиска книг с пагинацией и подробным окном сведений
  */
 function renderSearchResults(data, query) {
     if (!opacGridEl || !opacStatusEl) return;
 
-    if (!data || !data.ok || !data.items || data.items.length === 0) {
+    if (!data || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+        if (opacPaginationEl) opacPaginationEl.innerHTML = '';
         opacStatusEl.innerHTML = `
             <div class="opac-status-empty">
-                По запросу «<strong>${escapeHtml(query)}</strong>» ничего не найдено в каталоге.
+                По запросу «<strong>${escapeHtml(query)}</strong>» ничего не найдено
             </div>
         `;
         opacGridEl.innerHTML = `
@@ -1295,7 +1428,7 @@ function renderSearchResults(data, query) {
                     <span class="material-symbols-outlined">search_off</span>
                 </div>
                 <div class="opac-notice-content">
-                    <h3 class="opac-notice-title">Книга не найдена в каталоге</h3>
+                    <h3 class="opac-notice-title">Издание не найдено в фонде</h3>
                     <p class="opac-notice-desc">
                         Попробуйте сократить запрос, убрать инициалы автора или проверить правильность написания.
                         Вы также можете обратиться к библиографам ЦГБ: г. Владимир, Суздальский пр., д. 2, 📞 8(4922) 21-65-63.
@@ -1316,6 +1449,7 @@ function renderSearchResults(data, query) {
     }
 
     if (itemsToDisplay.length === 0) {
+        if (opacPaginationEl) opacPaginationEl.innerHTML = '';
         opacStatusEl.innerHTML = `
             <div class="opac-status-empty">
                 По запросу «<strong>${escapeHtml(query)}</strong>» в выбранном филиале книг не найдено.
@@ -1337,10 +1471,23 @@ function renderSearchResults(data, query) {
         return;
     }
 
-    const totalFound = itemsToDisplay.length;
+    // Точный подсчёт общего числа найденных изданий из базы данных
+    const grandTotal = parseInt(data.total_found || data.count || itemsToDisplay.length, 10);
+    const currentPage = parseInt(data.page || currentOpacPage || 1, 10);
+    const totalPages = parseInt(data.total_pages || (grandTotal > 0 ? Math.ceil(grandTotal / CARDS_PER_PAGE) : 1), 10);
+
+    // Определение инвентарного поиска
+    const invMatch = query ? query.match(/^(?:\/инв(?:\.|\b)|\/inv\b|инв(?:\.|\b|\s*№)|инвентар(?:ный)?(?:\s*номер)?\s*(?:№)?|IN)\s*([0-9A-Za-zА-Яа-я/-]+)/i) : null;
+    const targetInventory = invMatch ? invMatch[1].trim() : (/^\d{4,10}$/.test(query?.trim() || '') ? query.trim() : null);
+    const isInvQuery = Boolean(targetInventory);
+
+    const statusText = isInvQuery
+        ? `Найдено по инвентарному номеру <strong>№${escapeHtml(targetInventory)}</strong>: <strong>${grandTotal.toLocaleString('ru-RU')}</strong> ${grandTotal === 1 ? 'издание' : (grandTotal < 5 && grandTotal > 0 ? 'издания' : 'изданий')} (страница ${currentPage} из ${totalPages})`
+        : `Найдено изданий: <strong>${grandTotal.toLocaleString('ru-RU')}</strong> по запросу «${escapeHtml(query)}» (страница ${currentPage} из ${totalPages})`;
+
     opacStatusEl.innerHTML = `
         <div class="opac-status-summary">
-            <span>Найдено изданий: <strong>${totalFound}</strong> по запросу «${escapeHtml(query)}»</span>
+            <span>${statusText}</span>
             ${data._cached ? '<span class="opac-cache-tag" title="Данные ускорены кэшем каталога">⚡ Кэш</span>' : ''}
         </div>
     `;
@@ -1358,17 +1505,19 @@ function renderSearchResults(data, query) {
         const genreIcon = getGenreIcon(genre);
         const copies = item.copies || [];
 
-        // Подсчёт доступных экземпляров
-        let availableCopiesCount = 0;
-        copies.forEach(c => {
-            if (c.is_available) availableCopiesCount++;
-        });
+        // Очистка сиглы от BBCode [color=...] и HTML
+        const cleanLocations = locations.map(loc => {
+            return String(loc).replace(/\[\/?color[^\]]*\]/gi, '').replace(/<[^>]+>/g, '').trim();
+        }).filter(Boolean);
 
-        // Карточка книги
+        // Инвентарный номер издания
+        const itemInv = item.inventory || (targetInventory && copies.some(c => String(c.inventory || '').trim().toLowerCase() === targetInventory.toLowerCase()) ? targetInventory : null);
+
+        // Карточка книги (по 4 на страницу)
         cardsHtml += `
-            <article class="opac-book-card" data-idbr="${escapeHtml(idbr)}">
-                <!-- 3D-обложка книги с каскадом Google Books / Яндекс Книги / ЛитРес / OpenLibrary -->
-                <div class="opac-book-cover genre-${genre}" data-genre="${genre}" data-title="${escapeHtml(title)}" data-author="${escapeHtml(author)}" data-isbn="${escapeHtml(item.isbn || '')}" tabindex="0" role="button" aria-label="Обложка книги ${escapeHtml(title)}, нажмите для увеличения" title="Нажмите для увеличенного 3D-просмотра обложки">
+            <article class="opac-book-card" data-card-index="${index}" data-idbr="${escapeHtml(idbr)}">
+                <!-- 3D-обложка книги с каскадом и строгим соответствием -->
+                <div class="opac-book-cover genre-${genre}" data-genre="${genre}" data-title="${escapeHtml(title)}" data-author="${escapeHtml(author)}" data-isbn="${escapeHtml(item.isbn || '')}" tabindex="0" role="button" aria-label="Обложка книги ${escapeHtml(title)}, нажмите для просмотра сведений и наличия" title="Нажмите для просмотра издания и наличия по филиалам">
                     <div class="opac-book-pages-edge" aria-hidden="true"></div>
                     <div class="opac-book-spine-fold" aria-hidden="true"></div>
                     <img class="opac-book-cover-img" alt="${escapeHtml(title)}" loading="lazy" style="display: none; opacity: 0;" />
@@ -1385,26 +1534,27 @@ function renderSearchResults(data, query) {
                 <!-- Содержимое карточки -->
                 <div class="opac-book-content">
                     <div class="opac-book-header">
-                        <h4 class="opac-book-title" title="${escapeHtml(title)}">${escapeHtml(title)}</h4>
+                        <h4 class="opac-book-title" role="button" tabindex="0" title="Нажмите для подробных сведений об издании и наличии">${escapeHtml(title)}</h4>
                         ${author ? `<div class="opac-book-author">✍️ ${escapeHtml(author)}</div>` : ''}
                         ${imprint ? `<div class="opac-book-imprint">${escapeHtml(imprint)}</div>` : ''}
                     </div>
 
-                    <!-- Мета-бейджи: ББК, OPAC ID, Сигла -->
+                    <!-- Мета-бейджи: ББК, OPAC ID, Сигла, Инвентарный номер -->
                     <div class="opac-book-badges">
                         ${shelfmark ? `<span class="opac-badge-bbk" title="Шифр классификации ББК">🔖 ${escapeHtml(shelfmark)}</span>` : ''}
                         ${idbr ? `<span class="opac-badge-idbr" title="Системный ID записи в БД 62 OPAC-Global">🆔 ${escapeHtml(idbr)}</span>` : ''}
-                        ${locations.length > 0 ? `<span class="opac-badge-sigla" title="Сигла подразделений хранения">📦 ${escapeHtml(locations.join(', '))}</span>` : ''}
+                        ${itemInv ? `<span class="opac-badge-inv ${targetInventory && itemInv.toLowerCase() === targetInventory.toLowerCase() ? 'is-target-inventory' : ''}" title="Инвентарный номер издания">🏷️ Инв. №${escapeHtml(itemInv)}</span>` : ''}
+                        ${cleanLocations.length > 0 ? `<span class="opac-badge-sigla" title="Сигла подразделений хранения">📦 ${escapeHtml(cleanLocations.join(', '))}</span>` : ''}
                     </div>
 
-                    <!-- Блок экземпляров и филиалов -->
+                    <!-- Блок экземпляров и филиалов (Какой филиал, адрес, телефон, наличие, инвентарь) -->
                     <div class="opac-copies-section">
                         <div class="opac-copies-header">
                             <span class="material-symbols-outlined icon">account_balance</span>
                             <strong>Экземпляры в библиотеках (${copies.length}):</strong>
                         </div>
                         <div class="opac-copies-list">
-                            ${renderCopiesListHtml(copies, currentBranchFilter)}
+                            ${renderCopiesListHtml(copies, currentBranchFilter, targetInventory)}
                         </div>
                     </div>
 
@@ -1426,34 +1576,68 @@ function renderSearchResults(data, query) {
 
     opacGridEl.innerHTML = cardsHtml;
 
-    // Асинхронное фоновое обогащение обложками из 5-уровневого каскада
+    // Отрисовка интерактивной пагинации
+    if (opacPaginationEl) {
+        opacPaginationEl.innerHTML = renderPaginationHtml(currentPage, totalPages, grandTotal);
+        bindPaginationEvents(opacPaginationEl, query);
+    }
+
+    // Запуск прямой загрузки 4 обложек текущей страницы
     loadBookCovers(opacGridEl);
 
-    // Привязка кликов по обложке книги для увеличенного 3D-просмотра в HD
-    const coverCards = opacGridEl.querySelectorAll('.opac-book-cover');
-    coverCards.forEach(coverEl => {
-        const handleCoverClick = () => {
-            const title = coverEl.getAttribute('data-title') || '';
-            const author = coverEl.getAttribute('data-author') || '';
-            const realImg = coverEl.querySelector('.opac-book-cover-img');
-            const coverUrl = coverEl.getAttribute('data-cover-url') || (realImg && realImg.style.display !== 'none' ? realImg.src : null);
-            const source = coverEl.getAttribute('data-cover-source') || '';
-            const cardEl = coverEl.closest('.opac-book-card');
-            const shelfmark = cardEl ? (cardEl.querySelector('.opac-badge-bbk')?.textContent?.replace(/^[^\wА-Яа-я0-9.]+/, '')?.trim() || '') : '';
-            const year = coverEl.querySelector('.opac-cover-year')?.textContent || '';
+    // Привязка кликов по обложке и названию книги для подробного модального окна с филиалами
+    const cards = opacGridEl.querySelectorAll('.opac-book-card');
+    cards.forEach(cardEl => {
+        const idx = parseInt(cardEl.getAttribute('data-card-index'), 10);
+        const item = itemsToDisplay[idx];
+        if (!item) return;
 
-            if (coverUrl) {
-                openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark });
-            }
+        const openCardDetail = () => {
+            const coverEl = cardEl.querySelector('.opac-book-cover');
+            const realImg = coverEl ? coverEl.querySelector('.opac-book-cover-img') : null;
+            const coverUrl = coverEl?.getAttribute('data-cover-url') || (realImg && realImg.style.display !== 'none' ? realImg.src : null);
+            const source = coverEl?.getAttribute('data-cover-source') || '';
+            const copies = item.copies || [];
+            const itemInv = item.inventory || (targetInventory && copies.some(c => String(c.inventory || '').trim().toLowerCase() === targetInventory.toLowerCase()) ? targetInventory : null);
+
+            openCoverZoomModal({
+                coverUrl,
+                title: item.title || '',
+                author: item.author || '',
+                source,
+                year: item.year ? `${item.year} г.` : '',
+                shelfmark: item.shelfmark && item.shelfmark !== 'Не задан' ? item.shelfmark : '',
+                idbr: item.id || '',
+                inventory: itemInv,
+                targetInventory,
+                imprint: item.imprint || '',
+                locations: item.locations || [],
+                copies: item.copies || [],
+                genre: detectBookGenre(item)
+            });
         };
 
-        coverEl.addEventListener('click', handleCoverClick);
-        coverEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleCoverClick();
-            }
-        });
+        const coverEl = cardEl.querySelector('.opac-book-cover');
+        if (coverEl) {
+            coverEl.addEventListener('click', openCardDetail);
+            coverEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openCardDetail();
+                }
+            });
+        }
+
+        const titleEl = cardEl.querySelector('.opac-book-title');
+        if (titleEl) {
+            titleEl.addEventListener('click', openCardDetail);
+            titleEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openCardDetail();
+                }
+            });
+        }
     });
 
     // Привязка кнопок «Спросить у Космо»
@@ -1471,10 +1655,12 @@ function renderSearchResults(data, query) {
 /**
  * Отрисовка списка экземпляров по филиалам с группировкой и бейджами точного наличия
  */
-function renderCopiesListHtml(copies, activeFilter = 'all') {
+function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = null) {
     if (!copies || copies.length === 0) {
         return `<div class="opac-no-copies">ℹ️ Детальные сведения об экземплярах уточняются в ЦГБ.</div>`;
     }
+
+    const cleanTargetInv = targetInventory ? String(targetInventory).trim().toLowerCase() : null;
 
     // Группировка экземпляров по филиалу для чистого и информативного отображения
     const branchMap = new Map();
@@ -1491,6 +1677,7 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
                 total_count: 0,
                 available_count: 0,
                 inventories: [],
+                has_target_inv: false,
                 rawCopy: c
             });
         }
@@ -1501,13 +1688,19 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
         }
         if (c.inventory) {
             b.inventories.push(c.inventory);
+            if (cleanTargetInv && String(c.inventory).trim().toLowerCase() === cleanTargetInv) {
+                b.has_target_inv = true;
+            }
         }
     });
 
     const branchList = Array.from(branchMap.values());
 
-    // Сортировка: сначала целевой филиал фильтра, затем наличие, затем общее количество
+    // Сортировка: сначала филиал с целевым инвентарным номером, затем целевой филиал фильтра, затем наличие, затем общее количество
     branchList.sort((a, b) => {
+        if (a.has_target_inv !== b.has_target_inv) {
+            return a.has_target_inv ? -1 : 1;
+        }
         if (activeFilter && activeFilter !== 'all') {
             const aMatch = matchesBranchFilter(a.rawCopy, activeFilter) ? 1 : 0;
             const bMatch = matchesBranchFilter(b.rawCopy, activeFilter) ? 1 : 0;
@@ -1526,7 +1719,15 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
         const bName = b.branch_name;
         const bAddress = b.branch_address;
         const bPhone = b.branch_phone;
-        const invStr = b.inventories.length > 0 ? `Инв. № ${b.inventories.slice(0, 3).join(', ')}${b.inventories.length > 3 ? '...' : ''}` : '';
+
+        let invStr = '';
+        if (b.inventories.length > 0) {
+            const formattedInvs = b.inventories.slice(0, 3).map(inv => {
+                const isTarget = cleanTargetInv && String(inv).trim().toLowerCase() === cleanTargetInv;
+                return isTarget ? `<strong class="opac-inv-highlight">№${escapeHtml(inv)}</strong>` : `№${escapeHtml(inv)}`;
+            });
+            invStr = `Инв. ${formattedInvs.join(', ')}${b.inventories.length > 3 ? '...' : ''}`;
+        }
 
         // Формирование бейджа доступности: «🟢 На полке (N экз.)»
         let badgeText = '';
@@ -1547,6 +1748,7 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
 
         const itemClass = [
             'opac-copy-item',
+            b.has_target_inv ? 'is-target-inventory' : '',
             isTargetBranch ? 'is-target-branch' : '',
             isBranch4 ? 'is-f4' : '',
             isAvailable ? 'has-availability' : 'no-availability'
@@ -1556,7 +1758,7 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
             <div class="${itemClass}">
                 <div class="opac-copy-top">
                     <span class="opac-copy-name">
-                        ${isTargetBranch ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isBranch4 ? '🌟 <strong>[Доброе] ' + escapeHtml(bName) + '</strong>' : escapeHtml(bName))}
+                        ${b.has_target_inv ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isTargetBranch ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isBranch4 ? '🌟 <strong>[Доброе] ' + escapeHtml(bName) + '</strong>' : escapeHtml(bName)))}
                     </span>
                     <span class="opac-copy-badge ${badgeClass}">
                         ${badgeText}
@@ -1564,8 +1766,8 @@ function renderCopiesListHtml(copies, activeFilter = 'all') {
                 </div>
                 <div class="opac-copy-details">
                     ${bAddress ? `<span class="opac-copy-addr">📍 ${escapeHtml(bAddress)}</span>` : ''}
-                    ${bPhone ? `<span class="opac-copy-phone">• 📞 <a href="tel:${escapeHtml(bPhone.replace(/[^\\d+]/g, ''))}">${escapeHtml(bPhone)}</a></span>` : ''}
-                    ${invStr ? `<span class="opac-copy-inv">• 🔖 [${escapeHtml(invStr)}]</span>` : ''}
+                    ${bPhone ? `<span class="opac-copy-phone">• 📞 <a href="tel:${escapeHtml(bPhone.replace(/[^\d+]/g, ''))}">${escapeHtml(bPhone)}</a></span>` : ''}
+                    ${invStr ? `<span class="opac-copy-inv">• 🔖 [${invStr}]</span>` : ''}
                 </div>
             </div>
         `;

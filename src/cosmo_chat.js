@@ -563,7 +563,7 @@ export const PRESETS = VK_GROUP_PRESETS;
 
 /**
  * Распознавание запроса на поиск книги в электронном каталоге
- * Поддерживает команды /книга, /поиск, /opac, /к и естественные русскоязычные фразы
+ * Поддерживает команды /инв <номер>, /книга, /поиск, /opac, /к и естественные русскоязычные фразы
  * @param {string} text
  * @returns {string|null} Поисковая фраза или null
  */
@@ -571,7 +571,28 @@ export function detectBookSearchQuery(text) {
     if (!text || typeof text !== 'string') return null;
     const raw = text.trim();
 
-    // 1. Слеш-команды: /книга [запрос], /поиск [запрос], /opac [запрос], /к [запрос]
+    // 1. Слеш-команды инвентарного поиска: /инв [номер], /инвентарь [номер], /inv [номер], /инвентарный [номер]
+    const invCmdMatch = raw.match(/^\/(?:инвентарный|инвентарь|инв\.?|inv)(?:\s+|$|\s*[:№#]?\s*)(.+)$/i);
+    if (invCmdMatch) {
+        let invNum = (invCmdMatch[1] || '').trim();
+        invNum = invNum.replace(/^[«"']+|[»"']+$/g, '').replace(/^[№#:]+\s*/, '').trim();
+        if (invNum) {
+            return `IN ${invNum}`;
+        }
+    }
+
+    // 2. Естественные фразы поиска по инвентарному номеру:
+    // "Инв. 146942", "Инв.номер 146942", "инв № 146942", "инвентарный номер 146942", "найди по инв 146942", etc.
+    const naturalInvMatch = raw.match(/^(?:космо,?\s*)?(?:найди|поищи|поиск|где|покажи)?\s*(?:книгу|книги|издание)?\s*(?:по\s+)?(?:инвентарному\s+номеру|инвентарный\s+номер|инвентарному|инвентарный|инв\.?\s*номер|инв\.?|инвентарь)\s*[:№#\s.]+\s*([a-zа-я0-9\/-]+)$/i)
+        || raw.match(/^(?:инвентарный\s+номер|инвентарный|инв\.?\s*номер|инв\.?)\s*[:№#\s.]*\s*([a-zа-я0-9\/-]+)$/i);
+    if (naturalInvMatch) {
+        const invNum = naturalInvMatch[1].trim();
+        if (invNum) {
+            return `IN ${invNum}`;
+        }
+    }
+
+    // 3. Слеш-команды: /книга [запрос], /поиск [запрос], /opac [запрос], /к [запрос]
     const cmdMatch = raw.match(/^\/(?:книга|поиск|opac|к)(?:\s+|$|\s*(?=[«"']))(.*)$/i);
     if (cmdMatch) {
         let query = (cmdMatch[1] || '').trim();
@@ -579,14 +600,14 @@ export function detectBookSearchQuery(text) {
         return query || 'Мастер и Маргарита';
     }
 
-    // 2. Цитаты в кавычках («...» или "...") при наличии книжного контекста
-    const hasBookContext = /(?:книг|роман|повест|каталог|opac|наличи|найди|ищи|поищи|где\s+есть|в\s+каких\s+филиалах)/i.test(raw);
+    // 4. Цитаты в кавычках («...» или "...") при наличии книжного контекста
+    const hasBookContext = /(?:книг|роман|повест|каталог|opac|наличи|найди|ищи|поищи|где\s+есть|в\s+каких\s+филиалах|инв|инвентар)/i.test(raw);
     const quoteMatch = raw.match(/«([^»]{2,})»/) || raw.match(/"([^"]{2,})"/);
     if (quoteMatch && hasBookContext) {
         return quoteMatch[1].trim();
     }
 
-    // 3. Естественные фразы поиска книги
+    // 5. Естественные фразы поиска книги
     const naturalMatch = raw.match(/^(?:космо,?\s*)?(?:найди|поищи|поиск|где\s+(?:есть|взять|найти)|в\s+каких\s+филиалах\s+есть)\s+(?:книгу|книги|в\s+каталоге|в\s+opac|в\s+электронном\s+каталоге)?\s*(.+)$/i);
     if (naturalMatch) {
         let q = naturalMatch[1]
@@ -599,7 +620,7 @@ export function detectBookSearchQuery(text) {
         }
     }
 
-    // 4. Прямой запуск пресета каталога
+    // 6. Прямой запуск пресета каталога
     if (raw.includes('найди книгу «Мастер и Маргарита»') || (raw.includes('Мастер и Маргарита') && /каталог|opac|филиал/i.test(raw))) {
         return 'Мастер и Маргарита';
     }
@@ -612,14 +633,14 @@ export function detectBookSearchQuery(text) {
  * @param {object} book Объект библиографической записи с экземплярами
  * @returns {string} HTML-разметка интерактивной карточки
  */
-export function renderOpacBookCard(book) {
+export function renderOpacBookCard(book, targetInventory = null) {
     if (!book) return '';
 
     const title = book.title || 'Без названия';
     const author = book.author || 'Автор не указан';
     const year = book.year || '';
     const shelfmark = book.shelfmark || book.bbk || '';
-    const inventory = book.inventory || '';
+    const inventory = book.inventory || targetInventory || (Array.isArray(book.copies) ? book.copies.map(c => c.inventory).filter(Boolean).slice(0, 3).join(', ') : '');
     const bookId = book.id || '';
 
     // Группировка или извлечение информации по филиалам
@@ -787,7 +808,7 @@ export function renderOpacBookCard(book) {
                     <div class="cosmo-book-specs">
                         ${year ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">calendar_today</span> ${escapeHtml(year)} г.</span>` : ''}
                         ${shelfmark ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">tag</span> Шифр: ${escapeHtml(shelfmark)}</span>` : ''}
-                        ${inventory ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">inventory_2</span> Инв.: ${escapeHtml(inventory)}</span>` : ''}
+                        ${inventory ? `<span class="book-spec-chip is-inventory ${targetInventory ? 'is-target-inventory' : ''}" title="Инвентарный номер издания"><span class="material-symbols-outlined chip-icon">inventory_2</span> Инв.: <strong>${escapeHtml(inventory)}</strong></span>` : ''}
                         ${totalAvailable > 0
                             ? `<span class="book-overall-avail is-available"><span class="status-dot is-available"></span> В наличии (${totalAvailable})</span>`
                             : `<span class="book-overall-avail on-loan"><span class="status-dot on-loan"></span> Все на руках</span>`}
@@ -2490,7 +2511,7 @@ export class CosmoChatModal {
                         <p>Привет! Я <strong>Космо</strong> 🤖📚 — библиотечный робот-помощник, книжный сомелье и ИИ-проводник Централизованной библиотечной системы города Владимира!</p>
                         <p><strong>✨ ЧТО Я УМЕЮ И ЧЕМ МОГУ ПОМОЧЬ:</strong></p>
                         <ul class="cosmo-chat-ul">
-                            <li>📚 <strong>Поиск книг в электронном каталоге OPAC</strong>: найду любое издание в каталоге ЦГБ, подскажу наличие и филиалы (команды <code>/книга</code>, <code>/поиск</code>, <code>/opac</code>).</li>
+                            <li>📚 <strong>Поиск книг в электронном каталоге OPAC</strong>: найду любое издание в каталоге ЦГБ по названию, автору или <strong>инвентарному номеру</strong> (команды <code>/книга</code>, <code>/поиск</code>, <code>/инв &lt;номер&gt;</code>, <code>/opac</code>).</li>
                             <li>📖 <strong>Подобрать книгу под настроение</strong>: уютная проза, захватывающий детектив, научная фантастика или классика из фондов 18 библиотек Владимира.</li>
                             <li>🏛 <strong>Подсказать адреса и телефоны библиотек</strong>: знаю контакты, адреса и график всех 18 филиалов сети ЦГБ Владимира.</li>
                             <li>💡 <strong>Создать контент и аналитику</strong>: посты для ВК, идеи интерактивов, викторин и аудит эффективности публикаций.</li>
@@ -2990,9 +3011,14 @@ ${statsContext}
 
             const data = await response.json();
 
+            const isInvSearch = /^IN\s+/i.test(searchQuery);
+            const displayQuery = isInvSearch ? searchQuery.replace(/^IN\s+/i, '').trim() : searchQuery;
+
             if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
                 this.hideTypingIndicator();
-                const notFoundMsg = `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${escapeHtml(searchQuery)}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
+                const notFoundMsg = isInvSearch
+                    ? `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по инвентарному номеру **«№${escapeHtml(displayQuery)}»** книга не найдена.\n\nПожалуйста, перепроверьте цифры номера или попробуйте найти книгу по автору/названию (например: \`/книга Пушкин\` или \`/поиск Капитанская дочка\`).`
+                    : `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${escapeHtml(searchQuery)}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
                 this.messages.push({ role: 'assistant', content: notFoundMsg });
                 this.appendBotMessage(notFoundMsg);
                 if (this.mascot && typeof this.mascot.setState === 'function') {
@@ -3043,17 +3069,19 @@ ${statsContext}
 
             // Формируем вводное сообщение Космо
             const totalFound = data.total_found || data.count || topBooks.length;
-            let introText = `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${escapeHtml(searchQuery)}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
+            let introText = isInvSearch
+                ? `📚 **Книга по инвентарному номеру №${escapeHtml(displayQuery)} в каталоге OPAC:**`
+                : `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${escapeHtml(searchQuery)}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
 
             if (hasInBranch4) {
-                introText += `\n\n🌟 **Отличная новость!** Книга есть в наличии в **Филиале №4** (ул. Егорова, д. 10, жилой район *Доброе*)!`;
+                introText += `\n\n🌟 **Отличная новость!** Экземпляр числится в **Филиале №4** (ул. Егорова, д. 10, жилой район *Доброе*)!`;
             } else if (availableTotal > 0) {
                 introText += `\n\n✅ Книга доступна для выдачи в филиалах нашей библиотечной сети. Подробные данные о наличии:`;
             } else {
-                introText += `\n\n⏳ На текущий момент большинство экземпляров находится на руках у читателей. Уточняйте сроки возврата по телефону филиала:`;
+                introText += `\n\n⏳ На текущий момент этот экземпляр находится на руках у читателей. Уточняйте сроки возврата по телефону филиала:`;
             }
 
-            const cardsHtml = topBooks.map(renderOpacBookCard).join('\n');
+            const cardsHtml = topBooks.map(b => renderOpacBookCard(b, isInvSearch ? displayQuery : null)).join('\n');
 
             this.hideTypingIndicator();
             this.appendBotBookMessage(introText, cardsHtml, topBooks);
