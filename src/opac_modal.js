@@ -508,7 +508,7 @@ function initCoverZoomModal() {
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-label', 'Подробные сведения об издании и наличии в библиотеках');
     modal.innerHTML = `
-        <div class="opac-cover-zoom-backdrop"></div>
+        <div class="opac-cover-zoom-backdrop" data-zoom-close></div>
         <div class="opac-cover-zoom-dialog">
             <button type="button" class="opac-cover-zoom-close" data-zoom-close aria-label="Закрыть окно (Esc)" title="Закрыть (Esc)">
                 <span class="material-symbols-outlined">close</span>
@@ -568,7 +568,7 @@ function initCoverZoomModal() {
     document.body.appendChild(modal);
     coverZoomModalEl = modal;
 
-    // Закрытие ТОЛЬКО по кнопке закрытия (крестику)
+    // Закрытие по крестику или клику на фон
     const closeBtns = modal.querySelectorAll('[data-zoom-close]');
     closeBtns.forEach(b => b.addEventListener('click', (e) => {
         e.preventDefault();
@@ -576,10 +576,10 @@ function initCoverZoomModal() {
         closeCoverZoomModal();
     }));
 
-    // Защита от прокликивания насквозь и закрытия по клику на пустое место
-    modal.addEventListener('click', (e) => e.stopPropagation());
-    modal.addEventListener('pointerdown', (e) => e.stopPropagation());
-    modal.addEventListener('mousedown', (e) => e.stopPropagation());
+    const zoomDialog = modal.querySelector('.opac-cover-zoom-dialog');
+    if (zoomDialog) {
+        zoomDialog.addEventListener('click', (e) => e.stopPropagation());
+    }
 }
 
 function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark, idbr, imprint, locations, copies, genre, inventory, targetInventory }) {
@@ -644,16 +644,17 @@ function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark, 
     }
 
     // Мета-бейджи (ББК, OPAC ID, Год, Инвентарный номер, Сиглы с очисткой от BBCode/HTML)
+    let activeInv = targetInventory || inventory;
+    if (!activeInv && Array.isArray(copies) && copies.length > 0) {
+        const foundInv = copies.map(c => c.inventory || c.code1).filter(Boolean)[0];
+        if (foundInv) activeInv = foundInv;
+    }
+
     if (extraEl) {
         let metaHtml = '';
         if (year) metaHtml += `<span class="opac-badge-bbk" title="Год издания">📅 ${escapeHtml(year)}</span>`;
         if (shelfmark) metaHtml += `<span class="opac-badge-bbk" title="Шифр классификации ББК">🔖 ${escapeHtml(shelfmark)}</span>`;
         if (idbr) metaHtml += `<span class="opac-badge-idbr" title="Системный ID в OPAC">🆔 ${escapeHtml(idbr)}</span>`;
-        let activeInv = targetInventory || inventory;
-        if (!activeInv && Array.isArray(copies) && copies.length > 0) {
-            const foundInv = copies.map(c => c.inventory || c.code1).filter(Boolean)[0];
-            if (foundInv) activeInv = foundInv;
-        }
         if (activeInv) {
             metaHtml += `<span class="opac-badge-inv ${targetInventory ? 'is-target-inventory' : ''}" title="Инвентарный номер издания">🏷️ Инв. №${escapeHtml(activeInv)}</span>`;
         }

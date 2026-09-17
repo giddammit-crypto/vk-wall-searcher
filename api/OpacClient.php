@@ -12,6 +12,36 @@
  * Standard adherence: RUSMARC / UNIMARC / OPAC-Global XML schema
  */
 
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($string, $encoding = 'UTF-8') {
+        return strtr((string)$string, [
+            'А'=>'а','Б'=>'б','В'=>'в','Г'=>'г','Д'=>'д','Е'=>'е','Ё'=>'ё','Ж'=>'ж','З'=>'з',
+            'И'=>'и','Й'=>'й','К'=>'к','Л'=>'л','М'=>'м','Н'=>'н','О'=>'о','П'=>'п','Р'=>'р',
+            'С'=>'с','Т'=>'т','У'=>'у','Ф'=>'ф','Х'=>'х','Ц'=>'ц','Ч'=>'ч','Ш'=>'ш','Щ'=>'щ',
+            'Ъ'=>'ъ','Ы'=>'ы','Ь'=>'ь','Э'=>'э','Ю'=>'ю','Я'=>'я',
+            'A'=>'a','B'=>'b','C'=>'c','D'=>'d','E'=>'e','F'=>'f','G'=>'g','H'=>'h','I'=>'i',
+            'J'=>'j','K'=>'k','L'=>'l','M'=>'m','N'=>'n','O'=>'o','P'=>'p','Q'=>'q','R'=>'r',
+            'S'=>'s','T'=>'t','U'=>'u','V'=>'v','W'=>'w','X'=>'x','Y'=>'y','Z'=>'z'
+        ]);
+    }
+}
+if (!function_exists('mb_strpos')) {
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strpos')) {
+            $pos = @iconv_strpos((string)$haystack, (string)$needle, $offset, $encoding);
+            if ($pos !== false) return $pos;
+        }
+        return strpos((string)$haystack, (string)$needle, $offset);
+    }
+}
+if (!function_exists('mb_stripos')) {
+    function mb_stripos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        $h = mb_strtolower((string)$haystack, $encoding);
+        $n = mb_strtolower((string)$needle, $encoding);
+        return mb_strpos($h, $n, $offset, $encoding);
+    }
+}
+
 class OpacClient
 {
     private string $host = 'https://opac.lib33.ru';

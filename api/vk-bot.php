@@ -32,25 +32,87 @@ define('VK_BOT_LOADED', true);
 // -----------------------------------------------------------------------------
 // 1. Полифиллы и вспомогательные функции
 // -----------------------------------------------------------------------------
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($string, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strlen')) {
+            $len = @iconv_strlen((string)$string, $encoding);
+            if ($len !== false) return $len;
+        }
+        // В UTF-8 каждый символ имеет ровно один байт вне диапазона 0x80-0xBF
+        return strlen(preg_replace('/[\x80-\xBF]/', '', (string)$string));
+    }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($string, $start, $length = null, $encoding = 'UTF-8') {
+        if (function_exists('iconv_substr')) {
+            $sub = @iconv_substr((string)$string, $start, $length !== null ? $length : iconv_strlen((string)$string, $encoding), $encoding);
+            if ($sub !== false) return $sub;
+        }
+        $chars = preg_split('//u', (string)$string, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars === false) {
+            return substr((string)$string, $start, $length !== null ? $length : strlen((string)$string));
+        }
+        if ($length === null) {
+            return implode('', array_slice($chars, $start));
+        }
+        return implode('', array_slice($chars, $start, $length));
+    }
+}
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($string, $encoding = 'UTF-8') {
+        return strtr((string)$string, [
+            'А'=>'а','Б'=>'б','В'=>'в','Г'=>'г','Д'=>'д','Е'=>'е','Ё'=>'ё','Ж'=>'ж','З'=>'з',
+            'И'=>'и','Й'=>'й','К'=>'к','Л'=>'л','М'=>'м','Н'=>'н','О'=>'о','П'=>'п','Р'=>'р',
+            'С'=>'с','Т'=>'т','У'=>'у','Ф'=>'ф','Х'=>'х','Ц'=>'ц','Ч'=>'ч','Ш'=>'ш','Щ'=>'щ',
+            'Ъ'=>'ъ','Ы'=>'ы','Ь'=>'ь','Э'=>'э','Ю'=>'ю','Я'=>'я',
+            'A'=>'a','B'=>'b','C'=>'c','D'=>'d','E'=>'e','F'=>'f','G'=>'g','H'=>'h','I'=>'i',
+            'J'=>'j','K'=>'k','L'=>'l','M'=>'m','N'=>'n','O'=>'o','P'=>'p','Q'=>'q','R'=>'r',
+            'S'=>'s','T'=>'t','U'=>'u','V'=>'v','W'=>'w','X'=>'x','Y'=>'y','Z'=>'z'
+        ]);
+    }
+}
+if (!function_exists('mb_strtoupper')) {
+    function mb_strtoupper($string, $encoding = 'UTF-8') {
+        return strtr((string)$string, [
+            'а'=>'А','б'=>'Б','в'=>'В','г'=>'Г','д'=>'Д','е'=>'Е','ё'=>'Ё','ж'=>'Ж','з'=>'З',
+            'и'=>'И','й'=>'Й','к'=>'К','л'=>'Л','м'=>'М','н'=>'Н','о'=>'О','п'=>'П','р'=>'Р',
+            'с'=>'С','т'=>'Т','у'=>'У','ф'=>'Ф','х'=>'Х','ц'=>'Ц','ч'=>'Ч','ш'=>'Ш','щ'=>'Щ',
+            'ъ'=>'Ъ','ы'=>'Ы','ь'=>'Ь','э'=>'Э','ю'=>'Ю','я'=>'Я',
+            'a'=>'A','b'=>'B','c'=>'C','d'=>'D','e'=>'E','f'=>'F','g'=>'G','h'=>'H','i'=>'I',
+            'j'=>'J','k'=>'K','l'=>'L','m'=>'M','n'=>'N','o'=>'O','p'=>'P','q'=>'Q','r'=>'R',
+            's'=>'S','t'=>'T','u'=>'U','v'=>'V','w'=>'W','x'=>'X','y'=>'Y','z'=>'Z'
+        ]);
+    }
+}
+if (!function_exists('mb_strpos')) {
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strpos')) {
+            $pos = @iconv_strpos((string)$haystack, (string)$needle, $offset, $encoding);
+            if ($pos !== false) return $pos;
+        }
+        return strpos((string)$haystack, (string)$needle, $offset);
+    }
+}
+if (!function_exists('mb_stripos')) {
+    function mb_stripos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        $h = mb_strtolower((string)$haystack, $encoding);
+        $n = mb_strtolower((string)$needle, $encoding);
+        return mb_strpos($h, $n, $offset, $encoding);
+    }
+}
+
 if (!function_exists('vk_bot_mb_strlen')) {
     function vk_bot_mb_strlen($s)
     {
-        if (function_exists('mb_strlen')) return mb_strlen($s, 'UTF-8');
-        return function_exists('iconv_strlen') ? (int)iconv_strlen($s, 'UTF-8') : strlen($s);
+        return mb_strlen($s, 'UTF-8');
     }
     function vk_bot_mb_substr($s, $start, $len)
     {
-        if (function_exists('mb_substr')) return mb_substr($s, $start, $len, 'UTF-8');
-        if (function_exists('iconv_substr')) {
-            $r = iconv_substr($s, $start, $len, 'UTF-8');
-            return $r === false ? '' : $r;
-        }
-        return substr($s, $start, $len);
+        return mb_substr($s, $start, $len, 'UTF-8');
     }
     function vk_bot_mb_strtolower($s)
     {
-        if (function_exists('mb_strtolower')) return mb_strtolower($s, 'UTF-8');
-        return strtr((string)$s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', 'abcdefghijklmnopqrstuvwxyzабвгдеёжзийклмнопрстуфхцчшщъыьэюя');
+        return mb_strtolower($s, 'UTF-8');
     }
 }
 
@@ -959,51 +1021,57 @@ if ($isChat && !$isBotInvited) {
     $replyMsg = $msgObj['reply_message'] ?? null;
     $isReplyToBot = ($replyMsg && (int)($replyMsg['from_id'] ?? 0) === -$vkGroupId);
 
-    // Проверяем: не является ли сообщение командой модерации (!мут, !кик, !бан и т.п.)
+    // 1. Команды: со слэшем / или восклицательным знаком ! (включая команды модерации !мут, !кик, команды бота /книга, /поиск, /help, /gopnik и т.д.)
     $isModCmd = (vk_bot_parse_mod_command($userMsg, $msgObj) !== null);
-
-    // Проверяем команду режима гопника (/gopnik on/off/status)
     $isGopnikCmd = (vk_bot_parse_gopnik_command($userMsg) !== null);
-    $isGopnikActiveForMention = vk_bot_is_gopnik_mode($peerId, $cacheDir);
-    $hasGopnikMention = ($isGopnikActiveForMention && preg_match('/\b(?:космо|робот|гопник|слышь|братан|кореш|пацан)\b/ui', $userMsg));
+    $isPrefixCmd = (bool)preg_match('/^[!|\/][a-zA-Zа-яА-Я0-9_-]+/u', trim($userMsg));
+    $isCmd = ($isModCmd || $isGopnikCmd || $isPrefixCmd);
 
-    // Проверяем команды квиза, опроса, счета, стикеров или ввод цифры ответа
-    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
+    // 2. Обращение через @ (упоминание группы, никнейма или ID бота):
+    $hasAtMention = (
+        preg_match('/\[(?:club|public)' . $vkGroupId . '\|[^\]]*\]/ui', $userMsg) ||
+        preg_match('/@(?:club|public)' . $vkGroupId . '\b/ui', $userMsg) ||
+        preg_match('/@(cosmobibliobot|cosmo|космо)\b/ui', $userMsg)
+    );
+
+    // 3. Обращение по имени Космо:
+    $hasNameMention = (bool)preg_match('/\b(?:космо|космос|робот\s*космо)\b/ui', $userMsg);
+
+    // 4. Цифра ответа на квиз / опрос (только если сейчас активно ожидается ответ в этой беседе):
     $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
         file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_bookclub_vote_' . $peerId . '.json')
     ));
 
-    $hasMention = (
-        $isModCmd ||
-        $isGopnikCmd ||
-        $isGopnikActiveForMention ||
-        $isQuizOrPollCmd ||
+    // Общий признак разрешения ответа в беседе:
+    // Только через @, по имени Космо, через команды, реплай на бота или активный payload кнопки (и никак иначе!)
+    $shouldRespondInChat = (
+        $hasAtMention ||
+        $hasNameMention ||
+        $isCmd ||
+        $isReplyToBot ||
         $isDigitReply ||
-        $hasGopnikMention ||
-        preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $userMsg) ||
-        preg_match('/@club' . $vkGroupId . '/ui', $userMsg) ||
-        preg_match('/^\s*(космос|космо|робот\s*космо|бот)[\s,!:—?]+/ui', $userMsg) ||
-        preg_match('/\b(?:космо|космос)\b/ui', $userMsg)
+        !empty($payload)
     );
 
-    // В беседе игнорируем чужие сообщения между участниками, если бота не звали.
+    // В беседе игнорируем любые сообщения между участниками, если бота не звали через @, по имени Космо или через команды
     // ВНИМАНИЕ: если есть голосовое сообщение ($audioAttachment !== null), пропускаем его в фоновый режим:
-    // транскрипция речи определит, звали ли Космо голосом (например: «Космос, кто написал...»).
-    if (!$hasMention && !$isReplyToBot && empty($payload) && $audioAttachment === null) {
+    // транскрипция речи определит, звали ли Космо голосом (по имени Космо или командой).
+    if (!$shouldRespondInChat && $audioAttachment === null) {
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'ok';
         exit;
     }
 
     // Очищаем обращение к боту для корректной работы команд и ИИ
-    $userMsg = preg_replace('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', '', $userMsg);
-    $userMsg = preg_replace('/@club' . $vkGroupId . '/ui', '', $userMsg);
-    $userMsg = preg_replace('/^\s*(?:космос|космо|робот\s*космо|бот|слышь\s+космо|слышь)[\s,!:—?]+/ui', '', $userMsg);
+    $userMsg = preg_replace('/\[(?:club|public)' . $vkGroupId . '\|[^\]]*\]/ui', '', $userMsg);
+    $userMsg = preg_replace('/@(?:club|public)' . $vkGroupId . '\b/ui', '', $userMsg);
+    $userMsg = preg_replace('/@(cosmobibliobot|cosmo|космо)\b/ui', '', $userMsg);
+    $userMsg = preg_replace('/^\s*(?:космос|космо|робот\s*космо)[\s,!:—?]+/ui', '', $userMsg);
     $userMsg = trim($userMsg);
 
-    if ($userMsg === '' && empty($payload) && $audioAttachment === null && !$isModCmd && !$isGopnikCmd) {
+    if ($userMsg === '' && empty($payload) && $audioAttachment === null && !$isCmd) {
         $userMsg = 'Привет!';
         $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
     }
@@ -2109,9 +2177,19 @@ function vk_bot_detect_profanity($text)
     ];
 
     foreach ($variants as $t) {
-        // Очистка от пробелов и спецсимволов между буквами (х.у.й, б л я т ь, п_и_з_д_а)
+        // Сначала проверяем текст с сохранением границ слов (сжав повторяющиеся буквы: бляяя -> бля)
+        $tNorm = preg_replace('/([а-я])\1+/u', '$1', $t);
+        foreach ($whiteList as $wPattern) {
+            $tNorm = preg_replace($wPattern, ' [белый] ', $tNorm);
+        }
+        foreach ($badPatterns as $pattern) {
+            if (preg_match($pattern, $tNorm)) {
+                return true;
+            }
+        }
+
+        // Вторым шагом проверяем обфусцированный текст (х.у.й, б л я т ь, п_и_з_д_а)
         $tClean = preg_replace('/(?<=[а-яa-z0-9])[\s._\-*~+=,;:!?\/\\\]+(?=[а-яa-z0-9])/ui', '', $t);
-        // Сжатие повторов одинаковых букв более 1 подряд (сууука -> сука, бляяять -> блять)
         $tClean = preg_replace('/([а-я])\1+/u', '$1', $tClean);
 
         foreach ($whiteList as $wPattern) {
@@ -4519,7 +4597,30 @@ function vk_bot_format_cosmo_annotation($text, $maxLen = 210)
     return $text;
 }
 
-function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
+function vk_bot_filter_branch_news($newsData, $keyword)
+{
+    $kwLower = function_exists('mb_strtolower') ? mb_strtolower(trim($keyword), 'UTF-8') : strtolower(trim($keyword));
+    if ($kwLower === '') {
+        return $newsData;
+    }
+
+    $filterFunc = function($post) use ($kwLower) {
+        $text = function_exists('mb_strtolower') ? mb_strtolower($post['text'] ?? '', 'UTF-8') : strtolower($post['text'] ?? '');
+        $branch = function_exists('mb_strtolower') ? mb_strtolower($post['branch']['name'] ?? '', 'UTF-8') : strtolower($post['branch']['name'] ?? '');
+        return (strpos($text, $kwLower) !== false || strpos($branch, $kwLower) !== false);
+    };
+
+    $filteredToday = array_values(array_filter($newsData['today'] ?? [], $filterFunc));
+    $filtered24h   = array_values(array_filter($newsData['last_24h'] ?? [], $filterFunc));
+
+    return [
+        'today'    => $filteredToday,
+        'last_24h' => $filtered24h,
+        'keyword'  => $keyword
+    ];
+}
+
+function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKeyword = '')
 {
     $cacheDir = __DIR__ . '/../cache';
     if (!is_dir($cacheDir)) {
@@ -4534,6 +4635,9 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
         if ($mtime && (time() - $mtime) < $cacheTtl) {
             $cached = json_decode(@file_get_contents($newsCacheFile), true);
             if (is_array($cached) && (isset($cached['today']) || isset($cached['last_24h']))) {
+                if ($filterKeyword !== '') {
+                    return vk_bot_filter_branch_news($cached, $filterKeyword);
+                }
                 return $cached;
             }
         }
@@ -4568,7 +4672,16 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     if (!empty($cachedList)) {
         $byNum = [];
         foreach ($cachedList as $cb) {
-            $byNum[$cb['branch_num']] = $cb;
+            $numKey = trim((string)($cb['branch_num'] ?? ''));
+            if ($numKey !== '') $byNum[$numKey] = $cb;
+            $codeKey = trim((string)($cb['branch_code'] ?? ''));
+            if ($codeKey !== '') $byNum[$codeKey] = $cb;
+            $canonKey = trim((string)($cb['canonical_num'] ?? ''));
+            if ($canonKey !== '') $byNum[$canonKey] = $cb;
+            if (preg_match('/(?:филиал\s*(?:№\s*)?|ф-?)(\d+)/ui', $numKey, $mNum)) {
+                $byNum['Ф-' . $mNum[1]] = $cb;
+                $byNum['Филиал №' . $mNum[1]] = $cb;
+            }
         }
         foreach ($branches as &$b) {
             if (isset($byNum[$b['code']])) {
@@ -4668,8 +4781,12 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
         // Если свежий запрос вернул пустоту из-за таймаута сети, используем предыдущий кэш
         $stale = json_decode(@file_get_contents($newsCacheFile), true);
         if (is_array($stale) && (!empty($stale['today']) || !empty($stale['last_24h']))) {
-            return $stale;
+            $result = $stale;
         }
+    }
+
+    if ($filterKeyword !== '') {
+        return vk_bot_filter_branch_news($result, $filterKeyword);
     }
 
     return $result;
@@ -4688,8 +4805,12 @@ function vk_bot_build_post_url($post)
 /**
  * Форматирование новостей филиалов с краткими аннотациями и ссылками
  */
-function vk_bot_format_branch_news_message($newsData)
+function vk_bot_format_branch_news_message($newsData, $keyword = '')
 {
+    if ($keyword === '' && !empty($newsData['keyword'])) {
+        $keyword = $newsData['keyword'];
+    }
+
     $todayPosts = $newsData['today'] ?? [];
     $recentPosts = $newsData['last_24h'] ?? [];
 
@@ -4697,6 +4818,10 @@ function vk_bot_format_branch_news_message($newsData)
     $postsToShow = $isToday ? $todayPosts : $recentPosts;
 
     if (empty($postsToShow)) {
+        if ($keyword !== '') {
+            return "🔍 В свежих публикациях 16 групп библиотек Владимира по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "» ничего не найдено.\n\n"
+                 . "💡 Попробуйте другое слово или напишите «Новости филиалов», чтобы посмотреть общую ленту всех филиалов за сутки! ✨";
+        }
         return "📰 В группах 16 филиалов библиотек города Владимира за последние 24 часа пока нет новых записей.\n\n"
              . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Библиотеки-филиалы». ✨";
     }
@@ -4708,9 +4833,13 @@ function vk_bot_format_branch_news_message($newsData)
     ];
     $todayDateStr = date('j') . ' ' . ($monthsRu[(int)date('n')] ?? '');
 
-    $header = $isToday
-        ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
-        : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за последние 24 часа:\n\n";
+    if ($keyword !== '') {
+        $header = "📰 Найденные посты в группах библиотек по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "»:\n\n";
+    } else {
+        $header = $isToday
+            ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
+            : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за последние 24 часа:\n\n";
+    }
 
     $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
     $blocks = [];
@@ -4873,8 +5002,13 @@ function vk_bot_parse_book_query($text)
 
     // 2. Явные команды бота: /книга, !книга, /поиск, !поиск, /opac, /опак, /к, !к
     if (preg_match('/^[\/!](?:книга|поиск|opac|опак|к)\b\s*(.*)$/ui', $raw, $m)) {
+        $candidate = trim($m[1]);
+        // Если это поиск по группам/постам — не перехватываем как каталог OPAC
+        if (preg_match('/^(?:по|в)\s+групп/ui', $candidate) || preg_match('/^групп/ui', $candidate) || preg_match('/^(?:пост|новост)/ui', $candidate)) {
+            return null;
+        }
         $isCmd = true;
-        $query = trim($m[1]);
+        $query = $candidate;
         if ($query === '') {
             return [
                 'is_command'    => true,
@@ -4909,6 +5043,11 @@ function vk_bot_parse_book_query($text)
     }
 
     if ($query === '') {
+        return null;
+    }
+
+    // Запросы поиска по группам/постам ВК не должны направляться в электронный каталог
+    if (preg_match('/^(?:по|в)\s+групп/ui', $query) || preg_match('/^групп/ui', $query) || preg_match('/^(?:пост|новост)\s+(?:филиал|групп|библиотек)/ui', $query)) {
         return null;
     }
 
@@ -5683,7 +5822,8 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
     }
 
     $footer = "\n════════════════════════════════\n"
-            . "📞 Наличие книги в филиале уточняйте по телефонам филиала!";
+            . "📞 Наличие книги в филиале уточняйте по телефонам филиала!\n"
+            . "🌐 Каталог онлайн: http://library.vladimir.ru/rguest_vlad_cgb.htm";
     if ($totalPages > 1) {
         $footer .= "\n📄 Страница {$page} из {$totalPages}. Листайте страницы кнопками ниже ⬇️";
     }
@@ -6086,10 +6226,10 @@ if ($audioAttachment !== null) {
             $isReplyToBot = ($replyMsg && (int)($replyMsg['from_id'] ?? 0) === -$vkGroupId);
             $hasVoiceMention = (
                 $isReplyToBot ||
-                preg_match('/(?:космос|космо|cosmo|cosma|\bробот\s*космо\b|\bбот\b|\bаврора\b)/ui', $voiceTranscribedText) ||
-                preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $voiceTranscribedText) ||
-                preg_match('#^[!/](?:книга|поиск|opac|к|квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|стикер)#ui', $voiceTranscribedText) ||
-                preg_match('/(?:найди\s+книгу|поищи\s+книгу|где\s+взять|в\s+каком\s+филиале|есть\s+ли\s+книга|ищу\s+книгу|в\s+библиотеке\s+на\s+егорова)/ui', $voiceTranscribedText)
+                preg_match('/\b(?:космо|космос|робот\s*космо)\b/ui', $voiceTranscribedText) ||
+                preg_match('/\[(?:club|public)' . $vkGroupId . '\|[^\]]*\]/ui', $voiceTranscribedText) ||
+                preg_match('/@(cosmobibliobot|cosmo|космо)\b/ui', $voiceTranscribedText) ||
+                preg_match('/^[!|\/][a-zA-Zа-яА-Я0-9_-]+/u', trim($voiceTranscribedText))
             );
 
             if (!$hasVoiceMention && empty($payload)) {
@@ -6102,9 +6242,10 @@ if ($audioAttachment !== null) {
         $userMsg = $voiceTranscribedText;
 
         // Очищаем обращение к боту для корректной работы команд и ИИ
-        $userMsg = preg_replace('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', '', $userMsg);
-        $userMsg = preg_replace('/@club' . $vkGroupId . '/ui', '', $userMsg);
-        $userMsg = preg_replace('/^\s*(?:космос|космо|cosmo|cosma|робот\s*космо|бот)[\s,!:—?]*/ui', '', $userMsg);
+        $userMsg = preg_replace('/\[(?:club|public)' . $vkGroupId . '\|[^\]]*\]/ui', '', $userMsg);
+        $userMsg = preg_replace('/@(?:club|public)' . $vkGroupId . '\b/ui', '', $userMsg);
+        $userMsg = preg_replace('/@(cosmobibliobot|cosmo|космо)\b/ui', '', $userMsg);
+        $userMsg = preg_replace('/^\s*(?:космос|космо|робот\s*космо)[\s,!:—?]*/ui', '', $userMsg);
         $userMsg = trim($userMsg);
         if ($userMsg === '') {
             $userMsg = 'Привет, Космо!';
@@ -8105,20 +8246,40 @@ if ($isStickersQuery) {
     exit;
 }
 
-// Сценарий 3: Новости филиалов — сканирование всех 16 групп библиотек за текущие сутки
-$isBranchNewsQuery = (
-    $cmd === 'branch_news' ||
-    preg_match('/^(?:новости филиалов|новости|посты филиалов|лента филиалов|новости библиотек|посты библиотек|лента|дайджест|свежие посты|посты|новости за сутки|посты за сутки)[?!.]*$/ui', $cleanMsgForCmd) ||
-    (preg_match('/(новост|лент|дайджест|что нов|свежие запис|последние посты|посты за)/ui', $userMsg) && preg_match('/(филиал|библиотек|город|сегодн|суток|сутки|групп)/ui', $userMsg))
-);
+// Сценарий 3: Новости филиалов и поиск по группам — сканирование всех 16 групп библиотек за текущие сутки
+$branchSearchKeyword = '';
+$isBranchNewsQuery = false;
+
+if ($cmd === 'branch_news') {
+    $isBranchNewsQuery = true;
+} elseif (preg_match('/^[\/!](?:поиск_групп|группы|посты|сканирование_групп)\b\s*(.*)$/ui', $cleanMsgForCmd, $mCmd)) {
+    $isBranchNewsQuery = true;
+    $branchSearchKeyword = trim($mCmd[1] ?? '');
+} elseif (preg_match('/^[\/!](?:поиск)\s+(?:по|в)\s+групп[а-я]*\b\s*(.*)$/ui', $cleanMsgForCmd, $mCmd)) {
+    $isBranchNewsQuery = true;
+    $branchSearchKeyword = trim($mCmd[1] ?? '');
+} elseif (preg_match('/^(?:поиск\s+(?:по|в)\s+групп[а-я]*|поиск\s+групп[а-я]*|посты\s+групп[а-я]*|сканирование\s+групп[а-я]*|новости\s+групп[а-я]*)\b\s*(.*)$/ui', $cleanMsgForCmd, $mCmd)) {
+    $isBranchNewsQuery = true;
+    $branchSearchKeyword = trim($mCmd[1] ?? '');
+} elseif (preg_match('/^(?:новости филиалов|новости|посты филиалов|лента филиалов|новости библиотек|посты библиотек|лента|дайджест|свежие посты|посты|новости за сутки|посты за сутки)[?!.]*$/ui', $cleanMsgForCmd)) {
+    $isBranchNewsQuery = true;
+} elseif (
+    (preg_match('/(новост|лент|дайджест|что нов|свежие запис|последние посты|посты за|поиск по|поиск в)/ui', $userMsg) &&
+     preg_match('/(филиал|библиотек|город|сегодн|суток|сутки|групп)/ui', $userMsg))
+) {
+    $isBranchNewsQuery = true;
+    if (preg_match('/(?:по|в)\s+групп[а-я]*\b\s+(.+)$/ui', $cleanMsgForCmd, $mKw)) {
+        $branchSearchKeyword = trim($mKw[1]);
+    }
+}
 
 if ($isBranchNewsQuery) {
     if ($botTyping) {
         vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
     }
 
-    $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken);
-    $reply = vk_bot_format_branch_news_message($newsData);
+    $newsData = vk_bot_scan_branch_news($serviceToken, $communityToken, $branchSearchKeyword);
+    $reply = vk_bot_format_branch_news_message($newsData, $branchSearchKeyword);
 
     if ($isVoiceQuery && $voiceTranscribedText !== '') {
         $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
