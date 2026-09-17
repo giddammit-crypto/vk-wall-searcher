@@ -57,20 +57,20 @@
     pointer-events: auto;
 }
 
-/* Диалоговое окно модалки */
+/* Диалоговое окно модалки (расширено по горизонтали адаптивно на 45%: 1000px -> 1450px) */
 .opac-modal-dialog,
 .opac-search-dialog,
 #opac-search-modal:not(.opac-modal-overlay),
 #opac-search-modal .opac-modal-dialog {
-    width: min(1000px, 95vw);
-    max-width: 1000px;
-    max-height: 90vh;
-    max-height: 90dvh;
+    width: min(1450px, 96vw);
+    max-width: 1450px;
+    max-height: 92vh;
+    max-height: 92dvh;
     background: var(--opac-glass-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--opac-glass-border);
-    border-radius: var(--opac-radius-lg);
+    border-radius: 22px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75),
                 0 0 32px rgba(56, 189, 248, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -347,7 +347,7 @@
 .opac-search-input {
     width: 100%;
     height: 52px;
-    padding: 0 48px 0 50px;
+    padding: 0 152px 0 50px;
     border-radius: var(--opac-radius-md);
     background: rgba(10, 16, 32, 0.72);
     border: 1px solid rgba(56, 189, 248, 0.35);
@@ -382,7 +382,7 @@
 /* Кнопка быстрой очистки поля */
 .opac-clear-btn {
     position: absolute;
-    right: 14px;
+    right: 130px;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -401,6 +401,12 @@
     z-index: 2;
 }
 
+.opac-clear-btn:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
 .opac-clear-btn.is-visible,
 .opac-input-wrapper.has-value .opac-clear-btn {
     opacity: 1;
@@ -413,6 +419,53 @@
     color: #ffffff;
     transform: scale(1.1) rotate(90deg);
 }
+
+/* Кнопка «Искать» — стиль Aurora btn-primary */
+.opac-search-btn {
+    position: absolute;
+    right: 6px;
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 20px;
+    border: none;
+    background: linear-gradient(135deg, #0369a1 0%, #00b4d8 60%, #0891b2 100%);
+    color: #ffffff;
+    font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 2;
+    transition: all 0.22s ease;
+    box-shadow: 0 2px 10px rgba(0, 180, 216, 0.35),
+                0 0 0 1px rgba(0, 240, 255, 0.15);
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.opac-search-btn:hover {
+    background: linear-gradient(135deg, #0284c7 0%, #22d3ee 60%, #06b6d4 100%);
+    box-shadow: 0 4px 18px rgba(0, 240, 255, 0.45),
+                0 0 0 1px rgba(0, 240, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.opac-search-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 180, 216, 0.4);
+}
+
+.opac-search-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.opac-search-btn-text {
+    line-height: 1;
+}
+
 
 /* Горячие чипсы быстрых запросов (.opac-quick-tags) */
 .opac-quick-tags {
@@ -756,6 +809,38 @@
     width: 1px;
     background: rgba(255, 255, 255, 0.1);
     box-shadow: 1px 0 0 rgba(0, 0, 0, 0.4);
+}
+
+/* === Google Books Real Cover Overlay === */
+.opac-book-cover-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px 10px 10px 5px;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.opac-cover-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 8px 8px 8px;
+    box-sizing: border-box;
+    z-index: 1;
+    transition: opacity 0.3s ease;
+}
+
+.opac-book-cover.has-real-cover .opac-cover-fallback {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Стилизация обложек по жанрам */

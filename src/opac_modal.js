@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { escapeHtml } from './branches.js?v=4.43.1';
+import { escapeHtml } from './branches.js?v=4.43.2';
 
 let opacModalEl = null;
 let opacInputEl = null;
@@ -23,9 +23,169 @@ let opacGridEl = null;
 let opacStatusEl = null;
 let opacOnlyAvailableEl = null;
 let currentBranchFilter = 'all';
-let searchDebounceTimer = null;
+let opacSearchBtnEl = null;
+
 let currentSearchAbortCtrl = null;
 let searchResultsCache = new Map();
+const googleBooksCoversCache = new Map();
+
+/**
+ * Очистка названия и автора для точного поиска обложек в Google Books
+ */
+function cleanSearchTerm(text) {
+    if (!text) return '';
+    return text
+        .replace(/\[.*?\]/g, '')
+        .replace(/\(.*?\)/g, '')
+        .replace(/\s*\/\s*.*$/, '')
+        .replace(/[:;,\.]\s*$/g, '')
+        .replace(/[\"\'«»]/g, '')
+        .trim();
+}
+
+/**
+ * Извлечение лучшего доступного URL обложки из ответа Google Books
+ */
+function extractCoverFromGbData(data) {
+    if (!data || !data.items || !data.items.length) return null;
+    const vol = data.items[0].volumeInfo;
+    if (!vol || !vol.imageLinks) return null;
+    const links = vol.imageLinks;
+    const imgUrl = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
+    if (!imgUrl) return null;
+    return imgUrl.replace(/^http:\/\//i, 'https://');
+}
+
+/**
+ * Загрузка обложки книги через Google Books API (с умным резервным OpenLibrary)
+ *
+ * @param {string} rawTitle Заглавие книги
+ * @param {string} rawAuthor Автор книги
+ * @returns {Promise<string|null>}
+ */
+async function fetchGoogleBooksCover(rawTitle, rawAuthor) {
+    const title = cleanSearchTerm(rawTitle);
+    const author = cleanSearchTerm(rawAuthor).replace(/\s*[А-ЯA-Z]\.?\s*[А-ЯA-Z]\.?$/u, '').trim();
+
+    if (!title) return null;
+
+    const cacheKey = `${title.toLowerCase()}|${author.toLowerCase()}`;
+    if (googleBooksCoversCache.has(cacheKey)) {
+        return googleBooksCoversCache.get(cacheKey);
+    }
+
+    try {
+        const stored = sessionStorage.getItem(`opac_gb_cov_${cacheKey}`);
+        if (stored) {
+            googleBooksCoversCache.set(cacheKey, stored);
+            return stored;
+        }
+    } catch (e) {}
+
+    // 1. Попытка поиска через Google Books API (intitle + inauthor)
+    try {
+        let q = `intitle:"${encodeURIComponent(title)}"`;
+        if (author) {
+            q += `+inauthor:"${encodeURIComponent(author)}"`;
+        }
+
+        const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&printType=books`;
+        const res = await fetch(gbUrl, { headers: { 'Accept': 'application/json' } });
+
+        if (res.ok) {
+            const data = await res.json();
+            const coverUrl = extractCoverFromGbData(data);
+            if (coverUrl) {
+                googleBooksCoversCache.set(cacheKey, coverUrl);
+                try { sessionStorage.setItem(`opac_gb_cov_${cacheKey}`, coverUrl); } catch (e) {}
+                return coverUrl;
+            }
+        }
+    } catch (err) {
+        // Фоллбэк
+    }
+
+    // 2. Вторая попытка Google Books (общий поисковый запрос)
+    try {
+        const queryText = encodeURIComponent(`${title} ${author}`.trim());
+        const gbFallbackUrl = `https://www.googleapis.com/books/v1/volumes?q=${queryText}&maxResults=1&printType=books`;
+        const res = await fetch(gbFallbackUrl, { headers: { 'Accept': 'application/json' } });
+
+        if (res.ok) {
+            const data = await res.json();
+            const coverUrl = extractCoverFromGbData(data);
+            if (coverUrl) {
+                googleBooksCoversCache.set(cacheKey, coverUrl);
+                try { sessionStorage.setItem(`opac_gb_cov_${cacheKey}`, coverUrl); } catch (e) {}
+                return coverUrl;
+            }
+        }
+    } catch (err) {}
+
+    // 3. Резервный источник: OpenLibrary Covers API
+    try {
+        const olQuery = encodeURIComponent(`${title} ${author}`.trim());
+        const olUrl = `https://openlibrary.org/search.json?q=${olQuery}&limit=1`;
+        const res = await fetch(olUrl, { headers: { 'Accept': 'application/json' } });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.docs && data.docs[0] && data.docs[0].cover_i) {
+                const coverUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-M.jpg`;
+                googleBooksCoversCache.set(cacheKey, coverUrl);
+                try { sessionStorage.setItem(`opac_gb_cov_${cacheKey}`, coverUrl); } catch (e) {}
+                return coverUrl;
+            }
+        }
+    } catch (err) {}
+
+    googleBooksCoversCache.set(cacheKey, null);
+    return null;
+}
+
+/**
+ * Асинхронная загрузка и плавное проявление обложек Google Books
+ */
+function loadGoogleBooksCovers(container) {
+    if (!container) return;
+    const coverEls = container.querySelectorAll('.opac-book-cover[data-title]');
+    coverEls.forEach(async (coverEl) => {
+        const title = coverEl.getAttribute('data-title');
+        const author = coverEl.getAttribute('data-author') || '';
+        if (!title) return;
+
+        try {
+            const coverUrl = await fetchGoogleBooksCover(title, author);
+            if (!coverUrl) return;
+
+            const img = coverEl.querySelector('.opac-book-cover-img');
+            const fallback = coverEl.querySelector('.opac-cover-fallback');
+            if (!img) return;
+
+            img.onload = () => {
+                img.style.display = 'block';
+                requestAnimationFrame(() => {
+                    img.style.opacity = '1';
+                    coverEl.classList.add('has-real-cover');
+                    if (fallback) {
+                        fallback.style.opacity = '0';
+                    }
+                });
+            };
+            img.onerror = () => {
+                img.style.display = 'none';
+                coverEl.classList.remove('has-real-cover');
+                if (fallback) {
+                    fallback.style.opacity = '1';
+                    fallback.style.display = 'flex';
+                }
+            };
+            img.src = coverUrl;
+        } catch (e) {
+            // Фолбэк сохраняется
+        }
+    });
+}
 
 /**
  * Определение жанровой категории книги для выбора обложки
@@ -144,6 +304,10 @@ export function initOpacModal() {
                         <button type="button" class="opac-clear-btn hidden" data-opac-clear title="Очистить поиск">
                             <span class="material-symbols-outlined">close</span>
                         </button>
+                        <button type="button" class="opac-search-btn" data-opac-search title="Найти книги (Enter)">
+                            <span class="material-symbols-outlined">search</span>
+                            <span class="opac-search-btn-text">Искать</span>
+                        </button>
                     </div>
 
                     <!-- Горячие чипсы быстрых категорий -->
@@ -230,33 +394,25 @@ function bindModalEvents() {
         }
     });
 
-    // Ввод в поисковую строку с дебаунсом 500мс для бережного обращения с OPAC-Global
+    opacSearchBtnEl = opacModalEl.querySelector('[data-opac-search]');
+
+    // Ввод в поисковую строку — только визуальная реакция (show/hide кнопок)
+    // Поиск запускается ТОЛЬКО по Enter или кнопке «Искать»
     if (opacInputEl) {
         opacInputEl.addEventListener('input', () => {
             const query = opacInputEl.value.trim();
             if (opacClearBtnEl) {
                 opacClearBtnEl.classList.toggle('hidden', query === '');
             }
-            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-
+            // Если поле опустело — показываем начальный экран
             if (query === '') {
                 renderInitialState();
-                return;
             }
-            if (query.length < 2) {
-                renderShortQueryState();
-                return;
-            }
-
-            searchDebounceTimer = setTimeout(() => {
-                executeOpacSearch(query);
-            }, 500);
         });
 
         opacInputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
                 const query = opacInputEl.value.trim();
                 if (query.length >= 2) {
                     executeOpacSearch(query);
@@ -267,7 +423,20 @@ function bindModalEvents() {
         });
     }
 
-    // Кнопка быстрой очистки
+    // Кнопка «Искать»
+    if (opacSearchBtnEl) {
+        opacSearchBtnEl.addEventListener('click', () => {
+            const query = opacInputEl ? opacInputEl.value.trim() : '';
+            if (query.length >= 2) {
+                executeOpacSearch(query);
+            } else if (query.length === 1) {
+                renderShortQueryState();
+            } else if (opacInputEl) {
+                opacInputEl.focus();
+            }
+        });
+    }
+
     if (opacClearBtnEl) {
         opacClearBtnEl.addEventListener('click', () => {
             if (opacInputEl) {
@@ -556,11 +725,14 @@ function renderSearchResults(data, query) {
         // Карточка книги
         cardsHtml += `
             <article class="opac-book-card" data-idbr="${escapeHtml(idbr)}">
-                <!-- Обложка -->
-                <div class="opac-book-cover genre-${genre}" data-genre="${genre}">
-                    <span class="material-symbols-outlined opac-cover-genre-icon">${genreIcon}</span>
-                    <span class="opac-cover-title-preview">${escapeHtml(title)}</span>
-                    ${year ? `<span class="opac-cover-year">${escapeHtml(year)}</span>` : ''}
+                <!-- Обложка книги с поддержкой Google Books и стильного кибер-плейсхолдера -->
+                <div class="opac-book-cover genre-${genre}" data-genre="${genre}" data-title="${escapeHtml(title)}" data-author="${escapeHtml(author)}">
+                    <img class="opac-book-cover-img" alt="${escapeHtml(title)}" loading="lazy" style="display: none; opacity: 0;" />
+                    <div class="opac-cover-fallback">
+                        <span class="material-symbols-outlined opac-cover-genre-icon">${genreIcon}</span>
+                        <span class="opac-cover-title-preview">${escapeHtml(title)}</span>
+                        ${year ? `<span class="opac-cover-year">${escapeHtml(year)}</span>` : ''}
+                    </div>
                 </div>
 
                 <!-- Содержимое карточки -->
@@ -589,15 +761,15 @@ function renderSearchResults(data, query) {
                         </div>
                     </div>
 
-                    <!-- Кнопки действий -->
+                    <!-- Кнопки действий в стиле Аврора -->
                     <div class="opac-book-actions">
-                        <button type="button" class="opac-ask-cosmo-btn" data-ask-title="${escapeHtml(title)}" data-ask-author="${escapeHtml(author)}">
-                            <span class="material-symbols-outlined">smart_toy</span>
-                            <span>Спросить у Космо</span>
+                        <button type="button" class="opac-ask-cosmo-btn" data-ask-title="${escapeHtml(title)}" data-ask-author="${escapeHtml(author)}" title="Спросить рецензию и сюжет у робота Космо">
+                            <span class="material-symbols-outlined icon">smart_toy</span>
+                            <span class="btn-text">Спросить у Космо</span>
                         </button>
                         <a href="http://library.vladimir.ru/rguest_vlad_cgb.htm" target="_blank" rel="noopener noreferrer" class="opac-direct-link-btn" title="Проверить в каталоге ЦГБ">
-                            <span class="material-symbols-outlined">open_in_new</span>
-                            <span>OPAC-Global</span>
+                            <span class="material-symbols-outlined icon">open_in_new</span>
+                            <span class="btn-text">OPAC-Global</span>
                         </a>
                     </div>
                 </div>
@@ -606,6 +778,9 @@ function renderSearchResults(data, query) {
     });
 
     opacGridEl.innerHTML = cardsHtml;
+
+    // Асинхронное фоновое обогащение обложками из Google Books
+    loadGoogleBooksCovers(opacGridEl);
 
     // Привязка кнопок «Спросить у Космо»
     const askBtns = opacGridEl.querySelectorAll('.opac-ask-cosmo-btn');
