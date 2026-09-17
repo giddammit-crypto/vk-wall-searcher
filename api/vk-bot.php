@@ -120,6 +120,15 @@ $vkGroupUrl       = trim((string)($config['vk_group_url'] ?? $defaultGroupUrl));
 $vkGroupId        = (int)($config['vk_group_id'] ?? $defaultGroupId);
 $directDialogUrl  = 'https://vk.me/club' . $vkGroupId;
 
+// -----------------------------------------------------------------------------
+// Подключение модуля поиска электронного каталога OPAC-Global (ЦГБ г. Владимира)
+// -----------------------------------------------------------------------------
+if (file_exists(__DIR__ . '/opac.php')) {
+    require_once __DIR__ . '/opac.php';
+} elseif (file_exists(__DIR__ . '/OpacClient.php')) {
+    require_once __DIR__ . '/OpacClient.php';
+}
+
 // Пул ключей ИИ (4 ключа, суммарно 3 000 000 токенов в сутки)
 // Ключи 1 и 2: по 1 000 000 токенов/24ч; 3 и 4: по 500 000 токенов/24ч
 $defaultAiKeys = [
@@ -1522,9 +1531,11 @@ function vk_bot_parse_mod_command($userMsg, $msgObj)
         $type = 'list_bans';
     } elseif (preg_match('/^(?:[!|\/]|\b)(?:модераци[яи]|команды\s*модерации|помощь\s*модератора|modhelp)\b/ui', $clean)) {
         $type = 'mod_help';
-    } elseif (preg_match('/^(?:[!|\/]|\b)(?:help|хелп|adminhelp|admin_help|админхелп|команды\s*администратора|помощь\s*администратора)\b/ui', $clean)) {
+    } elseif (preg_match('/^(?:[!|\/](?:справка|help|помощь|хелп|команды|commands)|!справка\b|!help\b|!помощь\b|справка\b)/ui', $clean)) {
+        $type = 'user_help';
+    } elseif (preg_match('/^(?:\/(?:help|хелп|adminhelp|admin_help|админхелп)|(?:[!|\/]|\b)(?:команды\s*администратора|помощь\s*администратора))\b/ui', $clean)) {
         $type = 'admin_help';
-        $rem = preg_replace('/^(?:[!|\/]|\b)(?:help|хелп|adminhelp|admin_help|админхелп|команды\s*администратора|помощь\s*администратора)\b/ui', '', $clean);
+        $rem = preg_replace('/^(?:\/(?:help|хелп|adminhelp|admin_help|админхелп)|(?:[!|\/]|\b)(?:команды\s*администратора|помощь\s*администратора))\b/ui', '', $clean);
     }
 
     if ($type === null) return null;
@@ -1803,8 +1814,13 @@ function vk_bot_get_admin_help_text($vkGroupId = 0)
           . "• Имена из профилей ВК: подтягивание реальных имён участников (users.get).\n"
           . "• Защита от иноагентов: строжайший запрет на упоминание и популяризацию авторов-иноагентов.\n\n"
           . "━━━━━━━━━━━━━━━━━━━━━\n"
-          . "📚 3. КНИГИ И РЕКОМЕНДАЦИИ\n"
+          . "📚 3. КНИГИ И ЭЛЕКТРОННЫЙ КАТАЛОГ (OPAC)\n"
           . "━━━━━━━━━━━━━━━━━━━━━\n"
+          . "• /книга [название] / !книга / /поиск [автор/книга] / /opac / /к — поиск книг в электронном каталоге OPAC-Global (база 62) по всем 18 филиалам Владимира. Выводит адреса, шифры хранения, инвентарные номера и статус наличия («В наличии на полке» / «В читальном зале»).\n"
+          . "  ↳ Примеры: /книга Мастер и Маргарита, /поиск Булгаков, /к Толстой Война и мир.\n"
+          . "  ↳ NLP-распознавание: «Космо, найди книгу ...», «В каком филиале есть ...», «Где взять книгу ...», «Есть ли в библиотеке на Егорова ...», «Ищу книгу ...».\n"
+          . "  ↳ Голосовой поиск: распознавание и поиск по голосовым сообщениям читателей.\n"
+          . "  ↳ Особое внимание: филиал №4 — ул. Егорова, 10, жилой район «Доброе» (НЕ в центре!).\n"
           . "• Книга дня / Рекомендация — ежедневная рекомендация книги с аннотацией и цитатой.\n"
           . "• Книга недели / Книжный клуб — книга недели для совместного чтения и обсуждения.\n"
           . "• Голосование / Выбор книги — запуск голосования за следующую книгу с кнопками.\n"
@@ -4529,6 +4545,281 @@ function vk_bot_resolve_vladimir_library_query($text)
     return null;
 }
 
+/**
+ * Распознавание книжных поисковых запросов в тексте читателя
+ * Поддерживает команды /книга, /поиск, /opac, /к и естественные русскоязычные фразы
+ *
+ * @param string $text
+ * @return array|null ['query' => string, 'is_command' => bool, 'branch_filter' => string|null, 'show_help' => bool]
+ */
+function vk_bot_parse_book_query($text)
+{
+    if (!is_string($text) || trim($text) === '') {
+        return null;
+    }
+
+    $raw = trim($text);
+    $isCmd = false;
+    $query = '';
+
+    // 1. Явные команды бота: /книга, !книга, /поиск, !поиск, /opac, /опак, /к, !к
+    if (preg_match('/^[\/!](?:книга|поиск|opac|опак|к)\b\s*(.*)$/ui', $raw, $m)) {
+        $isCmd = true;
+        $query = trim($m[1]);
+        if ($query === '') {
+            return [
+                'is_command'    => true,
+                'query'         => '',
+                'branch_filter' => null,
+                'show_help'     => true
+            ];
+        }
+    }
+
+    // 2. Естественные речевые запросы читателей
+    if (!$isCmd) {
+        $patterns = [
+            // «Космо, найди книгу Мастер и Маргарита», «поищи книгу ...»
+            '/^(?:космо,?\s*)?(?:найди(?:те)?|поищи(?:те)?|подыщи(?:те)?|разыщи(?:те)?|ищи|найди мне)\s+(?:книгу|книги|роман|повесть|рассказ|произведение|автора)?\s*(.+)$/ui',
+            // «Где взять книгу Война и мир», «где найти книгу ...»
+            '/^(?:космо,?\s*)?(?:где\s+(?:взять|найти|почитать|достать|раздобыть))\s+(?:книгу|книги|роман|повесть|рассказ)?\s*(.+)$/ui',
+            // «В каком филиале есть Гарри Поттер», «в каких библиотеках можно почитать ...»
+            '/^(?:космо,?\s*)?(?:в\s+каком\s+филиале|в\s+каких\s+филиалах|в\s+какой\s+библиотеке|в\s+каких\s+библиотеках)\s+(?:есть|находится|найти|почитать|можно\s+(?:взять|найти|почитать))\s+(?:книгу|книга|книги|роман|повесть|рассказ|произведение)?\s*(.+)$/ui',
+            // «Есть ли книга Капитанская дочка на Егорова»
+            '/^(?:космо,?\s*)?есть\s+ли\s+(?:в\s+(?:наличии|библиотеках|каталоге)\s+)?(?:книгу|книга|книги|роман|произведение)?\s*(.+)$/ui',
+            // «Ищу книгу Чехов»
+            '/^(?:космо,?\s*)?ищу\s+(?:книгу|книга|книги|роман|произведение)?\s*(.+)$/ui',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $raw, $m)) {
+                $query = trim($m[1]);
+                break;
+            }
+        }
+    }
+
+    if ($query === '') {
+        return null;
+    }
+
+    // 3. Извлечение географического фильтра по филиалу / району
+    $branchFilter = null;
+    if (preg_match('/(?:на\s+егорова|филиал[еа]?\s*(?:№\s*)?4\b)/ui', $raw)) {
+        $branchFilter = 'ф4';
+    } elseif (preg_match('/(?:в\s+центре|в\s+историческом\s+центре|цдб)/ui', $raw)) {
+        $branchFilter = 'цдб';
+    } elseif (preg_match('/(?:в\s+добром|доброе|доброселье)/ui', $raw)) {
+        $branchFilter = 'доброе';
+    } elseif (preg_match('/(?:в\s+цгб|на\s+суздальском)/ui', $raw)) {
+        $branchFilter = 'цгб';
+    } elseif (preg_match('/филиал[еа]?\s*(?:№\s*)?(\d+)/ui', $raw, $mb)) {
+        $branchFilter = 'ф' . (int)$mb[1];
+    }
+
+    // Очистка текста запроса от лишних слов, кавычек и служебных окончаний
+    $cleanQuery = trim($query, " \t\n\r\0\x0B?.,!\"'«»");
+    $cleanQuery = preg_replace('/^(?:пожалуйста|подскажи|проверь|найди|книга|книгу|книги)\s+/ui', '', $cleanQuery);
+    $cleanQuery = preg_replace('/(?:\s+(?:в\s+библиотеке\s+|филиале\s+)?(?:на\s+егорова|в\s+добром|в\s+центре|в\s+филиале\s*\d+))\??$/ui', '', $cleanQuery);
+    $cleanQuery = preg_replace('/\s+(?:пожалуйста|в библиотеке|в филиалах|во владимире|в владимире|на егорова|в добром|в центре)$/ui', '', $cleanQuery);
+    $cleanQuery = trim($cleanQuery, " \t\n\r\0\x0B?.,!\"'«»");
+
+    // Исключаем тривиальные запросы о филиалах без книг (например: «где библиотека», «адрес филиала»)
+    if (preg_match('/^(?:библиотека|филиал|где|адрес|телефон|контакты|график|новости|клуб|космо|помощь)$/ui', $cleanQuery)) {
+        return null;
+    }
+
+    if (mb_strlen($cleanQuery, 'UTF-8') < 2) {
+        return null;
+    }
+
+    return [
+        'is_command'    => $isCmd,
+        'query'         => $cleanQuery,
+        'branch_filter' => $branchFilter,
+        'show_help'     => false
+    ];
+}
+
+/**
+ * Форматирование ответа робота Космо с результатами поиска OPAC
+ *
+ * @param array|null $res Результаты поиска из opac_search_books
+ * @param string $query Поисковый запрос
+ * @param string|null $branchFilter Целевой филиал или район (например, 'ф4', 'цдб', 'доброе')
+ * @param string $callerName Имя читателя из профиля ВК
+ * @return string
+ */
+function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель')
+{
+    if (!$res || empty($res['ok']) || empty($res['items'])) {
+        return "🤖📚 Уважаемый [id0|{$callerName}], по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
+             . "💡 Совет от робота Космо:\n"
+             . "• Проверьте, нет ли опечатки в названии книги или фамилии автора;\n"
+             . "• Попробуйте ввести только фамилию автора (например: «/поиск Чехов») или одно ключевое слово из названия («/книга Мастер»);\n"
+             . "• Вы также всегда можете обратиться к опытным библиографам Центральной городской библиотеки: г. Владимир, Суздальский пр-т, д. 2, 📞 8(4922) 21-65-63 — они с радостью помогут подобрать книгу из редких или закрытых архивных фондов! 📖✨";
+    }
+
+    $totalFound = $res['total_found'] ?? count($res['items']);
+    $header = "📖 Робот Космо: Результаты поиска в каталоге библиотек г. Владимира\n"
+            . "🔍 Запрос: «{$query}» • Найдено изданий в фонде: {$totalFound}\n\n";
+
+    $blocks = [];
+    $itemIndex = 0;
+
+    foreach (array_slice($res['items'], 0, 3) as $item) {
+        $itemIndex++;
+        $title = $item['title'] ?: 'Книга без заглавия';
+        $author = $item['author'] ?: '';
+        $year = $item['year'] ? ' (' . $item['year'] . ' г.)' : '';
+
+        $block = "📚 [{$itemIndex}] «{$title}»" . ($author ? " — {$author}" : "") . $year . "\n";
+
+        // Получаем детальные холдинги/экземпляры книги
+        $copiesData = null;
+        if (function_exists('opac_get_book_copies')) {
+            $copiesData = opac_get_book_copies($item['id']);
+        } elseif (class_exists('OpacClient')) {
+            $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
+        }
+
+        $copies = $copiesData['copies'] ?? [];
+
+        if (empty($copies)) {
+            $locations = $item['locations'] ?? [];
+            if (!empty($locations)) {
+                $block .= "📍 Места хранения (по каталогу): " . implode(', ', $locations) . "\n";
+            } else {
+                $block .= "ℹ️ Наличие уточняется в отделе комплектования ЦГБ (Суздальский пр-т, 2).\n";
+            }
+            $blocks[] = $block;
+            continue;
+        }
+
+        // Группируем копии по филиалам
+        $branchGroups = [];
+        $hasBranch4 = false;
+        $hasDobroye = false;
+
+        foreach ($copies as $c) {
+            $bCode = $c['branch_code'] ?: ($c['subfield_b'] ?: 'ЦГБ');
+            if (!isset($branchGroups[$bCode])) {
+                $branchGroups[$bCode] = [
+                    'name'         => $c['branch_name'] ?: 'Библиотека сети',
+                    'address'      => $c['branch_address'] ?: '',
+                    'phone'        => $c['branch_phone'] ?: '',
+                    'district'     => $c['branch_district'] ?? ($c['district'] ?? ''),
+                    'is_dobroye'   => !empty($c['is_dobroye']),
+                    'is_center'    => !empty($c['is_center']),
+                    'shifr'        => $c['shifr'] ?: '',
+                    'available'    => 0,
+                    'on_loan'      => 0,
+                    'inventories'  => [],
+                    'sub_b'        => $c['subfield_b'] ?? ''
+                ];
+            }
+
+            if (!empty($c['is_available'])) {
+                $branchGroups[$bCode]['available']++;
+            } else {
+                $branchGroups[$bCode]['on_loan']++;
+            }
+
+            if (!empty($c['inventory']) && count($branchGroups[$bCode]['inventories']) < 3) {
+                $branchGroups[$bCode]['inventories'][] = $c['inventory'];
+            }
+
+            if (!empty($c['is_dobroye'])) $hasDobroye = true;
+            if (($c['subfield_b'] ?? '') === 'ф4' || strpos($c['permanent_location'] ?? '', 'Ф4') !== false) {
+                $hasBranch4 = true;
+            }
+        }
+
+        // Акцент на филиал №4 на ул. Егорова, 10 (район Доброе!)
+        if ($branchFilter === 'ф4') {
+            if ($hasBranch4) {
+                $block .= "⭐️ ОТЛИЧНАЯ НОВОСТЬ: Книга есть в наличии в Филиале №4 на ул. Егорова, 10 (жилой район «Доброе»)! 📍\n";
+            } else {
+                $block .= "📌 В филиале №4 на ул. Егорова этой книги сейчас нет, но она доступна в других библиотеках города:\n";
+            }
+        } elseif ($branchFilter === 'доброе') {
+            if ($hasDobroye) {
+                $block .= "⭐️ Книга доступна в библиотеках жилого района «Доброе»! 📍\n";
+            }
+        } elseif ($branchFilter === 'цдб') {
+            $hasCenter = false;
+            foreach ($branchGroups as $bgCheck) {
+                if (!empty($bgCheck['is_center'])) { $hasCenter = true; break; }
+            }
+            if ($hasCenter) {
+                $block .= "⭐️ Книга есть в Центральной детской библиотеке (ул. Большая Московская, 31, исторический центр)! 📍\n";
+            }
+        }
+
+        // Сортировка: приоритетный филиал и доступные экземпляры выводятся первыми
+        uasort($branchGroups, function ($a, $b) use ($branchFilter) {
+            $scoreA = 0;
+            $scoreB = 0;
+
+            if ($branchFilter === 'ф4') {
+                if (($a['sub_b'] ?? '') === 'ф4') $scoreA += 100;
+                if (($b['sub_b'] ?? '') === 'ф4') $scoreB += 100;
+            } elseif ($branchFilter === 'доброе') {
+                if (!empty($a['is_dobroye'])) $scoreA += 50;
+                if (!empty($b['is_dobroye'])) $scoreB += 50;
+            } elseif ($branchFilter === 'цдб') {
+                if (!empty($a['is_center'])) $scoreA += 50;
+                if (!empty($b['is_center'])) $scoreB += 50;
+            } elseif ($branchFilter) {
+                if (($a['sub_b'] ?? '') === $branchFilter) $scoreA += 100;
+                if (($b['sub_b'] ?? '') === $branchFilter) $scoreB += 100;
+            }
+
+            if ($a['available'] > 0) $scoreA += 10;
+            if ($b['available'] > 0) $scoreB += 10;
+
+            return $scoreB <=> $scoreA;
+        });
+
+        $block .= "🏛 Наличие в филиалах города:\n";
+        $branchCount = 0;
+
+        foreach ($branchGroups as $bg) {
+            $branchCount++;
+            if ($branchCount > 5) {
+                $remainingBranches = count($branchGroups) - 5;
+                $block .= "  • ... и ещё в {$remainingBranches} филиалах сети!\n";
+                break;
+            }
+
+            $statusText = $bg['available'] > 0
+                ? "✅ В наличии: {$bg['available']} экз."
+                : "⏳ На руках у читателей ({$bg['on_loan']} экз.)";
+
+            $districtStr = $bg['district'] ? ' (' . $bg['district'] . ')' : '';
+            $invStr = !empty($bg['inventories']) ? ' [Инв. ' . implode(', ', $bg['inventories']) . ']' : '';
+            $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? ' [Шифр: ' . $bg['shifr'] . ']' : '';
+
+            $block .= "  • {$bg['name']}{$districtStr}: {$statusText}\n";
+            if ($bg['address']) {
+                $block .= "    📍 {$bg['address']}";
+                if ($bg['phone']) $block .= " • 📞 {$bg['phone']}";
+                $block .= "\n";
+            }
+            if ($shifrStr || $invStr) {
+                $block .= "    🔖 {$shifrStr}{$invStr}\n";
+            }
+        }
+
+        $blocks[] = $block;
+    }
+
+    $footer = "\n💡 Совет от Космо: Вы можете позвонить в любой удобный филиал, чтобы библиотекарь отложил книгу до вашего прихода!\n"
+            . "🌐 Электронный каталог: http://library.vladimir.ru/rguest_vlad_cgb.htm";
+
+    return $header . implode("\n────────────────\n\n", $blocks) . $footer;
+}
+
 // -----------------------------------------------------------------------------
 // Формирование интерактивных клавиатур ВКонтакте
 // -----------------------------------------------------------------------------
@@ -4540,11 +4831,21 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'opac_help'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🔎 Поиск в каталоге'
+                ],
+                'color' => 'primary'
+            ],
+            [
+                'action' => [
+                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE),
                     'label'   => '📚 Подобрать книгу'
                 ],
                 'color' => 'primary'
-            ],
+            ]
+        ],
+        [
             [
                 'action' => [
                     'type'    => 'text',
@@ -4552,22 +4853,12 @@ $persistentKeyboard = [
                     'label'   => '📰 Новости филиалов'
                 ],
                 'color' => 'positive'
-            ]
-        ],
-        [
+            ],
             [
                 'action' => [
                     'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'libraries'], JSON_UNESCAPED_UNICODE),
                     'label'   => '🏛 Где библиотеки?'
-                ],
-                'color' => 'secondary'
-            ],
-            [
-                'action' => [
-                    'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'random'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🎲 Случайный шедевр'
                 ],
                 'color' => 'secondary'
             ]
@@ -4836,7 +5127,8 @@ if ($audioAttachment !== null) {
                 $isReplyToBot ||
                 preg_match('/(?:космос|космо|cosmo|cosma|\bробот\s*космо\b|\bбот\b|\bаврора\b)/ui', $voiceTranscribedText) ||
                 preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $voiceTranscribedText) ||
-                preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|стикер)#ui', $voiceTranscribedText)
+                preg_match('#^[!/](?:книга|поиск|opac|к|квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|стикер)#ui', $voiceTranscribedText) ||
+                preg_match('/(?:найди\s+книгу|поищи\s+книгу|где\s+взять|в\s+каком\s+филиале|есть\s+ли\s+книга|ищу\s+книгу|в\s+библиотеке\s+на\s+егорова)/ui', $voiceTranscribedText)
             );
 
             if (!$hasVoiceMention && empty($payload)) {
@@ -5169,6 +5461,48 @@ if ($parsedModCmd !== null || $isQuickMute || $isQuickBan) {
             'attachment'       => $mascotStickers['smile'] ?? null,
             'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
             'keyboard'         => json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Справка по всем возможностям робота Космо (!справка, !help, !помощь)
+    if ($modType === 'user_help') {
+        $reply = "📖 СПРАВОЧНИК КОМАНД И ВОЗМОЖНОСТЕЙ РОБОТА КОСМО 🤖✨\n\n"
+               . "📚 1. ПОИСК КНИГ В ЭЛЕКТРОННОМ КАТАЛОГЕ (OPAC):\n"
+               . "• /книга [название] или !книга — найти книгу в каталоге ЦГБ и узнать, в каких филиалах она есть в наличии;\n"
+               . "• /поиск [автор/книга] или !поиск — поиск по автору, названию или ключевым словам;\n"
+               . "• /к [запрос] или /opac — быстрый поиск по каталогу;\n"
+               . "• Вы также можете просто спросить меня обычными словами или надиктовать голосом:\n"
+               . "  ↳ «Космо, найди книгу Мастер и Маргарита»\n"
+               . "  ↳ «В каком филиале есть Гарри Поттер?»\n"
+               . "  ↳ «Есть ли в библиотеке на Егорова Капитанская дочка?»\n"
+               . "  ↳ «Где взять книгу Война и мир?»\n\n"
+               . "📖 2. КНИЖНЫЙ КЛУБ И РЕКОМЕНДАЦИИ:\n"
+               . "• «Книга дня» — ежедневная персональная рекомендация с цитатой;\n"
+               . "• «Книга недели» — текущая книга недели и вопросы для обсуждения клуба;\n"
+               . "• «Голосование» — запуск читательского выбора следующей книги недели;\n"
+               . "• «Подбор книги» — подбор произведений по настроению и жанрам.\n\n"
+               . "🎮 3. ИНТЕРАКТИВ И ВИКТОРИНЫ:\n"
+               . "• !квиз [тема] — литературный квиз с вариантами ответа;\n"
+               . "• !топ / !счет — таблица рекордсменов литературного квиза;\n"
+               . "• !опрос — тематический опрос читателей;\n"
+               . "• «Хохма» — библиотечные шутки и литературный юмор;\n"
+               . "• «Стикеры» — 17 фирменных прозрачных стикеров Космо.\n\n"
+               . "🏛️ 4. БИБЛИОТЕКИ ВЛАДИМИРА:\n"
+               . "• «Новости филиалов» — дайджест всех постов библиотек за сегодня;\n"
+               . "• «Где библиотеки» — адреса, телефоны и районы всех 18 филиалов сети МБУК «ЦГБ».\n\n"
+               . "🛡️ 5. МОДЕРАЦИЯ БЕСЕДЫ (для администраторов):\n"
+               . "• /help — закрытый подробный справочник команд модерации (отправляется только админам в ЛС);\n"
+               . "• /kk [пользователь] — полная амнистия (снять мут, разбан и сбросить предупреждения за мат).\n\n"
+               . "💡 Напишите мне любой вопрос о книгах или наговорите голосовое — я всегда рад помочь! 🤖📚";
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
             'dont_parse_links' => 1
         ], $communityToken);
         exit;
@@ -5703,6 +6037,71 @@ if (vk_bot_is_foreign_agent_query($userMsg)) {
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
+}
+
+// =============================================================================
+// Сценарий 1b: Полноценный поиск по Электронному каталогу (OPAC) ЦГБ г. Владимира
+// =============================================================================
+$parsedBookQuery = vk_bot_parse_book_query($userMsg);
+if ($parsedBookQuery !== null || $cmd === 'opac_help') {
+    if ($cmd === 'opac_help' || !empty($parsedBookQuery['show_help'])) {
+        $reply = "📖 Робот Космо: Поиск в электронном каталоге библиотек г. Владимира 🤖📚\n\n"
+               . "Я умею мгновенно проверять наличие любой книги по электронному каталогу ЦГБ (база 62) среди всех 18 филиалов города Владимира!\n\n"
+               . "📌 Как пользоваться поиском:\n"
+               . "• /книга [название] — например: /книга Мастер и Маргарита\n"
+               . "• /поиск [автор/книга] — например: /поиск Булгаков или /поиск Капитанская дочка\n"
+               . "• /к [запрос] — быстрый поиск\n\n"
+               . "💬 Вы также можете спросить меня обычными словами или надиктовать голосом:\n"
+               . "• «Космо, найди книгу Война и мир»\n"
+               . "• «В каком филиале есть Гарри Поттер?»\n"
+               . "• «Есть ли в библиотеке на Егорова Капитанская дочка?»\n\n"
+               . "Я выведу список доступных изданий, адреса и телефоны филиалов, а также точные шифры хранения для быстрого получения на абонементе! 🏛️✨";
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    if (!empty($parsedBookQuery['query'])) {
+        if ($botTyping && $peerId > 0) {
+            vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+        }
+
+        // Выполняем поиск через микросервис OPAC
+        $searchRes = null;
+        if (function_exists('opac_search_books')) {
+            $searchRes = opac_search_books($parsedBookQuery['query'], 3);
+        } elseif (class_exists('OpacClient')) {
+            $searchRes = OpacClient::getInstance()->findBooks($parsedBookQuery['query'], 3);
+        }
+
+        $reply = vk_bot_format_opac_response(
+            $searchRes,
+            $parsedBookQuery['query'],
+            $parsedBookQuery['branch_filter'] ?? null,
+            $callerName
+        );
+
+        if ($isVoiceQuery && $voiceTranscribedText !== '') {
+            $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => (!empty($searchRes['ok']) && !empty($searchRes['items'])) ? ($mascotStickers['read'] ?? null) : ($mascotStickers['thinking'] ?? null),
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
 }
 
 // Нормализованное сообщение без эмодзи для надёжного матчинга команд кнопок

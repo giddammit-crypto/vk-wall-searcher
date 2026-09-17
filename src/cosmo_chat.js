@@ -13,10 +13,11 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.24.2';
-import { CANONICAL_BRANCHES } from './branches.js?v=4.24.2';
+import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.24.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
+const OPAC_API_URL = resolveApiUrl('api/opac.php');
 
 function resolveTtsAudioUrl(url) {
     try {
@@ -385,6 +386,16 @@ export const COSMO_STICKERS = [
  * =========================================================================== */
 export const VK_GROUP_PRESETS = [
     {
+        id: 'opac_search',
+        icon: 'menu_book',
+        category: 'Каталог OPAC',
+        title: '📚 Поиск книги в каталоге (OPAC)',
+        desc: 'Поиск изданий в электронном каталоге ЦГБ г. Владимира и проверка наличия в филиалах (особый акцент на филиал №4 в Добром).',
+        badge: 'Каталог',
+        tag: 'Каталог',
+        prompt: 'Космо, найди книгу «Мастер и Маргарита» в электронном каталоге и подскажи, в каких филиалах она есть в наличии'
+    },
+    {
         id: 'net-audit',
         icon: 'summarize',
         category: 'Методический аудит',
@@ -548,6 +559,258 @@ export const VK_GROUP_PRESETS = [
     }
 ];
 
+export const PRESETS = VK_GROUP_PRESETS;
+
+/**
+ * Распознавание запроса на поиск книги в электронном каталоге
+ * Поддерживает команды /книга, /поиск, /opac, /к и естественные русскоязычные фразы
+ * @param {string} text
+ * @returns {string|null} Поисковая фраза или null
+ */
+export function detectBookSearchQuery(text) {
+    if (!text || typeof text !== 'string') return null;
+    const raw = text.trim();
+
+    // 1. Слеш-команды: /книга [запрос], /поиск [запрос], /opac [запрос], /к [запрос]
+    const cmdMatch = raw.match(/^\/(?:книга|поиск|opac|к)(?:\s+|$|\s*(?=[«"']))(.*)$/i);
+    if (cmdMatch) {
+        let query = (cmdMatch[1] || '').trim();
+        query = query.replace(/^[«"']+|[»"']+$/g, '').trim();
+        return query || 'Мастер и Маргарита';
+    }
+
+    // 2. Цитаты в кавычках («...» или "...") при наличии книжного контекста
+    const hasBookContext = /(?:книг|роман|повест|каталог|opac|наличи|найди|ищи|поищи|где\s+есть|в\s+каких\s+филиалах)/i.test(raw);
+    const quoteMatch = raw.match(/«([^»]{2,})»/) || raw.match(/"([^"]{2,})"/);
+    if (quoteMatch && hasBookContext) {
+        return quoteMatch[1].trim();
+    }
+
+    // 3. Естественные фразы поиска книги
+    const naturalMatch = raw.match(/^(?:космо,?\s*)?(?:найди|поищи|поиск|где\s+(?:есть|взять|найти)|в\s+каких\s+филиалах\s+есть)\s+(?:книгу|книги|в\s+каталоге|в\s+opac|в\s+электронном\s+каталоге)?\s*(.+)$/i);
+    if (naturalMatch) {
+        let q = naturalMatch[1]
+            .replace(/\s*(?:в\s+электронном\s+каталоге|в\s+каталоге\s+opac|в\s+каталоге|в\s+opac)\s*/gi, ' ')
+            .replace(/\s*(?:и\s+подскажи.*|подскажи.*|где\s+она\s+есть.*|в\s+каких\s+филиалах.*|в\s+наличии.*)$/gi, '')
+            .replace(/[«»"']/g, '')
+            .trim();
+        if (q.length >= 2) {
+            return q;
+        }
+    }
+
+    // 4. Прямой запуск пресета каталога
+    if (raw.includes('найди книгу «Мастер и Маргарита»') || (raw.includes('Мастер и Маргарита') && /каталог|opac|филиал/i.test(raw))) {
+        return 'Мастер и Маргарита';
+    }
+
+    return null;
+}
+
+/**
+ * Рендеринг интерактивной карточки книги Космо из электронного каталога OPAC-Global
+ * @param {object} book Объект библиографической записи с экземплярами
+ * @returns {string} HTML-разметка интерактивной карточки
+ */
+export function renderOpacBookCard(book) {
+    if (!book) return '';
+
+    const title = book.title || 'Без названия';
+    const author = book.author || 'Автор не указан';
+    const year = book.year || '';
+    const shelfmark = book.shelfmark || book.bbk || '';
+    const inventory = book.inventory || '';
+    const bookId = book.id || '';
+
+    // Группировка или извлечение информации по филиалам
+    const branchMap = new Map();
+
+    if (Array.isArray(book.copies) && book.copies.length > 0) {
+        book.copies.forEach(copy => {
+            const sigla = (copy.subfield_b || '').toLowerCase();
+            const resolved = resolveBranchBySigla(sigla) || {};
+            const branchCode = copy.branch_code || resolved.branchNum || resolved.branch_number || (sigla ? sigla.toUpperCase() : 'Филиал');
+            const branchName = copy.branch_name || resolved.branchName || resolved.branch_name || branchCode;
+            const branchAddress = copy.branch_address || resolved.address || '';
+            const branchPhone = copy.branch_phone || resolved.phone || '';
+            const district = resolved.district || copy.district || '';
+            const isDobroye = !!(resolved.isDobroye || resolved.is_dobroye || (district && district.includes('Доброе')) || (branchAddress && branchAddress.includes('Егорова')) || (branchAddress && branchAddress.includes('Суздальский')));
+            const isBranch4 = !!(branchCode === 'Ф-4' || branchCode === 'Филиал №4' || sigla === 'ф4' || sigla === 'ф4д' || (branchAddress && branchAddress.includes('Егорова')));
+
+            const key = branchCode + '|' + branchAddress;
+            if (!branchMap.has(key)) {
+                branchMap.set(key, {
+                    branchCode,
+                    branchName,
+                    branchAddress,
+                    branchPhone,
+                    district,
+                    isDobroye,
+                    isBranch4,
+                    totalCopies: 0,
+                    availableCopies: 0,
+                    isAvailable: false
+                });
+            }
+            const entry = branchMap.get(key);
+            entry.totalCopies++;
+            if (copy.is_available) {
+                entry.availableCopies++;
+                entry.isAvailable = true;
+            }
+        });
+    } else if (Array.isArray(book.locations) && book.locations.length > 0) {
+        book.locations.forEach(sigla => {
+            const rawSig = String(sigla || '').trim().toLowerCase();
+            const resolved = resolveBranchBySigla(rawSig) || {};
+            const isBranch4 = (rawSig === 'ф4' || rawSig === 'ф4д');
+            const isDobroye = !!(resolved.isDobroye || resolved.is_dobroye || isBranch4);
+            const branchCode = resolved.branchNum || resolved.branch_number || rawSig.toUpperCase();
+            const branchName = resolved.branchName || resolved.branch_name || `Библиотека — ${branchCode}`;
+            const branchAddress = resolved.address || '';
+            const branchPhone = resolved.phone || '';
+            const district = resolved.district || (isDobroye ? 'Доброе' : '');
+            const key = branchCode + '|' + branchAddress;
+
+            if (!branchMap.has(key)) {
+                branchMap.set(key, {
+                    branchCode,
+                    branchName,
+                    branchAddress,
+                    branchPhone,
+                    district,
+                    isDobroye,
+                    isBranch4,
+                    totalCopies: 1,
+                    availableCopies: (book.available_quantity > 0) ? 1 : 0,
+                    isAvailable: (book.available_quantity > 0)
+                });
+            }
+        });
+    }
+
+    const branches = Array.from(branchMap.values());
+
+    // Сортировка филиалов: филиал №4 (Доброе) ВСЕГДА ПЕРВЫМ, затем доступные в Добром, затем остальные доступные, затем на руках
+    branches.sort((a, b) => {
+        if (a.isBranch4 && !b.isBranch4) return -1;
+        if (!a.isBranch4 && b.isBranch4) return 1;
+        if (a.isAvailable && !b.isAvailable) return -1;
+        if (!a.isAvailable && b.isAvailable) return 1;
+        if (a.isDobroye && !b.isDobroye) return -1;
+        if (!a.isDobroye && b.isDobroye) return 1;
+        return a.branchCode.localeCompare(b.branchCode, 'ru');
+    });
+
+    const totalAvailable = branches.filter(b => b.isAvailable).length;
+
+    // Рендеринг строк филиалов (первые 2 отображаются сразу, остальные сворачиваются)
+    const COLLAPSE_THRESHOLD = 2;
+    const initialBranches = branches.slice(0, COLLAPSE_THRESHOLD);
+    const collapsedBranches = branches.slice(COLLAPSE_THRESHOLD);
+
+    const renderBranchItem = (b) => {
+        const isF4 = b.isBranch4;
+        const isAvail = b.isAvailable;
+        return `
+            <div class="book-branch-item ${isF4 ? 'is-branch-4 branch-dobroye-accent' : ''} ${isAvail ? 'is-available' : 'on-loan'}">
+                <div class="book-branch-main">
+                    <div class="book-branch-badge-wrap">
+                        <span class="book-branch-badge ${isF4 ? 'is-accent-f4' : ''}">
+                            ${isF4 ? '<span class="material-symbols-outlined badge-star">star</span> ' : ''}${escapeHtml(b.branchCode)}
+                        </span>
+                        <span class="book-availability-status ${isAvail ? 'is-available' : 'on-loan'}">
+                            <span class="status-dot ${isAvail ? 'is-available' : 'on-loan'}"></span>
+                            <span class="status-text">${isAvail ? 'В наличии' : 'На руках'}</span>
+                            ${b.availableCopies > 1 ? `<span class="copies-count-chip">${b.availableCopies} экз.</span>` : ''}
+                        </span>
+                    </div>
+                    <div class="book-branch-name-row">
+                        <span class="book-branch-name">${escapeHtml(b.branchName)}</span>
+                        ${isF4 ? '<span class="branch-highlight-tag">Доброе • ул. Егорова, 10</span>' : (b.district ? `<span class="branch-district-tag">${escapeHtml(b.district)}</span>` : '')}
+                    </div>
+                </div>
+                <div class="book-branch-details">
+                    ${b.branchAddress ? `
+                        <div class="book-branch-address">
+                            <span class="material-symbols-outlined branch-meta-icon">location_on</span>
+                            <span>${escapeHtml(b.branchAddress)}</span>
+                        </div>
+                    ` : ''}
+                    ${b.branchPhone ? `
+                        <div class="book-branch-phone">
+                            <span class="material-symbols-outlined branch-meta-icon">call</span>
+                            <a href="tel:${escapeHtml(b.branchPhone.split(',')[0].replace(/[^\d+]/g, ''))}" class="phone-link">${escapeHtml(b.branchPhone)}</a>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    };
+
+    let branchesListHtml = '';
+    if (branches.length === 0) {
+        branchesListHtml = `
+            <div class="cosmo-book-branches-empty">
+                <span class="material-symbols-outlined">info</span>
+                <span>Экземпляры распределяются по фонду ЦГБ или уточняются в OPAC</span>
+            </div>
+        `;
+    } else {
+        branchesListHtml = initialBranches.map(renderBranchItem).join('');
+        if (collapsedBranches.length > 0) {
+            branchesListHtml += `
+                <div class="cosmo-book-branches-collapsed">
+                    ${collapsedBranches.map(renderBranchItem).join('')}
+                </div>
+            `;
+        }
+    }
+
+    const toggleBtnHtml = branches.length > COLLAPSE_THRESHOLD ? `
+        <button type="button" class="cosmo-book-toggle-btn" data-toggle-branches title="Показать или скрыть остальные филиалы">
+            <span class="material-symbols-outlined toggle-icon">expand_more</span>
+            <span class="toggle-text">Показать все филиалы (${branches.length})</span>
+        </button>
+    ` : '';
+
+    return `
+        <div class="cosmo-book-card" data-book-id="${escapeHtml(bookId)}">
+            <div class="cosmo-book-header">
+                <div class="cosmo-book-cover">
+                    <span class="material-symbols-outlined book-icon">menu_book</span>
+                    ${year ? `<span class="book-year-badge">${escapeHtml(year)}</span>` : ''}
+                </div>
+                <div class="cosmo-book-meta">
+                    <div class="cosmo-book-author">${escapeHtml(author)}</div>
+                    <h4 class="cosmo-book-title">${escapeHtml(title)}</h4>
+                    <div class="cosmo-book-specs">
+                        ${year ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">calendar_today</span> ${escapeHtml(year)} г.</span>` : ''}
+                        ${shelfmark ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">tag</span> Шифр: ${escapeHtml(shelfmark)}</span>` : ''}
+                        ${inventory ? `<span class="book-spec-chip"><span class="material-symbols-outlined chip-icon">inventory_2</span> Инв.: ${escapeHtml(inventory)}</span>` : ''}
+                        ${totalAvailable > 0
+                            ? `<span class="book-overall-avail is-available"><span class="status-dot is-available"></span> В наличии (${totalAvailable})</span>`
+                            : `<span class="book-overall-avail on-loan"><span class="status-dot on-loan"></span> Все на руках</span>`}
+                    </div>
+                </div>
+            </div>
+
+            <div class="cosmo-book-branches ${branches.length > COLLAPSE_THRESHOLD ? 'has-collapse' : ''}">
+                <div class="cosmo-book-branches-title">
+                    <div class="branches-title-text">
+                        <span class="material-symbols-outlined title-icon">apartment</span>
+                        <span>Наличие в филиалах Владимира:</span>
+                    </div>
+                    ${branches.length > 0 ? `<span class="branches-total-count">${branches.length} ${declOfNum(branches.length, ['филиал', 'филиала', 'филиалов'])}</span>` : ''}
+                </div>
+                <div class="cosmo-book-branches-list">
+                    ${branchesListHtml}
+                </div>
+                ${toggleBtnHtml}
+            </div>
+        </div>
+    `;
+}
 
 /* ===========================================================================
  * КЛАСС CosmoChatModal
@@ -619,10 +882,10 @@ export class CosmoChatModal {
                     </div>
 
                     <div class="cosmo-chat-header-actions">
-                        <button type="button" class="cosmo-chat-tool-btn cosmo-chat-presets-btn" data-chat-presets-toggle title="Быстрые пресеты анализа ВК (10 сценариев)">
+                        <button type="button" class="cosmo-chat-tool-btn cosmo-chat-presets-btn" data-chat-presets-toggle title="Быстрые пресеты анализа и каталога">
                             <span class="material-symbols-outlined">analytics</span>
-                            <span class="tool-btn-text">Пресеты ВК</span>
-                            <span class="presets-count-badge">10</span>
+                            <span class="tool-btn-text">Пресеты</span>
+                            <span class="presets-count-badge">${VK_GROUP_PRESETS.length}</span>
                         </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-stickers title="Стикеры Космо">
                             <span class="material-symbols-outlined">sentiment_satisfied</span>
@@ -666,7 +929,7 @@ export class CosmoChatModal {
                             <input type="search"
                                    class="presets-search-input"
                                    data-presets-search
-                                   placeholder="Быстрый поиск по 10 пресетам (вирус, ER, методист, визуал)..." />
+                                   placeholder="Быстрый поиск по пресетам (книга, OPAC, вирус, ER, методист)..." />
                         </div>
                     </div>
                     <div class="presets-grid" data-presets-grid>
@@ -674,7 +937,7 @@ export class CosmoChatModal {
                             <button type="button" class="preset-card" data-preset-id="${p.id}" title="${escapeHtml(p.title)}">
                                 <div class="preset-card-top">
                                     <span class="material-symbols-outlined preset-icon">${p.icon}</span>
-                                    <span class="preset-badge">${p.badge}</span>
+                                    <span class="preset-badge">${p.badge || p.tag || 'Пресет'}</span>
                                 </div>
                                 <div class="preset-title">${p.title}</div>
                                 <div class="preset-desc">${p.desc}</div>
@@ -717,20 +980,23 @@ export class CosmoChatModal {
                 <!-- Область сообщений -->
                 <div class="cosmo-chat-messages" data-chat-messages></div>
 
-                <!-- Плашка быстрого открытия 10 пресетов над вводом -->
+                <!-- Плашка быстрого открытия пресетов над вводом -->
                 <div class="cosmo-chat-quick-presets-bar">
-                    <button type="button" class="cosmo-chat-quick-presets-pill" data-chat-presets-toggle title="Открыть 10 пресетов анализа групп ВК">
+                    <button type="button" class="cosmo-chat-quick-presets-pill" data-chat-presets-toggle title="Открыть пресеты анализа и каталога">
                         <span class="material-symbols-outlined pill-bolt">bolt</span>
-                        <span class="pill-text">10 быстрых пресетов анализа групп ВК</span>
-                        <span class="pill-count">10</span>
+                        <span class="pill-text">Быстрые пресеты и каталог OPAC</span>
+                        <span class="pill-count">${VK_GROUP_PRESETS.length}</span>
                         <span class="material-symbols-outlined pill-arrow">expand_less</span>
                     </button>
                 </div>
 
                 <!-- Быстрые чипы-подсказки -->
                 <div class="cosmo-chat-chips" data-chat-chips>
+                    <button type="button" class="cosmo-chip cosmo-chip-opac" data-preset-id="opac_search" title="Поиск книги в электронном каталоге OPAC">
+                        <span class="chip-icon">📚</span> Поиск в OPAC
+                    </button>
                     <button type="button" class="cosmo-chip" data-prompt="Напиши вовлекающий пост для библиотеки о новинках книг с интерактивом и призывом к чтению!">
-                        <span class="chip-icon">📚</span> Пост о новинках
+                        <span class="chip-icon">✨</span> Пост о новинках
                     </button>
                     <button type="button" class="cosmo-chip" data-preset-id="net-audit">
                         <span class="chip-icon">📊</span> Отчёт для методиста
@@ -1149,6 +1415,33 @@ export class CosmoChatModal {
                     this.openPresetsPopover();
                     return;
                 }
+            }
+
+            // Раскрытие / скрытие филиалов в карточке книги OPAC
+            const toggleBranchesBtn = e.target.closest('[data-toggle-branches]');
+            if (toggleBranchesBtn) {
+                const branchesWrap = toggleBranchesBtn.closest('.cosmo-book-branches');
+                if (branchesWrap) {
+                    const isExpanded = branchesWrap.classList.toggle('is-expanded');
+                    const textEl = toggleBranchesBtn.querySelector('.toggle-text');
+                    const iconEl = toggleBranchesBtn.querySelector('.toggle-icon');
+                    const allItems = branchesWrap.querySelectorAll('.book-branch-item');
+                    if (textEl) {
+                        textEl.textContent = isExpanded ? 'Скрыть филиалы' : `Показать все филиалы (${allItems.length})`;
+                    }
+                    if (iconEl) {
+                        iconEl.textContent = isExpanded ? 'expand_less' : 'expand_more';
+                    }
+                }
+                return;
+            }
+
+            // Копирование данных о наличии книг OPAC
+            const copyOpacBtn = e.target.closest('[data-copy-opac]');
+            if (copyOpacBtn) {
+                const text = copyOpacBtn.getAttribute('data-copy-opac') || '';
+                this.copyToClipboard(text, copyOpacBtn, 'Наличие скопировано! 📚');
+                return;
             }
 
             // Копирование списка книг для читателя со стеллажа
@@ -2075,6 +2368,18 @@ export class CosmoChatModal {
 
         if (this.isBusy) return;
 
+        if (preset.id === 'opac_search') {
+            const displayLabel = `📚 **${preset.title}**\n*${preset.desc}*`;
+            this.appendUserMessage(displayLabel, null);
+            this.messages.push({
+                role: 'user',
+                content: preset.prompt
+            });
+            const bookQuery = detectBookSearchQuery(preset.prompt) || 'Мастер и Маргарита';
+            this.executeOpacBookSearch(bookQuery);
+            return;
+        }
+
         // Показываем в чате аккуратную плашку запуска пресета
         const displayLabel = `📊 **Пресет: ${preset.title}**\n*${preset.desc}*`;
         this.appendUserMessage(displayLabel, null);
@@ -2114,30 +2419,29 @@ export class CosmoChatModal {
                         <p>Привет! Я <strong>Космо</strong> 🤖📚 — библиотечный робот-помощник, книжный сомелье и ИИ-проводник Централизованной библиотечной системы города Владимира!</p>
                         <p><strong>✨ ЧТО Я УМЕЮ И ЧЕМ МОГУ ПОМОЧЬ:</strong></p>
                         <ul class="cosmo-chat-ul">
-                            <li>📚 <strong>Подобрать книгу под настроение</strong>: уютная проза, захватывающий детектив, научная фантастика или золотая классика из фондов 18 библиотек Владимира.</li>
+                            <li>📚 <strong>Поиск книг в электронном каталоге OPAC</strong>: найду любое издание в каталоге ЦГБ, подскажу наличие и филиалы (команды <code>/книга</code>, <code>/поиск</code>, <code>/opac</code>).</li>
+                            <li>📖 <strong>Подобрать книгу под настроение</strong>: уютная проза, захватывающий детектив, научная фантастика или классика из фондов 18 библиотек Владимира.</li>
                             <li>🏛 <strong>Подсказать адреса и телефоны библиотек</strong>: знаю контакты, адреса и график всех 18 филиалов сети ЦГБ Владимира.</li>
-                            <li>✍️ <strong>Написать отличный пост для ВК</strong>: о книгах, событиях, клубах, с интерактивом и оформлением.</li>
-                            <li>📊 <strong>Проанализировать группы ВКонтакте</strong>: сравнительный анализ показателей, вовлечённости (ER) и топовых постов.</li>
-                            <li>📎 <strong>Оценить черновик или файл</strong>: прикрепите текст, изображение или отчёт для анализа.</li>
+                            <li>💡 <strong>Создать контент и аналитику</strong>: посты для ВК, идеи интерактивов, викторин и аудит эффективности публикаций.</li>
                         </ul>
                         <p><strong>🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:</strong></p>
                         <ul class="cosmo-chat-ul">
-                            <li>Используйте быстрые карточки пресетов ниже для мгновенного анализа;</li>
+                            <li>Используйте быстрые карточки пресетов ниже для мгновенного поиска книг и анализа;</li>
                             <li>Форматируйте сообщения панелью инструментов (жирный, курсив, списки, код, превью);</li>
                             <li>Или просто пишите мне любые вопросы своими словами, как живому библиотекарю!</li>
                         </ul>
                         <div class="welcome-presets-banner">
                             <div class="welcome-presets-title">
                                 <span class="material-symbols-outlined">analytics</span>
-                                <span>Быстрый анализ данных сканирования:</span>
+                                <span>Быстрый поиск в каталоге и анализ:</span>
                             </div>
                             <div class="welcome-presets-chips">
+                                <button type="button" class="welcome-preset-chip welcome-chip-opac" data-preset-id="opac_search">📚 Поиск в каталоге (OPAC)</button>
                                 <button type="button" class="welcome-preset-chip" data-preset-id="net-audit">📊 Отчёт для методиста</button>
                                 <button type="button" class="welcome-preset-chip" data-preset-id="deep-insights">💡 Инсайты и аномалии</button>
                                 <button type="button" class="welcome-preset-chip" data-preset-id="leaders-secrets">🏆 Секрет лидеров</button>
-                                <button type="button" class="welcome-preset-chip" data-preset-id="underdogs-diagnostic">🩺 Диагностика филиалов</button>
                                 <button type="button" class="welcome-preset-chip" data-preset-id="media-plan-7d">📅 План на 7 дней</button>
-                                <button type="button" class="welcome-preset-chip welcome-preset-all" data-chat-presets-toggle>✨ Все 10 пресетов →</button>
+                                <button type="button" class="welcome-preset-chip welcome-preset-all" data-chat-presets-toggle>✨ Все пресеты (${VK_GROUP_PRESETS.length}) →</button>
                             </div>
                         </div>
                         <p style="margin-top: 10px;">Какую книгу подобрать для вас сегодня или о чём рассказать? ✨</p>
@@ -2559,6 +2863,14 @@ ${statsContext}
         // Добавляем сообщение пользователя в UI
         this.appendUserMessage(text || '(Прикреплён файл для анализа)', attach);
 
+        // Распознавание команд /книга, /поиск, /opac, /к или фраз поиска книг в каталоге
+        const bookQuery = !attach ? detectBookSearchQuery(text) : null;
+        if (bookQuery) {
+            this.messages.push({ role: 'user', content: text });
+            await this.executeOpacBookSearch(bookQuery);
+            return;
+        }
+
         // Формируем контент для запроса к ИИ
         let userContent = text;
         if (attach) {
@@ -2575,6 +2887,185 @@ ${statsContext}
         this.messages.push({ role: 'user', content: userContent });
 
         await this.executeAiRequest({ maxTokens: 3000, temperature: 0.5 });
+    }
+
+    /* ---------------------------------------------------------------------
+     * Поиск книг в электронном каталоге OPAC-Global (ЦГБ г. Владимира)
+     * ------------------------------------------------------------------- */
+    async executeOpacBookSearch(searchQuery) {
+        this.isBusy = true;
+        this.sendBtnEl.disabled = true;
+        this.showTypingIndicator();
+
+        if (this.mascot) {
+            if (typeof this.mascot.setState === 'function') {
+                this.mascot.setState('thinking');
+            }
+            if (typeof this.mascot.setMoodBadge === 'function') {
+                this.mascot.setMoodBadge('🔍', 3500);
+            }
+        }
+
+        try {
+            const url = `${OPAC_API_URL}?action=search&query=${encodeURIComponent(searchQuery)}&cascade=1&length=4`;
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка OPAC API: HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+                this.hideTypingIndicator();
+                const notFoundMsg = `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${escapeHtml(searchQuery)}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
+                this.messages.push({ role: 'assistant', content: notFoundMsg });
+                this.appendBotMessage(notFoundMsg);
+                if (this.mascot && typeof this.mascot.setState === 'function') {
+                    this.mascot.setState('thinking');
+                }
+                return;
+            }
+
+            // Для первых найденных книг (до 3) подгружаем точные экземпляры и движение
+            const topBooks = data.items.slice(0, 3);
+            await Promise.allSettled(topBooks.map(async (book) => {
+                if (!book.id) return;
+                try {
+                    const cUrl = `${OPAC_API_URL}?action=copies&idbr=${encodeURIComponent(book.id)}`;
+                    const cRes = await fetch(cUrl, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (cRes.ok) {
+                        const cData = await cRes.json();
+                        if (cData.ok && Array.isArray(cData.copies)) {
+                            book.copies = cData.copies;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[CosmoChat] Ошибка получения экземпляров для', book.id, err);
+                }
+            }));
+
+            // Проверяем наличие в филиале №4 (Доброе)
+            let hasInBranch4 = false;
+            let availableTotal = 0;
+            topBooks.forEach(b => {
+                if (Array.isArray(b.copies)) {
+                    b.copies.forEach(c => {
+                        const sigla = (c.subfield_b || '').toLowerCase();
+                        if (c.is_available) availableTotal++;
+                        if (sigla === 'ф4' || sigla === 'ф4д' || c.branch_code === 'Филиал №4' || (c.branch_address && c.branch_address.includes('Егорова'))) {
+                            if (c.is_available) hasInBranch4 = true;
+                        }
+                    });
+                } else if (Array.isArray(b.locations)) {
+                    if (b.locations.some(l => String(l).toLowerCase() === 'ф4' || String(l).toLowerCase() === 'ф4д')) {
+                        hasInBranch4 = true;
+                    }
+                }
+            });
+
+            // Формируем вводное сообщение Космо
+            const totalFound = data.total_found || data.count || topBooks.length;
+            let introText = `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${escapeHtml(searchQuery)}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
+
+            if (hasInBranch4) {
+                introText += `\n\n🌟 **Отличная новость!** Книга есть в наличии в **Филиале №4** (ул. Егорова, д. 10, жилой район *Доброе*)!`;
+            } else if (availableTotal > 0) {
+                introText += `\n\n✅ Книга доступна для выдачи в филиалах нашей библиотечной сети. Подробные данные о наличии:`;
+            } else {
+                introText += `\n\n⏳ На текущий момент большинство экземпляров находится на руках у читателей. Уточняйте сроки возврата по телефону филиала:`;
+            }
+
+            const cardsHtml = topBooks.map(renderOpacBookCard).join('\n');
+
+            this.hideTypingIndicator();
+            this.appendBotBookMessage(introText, cardsHtml, topBooks);
+
+            this.messages.push({
+                role: 'assistant',
+                content: `${introText}\n\n[Карточки каталога OPAC для запроса: ${searchQuery}]`
+            });
+
+            if (this.mascot) {
+                if (typeof this.mascot.setState === 'function') {
+                    this.mascot.setState('read');
+                }
+                if (typeof this.mascot.setMoodBadge === 'function') {
+                    this.mascot.setMoodBadge('📖', 4000);
+                }
+                if (this.audioEnabled && typeof this.mascot.playVoice === 'function') {
+                    this.mascot.playVoice('greet_1');
+                }
+            }
+
+        } catch (err) {
+            console.error('[CosmoChat] Ошибка поиска в OPAC:', err);
+            this.hideTypingIndicator();
+            const errorMsg = `:cosmo_shock: Не удалось подключиться к серверу электронного каталога OPAC-Global.\n\nВозможно, технологический шлюз библиотеки сейчас обновляет сессии или временно недоступен. Попробуйте повторить поиск через пару минут!`;
+            this.messages.push({ role: 'assistant', content: errorMsg });
+            this.appendBotMessage(errorMsg);
+            if (this.mascot && typeof this.mascot.setState === 'function') {
+                this.mascot.setState('tired');
+            }
+        } finally {
+            this.isBusy = false;
+            this.sendBtnEl.disabled = false;
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+     * Отображение сообщения Космо с интерактивными карточками книг OPAC
+     * ------------------------------------------------------------------- */
+    appendBotBookMessage(introMarkdown, cardsHtml, books = []) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'cosmo-chat-msg cosmo-chat-msg-bot cosmo-chat-msg-opac';
+
+        const parsedIntro = parseCosmoMarkdown(introMarkdown);
+        const authorLabel = 'Космо • Каталог OPAC';
+
+        // Формирование текста для копирования информации о наличии
+        let copyText = introMarkdown.replace(/[*#`_~[\]()<>]/g, ' ') + '\n\n';
+        books.forEach((b, idx) => {
+            copyText += `${idx + 1}. ${b.author || ''} — ${b.title || ''} (${b.year || ''})\n`;
+            if (Array.isArray(b.copies) && b.copies.length > 0) {
+                b.copies.forEach(c => {
+                    copyText += `   • ${c.branch_code || c.branch_name}: ${c.is_available ? 'В НАЛИЧИИ' : 'На руках'} (${c.branch_address || ''}, тел. ${c.branch_phone || ''})\n`;
+                });
+            }
+            copyText += '\n';
+        });
+
+        msgDiv.innerHTML = `
+            <div class="msg-avatar">
+                <img src="assets/images/mascot/robot_read.png?v=4.33.0" alt="Космо" />
+            </div>
+            <div class="msg-content">
+                <div class="msg-author">${authorLabel}</div>
+                <div class="msg-body">
+                    ${parsedIntro}
+                    <div class="cosmo-opac-cards-container">
+                        ${cardsHtml}
+                    </div>
+                </div>
+                <div class="msg-actions opac-msg-actions">
+                    <button type="button" class="cosmo-chat-action-btn" data-copy-opac="${escapeHtml(copyText.trim())}" title="Скопировать наличие книг">
+                        <span class="material-symbols-outlined">content_copy</span> Скопировать наличие
+                    </button>
+                    <button type="button" class="cosmo-chat-action-btn" data-speak-response title="Озвучить ответ Космо">
+                        <span class="material-symbols-outlined">volume_up</span> Озвучить
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.messagesEl.appendChild(msgDiv);
+        this.scrollToBottom();
     }
 
     /* ---------------------------------------------------------------------

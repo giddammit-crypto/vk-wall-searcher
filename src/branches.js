@@ -486,4 +486,412 @@ export function sortBranchesCanonically(branches) {
     return [...branches].sort((a, b) => (a.sortOrder || 999) - (b.sortOrder || 999));
 }
 
+/**
+ * Реестр библиотечных сигл OPAC-Global (БД 62 ЦГБ г. Владимира)
+ * Полный маппинг сигл к каноническим филиалам с адресами, районами и телефонами
+ * Источник: docs/opac_spec.json
+ */
+export const OPAC_BRANCH_SIGLAS = {
+    'аб': {
+        code: 'аб',
+        canonical_id: 'cgb_ab',
+        branch_number: 'ЦГБ',
+        branchNum: 'ЦГБ',
+        department: 'Абонемент',
+        branch_name: 'Центральная городская библиотека, Абонемент',
+        branchName: 'Центральная городская библиотека, Абонемент',
+        address: 'г. Владимир, Суздальский пр-т, д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-65-63, 21-66-80',
+        permanent_location_pattern: '^ЦГБ-АБ'
+    },
+    'чз': {
+        code: 'чз',
+        canonical_id: 'cgb_chz',
+        branch_number: 'ЦГБ',
+        branchNum: 'ЦГБ',
+        department: 'Читальный зал',
+        branch_name: 'Центральная городская библиотека, Читальный зал',
+        branchName: 'Центральная городская библиотека, Читальный зал',
+        address: 'г. Владимир, Суздальский пр-т, д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-65-63, 21-66-80',
+        permanent_location_pattern: '^ЦГБ-ЧЗ'
+    },
+    'до': {
+        code: 'до',
+        canonical_id: 'cgb_do',
+        branch_number: 'ЦГБ',
+        branchNum: 'ЦГБ',
+        department: 'Детский отдел',
+        branch_name: 'Центральная городская библиотека, Детский отдел',
+        branchName: 'Центральная городская библиотека, Детский отдел',
+        address: 'г. Владимир, Суздальский пр-т, д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-65-63',
+        permanent_location_pattern: '^ЦГБ-ДО'
+    },
+    'кх': {
+        code: 'кх',
+        canonical_id: 'cgb_kh',
+        branch_number: 'ЦГБ',
+        branchNum: 'ЦГБ',
+        department: 'Книгохранилище',
+        branch_name: 'Центральная городская библиотека, Книгохранилище',
+        branchName: 'Центральная городская библиотека, Книгохранилище',
+        address: 'г. Владимир, Суздальский пр-т, д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-65-63',
+        permanent_location_pattern: '^ЦГБ-КХ'
+    },
+    'цдб': {
+        code: 'цдб',
+        aliases: ['цдч', 'цди', 'цки'],
+        canonical_id: 'cdb',
+        branch_number: 'ЦДБ',
+        branchNum: 'ЦДБ',
+        department: 'Центральная детская библиотека',
+        branch_name: 'Центральная детская библиотека',
+        branchName: 'Центральная детская библиотека',
+        address: 'г. Владимир, ул. Большая Московская, д. 31',
+        district: 'Исторический центр',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: true,
+        isCenter: true,
+        phone: '8(4922) 32-32-42, 32-47-73',
+        permanent_location_pattern: '^ЦГБ-ЦД[БЧИ]'
+    },
+    'ф1': {
+        code: 'ф1',
+        canonical_id: 'f1',
+        branch_number: 'Филиал №1',
+        branchNum: 'Филиал №1',
+        department: 'Основной абонемент',
+        branch_name: 'Библиотека — филиал №1',
+        branchName: 'Библиотека — филиал №1',
+        address: 'г. Владимир, ул. Горького, д. 69',
+        district: 'Октябрьский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 53-29-37',
+        permanent_location_pattern: '^ЦГБ-Ф1$'
+    },
+    'ф2': {
+        code: 'ф2',
+        aliases: ['ф2д'],
+        canonical_id: 'f2',
+        branch_number: 'Филиал №2',
+        branchNum: 'Филиал №2',
+        department: 'Взрослый и детский абонементы',
+        branch_name: 'Библиотека — филиал №2',
+        branchName: 'Библиотека — филиал №2',
+        address: 'г. Владимир, проспект Ленина, д. 12',
+        district: 'Ленинский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 38-34-47, 32-15-84',
+        permanent_location_pattern: '^ЦГБ-Ф2[Д]?'
+    },
+    'ф3': {
+        code: 'ф3',
+        aliases: ['ф3сд'],
+        canonical_id: 'f3',
+        branch_number: 'Филиал №3',
+        branchNum: 'Филиал №3',
+        department: 'Основной абонемент',
+        branch_name: 'Библиотека — филиал №3',
+        branchName: 'Библиотека — филиал №3',
+        address: 'г. Владимир, ул. Большая Нижегородская, д. 67а',
+        district: 'Фрунзенский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 32-36-74',
+        permanent_location_pattern: '^ЦГБ-Ф3'
+    },
+    'ф4': {
+        code: 'ф4',
+        aliases: ['ф4д'],
+        canonical_id: 'f4',
+        branch_number: 'Филиал №4',
+        branchNum: 'Филиал №4',
+        department: 'Взрослый и детский абонементы',
+        branch_name: 'Библиотека — филиал №4',
+        branchName: 'Библиотека — филиал №4',
+        address: 'г. Владимир, ул. Егорова, д. 10',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-96-11, 21-23-48',
+        permanent_location_pattern: '^ЦГБ-Ф4[Д]?',
+        note: 'КРИТИЧЕСКИ ВАЖНО: филиал №4 расположен именно в жилом районе «Доброе»!'
+    },
+    'ф5': {
+        code: 'ф5',
+        aliases: ['ф5д'],
+        canonical_id: 'f5',
+        branch_number: 'Филиал №5',
+        branchNum: 'Филиал №5',
+        department: 'Взрослый и детский абонементы',
+        branch_name: 'Библиотека — филиал №5',
+        branchName: 'Библиотека — филиал №5',
+        address: 'г. Владимир, ул. Белоконской, д. 13а',
+        district: 'Октябрьский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 53-24-34',
+        permanent_location_pattern: '^ЦГБ-Ф5[Д]?'
+    },
+    'ф6': {
+        code: 'ф6',
+        canonical_id: 'f6',
+        branch_number: 'Филиал №6',
+        branchNum: 'Филиал №6',
+        department: 'Основной абонемент',
+        branch_name: 'Библиотека — филиал №6',
+        branchName: 'Библиотека — филиал №6',
+        address: 'г. Владимир, ул. Батурина, д. 28',
+        district: 'Октябрьский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 33-37-00',
+        permanent_location_pattern: '^ЦГБ-Ф6$'
+    },
+    'ф7': {
+        code: 'ф7',
+        aliases: ['ф7н', 'ф7нд'],
+        canonical_id: 'f7',
+        branch_number: 'Филиал №7',
+        branchNum: 'Филиал №7',
+        department: 'Модельная библиотека',
+        branch_name: 'Библиотека — филиал №7',
+        branchName: 'Библиотека — филиал №7',
+        address: 'г. Владимир, ул. Фатьянова, д. 14',
+        district: 'Юго-Западный',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 38-26-88',
+        permanent_location_pattern: '^ЦГБ-Ф7[НД]?'
+    },
+    'ф8': {
+        code: 'ф8',
+        aliases: ['ф8д'],
+        canonical_id: 'f8',
+        branch_number: 'Филиал №8',
+        branchNum: 'Филиал №8',
+        department: 'Взрослый и детский абонементы',
+        branch_name: 'Библиотека — филиал №8',
+        branchName: 'Библиотека — филиал №8',
+        address: 'г. Владимир, ул. Соколова-Соколенка, д. 17в',
+        district: 'Фрунзенский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-68-27',
+        permanent_location_pattern: '^ЦГБ-Ф8[Д]?'
+    },
+    'ф9': {
+        code: 'ф9',
+        canonical_id: 'f9',
+        branch_number: 'Филиал №9',
+        branchNum: 'Филиал №9',
+        department: 'Проект «Добролит»',
+        branch_name: 'Библиотека — филиал №9',
+        branchName: 'Библиотека — филиал №9',
+        address: 'г. Владимир, Добросельский проезд, д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-58-15',
+        permanent_location_pattern: '^ЦГБ-Ф9$'
+    },
+    'ф10': {
+        code: 'ф10',
+        aliases: ['ф10д'],
+        canonical_id: 'f10',
+        branch_number: 'Филиал №10',
+        branchNum: 'Филиал №10',
+        department: 'Детско-юношеский филиал',
+        branch_name: 'Библиотека — филиал №10',
+        branchName: 'Библиотека — филиал №10',
+        address: 'г. Владимир, ул. Горького, д. 69',
+        district: 'Октябрьский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 53-29-37',
+        permanent_location_pattern: '^ЦГБ-Ф10[Д]?'
+    },
+    'ф11': {
+        code: 'ф11',
+        aliases: ['ф11д'],
+        canonical_id: 'f11',
+        branch_number: 'Филиал №11',
+        branchNum: 'Филиал №11',
+        department: 'Основной абонемент',
+        branch_name: 'Библиотека — филиал №11',
+        branchName: 'Библиотека — филиал №11',
+        address: 'г. Владимир, ул. Мира, д. 90',
+        district: 'Октябрьский',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 53-39-80',
+        permanent_location_pattern: '^ЦГБ-Ф11[Д]?'
+    },
+    'ф12': {
+        code: 'ф12',
+        aliases: ['ф12д'],
+        canonical_id: 'f12',
+        branch_number: 'Филиал №12',
+        branchNum: 'Филиал №12',
+        department: 'Взрослый и детский абонементы',
+        branch_name: 'Библиотека — филиал №12',
+        branchName: 'Библиотека — филиал №12',
+        address: 'г. Владимир, ул. Комиссарова, д. 28',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-63-93',
+        permanent_location_pattern: '^ЦГБ-Ф12[Д]?'
+    },
+    'ф13': {
+        code: 'ф13',
+        aliases: ['ф13н', 'ф13нд'],
+        canonical_id: 'f13',
+        branch_number: 'Филиал №13',
+        branchNum: 'Филиал №13',
+        department: 'Модельная библиотека',
+        branch_name: 'Библиотека — филиал №13',
+        branchName: 'Библиотека — филиал №13',
+        address: 'г. Владимир, ул. Верхняя Дуброва, д. 26г',
+        district: 'Юго-Западный',
+        is_dobroye: false,
+        isDobroye: false,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 38-30-26',
+        permanent_location_pattern: '^ЦГБ-Ф13[НД]?'
+    },
+    'ф14': {
+        code: 'ф14',
+        aliases: ['ф14н', 'ф14нд'],
+        canonical_id: 'f14',
+        branch_number: 'Филиал №14',
+        branchNum: 'Филиал №14',
+        department: 'Модельная библиотека',
+        branch_name: 'Библиотека — филиал №14',
+        branchName: 'Библиотека — филиал №14',
+        address: 'г. Владимир, ул. Добросельская, д. 161',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-68-30',
+        permanent_location_pattern: '^ЦГБ-Ф14[НД]?'
+    },
+    'ф15': {
+        code: 'ф15',
+        aliases: ['ф15н', 'ф15нд'],
+        canonical_id: 'f15',
+        branch_number: 'Филиал №15',
+        branchNum: 'Филиал №15',
+        department: 'Модельная библиотека',
+        branch_name: 'Библиотека — филиал №15',
+        branchName: 'Библиотека — филиал №15',
+        address: 'г. Владимир, ул. Юбилейная, д. 38',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-13-05',
+        permanent_location_pattern: '^ЦГБ-Ф15[НД]?'
+    }
+};
+
+/**
+ * Нормализация и сопоставление сигла OPAC к филиалу ЦГБ Владимира
+ * @param {string} rawSigla
+ * @returns {object|null}
+ */
+export function resolveBranchBySigla(rawSigla) {
+    if (!rawSigla || typeof rawSigla !== 'string') return null;
+    let code = rawSigla.trim().toLowerCase();
+    code = code.replace(/^(цгб[-_\s]+|мбук[-_\s]+)/gi, '');
+
+    // 1. Прямой поиск по коду
+    if (OPAC_BRANCH_SIGLAS[code]) {
+        return OPAC_BRANCH_SIGLAS[code];
+    }
+
+    // 2. Поиск по алиасам (например, цдч, ф4д, ф7н)
+    for (const info of Object.values(OPAC_BRANCH_SIGLAS)) {
+        if (info.aliases && info.aliases.includes(code)) {
+            return info;
+        }
+    }
+
+    // 3. Регулярное выражение филиалов: ф4, ф-4, филиал 4
+    const numMatch = code.match(/^(?:ф[\s-]*|филиал\s*№?\s*)(\d+)/i);
+    if (numMatch) {
+        const key = 'ф' + numMatch[1];
+        if (OPAC_BRANCH_SIGLAS[key]) {
+            return OPAC_BRANCH_SIGLAS[key];
+        }
+    }
+
+    // 4. Проверка паттернов постоянного хранения (ЦГБ-АБ, ЦГБ-Ф4 и т.д.)
+    for (const info of Object.values(OPAC_BRANCH_SIGLAS)) {
+        if (info.permanent_location_pattern) {
+            try {
+                const re = new RegExp(info.permanent_location_pattern, 'i');
+                if (re.test(rawSigla)) {
+                    return info;
+                }
+            } catch (e) {}
+        }
+    }
+
+    return null;
+}
+
 
