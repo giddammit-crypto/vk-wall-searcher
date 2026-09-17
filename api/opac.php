@@ -1520,11 +1520,12 @@ function opac_is_strict_cover_match($foundTitle, $foundAuthors, $targetTitle, $t
     return false;
 }
 
-function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
+function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '', $sourceFilter = '')
 {
     $title = trim((string)$rawTitle);
     $author = trim((string)$rawAuthor);
     $isbn = preg_replace('/[^0-9Xx]/', '', (string)$isbn);
+    $sourceFilter = mb_strtolower(trim((string)$sourceFilter), 'UTF-8');
 
     if ($title === '' && $isbn === '') {
         return ['ok' => false, 'found' => false, 'error' => 'Не указано заглавие книги или ISBN'];
@@ -1549,10 +1550,10 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
     $authorParts = explode(',', $cleanAuthor);
     $cleanAuthor = trim($authorParts[0] ?? $cleanAuthor);
 
-    // Префикс кэша v4 для сброса старых неточных кэшей
-    $cacheKey = md5(mb_strtolower($cleanTitle . '|' . $cleanAuthor . '|' . $isbn, 'UTF-8'));
+    // Префикс кэша v5 (приоритет: ЛитРес -> Яндекс Книги -> OpenLibrary -> Google Книги)
+    $cacheKey = md5(mb_strtolower($cleanTitle . '|' . $cleanAuthor . '|' . $isbn . ($sourceFilter !== '' ? '|' . $sourceFilter : ''), 'UTF-8'));
     $cacheDir = opac_get_cache_dir();
-    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_cov_v4_' . $cacheKey . '.json';
+    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_cov_v5_' . $cacheKey . '.json';
 
     // 1. Проверка серверного кэша (TTL 7 дней = 604800 сек)
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 604800)) {
@@ -1565,10 +1566,121 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
 
     $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    // 2. Источник: Яндекс Книги (Bookmate API) — открытый каталог качественных обложек
-    $yandexQuery = trim($cleanTitle . ' ' . $cleanAuthor);
-    if ($yandexQuery !== '') {
-        $ch = curl_init('https://api.bookmate.com/api/v5/books/search?query=' . urlencode($yandexQuery));
+    // =========================================================================
+    // ПРИОРИТЕТ 1 (ВЫСОЧАЙШИЙ): ЛитРес (api.litres.ru) — крупнейший каталог в РФ
+    // =========================================================================
+    if ($sourceFilter === '' || $sourceFilter === 'litres') {
+        $litresQuery = $isbn !== '' ? $isbn : trim($cleanTitle . ' ' . $cleanAuthor);
+        if ($litresQuery !== '') {
+            $ch = curl_init('https://api.litres.ru/foundation/api/search?q=' . urlencode($litresQuery) . '&types=text_book');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 4,
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_USERAGENT      => $userAgent,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $res = curl_exec($ch);
+            curl_close($ch);
+            if ($res) {
+                $data = @json_decode($res, true);
+                $items = $data['payload']['data'] ?? [];
+                if (is_array($items) && !empty($items)) {
+                    foreach ($items as $item) {
+                        $inst = $item['instance'] ?? [];
+                        if (empty($inst['cover_url'])) continue;
+
+                        $iTitle = trim($inst['title'] ?? '');
+                        $iAuthors = '';
+                        if (!empty($inst['persons']) && is_array($inst['persons'])) {
+                            $pNames = [];
+                            foreach ($inst['persons'] as $p) {
+                                if (!empty($p['full_name'])) $pNames[] = $p['full_name'];
+                            }
+                            $iAuthors = implode(', ', $pNames);
+                        }
+
+                        // Строгая проверка соответствия названия и автора
+                        if (opac_is_strict_cover_match($iTitle, $iAuthors, $cleanTitle, $cleanAuthor)) {
+                            $out = [
+                                'ok'        => true,
+                                'found'     => true,
+                                'url'       => 'https://cdn.litres.ru' . $inst['cover_url'],
+                                'source'    => 'ЛитРес',
+                                'source_id' => 'litres',
+                                'color'     => null,
+                                'title'     => $iTitle,
+                                'author'    => $iAuthors ?: $author,
+                            ];
+                            @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                            return $out;
+                        }
+                    }
+                }
+            }
+        }
+        if ($sourceFilter === 'litres') {
+            return ['ok' => true, 'found' => false, 'url' => null, 'source' => null];
+        }
+    }
+
+    // =========================================================================
+    // ПРИОРИТЕТ 2: Яндекс Книги (Bookmate API) — открытый каталог качественных обложек
+    // =========================================================================
+    if ($sourceFilter === '' || $sourceFilter === 'yandex') {
+        $yandexQuery = trim($cleanTitle . ' ' . $cleanAuthor);
+        if ($yandexQuery !== '') {
+            $ch = curl_init('https://api.bookmate.com/api/v5/books/search?query=' . urlencode($yandexQuery));
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 4,
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_USERAGENT      => $userAgent,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $res = curl_exec($ch);
+            curl_close($ch);
+            if ($res) {
+                $data = @json_decode($res, true);
+                if (!empty($data['objects']) && is_array($data['objects'])) {
+                    foreach ($data['objects'] as $obj) {
+                        if (empty($obj['cover']['large']) && empty($obj['cover']['small'])) {
+                            continue;
+                        }
+                        $objTitle   = trim($obj['title'] ?? '');
+                        $objAuthors = trim($obj['authors'] ?? '');
+
+                        // Строгая проверка соответствия названия и автора
+                        if (opac_is_strict_cover_match($objTitle, $objAuthors, $cleanTitle, $cleanAuthor)) {
+                            $coverUrl = $obj['cover']['large'] ?? $obj['cover']['small'];
+                            $out = [
+                                'ok'        => true,
+                                'found'     => true,
+                                'url'       => $coverUrl,
+                                'source'    => 'Яндекс Книги',
+                                'source_id' => 'yandex',
+                                'color'     => $obj['cover']['background_color_hex'] ?? null,
+                                'title'     => $objTitle,
+                                'author'    => $objAuthors,
+                            ];
+                            @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                            return $out;
+                        }
+                    }
+                }
+            }
+        }
+        if ($sourceFilter === 'yandex') {
+            return ['ok' => true, 'found' => false, 'url' => null, 'source' => null];
+        }
+    }
+
+    // =========================================================================
+    // ПРИОРИТЕТ 3: OpenLibrary Covers API
+    // =========================================================================
+    if ($sourceFilter === '' || $sourceFilter === 'openlibrary') {
+        $olQ = urlencode($cleanTitle . ' ' . $cleanAuthor);
+        $ch = curl_init('https://openlibrary.org/search.json?q=' . $olQ . '&limit=6');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 4,
@@ -1580,26 +1692,24 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
         curl_close($ch);
         if ($res) {
             $data = @json_decode($res, true);
-            if (!empty($data['objects']) && is_array($data['objects'])) {
-                foreach ($data['objects'] as $obj) {
-                    if (empty($obj['cover']['large']) && empty($obj['cover']['small'])) {
-                        continue;
-                    }
-                    $objTitle   = trim($obj['title'] ?? '');
-                    $objAuthors = trim($obj['authors'] ?? '');
+            if (!empty($data['docs']) && is_array($data['docs'])) {
+                foreach ($data['docs'] as $doc) {
+                    if (empty($doc['cover_i'])) continue;
 
-                    // Строгая проверка соответствия названия и автора
-                    if (opac_is_strict_cover_match($objTitle, $objAuthors, $cleanTitle, $cleanAuthor)) {
-                        $coverUrl = $obj['cover']['large'] ?? $obj['cover']['small'];
+                    $olTitle = trim($doc['title'] ?? '');
+                    $olAuthors = !empty($doc['author_name']) ? implode(', ', $doc['author_name']) : '';
+
+                    if (opac_is_strict_cover_match($olTitle, $olAuthors, $cleanTitle, $cleanAuthor)) {
+                        $coverUrl = 'https://covers.openlibrary.org/b/id/' . (int)$doc['cover_i'] . '-L.jpg';
                         $out = [
                             'ok'        => true,
                             'found'     => true,
                             'url'       => $coverUrl,
-                            'source'    => 'Яндекс Книги',
-                            'source_id' => 'yandex',
-                            'color'     => $obj['cover']['background_color_hex'] ?? null,
-                            'title'     => $objTitle,
-                            'author'    => $objAuthors,
+                            'source'    => 'OpenLibrary',
+                            'source_id' => 'openlibrary',
+                            'color'     => null,
+                            'title'     => $olTitle,
+                            'author'    => $olAuthors ?: $author,
                         ];
                         @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
                         return $out;
@@ -1607,12 +1717,17 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
                 }
             }
         }
+        if ($sourceFilter === 'openlibrary') {
+            return ['ok' => true, 'found' => false, 'url' => null, 'source' => null];
+        }
     }
 
-    // 3. Источник: ЛитРес (api.litres.ru) — крупнейший каталог в РФ
-    $litresQuery = $isbn !== '' ? $isbn : trim($cleanTitle . ' ' . $cleanAuthor);
-    if ($litresQuery !== '') {
-        $ch = curl_init('https://api.litres.ru/foundation/api/search?q=' . urlencode($litresQuery) . '&types=text_book');
+    // =========================================================================
+    // ПРИОРИТЕТ 4 (САМЫЙ НИЗКИЙ): Google Книги API — опрашивается в самом конце
+    // =========================================================================
+    if ($sourceFilter === '' || $sourceFilter === 'google') {
+        $gbQ = $cleanAuthor !== '' ? 'intitle:' . urlencode($cleanTitle) . '+inauthor:' . urlencode($cleanAuthor) : urlencode($cleanTitle);
+        $ch = curl_init('https://www.googleapis.com/books/v1/volumes?q=' . $gbQ . '&maxResults=5&printType=books');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 4,
@@ -1624,123 +1739,34 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
         curl_close($ch);
         if ($res) {
             $data = @json_decode($res, true);
-            $items = $data['payload']['data'] ?? [];
-            if (is_array($items) && !empty($items)) {
-                foreach ($items as $item) {
-                    $inst = $item['instance'] ?? [];
-                    if (empty($inst['cover_url'])) continue;
+            if (!empty($data['items']) && is_array($data['items'])) {
+                foreach ($data['items'] as $gbItem) {
+                    $vol = $gbItem['volumeInfo'] ?? [];
+                    if (empty($vol['imageLinks'])) continue;
 
-                    $iTitle = trim($inst['title'] ?? '');
-                    $iAuthors = '';
-                    if (!empty($inst['persons']) && is_array($inst['persons'])) {
-                        $pNames = [];
-                        foreach ($inst['persons'] as $p) {
-                            if (!empty($p['full_name'])) $pNames[] = $p['full_name'];
+                    $gTitle = trim($vol['title'] ?? '');
+                    $gAuthors = !empty($vol['authors']) ? implode(', ', $vol['authors']) : '';
+
+                    if (opac_is_strict_cover_match($gTitle, $gAuthors, $cleanTitle, $cleanAuthor)) {
+                        $links = $vol['imageLinks'];
+                        $img = $links['extraLarge'] ?? $links['large'] ?? $links['medium'] ?? $links['thumbnail'] ?? $links['smallThumbnail'] ?? null;
+                        if ($img) {
+                            $img = str_replace('http://', 'https://', $img);
+                            $img = str_replace(['&edge=curl', 'zoom=1', 'zoom=5'], ['', 'zoom=2', 'zoom=2'], $img);
+                            $out = [
+                                'ok'        => true,
+                                'found'     => true,
+                                'url'       => $img,
+                                'source'    => 'Google Книги',
+                                'source_id' => 'google',
+                                'color'     => null,
+                                'title'     => $gTitle,
+                                'author'    => $gAuthors ?: $author,
+                            ];
+                            @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                            return $out;
                         }
-                        $iAuthors = implode(', ', $pNames);
                     }
-
-                    // Строгая проверка соответствия названия и автора
-                    if (opac_is_strict_cover_match($iTitle, $iAuthors, $cleanTitle, $cleanAuthor)) {
-                        $out = [
-                            'ok'        => true,
-                            'found'     => true,
-                            'url'       => 'https://cdn.litres.ru' . $inst['cover_url'],
-                            'source'    => 'ЛитРес',
-                            'source_id' => 'litres',
-                            'color'     => null,
-                            'title'     => $iTitle,
-                            'author'    => $iAuthors ?: $author,
-                        ];
-                        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                        return $out;
-                    }
-                }
-            }
-        }
-    }
-
-    // 4. Источник: Google Books API (со строгой проверкой)
-    $gbQ = $cleanAuthor !== '' ? 'intitle:' . urlencode($cleanTitle) . '+inauthor:' . urlencode($cleanAuthor) : urlencode($cleanTitle);
-    $ch = curl_init('https://www.googleapis.com/books/v1/volumes?q=' . $gbQ . '&maxResults=5&printType=books');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 4,
-        CURLOPT_CONNECTTIMEOUT => 2,
-        CURLOPT_USERAGENT      => $userAgent,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $res = curl_exec($ch);
-    curl_close($ch);
-    if ($res) {
-        $data = @json_decode($res, true);
-        if (!empty($data['items']) && is_array($data['items'])) {
-            foreach ($data['items'] as $gbItem) {
-                $vol = $gbItem['volumeInfo'] ?? [];
-                if (empty($vol['imageLinks'])) continue;
-
-                $gTitle = trim($vol['title'] ?? '');
-                $gAuthors = !empty($vol['authors']) ? implode(', ', $vol['authors']) : '';
-
-                if (opac_is_strict_cover_match($gTitle, $gAuthors, $cleanTitle, $cleanAuthor)) {
-                    $links = $vol['imageLinks'];
-                    $img = $links['extraLarge'] ?? $links['large'] ?? $links['medium'] ?? $links['thumbnail'] ?? $links['smallThumbnail'] ?? null;
-                    if ($img) {
-                        $img = str_replace('http://', 'https://', $img);
-                        $img = str_replace(['&edge=curl', 'zoom=1', 'zoom=5'], ['', 'zoom=2', 'zoom=2'], $img);
-                        $out = [
-                            'ok'        => true,
-                            'found'     => true,
-                            'url'       => $img,
-                            'source'    => 'Google Книги',
-                            'source_id' => 'google',
-                            'color'     => null,
-                            'title'     => $gTitle,
-                            'author'    => $gAuthors ?: $author,
-                        ];
-                        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                        return $out;
-                    }
-                }
-            }
-        }
-    }
-
-    // 5. Источник: OpenLibrary (со строгой проверкой)
-    $olQ = urlencode($cleanTitle . ' ' . $cleanAuthor);
-    $ch = curl_init('https://openlibrary.org/search.json?q=' . $olQ . '&limit=6');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 4,
-        CURLOPT_CONNECTTIMEOUT => 2,
-        CURLOPT_USERAGENT      => $userAgent,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $res = curl_exec($ch);
-    curl_close($ch);
-    if ($res) {
-        $data = @json_decode($res, true);
-        if (!empty($data['docs']) && is_array($data['docs'])) {
-            foreach ($data['docs'] as $doc) {
-                if (empty($doc['cover_i'])) continue;
-
-                $olTitle = trim($doc['title'] ?? '');
-                $olAuthors = !empty($doc['author_name']) ? implode(', ', $doc['author_name']) : '';
-
-                if (opac_is_strict_cover_match($olTitle, $olAuthors, $cleanTitle, $cleanAuthor)) {
-                    $coverUrl = 'https://covers.openlibrary.org/b/id/' . (int)$doc['cover_i'] . '-L.jpg';
-                    $out = [
-                        'ok'        => true,
-                        'found'     => true,
-                        'url'       => $coverUrl,
-                        'source'    => 'OpenLibrary',
-                        'source_id' => 'openlibrary',
-                        'color'     => null,
-                        'title'     => $olTitle,
-                        'author'    => $olAuthors ?: $author,
-                    ];
-                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
-                    return $out;
                 }
             }
         }
@@ -2153,14 +2179,15 @@ function opac_handle_http_request()
             echo json_encode($result, JSON_UNESCAPED_UNICODE);
             exit;
 
-        // Поиск обложки книги (Яндекс Книги / Bookmate, ЛитРес, Google Books, OpenLibrary)
+        // Поиск обложки книги (приоритет: ЛитРес -> Яндекс Книги -> OpenLibrary -> Google Книги)
         case 'cover':
             opac_rate_limit('cover', 30, 150);
 
-            $rawTitle  = isset($params['title']) ? (string)$params['title'] : (string)($params['q'] ?? '');
-            $rawAuthor = isset($params['author']) ? (string)$params['author'] : '';
-            $isbn      = isset($params['isbn']) ? (string)$params['isbn'] : '';
-            $coverRes  = opac_resolve_book_cover($rawTitle, $rawAuthor, $isbn);
+            $rawTitle     = isset($params['title']) ? (string)$params['title'] : (string)($params['q'] ?? '');
+            $rawAuthor    = isset($params['author']) ? (string)$params['author'] : '';
+            $isbn         = isset($params['isbn']) ? (string)$params['isbn'] : '';
+            $sourceFilter = isset($params['source']) ? (string)$params['source'] : '';
+            $coverRes     = opac_resolve_book_cover($rawTitle, $rawAuthor, $isbn, $sourceFilter);
             echo json_encode($coverRes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             exit;
 

@@ -35,7 +35,7 @@ let searchResultsCache = new Map();
 const bookCoversCache = new Map();
 
 // Принудительная очистка старого sessionStorage кэша поиска при загрузке
-// (удаляем opac_q_v4_* ключи с устаревшими данными о филиалах)
+// и устаревших кэшей обложек v4 (для применения нового приоритета ЛитРес -> Яндекс Книги -> Google)
 try {
     const keysToDelete = [];
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -43,6 +43,13 @@ try {
         if (k && k.startsWith('opac_q_v4_')) keysToDelete.push(k);
     }
     keysToDelete.forEach(k => sessionStorage.removeItem(k));
+
+    const covKeysToDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('opac_cov_v4_')) covKeysToDelete.push(k);
+    }
+    covKeysToDelete.forEach(k => localStorage.removeItem(k));
 } catch (e) {}
 
 
@@ -240,9 +247,9 @@ async function fetchGoogleBooksCoverEnhanced(cleanTitle, cleanAuthor) {
 }
 
 /**
- * Источник 3: Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover) со строгой проверкой
+ * Источник: Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover) со строгой проверкой
  */
-async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '') {
+async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '', source = '') {
     try {
         const params = new URLSearchParams({
             action: 'cover',
@@ -250,10 +257,11 @@ async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '') {
         });
         if (cleanAuthor) params.append('author', cleanAuthor);
         if (rawIsbn) params.append('isbn', rawIsbn);
+        if (source) params.append('source', source);
 
         const url = resolveApiUrl('api/opac.php') + '?' + params.toString();
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const timer = setTimeout(() => ctrl.abort(), 4500);
 
         const res = await fetch(url, {
             signal: ctrl.signal,
@@ -266,8 +274,8 @@ async function fetchBackendGatewayCover(cleanTitle, cleanAuthor, rawIsbn = '') {
             if (data && data.ok && data.found && data.url) {
                 return {
                     url: data.url.replace(/^http:\/\//i, 'https://'),
-                    source: data.source || 'ЛитРес',
-                    sourceId: data.source_id || 'litres',
+                    source: data.source || (source === 'litres' ? 'ЛитРес' : 'Аврора'),
+                    sourceId: data.source_id || (source === 'litres' ? 'litres' : 'gateway'),
                     color: data.color || null
                 };
             }
@@ -318,7 +326,12 @@ async function fetchOpenLibraryCover(cleanTitle, cleanAuthor) {
 }
 
 /**
- * Полный многоуровневый каскад поиска обложек книги с двухуровневым кэшированием (префикс v4)
+ * Полный многоуровневый каскад поиска обложек книги с двухуровневым кэшированием (префикс v5)
+ * Приоритет источников:
+ *   1. ЛитРес (наивысший приоритет)
+ *   2. Яндекс Книги (Bookmate)
+ *   3. OpenLibrary
+ *   4. Google Книги (самый низкий приоритет)
  */
 async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
     const title = cleanSearchTerm(rawTitle);
@@ -333,9 +346,9 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
         return bookCoversCache.get(cacheKey);
     }
 
-    // 2. Проверка localStorage (кэш v4 на 7 дней)
+    // 2. Проверка localStorage (кэш v5 на 7 дней)
     try {
-        const stored = localStorage.getItem(`opac_cov_v4_${cacheKey}`);
+        const stored = localStorage.getItem(`opac_cov_v5_${cacheKey}`);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && (!parsed.exp || parsed.exp > Date.now())) {
@@ -348,7 +361,7 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
     const saveToCache = (result) => {
         bookCoversCache.set(cacheKey, result);
         try {
-            localStorage.setItem(`opac_cov_v4_${cacheKey}`, JSON.stringify({
+            localStorage.setItem(`opac_cov_v5_${cacheKey}`, JSON.stringify({
                 data: result,
                 exp: Date.now() + (result ? 7 * 86400 * 1000 : 24 * 3600 * 1000)
             }));
@@ -356,28 +369,34 @@ async function fetchBookCoverCascade(rawTitle, rawAuthor = '', rawIsbn = '') {
         return result;
     };
 
-    // 1. Яндекс Книги (Bookmate API) — открытый CORS, точные обложки
+    // 1. ПРИОРИТЕТ 1 (НАИВЫСШИЙ): ЛитРес (через серверный шлюз Авроры api/opac.php?action=cover&source=litres)
+    const litresRes = await fetchBackendGatewayCover(title, author, rawIsbn, 'litres');
+    if (litresRes && litresRes.url) {
+        return saveToCache(litresRes);
+    }
+
+    // 2. ПРИОРИТЕТ 2: Яндекс Книги (Bookmate API) — открытый прямой CORS
     const yandexRes = await fetchYandexBookmateCover(title, author);
     if (yandexRes && yandexRes.url) {
         return saveToCache(yandexRes);
     }
 
-    // 2. Серверный шлюз ЛитРес / Авроры (api/opac.php?action=cover)
-    const backendRes = await fetchBackendGatewayCover(title, author, rawIsbn);
-    if (backendRes && backendRes.url) {
-        return saveToCache(backendRes);
+    // 3. ПРИОРИТЕТ 3: OpenLibrary Covers API (-L.jpg)
+    const olRes = await fetchOpenLibraryCover(title, author);
+    if (olRes && olRes.url) {
+        return saveToCache(olRes);
     }
 
-    // 3. Google Книги API
+    // 4. САМЫЙ НИЗКИЙ ПРИОРИТЕТ: Google Книги API — опрашивается в самом конце
     const googleRes = await fetchGoogleBooksCoverEnhanced(title, author);
     if (googleRes && googleRes.url) {
         return saveToCache(googleRes);
     }
 
-    // 4. OpenLibrary Covers API (-L.jpg)
-    const olRes = await fetchOpenLibraryCover(title, author);
-    if (olRes && olRes.url) {
-        return saveToCache(olRes);
+    // 5. Запасной общий серверный шлюз (на случай, если клиентские запросы заблокированы сетью)
+    const fallbackRes = await fetchBackendGatewayCover(title, author, rawIsbn);
+    if (fallbackRes && fallbackRes.url) {
+        return saveToCache(fallbackRes);
     }
 
     // Запоминаем null на 24 часа, чтобы исключить повторный перебор
