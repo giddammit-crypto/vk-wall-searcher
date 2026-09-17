@@ -1740,15 +1740,7 @@
 			this.nodeNamesUsed = {}; // Use an THREE.ImageBitmapLoader if imageBitmaps are supported. Moves much of the
 			// expensive work of uploading a texture to the GPU off the main thread.
 
-			if ( typeof createImageBitmap !== 'undefined' && /Firefox/.test( navigator.userAgent ) === false ) {
-
-				this.textureLoader = new THREE.ImageBitmapLoader( this.options.manager );
-
-			} else {
-
-				this.textureLoader = new THREE.TextureLoader( this.options.manager );
-
-			}
+			this.textureLoader = new THREE.TextureLoader( this.options.manager );
 
 			this.textureLoader.setCrossOrigin( this.options.crossOrigin );
 			this.textureLoader.setRequestHeader( this.options.requestHeader );

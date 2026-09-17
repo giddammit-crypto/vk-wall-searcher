@@ -209,9 +209,10 @@ export class AuroraSplashLoader {
 
         this.scene = new THREE.Scene();
 
-        // Camera: Perspective camera tuned so robot height fits ~118-124px
+        // Camera: Perspective camera tuned so robot height fits ~110-120px
         this.camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-        this.camera.position.set(0, 0.45, 3.8);
+        this.camera.position.set(0, 0, 3.6);
+        this.camera.lookAt(0, 0, 0);
 
         // WebGL Renderer
         this.renderer = new THREE.WebGLRenderer({
@@ -224,26 +225,29 @@ export class AuroraSplashLoader {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         if (THREE.ACESFilmicToneMapping) {
             this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            this.renderer.toneMappingExposure = 1.15;
+            this.renderer.toneMappingExposure = 1.2;
         }
 
-        // --- Three-point Lighting Rig + Dual Rim Lights (Artist Specification) ---
-        // 1. Key Light (White/Ice specular)
-        const keyLight = new THREE.DirectionalLight(0xe0f2fe, 2.2);
-        keyLight.position.set(2.5, 4.0, 3.5);
+        // --- Three-point Lighting Rig + Dual Rim Lights ---
+        // 1. Ambient & Key Light (Crisp, colorful base)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+        this.scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+        keyLight.position.set(2.5, 3.5, 3.5);
         this.scene.add(keyLight);
 
-        // 2. Dual Rim Lights: Left Cyan + Right Magenta (Guaranteeing 128px contrast)
-        const rimLeft = new THREE.DirectionalLight(0x38bdf8, 4.0);
+        // 2. Dual Rim Lights: Left Cyan + Right Magenta
+        const rimLeft = new THREE.DirectionalLight(0x38bdf8, 3.5);
         rimLeft.position.set(-4.0, 1.6, -2.8);
         this.scene.add(rimLeft);
 
-        const rimRight = new THREE.DirectionalLight(0xec4899, 4.2);
+        const rimRight = new THREE.DirectionalLight(0xec4899, 3.5);
         rimRight.position.set(4.0, 1.2, -2.5);
         this.scene.add(rimRight);
 
-        // 3. Ambient / Hemisphere Fill
-        const hemiLight = new THREE.HemisphereLight(0x8b5cf6, 0x070913, 0.85);
+        // 3. Hemisphere Fill
+        const hemiLight = new THREE.HemisphereLight(0x8b5cf6, 0x070913, 0.9);
         this.scene.add(hemiLight);
 
         // Root group for robot
@@ -253,9 +257,6 @@ export class AuroraSplashLoader {
         // Start off-screen at left
         this.robotGroup.position.set(this.xStart, 0, 0);
         this.robotGroup.rotation.set(0, -Math.PI / 2, 0); // Profile view facing right
-
-        // Add sleek stylized fallback mesh while GLB loads
-        this.createFallbackMesh();
 
         // Handle window resize
         this.resizeHandler = () => {
@@ -270,45 +271,6 @@ export class AuroraSplashLoader {
         window.addEventListener('resize', this.resizeHandler);
     }
 
-    createFallbackMesh() {
-        const THREE = window.THREE;
-        if (!THREE || !this.robotGroup) return;
-
-        this.fallbackGroup = new THREE.Group();
-
-        // Stylized sphere head with cyan visor
-        const headGeo = new THREE.SphereGeometry(0.38, 24, 24);
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.25,
-            metalness: 0.1
-        });
-        const head = new THREE.Mesh(headGeo, bodyMat);
-        head.position.y = 0.55;
-
-        // Visor
-        const visorGeo = new THREE.SphereGeometry(0.24, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.45);
-        const visorMat = new THREE.MeshStandardMaterial({
-            color: 0x0a192f,
-            emissive: 0x38bdf8,
-            emissiveIntensity: 1.5,
-            roughness: 0.1
-        });
-        const visor = new THREE.Mesh(visorGeo, visorMat);
-        visor.rotation.x = Math.PI / 2;
-        visor.position.set(0, 0.55, 0.26);
-
-        // Torso
-        const bodyGeo = new THREE.CylinderGeometry(0.28, 0.22, 0.45, 24);
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 0.18;
-
-        this.fallbackGroup.add(head);
-        this.fallbackGroup.add(visor);
-        this.fallbackGroup.add(body);
-        this.robotGroup.add(this.fallbackGroup);
-    }
-
     loadModel() {
         if (!window.THREE || !window.THREE.GLTFLoader) return;
 
@@ -320,21 +282,21 @@ export class AuroraSplashLoader {
                 const THREE = window.THREE;
                 const model = gltf.scene;
 
-                // Compute bounding box to strictly fit ~128px height
+                // Compute bounding box to strictly fit ~110-120px height
                 const box = new THREE.Box3().setFromObject(model);
                 const size = new THREE.Vector3();
                 box.getSize(size);
                 const center = new THREE.Vector3();
                 box.getCenter(center);
 
-                // Desired height in Three.js units (~1.0 unit = ~118px on 40 FOV camera at z=3.8)
-                const targetHeight = 1.05;
+                // Desired height in Three.js units (~1.5 units = ~110px on 40 FOV camera at z=3.6)
+                const targetHeight = 1.5;
                 const scale = targetHeight / (size.y || 1);
                 model.scale.set(scale, scale, scale);
 
-                // Offset model so pivot is at base
+                // Center model pivot at exact center of robot
                 model.position.x = -center.x * scale;
-                model.position.y = -box.min.y * scale - 0.45; // Centered vertically in viewport
+                model.position.y = -center.y * scale;
                 model.position.z = -center.z * scale;
 
                 // Materials enhancement
@@ -343,20 +305,12 @@ export class AuroraSplashLoader {
                         child.castShadow = true;
                         child.receiveShadow = true;
                         if (child.material) {
-                            child.material.envMapIntensity = 1.2;
-                            // Ensure normal & roughness are prominent
-                            if (child.material.roughness !== undefined) {
-                                child.material.roughness = Math.max(0.18, child.material.roughness);
-                            }
+                            child.material.metalness = 0.05;
+                            child.material.roughness = 0.4;
+                            child.material.needsUpdate = true;
                         }
                     }
                 });
-
-                // Remove fallback placeholder and attach true model
-                if (this.fallbackGroup) {
-                    this.robotGroup.remove(this.fallbackGroup);
-                    this.fallbackGroup = null;
-                }
 
                 this.robotMesh = model;
                 this.robotGroup.add(model);
@@ -365,7 +319,7 @@ export class AuroraSplashLoader {
             },
             undefined,
             (error) => {
-                console.warn('[Splash] Could not load GLB model, keeping stylized fallback:', error);
+                console.warn('[Splash] Could not load GLB model:', error);
             }
         );
     }
