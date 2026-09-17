@@ -5442,19 +5442,33 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 }
 
 /* ============================================================================
- * COSMO v4.22.0 — ИНТЕРАКТИВНЫЙ ВЫБОР СТИКЕРОВ (STICKER PICKER) & СТИЛИЗАЦИЯ
+ * COSMO v4.33.0 — ИНТЕРАКТИВНЫЙ ВЫБОР СТИКЕРОВ (STICKER PICKER) & СТИЛИЗАЦИЯ
  * Дизайн-система AURORA: Neon Glassmorphism, 17 эмоций Космо, парящие стикеры
  * ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Кнопка вызова стикеров в панели ввода / тулбаре
+   1. Кнопка вызова стикеров в тулбаре и нижней панели ввода
    -------------------------------------------------------------------------- */
+
+/* Базовые стили для всех кнопок стикеров */
 .cosmo-chat-stickers-btn,
 .cosmo-chat-tool-btn[data-chat-stickers],
-.cosmo-chat-footer .cosmo-chat-tool-btn[data-chat-stickers] {
+.cosmo-chat-stickers-footer-btn,
+.cosmo-chat-attach-btn[data-chat-stickers],
+.cosmo-chat-footer [data-chat-stickers] {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Кнопка стикеров в верхней панели действий чата */
+.cosmo-chat-header-actions .cosmo-chat-tool-btn[data-chat-stickers] {
     gap: 6px;
     padding: 6px 12px;
     border-radius: 10px;
@@ -5463,17 +5477,12 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     color: #7ee8ff;
     font-size: 0.8rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-    user-select: none;
-    outline: none;
-    position: relative;
-    box-sizing: border-box;
 }
 
-/* Стилизация внутри нижней панели ввода .cosmo-chat-footer */
-.cosmo-chat-footer .cosmo-chat-stickers-btn,
-.cosmo-chat-footer .cosmo-chat-tool-btn[data-chat-stickers] {
+/* Кнопка стикеров в нижней панели ввода (футере) */
+.cosmo-chat-footer .cosmo-chat-stickers-footer-btn,
+.cosmo-chat-footer .cosmo-chat-attach-btn[data-chat-stickers],
+.cosmo-chat-footer [data-chat-stickers] {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -5483,78 +5492,122 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     min-width: 44px;
     padding: 0;
     border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    background: rgba(15, 23, 42, 0.72);
     color: #cbd5e1;
     flex-shrink: 0;
 }
 
+/* Иконки в кнопке стикеров */
 .cosmo-chat-stickers-btn .material-symbols-outlined,
-.cosmo-chat-tool-btn[data-chat-stickers] .material-symbols-outlined {
+.cosmo-chat-tool-btn[data-chat-stickers] .material-symbols-outlined,
+.cosmo-chat-stickers-footer-btn .material-symbols-outlined,
+.cosmo-chat-attach-btn[data-chat-stickers] .material-symbols-outlined,
+.cosmo-chat-footer [data-chat-stickers] .material-symbols-outlined {
     font-size: 22px;
     line-height: 1;
-    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.22s ease, color 0.2s ease;
+    transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.22s ease,
+                color 0.2s ease;
 }
 
+/* Подписи к кнопкам */
 .cosmo-chat-stickers-btn .stickers-btn-label,
-.cosmo-chat-tool-btn[data-chat-stickers] .stickers-btn-label,
-.cosmo-chat-stickers-btn .attach-btn-label,
-.cosmo-chat-tool-btn[data-chat-stickers] .attach-btn-label {
+.cosmo-chat-tool-btn[data-chat-stickers] .tool-btn-text,
+.cosmo-chat-stickers-footer-btn .attach-btn-label,
+.cosmo-chat-attach-btn[data-chat-stickers] .attach-btn-label {
     font-size: 0.62rem;
     font-weight: 700;
     margin-top: -2px;
+    letter-spacing: 0.02em;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
 }
 
-/* Ховер: неоновое свечение AURORA */
+/* Ховер: неоновое свечение AURORA (cyan glow, rotate/bounce) */
 .cosmo-chat-stickers-btn:hover,
-.cosmo-chat-tool-btn[data-chat-stickers]:hover {
+.cosmo-chat-tool-btn[data-chat-stickers]:hover,
+.cosmo-chat-stickers-footer-btn:hover,
+.cosmo-chat-attach-btn[data-chat-stickers]:hover,
+.cosmo-chat-footer [data-chat-stickers]:hover {
     border-color: #00f0ff;
     color: #00f0ff;
     background: rgba(0, 240, 255, 0.14);
-    box-shadow: 0 0 16px rgba(0, 240, 255, 0.42),
-                inset 0 0 10px rgba(0, 240, 255, 0.12);
-    transform: translateY(-1px);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.45),
+                inset 0 0 10px rgba(0, 240, 255, 0.15);
+    transform: translateY(-2px);
 }
 
 .cosmo-chat-stickers-btn:hover .material-symbols-outlined,
-.cosmo-chat-tool-btn[data-chat-stickers]:hover .material-symbols-outlined {
+.cosmo-chat-tool-btn[data-chat-stickers]:hover .material-symbols-outlined,
+.cosmo-chat-stickers-footer-btn:hover .material-symbols-outlined,
+.cosmo-chat-attach-btn[data-chat-stickers]:hover .material-symbols-outlined,
+.cosmo-chat-footer [data-chat-stickers]:hover .material-symbols-outlined {
+    color: #00f0ff;
     filter: drop-shadow(0 0 8px #00f0ff);
-    transform: scale(1.15) rotate(8deg);
+    transform: scale(1.18) rotate(8deg);
 }
 
-/* Активное состояние (открытый поповер) */
+.cosmo-chat-stickers-btn:hover .stickers-btn-label,
+.cosmo-chat-tool-btn[data-chat-stickers]:hover .tool-btn-text,
+.cosmo-chat-stickers-footer-btn:hover .attach-btn-label,
+.cosmo-chat-attach-btn[data-chat-stickers]:hover .attach-btn-label {
+    color: #00f0ff;
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+}
+
+/* Активное состояние (пикер открыт) */
 .cosmo-chat-stickers-btn.is-active,
 .cosmo-chat-stickers-btn[aria-expanded="true"],
 .cosmo-chat-tool-btn[data-chat-stickers].is-active,
-.cosmo-chat-tool-btn[data-chat-stickers][aria-expanded="true"] {
+.cosmo-chat-tool-btn[data-chat-stickers][aria-expanded="true"],
+.cosmo-chat-stickers-footer-btn.is-active,
+.cosmo-chat-stickers-footer-btn[aria-expanded="true"],
+.cosmo-chat-attach-btn[data-chat-stickers].is-active,
+.cosmo-chat-attach-btn[data-chat-stickers][aria-expanded="true"],
+.cosmo-chat-footer [data-chat-stickers].is-active,
+.cosmo-chat-footer [data-chat-stickers][aria-expanded="true"] {
     border-color: #00f0ff;
     background: linear-gradient(135deg, rgba(0, 240, 255, 0.28) 0%, rgba(99, 102, 241, 0.28) 100%);
     color: #ffffff;
-    box-shadow: 0 0 18px rgba(0, 240, 255, 0.55),
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.58),
                 inset 0 0 12px rgba(0, 240, 255, 0.25);
+    transform: translateY(-1px);
 }
 
 .cosmo-chat-stickers-btn.is-active .material-symbols-outlined,
-.cosmo-chat-tool-btn[data-chat-stickers].is-active .material-symbols-outlined {
+.cosmo-chat-tool-btn[data-chat-stickers].is-active .material-symbols-outlined,
+.cosmo-chat-stickers-footer-btn.is-active .material-symbols-outlined,
+.cosmo-chat-attach-btn[data-chat-stickers].is-active .material-symbols-outlined,
+.cosmo-chat-footer [data-chat-stickers].is-active .material-symbols-outlined {
+    color: #ffffff;
     filter: drop-shadow(0 0 10px #00f0ff);
-    transform: scale(1.12);
+    transform: scale(1.14);
+}
+
+.cosmo-chat-stickers-btn.is-active .stickers-btn-label,
+.cosmo-chat-tool-btn[data-chat-stickers].is-active .tool-btn-text,
+.cosmo-chat-stickers-footer-btn.is-active .attach-btn-label,
+.cosmo-chat-attach-btn[data-chat-stickers].is-active .attach-btn-label {
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
 }
 
 /* --------------------------------------------------------------------------
-   2. Всплывающий контейнер стикеров (Sticker Picker Glassmorphism)
+   2. Всплывающий стикер-поповер (Sticker Picker Glassmorphism)
    -------------------------------------------------------------------------- */
 .cosmo-sticker-picker-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(3, 7, 18, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 54;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.24s ease, visibility 0.24s ease;
+    transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.24s ease;
 }
+
 .cosmo-sticker-picker-backdrop.is-open {
     opacity: 1;
     visibility: visible;
@@ -5564,27 +5617,27 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 .cosmo-sticker-picker,
 .cosmo-stickers-popover {
     position: absolute;
-    bottom: 74px;
-    left: 18px;
-    width: 356px;
-    max-width: calc(100% - 36px);
-    max-height: 430px;
+    bottom: 108px;
+    left: 20px;
+    width: 376px;
+    max-width: calc(100% - 40px);
+    max-height: 480px;
     z-index: 55;
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    border-radius: 18px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65),
-                0 0 28px rgba(56, 189, 248, 0.18),
-                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    background: linear-gradient(165deg, rgba(10, 18, 42, 0.94) 0%, rgba(6, 11, 28, 0.96) 100%);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(0, 240, 255, 0.32);
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75),
+                0 0 36px rgba(0, 240, 255, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translateY(14px) scale(0.95);
+    transform: translateY(16px) scale(0.94);
     transform-origin: bottom left;
     transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
                 transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -5605,12 +5658,12 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 /* Опциональные выравнивания */
 .cosmo-sticker-picker.is-align-right {
     left: auto;
-    right: 18px;
+    right: 20px;
     transform-origin: bottom right;
 }
 .cosmo-sticker-picker.is-align-center {
     left: 50%;
-    transform: translateX(-50%) translateY(14px) scale(0.95);
+    transform: translateX(-50%) translateY(16px) scale(0.94);
     transform-origin: bottom center;
 }
 .cosmo-sticker-picker.is-align-center.is-open {
@@ -5623,9 +5676,9 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(56, 189, 248, 0.18);
-    background: rgba(15, 23, 42, 0.65);
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+    background: rgba(15, 23, 42, 0.75);
     flex-shrink: 0;
     user-select: none;
     box-sizing: border-box;
@@ -5635,17 +5688,24 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 .cosmo-sticker-title-group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
 }
 
+.sticker-picker-icon,
 .sticker-picker-title-icon,
 .cosmo-sticker-title-icon {
-    font-size: 20px;
-    color: #00f0ff;
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    color: #00f0ff;
+    font-size: 20px;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.65);
     flex-shrink: 0;
 }
 
@@ -5654,15 +5714,23 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     margin: 0;
     font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
     font-size: 0.88rem;
-    font-weight: 700;
-    color: #f1f5f9;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-weight: 800;
+    color: #f8fafc;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.sticker-picker-subtitle,
+.cosmo-sticker-picker-subtitle {
+    margin: 2px 0 0 0;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    line-height: 1.25;
+    font-weight: 500;
 }
 
 .sticker-picker-count-badge,
@@ -5707,7 +5775,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     border-color: rgba(239, 68, 68, 0.5);
     color: #fca5a5;
     transform: scale(1.08);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
 }
 
 /* --------------------------------------------------------------------------
@@ -5719,10 +5787,10 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 10px 8px;
-    padding: 12px 10px;
+    padding: 14px 12px;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: 330px;
+    max-height: 360px;
     box-sizing: border-box;
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 240, 255, 0.35) transparent;
@@ -5752,7 +5820,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     box-shadow: 0 0 8px #00f0ff;
 }
 
-/* Карточка стикера */
+/* Карточка стикера в сетке */
 .cosmo-sticker-item,
 .cosmo-sticker-btn,
 .sticker-item {
@@ -5761,8 +5829,8 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px 4px 4px 4px;
-    border-radius: 12px;
+    padding: 8px 4px 6px 4px;
+    border-radius: 14px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     cursor: pointer;
@@ -5773,45 +5841,82 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     box-sizing: border-box;
 }
 
+/* Контейнер превью стикера */
+.sticker-item-preview,
+.cosmo-sticker-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 62px;
+    position: relative;
+    margin: 0 auto;
+}
+
 .cosmo-sticker-item img,
 .cosmo-sticker-btn img,
 .sticker-item img,
 .cosmo-sticker-img,
-.sticker-preview-img {
-    width: 64px;
-    height: 64px;
-    max-width: 64px;
-    max-height: 64px;
+.sticker-preview-img,
+.sticker-thumb {
+    width: 58px;
+    height: 58px;
+    max-width: 58px;
+    max-height: 58px;
     object-fit: contain;
     display: block;
     pointer-events: none;
-    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
     transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
                 filter 0.22s ease;
     transform-origin: center bottom;
 }
 
-/* Ховер: увеличение scale(1.12), изумрудно-бирюзовый дроп-шадоу, подсветка рамки */
+/* Название эмоции под стикером */
+.sticker-name,
+.cosmo-sticker-name {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    padding: 0 2px;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+/* Ховер на карточку стикера: масштаб, изумрудно-бирюзовый дроп-шадоу, подсветка */
 .cosmo-sticker-item:hover,
 .cosmo-sticker-btn:hover,
 .sticker-item:hover {
-    transform: scale(1.12);
-    background: rgba(56, 189, 248, 0.12);
-    border-color: rgba(56, 189, 248, 0.5);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42),
+    transform: translateY(-3px) scale(1.08);
+    background: rgba(0, 240, 255, 0.1);
+    border-color: rgba(0, 240, 255, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45),
                 0 0 16px rgba(0, 240, 255, 0.35),
-                inset 0 0 10px rgba(56, 189, 248, 0.15);
+                inset 0 0 10px rgba(0, 240, 255, 0.15);
     z-index: 10;
 }
 
 .cosmo-sticker-item:hover img,
 .cosmo-sticker-btn:hover img,
 .sticker-item:hover img,
-.cosmo-sticker-item:hover .cosmo-sticker-img,
-.cosmo-sticker-item:hover .sticker-preview-img {
-    transform: scale(1.06);
-    filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.58))
-            drop-shadow(0 0 8px rgba(0, 240, 255, 0.68));
+.cosmo-sticker-item:hover .sticker-thumb {
+    transform: scale(1.12);
+    filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.6))
+            drop-shadow(0 0 10px rgba(0, 240, 255, 0.7));
+}
+
+.cosmo-sticker-item:hover .sticker-name,
+.sticker-item:hover .sticker-name {
+    color: #00f0ff;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+    font-weight: 700;
 }
 
 .cosmo-sticker-item:active,
@@ -5822,7 +5927,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 }
 
 /* --------------------------------------------------------------------------
-   4. Тултипы с названием эмоции (data-tooltip и .cosmo-sticker-tooltip)
+   4. Тултипы с названием эмоции (data-tooltip)
    -------------------------------------------------------------------------- */
 .cosmo-sticker-item[data-tooltip]::after,
 .cosmo-sticker-btn[data-tooltip]::after,
@@ -5831,13 +5936,14 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     position: absolute;
     bottom: calc(100% + 7px);
     left: 50%;
-    transform: translateX(-50%) translateY(4px) scale(0.88);
-    padding: 4px 9px;
-    border-radius: 7px;
-    background: rgba(10, 16, 32, 0.96);
-    border: 1px solid rgba(56, 189, 248, 0.45);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.25);
-    color: #38bdf8;
+    transform: translateX(-50%) translateY(4px) scale(0.9);
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(8, 14, 30, 0.96);
+    border: 1px solid rgba(0, 240, 255, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7),
+                0 0 14px rgba(0, 240, 255, 0.3);
+    color: #7ee8ff;
     font-family: var(--font-body, system-ui, sans-serif);
     font-size: 0.72rem;
     font-weight: 600;
@@ -5846,10 +5952,12 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
-    z-index: 40;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.16s ease;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: opacity 0.16s ease,
+                transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+                visibility 0.16s ease;
 }
 
 .cosmo-sticker-item[data-tooltip]::before,
@@ -5861,11 +5969,11 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     left: 50%;
     transform: translateX(-50%) translateY(4px);
     border: 5px solid transparent;
-    border-top-color: rgba(56, 189, 248, 0.45);
+    border-top-color: rgba(0, 240, 255, 0.45);
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
-    z-index: 40;
+    z-index: 50;
     transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
 }
 
@@ -5887,26 +5995,76 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     transition-delay: 0.12s;
 }
 
+/* Умная корректировка переполнения тултипов для верхнего ряда */
+.cosmo-sticker-item:nth-child(-n+4)[data-tooltip]::after,
+.sticker-item:nth-child(-n+4)[data-tooltip]::after {
+    bottom: auto;
+    top: calc(100% + 7px);
+    transform: translateX(-50%) translateY(-4px) scale(0.9);
+}
+.cosmo-sticker-item:nth-child(-n+4):hover[data-tooltip]::after,
+.sticker-item:nth-child(-n+4):hover[data-tooltip]::after {
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.cosmo-sticker-item:nth-child(-n+4)[data-tooltip]::before,
+.sticker-item:nth-child(-n+4)[data-tooltip]::before {
+    bottom: auto;
+    top: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: rgba(0, 240, 255, 0.45);
+    transform: translateX(-50%) translateY(-4px);
+}
+.cosmo-sticker-item:nth-child(-n+4):hover[data-tooltip]::before,
+.sticker-item:nth-child(-n+4):hover[data-tooltip]::before {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Корректировка тултипов у левого и правого краёв */
+.cosmo-sticker-item:nth-child(4n+1)[data-tooltip]::after {
+    left: 4px;
+    transform: translateY(4px) scale(0.9);
+}
+.cosmo-sticker-item:nth-child(4n+1):hover[data-tooltip]::after {
+    transform: translateY(0) scale(1);
+}
+.cosmo-sticker-item:nth-child(4n+1)[data-tooltip]::before {
+    left: 20px;
+}
+
+.cosmo-sticker-item:nth-child(4n)[data-tooltip]::after {
+    left: auto;
+    right: 4px;
+    transform: translateY(4px) scale(0.9);
+}
+.cosmo-sticker-item:nth-child(4n):hover[data-tooltip]::after {
+    transform: translateY(0) scale(1);
+}
+.cosmo-sticker-item:nth-child(4n)[data-tooltip]::before {
+    left: auto;
+    right: 20px;
+}
+
 /* DOM-элемент подсказки .cosmo-sticker-tooltip */
 .cosmo-sticker-tooltip,
 .sticker-tooltip {
     position: absolute;
     bottom: calc(100% + 7px);
     left: 50%;
-    transform: translateX(-50%) translateY(4px) scale(0.88);
-    padding: 4px 9px;
-    border-radius: 7px;
-    background: rgba(10, 16, 32, 0.96);
-    border: 1px solid rgba(56, 189, 248, 0.45);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65), 0 0 12px rgba(56, 189, 248, 0.25);
-    color: #38bdf8;
+    transform: translateX(-50%) translateY(4px) scale(0.9);
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(8, 14, 30, 0.96);
+    border: 1px solid rgba(0, 240, 255, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 14px rgba(0, 240, 255, 0.3);
+    color: #7ee8ff;
     font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
-    z-index: 40;
+    z-index: 50;
     transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.16s ease;
 }
 
@@ -5922,8 +6080,11 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
    5. Отображение отправленных стикеров в ленте чата (100% ПРОЗРАЧНЫЙ ФОН)
    -------------------------------------------------------------------------- */
 .cosmo-chat-msg.is-sticker,
-.cosmo-chat-msg.has-sticker {
+.cosmo-chat-msg.has-sticker,
+.chat-msg.is-sticker {
     background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
@@ -5931,8 +6092,10 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 }
 
 .cosmo-chat-msg.is-sticker .msg-content,
-.cosmo-chat-msg.has-sticker .msg-content {
+.cosmo-chat-msg.has-sticker .msg-content,
+.chat-msg.is-sticker .msg-content {
     background: transparent !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
@@ -5945,7 +6108,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     align-items: flex-start;
 }
 
-/* Полное удаление фона пузыря, рамок, отступов и теней */
+/* Полное удаление фона пузыря, рамок, отступов и теней у стикеров */
 .cosmo-chat-msg.is-sticker .msg-body,
 .cosmo-chat-msg-user.is-sticker .msg-body,
 .cosmo-chat-msg-bot.is-sticker .msg-body,
@@ -5954,10 +6117,12 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 .cosmo-chat-msg-bot.has-sticker .msg-body,
 .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body,
 .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body,
+.cosmo-chat-msg:has(.transparent-sticker) .msg-body,
 .chat-msg.is-sticker,
 .chat-msg.is-sticker .msg-bubble,
 .msg-bubble.transparent-sticker,
-.transparent-sticker {
+.transparent-sticker,
+.bot-transparent-sticker {
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
@@ -5966,9 +6131,10 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     padding: 0 !important;
     margin: 0 !important;
     border-radius: 0 !important;
+    overflow: visible !important;
 }
 
-/* Отключение уголков и хвостиков пузыря */
+/* Отключение уголков и хвостиков пузыря у стикеров */
 .cosmo-chat-msg.is-sticker .msg-body::before,
 .cosmo-chat-msg.is-sticker .msg-body::after,
 .cosmo-chat-msg-user.is-sticker .msg-body::before,
@@ -5977,14 +6143,21 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 .cosmo-chat-msg-bot.is-sticker .msg-body::after,
 .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body::before,
 .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body::after,
+.cosmo-chat-msg:has(.transparent-sticker) .msg-body::before,
+.cosmo-chat-msg:has(.transparent-sticker) .msg-body::after,
 .msg-bubble.transparent-sticker::before,
-.msg-bubble.transparent-sticker::after {
+.msg-bubble.transparent-sticker::after,
+.transparent-sticker::before,
+.transparent-sticker::after,
+.bot-transparent-sticker::before,
+.bot-transparent-sticker::after {
     display: none !important;
     content: none !important;
 }
 
 .cosmo-chat-msg.is-sticker .msg-author,
-.cosmo-chat-msg:has(.sticker-msg-wrap) .msg-author {
+.cosmo-chat-msg:has(.sticker-msg-wrap) .msg-author,
+.cosmo-chat-msg-user.is-sticker .msg-author {
     display: none !important;
 }
 
@@ -5996,7 +6169,8 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 /* Обертка изображения стикера */
 .sticker-msg-wrap,
 .cosmo-sticker-msg-wrap,
-.transparent-sticker {
+.transparent-sticker,
+.bot-transparent-sticker {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -6010,9 +6184,15 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     -webkit-user-drag: none;
 }
 
+.bot-transparent-sticker {
+    margin-top: 8px !important;
+    display: flex;
+    justify-content: flex-start;
+}
+
 .cosmo-sticker-bot-text {
     margin: 0 0 8px 0;
-    font-size: 0.92rem;
+    font-size: 0.94rem;
     line-height: 1.55;
     color: #e2e8f0;
 }
@@ -6020,16 +6200,17 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     color: #1e293b;
 }
 
-/* Крупный парящий стикер Космо (120x120px — 140x140px) */
+/* Крупный парящий стикер Космо (140x140px) */
 .cosmo-chat-msg.is-sticker img,
 .sticker-msg-wrap img,
 .cosmo-sticker-msg-img,
 .cosmo-chat-sticker-image,
-.sticker-img {
-    width: 132px;
-    height: 132px;
-    max-width: 140px;
-    max-height: 140px;
+.sticker-img,
+.bot-sticker-img {
+    width: 140px;
+    height: 140px;
+    max-width: 150px;
+    max-height: 150px;
     min-width: 110px;
     min-height: 110px;
     object-fit: contain;
@@ -6038,9 +6219,9 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.58))
-            drop-shadow(0 0 14px rgba(56, 189, 248, 0.24));
-    animation: stickerPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.6))
+            drop-shadow(0 0 16px rgba(0, 240, 255, 0.28));
+    animation: stickerPopIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     transform-origin: center center;
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
                 filter 0.25s ease;
@@ -6051,23 +6232,24 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 .sticker-msg-wrap img:hover,
 .cosmo-sticker-msg-img:hover,
 .cosmo-chat-sticker-image:hover,
-.sticker-img:hover {
-    transform: scale(1.08) rotate(-1.5deg);
-    filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.68))
-            drop-shadow(0 0 20px rgba(0, 240, 255, 0.52));
+.sticker-img:hover,
+.bot-sticker-img:hover {
+    transform: translateY(-4px) scale(1.08) rotate(-1.5deg);
+    filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.7))
+            drop-shadow(0 0 24px rgba(0, 240, 255, 0.6));
 }
 
 /* Анимация появления стикера в чате со Spring Overshoot */
 @keyframes stickerPopIn {
     0% {
         opacity: 0;
-        transform: scale(0.32) translateY(24px);
+        transform: scale(0.35) translateY(24px);
     }
-    68% {
+    65% {
         opacity: 1;
         transform: scale(1.08) translateY(-4px);
     }
-    86% {
+    85% {
         transform: scale(0.97) translateY(2px);
     }
     100% {
@@ -6081,53 +6263,83 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
    -------------------------------------------------------------------------- */
 [data-theme="light"] .cosmo-chat-stickers-btn,
 [data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers] {
-    background: rgba(2, 132, 199, 0.06);
+    background: rgba(2, 132, 199, 0.08);
     border-color: rgba(2, 132, 199, 0.28);
     color: #0284c7;
 }
 
-[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-btn,
-[data-theme="light"] .cosmo-chat-footer .cosmo-chat-tool-btn[data-chat-stickers] {
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-attach-btn[data-chat-stickers],
+[data-theme="light"] .cosmo-chat-footer [data-chat-stickers] {
     background: #f8fafc;
     border-color: rgba(2, 132, 199, 0.3);
     color: #0284c7;
 }
 
 [data-theme="light"] .cosmo-chat-stickers-btn:hover,
-[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers]:hover {
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers]:hover,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn:hover,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-attach-btn[data-chat-stickers]:hover,
+[data-theme="light"] .cosmo-chat-footer [data-chat-stickers]:hover {
     background: rgba(2, 132, 199, 0.12);
     border-color: #0284c7;
     color: #0369a1;
-    box-shadow: 0 0 14px rgba(2, 132, 199, 0.26);
+    box-shadow: 0 0 16px rgba(2, 132, 199, 0.28);
+}
+
+[data-theme="light"] .cosmo-chat-stickers-btn:hover .material-symbols-outlined,
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers]:hover .material-symbols-outlined,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn:hover .material-symbols-outlined,
+[data-theme="light"] .cosmo-chat-footer [data-chat-stickers]:hover .material-symbols-outlined {
+    color: #0284c7;
+    filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.5));
+}
+
+[data-theme="light"] .cosmo-chat-stickers-btn:hover .stickers-btn-label,
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers]:hover .tool-btn-text,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn:hover .attach-btn-label {
+    color: #0369a1;
+    text-shadow: none;
 }
 
 [data-theme="light"] .cosmo-chat-stickers-btn.is-active,
-[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active {
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn.is-active,
+[data-theme="light"] .cosmo-chat-footer [data-chat-stickers].is-active {
     background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
     border-color: #0284c7;
     color: #ffffff;
-    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+    box-shadow: 0 4px 18px rgba(2, 132, 199, 0.4);
 }
 
 [data-theme="light"] .cosmo-chat-stickers-btn.is-active .material-symbols-outlined,
-[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active .material-symbols-outlined {
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active .material-symbols-outlined,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn.is-active .material-symbols-outlined,
+[data-theme="light"] .cosmo-chat-footer [data-chat-stickers].is-active .material-symbols-outlined {
     color: #ffffff;
     filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 
+[data-theme="light"] .cosmo-chat-stickers-btn.is-active .stickers-btn-label,
+[data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active .tool-btn-text,
+[data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn.is-active .attach-btn-label {
+    color: #ffffff;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
 [data-theme="light"] .cosmo-sticker-picker,
 [data-theme="light"] .cosmo-stickers-popover {
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.95);
     border-color: rgba(2, 132, 199, 0.28);
-    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.14),
-                0 0 22px rgba(2, 132, 199, 0.12),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12),
+                0 0 30px rgba(2, 132, 199, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
     color: #0f172a;
 }
 
 [data-theme="light"] .sticker-picker-header,
 [data-theme="light"] .cosmo-sticker-picker-header {
-    background: rgba(240, 249, 255, 0.85);
+    background: rgba(240, 249, 255, 0.88);
     border-bottom-color: rgba(2, 132, 199, 0.18);
 }
 
@@ -6136,17 +6348,18 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     color: #0f172a;
 }
 
-[data-theme="light"] .sticker-picker-title-icon,
-[data-theme="light"] .cosmo-sticker-title-icon {
-    color: #0284c7;
-    text-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
+[data-theme="light"] .sticker-picker-subtitle,
+[data-theme="light"] .cosmo-sticker-picker-subtitle {
+    color: #64748b;
 }
 
-[data-theme="light"] .sticker-picker-count-badge,
-[data-theme="light"] .cosmo-sticker-count-badge {
+[data-theme="light"] .sticker-picker-icon,
+[data-theme="light"] .sticker-picker-title-icon,
+[data-theme="light"] .cosmo-sticker-title-icon {
     background: rgba(2, 132, 199, 0.1);
-    border-color: rgba(2, 132, 199, 0.28);
+    border-color: rgba(2, 132, 199, 0.3);
     color: #0284c7;
+    text-shadow: 0 0 8px rgba(2, 132, 199, 0.35);
 }
 
 [data-theme="light"] .sticker-picker-close,
@@ -6185,26 +6398,37 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 [data-theme="light"] .cosmo-sticker-item,
 [data-theme="light"] .cosmo-sticker-btn,
 [data-theme="light"] .sticker-item {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: rgba(241, 245, 249, 0.7);
+    border-color: rgba(226, 232, 240, 0.85);
+}
+
+[data-theme="light"] .sticker-name,
+[data-theme="light"] .cosmo-sticker-name {
+    color: #475569;
 }
 
 [data-theme="light"] .cosmo-sticker-item:hover,
 [data-theme="light"] .cosmo-sticker-btn:hover,
 [data-theme="light"] .sticker-item:hover {
-    background: rgba(2, 132, 199, 0.08);
-    border-color: rgba(2, 132, 199, 0.4);
+    background: rgba(2, 132, 199, 0.1);
+    border-color: rgba(2, 132, 199, 0.45);
     box-shadow: 0 6px 18px rgba(2, 132, 199, 0.18),
-                0 0 12px rgba(2, 132, 199, 0.15);
+                0 0 12px rgba(2, 132, 199, 0.14);
 }
 
 [data-theme="light"] .cosmo-sticker-item:hover img,
 [data-theme="light"] .cosmo-sticker-btn:hover img,
 [data-theme="light"] .sticker-item:hover img,
-[data-theme="light"] .cosmo-sticker-item:hover .cosmo-sticker-img,
-[data-theme="light"] .cosmo-sticker-item:hover .sticker-preview-img {
+[data-theme="light"] .cosmo-sticker-item:hover .sticker-thumb {
     filter: drop-shadow(0 4px 10px rgba(5, 150, 105, 0.45))
             drop-shadow(0 0 8px rgba(2, 132, 199, 0.4));
+}
+
+[data-theme="light"] .cosmo-sticker-item:hover .sticker-name,
+[data-theme="light"] .sticker-item:hover .sticker-name {
+    color: #0284c7;
+    text-shadow: none;
+    font-weight: 700;
 }
 
 [data-theme="light"] .cosmo-sticker-item[data-tooltip]::after,
@@ -6212,10 +6436,10 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 [data-theme="light"] .sticker-item[data-tooltip]::after,
 [data-theme="light"] .cosmo-sticker-tooltip,
 [data-theme="light"] .sticker-tooltip {
-    background: rgba(15, 23, 42, 0.94);
+    background: rgba(15, 23, 42, 0.95);
     border-color: rgba(2, 132, 199, 0.5);
     color: #f0f9ff;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="light"] .cosmo-sticker-item[data-tooltip]::before,
@@ -6224,37 +6448,55 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     border-top-color: rgba(2, 132, 199, 0.5);
 }
 
-/* Гарантированная прозрачность стикеров в светлой теме */
+[data-theme="light"] .cosmo-sticker-item:nth-child(-n+4)[data-tooltip]::before,
+[data-theme="light"] .sticker-item:nth-child(-n+4)[data-tooltip]::before {
+    border-top-color: transparent;
+    border-bottom-color: rgba(2, 132, 199, 0.5);
+}
+
+/* 100% прозрачность отправленных стикеров в светлой теме (БЕЗ РАМОК И БЕЗ БЕЛЫХ ФОНОВ) */
 [data-theme="light"] .cosmo-chat-msg.is-sticker,
 [data-theme="light"] .cosmo-chat-msg.has-sticker,
+[data-theme="light"] .chat-msg.is-sticker,
 [data-theme="light"] .cosmo-chat-msg.is-sticker .msg-content,
 [data-theme="light"] .cosmo-chat-msg.is-sticker .msg-body,
 [data-theme="light"] .cosmo-chat-msg-user.is-sticker .msg-body,
 [data-theme="light"] .cosmo-chat-msg-bot.is-sticker .msg-body,
 [data-theme="light"] .cosmo-chat-msg.has-sticker .msg-body,
 [data-theme="light"] .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body,
-[data-theme="light"] .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body {
+[data-theme="light"] .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body,
+[data-theme="light"] .cosmo-chat-msg:has(.transparent-sticker) .msg-body,
+[data-theme="light"] .msg-bubble.transparent-sticker,
+[data-theme="light"] .transparent-sticker,
+[data-theme="light"] .bot-transparent-sticker {
     background: transparent !important;
     background-color: transparent !important;
+    background-image: none !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
 }
 
 [data-theme="light"] .cosmo-chat-msg.is-sticker img,
 [data-theme="light"] .sticker-msg-wrap img,
 [data-theme="light"] .cosmo-sticker-msg-img,
-[data-theme="light"] .cosmo-chat-sticker-image {
-    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.18))
-            drop-shadow(0 0 8px rgba(2, 132, 199, 0.16));
+[data-theme="light"] .cosmo-chat-sticker-image,
+[data-theme="light"] .sticker-img,
+[data-theme="light"] .bot-sticker-img {
+    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.16))
+            drop-shadow(0 0 12px rgba(2, 132, 199, 0.2));
 }
 
 [data-theme="light"] .cosmo-chat-msg.is-sticker img:hover,
 [data-theme="light"] .sticker-msg-wrap img:hover,
 [data-theme="light"] .cosmo-sticker-msg-img:hover,
-[data-theme="light"] .cosmo-chat-sticker-image:hover {
-    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.24))
-            drop-shadow(0 0 16px rgba(2, 132, 199, 0.35));
+[data-theme="light"] .cosmo-chat-sticker-image:hover,
+[data-theme="light"] .sticker-img:hover,
+[data-theme="light"] .bot-sticker-img:hover {
+    filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.22))
+            drop-shadow(0 0 18px rgba(2, 132, 199, 0.38));
 }
 
 /* --------------------------------------------------------------------------
@@ -6262,13 +6504,14 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     /* Мобильная кнопка стикеров в футере (стиль VK Messenger) */
+    .cosmo-chat-footer .cosmo-chat-stickers-footer-btn,
+    .cosmo-chat-footer .cosmo-chat-attach-btn[data-chat-stickers],
     .cosmo-chat-footer .cosmo-chat-stickers-btn,
     .cosmo-chat-footer .cosmo-chat-tool-btn[data-chat-stickers],
-    .cosmo-chat-stickers-btn,
-    .cosmo-chat-tool-btn[data-chat-stickers] {
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
+    .cosmo-chat-footer [data-chat-stickers] {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
         border-radius: 50% !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -6282,35 +6525,38 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
         flex-shrink: 0 !important;
         transition: background-color 0.15s ease, transform 0.15s ease !important;
     }
+
+    [data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn,
+    [data-theme="light"] .cosmo-chat-footer .cosmo-chat-attach-btn[data-chat-stickers],
     [data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-btn,
     [data-theme="light"] .cosmo-chat-footer .cosmo-chat-tool-btn[data-chat-stickers],
-    [data-theme="light"] .cosmo-chat-stickers-btn,
-    [data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers] {
+    [data-theme="light"] .cosmo-chat-footer [data-chat-stickers] {
         color: #818c99 !important;
     }
 
-    .cosmo-chat-stickers-btn:active,
-    .cosmo-chat-tool-btn[data-chat-stickers]:active {
+    .cosmo-chat-footer .cosmo-chat-stickers-footer-btn:active,
+    .cosmo-chat-footer [data-chat-stickers]:active {
         background: rgba(255, 255, 255, 0.08) !important;
         transform: scale(0.92) !important;
     }
-    [data-theme="light"] .cosmo-chat-stickers-btn:active,
-    [data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers]:active {
+    [data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn:active,
+    [data-theme="light"] .cosmo-chat-footer [data-chat-stickers]:active {
         background: rgba(0, 0, 0, 0.06) !important;
     }
 
-    .cosmo-chat-stickers-btn.is-active,
-    .cosmo-chat-tool-btn[data-chat-stickers].is-active {
+    .cosmo-chat-footer .cosmo-chat-stickers-footer-btn.is-active,
+    .cosmo-chat-footer [data-chat-stickers].is-active {
         color: #00f0ff !important;
         background: rgba(0, 240, 255, 0.15) !important;
     }
-    [data-theme="light"] .cosmo-chat-stickers-btn.is-active,
-    [data-theme="light"] .cosmo-chat-tool-btn[data-chat-stickers].is-active {
-        color: #2688eb !important;
-        background: rgba(38, 136, 235, 0.15) !important;
+    [data-theme="light"] .cosmo-chat-footer .cosmo-chat-stickers-footer-btn.is-active,
+    [data-theme="light"] .cosmo-chat-footer [data-chat-stickers].is-active {
+        color: #0284c7 !important;
+        background: rgba(2, 132, 199, 0.15) !important;
     }
 
-    .stickers-btn-label {
+    .cosmo-chat-footer .stickers-btn-label,
+    .cosmo-chat-footer .attach-btn-label {
         display: none !important;
     }
 
@@ -6345,15 +6591,15 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
         width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
-        max-height: 70vh !important;
-        max-height: 70dvh !important;
-        border-radius: 22px 22px 0 0 !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        max-height: 72vh !important;
+        max-height: 72dvh !important;
+        border-radius: 24px 24px 0 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
         border-bottom: none !important;
-        background: #1e2433 !important;
+        background: #151c2e !important;
         color: #ffffff !important;
-        box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.8) !important;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+        box-shadow: 0 -10px 45px rgba(0, 0, 0, 0.85) !important;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
         transform: translateY(102%) !important;
         transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
         z-index: 100015 !important;
@@ -6370,7 +6616,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
         background: #ffffff !important;
         color: #0f172a !important;
         border-color: #e2e8f0 !important;
-        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18) !important;
+        box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.18) !important;
     }
 
     /* Полоска-ручка вытягивания BottomSheet */
@@ -6382,7 +6628,7 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
         height: 5px !important;
         border-radius: 3px !important;
         background: rgba(255, 255, 255, 0.24) !important;
-        margin: 6px auto 8px auto !important;
+        margin: 8px auto 6px auto !important;
         flex-shrink: 0 !important;
     }
     [data-theme="light"] .cosmo-sticker-picker::before,
@@ -6406,30 +6652,44 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     .cosmo-sticker-picker-grid,
     .sticker-picker-grid {
         grid-template-columns: repeat(4, 1fr) !important;
-        gap: 6px !important;
+        gap: 8px 6px !important;
         padding: 8px 10px !important;
-        max-height: 52vh !important;
-        max-height: 52dvh !important;
+        max-height: 55vh !important;
+        max-height: 55dvh !important;
     }
 
     .cosmo-sticker-item,
     .cosmo-sticker-btn,
     .sticker-item {
-        padding: 6px 2px !important;
+        padding: 6px 2px 4px 2px !important;
+        border-radius: 12px !important;
+    }
+
+    .sticker-item-preview,
+    .cosmo-sticker-preview {
+        width: 56px !important;
+        height: 56px !important;
     }
 
     .cosmo-sticker-item img,
     .cosmo-sticker-btn img,
     .sticker-item img,
     .cosmo-sticker-img,
-    .sticker-preview-img {
-        width: 56px !important;
-        height: 56px !important;
-        max-width: 56px !important;
-        max-height: 56px !important;
+    .sticker-preview-img,
+    .sticker-thumb {
+        width: 54px !important;
+        height: 54px !important;
+        max-width: 54px !important;
+        max-height: 54px !important;
     }
 
-    /* Скрытие тултипов на мобильных тач-устройствах */
+    .sticker-name,
+    .cosmo-sticker-name {
+        font-size: 0.62rem !important;
+        margin-top: 2px !important;
+    }
+
+    /* Скрытие тултипов на мобильных тач-устройствах во избежание залипания */
     .cosmo-sticker-item[data-tooltip]::after,
     .cosmo-sticker-btn[data-tooltip]::after,
     .sticker-item[data-tooltip]::after,
@@ -6445,7 +6705,9 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     .cosmo-chat-msg.is-sticker img,
     .sticker-msg-wrap img,
     .cosmo-sticker-msg-img,
-    .cosmo-chat-sticker-image {
+    .cosmo-chat-sticker-image,
+    .sticker-img,
+    .bot-sticker-img {
         width: 115px !important;
         height: 115px !important;
         max-width: 120px !important;
@@ -6463,12 +6725,20 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     .cosmo-chat-msg-bot.has-sticker .msg-body,
     .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body,
     .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body,
+    .cosmo-chat-msg:has(.transparent-sticker) .msg-body,
+    .msg-bubble.transparent-sticker,
+    .transparent-sticker,
+    .bot-transparent-sticker,
     [data-theme="light"] .cosmo-chat-msg.is-sticker .msg-body,
     [data-theme="light"] .cosmo-chat-msg-user.is-sticker .msg-body,
     [data-theme="light"] .cosmo-chat-msg-bot.is-sticker .msg-body,
     [data-theme="light"] .cosmo-chat-msg.has-sticker .msg-body,
     [data-theme="light"] .cosmo-chat-msg:has(.sticker-msg-wrap) .msg-body,
-    [data-theme="light"] .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body {
+    [data-theme="light"] .cosmo-chat-msg:has(.cosmo-sticker-msg-img) .msg-body,
+    [data-theme="light"] .cosmo-chat-msg:has(.transparent-sticker) .msg-body,
+    [data-theme="light"] .msg-bubble.transparent-sticker,
+    [data-theme="light"] .transparent-sticker,
+    [data-theme="light"] .bot-transparent-sticker {
         background: transparent !important;
         background-color: transparent !important;
         border: none !important;
@@ -6484,17 +6754,25 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
         grid-template-columns: repeat(3, 1fr) !important;
         gap: 6px !important;
     }
-    .cosmo-sticker-item img,
-    .cosmo-sticker-btn img,
-    .sticker-item img {
+    .sticker-item-preview,
+    .cosmo-sticker-preview {
         width: 58px !important;
         height: 58px !important;
-        max-width: 58px !important;
-        max-height: 58px !important;
+    }
+    .cosmo-sticker-item img,
+    .cosmo-sticker-btn img,
+    .sticker-item img,
+    .sticker-thumb {
+        width: 56px !important;
+        height: 56px !important;
+        max-width: 56px !important;
+        max-height: 56px !important;
     }
     .cosmo-chat-msg.is-sticker img,
     .sticker-msg-wrap img,
-    .cosmo-sticker-msg-img {
+    .cosmo-sticker-msg-img,
+    .sticker-img,
+    .bot-sticker-img {
         width: 100px !important;
         height: 100px !important;
         max-width: 105px !important;
