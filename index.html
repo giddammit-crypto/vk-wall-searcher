@@ -219,9 +219,9 @@
     <link rel="stylesheet" href="src/warp_hud.css?v=4.25.4">
     <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.25.4">
     <link rel="stylesheet" href="src/space_cinematic.css?v=4.25.4">
-    <link rel="stylesheet" href="src/mascot.css?v=4.43.2">
+    <link rel="stylesheet" href="src/mascot.css?v=4.43.3">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
-    <link rel="stylesheet" href="src/opac_search.css?v=4.43.2">
+    <link rel="stylesheet" href="src/opac_search.css?v=4.43.3">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -254,7 +254,7 @@
         try {
             const p = new URLSearchParams(window.location.search);
             if (p.get('mode') === 'shelf_recommend') {
-                import('./src/cosmo_chat.js?v=4.43.2').then(({ CosmoChatModal }) => {
+                import('./src/cosmo_chat.js?v=4.43.3').then(({ CosmoChatModal }) => {
                     const genre = p.get('genre') || 'universal';
                     const branch = p.get('branch') || 'cgb';
                     window.__shelfCosmoChat = new CosmoChatModal({ mascot: null });
@@ -1771,7 +1771,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.43.2"></script>
+    <script type="module" src="src/app.js?v=4.43.3"></script>
 
     <script>
     /* =============================================================

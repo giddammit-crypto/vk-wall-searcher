@@ -2308,6 +2308,7 @@
 }
 
 .cosmo-chat-dialog {
+    position: relative;
     width: min(1320px, calc(100vw - 90px));
     max-width: calc(100vw - 90px);
     height: min(88vh, 860px);

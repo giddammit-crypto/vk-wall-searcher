@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { escapeHtml } from './branches.js?v=4.43.2';
+import { escapeHtml } from './branches.js?v=4.43.3';
 
 let opacModalEl = null;
 let opacInputEl = null;
@@ -304,15 +304,18 @@ export function initOpacModal() {
                         <button type="button" class="opac-clear-btn hidden" data-opac-clear title="Очистить поиск">
                             <span class="material-symbols-outlined">close</span>
                         </button>
-                        <button type="button" class="opac-search-btn" data-opac-search title="Найти книги (Enter)">
-                            <span class="material-symbols-outlined">search</span>
-                            <span class="opac-search-btn-text">Искать</span>
+                        <button type="button" class="opac-search-btn btn btn-primary" data-opac-search title="Найти книги (Enter)">
+                            <span class="material-symbols-outlined icon">travel_explore</span>
+                            <span class="opac-search-btn-text btn-text">Искать</span>
                         </button>
                     </div>
 
                     <!-- Горячие чипсы быстрых категорий -->
                     <div class="opac-quick-tags">
-                        <span class="opac-quick-tags-label">Популярное:</span>
+                        <span class="opac-quick-tags-label">
+                            <span class="material-symbols-outlined">trending_up</span>
+                            Популярное:
+                        </span>
                         <button type="button" class="opac-quick-tag" data-tag="Пушкин">Пушкин</button>
                         <button type="button" class="opac-quick-tag" data-tag="Чехов">Чехов</button>
                         <button type="button" class="opac-quick-tag" data-tag="Достоевский">Достоевский</button>
@@ -340,8 +343,8 @@ export function initOpacModal() {
 
                         <label class="opac-available-toggle" title="Показывать только издания, которые прямо сейчас есть на полке">
                             <input type="checkbox" data-opac-only-available />
-                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                            <span class="toggle-label">🟢 Только в наличии</span>
+                            <span class="toggle-indicator"><span class="material-symbols-outlined check-icon">check_circle</span></span>
+                            <span class="toggle-label">Только в наличии</span>
                         </label>
                     </div>
                 </section>
@@ -485,29 +488,89 @@ function bindModalEvents() {
             }
         });
     }
+
+    // Клик по тематическим карточкам начального экрана
+    if (opacGridEl) {
+        opacGridEl.addEventListener('click', (e) => {
+            const card = e.target.closest('[data-quick-action]');
+            if (card) {
+                const action = card.getAttribute('data-quick-action');
+                if (action && opacInputEl) {
+                    opacInputEl.value = action;
+                    if (opacClearBtnEl) opacClearBtnEl.classList.remove('hidden');
+                    executeOpacSearch(action);
+                }
+            }
+        });
+    }
 }
 
 /**
- * Первоначальное состояние экрана каталога (Empty state)
+ * Первоначальное состояние экрана каталога (Empty state) — стильный Hero-блок в дизайн-системе Авроры
  */
 function renderInitialState() {
     if (!opacGridEl || !opacStatusEl) return;
 
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
-        <div class="opac-empty-state">
-            <div class="opac-empty-avatar">
-                <img src="assets/images/mascot/robot_read.png" alt="Космо читает" />
-            </div>
-            <div class="opac-empty-content">
-                <h3 class="opac-empty-title">Электронный каталог библиотек Владимира</h3>
-                <p class="opac-empty-desc">
-                    Введите название книги, фамилию автора или выберите тему из быстрых тегов выше.
-                    База данных объединяет фонды всех 18 библиотек города и показывает наличие экземпляров в реальном времени.
-                </p>
-                <div class="opac-empty-tips">
-                    <span class="opac-tip-badge">💡 <strong>Подсказка:</strong> Книги филиала №4 на ул. Егорова, 10 выделяются специальной меткой района «Доброе».</span>
+        <div class="opac-welcome-hero">
+            <div class="opac-welcome-header">
+                <div class="opac-welcome-icon-badge">
+                    <span class="material-symbols-outlined">local_library</span>
                 </div>
+                <h3 class="opac-welcome-title">Электронный каталог библиотек Владимира</h3>
+                <p class="opac-welcome-desc">
+                    Единый фонд 18 филиалов города объединяет более 300&nbsp;000 изданий. Введите название книги, имя автора или выберите тему и нажмите «Искать».
+                </p>
+            </div>
+
+            <!-- Быстрые тематические карточки для старта -->
+            <div class="opac-welcome-cards">
+                <div class="opac-welcome-card" data-quick-action="Пушкин" role="button" tabindex="0">
+                    <div class="card-icon-wrap is-classic">
+                        <span class="material-symbols-outlined">menu_book</span>
+                    </div>
+                    <div class="card-text">
+                        <strong class="card-title">Классика и романы</strong>
+                        <span class="card-sub">Пушкин, Чехов, Толстой, Достоевский</span>
+                    </div>
+                </div>
+
+                <div class="opac-welcome-card" data-quick-action="Фантастика" role="button" tabindex="0">
+                    <div class="card-icon-wrap is-scifi">
+                        <span class="material-symbols-outlined">rocket_launch</span>
+                    </div>
+                    <div class="card-text">
+                        <strong class="card-title">Фантастика и наука</strong>
+                        <span class="card-sub">Стругацкие, Азимов, Брэдбери, Лем</span>
+                    </div>
+                </div>
+
+                <div class="opac-welcome-card" data-quick-action="История Владимира" role="button" tabindex="0">
+                    <div class="card-icon-wrap is-history">
+                        <span class="material-symbols-outlined">castle</span>
+                    </div>
+                    <div class="card-text">
+                        <strong class="card-title">Краеведение и история</strong>
+                        <span class="card-sub">Летописи, Суздаль, Золотое кольцо</span>
+                    </div>
+                </div>
+
+                <div class="opac-welcome-card" data-quick-action="Детские сказки" role="button" tabindex="0">
+                    <div class="card-icon-wrap is-kids">
+                        <span class="material-symbols-outlined">auto_stories</span>
+                    </div>
+                    <div class="card-text">
+                        <strong class="card-title">Детская литература</strong>
+                        <span class="card-sub">Сказки, повести и приключения</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Лаконичная плашка-подсказка -->
+            <div class="opac-welcome-hint">
+                <span class="material-symbols-outlined hint-icon">verified</span>
+                <span><strong>Проверка наличия:</strong> Каталог в реальном времени показывает, свободна ли книга на полке конкретного филиала или выдана на руки.</span>
             </div>
         </div>
     `;
@@ -521,17 +584,17 @@ function renderShortQueryState() {
 
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
-        <div class="opac-empty-state">
-            <div class="opac-empty-avatar">
-                <img src="assets/images/mascot/robot_thinking.png" alt="Космо задумался" />
+        <div class="opac-notice-card">
+            <div class="opac-notice-icon">
+                <span class="material-symbols-outlined">travel_explore</span>
             </div>
-            <div class="opac-empty-content">
-                <h3 class="opac-empty-title">Введите минимум 2-3 символа</h3>
-                <p class="opac-empty-desc">
-                    Для защиты электронного каталога от перегрузки поиск выполняется по запросам от 2 символов (например: «Чехов», «Пушкин», «Мастер»).
+            <div class="opac-notice-content">
+                <h3 class="opac-notice-title">Введите минимум 2-3 символа</h3>
+                <p class="opac-notice-desc">
+                    Для точного поиска и бережного обращения с сервером каталога введите ключевое слово от 2 символов (например: «Чехов», «Пушкин», «Мастер»).
                 </p>
-                <div class="opac-empty-tips">
-                    <span class="opac-tip-badge">🛡️ <strong>Защита OPAC:</strong> Полнотекстовый поиск по 1 букве отключён, чтобы не вызывать зависание сервера библиотечной базы.</span>
+                <div class="opac-notice-meta">
+                    <span class="opac-tip-badge">🛡️ <strong>Защита OPAC:</strong> Полнотекстовый поиск по 1 букве отключён для стабильности сервера.</span>
                 </div>
             </div>
         </div>
@@ -651,15 +714,15 @@ function renderCircuitBreakerState(message) {
     `;
 
     opacGridEl.innerHTML = `
-        <div class="opac-empty-state">
-            <div class="opac-empty-avatar">
-                <img src="assets/images/mascot/robot_tired.png" alt="Космо отдыхает" />
+        <div class="opac-notice-card is-warning">
+            <div class="opac-notice-icon is-warning">
+                <span class="material-symbols-outlined">shield</span>
             </div>
-            <div class="opac-empty-content">
-                <h3 class="opac-empty-title">Сервер каталога восстанавливает стабильность</h3>
-                <p class="opac-empty-desc">${escapeHtml(message)}</p>
-                <div class="opac-empty-tips">
-                    <span class="opac-tip-badge">🛡️ <strong>Защита от сбоев:</strong> Автоматический предохранитель защитил сервер библиотеки от перегрузки. Подождите около минуты и повторите запрос.</span>
+            <div class="opac-notice-content">
+                <h3 class="opac-notice-title">Сервер каталога восстанавливает стабильность</h3>
+                <p class="opac-notice-desc">${escapeHtml(message)}</p>
+                <div class="opac-notice-meta">
+                    <span class="opac-tip-badge">🛡️ <strong>Защита от сбоев:</strong> Предохранитель защитил библиотечный сервер OPAC от перегрузки. Подождите около минуты и повторите запрос.</span>
                 </div>
             </div>
         </div>
@@ -679,15 +742,15 @@ function renderSearchResults(data, query) {
             </div>
         `;
         opacGridEl.innerHTML = `
-            <div class="opac-empty-state">
-                <div class="opac-empty-avatar">
-                    <img src="assets/images/mascot/robot_thinking.png" alt="Космо задумался" />
+            <div class="opac-notice-card">
+                <div class="opac-notice-icon">
+                    <span class="material-symbols-outlined">search_off</span>
                 </div>
-                <div class="opac-empty-content">
-                    <h3 class="opac-empty-title">Книга не найдена</h3>
-                    <p class="opac-empty-desc">
+                <div class="opac-notice-content">
+                    <h3 class="opac-notice-title">Книга не найдена в каталоге</h3>
+                    <p class="opac-notice-desc">
                         Попробуйте сократить запрос, убрать инициалы автора или проверить правильность написания.
-                        Вы также можете обратиться к библиографам ЦГБ: Суздальский пр., д. 2, 📞 8(4922) 21-65-63.
+                        Вы также можете обратиться к библиографам ЦГБ: г. Владимир, Суздальский пр., д. 2, 📞 8(4922) 21-65-63.
                     </p>
                 </div>
             </div>
@@ -763,11 +826,11 @@ function renderSearchResults(data, query) {
 
                     <!-- Кнопки действий в стиле Аврора -->
                     <div class="opac-book-actions">
-                        <button type="button" class="opac-ask-cosmo-btn" data-ask-title="${escapeHtml(title)}" data-ask-author="${escapeHtml(author)}" title="Спросить рецензию и сюжет у робота Космо">
+                        <button type="button" class="opac-ask-cosmo-btn btn btn-primary" data-ask-title="${escapeHtml(title)}" data-ask-author="${escapeHtml(author)}" title="Спросить рецензию и сюжет у робота Космо">
                             <span class="material-symbols-outlined icon">smart_toy</span>
                             <span class="btn-text">Спросить у Космо</span>
                         </button>
-                        <a href="http://library.vladimir.ru/rguest_vlad_cgb.htm" target="_blank" rel="noopener noreferrer" class="opac-direct-link-btn" title="Проверить в каталоге ЦГБ">
+                        <a href="http://library.vladimir.ru/rguest_vlad_cgb.htm" target="_blank" rel="noopener noreferrer" class="opac-direct-link-btn btn btn-tonal" title="Проверить в каталоге ЦГБ">
                             <span class="material-symbols-outlined icon">open_in_new</span>
                             <span class="btn-text">OPAC-Global</span>
                         </a>
@@ -844,15 +907,15 @@ function renderErrorState(errMsg) {
 
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
-        <div class="opac-empty-state is-error">
-            <div class="opac-empty-avatar">
-                <img src="assets/images/mascot/robot_shock.png" alt="Космо удивлён" />
+        <div class="opac-notice-card is-warning">
+            <div class="opac-notice-icon is-warning">
+                <span class="material-symbols-outlined">error_outline</span>
             </div>
-            <div class="opac-empty-content">
-                <h3 class="opac-empty-title">Не удалось получить данные из каталога</h3>
-                <p class="opac-empty-desc">${escapeHtml(errMsg)}</p>
-                <div class="opac-empty-tips">
-                    <span>Попробуйте повторить поиск через несколько секунд или проверьте соединение.</span>
+            <div class="opac-notice-content">
+                <h3 class="opac-notice-title">Не удалось получить данные из каталога</h3>
+                <p class="opac-notice-desc">${escapeHtml(errMsg)}</p>
+                <div class="opac-notice-meta">
+                    <span class="opac-tip-badge">Попробуйте повторить поиск через несколько секунд или проверьте соединение.</span>
                 </div>
             </div>
         </div>

@@ -346,45 +346,46 @@
 
 .opac-search-input {
     width: 100%;
-    height: 52px;
-    padding: 0 152px 0 50px;
-    border-radius: var(--opac-radius-md);
+    height: 48px;
+    padding: 0 152px 0 46px;
+    border-radius: var(--radius-pill, 9999px);
     background: rgba(10, 16, 32, 0.72);
-    border: 1px solid rgba(56, 189, 248, 0.35);
+    border: 1.5px solid rgba(56, 189, 248, 0.3);
     color: #ffffff;
     font-family: inherit;
-    font-size: 1.02rem;
+    font-size: 0.96rem;
     line-height: 1.4;
     outline: none;
     box-sizing: border-box;
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
-    transition: all 0.22s var(--opac-smooth-easing);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.35);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .opac-search-input::placeholder {
     color: #64748b;
-    font-size: 0.94rem;
+    font-size: 0.92rem;
 }
 
-.opac-search-input:focus {
-    border-color: #00f0ff;
+.opac-search-input:focus,
+.opac-search-input:focus-visible {
+    outline: none !important;
+    border-color: #0284c7 !important;
     background: rgba(15, 23, 42, 0.95);
-    box-shadow: 0 0 22px rgba(0, 240, 255, 0.38),
-                inset 0 0 10px rgba(0, 240, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25),
+                inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
 .opac-input-wrapper:focus-within .opac-search-icon {
-    color: #00f0ff;
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 8px #00f0ff);
+    color: #38bdf8;
+    transform: scale(1.08);
 }
 
 /* Кнопка быстрой очистки поля */
 .opac-clear-btn {
     position: absolute;
-    right: 130px;
-    width: 28px;
-    height: 28px;
+    right: 126px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     border: none;
     background: rgba(255, 255, 255, 0.1);
@@ -394,7 +395,7 @@
     align-items: center;
     justify-content: center;
     padding: 0;
-    transition: all 0.2s var(--opac-smooth-easing);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -420,52 +421,58 @@
     transform: scale(1.1) rotate(90deg);
 }
 
-/* Кнопка «Искать» — стиль Aurora btn-primary */
+/* Кнопка «Искать» — строго по стандарту .btn-primary Aurora */
 .opac-search-btn {
     position: absolute;
-    right: 6px;
+    right: 4px;
     height: 40px;
-    padding: 0 18px;
-    border-radius: 20px;
+    padding: 0 20px;
+    border-radius: var(--radius-pill, 9999px);
     border: none;
-    background: linear-gradient(135deg, #0369a1 0%, #00b4d8 60%, #0891b2 100%);
-    color: #ffffff;
-    font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%));
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+    color: #ffffff !important;
+    font-family: var(--font-body, system-ui, sans-serif);
     font-size: 0.88rem;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     z-index: 2;
-    transition: all 0.22s ease;
-    box-shadow: 0 2px 10px rgba(0, 180, 216, 0.35),
-                0 0 0 1px rgba(0, 240, 255, 0.15);
+    transition: transform var(--duration, 0.2s) var(--ease, ease),
+                box-shadow var(--duration, 0.2s) var(--ease, ease),
+                filter var(--duration, 0.2s) var(--ease, ease);
+    box-shadow: var(--btn-primary-shadow, 0 3px 12px rgba(37, 99, 235, 0.35));
     white-space: nowrap;
     letter-spacing: 0.02em;
     flex-shrink: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .opac-search-btn:hover {
-    background: linear-gradient(135deg, #0284c7 0%, #22d3ee 60%, #06b6d4 100%);
-    box-shadow: 0 4px 18px rgba(0, 240, 255, 0.45),
-                0 0 0 1px rgba(0, 240, 255, 0.3);
     transform: translateY(-1px);
+    filter: brightness(1.1);
+    box-shadow: var(--btn-primary-hover-shadow, 0 6px 20px rgba(37, 99, 235, 0.45));
 }
 
 .opac-search-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(0, 180, 216, 0.4);
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
+.opac-search-btn .icon,
 .opac-search-btn .material-symbols-outlined {
     font-size: 18px;
+    color: #ffffff !important;
 }
 
 .opac-search-btn-text {
     line-height: 1;
+    color: #ffffff !important;
 }
-
 
 /* Горячие чипсы быстрых запросов (.opac-quick-tags) */
 .opac-quick-tags {
@@ -473,53 +480,59 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    padding-top: 2px;
 }
 
 .opac-quick-tags-label {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: #94a3b8;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     user-select: none;
 }
 
 .opac-quick-tags-label .material-symbols-outlined {
     font-size: 16px;
-    color: #fbbf24;
+    color: #38bdf8;
 }
 
+.opac-quick-tag,
 .opac-tag-chip,
 .opac-quick-chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 12px;
-    border-radius: 20px;
+    gap: 5px;
+    height: 30px;
+    padding: 0 14px;
+    border-radius: var(--radius-pill, 9999px);
     background: rgba(56, 189, 248, 0.08);
-    border: 1px solid rgba(56, 189, 248, 0.22);
+    border: 1px solid rgba(56, 189, 248, 0.25);
     color: #7dd3fc;
-    font-size: 0.78rem;
+    font-family: var(--font-body, system-ui, sans-serif);
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s var(--opac-smooth-easing);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
     white-space: nowrap;
 }
 
+.opac-quick-tag:hover,
 .opac-tag-chip:hover,
 .opac-quick-chip:hover {
     background: rgba(56, 189, 248, 0.22);
     border-color: #38bdf8;
     color: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
 }
 
+.opac-quick-tag:active,
 .opac-tag-chip:active,
 .opac-quick-chip:active {
-    transform: scale(0.95);
+    transform: translateY(1px);
 }
 
 /* Панель фильтров (.opac-filters-bar) */
@@ -529,114 +542,132 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-    padding: 10px 24px 14px 24px;
-    background: rgba(10, 15, 30, 0.35);
+    padding: 12px 24px;
+    background: rgba(10, 15, 30, 0.4);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
     box-sizing: border-box;
 }
 
-/* Группа фильтров филиалов */
-.opac-branches-group {
+/* Быстрые чипсы-кнопки филиалов (.opac-branch-chips) — в стиле кнопок Авроры */
+.opac-branch-chips {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    min-width: 0;
-}
-
-.opac-branch-select-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-.opac-branch-select {
-    height: 34px;
-    padding: 0 28px 0 10px;
-    border-radius: 10px;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: #e2e8f0;
-    font-size: 0.82rem;
-    font-weight: 600;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    transition: all 0.2s ease;
-}
-
-.opac-branch-select:hover {
-    border-color: #38bdf8;
-}
-
-.opac-branch-select-icon {
-    position: absolute;
-    right: 8px;
-    font-size: 18px;
-    color: #38bdf8;
-    pointer-events: none;
-}
-
-/* Быстрые чипсы-кнопки филиалов (.opac-branch-chips) */
-.opac-branch-chips {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
 }
 
 .opac-branch-chip {
-    padding: 5px 12px;
-    border-radius: 10px;
-    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--radius-pill, 9999px);
+    font-family: var(--font-body, system-ui, sans-serif);
+    font-size: 0.8125rem;
     font-weight: 600;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #cbd5e1;
     cursor: pointer;
-    transition: all 0.2s var(--opac-smooth-easing);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
     white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
 }
 
 .opac-branch-chip:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.25);
     transform: translateY(-1px);
 }
 
 .opac-branch-chip.is-active {
-    background: rgba(56, 189, 248, 0.22);
-    border-color: #38bdf8;
-    color: #ffffff;
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
-}
-
-/* АКЦЕНТНЫЙ НЕОНОВЫЙ СТИЛЬ ДЛЯ ФИЛИАЛА №4 В ДОБРОМ */
-.opac-branch-chip[data-branch="f4"],
-.opac-branch-chip.is-dobroe,
-.opac-branch-chip.branch-f4-accent {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(6, 182, 212, 0.16) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.45);
-    color: #34d399;
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%)) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
     font-weight: 700;
-    box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 3px 12px rgba(37, 99, 235, 0.35) !important;
 }
 
-.opac-branch-chip[data-branch="f4"]:hover,
-.opac-branch-chip.is-dobroe:hover,
-.opac-branch-chip.branch-f4-accent:hover {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.28) 0%, rgba(6, 182, 212, 0.28) 100%);
+.opac-branch-chip.is-dobroe {
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
+
+.opac-branch-chip.is-dobroe:hover {
+    background: rgba(16, 185, 129, 0.15);
     border-color: #10b981;
+}
+
+.opac-branch-chip.is-dobroe.is-active {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Тумблер «🟢 Только в наличии» */
+.opac-available-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--radius-pill, 9999px);
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    color: #34d399;
+    font-family: var(--font-body, system-ui, sans-serif);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.opac-available-toggle:hover {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: #10b981;
+    transform: translateY(-1px);
+}
+
+.opac-available-toggle input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+.opac-available-toggle .toggle-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.opac-available-toggle .toggle-indicator .check-icon {
+    font-size: 18px;
+    color: #10b981;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    opacity: 0.7;
+}
+
+.opac-available-toggle:has(input:checked) {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-color: transparent;
     color: #ffffff;
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
-    transform: translateY(-2px);
+    font-weight: 700;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35);
+}
+
+.opac-available-toggle:has(input:checked) .check-icon {
+    color: #ffffff;
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .opac-branch-chip[data-branch="f4"].is-active,
@@ -1174,54 +1205,237 @@
 .opac-skeleton-line.w-50 { width: 50%; }
 .opac-skeleton-line.w-35 { width: 35%; }
 
-/* Пустой стейт (Empty State) */
-.opac-empty-state {
+/* ============================================================================
+   5. AURORA WELCOME HERO & NOTICE CARDS (Вместо гигантского Космо)
+   ========================================================================== */
+
+.opac-welcome-hero {
+    max-width: 920px;
+    margin: 16px auto;
+    padding: 24px 20px 32px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 48px 20px;
     text-align: center;
     box-sizing: border-box;
+    width: 100%;
 }
 
-.opac-empty-mascot-wrap {
-    width: 96px;
-    height: 96px;
-    margin-bottom: 16px;
-    position: relative;
+.opac-welcome-header {
+    margin-bottom: 24px;
+}
+
+.opac-welcome-icon-badge {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%));
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.opac-welcome-icon-badge .material-symbols-outlined {
+    font-size: 32px;
+}
+
+.opac-welcome-title {
+    font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.01em;
+}
+
+.opac-welcome-desc {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: #94a3b8;
+    max-width: 620px;
+    margin: 0 auto;
+}
+
+.opac-welcome-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 22px;
+}
+
+.opac-welcome-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
+    user-select: none;
+}
+
+.opac-welcome-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+                0 0 16px rgba(56, 189, 248, 0.15);
+}
+
+.opac-welcome-card:active {
+    transform: translateY(0);
+}
+
+.opac-welcome-card .card-icon-wrap {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.opac-empty-mascot-img {
-    width: 86px;
-    height: 86px;
-    object-fit: contain;
-    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.45));
-    animation: opacCosmoFloat 3s ease-in-out infinite;
+.opac-welcome-card .card-icon-wrap.is-classic {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
 }
 
-@keyframes opacCosmoFloat {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-8px); }
+.opac-welcome-card .card-icon-wrap.is-scifi {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
 }
 
-.opac-empty-title {
+.opac-welcome-card .card-icon-wrap.is-history {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+
+.opac-welcome-card .card-icon-wrap.is-kids {
+    background: rgba(236, 72, 153, 0.15);
+    color: #f472b6;
+}
+
+.opac-welcome-card .card-icon-wrap .material-symbols-outlined {
+    font-size: 22px;
+}
+
+.opac-welcome-card .card-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.opac-welcome-card .card-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 2px;
+}
+
+.opac-welcome-card .card-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opac-welcome-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: var(--radius-pill, 9999px);
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+    text-align: left;
+    max-width: 720px;
+}
+
+.opac-welcome-hint .hint-icon {
+    font-size: 18px;
+    color: #38bdf8;
+    flex-shrink: 0;
+}
+
+/* Информационные карточки notice-card */
+.opac-notice-card {
+    max-width: 580px;
+    margin: 40px auto;
+    padding: 32px 24px;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.opac-notice-card.is-warning {
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: 0 8px 28px rgba(245, 158, 11, 0.15);
+}
+
+.opac-notice-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.opac-notice-icon.is-warning {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+}
+
+.opac-notice-icon .material-symbols-outlined {
+    font-size: 28px;
+}
+
+.opac-notice-title {
     font-family: var(--font-heading, Montserrat, system-ui, sans-serif);
-    font-size: 1.15rem;
+    font-size: 1.18rem;
     font-weight: 700;
     color: #f8fafc;
     margin: 0 0 8px 0;
 }
 
-.opac-empty-desc {
+.opac-notice-desc {
     font-size: 0.88rem;
+    line-height: 1.55;
     color: #94a3b8;
-    max-width: 440px;
-    margin: 0 0 20px 0;
-    line-height: 1.5;
+    margin: 0 0 16px 0;
+    max-width: 480px;
+}
+
+.opac-notice-meta {
+    display: flex;
+    justify-content: center;
 }
 
 /* ============================================================================
@@ -1298,98 +1512,188 @@
 /* Поиск в светлой теме */
 [data-theme="light"] .opac-search-section {
     background: #f8fafc;
-    border-bottom-color: #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 [data-theme="light"] .opac-search-input {
     background: #ffffff;
-    border-color: rgba(2, 132, 199, 0.35);
+    border: 1.5px solid #cbd5e1 !important;
     color: #0f172a;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="light"] .opac-search-input::placeholder {
     color: #94a3b8;
 }
 
-[data-theme="light"] .opac-search-input:focus {
-    border-color: #0284c7;
+[data-theme="light"] .opac-search-input:focus,
+[data-theme="light"] .opac-search-input:focus-visible {
+    outline: none !important;
+    border-color: #0284c7 !important;
     background: #ffffff;
-    box-shadow: 0 0 16px rgba(2, 132, 199, 0.25);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2) !important;
 }
 
-[data-theme="light"] .opac-clear-btn {
-    background: rgba(0, 0, 0, 0.08);
-    color: #64748b;
-}
-
-[data-theme="light"] .opac-tag-chip,
-[data-theme="light"] .opac-quick-chip {
-    background: rgba(2, 132, 199, 0.06);
-    border-color: rgba(2, 132, 199, 0.25);
+[data-theme="light"] .opac-search-icon {
     color: #0284c7;
 }
 
+[data-theme="light"] .opac-clear-btn {
+    background: rgba(0, 0, 0, 0.07);
+    color: #64748b;
+}
+
+[data-theme="light"] .opac-clear-btn:hover {
+    background: rgba(0, 0, 0, 0.14);
+    color: #0f172a;
+}
+
+/* Кнопка «Искать» в светлой теме */
+[data-theme="light"] .opac-search-btn {
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%)) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+[data-theme="light"] .opac-search-btn:hover {
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
+/* Быстрые теги в светлой теме */
+[data-theme="light"] .opac-quick-tags-label {
+    color: #64748b;
+}
+
+[data-theme="light"] .opac-quick-tags-label .material-symbols-outlined {
+    color: #0284c7;
+}
+
+[data-theme="light"] .opac-quick-tag,
+[data-theme="light"] .opac-tag-chip,
+[data-theme="light"] .opac-quick-chip {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .opac-quick-tag:hover,
 [data-theme="light"] .opac-tag-chip:hover,
 [data-theme="light"] .opac-quick-chip:hover {
-    background: rgba(2, 132, 199, 0.14);
+    background: rgba(2, 132, 199, 0.08);
     border-color: #0284c7;
-    color: #0369a1;
+    color: #0284c7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
 }
 
+/* Фильтры в светлой теме */
 [data-theme="light"] .opac-filters-bar {
     background: #f1f5f9;
-    border-bottom-color: #e2e8f0;
-}
-
-[data-theme="light"] .opac-branch-select {
-    background: #ffffff;
-    border-color: rgba(2, 132, 199, 0.3);
-    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 [data-theme="light"] .opac-branch-chip {
     background: #ffffff;
-    border-color: #cbd5e1;
-    color: #334155;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="light"] .opac-branch-chip:hover {
-    background: #f1f5f9;
-    color: #0284c7;
+    background: #f8fafc;
     border-color: #0284c7;
+    color: #0284c7;
 }
 
 [data-theme="light"] .opac-branch-chip.is-active {
-    background: rgba(2, 132, 199, 0.12);
-    border-color: #0284c7;
-    color: #0284c7;
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 100%)) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35) !important;
 }
 
-[data-theme="light"] .opac-branch-chip[data-branch="f4"],
-[data-theme="light"] .opac-branch-chip.is-dobroe,
-[data-theme="light"] .opac-branch-chip.branch-f4-accent {
+[data-theme="light"] .opac-branch-chip.is-dobroe {
     background: #ecfdf5;
     border-color: #10b981;
     color: #059669;
 }
 
-[data-theme="light"] .opac-branch-chip[data-branch="f4"].is-active,
-[data-theme="light"] .opac-branch-chip.is-dobroe.is-active,
-[data-theme="light"] .opac-branch-chip.branch-f4-accent.is-active {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-    color: #ffffff;
+[data-theme="light"] .opac-branch-chip.is-dobroe.is-active {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
 }
 
 [data-theme="light"] .opac-available-toggle {
-    background: #ecfdf5;
-    border-color: rgba(16, 185, 129, 0.35);
-    color: #059669;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="light"] .opac-available-toggle.is-checked {
+[data-theme="light"] .opac-available-toggle:hover {
+    background: #f8fafc;
+    border-color: #10b981;
+}
+
+[data-theme="light"] .opac-available-toggle:has(input:checked) {
     background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-color: transparent;
     color: #ffffff;
+}
+
+/* Welcome Hero в светлой теме */
+[data-theme="light"] .opac-welcome-title {
+    color: #0f172a;
+}
+
+[data-theme="light"] .opac-welcome-desc {
+    color: #64748b;
+}
+
+[data-theme="light"] .opac-welcome-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .opac-welcome-card:hover {
+    background: #f8fafc;
+    border-color: #0284c7;
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.12);
+}
+
+[data-theme="light"] .opac-welcome-card .card-title {
+    color: #0f172a;
+}
+
+[data-theme="light"] .opac-welcome-card .card-sub {
+    color: #64748b;
+}
+
+[data-theme="light"] .opac-welcome-hint {
+    background: rgba(2, 132, 199, 0.06);
+    border-color: rgba(2, 132, 199, 0.18);
+    color: #334155;
+}
+
+[data-theme="light"] .opac-welcome-hint .hint-icon {
+    color: #0284c7;
+}
+
+/* Notice Cards в светлой теме */
+[data-theme="light"] .opac-notice-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .opac-notice-title {
+    color: #0f172a;
+}
+
+[data-theme="light"] .opac-notice-desc {
+    color: #64748b;
 }
 
 /* Карточки в светлой теме */
@@ -1450,28 +1754,26 @@
 }
 
 [data-theme="light"] .opac-ask-cosmo-btn {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-color: rgba(2, 132, 199, 0.35);
-    color: #0284c7;
+    background: var(--btn-primary-bg, linear-gradient(135deg, #0284c7 0%, #2563eb 100%)) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35) !important;
 }
 
 [data-theme="light"] .opac-ask-cosmo-btn:hover {
-    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
+}
+
+[data-theme="light"] .opac-direct-link-btn {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+}
+
+[data-theme="light"] .opac-direct-link-btn:hover {
+    background: rgba(2, 132, 199, 0.08);
     border-color: #0284c7;
-    color: #ffffff;
-    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
-}
-
-[data-theme="light"] .opac-ask-cosmo-btn:hover .material-symbols-outlined {
-    color: #ffffff;
-}
-
-[data-theme="light"] .opac-empty-title {
-    color: #0f172a;
-}
-
-[data-theme="light"] .opac-empty-desc {
-    color: #64748b;
+    color: #0284c7;
 }
 
 [data-theme="light"] .opac-shimmer {
@@ -1543,11 +1845,24 @@
     .opac-search-input {
         height: 44px !important;
         font-size: 0.92rem !important;
-        padding: 0 40px 0 42px !important;
+        padding: 0 120px 0 42px !important;
     }
     .opac-search-icon {
         left: 12px !important;
         font-size: 20px !important;
+    }
+
+    .opac-clear-btn {
+        right: 92px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    .opac-search-btn {
+        right: 4px !important;
+        height: 36px !important;
+        padding: 0 12px !important;
+        font-size: 0.82rem !important;
     }
 
     .opac-filters-bar {
@@ -1564,6 +1879,20 @@
     }
     .opac-branch-chips::-webkit-scrollbar {
         display: none !important;
+    }
+
+    .opac-welcome-hero {
+        padding: 16px 10px 24px 10px !important;
+    }
+    .opac-welcome-title {
+        font-size: 1.15rem !important;
+    }
+    .opac-welcome-desc {
+        font-size: 0.84rem !important;
+    }
+    .opac-welcome-cards {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
     }
 
     /* На мобильных сетка карточек переключается в 1 колонку */
@@ -1588,9 +1917,31 @@
         min-width: 78px !important;
         height: 115px !important;
     }
+
+    .opac-book-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+    .opac-ask-cosmo-btn,
+    .opac-direct-link-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
 }
 
 @media (max-width: 480px) {
+    .opac-search-input {
+        padding: 0 100px 0 38px !important;
+    }
+    .opac-clear-btn {
+        right: 76px !important;
+    }
+    .opac-search-btn {
+        padding: 0 10px !important;
+    }
+    .opac-search-btn .icon {
+        font-size: 16px !important;
+    }
     .opac-book-card {
         flex-direction: column !important;
         align-items: flex-start !important;

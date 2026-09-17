@@ -13,7 +13,7 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.24.2';
-import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.43.2';
+import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.43.3';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -972,7 +972,7 @@ export class CosmoChatModal {
                     </div>
                     <div class="sticker-picker-grid" data-stickers-grid>
                         ${COSMO_STICKERS.map(s => `
-                            <button type="button" class="cosmo-sticker-item" data-sticker-id="${s.id}" title="${escapeHtml(s.title)}">
+                            <button type="button" class="cosmo-sticker-item" data-sticker-id="${s.id}" data-tooltip="${escapeHtml(s.title)}" aria-label="${escapeHtml(s.title)}: ${escapeHtml(s.name)}">
                                 <div class="sticker-item-preview">
                                     <img src="${s.src}?v=4.33.0" alt="${s.id}" class="sticker-thumb" loading="lazy" />
                                 </div>
@@ -2226,7 +2226,10 @@ export class CosmoChatModal {
             this.stickersBackdropEl.classList.add('is-open');
             this.stickersBackdropEl.setAttribute('aria-hidden', 'false');
         }
-        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => btn.classList.add('is-active'));
+        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => {
+            btn.classList.add('is-active');
+            btn.setAttribute('aria-expanded', 'true');
+        });
 
         if (this.mascot && typeof this.mascot.playVoice === 'function' && this.audioEnabled) {
             this.mascot.playVoice('greet_2');
@@ -2242,7 +2245,10 @@ export class CosmoChatModal {
             this.stickersBackdropEl.classList.remove('is-open');
             this.stickersBackdropEl.setAttribute('aria-hidden', 'true');
         }
-        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => btn.classList.remove('is-active'));
+        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => {
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-expanded', 'false');
+        });
     }
 
     /* ---------------------------------------------------------------------
