@@ -1207,24 +1207,8 @@ async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false)
     const onlyAvailable = opacOnlyAvailableEl && opacOnlyAvailableEl.checked;
     const cacheKey = `${query.trim().toLowerCase()}|${currentBranchFilter}|${onlyAvailable ? 1 : 0}|p${page}`;
 
-    // 1. Проверка памяти Map и sessionStorage (0мс без сети)
-    if (!forceRefresh) {
-        if (searchResultsCache.has(cacheKey)) {
-            renderSearchResults(searchResultsCache.get(cacheKey), query);
-            return;
-        }
-        try {
-            const stored = sessionStorage.getItem(`opac_q_v4_${cacheKey}`);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed && parsed.data) {
-                    searchResultsCache.set(cacheKey, parsed.data);
-                    renderSearchResults(parsed.data, query);
-                    return;
-                }
-            }
-        } catch (e) {}
-    }
+    // Кэш результатов поиска отключён — всегда идём в API за свежими данными
+    // (in-memory Map и sessionStorage не используются для поиска по каталогу)
 
     if (currentSearchAbortCtrl) {
         currentSearchAbortCtrl.abort();
@@ -1258,7 +1242,7 @@ async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false)
         const url = resolveApiUrl('api/opac.php') + '?' + params.toString();
         const response = await fetch(url, {
             signal: currentSearchAbortCtrl.signal,
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' }
         });
 
         if (response.status === 429) {
@@ -1285,10 +1269,9 @@ async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false)
         data.page = page;
         data.per_page = CARDS_PER_PAGE;
 
-        searchResultsCache.set(cacheKey, data);
-        try {
-            sessionStorage.setItem(`opac_q_v4_${cacheKey}`, JSON.stringify({ data, ts: Date.now() }));
-        } catch (e) {}
+        // Кэширование результатов отключено — не пишем в Map и sessionStorage
+        // searchResultsCache.set(cacheKey, data);
+        // sessionStorage.setItem(`opac_q_v4_${cacheKey}`, ...);
 
         renderSearchResults(data, query);
 

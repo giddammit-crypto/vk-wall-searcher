@@ -1138,23 +1138,12 @@ function opac_search_raw($query, $length = 5, $start = 0)
     $length = max(1, min(50, (int)$length));
     $start  = max(0, (int)$start);
 
-    // Проверка кэша первого уровня (поисковые запросы)
-    $cacheDir  = opac_get_cache_dir();
-    $cacheKey  = md5($query . '|' . $length . '|' . $start);
-    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . "opac_search_{$cacheKey}.json";
-    $searchTtl = (int)opac_get_config('opac_search_ttl');
+    // Кэш поисковых запросов ОТКЛЮЧЁН — каждый поиск выполняется заново из OPAC
+    // (TTL=0 гарантирует актуальные данные о наличии книг)
+    // $cacheDir  = opac_get_cache_dir();
+    // $cacheKey  = md5($query . '|' . $length . '|' . $start);
+    // $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . "opac_search_{$cacheKey}.json";
 
-    if (is_file($cacheFile)) {
-        $mtime = @filemtime($cacheFile);
-        if ($mtime !== false && (time() - $mtime) < $searchTtl) {
-            $cached = json_decode((string)@file_get_contents($cacheFile), true);
-            if (is_array($cached) && isset($cached['ok'])) {
-                $cached['_cached']    = true;
-                $cached['_cached_at'] = $mtime;
-                return $cached;
-            }
-        }
-    }
 
     // Получение сессии
     $session = opac_get_session(false);
@@ -1214,7 +1203,8 @@ function opac_search_raw($query, $length = 5, $start = 0)
     $parsed['raw_xml']      = $resp['body'];
 
     if ($parsed['ok']) {
-        opac_atomic_write_json($cacheFile, $parsed);
+        // Запись в файловый кэш отключена — результаты всегда актуальны из OPAC
+        // opac_atomic_write_json($cacheFile, $parsed);
     }
 
     return $parsed;
