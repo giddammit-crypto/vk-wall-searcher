@@ -88,26 +88,30 @@ class OpacTestSuite
         $f4 = OpacClient::resolveBranchBySigla('ф4');
         $f4Ok = ($f4 !== null && $f4['is_dobroye'] === true && $f4['is_center'] === false && strpos($f4['address'], 'Егорова') !== false);
 
-        // Проверяем все остальные филиалы Доброго
+        // Проверяем ЦГБ и филиал №9 (Добролит, ул. Юбилейная, 38)
         $cgbAb = OpacClient::resolveBranchBySigla('аб');
         $cgbChz = OpacClient::resolveBranchBySigla('чз');
         $cgbDo = OpacClient::resolveBranchBySigla('до');
         $cgbKh = OpacClient::resolveBranchBySigla('кх');
         $f9 = OpacClient::resolveBranchBySigla('ф9');
+        $f9Ok = ($f9 !== null && $f9['is_dobroye'] === true && strpos($f9['address'], 'Юбилейная') !== false);
+
+        // Проверяем пригородные филиалы (Энергетик, Оргтруд, Заклязьменский, Коммунар) — они НЕ в Добром!
         $f12 = OpacClient::resolveBranchBySigla('ф12');
         $f14 = OpacClient::resolveBranchBySigla('ф14');
         $f15 = OpacClient::resolveBranchBySigla('ф15');
+        $f16 = OpacClient::resolveBranchBySigla('ф16');
 
         $allDobroyeOk = (
-            $f4Ok &&
+            $f4Ok && $f9Ok &&
             $cgbAb['is_dobroye'] && $cgbChz['is_dobroye'] && $cgbDo['is_dobroye'] && $cgbKh['is_dobroye'] &&
-            $f9['is_dobroye'] && $f12['is_dobroye'] && $f14['is_dobroye'] && $f15['is_dobroye']
+            !$f12['is_dobroye'] && !$f14['is_dobroye'] && !$f15['is_dobroye'] && !$f16['is_dobroye']
         );
 
         $this->assert(
-            'Филиал №4 и остальные библиотеки района «Доброе» (ЦГБ, ф4, ф9, ф12, ф14, ф15)',
+            'Филиал №4 (Егорова, 10), филиал №9 (Юбилейная, 38) и ЦГБ — район «Доброе»',
             $allDobroyeOk,
-            "Филиал №4 (Егорова, 10): is_dobroye=true, is_center=false. Все 6 подразделений Доброго верифицированы."
+            "Филиал №4 (Егорова, 10) и Филиал №9 (Юбилейная, 38): is_dobroye=true. Пригородные филиалы (ф12, ф14, ф15, ф16) строго отделены."
         );
     }
 

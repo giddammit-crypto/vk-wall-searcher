@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { escapeHtml } from './branches.js?v=4.23.3';
+import { escapeHtml } from './branches.js?v=4.43.1';
 
 let opacModalEl = null;
 let opacInputEl = null;

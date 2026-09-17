@@ -13,7 +13,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'ЦГБ',
     branchName: 'Центральная городская библиотека, Абонемент',
     department: 'Абонемент',
-    address: 'г. Владимир, Суздальский пр-т, д. 2',
+    address: 'г. Владимир, Суздальский пр., д. 2',
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
@@ -24,7 +24,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'ЦГБ',
     branchName: 'Центральная городская библиотека, Читальный зал',
     department: 'Читальный зал',
-    address: 'г. Владимир, Суздальский пр-т, д. 2',
+    address: 'г. Владимир, Суздальский пр., д. 2',
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
@@ -35,7 +35,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'ЦГБ',
     branchName: 'Центральная городская библиотека, Детский отдел',
     department: 'Детский отдел',
-    address: 'г. Владимир, Суздальский пр-т, д. 2',
+    address: 'г. Владимир, Суздальский пр., д. 2',
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
@@ -46,7 +46,29 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'ЦГБ',
     branchName: 'Центральная городская библиотека, Книгохранилище',
     department: 'Книгохранилище',
-    address: 'г. Владимир, Суздальский пр-т, д. 2',
+    address: 'г. Владимир, Суздальский пр., д. 2',
+    district: 'Доброе',
+    isDobroye: true,
+    isCenter: false,
+    phone: '8(4922) 21-65-63'
+  },
+  'ибо': {
+    code: 'ибо',
+    branchNum: 'ЦГБ',
+    branchName: 'Центральная городская библиотека, ИБО',
+    department: 'Информационно-библиографический отдел',
+    address: 'г. Владимир, Суздальский пр., д. 2',
+    district: 'Доброе',
+    isDobroye: true,
+    isCenter: false,
+    phone: '8(4922) 21-65-63'
+  },
+  'ооо': {
+    code: 'ооо',
+    branchNum: 'ЦГБ',
+    branchName: 'Центральная городская библиотека, Отдел обслуживания',
+    department: 'Отдел обслуживания',
+    address: 'г. Владимир, Суздальский пр., д. 2',
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
@@ -66,14 +88,15 @@ export const VLADIMIR_BRANCH_SIGLAS = {
   },
   'ф1': {
     code: 'ф1',
+    aliases: ['ф1д'],
     branchNum: 'Филиал №1',
     branchName: 'Библиотека — филиал №1',
-    department: 'Взрослый абонемент',
-    address: 'г. Владимир, ул. Горького, д. 69',
-    district: 'Октябрьский',
+    department: 'Взрослый и детский абонементы',
+    address: 'г. Владимир, проспект Строителей, д. 38 а, кв. 44',
+    district: 'Черёмушки / ВлГУ',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 53-29-37'
+    phone: '8(4922) 33-86-23'
   },
   'ф2': {
     code: 'ф2',
@@ -81,11 +104,11 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №2',
     branchName: 'Библиотека — филиал №2',
     department: 'Взрослый и детский абонементы',
-    address: 'г. Владимир, проспект Ленина, д. 12',
-    district: 'Ленинский',
+    address: 'г. Владимир, пр. Ленина, д. 12',
+    district: 'Садовая площадь / «Заря»',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 38-34-47, 32-15-84'
+    phone: '8(4922) 32-15-84, 32-15-85'
   },
   'ф3': {
     code: 'ф3',
@@ -93,11 +116,11 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №3',
     branchName: 'Библиотека — филиал №3',
     department: 'Основной абонемент',
-    address: 'г. Владимир, ул. Большая Нижегородская, д. 67а',
-    district: 'Фрунзенский',
+    address: 'г. Владимир, мкр. Юрьевец, ул. Школьный проезд, д. 4',
+    district: 'мкр. Юрьевец',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 32-36-74'
+    phone: '8(4922) 26-18-74'
   },
   'ф4': {
     code: 'ф4',
@@ -118,34 +141,34 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №5',
     branchName: 'Библиотека — филиал №5',
     department: 'Взрослый и детский абонементы',
-    address: 'г. Владимир, ул. Белоконской, д. 13а',
-    district: 'Октябрьский',
+    address: 'г. Владимир, ул. Верхняя Дуброва, д. 10',
+    district: 'ЮЗР / Верхняя Дуброва',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 53-24-34'
+    phone: '8(4922) 54-28-43'
   },
   'ф6': {
     code: 'ф6',
     branchNum: 'Филиал №6',
     branchName: 'Библиотека — филиал №6',
     department: 'Основной абонемент',
-    address: 'г. Владимир, ул. Батурина, д. 28',
-    district: 'Октябрьский',
+    address: 'г. Владимир, мкр. Юрьевец, Институтский гор., д. 2',
+    district: 'мкр. Юрьевец',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 33-37-00'
+    phone: '8(4922) 45-37-01'
   },
   'ф7': {
     code: 'ф7',
     aliases: ['ф7н', 'ф7нд'],
     branchNum: 'Филиал №7',
     branchName: 'Библиотека — филиал №7',
-    department: 'Модельная библиотека',
-    address: 'г. Владимир, ул. Фатьянова, д. 14',
-    district: 'Юго-Западный',
+    department: 'Основной абонемент',
+    address: 'г. Владимир, ул. Мира, д. 55 (здание ДК Молодежи)',
+    district: 'ДК Молодёжи / Северная',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 38-26-88'
+    phone: '8(4922) 53-45-54'
   },
   'ф8': {
     code: 'ф8',
@@ -153,34 +176,35 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №8',
     branchName: 'Библиотека — филиал №8',
     department: 'Взрослый и детский абонементы',
-    address: 'г. Владимир, ул. Соколова-Соколенка, д. 17в',
-    district: 'Фрунзенский',
+    address: 'г. Владимир, ул. Сурикова, д. 26',
+    district: 'ул. Сурикова / Чайковского',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 21-68-27'
+    phone: '8(4922) 54-65-11'
   },
   'ф9': {
     code: 'ф9',
+    aliases: ['добролит'],
     branchNum: 'Филиал №9',
     branchName: 'Библиотека — филиал №9',
-    department: 'Проект «Добролит»',
-    address: 'г. Владимир, Добросельский проезд, д. 2',
+    department: 'Литературно-краеведческий проект «Добролит»',
+    address: 'г. Владимир, ул. Юбилейная, д. 38',
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
-    phone: '8(4922) 21-58-15'
+    phone: '8(4922) 21-22-75'
   },
   'ф10': {
     code: 'ф10',
     aliases: ['ф10д'],
     branchNum: 'Филиал №10',
     branchName: 'Библиотека — филиал №10',
-    department: 'Детско-юношеский филиал',
-    address: 'г. Владимир, ул. Горького, д. 69',
-    district: 'Октябрьский',
+    department: 'Основной абонемент',
+    address: 'г. Владимир, ул. Диктора Левитана, д. 55',
+    district: 'Диктора Левитана',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 53-29-37'
+    phone: '8(4922) 21-65-63'
   },
   'ф11': {
     code: 'ф11',
@@ -188,11 +212,11 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №11',
     branchName: 'Библиотека — филиал №11',
     department: 'Основной абонемент',
-    address: 'г. Владимир, ул. Мира, д. 90',
-    district: 'Октябрьский',
+    address: 'г. Владимир, мкр. Лесной, ул. Лесная, 10 А',
+    district: 'мкр. Лесной',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 53-39-80'
+    phone: '8(4922) 45-57-17'
   },
   'ф12': {
     code: 'ф12',
@@ -200,47 +224,59 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     branchNum: 'Филиал №12',
     branchName: 'Библиотека — филиал №12',
     department: 'Взрослый и детский абонементы',
-    address: 'г. Владимир, ул. Комиссарова, д. 28',
-    district: 'Доброе',
-    isDobroye: true,
+    address: 'г. Владимир, мкр. Энергетик, ул. Энергетиков, д. 27, кв. 16',
+    district: 'мкр. Энергетик',
+    isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 21-63-93'
+    phone: '8(4922) 26-43-81'
   },
   'ф13': {
     code: 'ф13',
-    aliases: ['ф13н', 'ф13нд'],
+    aliases: ['ф13н', 'ф13нд', 'книголенд'],
     branchNum: 'Филиал №13',
     branchName: 'Библиотека — филиал №13',
-    department: 'Модельная библиотека',
-    address: 'г. Владимир, ул. Верхняя Дуброва, д. 26г',
-    district: 'Юго-Западный',
+    department: 'Библиотечный проект «Книголенд»',
+    address: 'г. Владимир, ул. Горького, д. 69',
+    district: 'ВлГУ / пл. Ленина',
     isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 38-30-26'
+    phone: '8(4922) 33-15-67'
   },
   'ф14': {
     code: 'ф14',
     aliases: ['ф14н', 'ф14нд'],
     branchNum: 'Филиал №14',
     branchName: 'Библиотека — филиал №14',
-    department: 'Модельная библиотека',
-    address: 'г. Владимир, ул. Добросельская, д. 161',
-    district: 'Доброе',
-    isDobroye: true,
+    department: 'Основной абонемент',
+    address: 'г. Владимир, мкр. Оргтруд, ул. Октябрьская, д. 26 «б»',
+    district: 'мкр. Оргтруд',
+    isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 21-68-30'
+    phone: '8(4922) 45-74-69'
   },
   'ф15': {
     code: 'ф15',
     aliases: ['ф15н', 'ф15нд'],
     branchNum: 'Филиал №15',
     branchName: 'Библиотека — филиал №15',
-    department: 'Модельная библиотека',
-    address: 'г. Владимир, ул. Юбилейная, д. 38',
-    district: 'Доброе',
-    isDobroye: true,
+    department: 'Основной абонемент',
+    address: 'г. Владимир, пос. Заклязьменский, ул. Центральная, д. 11 А',
+    district: 'пос. Заклязьменский',
+    isDobroye: false,
     isCenter: false,
-    phone: '8(4922) 21-13-05'
+    phone: '8(4922) 42-53-96'
+  },
+  'ф16': {
+    code: 'ф16',
+    aliases: ['ф16н', 'ф16нд'],
+    branchNum: 'Филиал №16',
+    branchName: 'Библиотека — филиал №16',
+    department: 'Основной абонемент',
+    address: 'г. Владимир, мкр. Коммунар, ул. Песочная, д. 15, кв. 21',
+    district: 'мкр. Коммунар',
+    isDobroye: false,
+    isCenter: false,
+    phone: '8(4922) 42-53-95'
   }
 };
 

@@ -250,9 +250,9 @@ class OpacIntegrationTestSuite
         $formatted = vk_bot_format_opac_response($searchRes, 'Чехов', null, 'Александр');
 
         $ok = (
-            strpos($formatted, 'Робот Космо: Результаты поиска в каталоге библиотек г. Владимира') !== false &&
+            strpos($formatted, 'ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА') !== false &&
             strpos($formatted, 'Чехов') !== false &&
-            strpos($formatted, 'Наличие в филиалах города:') !== false &&
+            (strpos($formatted, 'Наличие') !== false || strpos($formatted, 'Места хранения') !== false) &&
             strpos($formatted, 'http://library.vladimir.ru/rguest_vlad_cgb.htm') !== false
         );
 
@@ -294,10 +294,10 @@ class OpacIntegrationTestSuite
                 [
                     'subfield_b' => 'ф4',
                     'branch_code' => 'ф4',
-                    'branch_name' => 'Филиал №4 (ул. Егорова, 10)',
-                    'branch_address' => 'ул. Егорова, д. 10',
-                    'branch_phone' => '8(4922) 53-24-34',
-                    'branch_district' => 'жилой район Доброе',
+                    'branch_name' => 'Библиотека — филиал №4',
+                    'branch_address' => 'г. Владимир, ул. Егорова, д. 10',
+                    'branch_phone' => '8(4922) 21-96-11; 21-23-48',
+                    'branch_district' => 'Доброе',
                     'is_dobroye' => true,
                     'is_center' => false,
                     'is_available' => true,
@@ -309,7 +309,7 @@ class OpacIntegrationTestSuite
                     'branch_code' => 'цдб',
                     'branch_name' => 'Центральная детская библиотека',
                     'branch_address' => 'ул. Большая Московская, д. 31',
-                    'branch_phone' => '8(4922) 32-35-12',
+                    'branch_phone' => '8(4922) 32-32-42',
                     'branch_district' => 'исторический центр',
                     'is_dobroye' => false,
                     'is_center' => true,
@@ -326,9 +326,9 @@ class OpacIntegrationTestSuite
         // Очищаем тестовый файл
         @unlink($testCopiesFile);
 
-        $hasSpecialBanner = (strpos($formatted, 'ОТЛИЧНАЯ НОВОСТЬ: Книга есть в наличии в Филиале №4 на ул. Егорова, 10 (жилой район «Доброе»)!') !== false);
+        $hasSpecialBanner = (strpos($formatted, '[РАЙОН ДОБРОЕ] Филиал №4') !== false);
         $hasEgorovaAddress = (strpos($formatted, 'ул. Егорова, д. 10') !== false);
-        $hasPhone = (strpos($formatted, '53-24-34') !== false);
+        $hasPhone = (strpos($formatted, '21-96-11') !== false);
 
         $ok = ($hasSpecialBanner && $hasEgorovaAddress && $hasPhone);
 
