@@ -34,6 +34,18 @@ let currentSearchAbortCtrl = null;
 let searchResultsCache = new Map();
 const bookCoversCache = new Map();
 
+// Принудительная очистка старого sessionStorage кэша поиска при загрузке
+// (удаляем opac_q_v4_* ключи с устаревшими данными о филиалах)
+try {
+    const keysToDelete = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith('opac_q_v4_')) keysToDelete.push(k);
+    }
+    keysToDelete.forEach(k => sessionStorage.removeItem(k));
+} catch (e) {}
+
+
 /**
  * Очистка названия для точного поиска обложек
  */
@@ -781,7 +793,14 @@ export function initOpacModal() {
                         </button>
                     </div>
 
+                    <!-- Подсказка о наличии -->
+                    <p class="opac-availability-hint">
+                        <span class="material-symbols-outlined">info</span>
+                        Наличие книги в филиале уточняйте по телефонам филиала!
+                    </p>
+
                     <!-- Горячие чипсы быстрых категорий -->
+
                     <div class="opac-quick-tags">
                         <span class="opac-quick-tags-label">
                             <span class="material-symbols-outlined">trending_up</span>
@@ -824,12 +843,6 @@ export function initOpacModal() {
                                 <option value="f16">📍 Филиал №16 (мкр. Коммунар, ул. Песочная, 15)</option>
                             </select>
                         </div>
-
-                        <label class="opac-available-toggle" title="Показывать только издания, которые прямо сейчас есть на полке">
-                            <input type="checkbox" data-opac-only-available />
-                            <span class="toggle-indicator"><span class="material-symbols-outlined check-icon">check_circle</span></span>
-                            <span class="toggle-label">Только в наличии</span>
-                        </label>
                     </div>
                 </section>
 
@@ -1838,19 +1851,8 @@ function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = nu
         // Формирование бейджа доступности: «🟢 На полке (N экз.)»
         let badgeText = '';
         let badgeClass = '';
-        if (b.available_count > 0) {
-            badgeClass = 'badge-available is-available';
-            if (b.total_count > 1 && b.available_count < b.total_count) {
-                badgeText = `🟢 На полке (${b.available_count} из ${b.total_count} экз.)`;
-            } else if (b.total_count > 1) {
-                badgeText = `🟢 На полке (${b.total_count} экз.)`;
-            } else {
-                badgeText = `🟢 На полке (1 экз.)`;
-            }
-        } else {
-            badgeClass = 'badge-unavailable is-unavailable';
-            badgeText = b.total_count > 1 ? `⏳ На руках (${b.total_count} экз.)` : `⏳ На руках / фонд`;
-        }
+        // Метки наличия убраны по запросу администратора
+        // Наличие уточняется по телефону филиала
 
         const itemClass = [
             'opac-copy-item',
@@ -1865,9 +1867,6 @@ function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = nu
                 <div class="opac-copy-top">
                     <span class="opac-copy-name">
                         ${b.has_target_inv ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isTargetBranch ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isBranch4 ? '🌟 <strong>[Доброе] ' + escapeHtml(bName) + '</strong>' : escapeHtml(bName)))}
-                    </span>
-                    <span class="opac-copy-badge ${badgeClass}">
-                        ${badgeText}
                     </span>
                 </div>
                 <div class="opac-copy-details">
