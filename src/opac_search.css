@@ -2017,6 +2017,7 @@ button.opac-search-btn,
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 8px 18px;
     border-radius: var(--radius-pill, 9999px);

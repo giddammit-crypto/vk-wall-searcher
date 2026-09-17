@@ -816,17 +816,7 @@ export function initOpacModal() {
                         </button>
                     </div>
 
-                    <!-- Подсказка о наличии и обложках -->
-                    <p class="opac-availability-hint">
-                        <span class="material-symbols-outlined">info</span>
-                        Наличие книги в филиале уточняйте по телефонам филиала!
-                        <span class="opac-hint-sep">·</span>
-                        <span class="material-symbols-outlined">auto_stories</span>
-                        Обложки могут отличаться!
-                    </p>
-
                     <!-- Горячие чипсы быстрых категорий -->
-
                     <div class="opac-quick-tags">
                         <span class="opac-quick-tags-label">
                             <span class="material-symbols-outlined">trending_up</span>
@@ -1125,8 +1115,11 @@ function renderInitialState() {
 
             <!-- Лаконичная плашка-подсказка -->
             <div class="opac-welcome-hint">
-                <span class="material-symbols-outlined hint-icon">verified</span>
-                <span><strong>Проверка наличия:</strong> Каталог в реальном времени показывает, свободна ли книга на полке конкретного филиала или выдана на руки.</span>
+                <span class="material-symbols-outlined hint-icon">info</span>
+                <span>Наличие книги в филиале уточняйте по телефонам филиала!</span>
+                <span class="opac-hint-sep">·</span>
+                <span class="material-symbols-outlined hint-icon">auto_stories</span>
+                <span>Обложки могут отличаться!</span>
             </div>
         </div>
     `;
