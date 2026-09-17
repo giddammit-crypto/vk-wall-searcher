@@ -596,7 +596,7 @@ export const OPAC_BRANCH_SIGLAS = {
     },
     'цдб': {
         code: 'цдб',
-        aliases: ['до', 'цдч', 'цди', 'цки'],
+        aliases: ['до', 'цди', 'цки'],
         canonical_id: 'cdb',
         branch_number: 'ЦДБ',
         branchNum: 'ЦДБ',
@@ -610,7 +610,25 @@ export const OPAC_BRANCH_SIGLAS = {
         is_center: true,
         isCenter: true,
         phone: '8(4922) 32-32-42, 32-47-73',
-        permanent_location_pattern: '^ЦГБ-ЦД[БЧИ]'
+        permanent_location_pattern: '^ЦГБ-ЦД[БИ]'
+    },
+    'цдч': {
+        code: 'цдч',
+        aliases: [],
+        canonical_id: 'cgb_cdch',
+        branch_number: 'ЦГБ',
+        branchNum: 'ЦГБ',
+        department: 'Отдел детского чтения',
+        branch_name: 'Центральная городская библиотека, Отдел детского чтения',
+        branchName: 'Центральная городская библиотека, Отдел детского чтения',
+        address: 'г. Владимир, Суздальский пр., д. 2',
+        district: 'Доброе',
+        is_dobroye: true,
+        isDobroye: true,
+        is_center: false,
+        isCenter: false,
+        phone: '8(4922) 21-65-63, 21-66-80',
+        permanent_location_pattern: '^ЦГБ-ЦДЧ'
     },
     'ф1': {
         code: 'ф1',

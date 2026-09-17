@@ -197,7 +197,7 @@
     },
     "цдб": {
       "code": "цдб",
-      "aliases": ["цдч", "цди", "цки"],
+      "aliases": ["цди", "цки"],
       "canonical_id": "cdb",
       "branch_number": "ЦДБ",
       "department": "Центральная детская библиотека",
@@ -207,7 +207,21 @@
       "is_dobroye": false,
       "is_center": true,
       "phone": "8(4922) 32-32-42, 32-47-73",
-      "permanent_location_pattern": "^ЦГБ-ЦД[БЧИ]"
+      "permanent_location_pattern": "^ЦГБ-ЦД[БИ]"
+    },
+    "цдч": {
+      "code": "цдч",
+      "aliases": [],
+      "canonical_id": "cgb_cdch",
+      "branch_number": "ЦГБ",
+      "department": "Отдел детского чтения",
+      "branch_name": "Центральная городская библиотека, Отдел детского чтения",
+      "address": "г. Владимир, Суздальский пр., д. 2",
+      "district": "Доброе",
+      "is_dobroye": true,
+      "is_center": false,
+      "phone": "8(4922) 21-65-63",
+      "permanent_location_pattern": "^ЦГБ-ЦДЧ"
     },
     "ф1": {
       "code": "ф1",
