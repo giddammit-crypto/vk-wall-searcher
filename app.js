@@ -1976,9 +1976,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     elements.statSpeed.textContent = `${speed}/сек`;
                 }
 
-                const activeList = Array.from(activeTargetNames).slice(0, 3).join(', ');
+                const formattedTargets = Array.from(activeTargetNames).slice(0, 3).map(name => {
+                    return name
+                        .replace(/^Библиотека\s*[—–-]\s*филиал\s*/ui, 'Филиал ')
+                        .replace(/^Библиотека\s*[—–-]\s*/ui, '')
+                        .replace(/№\s*(\d+)/g, '№\u00A0$1');
+                });
+                const activeList = formattedTargets.join(', ');
+
                 if (elements.progressTitle) {
-                    elements.progressTitle.textContent = `Параллельное сканирование (${completedTargetsCount}/${resolvedTargets.length} завершено): ${activeList || 'филиалы...'}`;
+                    elements.progressTitle.innerHTML = `
+                        <span class="progress-title-row">
+                            <span class="progress-title-main">Параллельное сканирование</span>
+                            <span class="progress-title-badge">${completedTargetsCount}&nbsp;/&nbsp;${resolvedTargets.length}</span>
+                        </span>
+                        <span class="progress-title-sub" title="${escapeHtml(activeList)}">Опрашиваются: ${escapeHtml(activeList || 'филиалы...')}</span>
+                    `;
                 }
                 if (elements.progressStatusMsg && !state.shouldCancel) {
                     elements.progressStatusMsg.textContent = `Опрос стен батчами (${Math.min(BATCH_SIZE, activeTargetNames.size || 1)} параллельно). Найдено совпадений: ${state.matchedCount}`;
