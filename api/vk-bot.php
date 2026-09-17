@@ -4849,21 +4849,40 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $branch4Available = 0;
 
         foreach ($copies as $c) {
-            $bCode = $c['branch_code'] ?: ($c['subfield_b'] ?: 'ЦГБ');
+            $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
             if (!isset($branchGroups[$bCode])) {
+                $branchPhone = ($c['branch_phone'] ?? '') ?: '';
+                $branchAddress = ($c['branch_address'] ?? '') ?: '';
+                $subB = $c['subfield_b'] ?? '';
+                $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
+
+                if (empty($branchPhone) || empty($branchAddress)) {
+                    if (class_exists('OpacClient')) {
+                        $resSig = OpacClient::resolveBranchBySigla($subB ?: $bCode);
+                        if (!$resSig && !empty($permLoc)) {
+                            $sigLoc = OpacClient::extractSiglaFromPermanentLocation($permLoc);
+                            $resSig = OpacClient::resolveBranchBySigla($sigLoc);
+                        }
+                        if ($resSig) {
+                            if (empty($branchPhone) && !empty($resSig['phone'])) $branchPhone = $resSig['phone'];
+                            if (empty($branchAddress) && !empty($resSig['address'])) $branchAddress = $resSig['address'];
+                        }
+                    }
+                }
+
                 $branchGroups[$bCode] = [
-                    'name'         => $c['branch_name'] ?: 'Библиотека сети',
-                    'address'      => $c['branch_address'] ?: '',
-                    'phone'        => $c['branch_phone'] ?: '',
+                    'name'         => ($c['branch_name'] ?? '') ?: 'Библиотека сети',
+                    'address'      => $branchAddress,
+                    'phone'        => $branchPhone,
                     'district'     => $c['branch_district'] ?? ($c['district'] ?? ''),
                     'is_dobroye'   => !empty($c['is_dobroye']),
                     'is_center'    => !empty($c['is_center']),
-                    'shifr'        => $c['shifr'] ?: '',
+                    'shifr'        => ($c['shifr'] ?? '') ?: '',
                     'available'    => 0,
                     'on_loan'      => 0,
                     'inventories'  => [],
-                    'sub_b'        => $c['subfield_b'] ?? '',
-                    'perm_loc'     => $c['permanent_location'] ?? ($c['location'] ?? '')
+                    'sub_b'        => $subB,
+                    'perm_loc'     => $permLoc
                 ];
             }
 
@@ -4927,12 +4946,13 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
 
         $block .= "   🏛 Наличие по филиалам сети:\n";
         $branchCount = 0;
+        $branchSubBlocks = [];
 
         foreach ($branchGroups as $bg) {
             $branchCount++;
             if ($branchCount > 5) {
                 $remainingBranches = count($branchGroups) - 5;
-                $block .= "     • ... и ещё в {$remainingBranches} библиотеках сети города!\n";
+                $branchSubBlocks[] = "     • ... и ещё в {$remainingBranches} библиотеках сети города!";
                 break;
             }
 
@@ -4945,16 +4965,22 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             $invStr = !empty($bg['inventories']) ? ' [Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
             $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? ' [Шифр: ' . $bg['shifr'] . ']' : '';
 
-            $block .= "     • {$bg['name']}{$districtStr}:\n";
-            $block .= "       ➔ {$statusText} {$siglaBadge}\n";
+            $lines = [];
+            $lines[] = "     • {$bg['name']}{$districtStr}:";
+            $lines[] = "       ➔ {$statusText} {$siglaBadge}";
             if ($shifrStr || $invStr) {
-                $block .= "       🔖{$shifrStr}{$invStr}\n";
+                $lines[] = "       🔖{$shifrStr}{$invStr}";
             }
             if ($bg['address']) {
-                $block .= "       📍 {$bg['address']}";
-                if ($bg['phone']) $block .= " • 📞 {$bg['phone']}";
-                $block .= "\n";
+                $addrLine = "       📍 {$bg['address']}";
+                if ($bg['phone']) $addrLine .= " • 📞 {$bg['phone']}";
+                $lines[] = $addrLine;
             }
+            $branchSubBlocks[] = implode("\n", $lines);
+        }
+
+        if (!empty($branchSubBlocks)) {
+            $block .= implode("\n\n", $branchSubBlocks) . "\n";
         }
 
         $blocks[] = $block;

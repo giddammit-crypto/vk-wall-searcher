@@ -1,8 +1,8 @@
 {
-    "app": "vk-wall-searcher",
-    "version": "4.44.1",
-    "channel": "main",
-    "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-17T14:01:00+03:00",
-    "release_name": "AURORA 4.44.1 — Исправлен отступ поисковой строки OPAC (текст больше не наезжает на лупу)"
+  "app": "vk-wall-searcher",
+  "version": "4.46.0",
+  "channel": "main",
+  "repo": "giddammit-crypto/vk-wall-searcher",
+  "commit_date": "2026-09-17T14:25:00+03:00",
+  "release_name": "AURORA 4.46.0 — Защита сервера от перегрузки (Rate Limiting, Full Cache) + Редизайн и мобильная адаптивность каталога OPAC (3D-обложки, HD Zoom, фильтры, экземпляры филиалов) + пустые строки в ВК-боте"
 }

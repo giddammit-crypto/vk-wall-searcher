@@ -841,14 +841,18 @@ function opac_map_branch($branchCode, $locationStr = '')
 
     // Определение номера филиала
     $targetNum = null;
+    $branchNumInt = null;
 
     // Проверка кодов "ф1", "ф-1", "ф12"
     if (preg_match('/^ф[\s-]*(\d+)/u', $branchCodeClean, $m)) {
         $targetNum = 'Ф-' . (int)$m[1];
+        $branchNumInt = (int)$m[1];
     } elseif (preg_match('/цгб-ф(\d+)/u', $locationClean, $m)) {
         $targetNum = 'Ф-' . (int)$m[1];
+        $branchNumInt = (int)$m[1];
     } elseif (preg_match('/филиал\s*(?:№|no\.|#)?\s*(\d+)/u', $locationClean, $m)) {
         $targetNum = 'Ф-' . (int)$m[1];
+        $branchNumInt = (int)$m[1];
     } elseif (in_array($branchCodeClean, ['аб', 'чз', 'до', 'ибо', 'ооо', 'кх'], true) ||
               strpos($locationClean, 'цгб') !== false) {
         $targetNum = 'ЦГБ';
@@ -858,6 +862,16 @@ function opac_map_branch($branchCode, $locationStr = '')
 
     if ($targetNum !== null) {
         foreach ($branches as $b) {
+            $bNum = $b['branch_num'] ?? '';
+            if ($targetNum === 'ЦГБ' && (strpos($bNum, 'ЦГБ') !== false || ($b['branch_code'] ?? '') === 'ЦГБ')) {
+                return $b;
+            }
+            if ($targetNum === 'ЦДБ' && (strpos($bNum, 'ЦДБ') !== false || ($b['branch_code'] ?? '') === 'ЦДБ')) {
+                return $b;
+            }
+            if ($branchNumInt !== null && preg_match('/(?:№|Ф-|Ф|филиал\s*№?)\s*' . $branchNumInt . '\b/ui', $bNum)) {
+                return $b;
+            }
             if (isset($b['branch_num']) && mb_strtoupper($b['branch_num'], 'UTF-8') === mb_strtoupper($targetNum, 'UTF-8')) {
                 return $b;
             }
@@ -1400,8 +1414,367 @@ function opac_resolve_branch($branchCode, $locationStr = '')
     return opac_map_branch($branchCode, $locationStr);
 }
 
+/**
+ * Высокоточный поиск обложки книги из нескольких независимых источников:
+ * 1. Яндекс Книги (Bookmate API) — эталонные обложки для русскоязычных изданий
+ * 2. ЛитРес (api.litres.ru) — крупнейший каталог лицензионных книг в РФ
+ * 3. Google Books API (поля intitle + inauthor)
+ * 4. OpenLibrary API (до 5 документов)
+ * С серверным кэшированием (TTL 7 дней).
+ *
+ * @param string $rawTitle Заглавие книги
+ * @param string $rawAuthor Автор
+ * @param string $isbn ISBN книги
+ * @return array
+ */
+function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '')
+{
+    $title = trim((string)$rawTitle);
+    $author = trim((string)$rawAuthor);
+    $isbn = preg_replace('/[^0-9Xx]/', '', (string)$isbn);
+
+    if ($title === '' && $isbn === '') {
+        return ['ok' => false, 'found' => false, 'error' => 'Не указано заглавие книги или ISBN'];
+    }
+
+    // Очистка заглавия и автора от библиографического мусора OPAC
+    $cleanTitle = preg_replace('/\[.*$/u', '', $title);
+    $cleanTitle = preg_replace('/\(.*$/u', '', $cleanTitle);
+    $parts = preg_split('/[:;–—]/u', $cleanTitle);
+    $cleanTitle = trim($parts[0] ?? $cleanTitle);
+    $cleanTitle = preg_replace('/[\"\'«»]/u', '', $cleanTitle);
+    $cleanTitle = trim(preg_replace('/\s*\/\s*.*$/u', '', $cleanTitle));
+
+    $cleanAuthor = preg_replace('/\s+[А-ЯA-Z]\.?\s*[А-ЯA-Z]?\.?$/u', '', $author);
+    $authorParts = explode(',', $cleanAuthor);
+    $cleanAuthor = trim($authorParts[0] ?? $cleanAuthor);
+
+    $cacheKey = md5(mb_strtolower($cleanTitle . '|' . $cleanAuthor . '|' . $isbn, 'UTF-8'));
+    $cacheDir = opac_get_cache_dir();
+    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_cov_' . $cacheKey . '.json';
+
+    // 1. Проверка серверного кэша (TTL 7 дней = 604800 сек)
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 604800)) {
+        $cached = @json_decode(@file_get_contents($cacheFile), true);
+        if (is_array($cached)) {
+            $cached['from_cache'] = true;
+            return $cached;
+        }
+    }
+
+    $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+    // 2. Источник: Яндекс Книги (Bookmate API) — открытый каталог качественных обложек
+    $yandexQuery = trim($cleanTitle . ' ' . $cleanAuthor);
+    if ($yandexQuery !== '') {
+        $ch = curl_init('https://api.bookmate.com/api/v5/books/search?query=' . urlencode($yandexQuery));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 4,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_USERAGENT      => $userAgent,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        if ($res) {
+            $data = @json_decode($res, true);
+            if (!empty($data['objects']) && is_array($data['objects'])) {
+                $targetTitle  = mb_strtolower($cleanTitle, 'UTF-8');
+                $targetAuthor = mb_strtolower($cleanAuthor, 'UTF-8');
+                $bestObj = null;
+                $bestScore = -1;
+
+                foreach ($data['objects'] as $obj) {
+                    if (empty($obj['cover']['large']) && empty($obj['cover']['small'])) {
+                        continue;
+                    }
+                    $objTitle   = mb_strtolower(trim($obj['title'] ?? ''), 'UTF-8');
+                    $objAuthors = mb_strtolower(trim($obj['authors'] ?? ''), 'UTF-8');
+                    $score = 10;
+
+                    if ($objTitle === $targetTitle) {
+                        $score += 100;
+                    } elseif (mb_strpos($objTitle, $targetTitle) === 0) {
+                        $score += 50;
+                    } elseif (mb_strpos($objTitle, $targetTitle) !== false) {
+                        $score += 25;
+                    }
+
+                    if ($targetAuthor !== '' && $objAuthors !== '') {
+                        if (mb_strpos($objAuthors, $targetAuthor) !== false) {
+                            $score += 50;
+                        }
+                    }
+
+                    // Штраф для статей, кратких пересказов и сторонних комментариев
+                    if (preg_match('/кратк|комментар|пересказ|стать|анализ|пьес/ui', $objTitle)) {
+                        $score -= 40;
+                    }
+
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestObj = $obj;
+                    }
+                }
+
+                if ($bestObj !== null && $bestScore > 0) {
+                    $coverUrl = $bestObj['cover']['large'] ?? $bestObj['cover']['small'];
+                    $out = [
+                        'ok'        => true,
+                        'found'     => true,
+                        'url'       => $coverUrl,
+                        'source'    => 'Яндекс Книги',
+                        'source_id' => 'yandex',
+                        'color'     => $bestObj['cover']['background_color_hex'] ?? null,
+                        'title'     => $bestObj['title'] ?? $title,
+                        'author'    => $bestObj['authors'] ?? $author,
+                    ];
+                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                    return $out;
+                }
+            }
+        }
+    }
+
+    // 3. Источник: ЛитРес (api.litres.ru) — крупнейший каталог в РФ
+    $litresQuery = $isbn !== '' ? $isbn : trim($cleanTitle . ' ' . $cleanAuthor);
+    if ($litresQuery !== '') {
+        $ch = curl_init('https://api.litres.ru/foundation/api/search?q=' . urlencode($litresQuery) . '&types=text_book');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 4,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_USERAGENT      => $userAgent,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        if ($res) {
+            $data = @json_decode($res, true);
+            $items = $data['payload']['data'] ?? [];
+            if (is_array($items) && !empty($items)) {
+                $targetTitle  = mb_strtolower($cleanTitle, 'UTF-8');
+                $targetAuthor = mb_strtolower($cleanAuthor, 'UTF-8');
+                $bestInst = null;
+                $bestScore = -1;
+
+                foreach ($items as $item) {
+                    $inst = $item['instance'] ?? [];
+                    if (empty($inst['cover_url'])) continue;
+
+                    $iTitle = mb_strtolower(trim($inst['title'] ?? ''), 'UTF-8');
+                    $score = 10;
+
+                    if ($iTitle === $targetTitle) {
+                        $score += 100;
+                    } elseif (mb_strpos($iTitle, $targetTitle) === 0) {
+                        $score += 50;
+                    } elseif (mb_strpos($iTitle, $targetTitle) !== false) {
+                        $score += 25;
+                    }
+
+                    if (preg_match('/кратк|комментар|пересказ|стать|анализ/ui', $iTitle)) {
+                        $score -= 40;
+                    }
+
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestInst = $inst;
+                    }
+                }
+
+                if ($bestInst !== null && $bestScore > 0) {
+                    $out = [
+                        'ok'        => true,
+                        'found'     => true,
+                        'url'       => 'https://cdn.litres.ru' . $bestInst['cover_url'],
+                        'source'    => 'ЛитРес',
+                        'source_id' => 'litres',
+                        'color'     => null,
+                        'title'     => $bestInst['title'] ?? $title,
+                        'author'    => $author,
+                    ];
+                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                    return $out;
+                }
+            }
+        }
+    }
+
+    // 4. Источник: Google Books API
+    $gbQ = $cleanAuthor !== '' ? 'intitle:' . urlencode($cleanTitle) . '+inauthor:' . urlencode($cleanAuthor) : urlencode($cleanTitle);
+    $ch = curl_init('https://www.googleapis.com/books/v1/volumes?q=' . $gbQ . '&maxResults=1&printType=books');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 4,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $res = curl_exec($ch);
+    curl_close($ch);
+    if ($res) {
+        $data = @json_decode($res, true);
+        if (!empty($data['items'][0]['volumeInfo']['imageLinks'])) {
+            $links = $data['items'][0]['volumeInfo']['imageLinks'];
+            $img = $links['extraLarge'] ?? $links['large'] ?? $links['medium'] ?? $links['thumbnail'] ?? $links['smallThumbnail'] ?? null;
+            if ($img) {
+                $img = str_replace('http://', 'https://', $img);
+                $img = str_replace(['&edge=curl', 'zoom=1', 'zoom=5'], ['', 'zoom=2', 'zoom=2'], $img);
+                $out = [
+                    'ok'        => true,
+                    'found'     => true,
+                    'url'       => $img,
+                    'source'    => 'Google Книги',
+                    'source_id' => 'google',
+                    'color'     => null,
+                    'title'     => $data['items'][0]['volumeInfo']['title'] ?? $title,
+                    'author'    => $author,
+                ];
+                @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                return $out;
+            }
+        }
+    }
+
+    // 5. Источник: OpenLibrary
+    $olQ = urlencode($cleanTitle . ' ' . $cleanAuthor);
+    $ch = curl_init('https://openlibrary.org/search.json?q=' . $olQ . '&limit=4');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 4,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $res = curl_exec($ch);
+    curl_close($ch);
+    if ($res) {
+        $data = @json_decode($res, true);
+        if (!empty($data['docs']) && is_array($data['docs'])) {
+            foreach ($data['docs'] as $doc) {
+                if (!empty($doc['cover_i'])) {
+                    $coverUrl = 'https://covers.openlibrary.org/b/id/' . (int)$doc['cover_i'] . '-L.jpg';
+                    $out = [
+                        'ok'        => true,
+                        'found'     => true,
+                        'url'       => $coverUrl,
+                        'source'    => 'OpenLibrary',
+                        'source_id' => 'openlibrary',
+                        'color'     => null,
+                        'title'     => $doc['title'] ?? $title,
+                        'author'    => $author,
+                    ];
+                    @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                    return $out;
+                }
+            }
+        }
+    }
+
+    // Негативный кэш на 24 часа
+    $negOut = ['ok' => true, 'found' => false, 'url' => null, 'source' => null];
+    @file_put_contents($cacheFile, json_encode($negOut, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return $negOut;
+}
+
 // -----------------------------------------------------------------------------
-// 5. Обработчик входящих HTTP / CLI запросов (микросервис API)
+// 5. Защита сервера: IP Rate Limiting и клиентская идентификация
+// -----------------------------------------------------------------------------
+
+/**
+ * Определение реального IP-адреса клиента с учётом прокси Cloudflare / Nginx
+ *
+ * @return string
+ */
+function opac_client_ip()
+{
+    $fwd = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? (string)$_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+    if ($fwd !== '') {
+        $parts = explode(',', $fwd);
+        $ip = trim($parts[0]);
+        if ($ip !== '') return $ip;
+    }
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        return (string)$_SERVER['HTTP_CF_CONNECTING_IP'];
+    }
+    return isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+}
+
+/**
+ * Высоконадежный файловый Rate Limiter с блокировкой flock
+ * Защищает от DoS, спама и перегрузки PHP-процессов и OPAC.
+ *
+ * @param string $action Тип действия (search, copies, cover, status)
+ * @param int $maxPerMinute Лимит запросов в минуту с одного IP (по умолчанию 30)
+ * @param int $maxGlobalMinute Глобальный лимит запросов в минуту на весь сервер (по умолчанию 150)
+ * @return void (при превышении завершает выполнение с HTTP 429)
+ */
+function opac_rate_limit($action = 'search', $maxPerMinute = 30, $maxGlobalMinute = 150)
+{
+    if (PHP_SAPI === 'cli') {
+        return; // CLI вызовы не лимитируются
+    }
+
+    $ip = opac_client_ip();
+    // Локальные запросы сервера не блокируются
+    if ($ip === '127.0.0.1' || $ip === '::1') {
+        return;
+    }
+
+    $cacheDir = opac_get_cache_dir();
+    $rateFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_rate_limit.json';
+    $bucketMinute = (int)floor(time() / 60);
+
+    $fp = @fopen($rateFile, 'c+');
+    if (!$fp) {
+        return;
+    }
+
+    @flock($fp, LOCK_EX);
+    $raw = stream_get_contents($fp);
+    $data = json_decode((string)$raw, true);
+
+    if (!is_array($data) || !isset($data['bucket']) || (int)$data['bucket'] !== $bucketMinute) {
+        $data = [
+            'bucket' => $bucketMinute,
+            'global' => 0,
+            'ips'    => [],
+        ];
+    }
+
+    $ipKey = md5($ip);
+    $currentIpCount = isset($data['ips'][$ipKey]) ? (int)$data['ips'][$ipKey] : 0;
+    $currentGlobal  = isset($data['global']) ? (int)$data['global'] : 0;
+
+    if ($currentIpCount >= $maxPerMinute || $currentGlobal >= $maxGlobalMinute) {
+        @flock($fp, LOCK_UN);
+        @fclose($fp);
+
+        http_response_code(429);
+        header('Retry-After: 5');
+        echo json_encode([
+            'ok'           => false,
+            'rate_limited' => true,
+            'retry_after'  => 5,
+            'error'        => 'Слишком много запросов к каталогу. Пожалуйста, подождите несколько секунд.',
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
+
+    $data['ips'][$ipKey] = $currentIpCount + 1;
+    $data['global']      = $currentGlobal + 1;
+
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode($data));
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+}
+
+// -----------------------------------------------------------------------------
+// 6. Обработчик входящих HTTP / CLI запросов (микросервис API)
 // -----------------------------------------------------------------------------
 
 /**
@@ -1455,6 +1828,11 @@ function opac_handle_http_request()
                     } elseif ($arg1 === 'copies' || $arg1 === 'holdings') {
                         $params['action'] = 'copies';
                         $params['id'] = $argv[2];
+                    } elseif ($arg1 === 'cover') {
+                        $params['action'] = 'cover';
+                        $params['title'] = $argv[2];
+                        if (isset($argv[3])) $params['author'] = $argv[3];
+                        if (isset($argv[4])) $params['isbn'] = $argv[4];
                     }
                 }
             }
@@ -1487,6 +1865,8 @@ function opac_handle_http_request()
 
         // Поиск библиографических записей
         case 'search':
+            opac_rate_limit('search', 30, 150);
+
             $query         = isset($params['query']) ? (string)$params['query'] : (string)($params['q'] ?? '');
             $length        = isset($params['length']) ? (int)$params['length'] : 6;
             $start         = isset($params['start']) ? (int)$params['start'] : 0;
@@ -1500,6 +1880,30 @@ function opac_handle_http_request()
                 $length = max(1, min(8, $length));
             } else {
                 $length = max(1, min(20, $length));
+            }
+
+            // Быстрый возврат из объединённого обогащённого кэша (Full Enriched Cache):
+            // Если запрос с теми же параметрами выполнялся недавно (TTL 2 часа = 7200 сек),
+            // отдаём готовый JSON мгновенно (< 2мс) без единого сетевого запроса к OPAC-Global!
+            $cacheDir      = opac_get_cache_dir();
+            $fullCacheKey  = md5(mb_strtolower($query, 'UTF-8') . '|' . $length . '|' . $start . '|' . ($cascade ? 1 : 0) . '|' . ($includeCopies ? 1 : 0) . '|' . mb_strtolower($branchFilter, 'UTF-8') . '|' . ($onlyAvailable ? 1 : 0));
+            $fullCacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_full_' . $fullCacheKey . '.json';
+
+            if (empty($params['refresh']) && is_file($fullCacheFile)) {
+                $mtime = @filemtime($fullCacheFile);
+                if ($mtime !== false && (time() - $mtime < 7200)) {
+                    $cachedFull = @json_decode(@file_get_contents($fullCacheFile), true);
+                    if (is_array($cachedFull) && !empty($cachedFull['ok'])) {
+                        $cachedFull['_cached']      = true;
+                        $cachedFull['_cached_full'] = true;
+                        $cachedFull['_cached_at']   = $mtime;
+                        if (empty($params['include_xml']) && isset($cachedFull['raw_xml'])) {
+                            unset($cachedFull['raw_xml']);
+                        }
+                        echo json_encode($cachedFull, JSON_UNESCAPED_UNICODE);
+                        exit;
+                    }
+                }
             }
 
             if ($cascade) {
@@ -1643,11 +2047,18 @@ function opac_handle_http_request()
                 unset($result['raw_xml']);
             }
 
+            // Атомарно сохраняем в объединённый кэш (Full Enriched Cache)
+            if (!empty($result['ok'])) {
+                opac_atomic_write_json($fullCacheFile, $result);
+            }
+
             echo json_encode($result, JSON_UNESCAPED_UNICODE);
             exit;
 
         // Получение экземпляров и филиалов по idbr
         case 'copies':
+            opac_rate_limit('copies', 30, 150);
+
             $recordId = isset($params['idbr']) ? (string)$params['idbr'] : (string)($params['id'] ?? ($params['record_id'] ?? ''));
             $result = opac_get_copies_raw($recordId);
 
@@ -1658,11 +2069,22 @@ function opac_handle_http_request()
             echo json_encode($result, JSON_UNESCAPED_UNICODE);
             exit;
 
+        // Поиск обложки книги (Яндекс Книги / Bookmate, ЛитРес, Google Books, OpenLibrary)
+        case 'cover':
+            opac_rate_limit('cover', 30, 150);
+
+            $rawTitle  = isset($params['title']) ? (string)$params['title'] : (string)($params['q'] ?? '');
+            $rawAuthor = isset($params['author']) ? (string)$params['author'] : '';
+            $isbn      = isset($params['isbn']) ? (string)$params['isbn'] : '';
+            $coverRes  = opac_resolve_book_cover($rawTitle, $rawAuthor, $isbn);
+            echo json_encode($coverRes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            exit;
+
         // Очистка кэша
         case 'clear_cache':
             $cacheDir = opac_get_cache_dir();
             $deleted = 0;
-            $patterns = ['opac_search_*.json', 'opac_copies_*.json'];
+            $patterns = ['opac_search_*.json', 'opac_copies_*.json', 'opac_cov_*.json', 'opac_full_*.json', 'opac_rate_limit.json'];
             foreach ($patterns as $pattern) {
                 $files = glob($cacheDir . DIRECTORY_SEPARATOR . $pattern);
                 if ($files) {
@@ -1680,7 +2102,7 @@ function opac_handle_http_request()
             http_response_code(400);
             echo json_encode([
                 'ok'    => false,
-                'error' => "Неизвестное действие '{$action}'. Доступные действия: status, search, copies, clear_cache.",
+                'error' => "Неизвестное действие '{$action}'. Доступные действия: status, search, copies, cover, clear_cache.",
             ], JSON_UNESCAPED_UNICODE);
             exit;
     }

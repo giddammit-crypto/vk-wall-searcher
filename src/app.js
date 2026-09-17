@@ -100,7 +100,7 @@ import {
     initOpacModal,
     openOpacModal,
     closeOpacModal
-} from './opac_modal.js?v=4.44.0';
+} from './opac_modal.js?v=4.46.0';
 
 import {
     initLeagueModal,
@@ -119,7 +119,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.44.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.44.1';
+export const APP_VERSION = '4.46.0';
 
 function initApp() {
 
