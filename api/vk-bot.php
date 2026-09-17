@@ -1482,6 +1482,9 @@ function vk_bot_extract_target_user($msgObj, $text)
     if (preg_match('/(?:vk\.com\/)?id(\d+)/ui', $text, $m)) {
         return (int)$m[1];
     }
+    if (preg_match('/^\s*(\d{1,15})\s*$/ui', $text, $m)) {
+        return (int)$m[1];
+    }
     return 0;
 }
 
@@ -1510,6 +1513,9 @@ function vk_bot_parse_mod_command($userMsg, $msgObj)
     } elseif (preg_match('/^(?:[!|\/]|\b)(?:разбан|unban|разбань|разбанить)\b/ui', $clean)) {
         $type = 'unban';
         $rem = preg_replace('/^(?:[!|\/]|\b)(?:разбан|unban|разбань|разбанить)\b/ui', '', $clean);
+    } elseif (preg_match('/^(?:[!|\/]|\b)(?:kk|кк|амнистия|помиловать|помилование)\b/ui', $clean)) {
+        $type = 'kk';
+        $rem = preg_replace('/^(?:[!|\/]|\b)(?:kk|кк|амнистия|помиловать|помилование)\b/ui', '', $clean);
     } elseif (preg_match('/^(?:[!|\/]|\b)(?:муты|список\s*мутов|muted)\b/ui', $clean)) {
         $type = 'list_mutes';
     } elseif (preg_match('/^(?:[!|\/]|\b)(?:баны|список\s*банов|banned)\b/ui', $clean)) {
@@ -1522,14 +1528,21 @@ function vk_bot_parse_mod_command($userMsg, $msgObj)
 
     $targetId = vk_bot_extract_target_user($msgObj, $rem);
     $remWithoutTarget = preg_replace('/\[(?:id|club)\d+\|[^\]]+\]/ui', '', $rem);
-    $remWithoutTarget = preg_replace('/(?:@|\*)id\d+/ui', '', $remWithoutTarget);
-    $remWithoutTarget = preg_replace('/(?:https?:\/\/)?vk\.com\/[a-zA-Z0-9_.]+/ui', '', $remWithoutTarget);
+    $remWithoutTarget = preg_replace('/(?:@|\*)id\d+\b/ui', '', $remWithoutTarget);
+    $remWithoutTarget = preg_replace('/(?:https?:\/\/)?(?:m\.)?vk\.com\/id\d+\b/ui', '', $remWithoutTarget);
+    if ($targetId > 0 && preg_match('/^\s*id\d+\b/ui', $rem)) {
+        $remWithoutTarget = preg_replace('/^\s*id\d+\b/ui', '', $remWithoutTarget);
+    }
+    if ($targetId > 0 && preg_match('/^\s*\d{1,15}\s*$/u', $rem)) {
+        $remWithoutTarget = '';
+    }
     $remWithoutTarget = trim($remWithoutTarget);
 
     return [
-        'type'     => $type,
-        'target_id'=> $targetId,
-        'rest'     => $remWithoutTarget
+        'type'      => $type,
+        'target_id' => $targetId,
+        'rest'      => $remWithoutTarget,
+        'raw_arg'   => trim($rem)
     ];
 }
 
@@ -2133,6 +2146,341 @@ function vk_bot_unban_user($peerId, $targetId, $cacheDir)
         return true;
     }
     return false;
+}
+
+/**
+ * Сброс счётчика предупреждений и нарушений пользователя (vk_profanity_warns_*.json)
+ */
+function vk_bot_reset_user_warns($peerId, $targetId, $cacheDir)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+    $res = false;
+    foreach (['/vk_profanity_warns_' . $peerId . '.json', '/vk_profanity_' . $peerId . '.json'] as $profFileName) {
+        $file = $cacheDir . $profFileName;
+        if (!file_exists($file)) continue;
+
+        $data = @json_decode(@file_get_contents($file), true);
+        if (!is_array($data)) continue;
+
+        $uKey = (string)$targetId;
+        if (isset($data[$uKey])) {
+            unset($data[$uKey]);
+        }
+
+        $fh = @fopen($file, 'c+');
+        if ($fh) {
+            if (@flock($fh, LOCK_EX)) {
+                ftruncate($fh, 0);
+                rewind($fh);
+                fwrite($fh, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                fflush($fh);
+                @flock($fh, LOCK_UN);
+            }
+            fclose($fh);
+            $res = true;
+        }
+    }
+    return $res;
+}
+
+/**
+ * Комплексная амнистия пользователя: снятие мута, удаление из чёрного списка и сброс варнов
+ */
+function vk_bot_clear_user_sanctions($peerId, $targetId, $cacheDir)
+{
+    if ($peerId <= 0 || $targetId <= 0) return false;
+
+    // 1. Снятие режима молчания
+    vk_bot_unmute_user($peerId, $targetId, $cacheDir);
+
+    // 2. Удаление из чёрного списка беседы
+    vk_bot_unban_user($peerId, $targetId, $cacheDir);
+
+    // 3. Сброс счётчика варнов
+    vk_bot_reset_user_warns($peerId, $targetId, $cacheDir);
+
+    // 4. Удаление временного файла предупреждения о муте
+    $throttleFile = $cacheDir . '/vk_mute_warn_' . $peerId . '_' . $targetId . '.tmp';
+    if (file_exists($throttleFile)) {
+        @unlink($throttleFile);
+    }
+
+    return true;
+}
+
+/**
+ * Умный поиск пользователя по имени, нику, ссылке или ID для модерации (/kk, !размут, !разбан)
+ * Ищет совпадения в:
+ *  а) текущих мутах vk_muted_{peerId}.json
+ *  б) текущих банах vk_banned_{peerId}.json
+ *  в) участниках беседы vk_bot_get_chat_members($peerId, ...)
+ *  г) кэше имен пользователей vk_user_name_*.json
+ *  д) VK API (users.get) при наличии screen_name / никнейма
+ *
+ * @param string $nameQuery       Поисковый запрос (имя, фамилия, ник, ID, ссылка)
+ * @param int    $peerId          ID беседы (2000000000 + chat_id)
+ * @param string $communityToken  Токен сообщества ВКонтакте
+ * @param string $cacheDir        Каталог кэша
+ * @return int ID пользователя (>0) или 0, если пользователь не найден
+ */
+function vk_bot_find_user_by_name($nameQuery, $peerId, $communityToken, $cacheDir)
+{
+    $raw = trim((string)$nameQuery);
+    if ($raw === '') return 0;
+
+    // 1. Быстрая проверка на VK-ссылку или упоминание
+    if (preg_match('/\[(?:id|club)(\d+)\|[^\]]+\]/ui', $raw, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/(?:@|\*)id(\d+)\b/ui', $raw, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/(?:https?:\/\/)?(?:m\.)?vk\.com\/id(\d+)\b/ui', $raw, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/^id(\d+)$/ui', $raw, $m)) {
+        return (int)$m[1];
+    }
+    if (preg_match('/^\d{1,15}$/u', $raw)) {
+        return (int)$raw;
+    }
+
+    // Извлечение никнейма из ссылки или упоминания (например https://vk.com/durov, @durov, *durov)
+    $cleanQuery = $raw;
+    if (preg_match('/(?:https?:\/\/)?(?:m\.)?vk\.com\/([a-zA-Z0-9_.]+)/ui', $cleanQuery, $m)) {
+        $cleanQuery = $m[1];
+    } else {
+        $cleanQuery = ltrim($cleanQuery, '@*');
+    }
+    $cleanQuery = trim($cleanQuery);
+    if ($cleanQuery === '') return 0;
+
+    $qLower = mb_strtolower($cleanQuery, 'UTF-8');
+    $qWords = array_values(array_filter(explode(' ', $qLower), function($w) { return $w !== ''; }));
+
+    // Функция подсчёта релевантности совпадения
+    $calcScore = function($fullName, $firstName, $lastName, $screenName) use ($qLower, $qWords) {
+        $fullNameLower = mb_strtolower(trim((string)$fullName), 'UTF-8');
+        $fnLower       = mb_strtolower(trim((string)$firstName), 'UTF-8');
+        $lnLower       = mb_strtolower(trim((string)$lastName), 'UTF-8');
+        $snLower       = mb_strtolower(trim((string)$screenName), 'UTF-8');
+
+        // 1. Точное совпадение со screen_name (например "durov")
+        if ($snLower !== '' && $snLower === $qLower) {
+            return 100;
+        }
+        // 2. Точное совпадение полного имени ("иван иванов")
+        if ($fullNameLower !== '' && $fullNameLower === $qLower) {
+            return 98;
+        }
+        // 3. Обратный порядок ("иванов иван")
+        if ($fnLower !== '' && $lnLower !== '') {
+            if (trim($lnLower . ' ' . $fnLower) === $qLower) {
+                return 98;
+            }
+        }
+        // 4. Однословный запрос: совпадение по имени или фамилии
+        if (count($qWords) === 1) {
+            if ($fnLower !== '' && $fnLower === $qLower) {
+                return 92;
+            }
+            if ($lnLower !== '' && $lnLower === $qLower) {
+                return 90;
+            }
+            if ($fullNameLower !== '') {
+                $parts = explode(' ', $fullNameLower);
+                if (in_array($qLower, $parts, true)) {
+                    return 91;
+                }
+            }
+        } else {
+            // Многословный запрос: все слова запроса содержатся в имени
+            $allWordsFound = true;
+            foreach ($qWords as $qw) {
+                if (mb_strpos($fullNameLower, $qw) === false) {
+                    $allWordsFound = false;
+                    break;
+                }
+            }
+            if ($allWordsFound) {
+                return 88;
+            }
+        }
+
+        // 5. Префиксное совпадение (начинается с запроса)
+        if ($fnLower !== '' && mb_strpos($fnLower, $qLower) === 0) {
+            return 75;
+        }
+        if ($fullNameLower !== '' && mb_strpos($fullNameLower, $qLower) === 0) {
+            return 72;
+        }
+        if ($snLower !== '' && mb_strpos($snLower, $qLower) === 0) {
+            return 70;
+        }
+
+        // 6. Подстрока (вхождение)
+        if ($fullNameLower !== '' && mb_strpos($fullNameLower, $qLower) !== false) {
+            return 60;
+        }
+        if ($snLower !== '' && mb_strpos($snLower, $qLower) !== false) {
+            return 50;
+        }
+
+        return 0;
+    };
+
+    $bestUserId = 0;
+    $bestScore = 0;
+
+    // а) Поиск в текущих мутах (vk_muted_{peerId}.json) — приоритет нарушителей!
+    if ($peerId > 0) {
+        $muteFile = $cacheDir . '/vk_muted_' . $peerId . '.json';
+        if (file_exists($muteFile)) {
+            $mutes = @json_decode(@file_get_contents($muteFile), true);
+            if (is_array($mutes)) {
+                foreach ($mutes as $uid => $row) {
+                    $uId = (int)($row['user_id'] ?? $uid);
+                    if ($uId <= 0) continue;
+                    $name = (string)($row['user_name'] ?? '');
+                    $parts = explode(' ', $name);
+                    $fn = $parts[0] ?? '';
+                    $ln = $parts[1] ?? '';
+                    $base = $calcScore($name, $fn, $ln, '');
+                    if ($base > 0) {
+                        $score = $base + 25; // Бонус 25 за текущий мут
+                        if ($score > $bestScore) {
+                            $bestScore = $score;
+                            $bestUserId = $uId;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // б) Поиск в текущих банах (vk_banned_{peerId}.json) — приоритет нарушителей!
+    if ($peerId > 0) {
+        $banFile = $cacheDir . '/vk_banned_' . $peerId . '.json';
+        if (file_exists($banFile)) {
+            $bans = @json_decode(@file_get_contents($banFile), true);
+            if (is_array($bans)) {
+                foreach ($bans as $uid => $row) {
+                    $uId = (int)($row['user_id'] ?? $uid);
+                    if ($uId <= 0) continue;
+                    $name = (string)($row['user_name'] ?? '');
+                    $parts = explode(' ', $name);
+                    $fn = $parts[0] ?? '';
+                    $ln = $parts[1] ?? '';
+                    $base = $calcScore($name, $fn, $ln, '');
+                    if ($base > 0) {
+                        $score = $base + 25; // Бонус 25 за текущий бан
+                        if ($score > $bestScore) {
+                            $bestScore = $score;
+                            $bestUserId = $uId;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Если в мутах или банах найден нарушитель с высоким соответствием (score >= 95), возвращаем его сразу
+    if ($bestUserId > 0 && $bestScore >= 95) {
+        return $bestUserId;
+    }
+
+    // в) Поиск в участниках беседы vk_bot_get_chat_members($peerId, ...)
+    if ($peerId > 2000000000) {
+        $membersData = vk_bot_get_chat_members($peerId, $communityToken, $cacheDir);
+        if (!empty($membersData['profiles']) && is_array($membersData['profiles'])) {
+            foreach ($membersData['profiles'] as $prof) {
+                $uId = (int)($prof['id'] ?? 0);
+                if ($uId <= 0) continue;
+                $fn = (string)($prof['first_name'] ?? '');
+                $ln = (string)($prof['last_name'] ?? '');
+                $sn = (string)($prof['screen_name'] ?? '');
+                $fullName = trim($fn . ' ' . $ln);
+                $base = $calcScore($fullName, $fn, $ln, $sn);
+                if ($base > 0) {
+                    $score = $base + 10; // Бонус 10 за участие в беседе
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestUserId = $uId;
+                    }
+                }
+            }
+        }
+    }
+
+    // Если найден участник беседы с отличным соответствием (score >= 95), возвращаем его
+    if ($bestUserId > 0 && $bestScore >= 95) {
+        return $bestUserId;
+    }
+
+    // г) Поиск в кэше имён пользователей vk_user_name_*.json
+    if (is_dir($cacheDir)) {
+        $nameFiles = @glob($cacheDir . '/vk_user_name_*.json');
+        if (is_array($nameFiles)) {
+            foreach ($nameFiles as $file) {
+                $rawContent = @file_get_contents($file);
+                if (!$rawContent) continue;
+                $data = @json_decode($rawContent, true);
+                if (!is_array($data) || empty($data['id'])) continue;
+                $uId = (int)$data['id'];
+                if ($uId <= 0) continue;
+                $fullName = (string)($data['name'] ?? '');
+                $fn = (string)($data['first_name'] ?? '');
+                $parts = explode(' ', $fullName);
+                $ln = $parts[1] ?? '';
+                $base = $calcScore($fullName, $fn, $ln, '');
+                if ($base > 0) {
+                    $score = $base + 5;
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestUserId = $uId;
+                    }
+                }
+            }
+        }
+    }
+
+    // Если найден локальный кандидат с хорошей оценкой (>= 60)
+    if ($bestUserId > 0 && $bestScore >= 60) {
+        return $bestUserId;
+    }
+
+    // д) Fallback: если запрос похож на никнейм/домен ВКонтакте (например: durov), пробуем через users.get
+    if (preg_match('/^[a-zA-Z0-9_.]{2,32}$/u', $cleanQuery) && !empty($communityToken)) {
+        list($httpCode, $resp) = vk_bot_api_call('users.get', [
+            'user_ids' => $cleanQuery,
+            'fields'   => 'first_name,last_name,screen_name'
+        ], $communityToken);
+
+        if ($httpCode === 200 && !empty($resp['response'][0]['id'])) {
+            $u = $resp['response'][0];
+            $foundId = (int)$u['id'];
+            if ($foundId > 0) {
+                $resolvedName = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+                @file_put_contents($cacheDir . '/vk_user_name_' . $foundId . '.json', json_encode([
+                    'id'         => $foundId,
+                    'name'       => $resolvedName !== '' ? $resolvedName : "id{$foundId}",
+                    'first_name' => $u['first_name'] ?? '',
+                    'cached_at'  => time()
+                ], JSON_UNESCAPED_UNICODE));
+                return $foundId;
+            }
+        }
+    }
+
+    return ($bestUserId > 0 && $bestScore >= 50) ? $bestUserId : 0;
+}
+
+/**
+ * Обратная совместимость для поиска пользователя
+ */
+function vk_bot_find_target_by_name($query, $peerId, $cacheDir, $token = '')
+{
+    return vk_bot_find_user_by_name($query, $peerId, $token, $cacheDir);
 }
 
 /**
@@ -4571,6 +4919,7 @@ if ($parsedModCmd !== null || $isQuickMute || $isQuickBan) {
                . "  Примеры: !бан 1 час, !бан 2 часа, !бан сутки флуд, !бан неделя, !бан навсегда.\n"
                . "  💡 Если написать «!бан» в ответ на сообщение без времени — появятся удобные кнопки выбора срока бана!\n"
                . "• !разбан [пользователь] — удалить участника из чёрного списка беседы;\n"
+               . "• /kk [пользователь/имя] — ПОЛНАЯ АМНИСТИЯ: снять мут, удалить из бана и сбросить предупреждения за мат (поддерживает: /kk, !kk, /кк, !кк, имя человека или ответ на сообщение);\n"
                . "• !муты — список текущих замученных участников со сроком окончания;\n"
                . "• !баны — чёрный список участников беседы со сроками блокировки.\n\n"
                . "📌 Команды можно писать через «!», «/» или словами: «Космо, забань на 2 часа». Доступно только администраторам чата.";
@@ -4662,7 +5011,96 @@ if ($parsedModCmd !== null || $isQuickMute || $isQuickBan) {
         exit;
     }
 
+    // Полная амнистия участника (/kk, !kk, /кк, !кк)
+    if ($modType === 'kk') {
+        if ($targetId <= 0) {
+            $searchQuery = trim($rest !== '' ? $rest : ($parsedModCmd['raw_arg'] ?? ''));
+            if ($searchQuery !== '') {
+                $targetId = vk_bot_find_user_by_name($searchQuery, $peerId, $communityToken, $cacheDir);
+            }
+        }
+
+        if ($targetId <= 0) {
+            $rawQuery = trim($rest !== '' ? $rest : ($parsedModCmd['raw_arg'] ?? ''));
+            if ($rawQuery !== '') {
+                $qSafe = htmlspecialchars($rawQuery);
+                $reply = "🔍 Пользователь «{$qSafe}» не найден среди нарушителей, участников беседы или профилей ВКонтакте.\n\n"
+                       . "💡 Подсказка: для снятия ограничений укажите участника:\n"
+                       . "• Ответом на сообщение нарушителя (reply): /kk\n"
+                       . "• По имени или фамилии: /kk Иван или /kk Иван Иванов\n"
+                       . "• По упоминанию или ID: /kk @id12345 или /kk id12345\n"
+                       . "• По ссылке или нику: /kk https://vk.com/durov или /kk durov";
+            } else {
+                $reply = "🕊️ Команда полной амнистии (/kk) снимает мут, удаляет из чёрного списка и сбрасывает предупреждения за мат.\n\n"
+                       . "Пожалуйста, укажите участника одним из способов:\n"
+                       . "• Ответьте на сообщение участника командой: /kk\n"
+                       . "• По имени или фамилии: /kk Иван или /kk Иван Иванов\n"
+                       . "• По упоминанию или ID: /kk @id12345 или /kk id12345\n"
+                       . "• По ссылке или нику: /kk https://vk.com/durov или /kk durov";
+            }
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['thinking'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        }
+
+        if ($targetId === -$vkGroupId) {
+            $reply = "🤖 Я не могу применить команду модерации к самому себе!";
+            vk_bot_send_message([
+                'peer_id'          => $peerId,
+                'message'          => $reply,
+                'attachment'       => $mascotStickers['smile'] ?? null,
+                'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+                'dont_parse_links' => 1
+            ], $communityToken);
+            exit;
+        }
+
+        // Применяем полную амнистию:
+        // 1. Снимаем мут
+        vk_bot_unmute_user($peerId, $targetId, $cacheDir);
+
+        // 2. Удаляем из чёрного списка (разбан)
+        vk_bot_unban_user($peerId, $targetId, $cacheDir);
+
+        // 3. Сбрасываем счётчики нарушений нецензурной лексики (warnings = 0, mutes_count = 0)
+        vk_bot_reset_user_warns($peerId, $targetId, $cacheDir);
+
+        $throttleFile = $cacheDir . '/vk_mute_warn_' . $peerId . '_' . $targetId . '.tmp';
+        if (file_exists($throttleFile)) {
+            @unlink($throttleFile);
+        }
+
+        $targetInfo = vk_bot_get_member_info($peerId, $targetId, $communityToken, $cacheDir);
+        $targetName = htmlspecialchars($targetInfo['name'] ?? "id{$targetId}");
+        if ($targetName === "id{$targetId}") {
+            $targetName = htmlspecialchars(vk_bot_get_user_name($targetId, $communityToken, $cacheDir, $peerId));
+        }
+
+        $reply = "🕊️ Робот Космо полностью снял ВСЕ ограничения с пользователя [id{$targetId}|{$targetName}] по решению администратора [id{$fromId}|{$callerName}]!\n\n"
+               . "✅ Режим молчания (мут) досрочно снят\n"
+               . "✅ Пользователь исключён из чёрного списка (разбан)\n"
+               . "✅ Предупреждения за нецензурную лексику аннулированы (0/3)\n\n"
+               . "Добро пожаловать обратно к комфортному и вежливому общению в нашей библиотечной беседе! 📚✨";
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['smile'] ?? null,
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
     // Для остальных действий (мут, размут, кик, бан, разбан) требуется целевой пользователь
+    if ($targetId <= 0 && ($modType === 'unmute' || $modType === 'unban') && $rest !== '') {
+        $targetId = vk_bot_find_user_by_name($rest, $peerId, $communityToken, $cacheDir);
+    }
     if ($targetId <= 0) {
         $reply = "⚠️ Укажите пользователя для применения команды: ответьте на его сообщение (reply) или укажите ссылку/упоминание (например: !{$modType} @id12345).";
         vk_bot_send_message([
