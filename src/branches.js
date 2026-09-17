@@ -531,7 +531,7 @@ export const OPAC_BRANCH_SIGLAS = {
         canonical_id: 'cdb',
         branch_number: 'ЦДБ',
         branchNum: 'ЦДБ',
-        department: 'Центральная детская библиотека (Детский отдел)',
+        department: 'Центральная детская библиотека',
         branch_name: 'Центральная детская библиотека',
         branchName: 'Центральная детская библиотека',
         address: 'г. Владимир, ул. Большая Московская, д. 31',

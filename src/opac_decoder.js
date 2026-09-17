@@ -34,7 +34,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     code: 'до',
     branchNum: 'ЦДБ',
     branchName: 'Центральная детская библиотека',
-    department: 'Центральная детская библиотека (Детский отдел)',
+    department: 'Центральная детская библиотека',
     address: 'г. Владимир, ул. Большая Московская, д. 31',
     district: 'Исторический центр',
     isDobroye: false,

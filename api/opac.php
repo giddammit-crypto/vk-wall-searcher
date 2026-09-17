@@ -809,6 +809,25 @@ function opac_load_branches()
  */
 function opac_map_branch($branchCode, $locationStr = '')
 {
+    // ЯВНЫЙ ПЕРЕХВАТ: сигла «до» и пермлок «ЦГБ-ДО» — это ВСЕГДА ЦДБ (Центральная детская библиотека)
+    // Адрес: г. Владимир, ул. Большая Московская, д. 31 (исторический центр, НЕ ЦГБ Суздальский пр.!)
+    $bcLow  = mb_strtolower(trim((string)$branchCode), 'UTF-8');
+    $locLow = mb_strtolower(trim((string)$locationStr), 'UTF-8');
+    if ($bcLow === 'до' || $locLow === 'цгб-до' || $locLow === 'до' ||
+        preg_match('/^цгб[-_\s]*до\b/u', $bcLow) || preg_match('/^цгб[-_\s]*до\b/u', $locLow)) {
+        return [
+            'branch_num'  => 'ЦДБ',
+            'branch_name' => 'Центральная детская библиотека',
+            'department'  => 'Центральная детская библиотека',
+            'address'     => 'г. Владимир, ул. Большая Московская, д. 31',
+            'phone'       => '8(4922) 32-32-42, 32-47-73',
+            'district'    => 'Исторический центр',
+            'is_dobroye'  => false,
+            'is_center'   => true,
+            'branch_url'  => 'https://biblioteka33.ru'
+        ];
+    }
+
     // 1. Первичное сопоставление по эталонному библиотечному словарю OpacClient
     if (class_exists('OpacClient')) {
         $resolved = OpacClient::resolveBranchBySigla((string)$branchCode);
