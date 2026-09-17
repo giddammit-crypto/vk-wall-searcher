@@ -587,6 +587,13 @@ if ($eventType === 'message_allow') {
 
     $peerId  = isset($msgObj['peer_id']) ? (int)$msgObj['peer_id'] : 0;
     $fromId  = isset($msgObj['from_id']) ? (int)$msgObj['from_id'] : 0;
+    if ($fromId <= 0) {
+        if (!empty($msgObj['user_id'])) {
+            $fromId = (int)$msgObj['user_id'];
+        } elseif ($peerId > 0 && $peerId < 2000000000) {
+            $fromId = $peerId;
+        }
+    }
     $userMsg = isset($msgObj['text']) ? trim((string)$msgObj['text']) : '';
     $payload = $msgObj['payload'] ?? null;
 }
@@ -1678,70 +1685,135 @@ function vk_bot_get_chat_members($peerId, $token, $cacheDir, $forceRefresh = fal
 }
 
 /**
- * Получение точного имени пользователя из его профиля ВКонтакте (first_name + last_name)
- * с файловым кэшированием на 24 часа и гарантированным fallback на users.get
+ * Получение профиля пользователя ВКонтакте (id, first_name, last_name, name, screen_name)
+ * строго из официального профиля ВК через метод users.get с параметром lang=ru.
+ * Реализует многоуровневый fallback: токен сообщества -> сервисный токен.
+ * Кэширует ТОЛЬКО успешно полученные реальные имена на 1 час (3600 с).
+ * Категорически запрещено кэшировать значение «Читатель»!
  */
-function vk_bot_get_user_name($userId, $token, $cacheDir, $peerId = 0)
+function vk_bot_get_user_profile($userId, $token, $cacheDir)
 {
+    global $serviceToken;
     $userId = (int)$userId;
     if ($userId <= 0) {
-        return 'Читатель';
+        return [
+            'id'          => $userId,
+            'first_name'  => 'Читатель',
+            'last_name'   => '',
+            'name'        => 'Читатель',
+            'screen_name' => ''
+        ];
     }
 
     $cacheFile = $cacheDir . '/vk_user_name_' . $userId . '.json';
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 86400) {
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 3600) {
         $cached = @json_decode(@file_get_contents($cacheFile), true);
-        if (!empty($cached['name']) && $cached['name'] !== 'Участник' && $cached['name'] !== 'Пользователь') {
-            return $cached['name'];
+        if (!empty($cached['name']) && $cached['name'] !== 'Читатель' && $cached['name'] !== 'Участник' && $cached['name'] !== 'Пользователь') {
+            return [
+                'id'          => $userId,
+                'first_name'  => $cached['first_name'] ?? (explode(' ', $cached['name'])[0] ?? $cached['name']),
+                'last_name'   => $cached['last_name'] ?? (explode(' ', $cached['name'])[1] ?? ''),
+                'name'        => $cached['name'],
+                'screen_name' => $cached['screen_name'] ?? ''
+            ];
         }
     }
 
-    $resolvedName = '';
+    $userData = null;
 
-    // 1. Если это беседа — попробуем взять имя из участников беседы
+    // 1. Прямой запрос к официальному профилю ВК через users.get с lang=ru (токен сообщества)
+    if (!empty($token)) {
+        list($httpCode, $resp) = vk_bot_api_call('users.get', [
+            'user_ids' => $userId,
+            'fields'   => 'first_name,last_name,screen_name',
+            'lang'     => 'ru'
+        ], $token);
+
+        if ($httpCode === 200 && !empty($resp['response'][0])) {
+            $userData = $resp['response'][0];
+        }
+    }
+
+    // 2. Резервный запрос через сервисный токен (если communityToken не ответил или вернул ошибку)
+    if (empty($userData) && !empty($serviceToken)) {
+        list($httpCode, $resp) = vk_bot_api_call('users.get', [
+            'user_ids' => $userId,
+            'fields'   => 'first_name,last_name,screen_name',
+            'lang'     => 'ru'
+        ], $serviceToken);
+
+        if ($httpCode === 200 && !empty($resp['response'][0])) {
+            $userData = $resp['response'][0];
+        }
+    }
+
+    if (!empty($userData)) {
+        $fn = trim($userData['first_name'] ?? '');
+        $ln = trim($userData['last_name'] ?? '');
+        $fullName = trim($fn . ' ' . $ln);
+        if ($fullName === '') {
+            $fullName = $fn ?: ($ln ?: 'Читатель');
+        }
+        $screenName = trim($userData['screen_name'] ?? '');
+
+        // Кэшируем ТОЛЬКО реальное имя! Никогда не кэшируем «Читатель»
+        if ($fullName !== 'Читатель' && $fullName !== 'Участник' && $fullName !== 'Пользователь' && $fullName !== '') {
+            @file_put_contents($cacheFile, json_encode([
+                'id'          => $userId,
+                'name'        => $fullName,
+                'first_name'  => $fn ?: $fullName,
+                'last_name'   => $ln,
+                'screen_name' => $screenName,
+                'cached_at'   => time()
+            ], JSON_UNESCAPED_UNICODE));
+
+            return [
+                'id'          => $userId,
+                'first_name'  => $fn ?: $fullName,
+                'last_name'   => $ln,
+                'name'        => $fullName,
+                'screen_name' => $screenName
+            ];
+        }
+    }
+
+    return [
+        'id'          => $userId,
+        'first_name'  => 'Читатель',
+        'last_name'   => '',
+        'name'        => 'Читатель',
+        'screen_name' => ''
+    ];
+}
+
+/**
+ * Получение точного имени пользователя из его профиля ВКонтакте (first_name + last_name)
+ * с приоритетом официального профиля ВК (users.get, lang=ru).
+ */
+function vk_bot_get_user_name($userId, $token, $cacheDir, $peerId = 0)
+{
+    // 1. Первоочередно запрашиваем официальный профиль ВКонтакте
+    $profile = vk_bot_get_user_profile($userId, $token, $cacheDir);
+    if (!empty($profile['name']) && $profile['name'] !== 'Читатель' && $profile['name'] !== 'Участник' && $profile['name'] !== 'Пользователь') {
+        return $profile['name'];
+    }
+
+    // 2. Резерв для беседы: если users.get не вернул профиль — ищем в участниках чата
     if ($peerId > 2000000000) {
         $membersData = vk_bot_get_chat_members($peerId, $token, $cacheDir);
         if (!empty($membersData['profiles'])) {
             foreach ($membersData['profiles'] as $p) {
-                if ((int)($p['id'] ?? 0) === $userId) {
+                if ((int)($p['id'] ?? 0) === (int)$userId) {
                     $fn = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
-                    if ($fn !== '') {
-                        $resolvedName = $fn;
-                        break;
+                    if ($fn !== '' && $fn !== 'Участник' && $fn !== 'Пользователь' && $fn !== 'Читатель') {
+                        return $fn;
                     }
                 }
             }
         }
     }
 
-    // 2. Если имя не найдено среди участников или это ЛС — вызываем users.get
-    if ($resolvedName === '') {
-        list($httpCode, $resp) = vk_bot_api_call('users.get', [
-            'user_ids' => $userId,
-            'fields'   => 'first_name,last_name'
-        ], $token);
-
-        if ($httpCode === 200 && !empty($resp['response'][0])) {
-            $u = $resp['response'][0];
-            $fn = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
-            if ($fn !== '') {
-                $resolvedName = $fn;
-            }
-        }
-    }
-
-    if ($resolvedName === '' || $resolvedName === 'Участник' || $resolvedName === 'Пользователь') {
-        $resolvedName = 'Читатель';
-    }
-
-    @file_put_contents($cacheFile, json_encode([
-        'id'         => $userId,
-        'name'       => $resolvedName,
-        'first_name' => explode(' ', $resolvedName)[0] ?? $resolvedName,
-        'cached_at'  => time()
-    ], JSON_UNESCAPED_UNICODE));
-
-    return $resolvedName;
+    return 'Читатель';
 }
 
 /**
@@ -2713,7 +2785,8 @@ function vk_bot_find_user_by_name($nameQuery, $peerId, $communityToken, $cacheDi
     if (preg_match('/^[a-zA-Z0-9_.]{2,32}$/u', $cleanQuery) && !empty($communityToken)) {
         list($httpCode, $resp) = vk_bot_api_call('users.get', [
             'user_ids' => $cleanQuery,
-            'fields'   => 'first_name,last_name,screen_name'
+            'fields'   => 'first_name,last_name,screen_name',
+            'lang'     => 'ru'
         ], $communityToken);
 
         if ($httpCode === 200 && !empty($resp['response'][0]['id'])) {
@@ -4799,19 +4872,21 @@ function vk_bot_parse_book_query($text)
  * @param string $callerName Имя читателя из профиля ВК
  * @param int $page Номер текущей страницы (1-indexed)
  * @param int $perPage Количество книг на страницу (по умолчанию 3)
+ * @param int $callerId ID читателя ВКонтакте (для кликабельного упоминания)
  * @return string
  */
-function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель', $page = 1, $perPage = 3)
+function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель', $page = 1, $perPage = 3, $callerId = 0)
 {
     $isInvSearch = preg_match('/^IN\s+/i', $query);
     $displayQuery = $isInvSearch ? trim(preg_replace('/^IN\s+/i', '', $query)) : $query;
+    $callerMention = ($callerId > 0) ? "[id{$callerId}|{$callerName}]" : $callerName;
 
     if (!$res || empty($res['ok']) || empty($res['items'])) {
         if ($isInvSearch) {
-            return "🤖📚 Уважаемый [id0|{$callerName}], по инвентарному номеру «№{$displayQuery}» в электронном каталоге библиотек Владимира книга пока не найдена.\n\n"
+            return "🤖📚 Уважаемый {$callerMention}, по инвентарному номеру «№{$displayQuery}» в электронном каталоге библиотек Владимира книга пока не найдена.\n\n"
                  . "💡 Пожалуйста, перепроверьте цифры инвентарного номера или найдите книгу по автору/названию (например: «/поиск Чехов» или «/книга Мастер и Маргарита»). 📖✨";
         }
-        return "🤖📚 Уважаемый [id0|{$callerName}], по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
+        return "🤖📚 Уважаемый {$callerMention}, по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
              . "💡 Совет от робота Космо:\n"
              . "• Проверьте, нет ли опечатки в названии книги или фамилии автора;\n"
              . "• Попробуйте ввести только фамилию автора (например: «/поиск Чехов») или ключевое слово («/книга Мастер»);\n"
@@ -4833,7 +4908,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         : "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}{$pageStr}\n";
 
     $header = "✨📖 ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА 📖✨\n"
-            . "🤖 Робот Космо нашёл для [id0|{$callerName}]:\n"
+            . "🤖 Робот Космо нашёл для {$callerMention}:\n"
             . $queryLine
             . "════════════════════════════════\n\n";
 
@@ -5506,8 +5581,14 @@ $mood = $payloadData['mood'] ?? '';
 $lowerMsg = vk_bot_mb_strtolower($userMsg);
 $cleanMsgForCmd = trim(preg_replace('/[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $userMsg));
 
-// Получаем точное имя читателя из его профиля ВКонтакте (без обобщённых «Участник»)
-$callerName = ($fromId > 0) ? vk_bot_get_user_name($fromId, $communityToken, $cacheDir, $peerId) : 'Читатель';
+// Получаем точный профиль и имя читателя строго из его профиля ВКонтакте (users.get)
+$callerProfile = ($fromId > 0) ? vk_bot_get_user_profile($fromId, $communityToken, $cacheDir) : null;
+$callerName = !empty($callerProfile['name']) && $callerProfile['name'] !== 'Читатель' && $callerProfile['name'] !== 'Участник' && $callerProfile['name'] !== 'Пользователь'
+    ? $callerProfile['name']
+    : (($fromId > 0) ? vk_bot_get_user_name($fromId, $communityToken, $cacheDir, $peerId) : 'Читатель');
+$callerFirstName = !empty($callerProfile['first_name']) && $callerProfile['first_name'] !== 'Читатель' && $callerProfile['first_name'] !== 'Участник' && $callerProfile['first_name'] !== 'Пользователь'
+    ? $callerProfile['first_name']
+    : (explode(' ', $callerName)[0] ?? $callerName);
 
 // -----------------------------------------------------------------------------
 // Диалоговая память и проверка на первый визит пользователя
@@ -6509,7 +6590,8 @@ if ($parsedBookQuery !== null || $cmd === 'opac_help') {
             $parsedBookQuery['branch_filter'] ?? null,
             $callerName,
             $page,
-            $perPage
+            $perPage,
+            $fromId
         );
 
         if ($isVoiceQuery && $voiceTranscribedText !== '') {
@@ -6542,6 +6624,54 @@ if ($parsedBookQuery !== null || $cmd === 'opac_help') {
 
 // Нормализованное сообщение без эмодзи для надёжного матчинга команд кнопок
 $cleanMsgForCmd = trim(preg_replace('/[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $userMsg));
+
+// =============================================================================
+// Сценарий 1c: Вопрос читателя о своём имени («Как меня зовут?», «Ты знаешь моё имя?», «Кто я?»)
+// =============================================================================
+$isNameInquiry = preg_match('/^(?:космо,?\s*)?(?:как\s+(?:меня|мое|моё)\s+зовут|как\s+(?:мое|моё)\s+имя|какое\s+(?:у\s+меня\s+|мо[её]\s+)?имя|ты\s+знаешь\s+(?:как\s+меня\s+зовут|кто\s+я|мо[её]\s+имя|меня)|знаешь\s+меня\??|ты\s+помнишь\s+(?:как\s+меня\s+зовут|кто\s+я|мо[её]\s+имя|меня)|кто\s+я(?:\s+такой)?\??|назови\s+мо[её]\s+имя|скажи\s+мо[её]\s+имя|мо[её]\s+имя\??)\b/ui', $cleanMsgForCmd);
+
+if ($isNameInquiry) {
+    if ($fromId > 0) {
+        $profile = vk_bot_get_user_profile($fromId, $communityToken, $cacheDir);
+        $userFullName = !empty($profile['name']) && $profile['name'] !== 'Читатель' && $profile['name'] !== 'Участник' && $profile['name'] !== 'Пользователь' ? $profile['name'] : $callerName;
+        $userFirstName = !empty($profile['first_name']) && $profile['first_name'] !== 'Читатель' && $profile['first_name'] !== 'Участник' && $profile['first_name'] !== 'Пользователь' ? $profile['first_name'] : (explode(' ', $userFullName)[0] ?? $userFullName);
+
+        if (!$isChat) {
+            $reply = "👋 Вас зовут [id{$fromId}|{$userFullName}]! 🤖✨\n\n"
+                   . "В вашем профиле ВКонтакте указано имя «{$userFullName}». Я всегда обращаюсь к вам с неизменным уважением и помню каждого нашего замечательного читателя!\n\n"
+                   . "Чем я могу помочь вам сегодня, {$userFirstName}? Подобрать увлекательную книгу под настроение, подсказать адреса библиотек Владимира или рассказать о свежих книжных новинках? 📚✨";
+        } else {
+            $reply = "👋 Вас зовут [id{$fromId}|{$userFullName}]! В вашем профиле ВКонтакте указано имя «{$userFullName}». Рад нашему общению в библиотечной беседе! 🤖📚";
+        }
+    } else {
+        $reply = "👋 Здравствуйте, дорогой читатель! В текущем диалоге ваш профиль ВКонтакте отображается как гостевой. С радостью помогу вам сориентироваться в мире книг и библиотек Владимира! 🤖📚";
+    }
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    if (!$isChat) {
+        @file_put_contents($dialogFile, json_encode([
+            'peer_id'    => $peerId,
+            'updated_at' => time(),
+            'messages'   => [
+                ['role' => 'user', 'content' => $userMsg],
+                ['role' => 'assistant', 'content' => $reply]
+            ]
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['smile'] ?? ($mascotStickers['waving'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
 
 // Сценарий 2: Приветственное сообщение при первом заходе / «Начать» / «Кто ты, Космо?» / Информация о роботе
 $isWelcomeQuery = (
@@ -7770,6 +7900,12 @@ SYS;
    - [emotion:sleep] — уютное вечернее чтение, книги перед сном, согревающие душевные истории 💤;
    - [emotion:angry] — строгое вежливое электронное негодование (если спросили про авторов-иноагентов) 🚫;
    - [emotion:idle] — спокойный робот-проводник, справочная информация 🤖.
+
+8. ОБРАЩЕНИЕ К ЧИТАТЕЛЮ ПО ИМЕНИ И ВОПРОСЫ ОБ ИМЕНИ:
+   - В контексте диалога передано реальное имя читателя из его профиля ВКонтакте (например: «Имя читателя (собеседника): Александр Смирнов»).
+   - Обращайся к читателю строго по имени из его профиля ВК (на «вы», например: «Здравствуйте, Александр!», «Уважаемый Александр!»).
+   - СТРОЖАЙШИЙ ЗАПРЕТ НА ВЫМЫСЕЛ ОТЧЕСТВ: категорически запрещено придумывать или дописывать читателю любые отчества (нельзя называть «Александр Владимирович», «Иван Сергеевич» и т.п., если отчество явно не указано в профиле)!
+   - Если читатель спрашивает «Как меня зовут?», «Ты знаешь моё имя?» или «Кто я?», прямо, вежливо и точно назови его имя из профиля ВКонтакте.
 SYS;
 }
 
