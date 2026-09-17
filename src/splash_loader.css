@@ -1,0 +1,338 @@
+/**
+ * Aurora Splash Screen & 3D Cosmo Preloader
+ * Style system for dark space backdrop, curved neon typography, 128px robot stage, and HUD progress bar
+ */
+
+#aurora-splash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #070913;
+    background-image: 
+        radial-gradient(ellipse 60% 50% at 50% 45%, rgba(139, 92, 246, 0.16) 0%, transparent 70%),
+        radial-gradient(circle 320px at 30% 30%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+        radial-gradient(circle 300px at 70% 55%, rgba(236, 72, 153, 0.14) 0%, transparent 60%),
+        radial-gradient(circle 500px at 50% 50%, rgba(7, 9, 19, 0.4) 0%, #070913 100%);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0.65s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+#aurora-splash.aurora-splash-closing {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#aurora-splash.aurora-splash-hidden {
+    display: none !important;
+}
+
+/* Background Canvas for micro-stars and cosmic dust */
+#aurora-splash-stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Top Skip Button */
+.aurora-splash-skip-btn {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(226, 232, 240, 0.85);
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.aurora-splash-skip-btn:hover {
+    color: #ffffff;
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(56, 189, 248, 0.45);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    transform: translateY(-1px);
+}
+
+.aurora-splash-skip-btn:active {
+    transform: translateY(0);
+}
+
+.aurora-splash-skip-kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    margin-left: 2px;
+}
+
+/* Central Stage Container */
+.aurora-splash-stage {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 600px;
+    height: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Arc Container with Curved SVG Typography */
+.aurora-splash-arc-container {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 290px;
+    height: 105px;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 15;
+}
+
+.aurora-splash-arc-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.aurora-splash-arc-letter {
+    font-family: 'Unbounded', 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 21px;
+    letter-spacing: 0.32em;
+    fill: url(#auroraNeonGrad);
+    opacity: 0;
+    transform-origin: center center;
+    filter: drop-shadow(0 0 2px #ffffff) 
+            drop-shadow(0 0 8px rgba(56, 189, 248, 0.95)) 
+            drop-shadow(0 0 18px rgba(139, 92, 246, 0.75)) 
+            drop-shadow(0 0 28px rgba(236, 72, 153, 0.6));
+    transition: opacity 0.45s ease-out, filter 0.45s ease-out;
+}
+
+/* WebGL Robot 3D Canvas Area (Strictly <= 128px height) */
+.aurora-splash-robot-viewport {
+    position: relative;
+    width: 100%;
+    height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 36px;
+}
+
+#aurora-splash-webgl {
+    position: relative;
+    z-index: 12;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-height: 170px;
+    outline: none;
+}
+
+/* Dynamic Hover Shadow & Ion Propulsion Glow */
+.aurora-splash-hover-shadow {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 76px;
+    height: 16px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(2, 4, 10, 0.45) 50%, transparent 80%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 11;
+    filter: blur(4px);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.aurora-splash-ion-glow {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 20px;
+    background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.55) 0%, rgba(139, 92, 246, 0.28) 45%, transparent 75%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+    filter: blur(6px);
+    mix-blend-mode: screen;
+}
+
+/* Bottom Cyber HUD Section */
+.aurora-splash-hud {
+    position: absolute;
+    bottom: 46px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(340px, calc(100vw - 44px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 20;
+}
+
+.aurora-splash-progress-track {
+    position: relative;
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 0, 0, 0.5);
+}
+
+.aurora-splash-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #38bdf8 0%, #8b5cf6 55%, #ec4899 100%);
+    border-radius: 9999px;
+    position: relative;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.75), 0 0 22px rgba(236, 72, 153, 0.5);
+    transition: width 0.06s linear;
+}
+
+/* Photonic Light Sweep running on the progress bar */
+.aurora-splash-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.3) 45%,
+        rgba(255, 255, 255, 0.95) 50%,
+        rgba(56, 189, 248, 0.4) 55%,
+        transparent 80%
+    );
+    animation: auroraSplashSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes auroraSplashSweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+/* Leading Photon Spark at the tip of progress bar */
+.aurora-splash-progress-spark {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translate(50%, -50%);
+    width: 7px;
+    height: 7px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #ffffff, 0 0 12px #38bdf8, 0 0 18px #ec4899;
+}
+
+/* HUD Micro-Typography details */
+.aurora-splash-hud-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.73rem;
+    letter-spacing: 0.12em;
+    color: #94a3b8;
+}
+
+.aurora-splash-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+.aurora-splash-status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 8px #38bdf8;
+    animation: auroraDotPulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes auroraDotPulse {
+    from { opacity: 0.4; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1.3); }
+}
+
+.aurora-splash-percent {
+    font-weight: 700;
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 580px) {
+    .aurora-splash-skip-btn {
+        top: 16px;
+        right: 16px;
+        padding: 6px 12px;
+        font-size: 0.72rem;
+    }
+    .aurora-splash-skip-kbd {
+        display: none;
+    }
+    .aurora-splash-stage {
+        height: 300px;
+    }
+    .aurora-splash-arc-container {
+        width: 260px;
+        height: 95px;
+        top: 18px;
+    }
+    .aurora-splash-arc-letter {
+        font-size: 19px;
+    }
+    .aurora-splash-hud {
+        bottom: 32px;
+        width: calc(100vw - 36px);
+    }
+}

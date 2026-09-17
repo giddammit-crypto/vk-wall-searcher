@@ -222,6 +222,11 @@
     <link rel="stylesheet" href="src/mascot.css?v=4.61.0">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/opac_search.css?v=4.61.0">
+    <link rel="stylesheet" href="src/splash_loader.css?v=5.0.0">
+
+    <!-- Three.js 3D Engine & GLTF Loader -->
+    <script src="assets/vendor/three/three.min.js"></script>
+    <script src="assets/vendor/three/GLTFLoader.js"></script>
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -271,6 +276,84 @@
                 });
             }
         } catch(e) {}
+    })();
+    </script>
+
+    <!-- 8-Second Cinematic 3D Cosmo Preloader & Splash Screen -->
+    <div id="aurora-splash" role="dialog" aria-modal="true" aria-label="Загрузка системы Аврора">
+        <!-- Background Star Dust Canvas -->
+        <canvas id="aurora-splash-stars"></canvas>
+
+        <!-- Top Right Skip Button -->
+        <button id="aurora-splash-skip" class="aurora-splash-skip-btn" title="Пропустить заставку (Esc)" aria-label="Пропустить заставку">
+            <span>Пропустить</span>
+            <span class="material-symbols-outlined" style="font-size:16px;">fast_forward</span>
+            <span class="aurora-splash-skip-kbd">Esc</span>
+        </button>
+
+        <!-- Central Stage -->
+        <div class="aurora-splash-stage">
+            <!-- Curved SVG Typography «КОСМО» -->
+            <div class="aurora-splash-arc-container">
+                <svg class="aurora-splash-arc-svg" viewBox="0 0 290 105">
+                    <defs>
+                        <linearGradient id="auroraNeonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#38bdf8" />
+                            <stop offset="35%" stop-color="#6366f1" />
+                            <stop offset="70%" stop-color="#8b5cf6" />
+                            <stop offset="100%" stop-color="#ec4899" />
+                        </linearGradient>
+                        <path id="cosmo-arc-path" d="M 20,85 A 125,75 0 0,1 270,85" fill="none" />
+                    </defs>
+                    <text class="cosmo-arc-text">
+                        <textPath href="#cosmo-arc-path" startOffset="50%" text-anchor="middle" id="aurora-splash-arc-letters">
+                            <!-- Injected by splash_loader.js: К О С М О -->
+                        </textPath>
+                    </text>
+                </svg>
+            </div>
+
+            <!-- WebGL 3D Robot Viewport (Strictly <= 128px height) -->
+            <div class="aurora-splash-robot-viewport">
+                <canvas id="aurora-splash-webgl"></canvas>
+                <div class="aurora-splash-hover-shadow"></div>
+                <div class="aurora-splash-ion-glow"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Cyber HUD Progress Bar -->
+        <div class="aurora-splash-hud">
+            <div class="aurora-splash-progress-track">
+                <div id="aurora-splash-progress-fill" class="aurora-splash-progress-fill">
+                    <div class="aurora-splash-progress-spark"></div>
+                </div>
+            </div>
+            <div class="aurora-splash-hud-info">
+                <span id="aurora-splash-status" class="aurora-splash-status">
+                    <span class="aurora-splash-status-dot"></span>
+                    <span id="aurora-splash-status-text">ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ...</span>
+                </span>
+                <span id="aurora-splash-percent" class="aurora-splash-percent">0%</span>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.0.0';
+    (function() {
+        try {
+            const p = new URLSearchParams(window.location.search);
+            if (p.get('mode') !== 'shelf_recommend') {
+                window.__auroraSplash = new AuroraSplashLoader({
+                    duration: 8.0,
+                    modelUrl: 'assets/models/cute_robot.glb'
+                });
+            } else {
+                const splash = document.getElementById('aurora-splash');
+                if (splash) splash.style.display = 'none';
+            }
+        } catch(e) {
+            console.warn('[Splash] init error', e);
+        }
     })();
     </script>
 
