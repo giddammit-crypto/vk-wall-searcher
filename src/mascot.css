@@ -7182,10 +7182,21 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
 }
 
 .book-branch-address,
-.book-branch-phone {
+.book-branch-phone,
+.book-branch-inventory {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+.book-branch-inventory {
+    color: #e2e8f0;
+    font-size: 0.74rem;
+    font-weight: 500;
+}
+
+.book-branch-inventory span:not(.branch-meta-icon) {
+    color: #38bdf8;
 }
 
 .branch-meta-icon {

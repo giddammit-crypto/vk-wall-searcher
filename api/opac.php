@@ -747,10 +747,10 @@ function opac_parse_shotform_lines(array $lines)
     }
 
     foreach ($lines as $line) {
-        if (preg_match('/Шифр\s+([^;]+)/u', $line, $mShifr)) {
+        if (preg_match('/(?:Шифр|Шифр\s*хранения)\s*[:№#\s.]*\s*([^;]+)/ui', $line, $mShifr)) {
             $shelfmark = trim($mShifr[1]);
         }
-        if (preg_match('/Инв\.номер\s+([^;]+)/u', $line, $mInv)) {
+        if (preg_match('/(?:Инв\.?\s*(?:номер|№)|Инвентарный\s+номер|Инв\.)\s*[:№#\s.]*\s*([a-zA-Zа-яА-ЯёЁ0-9\/\-_]+)/ui', $line, $mInv)) {
             $inventory = trim($mInv[1]);
         }
         if (preg_match_all('/Место хранения:\s*([^;,\.]+)/u', $line, $mLoc)) {
@@ -978,13 +978,28 @@ function opac_parse_copies_xml($xml)
             );
             $isAvailable = !$isNotAvailable;
 
+            // Извлечение инвентарного номера с максимальным охватом атрибутов и подполей
+            $invCandidate = trim((string)($attrs['inventory'] ?? ''));
+            if ($invCandidate === '') {
+                $invCandidate = trim((string)($subfields['x'] ?? ''));
+            }
+            if ($invCandidate === '') {
+                $invCandidate = trim((string)($attrs['code1'] ?? ''));
+            }
+            if ($invCandidate === '' && !empty($attrs['copy'])) {
+                $parts = explode('/', (string)$attrs['copy']);
+                $invCandidate = trim($parts[0] ?? '');
+            }
+
             // Сопоставление с реестром филиалов
             $branchInfo = opac_map_branch($subB, $loc !== '' ? $loc : $permLoc);
 
             $copies[] = [
-                'inventory'          => $attrs['inventory'] ?? ($subfields['x'] ?? ''),
+                'inventory'          => $invCandidate,
                 'barcode'            => $attrs['barcode'] ?? '',
                 'shifr'              => $attrs['shifr'] ?? ($subfields['j'] ?? ''),
+                'code1'              => $attrs['code1'] ?? '',
+                'copy'               => $attrs['copy'] ?? '',
                 'location'           => $loc,
                 'permanent_location' => $permLoc,
                 'status_code'        => $attrs['status'] ?? '',
@@ -1986,8 +2001,8 @@ function opac_handle_http_request()
             // Если запрос с теми же параметрами выполнялся недавно (TTL 2 часа = 7200 сек),
             // отдаём готовый JSON мгновенно (< 2мс) без единого сетевого запроса к OPAC-Global!
             $cacheDir      = opac_get_cache_dir();
-            $fullCacheKey  = md5(mb_strtolower($query, 'UTF-8') . '|' . $length . '|' . $start . '|' . ($cascade ? 1 : 0) . '|' . ($includeCopies ? 1 : 0) . '|' . mb_strtolower($branchFilter, 'UTF-8') . '|' . ($onlyAvailable ? 1 : 0));
-            $fullCacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_full_' . $fullCacheKey . '.json';
+            $fullCacheKey  = md5('v3|' . mb_strtolower($query, 'UTF-8') . '|' . $length . '|' . $start . '|' . ($cascade ? 1 : 0) . '|' . ($includeCopies ? 1 : 0) . '|' . mb_strtolower($branchFilter, 'UTF-8') . '|' . ($onlyAvailable ? 1 : 0));
+            $fullCacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_full_v3_' . $fullCacheKey . '.json';
 
             if (empty($params['refresh']) && is_file($fullCacheFile)) {
                 $mtime = @filemtime($fullCacheFile);
@@ -2058,6 +2073,30 @@ function opac_handle_http_request()
                             if (($c['subfield_b'] ?? '') === 'ф4' || ($c['branch_code'] ?? '') === 'Филиал №4') {
                                 $hasBranch4 = true;
                             }
+                        }
+
+                        // Гарантируем наличие инвентарного номера у книги и копий
+                        $itemInventory = trim((string)($item['inventory'] ?? ''));
+                        if ($itemInventory === '') {
+                            foreach ($copies as $c) {
+                                if (!empty($c['inventory'])) {
+                                    $itemInventory = trim((string)$c['inventory']);
+                                    break;
+                                }
+                            }
+                            if ($itemInventory !== '') {
+                                $item['inventory'] = $itemInventory;
+                            }
+                        }
+
+                        // Если у книги есть общий инвентарь, проставляем его копиям, у которых он пуст
+                        if ($itemInventory !== '') {
+                            foreach ($copies as &$c) {
+                                if (empty($c['inventory'])) {
+                                    $c['inventory'] = $itemInventory;
+                                }
+                            }
+                            unset($c);
                         }
 
                         $item['copies']           = $copies;

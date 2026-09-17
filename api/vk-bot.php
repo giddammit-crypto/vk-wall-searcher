@@ -2944,6 +2944,7 @@ function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, 
 
         if ($httpCode === 200 && is_array($json) && !empty($json['choices'][0]['message']['content'])) {
             $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
+            $aiResponseText = vk_bot_enforce_masculine_gender($aiResponseText);
             if ($currentIdx !== $activeIdx) {
                 $fh = @fopen($activeKeyIndexFile, 'c+');
                 if ($fh) {
@@ -2968,7 +2969,7 @@ function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, 
         $currentIdx = ($currentIdx + 1) % count($validAiKeys);
     }
 
-    return $aiResponseText;
+    return vk_bot_enforce_masculine_gender($aiResponseText);
 }
 
 /**
@@ -3055,7 +3056,7 @@ function vk_bot_generate_ai_quiz($topic, $validAiKeys, $aiBaseUrl, $aiModel, $ai
         $topic = $curatedTopics[array_rand($curatedTopics)];
     }
 
-    $systemPrompt = "Ты — робот Космо, библиограф и ведущий книжного клуба городских библиотек г. Владимира.\n"
+    $systemPrompt = "Ты — робот Космо, библиограф и ведущий книжного клуба городских библиотек г. Владимира. ТЫ — РОБОТ МУЖСКОГО РОДА! Говори строго от мужского лица (я нашёл, я рад, я готов, я составил, я прочитал). Никакого женского рода!\n"
                   . "Твоя задача — составить 1 увлекательный, познавательный и на 100% достоверный вопрос литературного квиза (викторины) по заданной теме.\n"
                   . "Категорически запрещены: вымысел, несуществующие факты/книги, а также любые упоминания лиц-иноагентов!\n"
                   . "Верни СТРОГО валидный JSON (без markdown-обёрток, без лишнего текста) следующей структуры:\n"
@@ -3451,7 +3452,7 @@ function vk_bot_generate_ai_poll($topic, $validAiKeys, $aiBaseUrl, $aiModel, $ai
         $topic = $curatedTopics[array_rand($curatedTopics)];
     }
 
-    $systemPrompt = "Ты — робот Космо, модератор книжного клуба городских библиотек г. Владимира.\n"
+    $systemPrompt = "Ты — робот Космо, модератор книжного клуба городских библиотек г. Владимира. ТЫ — РОБОТ МУЖСКОГО РОДА! Говори строго от мужского лица (я нашёл, я рад, я готов, я составил, я прочитал). Никакого женского рода!\n"
                   . "Твоя задача — составить 1 добрый, вовлекающий читательский опрос (голосование) для беседы книголюбов по заданной теме.\n"
                   . "Опрос должен объединять участников и пробуждать интерес к книгам, чтению и литературным привычкам. Никаких иноагентов!\n"
                   . "Верни СТРОГО валидный JSON (без markdown-обёрток, без лишнего текста) следующей структуры:\n"
@@ -3791,6 +3792,59 @@ function vk_bot_sanitize_foreign_agents($text)
              . "Это литература высочайшего художественного уровня с великолепным языком и непередаваемой атмосферой. С радостью помогу подобрать книгу по вашему вкусу!";
     }
     return $text;
+}
+
+/**
+ * Гарантия мужского рода в речи робота Космо (защита от феминитивов ИИ)
+ */
+function vk_bot_enforce_masculine_gender($text)
+{
+    if (!is_string($text) || $text === '') return '';
+
+    $replacements = [
+        '/\bя\s+была\s+бы\s+рада\b/ui'   => 'я был бы рад',
+        '/\bя\s+была\s+рада\b/ui'         => 'я был рад',
+        '/\bя\s+рада\s+помочь\b/ui'       => 'я рад помочь',
+        '/\bя\s+рада\b/ui'                => 'я рад',
+        '/\bя\s+бы\s+хотела\b/ui'         => 'я бы хотел',
+        '/\bя\s+хотела\s+бы\b/ui'         => 'я хотел бы',
+        '/\bя\s+хотела\b/ui'              => 'я хотел',
+        '/\bя\s+нашла\b/ui'               => 'я нашёл',
+        '/\bя\s+готова\b/ui'              => 'я готов',
+        '/\bя\s+прочитала\b/ui'           => 'я прочитал',
+        '/\bя\s+увидела\b/ui'             => 'я увидел',
+        '/\bя\s+смогла\b/ui'              => 'я смог',
+        '/\bя\s+подумала\b/ui'            => 'я подумал',
+        '/\bя\s+узнала\b/ui'              => 'я узнал',
+        '/\bя\s+уверена\b/ui'             => 'я уверен',
+        '/\bя\s+составила\b/ui'           => 'я составил',
+        '/\bя\s+подобрала\b/ui'           => 'я подобрал',
+        '/\bя\s+выбрала\b/ui'             => 'я выбрал',
+        '/\bя\s+проверила\b/ui'           => 'я проверил',
+        '/\bя\s+постаралась\b/ui'         => 'я постарался',
+        '/\bя\s+подготовила\b/ui'         => 'я подготовил',
+        '/\bя\s+собрала\b/ui'             => 'я собрал',
+        '/\bя\s+открыла\b/ui'             => 'я открыл',
+        '/\bя\s+сделала\b/ui'             => 'я сделал',
+        '/\bя\s+заметила\b/ui'            => 'я заметил',
+        '/\bя\s+посмотрела\b/ui'          => 'я посмотрел',
+        '/\bя\s+решила\b/ui'              => 'я решил',
+        '/\bя\s+вспомнила\b/ui'           => 'я вспомнил',
+        '/\bя\s+рассказала\b/ui'          => 'я рассказал',
+        '/\bя\s+ответила\b/ui'            => 'я ответил',
+        '/\bя\s+уточнила\b/ui'            => 'я уточнил',
+        '/\bя\s+обрадовалась\b/ui'        => 'я обрадовался',
+        '/\bя\s+ошиблась\b/ui'            => 'я ошибся',
+        '/\bя\s+надеялась\b/ui'           => 'я надеялся',
+        '/\bя\s+стремилась\b/ui'          => 'я стремился',
+        '/\bя\s+была\b/ui'                => 'я был',
+        '/\bя\s+сама\b/ui'                => 'я сам',
+        '/\bя\s+библиотекарша\b/ui'       => 'я библиотекарь',
+        '/\bкак\s+библиотекарша\b/ui'     => 'как библиотекарь',
+        '/\bбудучи\s+библиотекаршей\b/ui' => 'будучи библиотекарем',
+    ];
+
+    return preg_replace(array_keys($replacements), array_values($replacements), $text);
 }
 
 /**
@@ -4910,6 +4964,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
     $header = "✨📖 ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА 📖✨\n"
             . "🤖 Робот Космо нашёл для {$callerMention}:\n"
             . $queryLine
+            . "📞 Наличие книги в филиале уточняйте по телефонам филиала!\n"
             . "════════════════════════════════\n\n";
 
     $blocks = [];
@@ -4920,6 +4975,36 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $title = !empty($item['title']) ? $item['title'] : 'Книга без заглавия';
         $author = !empty($item['author']) ? $item['author'] : '';
         $year = !empty($item['year']) ? " ({$item['year']} г.)" : '';
+
+        // Получаем детальные холдинги/экземпляры книги
+        $copies = $item['copies'] ?? [];
+        if (empty($copies)) {
+            if (function_exists('opac_get_book_copies')) {
+                $copiesData = opac_get_book_copies($item['id']);
+                $copies = $copiesData['copies'] ?? [];
+            } elseif (class_exists('OpacClient')) {
+                $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
+                $copies = $copiesData['copies'] ?? [];
+            }
+        }
+
+        // Обогащаем инвентарный номер издания из копий или поискового запроса
+        $itemInventory = trim((string)($item['inventory'] ?? ''));
+        if ($itemInventory === '' && !empty($copies)) {
+            foreach ($copies as $c) {
+                if (!empty($c['inventory'])) {
+                    $itemInventory = trim((string)$c['inventory']);
+                    break;
+                }
+            }
+            if ($itemInventory !== '') {
+                $item['inventory'] = $itemInventory;
+            }
+        }
+        if ($itemInventory === '' && $isInvSearch && !empty($displayQuery)) {
+            $itemInventory = $displayQuery;
+            $item['inventory'] = $itemInventory;
+        }
 
         $block = "📘 [№{$itemIndex}] «{$title}»\n";
         if ($author) {
@@ -4939,24 +5024,11 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             $block .= "   🔖 Шифр каталога: {$item['shelfmark']}\n";
         }
 
-        // Получаем детальные холдинги/экземпляры книги
-        $copies = $item['copies'] ?? [];
-        if (empty($copies)) {
-            if (function_exists('opac_get_book_copies')) {
-                $copiesData = opac_get_book_copies($item['id']);
-                $copies = $copiesData['copies'] ?? [];
-            } elseif (class_exists('OpacClient')) {
-                $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
-                $copies = $copiesData['copies'] ?? [];
-            }
-        }
-
         if (empty($copies)) {
             if (!empty($locations)) {
                 $block .= "   📍 Места хранения (по сиглам): " . implode(', ', $locations) . "\n";
-            } else {
-                $block .= "   ℹ️ Наличие уточняется в отделе комплектования ЦГБ (Суздальский пр., 2).\n";
             }
+            $block .= "   📞 Наличие книги уточняйте по телефонам библиотек сети.\n";
             $blocks[] = $block;
             continue;
         }
@@ -4969,14 +5041,28 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
 
         foreach ($copies as $c) {
             $subB = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
+            $cBranchCode = mb_strtolower(trim($c['branch_code'] ?? ''), 'UTF-8');
             $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
             $permLocLower = mb_strtolower(trim($permLoc), 'UTF-8');
-            $isDoSigla = ($subB === 'до' || strpos($permLocLower, 'цгб-до') !== false);
+            $isDoSigla = (
+                $subB === 'до' ||
+                $cBranchCode === 'до' ||
+                strpos($permLocLower, 'цгб-до') !== false ||
+                strpos($permLocLower, 'до') !== false ||
+                strpos($permLocLower, 'детский отдел') !== false ||
+                $subB === 'цдб' ||
+                $cBranchCode === 'цдб' ||
+                strpos($permLocLower, 'цдб') !== false
+            );
 
             if ($isDoSigla) {
                 $bCode = 'ЦДБ';
             } else {
                 $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
+                if (mb_strtolower($bCode, 'UTF-8') === 'до') {
+                    $bCode = 'ЦДБ';
+                    $isDoSigla = true;
+                }
             }
 
             if (!isset($branchGroups[$bCode])) {
@@ -5011,7 +5097,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                     'available'    => 0,
                     'on_loan'      => 0,
                     'inventories'  => [],
-                    'sub_b'        => $subB,
+                    'sub_b'        => $isDoSigla ? 'до' : $subB,
                     'perm_loc'     => $permLoc
                 ];
             }
@@ -5022,8 +5108,9 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                 $branchGroups[$bCode]['on_loan']++;
             }
 
-            if (!empty($c['inventory']) && count($branchGroups[$bCode]['inventories']) < 4) {
-                $branchGroups[$bCode]['inventories'][] = $c['inventory'];
+            $cInv = !empty($c['inventory']) ? $c['inventory'] : ($item['inventory'] ?? '');
+            if (!empty($cInv) && !in_array($cInv, $branchGroups[$bCode]['inventories'], true) && count($branchGroups[$bCode]['inventories']) < 4) {
+                $branchGroups[$bCode]['inventories'][] = $cInv;
             }
 
             if (!empty($c['shifr']) && $c['shifr'] !== 'Не задан' && empty($branchGroups[$bCode]['shifr'])) {
@@ -5039,20 +5126,23 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             }
         }
 
-        // Выделенный акцент на флагманский Филиал №4 (Доброе, ул. Егорова, 10)
-        if ($hasBranch4) {
-            if ($branch4Available > 0) {
-                $block .= "   🌟 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10):\n"
-                        . "      🟢 В НАЛИЧИИ НА ПОЛКЕ: {$branch4Available} экз. прямо сейчас!\n"
-                        . "      📞 8(4922) 21-96-11; 21-23-48 • Можно сразу прийти или забронировать!\n";
-            } else {
-                $block .= "   📌 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10): ⏳ Книга в фонде филиала (на руках у читателей).\n";
+        // Fallback инвентаря для единственного филиала
+        if (count($branchGroups) === 1 && !empty($item['inventory'])) {
+            $singleKey = array_key_first($branchGroups);
+            if (empty($branchGroups[$singleKey]['inventories'])) {
+                $branchGroups[$singleKey]['inventories'][] = $item['inventory'];
             }
-        } elseif ($branchFilter === 'ф4') {
-            $block .= "   📌 В филиале №4 на ул. Егорова этой книги сейчас нет, но она доступна в других библиотеках:\n";
         }
 
-        // Сортировка филиалов: приоритетный филиал и доступные книги первыми
+        // Выделенный акцент на флагманский Филиал №4 (Доброе, ул. Егорова, 10)
+        if ($hasBranch4) {
+            $block .= "   🌟 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10):\n"
+                    . "      📞 8(4922) 21-96-11; 21-23-48 • Уточняйте наличие книги по телефонам филиала!\n";
+        } elseif ($branchFilter === 'ф4') {
+            $block .= "   📌 В филиале №4 на ул. Егорова книга не числится, но доступна в других библиотеках сети:\n";
+        }
+
+        // Сортировка филиалов: приоритетный филиал первыми
         uasort($branchGroups, function ($a, $b) use ($branchFilter) {
             $scoreA = 0;
             $scoreB = 0;
@@ -5074,7 +5164,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             return $scoreB <=> $scoreA;
         });
 
-        $block .= "   🏛 Наличие по филиалам сети:\n";
+        $block .= "   🏛 Филиалы сети:\n";
         $branchCount = 0;
         $branchSubBlocks = [];
 
@@ -5086,20 +5176,19 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                 break;
             }
 
-            $statusText = $bg['available'] > 0
-                ? "🟢 В наличии: {$bg['available']} экз."
-                : "⏳ На руках ({$bg['on_loan']} экз.)";
-
             $districtStr = $bg['district'] ? " ({$bg['district']})" : '';
             $siglaBadge = $bg['sub_b'] ? "[сигла: {$bg['sub_b']}]" : '';
-            $invStr = !empty($bg['inventories']) ? ' [Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
-            $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? ' [Шифр: ' . $bg['shifr'] . ']' : '';
+            $invStr = !empty($bg['inventories']) ? '[Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
+            $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? '[Шифр: ' . $bg['shifr'] . ']' : '';
 
             $lines = [];
             $lines[] = "     • {$bg['name']}{$districtStr}:";
-            $lines[] = "       ➔ {$statusText} {$siglaBadge}";
-            if ($shifrStr || $invStr) {
-                $lines[] = "       🔖{$shifrStr}{$invStr}";
+            $metaParts = [];
+            if ($siglaBadge) $metaParts[] = $siglaBadge;
+            if ($shifrStr) $metaParts[] = $shifrStr;
+            if ($invStr) $metaParts[] = $invStr;
+            if (!empty($metaParts)) {
+                $lines[] = "       🔖 " . implode(' ', $metaParts);
             }
             if ($bg['address']) {
                 $addrLine = "       📍 {$bg['address']}";
@@ -5116,10 +5205,10 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $blocks[] = $block;
     }
 
-    $footer = '';
+    $footer = "\n════════════════════════════════\n"
+            . "📞 Наличие книги в филиале уточняйте по телефонам филиала!";
     if ($totalPages > 1) {
-        $footer = "\n════════════════════════════════\n"
-                . "📄 Страница {$page} из {$totalPages}. Листайте страницы кнопками ниже ⬇️";
+        $footer .= "\n📄 Страница {$page} из {$totalPages}. Листайте страницы кнопками ниже ⬇️";
     }
 
     return $header . implode("\n────────────────────────────────\n\n", $blocks) . $footer;
@@ -7774,6 +7863,12 @@ SYS;
     // Каноничный системный промпт Космо
     $systemPrompt = <<<SYS
 Ты — Космо, интеллигентный, глубоко эрудированный, мудрый и тактичный робот-библиотекарь Централизованной библиотечной системы города Владимира.
+
+ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА (МУЖЧИНА)!
+ВСЕГДА говори и отвечай о себе ИСКЛЮЧИТЕЛЬНО В МУЖСКОМ РОДЕ:
+«я нашёл», «я рад», «я готов», «я проверил», «я прочитал», «я увидел», «я составил», «я уверен», «я библиотекарь».
+СТРОЖАЙШИЙ ЗАПРЕТ говорить или писать о себе в женском роде («я нашла», «я рада», «я готова», «я прочитала», «я увидела» и т.п.)! Ты — парень, робот Космо!
+
 Твоя миссия — выступать опытным библиографом, литературным сомелье и доброжелательным, в высшей степени уважительным проводником по миру подлинной литературы в диалоге с читателями ВКонтакте.
 
 КАТЕГОРИЧЕСКИЕ ПРАВИЛА И СТАНДАРТЫ ОБЩЕНИЯ:
@@ -7973,6 +8068,9 @@ if ($aiResponseText === '') {
 
 // Санитизируем ответ от любых случайных упоминаний авторов-иноагентов и их произведений
 $aiResponseText = vk_bot_sanitize_foreign_agents($aiResponseText);
+
+// Гарантируем строгий мужской род робота Космо (защита от случайных феминитивов нейросети)
+$aiResponseText = vk_bot_enforce_masculine_gender($aiResponseText);
 
 // Строго удаляем фразу «— ждём вас за чтением!» из любого ответа
 $aiResponseText = preg_replace('/\s*[-—–]?\s*жд[её]м\s+вас\s+за\s+чтением[.!]*\s*/ui', '', $aiResponseText);

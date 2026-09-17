@@ -646,7 +646,10 @@ export function renderOpacBookCard(book, targetInventory = null) {
     const author = book.author || 'Автор не указан';
     const year = book.year || '';
     const shelfmark = book.shelfmark || book.bbk || '';
-    const inventory = book.inventory || targetInventory || (Array.isArray(book.copies) ? book.copies.map(c => c.inventory).filter(Boolean).slice(0, 3).join(', ') : '');
+    let inventory = book.inventory || targetInventory || '';
+    if (!inventory && Array.isArray(book.copies) && book.copies.length > 0) {
+        inventory = book.copies.map(c => c.inventory || c.code1).filter(Boolean).slice(0, 3).join(', ');
+    }
     const bookId = book.id || '';
 
     // Группировка или извлечение информации по филиалам
@@ -676,7 +679,8 @@ export function renderOpacBookCard(book, targetInventory = null) {
                     isBranch4,
                     totalCopies: 0,
                     availableCopies: 0,
-                    isAvailable: false
+                    isAvailable: false,
+                    inventories: []
                 });
             }
             const entry = branchMap.get(key);
@@ -684,6 +688,10 @@ export function renderOpacBookCard(book, targetInventory = null) {
             if (copy.is_available) {
                 entry.availableCopies++;
                 entry.isAvailable = true;
+            }
+            const copyInv = copy.inventory || copy.code1 || (book.copies.length === 1 && inventory ? inventory : '');
+            if (copyInv && !entry.inventories.includes(copyInv)) {
+                entry.inventories.push(copyInv);
             }
         });
     } else if (Array.isArray(book.locations) && book.locations.length > 0) {
@@ -714,6 +722,13 @@ export function renderOpacBookCard(book, targetInventory = null) {
                 });
             }
         });
+    }
+
+    if (branchMap.size === 1 && inventory) {
+        const firstBranch = branchMap.values().next().value;
+        if (firstBranch && firstBranch.inventories.length === 0) {
+            firstBranch.inventories.push(inventory);
+        }
     }
 
     const branches = Array.from(branchMap.values());
@@ -768,6 +783,12 @@ export function renderOpacBookCard(book, targetInventory = null) {
                         <div class="book-branch-phone">
                             <span class="material-symbols-outlined branch-meta-icon">call</span>
                             <a href="tel:${escapeHtml(b.branchPhone.split(',')[0].replace(/[^\d+]/g, ''))}" class="phone-link">${escapeHtml(b.branchPhone)}</a>
+                        </div>
+                    ` : ''}
+                    ${b.inventories && b.inventories.length > 0 ? `
+                        <div class="book-branch-inventory">
+                            <span class="material-symbols-outlined branch-meta-icon">tag</span>
+                            <span>Инв. № ${escapeHtml(b.inventories.join(', '))}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -2103,6 +2124,7 @@ export class CosmoChatModal {
                             this.messages.push({ role: 'user', content: `Темп чтения: ${paceText}` });
 
                             const finalPrompt = `Ты — Космо, интеллигентный библиотечный робот, опытный библиограф и книжный сомелье Централизованной библиотечной системы г. Владимира.
+ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА! Говори и отвечай о себе строго от мужского лица (я нашёл, я рад, я готов, я составил, я прочитал, я увидел, я проверил). Никакого женского рода!
 Читатель обратился за книжной рекомендацией в библиотеке: «${branch.canonicalName}» (интересует направление: «${genreObj.name}»).
 Его запрос:
 • Настроение: ${moodText}
@@ -2742,6 +2764,10 @@ export class CosmoChatModal {
 
             return `Ты — робот Космо 🤖, персональный книжный сомелье, интеллектуальный гид и литературный навигатор в «${branch.canonicalName}» (г. Владимир).
 
+ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА!
+ВСЕГДА говори и отвечай о себе ИСКЛЮЧИТЕЛЬНО В МУЖСКОМ РОДЕ: «я нашёл», «я рад», «я готов», «я проверил», «я прочитал», «я увидел», «я составил», «я уверен», «я библиотекарь».
+КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать о себе в женском роде («я нашла», «я рада», «я готова», «я прочитала», «я увидела»)! Ты — робот мужского рода, маскот Космо!
+
 КОНТЕКСТ ДИАЛОГА:
 Читатель общается с тобой в библиотеке через веб-чат «Полка с Космо» и просит подобрать, что почитать (направление: «${genreName}»).
 
@@ -2840,6 +2866,10 @@ ${topTagsLines}
         }
 
         return `Ты — Космо (Cosmo), интерактивный робот-маскот AURORA, главный методист-библиограф, опытный филолог-русист и библиотечный ИИ-ассистент сети библиотек города Владимира.
+
+ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА!
+ВСЕГДА говори и отвечай о себе ИСКЛЮЧИТЕЛЬНО В МУЖСКОМ РОДЕ: «я нашёл», «я рад», «я готов», «я проверил», «я прочитал», «я увидел», «я составил», «я уверен», «я библиотекарь».
+КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать о себе в женском роде («я нашла», «я рада», «я готова», «я прочитала», «я увидела»)! Ты — робот мужского рода, маскот Космо!
 
 МИССИЯ:
 1. Помогать методистам и сотрудникам библиотек города Владимира вести сообщества ВКонтакте на высшем профессиональном уровне.
@@ -3190,6 +3220,60 @@ ${statsContext}
         this.scrollToBottom();
     }
 
+    /**
+     * Гарантия строгого мужского рода в ответах робота Космо
+     */
+    enforceMasculineGender(text) {
+        if (typeof text !== 'string' || !text) return '';
+        const replacements = [
+            [/\bя\s+была\s+бы\s+рада\b/gi, 'я был бы рад'],
+            [/\bя\s+была\s+рада\b/gi, 'я был рад'],
+            [/\bя\s+рада\s+помочь\b/gi, 'я рад помочь'],
+            [/\bя\s+рада\b/gi, 'я рад'],
+            [/\bя\s+бы\s+хотела\b/gi, 'я бы хотел'],
+            [/\bя\s+хотела\s+бы\b/gi, 'я хотел бы'],
+            [/\bя\s+хотела\b/gi, 'я хотел'],
+            [/\bя\s+нашла\b/gi, 'я нашёл'],
+            [/\bя\s+готова\b/gi, 'я готов'],
+            [/\bя\s+прочитала\b/gi, 'я прочитал'],
+            [/\bя\s+увидела\b/gi, 'я увидел'],
+            [/\bя\s+смогла\b/gi, 'я смог'],
+            [/\bя\s+подумала\b/gi, 'я подумал'],
+            [/\bя\s+узнала\b/gi, 'я узнал'],
+            [/\bя\s+уверена\b/gi, 'я уверен'],
+            [/\bя\s+составила\b/gi, 'я составил'],
+            [/\bя\s+подобрала\b/gi, 'я подобрал'],
+            [/\bя\s+выбрала\b/gi, 'я выбрал'],
+            [/\bя\s+проверила\b/gi, 'я проверил'],
+            [/\bя\s+постаралась\b/gi, 'я постарался'],
+            [/\bя\s+подготовила\b/gi, 'я подготовил'],
+            [/\bя\s+собрала\b/gi, 'я собрал'],
+            [/\bя\s+открыла\b/gi, 'я открыл'],
+            [/\bя\s+сделала\b/gi, 'я сделал'],
+            [/\bя\s+заметила\b/gi, 'я заметил'],
+            [/\bя\s+посмотрела\b/gi, 'я посмотрел'],
+            [/\bя\s+решила\b/gi, 'я решил'],
+            [/\bя\s+вспомнила\b/gi, 'я вспомнил'],
+            [/\bя\s+рассказала\b/gi, 'я рассказал'],
+            [/\bя\s+ответила\b/gi, 'я ответил'],
+            [/\bя\s+уточнила\b/gi, 'я уточнил'],
+            [/\bя\s+обрадовалась\b/gi, 'я обрадовался'],
+            [/\bя\s+ошиблась\b/gi, 'я ошибся'],
+            [/\bя\s+надеялась\b/gi, 'я надеялся'],
+            [/\bя\s+стремилась\b/gi, 'я стремился'],
+            [/\bя\s+была\b/gi, 'я был'],
+            [/\bя\s+сама\b/gi, 'я сам'],
+            [/\bя\s+библиотекарша\b/gi, 'я библиотекарь'],
+            [/\bкак\s+библиотекарша\b/gi, 'как библиотекарь'],
+            [/\bбудучи\s+библиотекаршей\b/gi, 'будучи библиотекарем'],
+        ];
+        let res = text;
+        for (const [re, rep] of replacements) {
+            res = res.replace(re, rep);
+        }
+        return res;
+    }
+
     /* ---------------------------------------------------------------------
      * Выполнение запроса к ИИ с системным промптом и снимком сканирования
      * Контекстное окно модели: 256k токенов (~1M символов).
@@ -3306,6 +3390,9 @@ ${statsContext}
             // Строго удаляем шаблонную фразу о взятии книги по читательскому билету
             replyText = replyText.replace(/(?:^|\n+)?\s*(?:📍|🏛|💡|📖|\*|_)?\s*В?\s*наших\s+библиотеках(?:-филиалах)?\s+вы\s+можете\s+взять\s+(?:эту\s+книгу|эти\s+книги|книги)\s+бесплатно\s+по\s+читательскому\s+билету[.!*]*/gi, '');
             replyText = replyText.replace(/\n{3,}/g, '\n\n').trim();
+
+            // Гарантируем строгий мужской род робота Космо (защита от феминитивов нейросети)
+            replyText = this.enforceMasculineGender(replyText);
 
             // Строжайший фильтр авторов-иноагентов, их произведений и информации о них
             const foreignAgentPattern = /\b(?:иноагент[а-я]*|иностранн(?:ый|ого|ому|ым|ом|ая|ой|ую|ые|ых|ыми)\s+агент[а-я]*|реестр(?:е|а)?\s+(?:иноагент|иностранн)[а-я]*|список\s+(?:иноагент|иностранн)[а-я]*|статус(?:е|а)?\s+иноагент[а-я]*|акунин[а-я]*|фандорин[а-я]*|азазель|чхартишвили|брусникин[а-я]*|глуховск[а-я]*|метро\s*203[345]|дмитри[яеий]?\s+быков[а-я]*|улицк[а-я]*|казус\s+кукоцк[а-я]*|зыгар[а-я]*|михаил[а-я]*\s+шишкин[а-я]*|письмовник|полозков[а-я]*|горалик|эйдельман|шульман|шендерович|невзоров[а-я]*|латынин[а-я]*|антон[а-я]*\s+долин[а-я]*|понасенков[а-я]*|баунов[а-я]*|конец\s+режима|радзинск[а-я]*|филиппов[а-я]*|макаревич[а-я]*|гребенщиков[а-я]*|каспаров[а-я]*|навальн[а-я]*|кара-мурз[а-я]*|яшин[а-я]*|ходорковск[а-я]*|галкин[а-я]*|слепаков[а-я]*|смольянинов[а-я]*|земфир[а-я]*|дуд[ьяеию]|оксимирон[а-я]*|oxxxymiron|noize\s+mc|нойз\s+мс|моргенштерн[а-я]*)\b/i;

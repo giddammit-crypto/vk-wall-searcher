@@ -282,6 +282,59 @@ function ai_is_failover_error($httpCode, $responseBody, $json)
 }
 
 /**
+ * Гарантия строгого мужского рода в ответах робота Космо (защита от феминитивов нейросети)
+ */
+function ai_enforce_masculine_gender($text)
+{
+    if (!is_string($text) || $text === '') return '';
+
+    $replacements = [
+        '/\bя\s+была\s+бы\s+рада\b/ui'   => 'я был бы рад',
+        '/\bя\s+была\s+рада\b/ui'         => 'я был рад',
+        '/\bя\s+рада\s+помочь\b/ui'       => 'я рад помочь',
+        '/\bя\s+рада\b/ui'                => 'я рад',
+        '/\bя\s+бы\s+хотела\b/ui'         => 'я бы хотел',
+        '/\bя\s+хотела\s+бы\b/ui'         => 'я хотел бы',
+        '/\bя\s+хотела\b/ui'              => 'я хотел',
+        '/\bя\s+нашла\b/ui'               => 'я нашёл',
+        '/\bя\s+готова\b/ui'              => 'я готов',
+        '/\bя\s+прочитала\b/ui'           => 'я прочитал',
+        '/\bя\s+увидела\b/ui'             => 'я увидел',
+        '/\bя\s+смогла\b/ui'              => 'я смог',
+        '/\bя\s+подумала\b/ui'            => 'я подумал',
+        '/\bя\s+узнала\b/ui'              => 'я узнал',
+        '/\bя\s+уверена\b/ui'             => 'я уверен',
+        '/\bя\s+составила\b/ui'           => 'я составил',
+        '/\bя\s+подобрала\b/ui'           => 'я подобрал',
+        '/\bя\s+выбрала\b/ui'             => 'я выбрал',
+        '/\bя\s+проверила\b/ui'           => 'я проверил',
+        '/\bя\s+постаралась\b/ui'         => 'я постарался',
+        '/\bя\s+подготовила\b/ui'         => 'я подготовил',
+        '/\bя\s+собрала\b/ui'             => 'я собрал',
+        '/\bя\s+открыла\b/ui'             => 'я открыл',
+        '/\bя\s+сделала\b/ui'             => 'я сделал',
+        '/\bя\s+заметила\b/ui'            => 'я заметил',
+        '/\bя\s+посмотрела\b/ui'          => 'я посмотрел',
+        '/\bя\s+решила\b/ui'              => 'я решил',
+        '/\bя\s+вспомнила\b/ui'           => 'я вспомнил',
+        '/\bя\s+рассказала\b/ui'          => 'я рассказал',
+        '/\bя\s+ответила\b/ui'            => 'я ответил',
+        '/\bя\s+уточнила\b/ui'            => 'я уточнил',
+        '/\bя\s+обрадовалась\b/ui'        => 'я обрадовался',
+        '/\bя\s+ошиблась\b/ui'            => 'я ошибся',
+        '/\bя\s+надеялась\b/ui'           => 'я надеялся',
+        '/\bя\s+стремилась\b/ui'          => 'я стремился',
+        '/\bя\s+была\b/ui'                => 'я был',
+        '/\bя\s+сама\b/ui'                => 'я сам',
+        '/\bя\s+библиотекарша\b/ui'       => 'я библиотекарь',
+        '/\bкак\s+библиотекарша\b/ui'     => 'как библиотекарь',
+        '/\bбудучи\s+библиотекаршей\b/ui' => 'будучи библиотекарем',
+    ];
+
+    return preg_replace(array_keys($replacements), array_values($replacements), $text);
+}
+
+/**
  * Запрос к OpenAI-шлюзу (cURL) с защитой от утечки секретов и контролем таймаутов
  */
 function ai_curl_request($url, $payloadJson, $apiKey, $timeout)
@@ -484,6 +537,12 @@ foreach ($messages as $m) {
     if (ai_mb_strlen($content) > 60000) {
         $content = ai_mb_substr($content, 0, 60000) . ' …[обрезано]';
     }
+    // Если системный промпт относится к Космо, гарантируем наличие правила мужского рода
+    if ($role === 'system' && (stripos($content, 'Космо') !== false || stripos($content, 'Cosmo') !== false)) {
+        if (stripos($content, 'РОБОТ МУЖСКОГО РОДА') === false) {
+            $content = "ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА! ВСЕГДА отвечай исключительно от мужского лица (я нашёл, я рад, я готов, я составил, я прочитал). Ни в коем случае не используй женский род!\n\n" . $content;
+        }
+    }
     $clean[] = ['role' => $role, 'content' => $content];
 }
 if (count($clean) === 0) {
@@ -572,6 +631,19 @@ for ($try = 0; $try < $attempts; $try++) {
     // Запрос успешен! Если был выполнен переход на альтернативный ключ, сохраняем его индекс
     if ($currentIndex !== $activeIndex) {
         ai_set_active_key_index($activeKeyFile, $currentIndex);
+    }
+
+    // Гарантируем строгий мужской род робота Космо в choices
+    if (isset($json['choices']) && is_array($json['choices'])) {
+        foreach ($json['choices'] as &$choice) {
+            if (!empty($choice['message']['content'])) {
+                $choice['message']['content'] = ai_enforce_masculine_gender($choice['message']['content']);
+            }
+            if (!empty($choice['text'])) {
+                $choice['text'] = ai_enforce_masculine_gender($choice['text']);
+            }
+        }
+        unset($choice);
     }
 
     // Прозрачно возвращаем стандартный ответ chat/completions

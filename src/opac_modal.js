@@ -649,7 +649,11 @@ function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark, 
         if (year) metaHtml += `<span class="opac-badge-bbk" title="Год издания">📅 ${escapeHtml(year)}</span>`;
         if (shelfmark) metaHtml += `<span class="opac-badge-bbk" title="Шифр классификации ББК">🔖 ${escapeHtml(shelfmark)}</span>`;
         if (idbr) metaHtml += `<span class="opac-badge-idbr" title="Системный ID в OPAC">🆔 ${escapeHtml(idbr)}</span>`;
-        const activeInv = targetInventory || inventory;
+        let activeInv = targetInventory || inventory;
+        if (!activeInv && Array.isArray(copies) && copies.length > 0) {
+            const foundInv = copies.map(c => c.inventory || c.code1).filter(Boolean)[0];
+            if (foundInv) activeInv = foundInv;
+        }
         if (activeInv) {
             metaHtml += `<span class="opac-badge-inv ${targetInventory ? 'is-target-inventory' : ''}" title="Инвентарный номер издания">🏷️ Инв. №${escapeHtml(activeInv)}</span>`;
         }
@@ -668,7 +672,7 @@ function openCoverZoomModal({ coverUrl, title, author, source, year, shelfmark, 
         copiesHeaderEl.textContent = `Экземпляры в библиотеках (${copiesList.length}):`;
     }
     if (copiesListEl) {
-        copiesListEl.innerHTML = renderCopiesListHtml(copiesList, currentBranchFilter, targetInventory);
+        copiesListEl.innerHTML = renderCopiesListHtml(copiesList, currentBranchFilter, targetInventory, activeInv);
     }
 
     if (askBtn) {
@@ -1651,8 +1655,15 @@ function renderSearchResults(data, query) {
             return String(loc).replace(/\[\/?color[^\]]*\]/gi, '').replace(/<[^>]+>/g, '').trim();
         }).filter(Boolean);
 
-        // Инвентарный номер издания
-        const itemInv = item.inventory || (targetInventory && copies.some(c => String(c.inventory || '').trim().toLowerCase() === targetInventory.toLowerCase()) ? targetInventory : null);
+        // Инвентарный номер издания с надежным fallback на массив копий
+        let itemInv = item.inventory || null;
+        if (!itemInv && Array.isArray(copies) && copies.length > 0) {
+            const foundCopyInv = copies.map(c => c.inventory || c.code1).filter(Boolean)[0];
+            if (foundCopyInv) itemInv = foundCopyInv;
+        }
+        if (!itemInv && targetInventory) {
+            itemInv = targetInventory;
+        }
 
         // Карточка книги (по 4 на страницу)
         cardsHtml += `
@@ -1695,7 +1706,7 @@ function renderSearchResults(data, query) {
                             <strong>Экземпляры в библиотеках (${copies.length}):</strong>
                         </div>
                         <div class="opac-copies-list">
-                            ${renderCopiesListHtml(copies, currentBranchFilter, targetInventory)}
+                            ${renderCopiesListHtml(copies, currentBranchFilter, targetInventory, itemInv)}
                         </div>
                     </div>
 
@@ -1739,7 +1750,12 @@ function renderSearchResults(data, query) {
             const coverUrl = coverEl?.getAttribute('data-cover-url') || (realImg && realImg.style.display !== 'none' ? realImg.src : null);
             const source = coverEl?.getAttribute('data-cover-source') || '';
             const copies = item.copies || [];
-            const itemInv = item.inventory || (targetInventory && copies.some(c => String(c.inventory || '').trim().toLowerCase() === targetInventory.toLowerCase()) ? targetInventory : null);
+            let itemInv = item.inventory || null;
+            if (!itemInv && Array.isArray(copies) && copies.length > 0) {
+                const foundCopyInv = copies.map(c => c.inventory || c.code1).filter(Boolean)[0];
+                if (foundCopyInv) itemInv = foundCopyInv;
+            }
+            if (!itemInv && targetInventory) itemInv = targetInventory;
 
             openCoverZoomModal({
                 coverUrl,
@@ -1796,7 +1812,7 @@ function renderSearchResults(data, query) {
 /**
  * Отрисовка списка экземпляров по филиалам с группировкой и бейджами точного наличия
  */
-function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = null) {
+function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = null, fallbackInventory = null) {
     if (!copies || copies.length === 0) {
         return `<div class="opac-no-copies">ℹ️ Детальные сведения об экземплярах уточняются в ЦГБ.</div>`;
     }
@@ -1827,13 +1843,23 @@ function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = nu
         if (c.is_available) {
             b.available_count++;
         }
-        if (c.inventory) {
-            b.inventories.push(c.inventory);
-            if (cleanTargetInv && String(c.inventory).trim().toLowerCase() === cleanTargetInv) {
+        const cInv = c.inventory || c.code1 || (copies.length === 1 && fallbackInventory ? fallbackInventory : '');
+        if (cInv) {
+            if (!b.inventories.includes(cInv)) {
+                b.inventories.push(cInv);
+            }
+            if (cleanTargetInv && String(cInv).trim().toLowerCase() === cleanTargetInv) {
                 b.has_target_inv = true;
             }
         }
     });
+
+    if (fallbackInventory && branchMap.size === 1) {
+        const onlyBranch = branchMap.values().next().value;
+        if (onlyBranch && onlyBranch.inventories.length === 0) {
+            onlyBranch.inventories.push(fallbackInventory);
+        }
+    }
 
     const branchList = Array.from(branchMap.values());
 
@@ -1862,12 +1888,13 @@ function renderCopiesListHtml(copies, activeFilter = 'all', targetInventory = nu
         const bPhone = b.branch_phone;
 
         let invStr = '';
-        if (b.inventories.length > 0) {
-            const formattedInvs = b.inventories.slice(0, 3).map(inv => {
+        const invList = b.inventories.length > 0 ? b.inventories : (fallbackInventory ? [fallbackInventory] : []);
+        if (invList.length > 0) {
+            const formattedInvs = invList.slice(0, 3).map(inv => {
                 const isTarget = cleanTargetInv && String(inv).trim().toLowerCase() === cleanTargetInv;
                 return isTarget ? `<strong class="opac-inv-highlight">№${escapeHtml(inv)}</strong>` : `№${escapeHtml(inv)}`;
             });
-            invStr = `Инв. ${formattedInvs.join(', ')}${b.inventories.length > 3 ? '...' : ''}`;
+            invStr = `Инв. ${formattedInvs.join(', ')}${invList.length > 3 ? '...' : ''}`;
         }
 
         // Формирование бейджа доступности: «🟢 На полке (N экз.)»

@@ -442,17 +442,27 @@ if ($action === 'update') {
     ]);
 }
 
-// ─── Очистка кэша OPAC ────────────────────────────────────────────────────────
+// ─── Очистка кэша OPAC и бота ВК ──────────────────────────────────────────
 if ($action === 'clear_cache') {
     $cacheDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'cache';
-    $patterns = ['opac_search_*.json', 'opac_copies_*.json', 'opac_full_*.json', 'opac_cov_*.json'];
+    $patterns = [
+        'opac_search_*.json',
+        'opac_copies_*.json',
+        'opac_full_*.json',
+        'opac_full_v3_*.json',
+        'opac_cov_*.json',
+        'opac_*.json',
+        'vk_*.json',
+        'vk_*.txt',
+        'vk_dialog_*.json'
+    ];
     $deleted = 0;
     foreach ($patterns as $pat) {
         foreach (glob($cacheDir . DIRECTORY_SEPARATOR . $pat) ?: [] as $f) {
             if (@unlink($f)) $deleted++;
         }
     }
-    vkws_reply(['ok' => true, 'deleted' => $deleted, 'note' => "Удалено {$deleted} файлов кэша OPAC."]);
+    vkws_reply(['ok' => true, 'deleted' => $deleted, 'note' => "Удалено {$deleted} файлов кэша OPAC и бота ВК."]);
 }
 
 vkws_reply(['ok' => false, 'error' => 'Неизвестное действие: ' . $action], 400);
