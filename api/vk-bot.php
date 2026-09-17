@@ -16,7 +16,7 @@
  *    - Интерактивная клавиатура (постоянное меню + inline-кнопки)
  *    - Диагностическая веб-страница и JSON-статус при GET-запросе
  *
- *  Версия: 4.42.0
+ *  Версия: 4.42.1
  *  Разработка: Амброзиев О.А. / Проект AURORA
  * =============================================================================
  */
@@ -4740,6 +4740,16 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $year = $item['year'] ? ' (' . $item['year'] . ' г.)' : '';
 
         $block = "📚 [{$itemIndex}] «{$title}»" . ($author ? " — {$author}" : "") . $year . "\n";
+        if (!empty($item['id'])) {
+            $block .= "   🆔 Запись в OPAC: {$item['id']} (БД 62 ЦГБ)\n";
+        }
+        $locations = $item['locations'] ?? [];
+        if (!empty($locations)) {
+            $block .= "   📦 Сигла подразделений в каталоге: " . implode(', ', $locations) . "\n";
+        }
+        if (!empty($item['shelfmark']) && $item['shelfmark'] !== 'Не задан') {
+            $block .= "   🏷️ Шифр каталога: {$item['shelfmark']}\n";
+        }
 
         // Получаем детальные холдинги/экземпляры книги
         $copiesData = null;
@@ -4752,9 +4762,8 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $copies = $copiesData['copies'] ?? [];
 
         if (empty($copies)) {
-            $locations = $item['locations'] ?? [];
             if (!empty($locations)) {
-                $block .= "📍 Места хранения (по каталогу): " . implode(', ', $locations) . "\n";
+                $block .= "📍 Места хранения (по сиглам каталога): " . implode(', ', $locations) . "\n";
             } else {
                 $block .= "ℹ️ Наличие уточняется в отделе комплектования ЦГБ (Суздальский пр-т, 2).\n";
             }
@@ -4781,7 +4790,8 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                     'available'    => 0,
                     'on_loan'      => 0,
                     'inventories'  => [],
-                    'sub_b'        => $c['subfield_b'] ?? ''
+                    'sub_b'        => $c['subfield_b'] ?? '',
+                    'perm_loc'     => $c['permanent_location'] ?? ($c['location'] ?? '')
                 ];
             }
 
@@ -4791,8 +4801,12 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                 $branchGroups[$bCode]['on_loan']++;
             }
 
-            if (!empty($c['inventory']) && count($branchGroups[$bCode]['inventories']) < 3) {
+            if (!empty($c['inventory']) && count($branchGroups[$bCode]['inventories']) < 4) {
                 $branchGroups[$bCode]['inventories'][] = $c['inventory'];
+            }
+
+            if (!empty($c['shifr']) && $c['shifr'] !== 'Не задан' && empty($branchGroups[$bCode]['shifr'])) {
+                $branchGroups[$bCode]['shifr'] = $c['shifr'];
             }
 
             if (!empty($c['is_dobroye'])) $hasDobroye = true;
@@ -4860,28 +4874,33 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
 
             $statusText = $bg['available'] > 0
                 ? "✅ В наличии: {$bg['available']} экз."
-                : "⏳ На руках у читателей ({$bg['on_loan']} экз.)";
+                : "⏳ В хранении / На руках ({$bg['on_loan']} экз.)";
 
             $districtStr = $bg['district'] ? ' (' . $bg['district'] . ')' : '';
-            $invStr = !empty($bg['inventories']) ? ' [Инв. ' . implode(', ', $bg['inventories']) . ']' : '';
+            $siglaBadge = $bg['sub_b'] ? "[сигла: {$bg['sub_b']}]" : '';
+            $permLocBadge = ($bg['perm_loc'] && $bg['perm_loc'] !== $bg['name']) ? " [код: {$bg['perm_loc']}]" : '';
+            $invStr = !empty($bg['inventories']) ? ' [Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
             $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? ' [Шифр: ' . $bg['shifr'] . ']' : '';
 
-            $block .= "  • {$bg['name']}{$districtStr}: {$statusText}\n";
+            $block .= "  • {$bg['name']}{$districtStr}:\n";
+            $block .= "    🏛 По каталогу OPAC: {$siglaBadge}{$permLocBadge} ➔ {$statusText}\n";
+            if ($shifrStr || $invStr) {
+                $block .= "    🔖{$shifrStr}{$invStr}\n";
+            }
             if ($bg['address']) {
                 $block .= "    📍 {$bg['address']}";
                 if ($bg['phone']) $block .= " • 📞 {$bg['phone']}";
                 $block .= "\n";
-            }
-            if ($shifrStr || $invStr) {
-                $block .= "    🔖 {$shifrStr}{$invStr}\n";
             }
         }
 
         $blocks[] = $block;
     }
 
-    $footer = "\n💡 Совет от Космо: Вы можете позвонить в любой удобный филиал, чтобы библиотекарь отложил книгу до вашего прихода!\n"
-            . "🌐 Электронный каталог: http://library.vladimir.ru/rguest_vlad_cgb.htm";
+    $footer = "\n🔍 Как лично проверить и убедиться в каталоге:\n"
+            . "1. Откройте электронный каталог: http://library.vladimir.ru/rguest_vlad_cgb.htm\n"
+            . "2. База поиска: «62 - Электронный каталог ЦГБ г. Владимира»\n"
+            . "3. Введите название или автора ➔ откройте карточку ➔ нажмите «Экземпляры» и сравните: номер записи в OPAC, сигла филиалов (ф4, аб, чз, цдб), инвентарные номера и шифры совпадают точь-в-точь!";
 
     return $header . implode("\n────────────────\n\n", $blocks) . $footer;
 }

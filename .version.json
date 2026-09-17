@@ -1,9 +1,9 @@
 {
     "app": "vk-wall-searcher",
-    "version": "4.42.0",
+    "version": "4.42.1",
     "channel": "main",
     "repo": "giddammit-crypto/vk-wall-searcher",
-    "commit_date": "2026-09-17T12:25:00+03:00",
-    "release_name": "AURORA 4.42.0 — Стёбный режим «Гопник» (/gopnik on / /gopnik off), игнорирование мата, уличный AI-промпт и контроль прав"
+    "commit_date": "2026-09-17T12:26:00+03:00",
+    "release_name": "AURORA 4.42.1 — Детальная верификация OPAC: ID записи, оригинальные сигла, шифры и инвентарные номера"
 }
 
