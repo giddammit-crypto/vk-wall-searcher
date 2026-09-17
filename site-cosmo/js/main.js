@@ -212,6 +212,7 @@
     var cosmoBubbleText = document.getElementById('cosmoBubbleText');
     var cosmoBubbleBadge = document.getElementById('cosmoBubbleBadge');
     var bubbleAudioBtn = document.getElementById('bubbleAudioBtn');
+    var bubbleCloseBtn = document.getElementById('bubbleCloseBtn');
     var cosmoAutoToggle = document.getElementById('cosmoAutoToggle');
     var dockTrack = document.getElementById('dockTrack');
     var dockActiveIndex = document.getElementById('dockActiveIndex');
@@ -309,6 +310,9 @@
 
         var isThoughtMode = ['tablet', 'sleep', 'read_book', 'telescope', 'yawn', 'confused'].indexOf(act.id) !== -1;
         if (cosmoBubble) {
+            if (isUserClick) {
+                cosmoBubble.classList.add('is-visible');
+            }
             cosmoBubble.classList.toggle('cosmo-bubble--thought', isThoughtMode);
             cosmoBubble.classList.toggle('cosmo-bubble--speech', !isThoughtMode);
             cosmoBubble.classList.remove('is-bounce');
@@ -439,6 +443,18 @@
             if (!isHeroSoundOn && heroAudio) {
                 heroAudio.pause();
                 bubbleAudioBtn.classList.remove('is-speaking');
+            }
+        });
+    }
+
+    // Кнопка закрытия баббла
+    if (bubbleCloseBtn && cosmoBubble) {
+        bubbleCloseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            cosmoBubble.classList.remove('is-visible');
+            if (heroAudio) {
+                heroAudio.pause();
+                if (bubbleAudioBtn) bubbleAudioBtn.classList.remove('is-speaking');
             }
         });
     }

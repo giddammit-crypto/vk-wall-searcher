@@ -1313,6 +1313,63 @@ a { color: var(--emerald-deep); }
 }
 
 /* --------------------------------------------------------------------------
+   Кнопка закрытия облачка реплик Космо (.cosmo-bubble__close)
+   Стеклянная круглая кнопка в едином стиле сайта с тактильным hover и spring-анимацией
+   -------------------------------------------------------------------------- */
+.cosmo-bubble__close {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(47, 162, 110, 0.28);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(43, 46, 44, 0.08),
+                var(--glass-specular, inset 0 1px 0 rgba(255, 255, 255, 0.95));
+    color: var(--ink-soft, #4E5350);
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.24s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+                background-color 0.2s ease,
+                border-color 0.2s ease,
+                color 0.2s ease,
+                box-shadow 0.24s ease;
+}
+
+.cosmo-bubble__close:hover {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #dc2626;
+    transform: scale(1.14) rotate(90deg);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.cosmo-bubble__close:active {
+    transform: scale(0.92) rotate(90deg);
+    background: rgba(239, 68, 68, 0.22);
+    box-shadow: 0 1px 4px rgba(220, 38, 38, 0.25);
+}
+
+.cosmo-bubble__close:focus-visible {
+    outline: 2px solid var(--emerald, #2FA26E);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
    Уважение к reduced motion
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
@@ -1327,4 +1384,8 @@ a { color: var(--emerald-deep); }
     .reveal { opacity: 1; transform: none; }
     .inside__wrap { opacity: 1; transform: none; }
     .marker::before { transform: scaleX(1); }
+    .cosmo-bubble__close:hover,
+    .cosmo-bubble__close:active {
+        transform: none !important;
+    }
 }

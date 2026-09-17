@@ -75,21 +75,105 @@ function cleanSearchTerm(text) {
     return t.trim();
 }
 
+function escapeRegExp(str) {
+    return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
- * Очистка автора книги для поиска обложек (удаление инициалов)
+ * Очистка автора книги и извлечение фамилии для поиска обложек
+ * Поддерживает любые форматы:
+ * - Инициалы сзади: "Пушкин А. С.", "Пушкин А.С.", "Пушкин А."
+ * - Инициалы впереди: "А. С. Пушкин", "А.С. Пушкин", "А. Пушкин", "А.С.Пушкин"
+ * - Разделитель запятая: "Пушкин, Александр Сергеевич", "Пушкин, А. С."
+ * - Полное имя: "Александр Сергеевич Пушкин" (отчество в центре -> фамилия в конце)
+ *               "Пушкин Александр Сергеевич" (отчество в конце -> фамилия в начале)
+ * - 2 слова: "Александр Пушкин" vs "Пушкин Александр", "Лев Толстой" vs "Толстой Лев"
  */
 function cleanAuthorForCover(rawAuthor) {
     if (!rawAuthor) return '';
-    let a = cleanSearchTerm(rawAuthor);
-    // Отрезаем инициалы: "Пушкин А. С." -> "Пушкин", "Чехов А.П." -> "Чехов"
-    a = a.replace(/\s+[А-ЯA-Z]\.?\s*[А-ЯA-Z]?\.?$/u, '').trim();
-    // На случай "Пушкин, Александр Сергеевич"
-    a = a.split(/[,]/)[0].trim();
-    return a;
+    let a = String(rawAuthor).trim();
+    a = a.replace(/\[\/?color[^\]]*\]/gi, '');
+    a = a.replace(/<[^>]+>/g, '');
+    a = a.replace(/[\[\]\(\)\"\'«»“”]/g, ' ');
+    // Добавляем пробел между точкой инициала и следующей буквой ("А.С.Пушкин" -> "А. С. Пушкин")
+    a = a.replace(/([A-Za-zА-Яа-яЁё])\./gu, '$1. ');
+    a = a.replace(/\s+/g, ' ').trim();
+    if (!a) return '';
+
+    // Если есть запятая, часть до запятой часто содержит фамилию: "Пушкин, Александр Сергеевич"
+    if (a.includes(',')) {
+        const commaPart = a.split(',')[0].trim();
+        if (commaPart.length >= 2) {
+            a = commaPart;
+        }
+    }
+
+    const rawWords = a.split(/\s+/).filter(w => w.length > 0);
+    if (rawWords.length === 0) return '';
+
+    const isInitial = (w) => {
+        const clean = w.replace(/[.,\s]/g, '');
+        return clean.length === 1 || (clean.length === 2 && w.includes('.'));
+    };
+
+    // Отрезаем ведущие инициалы
+    while (rawWords.length > 0 && isInitial(rawWords[0])) {
+        rawWords.shift();
+    }
+    // Отрезаем замыкающие инициалы
+    while (rawWords.length > 0 && isInitial(rawWords[rawWords.length - 1])) {
+        rawWords.pop();
+    }
+
+    const words = rawWords.map(w => w.replace(/[.,]/g, '').trim()).filter(Boolean);
+    if (words.length === 0) return '';
+    if (words.length === 1) return words[0];
+
+    const patronymicRe = /(?:ович|евич|ич|овна|евна|ична|инична)$/i;
+    if (words.length === 3) {
+        if (patronymicRe.test(words[1])) return words[2];
+        if (patronymicRe.test(words[2])) return words[0];
+        return words[words.length - 1];
+    }
+
+    if (words.length === 2) {
+        const commonFirstNames = new Set([
+            'александр', 'алексей', 'анатолий', 'андрей', 'антон', 'аркадий', 'артем', 'артём', 'артур',
+            'борис', 'вадим', 'валентин', 'валерий', 'василий', 'виктор', 'виталий', 'владимир', 'владислав',
+            'всеволод', 'вячеслав', 'геннадий', 'георгий', 'глеб', 'григорий', 'даниил', 'денис', 'дмитрий',
+            'евгений', 'егор', 'захар', 'иван', 'игорь', 'илья', 'кирилл', 'константин', 'лев', 'леонид',
+            'максим', 'матвей', 'михаил', 'никита', 'николай', 'олег', 'павел', 'петр', 'пётр', 'платон',
+            'роман', 'ростислав', 'руслан', 'семен', 'семён', 'сергей', 'станислав', 'степан', 'тимофей',
+            'тимур', 'федор', 'фёдор', 'филипп', 'эдуард', 'юрий', 'ярослав',
+            'анна', 'анастасия', 'валентина', 'валерия', 'варвара', 'василиса', 'вера', 'вероника', 'виктория',
+            'галина', 'дарья', 'диана', 'евгения', 'екатерина', 'елена', 'елизавета', 'жанна', 'зинаида', 'зоя',
+            'инна', 'ирина', 'кира', 'кристина', 'ксения', 'лариса', 'лидия', 'любовь', 'людмила', 'маргарита',
+            'марина', 'мария', 'мирослава', 'надежда', 'наталья', 'нина', 'оксана', 'олеся', 'ольга', 'полина',
+            'раиса', 'римма', 'светлана', 'софия', 'софья', 'тамара', 'татьяна', 'ульяна', 'юлия', 'яна',
+            'стивен', 'джон', 'джордж', 'марк', 'джек', 'роберт', 'уильям', 'томас', 'майкл', 'дэвид',
+            'эдгар', 'эрнест', 'франц', 'герман', 'жюль', 'чарльз', 'рей', 'рэй', 'айзек', 'клиффорд',
+            'агата', 'джейн', 'вирджиния', 'джоан'
+        ]);
+
+        const w0 = words[0].toLowerCase().replace(/ё/g, 'е');
+        const w1 = words[1].toLowerCase().replace(/ё/g, 'е');
+
+        const surnameSuffixRe = /(?:ов|ова|ев|ева|ин|ина|ын|ына|ский|ская|цкий|цкая|ых|их|ой|ый)$/i;
+        if (commonFirstNames.has(w0) && !commonFirstNames.has(w1)) return words[1];
+        if (commonFirstNames.has(w1) && !commonFirstNames.has(w0)) return words[0];
+        if (surnameSuffixRe.test(w0) && !surnameSuffixRe.test(w1)) return words[0];
+        if (surnameSuffixRe.test(w1) && !surnameSuffixRe.test(w0)) return words[1];
+        return words[0];
+    }
+
+    return words[0];
 }
 
 /**
  * Строгая проверка совпадения названия и автора книги для обложки (защита от чужих обложек)
+ * 1. Если у книги в ОПАК есть автор, найденная книга ОБЯЗАНА содержать фамилию автора.
+ * 2. Название должно строго совпадать (>= 80% значимых слов).
+ * Если не совпадает — отдавать null/отклонять!
  */
 function isStrictBookCoverMatch(foundTitle, foundAuthors, targetTitle, targetAuthor) {
     if (!foundTitle || !targetTitle) return false;
@@ -97,57 +181,115 @@ function isStrictBookCoverMatch(foundTitle, foundAuthors, targetTitle, targetAut
     const norm = (str) => String(str || '')
         .toLowerCase()
         .replace(/ё/g, 'е')
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”]/g, ' ')
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”\[\]]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 
-    const tTitle = norm(targetTitle);
-    const fTitle = norm(foundTitle);
+    const tTitleNorm = norm(targetTitle);
+    const fTitleNorm = norm(foundTitle);
+    if (!tTitleNorm || !fTitleNorm) return false;
 
-    if (!tTitle || !fTitle) return false;
+    // -------------------------------------------------------------------------
+    // 1. Проверка автора: если автор есть в ОПАК, найденная книга ОБЯЗАНА его содержать
+    // -------------------------------------------------------------------------
+    const rawTargetAuthor = String(targetAuthor || '').trim();
+    if (rawTargetAuthor.length > 0) {
+        const targetSurname = cleanAuthorForCover(rawTargetAuthor);
+        const tSurnameNorm = norm(targetSurname);
 
-    // 1. Проверка автора (если автор указан в каталоге)
-    const cleanTargetAuthor = String(targetAuthor || '').trim();
-    if (cleanTargetAuthor.length > 1) {
-        const tAuthorClean = norm(cleanAuthorForCover(cleanTargetAuthor));
-        const parts = tAuthorClean.split(' ');
-        const tSurname = parts[0] || '';
-        const fAuthorsClean = norm(foundAuthors);
+        if (tSurnameNorm.length >= 2) {
+            const fAuthorsNorm = norm(foundAuthors);
+            const fTitleCheck = norm(foundTitle);
 
-        // Фамилия автора (мин. 3 символа) должна строго присутствовать в авторах найденной книги
-        if (tSurname.length >= 3 && !fAuthorsClean.includes(tSurname)) {
-            return false;
+            const stem = tSurnameNorm.length >= 4 ? tSurnameNorm.slice(0, -1) : tSurnameNorm;
+            const authorWordRegex = new RegExp('(?:^|\\s)' + escapeRegExp(stem) + '[а-яa-z]*(?:$|\\s)', 'i');
+
+            const authorInAuthors = fAuthorsNorm ? authorWordRegex.test(' ' + fAuthorsNorm + ' ') : false;
+            const authorInTitle = authorWordRegex.test(' ' + fTitleCheck + ' ');
+
+            if (!authorInAuthors && !authorInTitle) {
+                return false;
+            }
         }
     }
 
-    // 2. Проверка названия
-    if (fTitle === tTitle) return true;
+    // -------------------------------------------------------------------------
+    // 2. Строгая проверка названия: >= 80% значимых слов
+    // -------------------------------------------------------------------------
+    if (fTitleNorm === tTitleNorm) return true;
+
+    // Отсекаем подзаголовки (после :, ;, —, –, /)
+    const stripSub = (str) => {
+        const parts = String(str || '').split(/[:;–—\/]/);
+        const m = (parts[0] || '').trim();
+        return m || str;
+    };
+    const tTitleClean = norm(stripSub(targetTitle));
+    const fTitleClean = norm(stripSub(foundTitle));
+    if (tTitleClean && fTitleClean && tTitleClean === fTitleClean) {
+        return true;
+    }
 
     // Сравнение без указания тома/части/книги
-    const tShort = tTitle.split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
-    const fShort = fTitle.split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
+    const tShort = (tTitleClean || tTitleNorm).split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
+    const fShort = (fTitleClean || fTitleNorm).split(/\s+том\b|\s+ч\b|\s+кн\b/)[0].trim();
     if (tShort && tShort === fShort) return true;
 
-    // Одно название начинается с другого с разницей в длине не более 25 символов
-    if (fTitle.startsWith(tTitle) || tTitle.startsWith(fTitle)) {
-        if (Math.abs(fTitle.length - tTitle.length) <= 25) {
-            return true;
-        }
+    const stopWords = new Set([
+        'и', 'в', 'во', 'не', 'на', 'с', 'со', 'что', 'он', 'по', 'к', 'ко',
+        'из', 'у', 'за', 'от', 'о', 'об', 'обо', 'для', 'до', 'же', 'бы',
+        'то', 'ли', 'но', 'да', 'или', 'а', 'как', 'так', 'том', 'часть',
+        'книга', 'выпуск', 'т', 'ч', 'кн', 'the', 'a', 'an', 'and', 'or',
+        'in', 'on', 'at', 'of', 'to', 'for', 'with', 'by'
+    ]);
+
+    const extractSignificantWords = (title) => {
+        return title
+            .split(/\s+/)
+            .map(w => w.trim())
+            .filter(w => w.length >= 2 && !stopWords.has(w));
+    };
+
+    const tWords = extractSignificantWords(tShort || tTitleNorm);
+    const fWords = extractSignificantWords(fShort || fTitleNorm);
+
+    if (tWords.length === 0 || fWords.length === 0) {
+        return tTitleNorm === fTitleNorm;
     }
 
-    // Проверка ключевых слов
-    const tWords = tTitle.split(' ').filter(w => w.length > 2);
-    const fWords = fTitle.split(' ').filter(w => w.length > 2);
-    if (tWords.length > 0) {
-        const matched = tWords.filter(w => fWords.includes(w));
-        const ratio = matched.length / tWords.length;
-        if (ratio >= 0.8 && Math.abs(tWords.length - fWords.length) <= 2) {
-            return true;
+    const wordsMatch = (w1, w2) => {
+        if (w1 === w2) return true;
+        if (w1.length >= 4 && w2.length >= 4) {
+            if (w1.startsWith(w2.slice(0, -1)) || w2.startsWith(w1.slice(0, -1))) return true;
+            if (w1.length >= 5 && w2.length >= 5 && w1.slice(0, -2) === w2.slice(0, -2)) return true;
         }
+        return false;
+    };
+
+    let matchedTargetWords = 0;
+    for (const tw of tWords) {
+        if (fWords.some(fw => wordsMatch(tw, fw))) {
+            matchedTargetWords++;
+        }
+    }
+    const ratioTarget = matchedTargetWords / tWords.length;
+
+    let matchedFoundWords = 0;
+    for (const fw of fWords) {
+        if (tWords.some(tw => wordsMatch(tw, fw))) {
+            matchedFoundWords++;
+        }
+    }
+    const ratioFound = matchedFoundWords / fWords.length;
+
+    if (ratioTarget >= 0.8 && ratioFound >= 0.6) {
+        return true;
     }
 
     return false;
 }
+
+const opac_is_strict_cover_match = isStrictBookCoverMatch;
 
 /**
  * Источник 1: Яндекс Книги (Bookmate API) со строгой проверкой названия и автора
@@ -521,7 +663,9 @@ function initCoverZoomModal() {
                         <img class="opac-cover-zoom-img" src="" alt="Обложка книги" style="display: none;" />
                         <div class="opac-cover-zoom-fallback" style="display: flex;">
                             <div class="opac-zoom-fallback-border">
-                                <span class="material-symbols-outlined opac-zoom-genre-icon" data-zoom-genre-icon>menu_book</span>
+                                <span class="opac-zoom-fallback-no-cover-badge">НЕТ ОБЛОЖКИ !</span>
+                                <img class="opac-zoom-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png" alt="Космо удивлен" />
+                                <span class="material-symbols-outlined opac-zoom-genre-icon" data-zoom-genre-icon style="display: none;">menu_book</span>
                                 <span class="opac-zoom-title-preview" data-zoom-fallback-title></span>
                                 <span class="opac-zoom-year" data-zoom-fallback-year></span>
                             </div>
@@ -1670,7 +1814,8 @@ function renderSearchResults(data, query) {
                     <span class="opac-cover-source-badge" style="display: none;"></span>
                     <div class="opac-cover-fallback">
                         <div class="opac-fallback-border">
-                            <span class="material-symbols-outlined opac-cover-genre-icon">${genreIcon}</span>
+                            <span class="opac-fallback-no-cover-badge">НЕТ ОБЛОЖКИ !</span>
+                            <img class="opac-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png" alt="Космо удивлен" loading="lazy" />
                             <span class="opac-cover-title-preview">${escapeHtml(title)}</span>
                             ${year ? `<span class="opac-cover-year">${escapeHtml(year)}</span>` : ''}
                         </div>

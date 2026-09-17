@@ -100,6 +100,49 @@ if (!function_exists('mb_stripos')) {
         return mb_strpos($h, $n, $offset, $encoding);
     }
 }
+if (!defined('MB_CASE_UPPER')) define('MB_CASE_UPPER', 0);
+if (!defined('MB_CASE_LOWER')) define('MB_CASE_LOWER', 1);
+if (!defined('MB_CASE_TITLE')) define('MB_CASE_TITLE', 2);
+
+if (!function_exists('mb_strrpos')) {
+    function mb_strrpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strrpos')) {
+            $pos = @iconv_strrpos((string)$haystack, (string)$needle, $offset, $encoding);
+            if ($pos !== false) return $pos;
+        }
+        $h = (string)$haystack;
+        $n = (string)$needle;
+        if ($n === '') return false;
+        $hLen = mb_strlen($h, $encoding);
+        $nLen = mb_strlen($n, $encoding);
+        if ($hLen < $nLen) return false;
+        $start = $offset >= 0 ? $offset : max(0, $hLen + $offset);
+        for ($i = $hLen - $nLen; $i >= $start; $i--) {
+            if (mb_substr($h, $i, $nLen, $encoding) === $n) {
+                return $i;
+            }
+        }
+        return false;
+    }
+}
+if (!function_exists('mb_convert_case')) {
+    function mb_convert_case($string, $mode = MB_CASE_TITLE, $encoding = 'UTF-8') {
+        $str = (string)$string;
+        if ($mode === MB_CASE_UPPER) {
+            return mb_strtoupper($str, $encoding);
+        } elseif ($mode === MB_CASE_LOWER) {
+            return mb_strtolower($str, $encoding);
+        } elseif ($mode === MB_CASE_TITLE) {
+            return preg_replace_callback('/\b\p{L}+/u', function ($m) use ($encoding) {
+                $word = $m[0];
+                $first = mb_substr($word, 0, 1, $encoding);
+                $rest = mb_substr($word, 1, null, $encoding);
+                return mb_strtoupper($first, $encoding) . mb_strtolower($rest, $encoding);
+            }, $str);
+        }
+        return $str;
+    }
+}
 
 if (!function_exists('vk_bot_mb_strlen')) {
     function vk_bot_mb_strlen($s)
@@ -4819,10 +4862,12 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
 
     if (empty($postsToShow)) {
         if ($keyword !== '') {
-            return "🔍 В свежих публикациях 16 групп библиотек Владимира по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "» ничего не найдено.\n\n"
+            return "📰 Постов за сегодня нет.\n\n"
+                 . "🔍 В свежих публикациях 16 групп библиотек Владимира по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "» ничего не найдено.\n\n"
                  . "💡 Попробуйте другое слово или напишите «Новости филиалов», чтобы посмотреть общую ленту всех филиалов за сутки! ✨";
         }
-        return "📰 В группах 16 филиалов библиотек города Владимира за последние 24 часа пока нет новых записей.\n\n"
+        return "📰 Постов за сегодня нет.\n\n"
+             . "В группах 16 филиалов библиотек города Владимира за последние 24 часа пока нет новых записей.\n\n"
              . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Библиотеки-филиалы». ✨";
     }
 
@@ -4838,7 +4883,7 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
     } else {
         $header = $isToday
             ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
-            : "📰 За сегодняшние сутки (с 00:00) новых постов пока нет. Вот свежие публикации филиалов за последние 24 часа:\n\n";
+            : "📰 Постов за сегодня нет (с 00:00 новых записей пока нет). Вот свежие публикации филиалов за последние 24 часа:\n\n";
     }
 
     $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";

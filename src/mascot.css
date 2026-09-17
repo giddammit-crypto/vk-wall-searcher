@@ -183,28 +183,43 @@
 }
 
 .mascot-bubble-close {
+    position: relative;
+    z-index: 10;
     width: 22px;
     height: 22px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.14);
     color: rgba(226, 232, 240, 0.85);
     cursor: pointer;
+    pointer-events: auto;
     padding: 0;
     font-size: 14px;
     line-height: 1;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 .mascot-bubble-close:hover {
-    background: rgba(239, 68, 68, 0.22);
-    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.55);
     color: #fca5a5;
-    transform: scale(1.12);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    transform: scale(1.14);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+}
+.mascot-bubble-close:active {
+    transform: scale(0.92);
+}
+.mascot-bubble-close:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
 }
 [data-theme="light"] .mascot-bubble-close {
     background: rgba(0, 0, 0, 0.05);
@@ -212,9 +227,13 @@
     color: #475569;
 }
 [data-theme="light"] .mascot-bubble-close:hover {
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.35);
     color: #dc2626;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+[data-theme="light"] .mascot-bubble-close:focus-visible {
+    outline: 2px solid #059669;
 }
 
 .mascot-bubble-text {

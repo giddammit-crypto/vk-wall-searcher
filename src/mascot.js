@@ -688,6 +688,7 @@ export class AuroraMascot {
         this.dragSessionId = 0;
         this.isMuted = false;
         this.isSpeakingAudio = false;
+        this.userDismissedBubble = false;
 
         this.currentAudio = null;
         this.speechTimer = null;
@@ -1164,6 +1165,7 @@ export class AuroraMascot {
         this.bodyEl.addEventListener('click', (e) => {
             if (e.target.closest('[data-mascot-collapse]') || e.target.closest('[data-mascot-open-chat]')) return;
             e.stopPropagation();
+            this.userDismissedBubble = false;
             if (this.isDragging) return;
             if (this.isSleeping) {
                 this.wakeUp();
@@ -1199,6 +1201,7 @@ export class AuroraMascot {
             if (e.target.closest('[data-mascot-collapse]')) return;
             e.preventDefault();
             e.stopPropagation();
+            this.userDismissedBubble = false;
             if (this.clickTimeout) {
                 clearTimeout(this.clickTimeout);
                 this.clickTimeout = null;
@@ -1210,6 +1213,7 @@ export class AuroraMascot {
         this.container.querySelectorAll('[data-mascot-open-chat]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                this.userDismissedBubble = false;
                 if (this.clickTimeout) {
                     clearTimeout(this.clickTimeout);
                     this.clickTimeout = null;
@@ -1225,6 +1229,7 @@ export class AuroraMascot {
             this.modeToggleBtn.classList.toggle('is-work', this.isWorkMode);
             this.modeToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                this.userDismissedBubble = false;
                 this.toggleWorkMode();
             });
         }
@@ -1234,7 +1239,10 @@ export class AuroraMascot {
         if (closeBtn) {
             closeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.hideBubble();
+                this.userDismissedBubble = true;
+                clearTimeout(this.speechTimer);
+                this.stopVoice(true);
+                this.hideBubble(true);
             });
         }
 
@@ -2247,6 +2255,12 @@ export class AuroraMascot {
     playDynamicAudio(audioUrl, text, spriteMood = 'smile', isUserAction = true) {
         if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
 
+        // Если пользователь закрыл облачко вручную, не открываем его самопроизвольно
+        if (this.userDismissedBubble) {
+            if (!isUserAction) return;
+            this.userDismissedBubble = false;
+        }
+
         if (this.currentAudio) {
             try { this.currentAudio.pause(); } catch (e) {}
             this.currentAudio = null;
@@ -2935,6 +2949,12 @@ export class AuroraMascot {
      * ------------------------------------------------------------------- */
     say(text, duration = 6000, spriteMood = 'smile', voiceKey = null, isUserAction = false) {
         if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
+
+        // Если пользователь закрыл облачко вручную, не открываем его самопроизвольно
+        if (this.userDismissedBubble) {
+            if (!isUserAction) return;
+            this.userDismissedBubble = false;
+        }
 
         // Если сейчас уже играет голосовая фраза, и это не действие пользователя, НЕ перебиваем речь!
         if (!isUserAction && this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {

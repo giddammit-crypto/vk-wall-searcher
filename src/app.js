@@ -1130,41 +1130,76 @@ function initApp() {
             }
 
             const resolvedTargets = [];
-            for (let i = 0; i < targetsToScan.length; i++) {
-                if (state.shouldCancel) break;
-                const t = targetsToScan[i];
-                elements.progressStatusMsg.textContent = `Разрешение (${i + 1}/${targetsToScan.length}): ${t.canonicalName || t.name || t.link}`;
-
-                // Fast-path: Check canonical branches catalog first
-                const canon = findCanonicalBranch(t);
-                if (canon && canon.rawId) {
-                    const info = {
-                        id: canon.rawId,
-                        name: canon.canonicalName,
-                        canonicalName: canon.canonicalName,
-                        avatar: canon.avatar || '',
-                        members_count: typeof canon.canonicalMembers === 'number' ? canon.canonicalMembers : null,
-                        link: canon.vkLink || t.link || '',
-                        screen_name: canon.screenName || '',
-                        type: canon.rawId < 0 ? 'group' : 'user',
-                        shortCode: canon.shortCode,
-                        branchNum: canon.branchNum,
-                        address: canon.address,
-                        phone: canon.phone,
-                        gradient: canon.gradient,
-                        sortOrder: canon.sortOrder,
-                        branch_url: canon.branch_url
-                    };
-                    resolvedTargets.push(info);
-                    continue;
+            if (state.useBranches) {
+                // Мгновенный резолв филиалов из pre-cached branches_cache.json / CANONICAL_BRANCHES без 32 запросов к API
+                if (elements.progressStatusMsg) {
+                    elements.progressStatusMsg.textContent = 'Мгновенный резолв филиалов из локального кэша (CANONICAL_BRANCHES)...';
                 }
+                const sourceBranches = (Array.isArray(state.libraryBranchesList) && state.libraryBranchesList.length > 0)
+                    ? state.libraryBranchesList
+                    : (Array.isArray(CANONICAL_BRANCHES) && CANONICAL_BRANCHES.length > 0 ? CANONICAL_BRANCHES : targetsToScan);
 
-                try {
-                    const info = await resolveTarget(t.link || t.name || t.id, state.token);
-                    enrichTargetWithCanonical(info);
-                    resolvedTargets.push(info);
-                } catch (resErr) {
-                    console.warn(`Не удалось разрешить адрес ${t.link}:`, resErr.message);
+                for (let b of sourceBranches) {
+                    const canon = findCanonicalBranch(b) || b;
+                    if (canon && canon.rawId) {
+                        resolvedTargets.push({
+                            id: canon.rawId,
+                            name: canon.canonicalName || canon.name || canon.shortCode || `Филиал ${canon.rawId}`,
+                            canonicalName: canon.canonicalName || canon.name || canon.shortCode || '',
+                            avatar: canon.avatar || '',
+                            members_count: typeof canon.canonicalMembers === 'number' ? canon.canonicalMembers : null,
+                            link: canon.vkLink || b.link || (canon.screenName ? `https://vk.com/${canon.screenName}` : ''),
+                            screen_name: canon.screenName || '',
+                            type: canon.rawId < 0 ? 'group' : 'user',
+                            shortCode: canon.shortCode || '',
+                            branchNum: canon.branchNum || '',
+                            address: canon.address || '',
+                            phone: canon.phone || '',
+                            gradient: canon.gradient || '',
+                            sortOrder: canon.sortOrder || 999,
+                            branch_url: canon.branch_url || ''
+                        });
+                    }
+                }
+            } else {
+                for (let i = 0; i < targetsToScan.length; i++) {
+                    if (state.shouldCancel) break;
+                    const t = targetsToScan[i];
+                    if (elements.progressStatusMsg) {
+                        elements.progressStatusMsg.textContent = `Разрешение (${i + 1}/${targetsToScan.length}): ${t.canonicalName || t.name || t.link}`;
+                    }
+
+                    // Fast-path: Check canonical branches catalog first
+                    const canon = findCanonicalBranch(t);
+                    if (canon && canon.rawId) {
+                        const info = {
+                            id: canon.rawId,
+                            name: canon.canonicalName,
+                            canonicalName: canon.canonicalName,
+                            avatar: canon.avatar || '',
+                            members_count: typeof canon.canonicalMembers === 'number' ? canon.canonicalMembers : null,
+                            link: canon.vkLink || t.link || '',
+                            screen_name: canon.screenName || '',
+                            type: canon.rawId < 0 ? 'group' : 'user',
+                            shortCode: canon.shortCode,
+                            branchNum: canon.branchNum,
+                            address: canon.address,
+                            phone: canon.phone,
+                            gradient: canon.gradient,
+                            sortOrder: canon.sortOrder,
+                            branch_url: canon.branch_url
+                        };
+                        resolvedTargets.push(info);
+                        continue;
+                    }
+
+                    try {
+                        const info = await resolveTarget(t.link || t.name || t.id, state.token);
+                        enrichTargetWithCanonical(info);
+                        resolvedTargets.push(info);
+                    } catch (resErr) {
+                        console.warn(`Не удалось разрешить адрес ${t.link}:`, resErr.message);
+                    }
                 }
             }
 
@@ -1245,10 +1280,48 @@ function initApp() {
             // minTime is the Unix timestamp of the oldest date we care about (Jan 1 of yearStart)
             const minTime = yearStart > 0 ? Math.floor(new Date(yearStart, 0, 1).getTime() / 1000) : 0;
 
-            let targetIndex = 0;
-            for (let targetInfo of resolvedTargets) {
-                if (state.shouldCancel) break;
-                targetIndex++;
+            // 2. Batch Scanning: параллельный опрос стен батчами по 2-3 филиала
+            const BATCH_SIZE = 3;
+            const targetProgressMap = new Map();
+            let completedTargetsCount = 0;
+            const activeTargetNames = new Set();
+            const totalStartTime = Date.now();
+
+            function updateBatchProgressUI() {
+                let progressSum = 0;
+                targetProgressMap.forEach(p => { progressSum += p; });
+                const percent = Math.min(99, Math.round((progressSum / resolvedTargets.length) * 100));
+
+                const secondsElapsed = (Date.now() - totalStartTime) / 1000;
+                const speed = secondsElapsed > 0 ? Math.round(state.scannedCount / secondsElapsed) : 0;
+                if (elements.statSpeed) {
+                    elements.statSpeed.textContent = `${speed}/сек`;
+                }
+
+                const activeList = Array.from(activeTargetNames).slice(0, 3).join(', ');
+                if (elements.progressTitle) {
+                    elements.progressTitle.textContent = `Параллельное сканирование (${completedTargetsCount}/${resolvedTargets.length} завершено): ${activeList || 'филиалы...'}`;
+                }
+                if (elements.progressStatusMsg && !state.shouldCancel) {
+                    elements.progressStatusMsg.textContent = `Опрос стен батчами (${Math.min(BATCH_SIZE, activeTargetNames.size || 1)} параллельно). Найдено совпадений: ${state.matchedCount}`;
+                }
+
+                if (elements.progressBar) elements.progressBar.style.width = `${percent}%`;
+                if (elements.progressPercent) elements.progressPercent.textContent = `${percent}%`;
+                if (elements.statScanned) elements.statScanned.textContent = state.scannedCount.toLocaleString('ru-RU');
+                if (elements.statMatched) elements.statMatched.textContent = state.matchedCount.toLocaleString('ru-RU');
+                if (elements.statGroups) elements.statGroups.textContent = `${completedTargetsCount} / ${resolvedTargets.length}`;
+
+                try {
+                    Mascot.onScanProgress(percent, state.matchedCount);
+                } catch (e) {}
+            }
+
+            async function scanTargetWall(targetInfo) {
+                const targetName = targetInfo.canonicalName || targetInfo.name || `Филиал ${targetInfo.id}`;
+                activeTargetNames.add(targetName);
+                targetProgressMap.set(targetInfo.id, 0);
+                updateBatchProgressUI();
 
                 let offset = 0;
                 let finished = false;
@@ -1256,16 +1329,6 @@ function initApp() {
                 let groupPostCount = 0;
                 let executeFailedForGroup = false;
                 let emptyBatchStreak = 0;
-
-                if (elements.progressTitle) {
-                    elements.progressTitle.textContent = `Сканирование (${targetIndex}/${resolvedTargets.length}): ${targetInfo.canonicalName || targetInfo.name}`;
-                }
-                if (elements.progressStatusMsg) {
-                    elements.progressStatusMsg.textContent = 'Пакетная выгрузка через execute...';
-                }
-                if (elements.statGroups) {
-                    elements.statGroups.textContent = `${targetIndex} / ${resolvedTargets.length}`;
-                }
 
                 while (!finished && !state.shouldCancel) {
                     let res;
@@ -1280,7 +1343,7 @@ function initApp() {
                     }
 
                     if (executeFailedForGroup) {
-                        if (elements.progressStatusMsg) {
+                        if (elements.progressStatusMsg && !state.shouldCancel) {
                             elements.progressStatusMsg.textContent = `Выгрузка записей ${targetInfo.canonicalName || targetInfo.name} (смещение ${offset})...`;
                         }
                         try {
@@ -1300,6 +1363,8 @@ function initApp() {
                             break;
                         }
                     }
+
+                    if (state.shouldCancel) break;
 
                     if (!res || !res.items || res.items.length === 0) {
                         emptyBatchStreak++;
@@ -1412,27 +1477,15 @@ function initApp() {
                         groupPostCount++;
                     }
 
-                    // Progress display: accurately compute overall progress without jumping to 100% prematurely
+                    // Progress display: accurately compute overall progress
                     let groupRatio = 0;
                     if (wallTotalCount > 0) {
                         groupRatio = Math.min(0.95, offset / wallTotalCount);
                     } else if (posts && posts.length > 0) {
                         groupRatio = 0.5;
                     }
-                    const overallRatio = (targetIndex - 1 + groupRatio) / resolvedTargets.length;
-                    const pct = resolvedTargets.length > 1
-                        ? Math.min(98, Math.max(1, Math.round(overallRatio * 100)))
-                        : (wallTotalCount > 0 ? Math.min(99, Math.round((offset / wallTotalCount) * 100)) : 50);
-
-                    if (elements.progressBar) elements.progressBar.style.width = `${pct}%`;
-                    if (elements.progressPercent) elements.progressPercent.textContent = `${pct}%`;
-                    if (elements.statScanned) elements.statScanned.textContent = state.scannedCount.toLocaleString('ru-RU');
-                    if (elements.statMatched) elements.statMatched.textContent = state.matchedCount.toLocaleString('ru-RU');
-                    if (elements.statGroups) elements.statGroups.textContent = `${targetIndex} / ${resolvedTargets.length}`;
-
-                    try {
-                        Mascot.onScanProgress(pct, state.matchedCount);
-                    } catch (e) {}
+                    targetProgressMap.set(targetInfo.id, groupRatio);
+                    updateBatchProgressUI();
 
                     // Check if more posts available on wall
                     if (finished || res.has_more === 0 || posts.length === 0) {
@@ -1447,7 +1500,28 @@ function initApp() {
 
                     offset += posts.length;
                 }
+
+                targetProgressMap.set(targetInfo.id, 1);
+                completedTargetsCount++;
+                activeTargetNames.delete(targetName);
+                updateBatchProgressUI();
             }
+
+            // Worker pool execution: BATCH_SIZE concurrent workers
+            let targetIdx = 0;
+            async function worker() {
+                while (targetIdx < resolvedTargets.length && !state.shouldCancel) {
+                    const currentTarget = resolvedTargets[targetIdx++];
+                    await scanTargetWall(currentTarget);
+                }
+            }
+
+            const workers = [];
+            const workerCount = Math.min(BATCH_SIZE, resolvedTargets.length);
+            for (let w = 0; w < workerCount; w++) {
+                workers.push(worker());
+            }
+            await Promise.all(workers);
 
             const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
 

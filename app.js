@@ -1896,21 +1896,54 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const resolvedTargets = [];
             const resolveErrors = [];
-            for (let t of targetsRaw) {
-                const targetClean = parseTargetInput(t);
-                if (!targetClean) {
-                    resolveErrors.push(`"${t}" — не удалось извлечь имя или ID из адреса`);
-                    continue;
+
+            if (state.useBranches) {
+                // Мгновенный резолв филиалов из pre-cached branches_cache.json / CANONICAL_BRANCHES без 32 запросов к API
+                elements.progressStatusMsg.textContent = `Мгновенный резолв филиалов из локального кэша (CANONICAL_BRANCHES)...`;
+                const sourceBranches = (Array.isArray(state.libraryBranchesList) && state.libraryBranchesList.length > 0)
+                    ? state.libraryBranchesList
+                    : (Array.isArray(CANONICAL_BRANCHES) && CANONICAL_BRANCHES.length > 0 ? CANONICAL_BRANCHES : []);
+
+                for (let b of sourceBranches) {
+                    const canon = findCanonicalBranch(b) || b;
+                    if (canon && canon.rawId) {
+                        resolvedTargets.push({
+                            id: canon.rawId,
+                            name: canon.canonicalName || canon.name || canon.shortCode || `Филиал ${canon.rawId}`,
+                            canonicalName: canon.canonicalName || canon.name || canon.shortCode || '',
+                            avatar: canon.avatar || '',
+                            members_count: typeof canon.canonicalMembers === 'number' ? canon.canonicalMembers : null,
+                            link: canon.vkLink || b.link || (canon.screenName ? `https://vk.com/${canon.screenName}` : ''),
+                            screen_name: canon.screenName || '',
+                            type: canon.rawId < 0 ? 'group' : 'user',
+                            shortCode: canon.shortCode || '',
+                            branchNum: canon.branchNum || '',
+                            address: canon.address || '',
+                            phone: canon.phone || '',
+                            gradient: canon.gradient || '',
+                            sortOrder: canon.sortOrder || 999,
+                            branch_url: canon.branch_url || ''
+                        });
+                    }
                 }
-                try {
-                    elements.progressStatusMsg.textContent = `Разрешение адреса: ${targetClean}...`;
-                    const info = await resolveTarget(targetClean);
-                    resolvedTargets.push(info);
-                } catch(err) {
-                    console.warn(`Пропуск недоступного адреса "${t}":`, err.message);
-                    resolveErrors.push(`"${targetClean}" — ${err.message}`);
+            } else {
+                for (let t of targetsRaw) {
+                    const targetClean = parseTargetInput(t);
+                    if (!targetClean) {
+                        resolveErrors.push(`"${t}" — не удалось извлечь имя или ID из адреса`);
+                        continue;
+                    }
+                    try {
+                        elements.progressStatusMsg.textContent = `Разрешение адреса: ${targetClean}...`;
+                        const info = await resolveTarget(targetClean);
+                        resolvedTargets.push(info);
+                    } catch(err) {
+                        console.warn(`Пропуск недоступного адреса "${t}":`, err.message);
+                        resolveErrors.push(`"${targetClean}" — ${err.message}`);
+                    }
                 }
             }
+
             if (resolvedTargets.length === 0) {
                 const details = resolveErrors.length > 0
                     ? '\n\nПричины:\n' + resolveErrors.slice(0, 5).join('\n')
@@ -1924,24 +1957,43 @@ document.addEventListener('DOMContentLoaded', () => {
             // Set first target as the general targetInfo for backward compatibility
             state.targetInfo = resolvedTargets[0];
 
-            // 2. Fetch Wall Posts loop for each target
-            let targetIndex = 0;
-            let totalStartTime = Date.now();
+            // 2. Fetch Wall Posts: параллельный опрос стен батчами по 2-3 филиала
+            const BATCH_SIZE = 3;
+            const targetProgressMap = new Map();
+            let completedTargetsCount = 0;
+            const activeTargetNames = new Set();
+            const totalStartTime = Date.now();
 
-            for (let targetInfo of resolvedTargets) {
-                if (state.shouldCancel) break;
+            function updateBatchProgressUI() {
+                let progressSum = 0;
+                targetProgressMap.forEach(p => progressSum += p);
+                const percent = Math.min(99, Math.round((progressSum / resolvedTargets.length) * 100));
 
+                const secondsElapsed = (Date.now() - totalStartTime) / 1000;
+                const speed = secondsElapsed > 0 ? Math.round(state.scannedCount / secondsElapsed) : 0;
+                if (elements.statSpeed) {
+                    elements.statSpeed.textContent = `${speed}/сек`;
+                }
+
+                const activeList = Array.from(activeTargetNames).slice(0, 3).join(', ');
+                if (elements.progressTitle) {
+                    elements.progressTitle.textContent = `Параллельное сканирование (${completedTargetsCount}/${resolvedTargets.length} завершено): ${activeList || 'филиалы...'}`;
+                }
+                if (elements.progressStatusMsg && !state.shouldCancel) {
+                    elements.progressStatusMsg.textContent = `Опрос стен батчами (${Math.min(BATCH_SIZE, activeTargetNames.size || 1)} параллельно). Найдено совпадений: ${state.matchedCount}`;
+                }
+
+                updateProgressUI(percent);
+            }
+
+            async function scanTargetWall(targetInfo) {
                 let offset = 0;
                 const count = 100;
                 let finished = false;
                 let wallTotalCount = 0;
                 let wallScannedCount = 0;
 
-                elements.progressTitle.textContent = `Сканирование (${targetIndex + 1}/${resolvedTargets.length}): ${targetInfo.name}`;
-                elements.progressStatusMsg.textContent = 'Получение общей информации о стене...';
-
                 while (!finished && !state.shouldCancel) {
-                    // Fetch block of posts
                     let res;
                     try {
                         res = await callVkApi('wall.get', {
@@ -1955,6 +2007,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         finished = true;
                         break;
                     }
+
+                    if (state.shouldCancel) break;
 
                     if (!res || !res.items || res.items.length === 0) {
                         finished = true;
@@ -1974,7 +2028,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     if (offset === 0) {
-                        wallTotalCount = res.count;
+                        wallTotalCount = res.count || res.items.length;
                         state.totalCount += wallTotalCount;
                     }
 
@@ -1984,15 +2038,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     for (let post of posts) {
                         if (state.shouldCancel) break;
 
-                        // Pinned posts appear at the top regardless of chronological order;
-                        // include them in matching but skip them for the early-exit optimisation.
                         const postDate = new Date(post.date * 1000);
                         const year = postDate.getFullYear();
                         const month = postDate.getMonth() + 1; // 1-12
                         const day = postDate.getDate();
 
-                        // Early-exit optimisation: once we reach posts older than yearStart,
-                        // all subsequent posts will also be older (unless pinned).
                         if (!post.is_pinned && year < yearStart) {
                             finished = true;
                             break;
@@ -2001,12 +2051,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         state.scannedCount++;
                         wallScannedCount++;
 
-                        // Verify if post matches all selected filters
                         const inYearRange = year >= yearStart && year <= yearEnd;
                         const isTargetMonth = state.selectedMonths.has(month);
                         const isTargetDay = (dayFilter === 'all' || day === parseInt(dayFilter, 10));
-                        
-                        // Advanced text matching
+
                         let textMatches = true;
                         const txt = (post.text || '').toLowerCase();
                         if (keywords.length > 0) {
@@ -2014,57 +2062,56 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ? keywords.every(kw => txt.includes(kw))
                                 : keywords.some(kw => txt.includes(kw));
                         }
-                        // Exclude words
                         if (textMatches && excludeWords.length > 0) {
                             textMatches = !excludeWords.some(ex => txt.includes(ex));
                         }
-                        // Hashtag filter
                         if (textMatches && hashtagRaw) {
                             const re = new RegExp('#' + hashtagRaw + '(?=[^a-zA-Zа-яА-ЯёЁ0-9_]|$)', 'i');
                             textMatches = re.test(post.text || '');
                         }
-                        // Photo filter
                         const hasPhoto = (post.attachments || []).some(a => a.type === 'photo');
                         if (onlyPhotos && !hasPhoto) textMatches = false;
 
                         if (inYearRange && isTargetMonth && isTargetDay && textMatches) {
                             state.matchedCount++;
                             post.humanDate = formatHumanDate(postDate);
-                            post.targetInfo = targetInfo; // Link target info directly to post object
+                            post.targetInfo = targetInfo;
                             state.matchedPosts.push(post);
                         }
                     }
 
-                    // Global progress calculation across all targets
-                    const currentProgress = wallTotalCount > 0 ? (wallScannedCount / wallTotalCount) : 0;
-                    const percent = Math.round(((targetIndex + currentProgress) / resolvedTargets.length) * 100);
-                    
-                    // Speed calculations
-                    const secondsElapsed = (Date.now() - totalStartTime) / 1000;
-                    const speed = secondsElapsed > 0 ? Math.round(state.scannedCount / secondsElapsed) : 0;
-                    elements.statSpeed.textContent = `${speed}/сек`;
-                    
-                    updateProgressUI(percent);
+                    const currentBranchProgress = wallTotalCount > 0 ? (wallScannedCount / wallTotalCount) : 0;
+                    targetProgressMap.set(targetInfo.id, currentBranchProgress);
+                    updateBatchProgressUI();
 
-                    if (posts.length < count) {
+                    if (posts.length < count || wallScannedCount >= wallTotalCount) {
                         finished = true;
                     }
 
                     offset += count;
-                    
-                    if (wallScannedCount >= wallTotalCount) {
-                        finished = true;
-                    }
-
-                    // Smooth update of status message
-                    if (posts.length > 0) {
-                        const sampleDate = new Date(posts[posts.length - 1].date * 1000);
-                        elements.progressStatusMsg.textContent = `Сканируем записи за ${sampleDate.getFullYear()} год...`;
-                    }
                 }
 
-                targetIndex++;
+                targetProgressMap.set(targetInfo.id, 1);
+                completedTargetsCount++;
+                activeTargetNames.delete(targetInfo.canonicalName || targetInfo.name);
+                updateBatchProgressUI();
             }
+
+            let nextTargetIndex = 0;
+            async function batchWorker() {
+                while (nextTargetIndex < resolvedTargets.length && !state.shouldCancel) {
+                    const currentIdx = nextTargetIndex++;
+                    const targetInfo = resolvedTargets[currentIdx];
+                    activeTargetNames.add(targetInfo.canonicalName || targetInfo.name);
+                    targetProgressMap.set(targetInfo.id, 0);
+                    updateBatchProgressUI();
+                    await scanTargetWall(targetInfo);
+                }
+            }
+
+            const workerCount = Math.min(BATCH_SIZE, resolvedTargets.length);
+            const workers = Array.from({ length: workerCount }, () => batchWorker());
+            await Promise.all(workers);
 
             // Finish search execution
             elements.progressStatusMsg.textContent = state.shouldCancel ? 'Сканирование прервано пользователем.' : 'Поиск успешно завершен!';

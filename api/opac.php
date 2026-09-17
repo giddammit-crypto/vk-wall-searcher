@@ -34,6 +34,130 @@
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
 
+// -----------------------------------------------------------------------------
+// Полифиллы для сред без расширения mbstring (PHP CLI / веб-сервер)
+// -----------------------------------------------------------------------------
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($string, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strlen')) {
+            $len = @iconv_strlen((string)$string, $encoding);
+            if ($len !== false) return $len;
+        }
+        return strlen(preg_replace('/[\x80-\xBF]/', '', (string)$string));
+    }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($string, $start, $length = null, $encoding = 'UTF-8') {
+        if (function_exists('iconv_substr')) {
+            $sub = @iconv_substr((string)$string, $start, $length !== null ? $length : iconv_strlen((string)$string, $encoding), $encoding);
+            if ($sub !== false) return $sub;
+        }
+        $chars = preg_split('//u', (string)$string, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars === false) {
+            return substr((string)$string, $start, $length !== null ? $length : strlen((string)$string));
+        }
+        if ($length === null) {
+            return implode('', array_slice($chars, $start));
+        }
+        return implode('', array_slice($chars, $start, $length));
+    }
+}
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($string, $encoding = 'UTF-8') {
+        return strtr((string)$string, [
+            'А'=>'а','Б'=>'б','В'=>'в','Г'=>'г','Д'=>'д','Е'=>'е','Ё'=>'ё','Ж'=>'ж','З'=>'з',
+            'И'=>'и','Й'=>'й','К'=>'к','Л'=>'л','М'=>'м','Н'=>'н','О'=>'о','П'=>'п','Р'=>'р',
+            'С'=>'с','Т'=>'т','У'=>'у','Ф'=>'ф','Х'=>'х','Ц'=>'ц','Ч'=>'ч','Ш'=>'ш','Щ'=>'щ',
+            'Ъ'=>'ъ','Ы'=>'ы','Ь'=>'ь','Э'=>'э','Ю'=>'ю','Я'=>'я',
+            'A'=>'a','B'=>'b','C'=>'c','D'=>'d','E'=>'e','F'=>'f','G'=>'g','H'=>'h','I'=>'i',
+            'J'=>'j','K'=>'k','L'=>'l','M'=>'m','N'=>'n','O'=>'o','P'=>'p','Q'=>'q','R'=>'r',
+            'S'=>'s','T'=>'t','U'=>'u','V'=>'v','W'=>'w','X'=>'x','Y'=>'y','Z'=>'z'
+        ]);
+    }
+}
+if (!defined('MB_CASE_UPPER')) define('MB_CASE_UPPER', 0);
+if (!defined('MB_CASE_LOWER')) define('MB_CASE_LOWER', 1);
+if (!defined('MB_CASE_TITLE')) define('MB_CASE_TITLE', 2);
+
+if (!function_exists('mb_strtoupper')) {
+    function mb_strtoupper($string, $encoding = 'UTF-8') {
+        return strtr((string)$string, [
+            'а'=>'А','б'=>'Б','в'=>'В','г'=>'Г','д'=>'Д','е'=>'Е','ё'=>'Ё','ж'=>'Ж','з'=>'З',
+            'и'=>'И','й'=>'Й','к'=>'К','л'=>'Л','м'=>'М','н'=>'Н','о'=>'О','п'=>'П','р'=>'Р',
+            'с'=>'С','т'=>'Т','у'=>'У','ф'=>'Ф','х'=>'Х','ц'=>'Ц','ч'=>'Ч','ш'=>'Ш','щ'=>'Щ',
+            'ъ'=>'Ъ','ы'=>'Ы','ь'=>'Ь','э'=>'Э','ю'=>'Ю','я'=>'Я',
+            'a'=>'A','b'=>'B','c'=>'C','d'=>'D','e'=>'E','f'=>'F','g'=>'G','h'=>'H','i'=>'I',
+            'j'=>'J','k'=>'K','l'=>'L','m'=>'M','n'=>'N','o'=>'O','p'=>'P','q'=>'Q','r'=>'R',
+            's'=>'S','t'=>'T','u'=>'U','v'=>'V','w'=>'W','x'=>'X','y'=>'Y','z'=>'Z'
+        ]);
+    }
+}
+if (!function_exists('mb_strpos')) {
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strpos')) {
+            $pos = @iconv_strpos((string)$haystack, (string)$needle, $offset, $encoding);
+            if ($pos !== false) return $pos;
+        }
+        $h = (string)$haystack;
+        $n = (string)$needle;
+        if ($n === '') return 0;
+        $hLen = mb_strlen($h, $encoding);
+        $nLen = mb_strlen($n, $encoding);
+        for ($i = $offset; $i <= $hLen - $nLen; $i++) {
+            if (mb_substr($h, $i, $nLen, $encoding) === $n) {
+                return $i;
+            }
+        }
+        return false;
+    }
+}
+if (!function_exists('mb_stripos')) {
+    function mb_stripos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        $h = mb_strtolower((string)$haystack, $encoding);
+        $n = mb_strtolower((string)$needle, $encoding);
+        return mb_strpos($h, $n, $offset, $encoding);
+    }
+}
+if (!function_exists('mb_strrpos')) {
+    function mb_strrpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        if (function_exists('iconv_strrpos')) {
+            $pos = @iconv_strrpos((string)$haystack, (string)$needle, $offset, $encoding);
+            if ($pos !== false) return $pos;
+        }
+        $h = (string)$haystack;
+        $n = (string)$needle;
+        if ($n === '') return false;
+        $hLen = mb_strlen($h, $encoding);
+        $nLen = mb_strlen($n, $encoding);
+        if ($hLen < $nLen) return false;
+        $start = $offset >= 0 ? $offset : max(0, $hLen + $offset);
+        for ($i = $hLen - $nLen; $i >= $start; $i--) {
+            if (mb_substr($h, $i, $nLen, $encoding) === $n) {
+                return $i;
+            }
+        }
+        return false;
+    }
+}
+if (!function_exists('mb_convert_case')) {
+    function mb_convert_case($string, $mode, $encoding = 'UTF-8') {
+        $str = (string)$string;
+        if ($mode === MB_CASE_UPPER) {
+            return mb_strtoupper($str, $encoding);
+        } elseif ($mode === MB_CASE_LOWER) {
+            return mb_strtolower($str, $encoding);
+        } elseif ($mode === MB_CASE_TITLE) {
+            return preg_replace_callback('/\b\p{L}+/u', function ($m) use ($encoding) {
+                $word = $m[0];
+                $first = mb_substr($word, 0, 1, $encoding);
+                $rest = mb_substr($word, 1, null, $encoding);
+                return mb_strtoupper($first, $encoding) . mb_strtolower($rest, $encoding);
+            }, $str);
+        }
+        return $str;
+    }
+}
+
 if (file_exists(__DIR__ . '/OpacClient.php')) {
     require_once __DIR__ . '/OpacClient.php';
 }
@@ -1469,7 +1593,126 @@ function opac_resolve_branch($branchCode, $locationStr = '')
  * @return array
  */
 /**
+ * Очистка автора книги и корректное извлечение фамилии для поиска обложек.
+ * Поддерживает любые форматы:
+ * - Инициалы впереди: "А. С. Пушкин", "А.С. Пушкин", "А. Пушкин", "А.С.Пушкин"
+ * - Инициалы сзади: "Пушкин А. С.", "Пушкин А.С.", "Пушкин А."
+ * - Запятая: "Пушкин, Александр Сергеевич", "Пушкин, А. С."
+ * - Полное имя: "Александр Сергеевич Пушкин" (отчество 2-е -> фамилия 3-я), "Пушкин Александр Сергеевич"
+ * - 2 слова: "Александр Пушкин" vs "Пушкин Александр", "Лев Толстой" vs "Толстой Лев", "Стивен Кинг"
+ */
+function opac_clean_author_for_cover($rawAuthor)
+{
+    $a = trim((string)$rawAuthor);
+    if ($a === '') {
+        return '';
+    }
+
+    $a = preg_replace('/[\[\]\(\)\"\'«»“”]/u', ' ', $a);
+    $a = preg_replace('/([A-Za-zА-Яа-яЁё])\./u', '$1. ', $a);
+    $a = trim(preg_replace('/\s+/u', ' ', $a));
+    if ($a === '') {
+        return '';
+    }
+
+    if (mb_strpos($a, ',') !== false) {
+        $commaPart = trim(explode(',', $a)[0]);
+        if (mb_strlen($commaPart, 'UTF-8') >= 2) {
+            $a = $commaPart;
+        }
+    }
+
+    $rawWords = array_values(array_filter(preg_split('/\s+/u', $a), function ($w) {
+        return $w !== '';
+    }));
+    if (empty($rawWords)) {
+        return '';
+    }
+
+    $isInitial = function ($w) {
+        $clean = trim($w, " .\t\n\r\0\x0B");
+        $len = mb_strlen($clean, 'UTF-8');
+        return $len === 1 || ($len === 2 && mb_strpos($w, '.') !== false);
+    };
+
+    while (!empty($rawWords) && $isInitial($rawWords[0])) {
+        array_shift($rawWords);
+    }
+    while (!empty($rawWords) && $isInitial($rawWords[count($rawWords) - 1])) {
+        array_pop($rawWords);
+    }
+
+    $words = array_values($rawWords);
+    if (empty($words)) {
+        return '';
+    }
+    if (count($words) === 1) {
+        return trim($words[0], " .,");
+    }
+
+    $patronymicRe = '/(?:ович|евич|ич|овна|евна|ична|инична)$/ui';
+    if (count($words) === 3) {
+        if (preg_match($patronymicRe, $words[1])) {
+            return trim($words[2], " .,");
+        }
+        if (preg_match($patronymicRe, $words[2])) {
+            return trim($words[0], " .,");
+        }
+        return trim($words[count($words) - 1], " .,");
+    }
+
+    if (count($words) === 2) {
+        $commonFirstNames = [
+            'александр', 'алексей', 'анатолий', 'андрей', 'антон', 'аркадий', 'артем', 'артём', 'артур',
+            'борис', 'вадим', 'валентин', 'валерий', 'василий', 'виктор', 'виталий', 'владимир', 'владислав',
+            'всеволод', 'вячеслав', 'геннадий', 'георгий', 'глеб', 'григорий', 'даниил', 'денис', 'дмитрий',
+            'евгений', 'егор', 'захар', 'иван', 'игорь', 'илья', 'кирилл', 'константин', 'лев', 'леонид',
+            'максим', 'матвей', 'михаил', 'никита', 'николай', 'олег', 'павел', 'петр', 'пётр', 'платон',
+            'роман', 'ростислав', 'руслан', 'семен', 'семён', 'сергей', 'станислав', 'степан', 'тимофей',
+            'тимур', 'федор', 'фёдор', 'филипп', 'эдуард', 'юрий', 'ярослав',
+            'анна', 'анастасия', 'валентина', 'валерия', 'варвара', 'василиса', 'вера', 'вероника', 'виктория',
+            'галина', 'дарья', 'диана', 'евгения', 'екатерина', 'елена', 'елизавета', 'жанна', 'зинаида', 'зоя',
+            'инна', 'ирина', 'кира', 'кристина', 'ксения', 'лариса', 'лидия', 'любовь', 'людмила', 'маргарита',
+            'марина', 'мария', 'мирослава', 'надежда', 'наталья', 'нина', 'оксана', 'олеся', 'ольга', 'полина',
+            'раиса', 'римма', 'светлана', 'софия', 'софья', 'тамара', 'татьяна', 'ульяна', 'юлия', 'яна',
+            'стивен', 'джон', 'джордж', 'марк', 'джек', 'роберт', 'уильям', 'томас', 'майкл', 'дэвид',
+            'эдгар', 'эрнест', 'франц', 'герман', 'жюль', 'чарльз', 'рей', 'рэй', 'айзек', 'клиффорд',
+            'агата', 'джейн', 'вирджиния', 'джоан'
+        ];
+        $fnMap = array_flip($commonFirstNames);
+        $w0 = str_replace('ё', 'е', mb_strtolower(trim($words[0], " .,"), 'UTF-8'));
+        $w1 = str_replace('ё', 'е', mb_strtolower(trim($words[1], " .,"), 'UTF-8'));
+
+        $surnameSuffixRe = '/(?:ов|ова|ев|ева|ин|ина|ын|ына|ский|ская|цкий|цкая|ых|их|ой|ый)$/ui';
+        if (isset($fnMap[$w0]) && !isset($fnMap[$w1])) {
+            return trim($words[1], " .,");
+        }
+        if (isset($fnMap[$w1]) && !isset($fnMap[$w0])) {
+            return trim($words[0], " .,");
+        }
+        if (preg_match($surnameSuffixRe, $w0) && !preg_match($surnameSuffixRe, $w1)) {
+            return trim($words[0], " .,");
+        }
+        if (preg_match($surnameSuffixRe, $w1) && !preg_match($surnameSuffixRe, $w0)) {
+            return trim($words[1], " .,");
+        }
+        return trim($words[0], " .,");
+    }
+
+    return trim($words[0], " .,");
+}
+
+if (!function_exists('cleanAuthorForCover')) {
+    function cleanAuthorForCover($rawAuthor) {
+        return opac_clean_author_for_cover($rawAuthor);
+    }
+}
+
+/**
  * Строгая проверка совпадения названия и автора книги для обложки (защита от чужих обложек)
+ * 1. Если у книги в ОПАК есть автор, найденная книга ОБЯЗАНА содержать фамилию автора.
+ * 2. Название должно строго совпадать (>= 80% значимых слов).
+ * Если не совпадает — отдавать false/null!
  */
 function opac_is_strict_cover_match($foundTitle, $foundAuthors, $targetTitle, $targetAuthor)
 {
@@ -1480,56 +1723,130 @@ function opac_is_strict_cover_match($foundTitle, $foundAuthors, $targetTitle, $t
     $norm = function ($str) {
         $s = mb_strtolower((string)$str, 'UTF-8');
         $s = str_replace('ё', 'е', $s);
-        $s = preg_replace('/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”]/u', ' ', $s);
+        $s = preg_replace('/[.,\/#!$%\^&\*;:{}=\-_`~()\"\'«»“”\[\]]/u', ' ', $s);
         $s = preg_replace('/\s+/u', ' ', $s);
         return trim($s);
     };
 
-    $tTitle = $norm($targetTitle);
-    $fTitle = $norm($foundTitle);
-    if ($tTitle === '' || $fTitle === '') {
+    $tTitleNorm = $norm($targetTitle);
+    $fTitleNorm = $norm($foundTitle);
+    if ($tTitleNorm === '' || $fTitleNorm === '') {
         return false;
     }
 
-    // 1. Проверка автора (если автор указан в каталоге)
+    // 1. Проверка автора: если автор указан в каталоге ОПАК, найденная книга ОБЯЗАНА содержать его фамилию
     $cleanTargetAuthor = trim((string)$targetAuthor);
     if ($cleanTargetAuthor !== '') {
-        $tAuthorClean = $norm($cleanTargetAuthor);
-        $parts = explode(' ', $tAuthorClean);
-        $tSurname = $parts[0] ?? '';
-        $fAuthorsClean = $norm($foundAuthors);
+        $targetSurname = opac_clean_author_for_cover($cleanTargetAuthor);
+        $tSurnameNorm = $norm($targetSurname);
 
-        // Фамилия автора должна строго присутствовать в авторах найденной книги
-        if (mb_strlen($tSurname, 'UTF-8') >= 3 && mb_strpos($fAuthorsClean, $tSurname) === false) {
-            return false;
+        if (mb_strlen($tSurnameNorm, 'UTF-8') >= 2) {
+            $fAuthorsNorm = $norm($foundAuthors);
+            $fTitleCheck = $norm($foundTitle);
+
+            $stem = mb_strlen($tSurnameNorm, 'UTF-8') >= 4 ? mb_substr($tSurnameNorm, 0, -1, 'UTF-8') : $tSurnameNorm;
+            $stemPattern = preg_quote($stem, '/');
+            $authorRegex = '/(?:^|\s)' . $stemPattern . '[а-яa-z]*(?:$|\s)/ui';
+
+            $authorInAuthors = ($fAuthorsNorm !== '') ? (bool)preg_match($authorRegex, ' ' . $fAuthorsNorm . ' ') : false;
+            $authorInTitle = (bool)preg_match($authorRegex, ' ' . $fTitleCheck . ' ');
+
+            if (!$authorInAuthors && !$authorInTitle) {
+                return false;
+            }
         }
     }
 
-    // 2. Проверка названия
-    if ($fTitle === $tTitle) {
+    // 2. Строгая проверка названия (>= 80% значимых слов)
+    if ($fTitleNorm === $tTitleNorm) {
         return true;
     }
 
-    $tShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $tTitle)[0] ?? $tTitle);
-    $fShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $fTitle)[0] ?? $fTitle);
+    // Отсекаем подзаголовки (после :, ;, —, –, /)
+    $stripSub = function ($str) {
+        $parts = preg_split('/[:;–—\/]/u', (string)$str);
+        $m = trim($parts[0] ?? '');
+        return $m !== '' ? $m : $str;
+    };
+    $tTitleClean = $norm($stripSub($targetTitle));
+    $fTitleClean = $norm($stripSub($foundTitle));
+    if ($tTitleClean !== '' && $fTitleClean !== '' && $tTitleClean === $fTitleClean) {
+        return true;
+    }
+
+    // Сравнение без указания тома/части/книги
+    $tShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $tTitleClean !== '' ? $tTitleClean : $tTitleNorm)[0] ?? $tTitleNorm);
+    $fShort = trim(preg_split('/\s+том\b|\s+ч\b|\s+кн\b/u', $fTitleClean !== '' ? $fTitleClean : $fTitleNorm)[0] ?? $fTitleNorm);
     if ($tShort !== '' && $tShort === $fShort) {
         return true;
     }
 
-    if (mb_strpos($fTitle, $tTitle) === 0 || mb_strpos($tTitle, $fTitle) === 0) {
-        if (abs(mb_strlen($fTitle, 'UTF-8') - mb_strlen($tTitle, 'UTF-8')) <= 25) {
-            return true;
+    $stopWords = [
+        'и'=>1, 'в'=>1, 'во'=>1, 'не'=>1, 'на'=>1, 'с'=>1, 'со'=>1, 'что'=>1, 'он'=>1, 'по'=>1, 'к'=>1, 'ко'=>1,
+        'из'=>1, 'у'=>1, 'за'=>1, 'от'=>1, 'о'=>1, 'об'=>1, 'обо'=>1, 'для'=>1, 'до'=>1, 'же'=>1, 'бы'=>1,
+        'то'=>1, 'ли'=>1, 'но'=>1, 'да'=>1, 'или'=>1, 'а'=>1, 'как'=>1, 'так'=>1, 'том'=>1, 'часть'=>1,
+        'книга'=>1, 'выпуск'=>1, 'т'=>1, 'ч'=>1, 'кн'=>1, 'the'=>1, 'a'=>1, 'an'=>1, 'and'=>1, 'or'=>1,
+        'in'=>1, 'on'=>1, 'at'=>1, 'of'=>1, 'to'=>1, 'for'=>1, 'with'=>1, 'by'=>1
+    ];
+
+    $extractSignificantWords = function ($title) use ($stopWords) {
+        $words = preg_split('/\s+/u', $title);
+        $result = [];
+        foreach ($words as $w) {
+            $w = trim($w);
+            if (mb_strlen($w, 'UTF-8') >= 2 && !isset($stopWords[$w])) {
+                $result[] = $w;
+            }
         }
+        return $result;
+    };
+
+    $tWords = $extractSignificantWords($tShort !== '' ? $tShort : $tTitleNorm);
+    $fWords = $extractSignificantWords($fShort !== '' ? $fShort : $fTitleNorm);
+
+    if (empty($tWords) || empty($fWords)) {
+        return $tTitleNorm === $fTitleNorm;
     }
 
-    $tWords = array_filter(explode(' ', $tTitle), function ($w) { return mb_strlen($w, 'UTF-8') > 2; });
-    $fWords = array_filter(explode(' ', $fTitle), function ($w) { return mb_strlen($w, 'UTF-8') > 2; });
-    if (!empty($tWords)) {
-        $matched = array_intersect($tWords, $fWords);
-        $ratio = count($matched) / count($tWords);
-        if ($ratio >= 0.8 && abs(count($tWords) - count($fWords)) <= 2) {
-            return true;
+    $wordsMatch = function ($w1, $w2) {
+        if ($w1 === $w2) return true;
+        $l1 = mb_strlen($w1, 'UTF-8');
+        $l2 = mb_strlen($w2, 'UTF-8');
+        if ($l1 >= 4 && $l2 >= 4) {
+            $p1 = mb_substr($w1, 0, -1, 'UTF-8');
+            $p2 = mb_substr($w2, 0, -1, 'UTF-8');
+            if (mb_strpos($w1, $p2) === 0 || mb_strpos($w2, $p1) === 0) return true;
+            if ($l1 >= 5 && $l2 >= 5) {
+                if (mb_substr($w1, 0, -2, 'UTF-8') === mb_substr($w2, 0, -2, 'UTF-8')) return true;
+            }
         }
+        return false;
+    };
+
+    $matchedTargetWords = 0;
+    foreach ($tWords as $tw) {
+        foreach ($fWords as $fw) {
+            if ($wordsMatch($tw, $fw)) {
+                $matchedTargetWords++;
+                break;
+            }
+        }
+    }
+    $ratioTarget = $matchedTargetWords / count($tWords);
+
+    $matchedFoundWords = 0;
+    foreach ($fWords as $fw) {
+        foreach ($tWords as $tw) {
+            if ($wordsMatch($tw, $fw)) {
+                $matchedFoundWords++;
+                break;
+            }
+        }
+    }
+    $ratioFound = $matchedFoundWords / count($fWords);
+
+    if ($ratioTarget >= 0.8 && $ratioFound >= 0.6) {
+        return true;
     }
 
     return false;
@@ -1561,9 +1878,7 @@ function opac_resolve_book_cover($rawTitle, $rawAuthor = '', $isbn = '', $source
     $cleanTitle = preg_replace('/[\"\'«»“”]/u', '', $cleanTitle);
     $cleanTitle = trim(preg_replace('/[,.]\s*$/u', '', $cleanTitle));
 
-    $cleanAuthor = preg_replace('/\s+[А-ЯA-Z]\.?\s*[А-ЯA-Z]?\.?$/u', '', $author);
-    $authorParts = explode(',', $cleanAuthor);
-    $cleanAuthor = trim($authorParts[0] ?? $cleanAuthor);
+    $cleanAuthor = opac_clean_author_for_cover($author);
 
     // Префикс кэша v5 (приоритет: ЛитРес -> Яндекс Книги -> OpenLibrary -> Google Книги)
     $cacheKey = md5(mb_strtolower($cleanTitle . '|' . $cleanAuthor . '|' . $isbn . ($sourceFilter !== '' ? '|' . $sourceFilter : ''), 'UTF-8'));
