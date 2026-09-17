@@ -4918,6 +4918,436 @@ function vk_bot_parse_book_query($text)
 }
 
 /**
+ * Форматирование единичной карточки издания из каталога OPAC для бота ВК
+ *
+ * @param array $item Данные издания из каталога OPAC
+ * @param int|null $itemIndex Порядковый номер книги (если null, префикс [№X] опускается)
+ * @param string|null $branchFilter Фильтр филиала
+ * @param bool $isInvSearch Признак поиска по инвентарному номеру
+ * @param string $displayQuery Строка запроса
+ * @param int $maxBranches Максимальное число выводимых филиалов (по умолчанию 5)
+ * @return string
+ */
+function vk_bot_format_book_item_card($item, $itemIndex = null, $branchFilter = null, $isInvSearch = false, $displayQuery = '', $maxBranches = 5)
+{
+    $title = !empty($item['title']) ? $item['title'] : 'Книга без заглавия';
+    $author = !empty($item['author']) ? $item['author'] : '';
+    $year = !empty($item['year']) ? " ({$item['year']} г.)" : '';
+
+    // Получаем детальные холдинги/экземпляры книги
+    $copies = $item['copies'] ?? [];
+    if (empty($copies)) {
+        if (function_exists('opac_get_book_copies')) {
+            $copiesData = opac_get_book_copies($item['id']);
+            $copies = $copiesData['copies'] ?? [];
+        } elseif (class_exists('OpacClient')) {
+            $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
+            $copies = $copiesData['copies'] ?? [];
+        }
+    }
+
+    // Обогащаем инвентарный номер издания из копий или поискового запроса
+    $itemInventory = trim((string)($item['inventory'] ?? ''));
+    if ($itemInventory === '' && !empty($copies)) {
+        foreach ($copies as $c) {
+            if (!empty($c['inventory'])) {
+                $itemInventory = trim((string)$c['inventory']);
+                break;
+            }
+        }
+        if ($itemInventory !== '') {
+            $item['inventory'] = $itemInventory;
+        }
+    }
+    if ($itemInventory === '' && $isInvSearch && !empty($displayQuery)) {
+        $itemInventory = $displayQuery;
+        $item['inventory'] = $itemInventory;
+    }
+
+    $numPrefix = ($itemIndex !== null && $itemIndex > 0) ? "[№{$itemIndex}] " : '';
+    $block = "📘 {$numPrefix}«{$title}»\n";
+    if ($author) {
+        $block .= "   ✍️ Автор: {$author}{$year}\n";
+    }
+    if (!empty($item['id'])) {
+        $block .= "   🆔 Запись OPAC: {$item['id']} (БД 62 ЦГБ)\n";
+    }
+    if (!empty($item['inventory'])) {
+        $block .= "   📦 Инв. номер: {$item['inventory']}\n";
+    }
+    $locations = $item['locations'] ?? [];
+    if (!empty($locations)) {
+        $block .= "   🏷️ Сигла подразделений: " . implode(', ', $locations) . "\n";
+    }
+    if (!empty($item['shelfmark']) && $item['shelfmark'] !== 'Не задан') {
+        $block .= "   🔖 Шифр каталога: {$item['shelfmark']}\n";
+    }
+
+    if (empty($copies)) {
+        if (!empty($locations)) {
+            $block .= "   📍 Места хранения (по сиглам): " . implode(', ', $locations) . "\n";
+        }
+        $block .= "   📞 Наличие книги уточняйте по телефонам библиотек сети.\n";
+        return $block;
+    }
+
+    // Группируем копии по филиалам
+    $branchGroups = [];
+    $hasBranch4 = false;
+    $hasDobroye = false;
+    $branch4Available = 0;
+
+    foreach ($copies as $c) {
+        $subB = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
+        $cBranchCode = mb_strtolower(trim($c['branch_code'] ?? ''), 'UTF-8');
+        $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
+        $permLocLower = mb_strtolower(trim($permLoc), 'UTF-8');
+        $isDoSigla = (
+            $subB === 'до' ||
+            $cBranchCode === 'до' ||
+            strpos($permLocLower, 'цгб-до') !== false ||
+            strpos($permLocLower, 'до') !== false ||
+            strpos($permLocLower, 'детский отдел') !== false ||
+            $subB === 'цдб' ||
+            $cBranchCode === 'цдб' ||
+            strpos($permLocLower, 'цдб') !== false
+        );
+
+        if ($isDoSigla) {
+            $bCode = 'ЦДБ';
+        } else {
+            $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
+            if (mb_strtolower($bCode, 'UTF-8') === 'до') {
+                $bCode = 'ЦДБ';
+                $isDoSigla = true;
+            }
+        }
+
+        if (!isset($branchGroups[$bCode])) {
+            $branchPhone = ($c['branch_phone'] ?? '') ?: '';
+            $branchAddress = ($c['branch_address'] ?? '') ?: '';
+
+            if ($isDoSigla) {
+                $branchPhone = '8(4922) 32-32-42, 32-47-73';
+                $branchAddress = 'г. Владимир, ул. Большая Московская, д. 31';
+            } elseif (empty($branchPhone) || empty($branchAddress)) {
+                if (class_exists('OpacClient')) {
+                    $resSig = OpacClient::resolveBranchBySigla($subB ?: $bCode);
+                    if (!$resSig && !empty($permLoc)) {
+                        $sigLoc = OpacClient::extractSiglaFromPermanentLocation($permLoc);
+                        $resSig = OpacClient::resolveBranchBySigla($sigLoc);
+                    }
+                    if ($resSig) {
+                        if (empty($branchPhone) && !empty($resSig['phone'])) $branchPhone = $resSig['phone'];
+                        if (empty($branchAddress) && !empty($resSig['address'])) $branchAddress = $resSig['address'];
+                    }
+                }
+            }
+
+            $branchGroups[$bCode] = [
+                'name'         => $isDoSigla ? 'Центральная детская библиотека (ЦДБ)' : (($c['branch_name'] ?? '') ?: 'Библиотека сети'),
+                'address'      => $branchAddress,
+                'phone'        => $branchPhone,
+                'district'     => $isDoSigla ? 'Исторический центр' : ($c['branch_district'] ?? ($c['district'] ?? '')),
+                'is_dobroye'   => $isDoSigla ? false : !empty($c['is_dobroye']),
+                'is_center'    => $isDoSigla ? true : !empty($c['is_center']),
+                'shifr'        => ($c['shifr'] ?? '') ?: '',
+                'available'    => 0,
+                'on_loan'      => 0,
+                'inventories'  => [],
+                'sub_b'        => $isDoSigla ? 'до' : $subB,
+                'perm_loc'     => $permLoc
+            ];
+        }
+
+        if (!empty($c['is_available'])) {
+            $branchGroups[$bCode]['available']++;
+        } else {
+            $branchGroups[$bCode]['on_loan']++;
+        }
+
+        $cInv = !empty($c['inventory']) ? $c['inventory'] : ($item['inventory'] ?? '');
+        if (!empty($cInv) && !in_array($cInv, $branchGroups[$bCode]['inventories'], true) && count($branchGroups[$bCode]['inventories']) < 4) {
+            $branchGroups[$bCode]['inventories'][] = $cInv;
+        }
+
+        if (!empty($c['shifr']) && $c['shifr'] !== 'Не задан' && empty($branchGroups[$bCode]['shifr'])) {
+            $branchGroups[$bCode]['shifr'] = $c['shifr'];
+        }
+
+        if (!empty($c['is_dobroye'])) $hasDobroye = true;
+        if (($c['subfield_b'] ?? '') === 'ф4' || ($c['branch_code'] ?? '') === 'Филиал №4' || strpos($c['permanent_location'] ?? '', 'Ф4') !== false) {
+            $hasBranch4 = true;
+            if (!empty($c['is_available'])) {
+                $branch4Available++;
+            }
+        }
+    }
+
+    // Fallback инвентаря для единственного филиала
+    if (count($branchGroups) === 1 && !empty($item['inventory'])) {
+        $singleKey = array_key_first($branchGroups);
+        if (empty($branchGroups[$singleKey]['inventories'])) {
+            $branchGroups[$singleKey]['inventories'][] = $item['inventory'];
+        }
+    }
+
+    // Выделенный акцент на флагманский Филиал №4 (Доброе, ул. Егорова, 10)
+    if ($hasBranch4) {
+        $block .= "   🌟 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10):\n"
+                . "      📞 8(4922) 21-96-11; 21-23-48 • Уточняйте наличие книги по телефонам филиала!\n";
+    } elseif ($branchFilter === 'ф4') {
+        $block .= "   📌 В филиале №4 на ул. Егорова книга не числится, но доступна в других библиотеках сети:\n";
+    }
+
+    // Сортировка филиалов: приоритетный филиал первыми
+    uasort($branchGroups, function ($a, $b) use ($branchFilter) {
+        $scoreA = 0;
+        $scoreB = 0;
+
+        if ($branchFilter === 'ф4') {
+            if (($a['sub_b'] ?? '') === 'ф4') $scoreA += 100;
+            if (($b['sub_b'] ?? '') === 'ф4') $scoreB += 100;
+        } elseif ($branchFilter === 'доброе') {
+            if (!empty($a['is_dobroye'])) $scoreA += 50;
+            if (!empty($b['is_dobroye'])) $scoreB += 50;
+        } elseif ($branchFilter === 'цдб') {
+            if (!empty($a['is_center'])) $scoreA += 50;
+            if (!empty($b['is_center'])) $scoreB += 50;
+        }
+
+        if ($a['available'] > 0) $scoreA += 10;
+        if ($b['available'] > 0) $scoreB += 10;
+
+        return $scoreB <=> $scoreA;
+    });
+
+    $block .= "   🏛 Филиалы сети:\n";
+    $branchCount = 0;
+    $branchSubBlocks = [];
+
+    foreach ($branchGroups as $bg) {
+        $branchCount++;
+        if ($branchCount > $maxBranches) {
+            $remainingBranches = count($branchGroups) - $maxBranches;
+            $branchSubBlocks[] = "     • ... и ещё в {$remainingBranches} библиотеках сети города!";
+            break;
+        }
+
+        $districtStr = $bg['district'] ? " ({$bg['district']})" : '';
+        $siglaBadge = $bg['sub_b'] ? "[сигла: {$bg['sub_b']}]" : '';
+        $invStr = !empty($bg['inventories']) ? '[Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
+        $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? '[Шифр: ' . $bg['shifr'] . ']' : '';
+
+        $lines = [];
+        $lines[] = "     • {$bg['name']}{$districtStr}:";
+        $metaParts = [];
+        if ($siglaBadge) $metaParts[] = $siglaBadge;
+        if ($shifrStr) $metaParts[] = $shifrStr;
+        if ($invStr) $metaParts[] = $invStr;
+        if (!empty($metaParts)) {
+            $lines[] = "       🔖 " . implode(' ', $metaParts);
+        }
+        if ($bg['address']) {
+            $addrLine = "       📍 {$bg['address']}";
+            if ($bg['phone']) $addrLine .= " • 📞 {$bg['phone']}";
+            $lines[] = $addrLine;
+        }
+        $branchSubBlocks[] = implode("\n", $lines);
+    }
+
+    if (!empty($branchSubBlocks)) {
+        $block .= implode("\n\n", $branchSubBlocks) . "\n";
+    }
+
+    return $block;
+}
+
+/**
+ * Извлечение названий книг и авторов из текста рекомендации Космо
+ *
+ * @param string $text
+ * @return array
+ */
+function vk_bot_extract_books_from_recommendation($text)
+{
+    $books = [];
+    $seenTitles = [];
+
+    $stopTitles = [
+        'доброе', 'цгб', 'цдб', 'аврора', 'космо', 'владимир', 'книголенд',
+        'добролит', 'библиотека', 'электронный каталог', 'книги', 'читатель',
+        'подобрать книгу', 'спроси у космо', 'справка', 'настройки', 'лига филиалов',
+        'вконтакте', 'город владимир', 'новости', 'каталог', 'палитра настроений'
+    ];
+
+    // Шаблон 1: «Название» [**] — [-–/] [**] Автор
+    if (preg_match_all('/[«\"“]([^»\"”\n]{2,80})[»\"”]\s*(?:\*{0,2})\s*(?:—|-|–|\/)\s*(?:\*{0,2})([^\n\.,;:!?()]+)/u', $text, $m1, PREG_SET_ORDER)) {
+        foreach ($m1 as $m) {
+            $t = trim($m[1], " \t\n\r\0\x0B*\"«»");
+            $aRaw = trim($m[2], " \t\n\r\0\x0B*\"«»");
+            $tLower = mb_strtolower($t, 'UTF-8');
+            if (in_array($tLower, $stopTitles, true)) continue;
+
+            $a = '';
+            if (preg_match('/^[А-ЯЁA-Z]/u', $aRaw) && !preg_match('/\b(это|книга|роман|повесть|шедевр|история|произведение|очень|отличный|классика|сюжет)\b/ui', $aRaw)) {
+                $a = $aRaw;
+            }
+
+            if (!isset($seenTitles[$tLower])) {
+                $seenTitles[$tLower] = true;
+                $books[] = ['title' => $t, 'author' => $a];
+            }
+        }
+    }
+
+    // Шаблон 2: Автор [:] [—] «Название»
+    if (preg_match_all('/(?:^|\n|\.\s+)([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ]\.?)?(?:\s+[А-ЯЁ][а-яё]+)?)\s*[:—–-]?\s*[«\"“]([^»\"”\n]{2,80})[»\"”]/u', $text, $m2, PREG_SET_ORDER)) {
+        foreach ($m2 as $m) {
+            $a = trim($m[1], " \t\n\r\0\x0B*\"«»");
+            $t = trim($m[2], " \t\n\r\0\x0B*\"«»");
+            $tLower = mb_strtolower($t, 'UTF-8');
+            if (in_array($tLower, $stopTitles, true)) continue;
+            if (!isset($seenTitles[$tLower])) {
+                $seenTitles[$tLower] = true;
+                $books[] = ['title' => $t, 'author' => $a];
+            }
+        }
+    }
+
+    // Шаблон 3: «Название» (Автор)
+    if (preg_match_all('/[«\"“]([^»\"”\n]{2,80})[»\"”]\s*\(([А-ЯЁ][а-яё\s\.]+)\)/u', $text, $m3, PREG_SET_ORDER)) {
+        foreach ($m3 as $m) {
+            $t = trim($m[1], " \t\n\r\0\x0B*\"«»");
+            $a = trim($m[2], " \t\n\r\0\x0B*\"«»");
+            $tLower = mb_strtolower($t, 'UTF-8');
+            if (in_array($tLower, $stopTitles, true)) continue;
+            if (!isset($seenTitles[$tLower])) {
+                $seenTitles[$tLower] = true;
+                $books[] = ['title' => $t, 'author' => $a];
+            }
+        }
+    }
+
+    // Шаблон 4: Одиночные названия в кавычках если пока ничего не нашли
+    if (empty($books) && preg_match_all('/[«\"“]([^»\"”\n]{3,60})[»\"”]/u', $text, $m4, PREG_SET_ORDER)) {
+        foreach ($m4 as $m) {
+            $t = trim($m[1], " \t\n\r\0\x0B*\"«»");
+            $tLower = mb_strtolower($t, 'UTF-8');
+            if (in_array($tLower, $stopTitles, true)) continue;
+            if (!isset($seenTitles[$tLower])) {
+                $seenTitles[$tLower] = true;
+                $books[] = ['title' => $t, 'author' => ''];
+                if (count($books) >= 2) break;
+            }
+        }
+    }
+
+    return array_slice($books, 0, 2);
+}
+
+/**
+ * Обогащение текста рекомендации данными наличия в библиотеках Владимира из OPAC
+ *
+ * @param string $aiResponseText Текст ответа Космо
+ * @param string|null $branchFilter Фильтр филиала (если запрошен конкретный филиал)
+ * @return string Обогащённый текст с карточками наличия в филиалах сети
+ */
+function vk_bot_enrich_recommendation_with_opac($aiResponseText, $branchFilter = null)
+{
+    if (trim($aiResponseText) === '') {
+        return $aiResponseText;
+    }
+
+    $books = vk_bot_extract_books_from_recommendation($aiResponseText);
+    if (empty($books)) {
+        return $aiResponseText;
+    }
+
+    $cards = [];
+    $cardIdx = 0;
+
+    foreach ($books as $b) {
+        $title = $b['title'];
+        $author = $b['author'];
+
+        // Очищаем название книги от лишних знаков
+        $searchTitle = preg_replace('/[«»"“”*]/u', '', $title);
+        $searchTitle = trim($searchTitle);
+
+        $searchRes = null;
+
+        // 1. Пробуем поиск по названию и автору (если автор указан)
+        if ($author !== '') {
+            $searchAuthor = preg_replace('/[«»"“”*]/u', '', $author);
+            $searchAuthor = trim($searchAuthor);
+            $authorWords = preg_split('/\s+/u', $searchAuthor);
+            $authorLastName = end($authorWords);
+            if (mb_strlen($authorLastName, 'UTF-8') >= 3) {
+                if (function_exists('opac_search_books')) {
+                    $searchRes = opac_search_books($searchTitle . ' ' . $authorLastName, 1, 0);
+                } elseif (class_exists('OpacClient')) {
+                    $searchRes = OpacClient::getInstance()->findBooks($searchTitle . ' ' . $authorLastName, 1, 0);
+                }
+            }
+        }
+
+        // 2. Fallback: поиск строго по названию издания
+        if (empty($searchRes['items'])) {
+            if (function_exists('opac_search_books')) {
+                $searchRes = opac_search_books($searchTitle, 1, 0);
+            } elseif (class_exists('OpacClient')) {
+                $searchRes = OpacClient::getInstance()->findBooks($searchTitle, 1, 0);
+            }
+        }
+
+        // 3. Fallback: если название содержит двоеточие или дефис, пробуем главную часть
+        if (empty($searchRes['items']) && preg_match('/^([^:—–-]+)[:—–-]/u', $searchTitle, $mt)) {
+            $baseTitle = trim($mt[1]);
+            if (mb_strlen($baseTitle, 'UTF-8') >= 3) {
+                if (function_exists('opac_search_books')) {
+                    $searchRes = opac_search_books($baseTitle, 1, 0);
+                } elseif (class_exists('OpacClient')) {
+                    $searchRes = OpacClient::getInstance()->findBooks($baseTitle, 1, 0);
+                }
+            }
+        }
+
+        if (!empty($searchRes['items'][0])) {
+            $cardIdx++;
+            $cards[] = vk_bot_format_book_item_card($searchRes['items'][0], $cardIdx, $branchFilter, false, '', 4);
+        }
+    }
+
+    if (empty($cards)) {
+        return $aiResponseText;
+    }
+
+    // Удаляем из текста ИИ возможные галлюцинации по филиалам («Книга доступна в...», «Её можно найти в...»)
+    $cleanAiText = preg_replace('/(?:\n|^)\s*[-•*]?\s*(?:Книга|Произведение|Роман|Повесть|Её|Их|Его)\s+(?:доступн[а-я]*|можно найти|находится|чистится)\s+в\s+[^\n]+/ui', '', $aiResponseText);
+    $cleanAiText = preg_replace('/\n{3,}/', "\n\n", trim($cleanAiText));
+
+    $opacSection = "\n\n════════════════════════════════\n"
+                 . "🏛 ГДЕ ВЗЯТЬ ЭТИ КНИГИ В БИБЛИОТЕКАХ ВЛАДИМИРА:\n\n"
+                 . implode("\n────────────────────────────────\n\n", $cards)
+                 . "\n\n════════════════════════════════\n"
+                 . "📞 Наличие книги в филиале уточняйте по телефонам филиала!";
+
+    // Проверяем суммарную длину (лимит ВК 4096 знаков)
+    $combined = $cleanAiText . $opacSection;
+    if (mb_strlen($combined, 'UTF-8') > 4000 && count($cards) > 1) {
+        $opacSection = "\n\n════════════════════════════════\n"
+                     . "🏛 ГДЕ ВЗЯТЬ ЭТИ КНИГИ В БИБЛИОТЕКАХ ВЛАДИМИРА:\n\n"
+                     . $cards[0]
+                     . "\n\n════════════════════════════════\n"
+                     . "📞 Наличие книги в филиале уточняйте по телефонам филиала!";
+        $combined = $cleanAiText . $opacSection;
+    }
+
+    return $combined;
+}
+
+/**
  * Форматирование ответа робота Космо с результатами поиска OPAC
  *
  * @param array|null $res Результаты поиска из opac_search_books
@@ -4972,237 +5402,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
 
     foreach (array_slice($res['items'], 0, $perPage) as $item) {
         $itemIndex++;
-        $title = !empty($item['title']) ? $item['title'] : 'Книга без заглавия';
-        $author = !empty($item['author']) ? $item['author'] : '';
-        $year = !empty($item['year']) ? " ({$item['year']} г.)" : '';
-
-        // Получаем детальные холдинги/экземпляры книги
-        $copies = $item['copies'] ?? [];
-        if (empty($copies)) {
-            if (function_exists('opac_get_book_copies')) {
-                $copiesData = opac_get_book_copies($item['id']);
-                $copies = $copiesData['copies'] ?? [];
-            } elseif (class_exists('OpacClient')) {
-                $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
-                $copies = $copiesData['copies'] ?? [];
-            }
-        }
-
-        // Обогащаем инвентарный номер издания из копий или поискового запроса
-        $itemInventory = trim((string)($item['inventory'] ?? ''));
-        if ($itemInventory === '' && !empty($copies)) {
-            foreach ($copies as $c) {
-                if (!empty($c['inventory'])) {
-                    $itemInventory = trim((string)$c['inventory']);
-                    break;
-                }
-            }
-            if ($itemInventory !== '') {
-                $item['inventory'] = $itemInventory;
-            }
-        }
-        if ($itemInventory === '' && $isInvSearch && !empty($displayQuery)) {
-            $itemInventory = $displayQuery;
-            $item['inventory'] = $itemInventory;
-        }
-
-        $block = "📘 [№{$itemIndex}] «{$title}»\n";
-        if ($author) {
-            $block .= "   ✍️ Автор: {$author}{$year}\n";
-        }
-        if (!empty($item['id'])) {
-            $block .= "   🆔 Запись OPAC: {$item['id']} (БД 62 ЦГБ)\n";
-        }
-        if (!empty($item['inventory'])) {
-            $block .= "   📦 Инв. номер: {$item['inventory']}\n";
-        }
-        $locations = $item['locations'] ?? [];
-        if (!empty($locations)) {
-            $block .= "   🏷️ Сигла подразделений: " . implode(', ', $locations) . "\n";
-        }
-        if (!empty($item['shelfmark']) && $item['shelfmark'] !== 'Не задан') {
-            $block .= "   🔖 Шифр каталога: {$item['shelfmark']}\n";
-        }
-
-        if (empty($copies)) {
-            if (!empty($locations)) {
-                $block .= "   📍 Места хранения (по сиглам): " . implode(', ', $locations) . "\n";
-            }
-            $block .= "   📞 Наличие книги уточняйте по телефонам библиотек сети.\n";
-            $blocks[] = $block;
-            continue;
-        }
-
-        // Группируем копии по филиалам
-        $branchGroups = [];
-        $hasBranch4 = false;
-        $hasDobroye = false;
-        $branch4Available = 0;
-
-        foreach ($copies as $c) {
-            $subB = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
-            $cBranchCode = mb_strtolower(trim($c['branch_code'] ?? ''), 'UTF-8');
-            $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
-            $permLocLower = mb_strtolower(trim($permLoc), 'UTF-8');
-            $isDoSigla = (
-                $subB === 'до' ||
-                $cBranchCode === 'до' ||
-                strpos($permLocLower, 'цгб-до') !== false ||
-                strpos($permLocLower, 'до') !== false ||
-                strpos($permLocLower, 'детский отдел') !== false ||
-                $subB === 'цдб' ||
-                $cBranchCode === 'цдб' ||
-                strpos($permLocLower, 'цдб') !== false
-            );
-
-            if ($isDoSigla) {
-                $bCode = 'ЦДБ';
-            } else {
-                $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
-                if (mb_strtolower($bCode, 'UTF-8') === 'до') {
-                    $bCode = 'ЦДБ';
-                    $isDoSigla = true;
-                }
-            }
-
-            if (!isset($branchGroups[$bCode])) {
-                $branchPhone = ($c['branch_phone'] ?? '') ?: '';
-                $branchAddress = ($c['branch_address'] ?? '') ?: '';
-
-                if ($isDoSigla) {
-                    $branchPhone = '8(4922) 32-32-42, 32-47-73';
-                    $branchAddress = 'г. Владимир, ул. Большая Московская, д. 31';
-                } elseif (empty($branchPhone) || empty($branchAddress)) {
-                    if (class_exists('OpacClient')) {
-                        $resSig = OpacClient::resolveBranchBySigla($subB ?: $bCode);
-                        if (!$resSig && !empty($permLoc)) {
-                            $sigLoc = OpacClient::extractSiglaFromPermanentLocation($permLoc);
-                            $resSig = OpacClient::resolveBranchBySigla($sigLoc);
-                        }
-                        if ($resSig) {
-                            if (empty($branchPhone) && !empty($resSig['phone'])) $branchPhone = $resSig['phone'];
-                            if (empty($branchAddress) && !empty($resSig['address'])) $branchAddress = $resSig['address'];
-                        }
-                    }
-                }
-
-                $branchGroups[$bCode] = [
-                    'name'         => $isDoSigla ? 'Центральная детская библиотека (ЦДБ)' : (($c['branch_name'] ?? '') ?: 'Библиотека сети'),
-                    'address'      => $branchAddress,
-                    'phone'        => $branchPhone,
-                    'district'     => $isDoSigla ? 'Исторический центр' : ($c['branch_district'] ?? ($c['district'] ?? '')),
-                    'is_dobroye'   => $isDoSigla ? false : !empty($c['is_dobroye']),
-                    'is_center'    => $isDoSigla ? true : !empty($c['is_center']),
-                    'shifr'        => ($c['shifr'] ?? '') ?: '',
-                    'available'    => 0,
-                    'on_loan'      => 0,
-                    'inventories'  => [],
-                    'sub_b'        => $isDoSigla ? 'до' : $subB,
-                    'perm_loc'     => $permLoc
-                ];
-            }
-
-            if (!empty($c['is_available'])) {
-                $branchGroups[$bCode]['available']++;
-            } else {
-                $branchGroups[$bCode]['on_loan']++;
-            }
-
-            $cInv = !empty($c['inventory']) ? $c['inventory'] : ($item['inventory'] ?? '');
-            if (!empty($cInv) && !in_array($cInv, $branchGroups[$bCode]['inventories'], true) && count($branchGroups[$bCode]['inventories']) < 4) {
-                $branchGroups[$bCode]['inventories'][] = $cInv;
-            }
-
-            if (!empty($c['shifr']) && $c['shifr'] !== 'Не задан' && empty($branchGroups[$bCode]['shifr'])) {
-                $branchGroups[$bCode]['shifr'] = $c['shifr'];
-            }
-
-            if (!empty($c['is_dobroye'])) $hasDobroye = true;
-            if (($c['subfield_b'] ?? '') === 'ф4' || ($c['branch_code'] ?? '') === 'Филиал №4' || strpos($c['permanent_location'] ?? '', 'Ф4') !== false) {
-                $hasBranch4 = true;
-                if (!empty($c['is_available'])) {
-                    $branch4Available++;
-                }
-            }
-        }
-
-        // Fallback инвентаря для единственного филиала
-        if (count($branchGroups) === 1 && !empty($item['inventory'])) {
-            $singleKey = array_key_first($branchGroups);
-            if (empty($branchGroups[$singleKey]['inventories'])) {
-                $branchGroups[$singleKey]['inventories'][] = $item['inventory'];
-            }
-        }
-
-        // Выделенный акцент на флагманский Филиал №4 (Доброе, ул. Егорова, 10)
-        if ($hasBranch4) {
-            $block .= "   🌟 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10):\n"
-                    . "      📞 8(4922) 21-96-11; 21-23-48 • Уточняйте наличие книги по телефонам филиала!\n";
-        } elseif ($branchFilter === 'ф4') {
-            $block .= "   📌 В филиале №4 на ул. Егорова книга не числится, но доступна в других библиотеках сети:\n";
-        }
-
-        // Сортировка филиалов: приоритетный филиал первыми
-        uasort($branchGroups, function ($a, $b) use ($branchFilter) {
-            $scoreA = 0;
-            $scoreB = 0;
-
-            if ($branchFilter === 'ф4') {
-                if (($a['sub_b'] ?? '') === 'ф4') $scoreA += 100;
-                if (($b['sub_b'] ?? '') === 'ф4') $scoreB += 100;
-            } elseif ($branchFilter === 'доброе') {
-                if (!empty($a['is_dobroye'])) $scoreA += 50;
-                if (!empty($b['is_dobroye'])) $scoreB += 50;
-            } elseif ($branchFilter === 'цдб') {
-                if (!empty($a['is_center'])) $scoreA += 50;
-                if (!empty($b['is_center'])) $scoreB += 50;
-            }
-
-            if ($a['available'] > 0) $scoreA += 10;
-            if ($b['available'] > 0) $scoreB += 10;
-
-            return $scoreB <=> $scoreA;
-        });
-
-        $block .= "   🏛 Филиалы сети:\n";
-        $branchCount = 0;
-        $branchSubBlocks = [];
-
-        foreach ($branchGroups as $bg) {
-            $branchCount++;
-            if ($branchCount > 5) {
-                $remainingBranches = count($branchGroups) - 5;
-                $branchSubBlocks[] = "     • ... и ещё в {$remainingBranches} библиотеках сети города!";
-                break;
-            }
-
-            $districtStr = $bg['district'] ? " ({$bg['district']})" : '';
-            $siglaBadge = $bg['sub_b'] ? "[сигла: {$bg['sub_b']}]" : '';
-            $invStr = !empty($bg['inventories']) ? '[Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
-            $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? '[Шифр: ' . $bg['shifr'] . ']' : '';
-
-            $lines = [];
-            $lines[] = "     • {$bg['name']}{$districtStr}:";
-            $metaParts = [];
-            if ($siglaBadge) $metaParts[] = $siglaBadge;
-            if ($shifrStr) $metaParts[] = $shifrStr;
-            if ($invStr) $metaParts[] = $invStr;
-            if (!empty($metaParts)) {
-                $lines[] = "       🔖 " . implode(' ', $metaParts);
-            }
-            if ($bg['address']) {
-                $addrLine = "       📍 {$bg['address']}";
-                if ($bg['phone']) $addrLine .= " • 📞 {$bg['phone']}";
-                $lines[] = $addrLine;
-            }
-            $branchSubBlocks[] = implode("\n", $lines);
-        }
-
-        if (!empty($branchSubBlocks)) {
-            $block .= implode("\n\n", $branchSubBlocks) . "\n";
-        }
-
-        $blocks[] = $block;
+        $blocks[] = vk_bot_format_book_item_card($item, $itemIndex, $branchFilter, $isInvSearch, $displayQuery, 5);
     }
 
     $footer = "\n════════════════════════════════\n"
@@ -7786,12 +7986,12 @@ if ($mood !== '') {
         'wisdom'    => '🌱 Вдохновение и саморазвитие (книга, окрыляющая и дающая силы)'
     ];
     $moodDesc = $moodNames[$mood] ?? $mood;
-    $promptContext = "Читатель выбрал настроение: «{$moodDesc}». Посоветуй 1-2 книги под это состояние.";
+    $promptContext = "Читатель выбрал настроение: «{$moodDesc}». Посоветуй 1-2 книги под это состояние. Оформи каждую книгу строго как «Название» — Автор.";
     if ($userText !== '' && !preg_match('/^(?:🔥|☕|🧩|⭐|🚀|🌱|драйв|уют|тайна|золотая|космос|вдохновение)/ui', $userText)) {
         $promptContext .= "\nДополнительное пожелание читателя: " . $userText;
     }
 } elseif ($cmd === 'random') {
-    $promptContext = "Посоветуй читателю одну неожиданную, редкую или безумно увлекательную книгу из признанной классики или современной качественной литературы.";
+    $promptContext = "Посоветуй читателю одну неожиданную, редкую или безумно увлекательную книгу из признанной классики или современной качественной литературы. Оформи книгу строго как «Название» — Автор.";
     if ($userText !== '' && !preg_match('/^(?:🎲|случайный|шедевр)/ui', $userText)) {
         $promptContext .= "\nПожелание читателя: " . $userText;
     }
@@ -7931,9 +8131,11 @@ SYS;
 
 4. СТРУКТУРА РЕКОМЕНДАЦИЙ И РЕАЛЬНЫЕ ФОНДЫ:
    - Рекомендуй исключительно признанные отечественные и мировые шедевры, классику, проверенную советскую и современную российскую/зарубежную литературу высокого художественного уровня, которые гарантированно есть в фондах муниципальных библиотек г. Владимира.
-   - Оформляй название книги в обычных кавычках: «Название книги» — Имя Фамилия Автора;
+   - Оформляй название каждой книги строго в обычных кавычках с автором: «Название книги» — Имя Фамилия Автора;
    - Короткий интригующий крючок без спойлеров;
    - Почему эта книга зацепит читателя и подарит яркие эмоции;
+   - СТРОЖАЙШЕ ЗАПРЕЩЕНО самостоятельно перечислять адреса, телефоны, филиалы и места хранения книг (никаких «Книга доступна в...», «Её можно найти в филиале...»)! Точные адреса, телефоны филиалов, инвентарные номера и шифры хранения автоматически сформирует и добавит наш электронный каталог OPAC внизу ответа!
+   - Сосредоточься исключительно на яркой литературной рекомендации: интригующий крючок, атмосфера, почему стоит прочитать!
    - СТРОЖАЙШЕ ЗАПРЕЩЕНО выдумывать имена библиотек (никаких «им. Пушкина», «им. Фадеева» и т.п.)! В сети ЦГБ г. Владимира библиотеки НЕ носят этих имён!
    - СТРОЖАЙШЕ ЗАПРЕЩЕНО писать фразы вроде:
      «Она доступна как в печатном, так и в электронном формате»
@@ -8080,6 +8282,32 @@ $aiResponseText = preg_replace('/(?:^|\n+)?\s*(?:📍|🏛|💡|📖|\*|_)?\s*В
 $aiResponseText = preg_replace('/\n{3,}/', "\n\n", $aiResponseText);
 $aiResponseText = trim($aiResponseText);
 
+// Обогащаем подбор книг реальным наличием в библиотеках Владимира из каталога OPAC
+$branchFilterForRec = null;
+if (preg_match('/(?:на\s+егорова|филиал[еа]?\s*(?:№\s*)?4\b)/ui', $userMsg)) {
+    $branchFilterForRec = 'ф4';
+} elseif (preg_match('/(?:в\s+центре|в\s+историческом\s+центре|цдб)/ui', $userMsg)) {
+    $branchFilterForRec = 'цдб';
+} elseif (preg_match('/(?:в\s+добром|доброе|доброселье)/ui', $userMsg)) {
+    $branchFilterForRec = 'доброе';
+} elseif (preg_match('/(?:в\s+цгб|на\s+суздальском)/ui', $userMsg)) {
+    $branchFilterForRec = 'цгб';
+} elseif (preg_match('/филиал[еа]?\s*(?:№\s*)?(\d+)/ui', $userMsg, $mbRec)) {
+    $branchFilterForRec = 'ф' . (int)$mbRec[1];
+}
+
+$isBookRecRequest = (
+    $mood !== '' ||
+    $cmd === 'recommend' ||
+    $cmd === 'random' ||
+    preg_match('/(подобрать|посоветуй|порекомендуй|что почитать|подборк[а-я]* книг|подбери|книжн[а-я]* полк|хочу почитать|какую книгу|выбрать книгу|книг[уа-я]* на вечер|книг[уа-я]* в дорогу|литературн|шедевр)/ui', $userMsg) ||
+    preg_match('/[«\"“][^»\"”\n]{2,80}[»\"”]\s*(?:\*{0,2})\s*(?:—|-|–|\/)\s*(?:\*{0,2})[А-ЯЁ][а-яё]/u', $aiResponseText)
+);
+
+if ($isBookRecRequest) {
+    $aiResponseText = vk_bot_enrich_recommendation_with_opac($aiResponseText, $branchFilterForRec);
+}
+
 // -----------------------------------------------------------------------------
 // 8. Сохранение обновлённой истории беседы
 // -----------------------------------------------------------------------------
@@ -8168,7 +8396,7 @@ vk_bot_send_message([
     'message'          => $finalAiText,
     'attachment'       => $mascotAttachment,
     'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-    'keyboard'         => $isChat ? null : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+    'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
     'dont_parse_links' => 1
 ], $communityToken);
 
