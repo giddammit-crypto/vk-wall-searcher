@@ -830,18 +830,22 @@ if ($isChat) {
             vk_bot_delete_chat_message($peerId, $cmid, $communityToken, $vkGroupId);
         }
 
-        // Хранилище нарушений в cache/vk_profanity_warns_{peerId}.json
-        $profCacheFile = $cacheDir . '/vk_profanity_warns_' . $peerId . '.json';
+        // Хранилище нарушений в cache/vk_profanity_{peerId}.json
+        $profCacheFile = $cacheDir . '/vk_profanity_' . $peerId . '.json';
+        $oldProfCacheFile = $cacheDir . '/vk_profanity_warns_' . $peerId . '.json';
         $profData = [];
         if (file_exists($profCacheFile)) {
             $loaded = @json_decode(@file_get_contents($profCacheFile), true);
+            if (is_array($loaded)) $profData = $loaded;
+        } elseif (file_exists($oldProfCacheFile)) {
+            $loaded = @json_decode(@file_get_contents($oldProfCacheFile), true);
             if (is_array($loaded)) $profData = $loaded;
         }
 
         $uKey = (string)$fromId;
         $userWarns = $profData[$uKey] ?? [
             'warnings'       => 0,
-            'mutes_count'   => 0,
+            'mutes_count'    => 0,
             'last_violation' => 0
         ];
 
@@ -1927,35 +1931,61 @@ function vk_bot_detect_profanity($text)
 {
     if (!is_string($text) || trim($text) === '') return false;
 
-    // 1. Приведение к нижнему регистру и замена ё -> е
-    $t = function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
-    $t = str_replace('ё', 'е', $t);
+    $raw = function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+    $raw = str_replace('ё', 'е', $raw);
 
-    // 2. Замена латиницы и цифр-суррогатов на похожие кириллические буквы (x->х, y->у, e->е, a->а, p->р, c->с, o->о, 0->о)
+    // 1. Прямая замена визуальных суррогатов / литспика / омоглифов
     $latMap = [
         'a' => 'а', 'b' => 'б', 'c' => 'с', 'e' => 'е', 'k' => 'к', 'm' => 'м',
         'o' => 'о', 'p' => 'р', 't' => 'т', 'x' => 'х', 'y' => 'у', 'u' => 'и',
-        '0' => 'о', '1' => 'и', '3' => 'з', '4' => 'ч', '6' => 'б', '@' => 'а'
+        '0' => 'о', '1' => 'и', '3' => 'з', '4' => 'ч', '6' => 'б', '@' => 'а',
+        '$' => 'с', '!' => 'и'
     ];
-    $t = strtr($t, $latMap);
+    $v1 = strtr($raw, $latMap);
 
-    // 3. Очистка от пробелов и спецсимволов между одиночными буквами (х.у.й, х_у_й, х у й, б л я т ь)
-    $t = preg_replace('/(?<=[а-я])[\s._\-*~+=,;:!?\/\\\]+(?=[а-я](?:[\s._\-*~+=,;:!?\/\\\]+[а-я]|\b))/u', '', $t);
+    // 2. Фонетический транслит латиницы (suka, blyat, pizdec, nahui, ebat, mudak, zaebal)
+    $translitPairs = [
+        'shch' => 'щ', 'sch' => 'щ', 'ch' => 'ч', 'sh' => 'ш', 'zh' => 'ж',
+        'kh' => 'х', 'ts' => 'ц', 'yu' => 'ю', 'ya' => 'я', 'yo' => 'е',
+        'hui' => 'хуй', 'huy' => 'хуй', 'hye' => 'хуе', 'xui' => 'хуй', 'xuy' => 'хуй',
+        'pizd' => 'пизд', 'blya' => 'бля', 'suka' => 'сука', 'suk' => 'сук',
+        'ebat' => 'ебат', 'ebal' => 'ебал', 'zaeb' => 'заеб', 'mudak' => 'мудак',
+        'a' => 'а', 'b' => 'б', 'c' => 'с', 'd' => 'д', 'e' => 'е', 'f' => 'ф',
+        'g' => 'г', 'h' => 'х', 'i' => 'и', 'j' => 'й', 'k' => 'к', 'l' => 'л',
+        'm' => 'м', 'n' => 'н', 'o' => 'о', 'p' => 'п', 'r' => 'р', 's' => 'с',
+        't' => 'т', 'u' => 'у', 'v' => 'в', 'w' => 'в', 'x' => 'х', 'y' => 'у',
+        'z' => 'з', '0' => 'о', '1' => 'и', '3' => 'з', '4' => 'ч', '6' => 'б',
+        '@' => 'а', '$' => 'с', '!' => 'и'
+    ];
+    $v2 = strtr($raw, $translitPairs);
 
-    // 4. Сжатие повторяющихся одинаковых букв более 2 подряд (суууука -> сука, бляяяять -> блять)
-    $t = preg_replace('/([а-я])\1{2,}/u', '$1$1', $t);
+    $variants = [$v1, $v2];
 
-    // 5. Белый список исключений для слов без мата
-    // рубль, колеблется, потреблять, влюблен, оскорблять, гребля, сукно, суккулент, хулахуп, страхование, парикмахер, скипидар, теребить, педаль, ястреб
+    // Белый список исключений для нормальных слов без мата
     $whiteList = [
+        '/\bхулиган[а-я]*/u',
+        '/\bхудож[а-я]*/u',
+        '/\bхуд[а-я]*/u',
+        '/\bхутор[а-я]*/u',
+        '/\bхумус[а-я]*/u',
+        '/\bхуди\b/u',
+        '/\bхлеб[а-я]*/u',
+        '/\bмудр[а-я]*/u',
+        '/\bизумруд[а-я]*/u',
+        '/\bбигуди\b/u',
         '/\bрубл[а-я]*/u',
         '/\bколеб[а-я]*/u',
         '/\bпотреб[а-я]*/u',
+        '/\bупотреб[а-я]*/u',
+        '/\bзлоупотреб[а-я]*/u',
         '/\bвлюб[а-я]*/u',
         '/\bоскорб[а-я]*/u',
         '/\bгреб[а-я]*/u',
+        '/\bграбл[а-я]*/u',
+        '/\bсабл[а-я]*/u',
         '/\bсук[но][а-я]*/u',
-        '/\bсуккулент[а-я]*/u',
+        '/\bсук+улент[а-я]*/u',
+        '/\bбарсук[а-я]*/u',
         '/\bхула[ -]?хуп[а-я]*/u',
         '/\b[а-я]*страхов[а-я]*/u',
         '/\bпарикмахер[а-я]*/u',
@@ -1963,34 +1993,39 @@ function vk_bot_detect_profanity($text)
         '/\bтереб[а-я]*/u',
         '/\bпедал[а-я]*/u',
         '/\bястреб[а-я]*/u',
-        '/\bбарсук[а-я]*/u',
         '/\bстеб[а-я]*/u',
         '/\bмеб[а-я]*/u',
-        '/\bграбл[а-я]*/u',
-        '/\bсабл[а-я]*/u',
-        '/\bхлебороб[а-я]*/u',
         '/\bдубликат[а-я]*/u',
         '/\bшаблон[а-я]*/u',
-        '/\bпедиатри[а-я]*/u'
+        '/\bпедиатри[а-я]*/u',
+        '/\bэпидеми[а-я]*/u',
+        '/\bспидометр[а-я]*/u',
+        '/\bкулебяк[а-я]*/u',
+        '/\bлебед[а-я]*/u',
+        '/\bжеребенок[а-я]*/u',
+        '/\bсеребр[а-я]*/u',
+        '/\bсудебн[а-я]*/u',
+        '/\bцелебн[а-я]*/u',
+        '/\bтрезубец[а-я]*/u',
+        '/\bскрежет[а-я]*/u',
+        '/\bотребь[а-я]*/u'
     ];
-    foreach ($whiteList as $wPattern) {
-        $t = preg_replace($wPattern, ' [белый] ', $t);
-    }
 
-    // 6. Корни мата
     $badPatterns = [
-        // хуй / хуе / хуя / хули / хуесос / охуе / нахуй / похуй / залуп
-        '/(?:\b|[а-я]{0,4})(?:ху[йиеяю]|хули|залуп)[а-я]*/u',
+        // хуй / хуе / хуя / залуп
+        '/(?:\b|[а-я]{0,4})(?:ху[йиеяю]|залуп)[а-я]*/u',
+        '/\bхули\b/u',
         // пизд (пизда, пиздец, спиздил и др.)
         '/(?:\b|[а-я]{0,4})пизд[а-я]*/u',
         // еб / ёб (ебать, выеб, поеб, долбоеб, уебок, ебло)
-        '/(?:\b|[а-я]{0,4})(?:[её]б[а-я]*|ебл[а-я]*|ебу[а-я]*)/u',
+        '/(?:\b|[а-я]{0,4})(?:[её]б[а-я]+|ебл[а-я]*|ебу[а-я]*)/u',
+        '/\b[её]б\b/u',
         // бля[дт] / бля
         '/(?:\b|[а-я]{0,3})бля[тд][а-я]*/u',
         '/\bбля\b/u',
-        // муд[аое] (мудак, мудила, мудозвон, мудоеб)
+        // муд (мудак, мудила, мудозвон, мудоеб)
         '/(?:\b|[а-я]{0,2})муд(?:ак|ил|озвон|оеб|е|я)[а-я]*/u',
-        // сук[аиое] (сука, суки, сучара, сцуко)
+        // сук (сука, суки, сучара, сцуко)
         '/\b(?:сук[аиоеу]|сучк[аи]|сучар[а-я]|сцук[ао])[а-я]*/u',
         // гандон / гондон
         '/(?:\b|[а-я]{0,2})г[ао]ндон[а-я]*/u',
@@ -1998,9 +2033,20 @@ function vk_bot_detect_profanity($text)
         '/(?:\b|[а-я]{0,2})пид[ао]р[а-я]*/u'
     ];
 
-    foreach ($badPatterns as $pattern) {
-        if (preg_match($pattern, $t)) {
-            return true;
+    foreach ($variants as $t) {
+        // Очистка от пробелов и спецсимволов между буквами (х.у.й, б л я т ь, п_и_з_д_а)
+        $tClean = preg_replace('/(?<=[а-яa-z0-9])[\s._\-*~+=,;:!?\/\\\]+(?=[а-яa-z0-9])/ui', '', $t);
+        // Сжатие повторов одинаковых букв более 1 подряд (сууука -> сука, бляяять -> блять)
+        $tClean = preg_replace('/([а-я])\1+/u', '$1', $tClean);
+
+        foreach ($whiteList as $wPattern) {
+            $tClean = preg_replace($wPattern, ' [белый] ', $tClean);
+        }
+
+        foreach ($badPatterns as $pattern) {
+            if (preg_match($pattern, $tClean)) {
+                return true;
+            }
         }
     }
 
@@ -4298,7 +4344,7 @@ if (file_exists($stickersFile) && is_readable($stickersFile)) {
 // -----------------------------------------------------------------------------
 // Сканирование постов 16 групп филиалов за текущие сутки
 // -----------------------------------------------------------------------------
-function vk_bot_format_cosmo_annotation($text)
+function vk_bot_format_cosmo_annotation($text, $maxLen = 210)
 {
     // 1. Очищаем хэштеги, внешние URL и вики-разметку ВКонтакте
     $t = preg_replace('/#[a-zA-Zа-яА-Я0-9_@]+/u', '', $text);
@@ -4322,16 +4368,16 @@ function vk_bot_format_cosmo_annotation($text)
         return 'Библиотекари опубликовали новые фотографии и анонс событий. Читайте подробнее по ссылке на пост!';
     }
 
-    // 3. Выделяем компактную выразительную аннотацию (160–210 символов) по границе предложения
-    if (mb_strlen($text) > 210) {
-        $sub = mb_substr($text, 0, 205);
+    // 3. Выделяем компактную выразительную аннотацию по границе предложения
+    if (mb_strlen($text) > $maxLen) {
+        $sub = mb_substr($text, 0, max(50, $maxLen - 5));
         $dotPos = mb_strrpos($sub, '.');
         $exclPos = mb_strrpos($sub, '!');
-        $bestPunct = max($dotPos !== false && $dotPos > 90 ? $dotPos : 0, $exclPos !== false && $exclPos > 90 ? $exclPos : 0);
-        if ($bestPunct > 90) {
+        $minPunct = (int)($maxLen * 0.45);
+        $bestPunct = max($dotPos !== false && $dotPos > $minPunct ? $dotPos : 0, $exclPos !== false && $exclPos > $minPunct ? $exclPos : 0);
+        if ($bestPunct > $minPunct) {
             $text = mb_substr($sub, 0, $bestPunct + 1);
         } else {
-            $lastSpace = mb_strrpos($sub, ' ');
             $text = rtrim($sub, ".,!?:;— ") . '...';
         }
     }
@@ -4509,15 +4555,23 @@ function vk_bot_format_branch_news_message($newsData)
 
     $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
     $blocks = [];
-    $maxSummaryLength = 3600; // Безопасный порог длины одного сообщения ВКонтакте (лимит ВК 4096 символов)
+    $maxSummaryLength = 3900; // Безопасный порог длины одного сообщения ВКонтакте (лимит ВК 4096 символов)
     $totalCount = count($postsToShow);
     $addedCount = 0;
+
+    // Подбираем оптимальный размер аннотации, чтобы выдать ВСЕ посты филиалов за день
+    $annotLen = 180;
+    if ($totalCount > 10) {
+        $annotLen = 85;
+    } elseif ($totalCount > 5) {
+        $annotLen = 120;
+    }
 
     foreach ($postsToShow as $p) {
         $bName = $p['branch']['name'] ?? 'Филиал';
         $timeStr = date('H:i', $p['date']);
         $postUrl = vk_bot_build_post_url($p);
-        $annot = vk_bot_format_cosmo_annotation($p['text']);
+        $annot = vk_bot_format_cosmo_annotation($p['text'], $annotLen);
 
         // Эргономичная карточка: филиал со временем публикации, выразительная аннотация и прямой линк
         $block = "🏛 " . $bName . " • " . $timeStr . "\n"
@@ -4722,13 +4776,19 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         return "🤖📚 Уважаемый [id0|{$callerName}], по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
              . "💡 Совет от робота Космо:\n"
              . "• Проверьте, нет ли опечатки в названии книги или фамилии автора;\n"
-             . "• Попробуйте ввести только фамилию автора (например: «/поиск Чехов») или одно ключевое слово из названия («/книга Мастер»);\n"
-             . "• Вы также всегда можете обратиться к опытным библиографам Центральной городской библиотеки: г. Владимир, Суздальский пр-т, д. 2, 📞 8(4922) 21-65-63 — они с радостью помогут подобрать книгу из редких или закрытых архивных фондов! 📖✨";
+             . "• Попробуйте ввести только фамилию автора (например: «/поиск Чехов») или ключевое слово («/книга Мастер»);\n"
+             . "• Вы также всегда можете обратиться к опытным библиографам Центральной городской библиотеки: г. Владимир, Суздальский пр., д. 2, 📞 8(4922) 21-65-63 — они с радостью помогут подобрать книгу из редких или закрытых архивных фондов! 📖✨";
     }
 
     $totalFound = $res['total_found'] ?? count($res['items']);
-    $header = "📖 Робот Космо: Результаты поиска в каталоге библиотек г. Владимира\n"
-            . "🔍 Запрос: «{$query}» • Найдено изданий в фонде: {$totalFound}\n\n";
+    $mod10 = $totalFound % 10;
+    $mod100 = $totalFound % 100;
+    $bookWord = ($mod10 === 1 && $mod100 !== 11) ? 'издание' : (($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 10 || $mod100 >= 20)) ? 'издания' : 'изданий');
+
+    $header = "✨📖 ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА 📖✨\n"
+            . "🤖 Робот Космо нашёл для [id0|{$callerName}]:\n"
+            . "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}\n"
+            . "════════════════════════════════\n\n";
 
     $blocks = [];
     $itemIndex = 0;
@@ -4737,35 +4797,40 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $itemIndex++;
         $title = $item['title'] ?: 'Книга без заглавия';
         $author = $item['author'] ?: '';
-        $year = $item['year'] ? ' (' . $item['year'] . ' г.)' : '';
+        $year = $item['year'] ? " ({$item['year']} г.)" : '';
 
-        $block = "📚 [{$itemIndex}] «{$title}»" . ($author ? " — {$author}" : "") . $year . "\n";
+        $block = "📘 [№{$itemIndex}] «{$title}»\n";
+        if ($author) {
+            $block .= "   ✍️ Автор: {$author}{$year}\n";
+        }
         if (!empty($item['id'])) {
-            $block .= "   🆔 Запись в OPAC: {$item['id']} (БД 62 ЦГБ)\n";
+            $block .= "   🆔 Запись OPAC: {$item['id']} (БД 62 ЦГБ)\n";
         }
         $locations = $item['locations'] ?? [];
         if (!empty($locations)) {
-            $block .= "   📦 Сигла подразделений в каталоге: " . implode(', ', $locations) . "\n";
+            $block .= "   🏷️ Сигла подразделений: " . implode(', ', $locations) . "\n";
         }
         if (!empty($item['shelfmark']) && $item['shelfmark'] !== 'Не задан') {
-            $block .= "   🏷️ Шифр каталога: {$item['shelfmark']}\n";
+            $block .= "   🔖 Шифр каталога: {$item['shelfmark']}\n";
         }
 
         // Получаем детальные холдинги/экземпляры книги
-        $copiesData = null;
-        if (function_exists('opac_get_book_copies')) {
-            $copiesData = opac_get_book_copies($item['id']);
-        } elseif (class_exists('OpacClient')) {
-            $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
+        $copies = $item['copies'] ?? [];
+        if (empty($copies)) {
+            if (function_exists('opac_get_book_copies')) {
+                $copiesData = opac_get_book_copies($item['id']);
+                $copies = $copiesData['copies'] ?? [];
+            } elseif (class_exists('OpacClient')) {
+                $copiesData = OpacClient::getInstance()->getBookCopies($item['id']);
+                $copies = $copiesData['copies'] ?? [];
+            }
         }
-
-        $copies = $copiesData['copies'] ?? [];
 
         if (empty($copies)) {
             if (!empty($locations)) {
-                $block .= "📍 Места хранения (по сиглам каталога): " . implode(', ', $locations) . "\n";
+                $block .= "   📍 Места хранения (по сиглам): " . implode(', ', $locations) . "\n";
             } else {
-                $block .= "ℹ️ Наличие уточняется в отделе комплектования ЦГБ (Суздальский пр-т, 2).\n";
+                $block .= "   ℹ️ Наличие уточняется в отделе комплектования ЦГБ (Суздальский пр., 2).\n";
             }
             $blocks[] = $block;
             continue;
@@ -4775,6 +4840,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $branchGroups = [];
         $hasBranch4 = false;
         $hasDobroye = false;
+        $branch4Available = 0;
 
         foreach ($copies as $c) {
             $bCode = $c['branch_code'] ?: ($c['subfield_b'] ?: 'ЦГБ');
@@ -4810,33 +4876,28 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             }
 
             if (!empty($c['is_dobroye'])) $hasDobroye = true;
-            if (($c['subfield_b'] ?? '') === 'ф4' || strpos($c['permanent_location'] ?? '', 'Ф4') !== false) {
+            if (($c['subfield_b'] ?? '') === 'ф4' || ($c['branch_code'] ?? '') === 'Филиал №4' || strpos($c['permanent_location'] ?? '', 'Ф4') !== false) {
                 $hasBranch4 = true;
+                if (!empty($c['is_available'])) {
+                    $branch4Available++;
+                }
             }
         }
 
-        // Акцент на филиал №4 на ул. Егорова, 10 (район Доброе!)
-        if ($branchFilter === 'ф4') {
-            if ($hasBranch4) {
-                $block .= "⭐️ ОТЛИЧНАЯ НОВОСТЬ: Книга есть в наличии в Филиале №4 на ул. Егорова, 10 (жилой район «Доброе»)! 📍\n";
+        // Выделенный акцент на флагманский Филиал №4 (Доброе, ул. Егорова, 10)
+        if ($hasBranch4) {
+            if ($branch4Available > 0) {
+                $block .= "   🌟 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10):\n"
+                        . "      🟢 В НАЛИЧИИ НА ПОЛКЕ: {$branch4Available} экз. прямо сейчас!\n"
+                        . "      📞 8(4922) 21-96-11; 21-23-48 • Можно сразу прийти или забронировать!\n";
             } else {
-                $block .= "📌 В филиале №4 на ул. Егорова этой книги сейчас нет, но она доступна в других библиотеках города:\n";
+                $block .= "   📌 [РАЙОН ДОБРОЕ] Филиал №4 (ул. Егорова, д. 10): ⏳ Книга в фонде филиала (на руках у читателей).\n";
             }
-        } elseif ($branchFilter === 'доброе') {
-            if ($hasDobroye) {
-                $block .= "⭐️ Книга доступна в библиотеках жилого района «Доброе»! 📍\n";
-            }
-        } elseif ($branchFilter === 'цдб') {
-            $hasCenter = false;
-            foreach ($branchGroups as $bgCheck) {
-                if (!empty($bgCheck['is_center'])) { $hasCenter = true; break; }
-            }
-            if ($hasCenter) {
-                $block .= "⭐️ Книга есть в Центральной детской библиотеке (ул. Большая Московская, 31, исторический центр)! 📍\n";
-            }
+        } elseif ($branchFilter === 'ф4') {
+            $block .= "   📌 В филиале №4 на ул. Егорова этой книги сейчас нет, но она доступна в других библиотеках:\n";
         }
 
-        // Сортировка: приоритетный филиал и доступные экземпляры выводятся первыми
+        // Сортировка филиалов: приоритетный филиал и доступные книги первыми
         uasort($branchGroups, function ($a, $b) use ($branchFilter) {
             $scoreA = 0;
             $scoreB = 0;
@@ -4850,9 +4911,6 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             } elseif ($branchFilter === 'цдб') {
                 if (!empty($a['is_center'])) $scoreA += 50;
                 if (!empty($b['is_center'])) $scoreB += 50;
-            } elseif ($branchFilter) {
-                if (($a['sub_b'] ?? '') === $branchFilter) $scoreA += 100;
-                if (($b['sub_b'] ?? '') === $branchFilter) $scoreB += 100;
             }
 
             if ($a['available'] > 0) $scoreA += 10;
@@ -4861,34 +4919,33 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
             return $scoreB <=> $scoreA;
         });
 
-        $block .= "🏛 Наличие в филиалах города:\n";
+        $block .= "   🏛 Наличие по филиалам сети:\n";
         $branchCount = 0;
 
         foreach ($branchGroups as $bg) {
             $branchCount++;
             if ($branchCount > 5) {
                 $remainingBranches = count($branchGroups) - 5;
-                $block .= "  • ... и ещё в {$remainingBranches} филиалах сети!\n";
+                $block .= "     • ... и ещё в {$remainingBranches} библиотеках сети города!\n";
                 break;
             }
 
             $statusText = $bg['available'] > 0
-                ? "✅ В наличии: {$bg['available']} экз."
-                : "⏳ В хранении / На руках ({$bg['on_loan']} экз.)";
+                ? "🟢 В наличии: {$bg['available']} экз."
+                : "⏳ На руках ({$bg['on_loan']} экз.)";
 
-            $districtStr = $bg['district'] ? ' (' . $bg['district'] . ')' : '';
+            $districtStr = $bg['district'] ? " ({$bg['district']})" : '';
             $siglaBadge = $bg['sub_b'] ? "[сигла: {$bg['sub_b']}]" : '';
-            $permLocBadge = ($bg['perm_loc'] && $bg['perm_loc'] !== $bg['name']) ? " [код: {$bg['perm_loc']}]" : '';
             $invStr = !empty($bg['inventories']) ? ' [Инв. № ' . implode(', ', $bg['inventories']) . ']' : '';
             $shifrStr = ($bg['shifr'] && $bg['shifr'] !== 'Не задан') ? ' [Шифр: ' . $bg['shifr'] . ']' : '';
 
-            $block .= "  • {$bg['name']}{$districtStr}:\n";
-            $block .= "    🏛 По каталогу OPAC: {$siglaBadge}{$permLocBadge} ➔ {$statusText}\n";
+            $block .= "     • {$bg['name']}{$districtStr}:\n";
+            $block .= "       ➔ {$statusText} {$siglaBadge}\n";
             if ($shifrStr || $invStr) {
-                $block .= "    🔖{$shifrStr}{$invStr}\n";
+                $block .= "       🔖{$shifrStr}{$invStr}\n";
             }
             if ($bg['address']) {
-                $block .= "    📍 {$bg['address']}";
+                $block .= "       📍 {$bg['address']}";
                 if ($bg['phone']) $block .= " • 📞 {$bg['phone']}";
                 $block .= "\n";
             }
@@ -4897,12 +4954,13 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $blocks[] = $block;
     }
 
-    $footer = "\n🔍 Как лично проверить и убедиться в каталоге:\n"
+    $footer = "\n════════════════════════════════\n"
+            . "🔍 Как лично убедиться и сверить карточку в каталоге:\n"
             . "1. Откройте электронный каталог: http://library.vladimir.ru/rguest_vlad_cgb.htm\n"
-            . "2. База поиска: «62 - Электронный каталог ЦГБ г. Владимира»\n"
-            . "3. Введите название или автора ➔ откройте карточку ➔ нажмите «Экземпляры» и сравните: номер записи в OPAC, сигла филиалов (ф4, аб, чз, цдб), инвентарные номера и шифры совпадают точь-в-точь!";
+            . "2. Выберите базу: «62 - Электронный каталог ЦГБ г. Владимира»\n"
+            . "3. Сравните номер записи OPAC, оригинальные сигла филиалов (ф4, аб, чз, цдб), шифры и инвентарные номера — совпадение 100%!";
 
-    return $header . implode("\n────────────────\n\n", $blocks) . $footer;
+    return $header . implode("\n────────────────────────────────\n\n", $blocks) . $footer;
 }
 
 // -----------------------------------------------------------------------------

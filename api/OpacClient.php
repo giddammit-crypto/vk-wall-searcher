@@ -34,7 +34,7 @@ class OpacClient
             'branch_num'     => 'ЦГБ',
             'branch_name'    => 'Центральная городская библиотека, Абонемент',
             'department'     => 'Абонемент',
-            'address'        => 'г. Владимир, Суздальский пр-т, д. 2',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
@@ -46,7 +46,7 @@ class OpacClient
             'branch_num'     => 'ЦГБ',
             'branch_name'    => 'Центральная городская библиотека, Читальный зал',
             'department'     => 'Читальный зал',
-            'address'        => 'г. Владимир, Суздальский пр-т, д. 2',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
@@ -58,7 +58,7 @@ class OpacClient
             'branch_num'     => 'ЦГБ',
             'branch_name'    => 'Центральная городская библиотека, Детский отдел',
             'department'     => 'Детский отдел',
-            'address'        => 'г. Владимир, Суздальский пр-т, д. 2',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
@@ -70,12 +70,36 @@ class OpacClient
             'branch_num'     => 'ЦГБ',
             'branch_name'    => 'Центральная городская библиотека, Книгохранилище',
             'department'     => 'Книгохранилище',
-            'address'        => 'г. Владимир, Суздальский пр-т, д. 2',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
             'phone'          => '8(4922) 21-65-63',
             'perm_prefix'    => 'ЦГБ-КХ'
+        ],
+        'ибо' => [
+            'code'           => 'ибо',
+            'branch_num'     => 'ЦГБ',
+            'branch_name'    => 'Центральная городская библиотека, ИБО',
+            'department'     => 'Информационно-библиографический отдел',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
+            'district'       => 'Доброе',
+            'is_dobroye'     => true,
+            'is_center'      => false,
+            'phone'          => '8(4922) 21-65-63',
+            'perm_prefix'    => 'ЦГБ-ИБО'
+        ],
+        'ооо' => [
+            'code'           => 'ооо',
+            'branch_num'     => 'ЦГБ',
+            'branch_name'    => 'Центральная городская библиотека, Отдел обслуживания',
+            'department'     => 'Отдел обслуживания',
+            'address'        => 'г. Владимир, Суздальский пр., д. 2',
+            'district'       => 'Доброе',
+            'is_dobroye'     => true,
+            'is_center'      => false,
+            'phone'          => '8(4922) 21-65-63',
+            'perm_prefix'    => 'ЦГБ-ООО'
         ],
         'цдб' => [
             'code'           => 'цдб',
@@ -92,14 +116,15 @@ class OpacClient
         ],
         'ф1' => [
             'code'           => 'ф1',
+            'aliases'        => ['ф1д'],
             'branch_num'     => 'Филиал №1',
             'branch_name'    => 'Библиотека — филиал №1',
-            'department'     => 'Взрослый абонемент',
-            'address'        => 'г. Владимир, ул. Горького, д. 69',
-            'district'       => 'Октябрьский',
+            'department'     => 'Взрослый и детский абонементы',
+            'address'        => 'г. Владимир, проспект Строителей, д. 38 а, кв. 44',
+            'district'       => 'Черёмушки / ВлГУ',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 53-29-37',
+            'phone'          => '8(4922) 33-86-23',
             'perm_prefix'    => 'ЦГБ-Ф1'
         ],
         'ф2' => [
@@ -108,11 +133,11 @@ class OpacClient
             'branch_num'     => 'Филиал №2',
             'branch_name'    => 'Библиотека — филиал №2',
             'department'     => 'Взрослый и детский абонементы',
-            'address'        => 'г. Владимир, проспект Ленина, д. 12',
-            'district'       => 'Ленинский',
+            'address'        => 'г. Владимир, пр. Ленина, д. 12',
+            'district'       => 'Садовая площадь / «Заря»',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 38-34-47, 32-15-84',
+            'phone'          => '8(4922) 32-15-84, 32-15-85',
             'perm_prefix'    => 'ЦГБ-Ф2'
         ],
         'ф3' => [
@@ -121,11 +146,11 @@ class OpacClient
             'branch_num'     => 'Филиал №3',
             'branch_name'    => 'Библиотека — филиал №3',
             'department'     => 'Основной абонемент',
-            'address'        => 'г. Владимир, ул. Большая Нижегородская, д. 67а',
-            'district'       => 'Фрунзенский',
+            'address'        => 'г. Владимир, мкр. Юрьевец, ул. Школьный проезд, д. 4',
+            'district'       => 'мкр. Юрьевец',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 32-36-74',
+            'phone'          => '8(4922) 26-18-74',
             'perm_prefix'    => 'ЦГБ-Ф3'
         ],
         'ф4' => [
@@ -138,7 +163,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-96-11, 21-23-48',
+            'phone'          => '8(4922) 21-96-11; 21-23-48',
             'perm_prefix'    => 'ЦГБ-Ф4',
             'note'           => 'КРИТИЧЕСКИ ВАЖНО: расположен именно в жилом районе «Доброе»!'
         ],
@@ -148,11 +173,11 @@ class OpacClient
             'branch_num'     => 'Филиал №5',
             'branch_name'    => 'Библиотека — филиал №5',
             'department'     => 'Взрослый и детский абонементы',
-            'address'        => 'г. Владимир, ул. Белоконской, д. 13а',
-            'district'       => 'Октябрьский',
+            'address'        => 'г. Владимир, ул. Верхняя Дуброва, д. 10',
+            'district'       => 'ЮЗР / Верхняя Дуброва',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 53-24-34',
+            'phone'          => '8(4922) 54-28-43',
             'perm_prefix'    => 'ЦГБ-Ф5'
         ],
         'ф6' => [
@@ -160,11 +185,11 @@ class OpacClient
             'branch_num'     => 'Филиал №6',
             'branch_name'    => 'Библиотека — филиал №6',
             'department'     => 'Основной абонемент',
-            'address'        => 'г. Владимир, ул. Батурина, д. 28',
-            'district'       => 'Октябрьский',
+            'address'        => 'г. Владимир, мкр. Юрьевец, Институтский гор., д. 2',
+            'district'       => 'мкр. Юрьевец',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 33-37-00',
+            'phone'          => '8(4922) 45-37-01',
             'perm_prefix'    => 'ЦГБ-Ф6'
         ],
         'ф7' => [
@@ -172,12 +197,12 @@ class OpacClient
             'aliases'        => ['ф7н', 'ф7нд'],
             'branch_num'     => 'Филиал №7',
             'branch_name'    => 'Библиотека — филиал №7',
-            'department'     => 'Модельная библиотека',
-            'address'        => 'г. Владимир, ул. Фатьянова, д. 14',
-            'district'       => 'Юго-Западный',
+            'department'     => 'Основной абонемент',
+            'address'        => 'г. Владимир, ул. Мира, д. 55 (здание ДК Молодежи)',
+            'district'       => 'ДК Молодёжи / Северная',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 38-26-88',
+            'phone'          => '8(4922) 53-45-54',
             'perm_prefix'    => 'ЦГБ-Ф7'
         ],
         'ф8' => [
@@ -186,23 +211,24 @@ class OpacClient
             'branch_num'     => 'Филиал №8',
             'branch_name'    => 'Библиотека — филиал №8',
             'department'     => 'Взрослый и детский абонементы',
-            'address'        => 'г. Владимир, ул. Соколова-Соколенка, д. 17в',
-            'district'       => 'Фрунзенский',
+            'address'        => 'г. Владимир, ул. Сурикова, д. 26',
+            'district'       => 'ул. Сурикова / Чайковского',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-68-27',
+            'phone'          => '8(4922) 54-65-11',
             'perm_prefix'    => 'ЦГБ-Ф8'
         ],
         'ф9' => [
             'code'           => 'ф9',
+            'aliases'        => ['добролит'],
             'branch_num'     => 'Филиал №9',
             'branch_name'    => 'Библиотека — филиал №9',
             'department'     => 'Литературно-краеведческий проект «Добролит»',
-            'address'        => 'г. Владимир, Добросельский проезд, д. 2',
+            'address'        => 'г. Владимир, ул. Юбилейная, д. 38',
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-58-15',
+            'phone'          => '8(4922) 21-22-75',
             'perm_prefix'    => 'ЦГБ-Ф9'
         ],
         'ф10' => [
@@ -210,12 +236,12 @@ class OpacClient
             'aliases'        => ['ф10д'],
             'branch_num'     => 'Филиал №10',
             'branch_name'    => 'Библиотека — филиал №10',
-            'department'     => 'Детско-юношеский филиал',
-            'address'        => 'г. Владимир, ул. Горького, д. 69',
-            'district'       => 'Октябрьский',
+            'department'     => 'Основной абонемент',
+            'address'        => 'г. Владимир, ул. Диктора Левитана, д. 55',
+            'district'       => 'Диктора Левитана',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 53-29-37',
+            'phone'          => '8(4922) 21-65-63',
             'perm_prefix'    => 'ЦГБ-Ф10'
         ],
         'ф11' => [
@@ -224,11 +250,11 @@ class OpacClient
             'branch_num'     => 'Филиал №11',
             'branch_name'    => 'Библиотека — филиал №11',
             'department'     => 'Основной абонемент',
-            'address'        => 'г. Владимир, ул. Мира, д. 90',
-            'district'       => 'Октябрьский',
+            'address'        => 'г. Владимир, мкр. Лесной, ул. Лесная, 10 А',
+            'district'       => 'мкр. Лесной',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 53-39-80',
+            'phone'          => '8(4922) 45-57-17',
             'perm_prefix'    => 'ЦГБ-Ф11'
         ],
         'ф12' => [
@@ -237,24 +263,24 @@ class OpacClient
             'branch_num'     => 'Филиал №12',
             'branch_name'    => 'Библиотека — филиал №12',
             'department'     => 'Взрослый и детский абонементы',
-            'address'        => 'г. Владимир, ул. Комиссарова, д. 28',
-            'district'       => 'Доброе',
-            'is_dobroye'     => true,
+            'address'        => 'г. Владимир, мкр. Энергетик, ул. Энергетиков, д. 27, кв. 16',
+            'district'       => 'мкр. Энергетик',
+            'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-63-93',
+            'phone'          => '8(4922) 26-43-81',
             'perm_prefix'    => 'ЦГБ-Ф12'
         ],
         'ф13' => [
             'code'           => 'ф13',
-            'aliases'        => ['ф13н', 'ф13нд'],
+            'aliases'        => ['ф13н', 'ф13нд', 'книголенд'],
             'branch_num'     => 'Филиал №13',
             'branch_name'    => 'Библиотека — филиал №13',
-            'department'     => 'Модельная библиотека',
-            'address'        => 'г. Владимир, ул. Верхняя Дуброва, д. 26г',
-            'district'       => 'Юго-Западный',
+            'department'     => 'Библиотечный проект «Книголенд»',
+            'address'        => 'г. Владимир, ул. Горького, д. 69',
+            'district'       => 'ВлГУ / пл. Ленина',
             'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 38-30-26',
+            'phone'          => '8(4922) 33-15-67',
             'perm_prefix'    => 'ЦГБ-Ф13'
         ],
         'ф14' => [
@@ -262,12 +288,12 @@ class OpacClient
             'aliases'        => ['ф14н', 'ф14нд'],
             'branch_num'     => 'Филиал №14',
             'branch_name'    => 'Библиотека — филиал №14',
-            'department'     => 'Модельная библиотека',
-            'address'        => 'г. Владимир, ул. Добросельская, д. 161',
-            'district'       => 'Доброе',
-            'is_dobroye'     => true,
+            'department'     => 'Основной абонемент',
+            'address'        => 'г. Владимир, мкр. Оргтруд, ул. Октябрьская, д. 26 «б»',
+            'district'       => 'мкр. Оргтруд',
+            'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-68-30',
+            'phone'          => '8(4922) 45-74-69',
             'perm_prefix'    => 'ЦГБ-Ф14'
         ],
         'ф15' => [
@@ -275,13 +301,26 @@ class OpacClient
             'aliases'        => ['ф15н', 'ф15нд'],
             'branch_num'     => 'Филиал №15',
             'branch_name'    => 'Библиотека — филиал №15',
-            'department'     => 'Модельная библиотека',
-            'address'        => 'г. Владимир, ул. Юбилейная, д. 38',
-            'district'       => 'Доброе',
-            'is_dobroye'     => true,
+            'department'     => 'Основной абонемент',
+            'address'        => 'г. Владимир, пос. Заклязьменский, ул. Центральная, д. 11 А',
+            'district'       => 'пос. Заклязьменский',
+            'is_dobroye'     => false,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-13-05',
+            'phone'          => '8(4922) 42-53-96',
             'perm_prefix'    => 'ЦГБ-Ф15'
+        ],
+        'ф16' => [
+            'code'           => 'ф16',
+            'aliases'        => ['ф16н', 'ф16нд'],
+            'branch_num'     => 'Филиал №16',
+            'branch_name'    => 'Библиотека — филиал №16',
+            'department'     => 'Основной абонемент',
+            'address'        => 'г. Владимир, мкр. Коммунар, ул. Песочная, д. 15, кв. 21',
+            'district'       => 'мкр. Коммунар',
+            'is_dobroye'     => false,
+            'is_center'      => false,
+            'phone'          => '8(4922) 42-53-95',
+            'perm_prefix'    => 'ЦГБ-Ф16'
         ]
     ];
 
@@ -326,6 +365,40 @@ class OpacClient
     }
 
     /**
+     * Выполнение cURL с защитой от перегрузки OPAC-сервера (Gatekeeper Mutex)
+     */
+    private function executeGuardedCurl($ch): string
+    {
+        $gateFile = $this->cacheDir . '/opac_network_gate.lock';
+        $gateFp = @fopen($gateFile, 'c+');
+        $rateLimitMs = 350;
+
+        if ($gateFp) {
+            @flock($gateFp, LOCK_EX);
+            $lastTime = (float)@stream_get_contents($gateFp);
+            $now = microtime(true);
+            $gapMs = ($now - $lastTime) * 1000.0;
+            if ($lastTime > 0 && $gapMs < $rateLimitMs) {
+                $sleep = (int)(($rateLimitMs - $gapMs) * 1000);
+                if ($sleep > 0) usleep($sleep);
+            }
+        }
+
+        $resp = (string)curl_exec($ch);
+
+        if ($gateFp) {
+            @ftruncate($gateFp, 0);
+            @rewind($gateFp);
+            @fwrite($gateFp, (string)microtime(true));
+            @fflush($gateFp);
+            @flock($gateFp, LOCK_UN);
+            @fclose($gateFp);
+        }
+
+        return $resp;
+    }
+
+    /**
      * Получение или продление сессии OPAC-Global
      */
     public function ensureSession(bool $forceRefresh = false): bool
@@ -358,7 +431,7 @@ class OpacClient
             CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; VladimirCgbOpacClient/1.0)'
         ]);
 
-        $resp = curl_exec($ch);
+        $resp = $this->executeGuardedCurl($ch);
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $headers = substr($resp, 0, $headerSize);
         $body = substr($resp, $headerSize);
@@ -483,7 +556,7 @@ class OpacClient
             CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; VladimirCgbOpacClient/1.0)'
         ]);
 
-        $output = (string)curl_exec($ch);
+        $output = $this->executeGuardedCurl($ch);
         curl_close($ch);
 
         // Если сессия устарела — обновляем один раз и повторяем
@@ -500,7 +573,7 @@ class OpacClient
                 CURLOPT_SSL_VERIFYHOST => 0,
                 CURLOPT_TIMEOUT        => 15
             ]);
-            $output = (string)curl_exec($ch);
+            $output = $this->executeGuardedCurl($ch);
             curl_close($ch);
         }
 

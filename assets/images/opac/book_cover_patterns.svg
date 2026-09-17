@@ -1,0 +1,405 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <!-- ========================================== -->
+    <!-- COMMON SHADOWS & GLOWS                     -->
+    <!-- ========================================== -->
+    <filter id="card-shadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <filter id="gold-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="cyan-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <!-- ========================================== -->
+    <!-- 1. PATTERN: SCI-FI / CYBERPUNK             -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-scifi" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050b14"/>
+      <stop offset="40%" stop-color="#082f49"/>
+      <stop offset="80%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+
+    <pattern id="pattern-scifi" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 0 20 L 20 0 L 40 20 L 20 40 Z" fill="none" stroke="#00f0ff" stroke-width="0.8" opacity="0.28"/>
+      <circle cx="20" cy="20" r="1.8" fill="#38bdf8" opacity="0.6"/>
+      <line x1="0" y1="0" x2="40" y2="40" stroke="#0284c7" stroke-width="0.5" opacity="0.18"/>
+      <line x1="40" y1="0" x2="0" y2="40" stroke="#0284c7" stroke-width="0.5" opacity="0.18"/>
+      <circle cx="0" cy="0" r="1" fill="#00f0ff" opacity="0.4"/>
+      <circle cx="40" cy="0" r="1" fill="#00f0ff" opacity="0.4"/>
+      <circle cx="0" cy="40" r="1" fill="#00f0ff" opacity="0.4"/>
+      <circle cx="40" cy="40" r="1" fill="#00f0ff" opacity="0.4"/>
+    </pattern>
+
+    <!-- ========================================== -->
+    <!-- 2. PATTERN: CLASSIC LITERATURE             -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-classic" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a0815"/>
+      <stop offset="50%" stop-color="#580d28"/>
+      <stop offset="100%" stop-color="#831843"/>
+    </linearGradient>
+
+    <pattern id="pattern-classic" width="48" height="48" patternUnits="userSpaceOnUse">
+      <!-- Damask / Royal Fleur Acanthus Element -->
+      <g fill="none" stroke="#fbbf24" stroke-width="0.9" opacity="0.32">
+        <path d="M 24 6 C 20 14 14 18 10 24 C 16 26 22 22 24 32 C 26 22 32 26 38 24 C 34 18 28 14 24 6 Z"/>
+        <circle cx="24" cy="24" r="3" fill="#fbbf24" opacity="0.4"/>
+        <path d="M 6 24 C 12 28 16 34 24 38 C 18 42 14 44 6 42"/>
+        <path d="M 42 24 C 36 28 32 34 24 38 C 30 42 34 44 42 42"/>
+      </g>
+    </pattern>
+
+    <!-- ========================================== -->
+    <!-- 3. PATTERN: CHILDREN / FAIRY TALES         -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-kids" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b0764"/>
+      <stop offset="45%" stop-color="#701a75"/>
+      <stop offset="85%" stop-color="#be185d"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+
+    <pattern id="pattern-kids" width="50" height="50" patternUnits="userSpaceOnUse">
+      <!-- Magic 4-point stars, crescent & stardust -->
+      <g fill="#fef08a" opacity="0.42">
+        <!-- 4-point star -->
+        <path d="M 25 10 Q 25 20 15 20 Q 25 20 25 30 Q 25 20 35 20 Q 25 20 25 10 Z"/>
+        <!-- Small star -->
+        <path d="M 45 35 Q 45 40 40 40 Q 45 40 45 45 Q 45 40 50 40 Q 45 40 45 35 Z" opacity="0.6"/>
+        <!-- Tiny dots -->
+        <circle cx="8" cy="8" r="1.5" fill="#f472b6"/>
+        <circle cx="42" cy="12" r="1.2" fill="#38bdf8"/>
+        <circle cx="12" cy="40" r="1.4" fill="#ffffff"/>
+        <!-- Mini Crescent -->
+        <path d="M 6 22 A 6 6 0 0 0 16 28 A 7 7 0 0 1 8 20 Z" fill="#fef08a" opacity="0.5"/>
+      </g>
+    </pattern>
+
+    <!-- ========================================== -->
+    <!-- 4. PATTERN: POETRY & DRAMA                 -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-poetry" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="45%" stop-color="#3730a3"/>
+      <stop offset="80%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <pattern id="pattern-poetry" width="44" height="44" patternUnits="userSpaceOnUse">
+      <!-- Laurel branch & lyric wave curves -->
+      <g fill="none" stroke="#e2e8f0" stroke-width="0.8" opacity="0.32">
+        <path d="M 0 44 Q 22 22 44 0"/>
+        <!-- Laurel Leaves -->
+        <path d="M 14 30 Q 10 22 18 20 Q 20 28 14 30 Z" fill="#e2e8f0" opacity="0.25"/>
+        <path d="M 28 16 Q 24 8 32 6 Q 34 14 28 16 Z" fill="#e2e8f0" opacity="0.25"/>
+        <circle cx="22" cy="22" r="1.5" fill="#c084fc"/>
+      </g>
+    </pattern>
+
+    <!-- ========================================== -->
+    <!-- 5. PATTERN: SCIENCE & NON-FICTION          -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-science" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#022c22"/>
+      <stop offset="45%" stop-color="#064e3b"/>
+      <stop offset="85%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+
+    <pattern id="pattern-science" width="48" height="42" patternUnits="userSpaceOnUse">
+      <!-- Hexagonal Molecular Lattice & Technical Grid -->
+      <g fill="none" stroke="#34d399" stroke-width="0.9" opacity="0.32">
+        <!-- Hexagon 1 -->
+        <polygon points="24,2 44,12 44,32 24,42 4,32 4,12"/>
+        <circle cx="24" cy="2" r="2" fill="#00f0ff"/>
+        <circle cx="44" cy="12" r="1.5" fill="#34d399"/>
+        <circle cx="44" cy="32" r="1.5" fill="#34d399"/>
+        <circle cx="24" cy="42" r="2" fill="#00f0ff"/>
+        <circle cx="4" cy="32" r="1.5" fill="#34d399"/>
+        <circle cx="4" cy="12" r="1.5" fill="#34d399"/>
+        <!-- Center connection -->
+        <circle cx="24" cy="22" r="2.5" fill="#6ee7b7" opacity="0.6"/>
+      </g>
+    </pattern>
+
+    <!-- ========================================== -->
+    <!-- 6. PATTERN: LOCAL HISTORY / VLADIMIR       -->
+    <!-- ========================================== -->
+    <linearGradient id="grad-vladimir" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c1917"/>
+      <stop offset="40%" stop-color="#451a03"/>
+      <stop offset="80%" stop-color="#78350f"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+
+    <pattern id="pattern-vladimir" width="56" height="56" patternUnits="userSpaceOnUse">
+      <!-- Old Russian Arch & White-Stone Carving Motifs -->
+      <g fill="none" stroke="#f59e0b" stroke-width="1.0" opacity="0.35">
+        <!-- Arch of Golden Gate -->
+        <path d="M 12 48 L 12 28 A 16 16 0 0 1 44 28 L 44 48"/>
+        <!-- Inner Decorative Cross / Star -->
+        <path d="M 28 16 L 28 34 M 20 24 L 36 24"/>
+        <circle cx="28" cy="12" r="3" fill="#f59e0b" opacity="0.5"/>
+        <!-- White stone relief curls -->
+        <path d="M 4 8 C 10 4 14 12 20 8"/>
+        <path d="M 52 8 C 46 4 42 12 36 8"/>
+      </g>
+    </pattern>
+  </defs>
+
+  <!-- Background Base Canvas -->
+  <rect width="1200" height="800" fill="#0b0f19"/>
+
+  <!-- Canvas Header Info -->
+  <g transform="translate(60, 42)">
+    <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="900" fill="#ffffff" letter-spacing="1">
+      AURORA • ПАТТЕРНЫ И ДЕКОРАТИВНЫЕ ОБЛОЖКИ OPAC
+    </text>
+    <text y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500" fill="#94a3b8">
+      Векторные градиентные подложки и тиснения для каталожных карточек по жанрам литературы (ЦГБ г. Владимира)
+    </text>
+  </g>
+
+  <!-- ============================================================= -->
+  <!-- ROW 1: 3 COVERS (Y = 100)                                     -->
+  <!-- ============================================================= -->
+
+  <!-- CARD 1: ФАНТАСТИКА И КИБЕРПАНК -->
+  <g id="cover-scifi" transform="translate(60, 100)" filter="url(#card-shadow)">
+    <!-- Book Base Frame -->
+    <rect width="330" height="310" rx="16" fill="url(#grad-scifi)"/>
+    <!-- Pattern Overlay -->
+    <rect width="330" height="310" rx="16" fill="url(#pattern-scifi)"/>
+
+    <!-- Spine Accent (Left strip) -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#00f0ff" opacity="0.25"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#00f0ff" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Embossed Border & Futuristic Brackets -->
+    <rect x="42" y="18" width="270" height="274" rx="10" fill="none" stroke="#00f0ff" stroke-width="1.8" opacity="0.75" filter="url(#cyan-glow)"/>
+    <rect x="48" y="24" width="258" height="262" rx="8" fill="none" stroke="#38bdf8" stroke-width="0.8" opacity="0.4"/>
+
+    <!-- Center Cyber Seal / Emblem -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#0f172a" stroke="#00f0ff" stroke-width="2" opacity="0.85"/>
+      <polygon points="0,-32 28,-16 28,16 0,32 -28,16 -28,-16" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+      <circle cx="0" cy="0" r="14" fill="#0284c7" stroke="#ffffff" stroke-width="1.5"/>
+      <!-- Orbit ring -->
+      <ellipse cx="0" cy="0" rx="54" ry="16" fill="none" stroke="#00f0ff" stroke-width="1.5" transform="rotate(-30)"/>
+    </g>
+
+    <!-- Genre Typography -->
+    <text x="177" y="225" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" fill="#ffffff" letter-spacing="3">
+      ФАНТАСТИКА
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="700" fill="#00f0ff" letter-spacing="2">
+      SCI-FI · CYBER · SPACE
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#94a3b8">
+      id: #pattern-scifi
+    </text>
+  </g>
+
+  <!-- CARD 2: КЛАССИЧЕСКАЯ ЛИТЕРАТУРА -->
+  <g id="cover-classic" transform="translate(435, 100)" filter="url(#card-shadow)">
+    <!-- Book Base Frame -->
+    <rect width="330" height="310" rx="16" fill="url(#grad-classic)"/>
+    <!-- Pattern Overlay -->
+    <rect width="330" height="310" rx="16" fill="url(#pattern-classic)"/>
+
+    <!-- Spine Accent -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#fbbf24" opacity="0.22"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#fbbf24" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Ornate Embossed Gold Border -->
+    <rect x="42" y="18" width="270" height="274" rx="10" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.85" filter="url(#gold-glow)"/>
+    <rect x="48" y="24" width="258" height="262" rx="8" fill="none" stroke="#fef08a" stroke-width="0.8" opacity="0.5"/>
+
+    <!-- Corner Victorian Flourishes -->
+    <path d="M 44 38 C 56 38 56 26 56 20 M 44 38 C 44 48 34 48 28 48" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <path d="M 310 38 C 298 38 298 26 298 20" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <path d="M 44 272 C 56 272 56 284 56 290" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <path d="M 310 272 C 298 272 298 284 298 290" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+
+    <!-- Center Royal Medallion -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#3b0718" stroke="#fbbf24" stroke-width="2" opacity="0.95"/>
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#fef08a" stroke-width="1" stroke-dasharray="3,2"/>
+      <!-- Royal Crown / Lyre Silhouette -->
+      <path d="M -16 12 L -20 -8 L -8 2 L 0 -14 L 8 2 L 20 -8 L 16 12 Z" fill="#fbbf24" stroke="#78350f" stroke-width="1"/>
+      <circle cx="0" cy="8" r="3" fill="#be123c"/>
+    </g>
+
+    <!-- Genre Typography -->
+    <text x="177" y="225" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="900" fill="#fef08a" letter-spacing="3">
+      КЛАССИКА
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="11" font-style="italic" fill="#fcd34d" letter-spacing="2">
+      РУССКАЯ И МИРОВАЯ
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#cbd5e1">
+      id: #pattern-classic
+    </text>
+  </g>
+
+  <!-- CARD 3: ДЕТСКАЯ ЛИТЕРАТУРА И СКАЗКИ -->
+  <g id="cover-kids" transform="translate(810, 100)" filter="url(#card-shadow)">
+    <!-- Book Base Frame -->
+    <rect width="330" height="310" rx="16" fill="url(#grad-kids)"/>
+    <!-- Pattern Overlay -->
+    <rect width="330" height="310" rx="16" fill="url(#pattern-kids)"/>
+
+    <!-- Spine Accent -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#f472b6" opacity="0.25"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#f472b6" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Magical Scalloped Border -->
+    <rect x="42" y="18" width="270" height="274" rx="12" fill="none" stroke="#fbcfe8" stroke-width="2" opacity="0.8"/>
+    <rect x="48" y="24" width="258" height="262" rx="10" fill="none" stroke="#fef08a" stroke-width="1" stroke-dasharray="6,4" opacity="0.7"/>
+
+    <!-- Center Magic Emblem -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#581c87" stroke="#f472b6" stroke-width="2.2" opacity="0.9"/>
+      <!-- Crescent Moon with Magic Stardust -->
+      <path d="M -8 -22 A 24 24 0 0 0 14 16 A 26 26 0 0 1 -14 -14 A 20 20 0 0 1 -8 -22 Z" fill="#fef08a" stroke="#d97706" stroke-width="1"/>
+      <circle cx="16" cy="-10" r="3.5" fill="#ffffff" filter="url(#gold-glow)"/>
+      <circle cx="8" cy="18" r="2.5" fill="#38bdf8"/>
+    </g>
+
+    <!-- Genre Typography -->
+    <text x="177" y="225" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" fill="#ffffff" letter-spacing="2">
+      ДЕТСКИЕ КНИГИ
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#fef08a" letter-spacing="2">
+      СКАЗКИ · ПРИКЛЮЧЕНИЯ
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#fbcfe8">
+      id: #pattern-kids
+    </text>
+  </g>
+
+  <!-- ============================================================= -->
+  <!-- ROW 2: 3 COVERS (Y = 445)                                     -->
+  <!-- ============================================================= -->
+
+  <!-- CARD 4: ПОЭЗИЯ И ДРАМАТУРГИЯ -->
+  <g id="cover-poetry" transform="translate(60, 445)" filter="url(#card-shadow)">
+    <rect width="330" height="310" rx="16" fill="url(#grad-poetry)"/>
+    <rect width="330" height="310" rx="16" fill="url(#pattern-poetry)"/>
+
+    <!-- Spine Accent -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#a855f7" opacity="0.25"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#c084fc" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Silver & Lavender Border -->
+    <rect x="42" y="18" width="270" height="274" rx="10" fill="none" stroke="#c084fc" stroke-width="1.8" opacity="0.8"/>
+    <rect x="48" y="24" width="258" height="262" rx="8" fill="none" stroke="#e2e8f0" stroke-width="0.8" opacity="0.4"/>
+
+    <!-- Center Lyre / Quill Emblem -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#2e1065" stroke="#c084fc" stroke-width="2" opacity="0.95"/>
+      <!-- Lyre Instrument -->
+      <path d="M -16 10 C -18 -12 -12 -18 -4 -18 L -4 12 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+      <path d="M 16 10 C 18 -12 12 -18 4 -18 L 4 12 Z" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+      <line x1="-8" y1="12" x2="8" y2="12" stroke="#e2e8f0" stroke-width="2.5"/>
+      <line x1="-2" y1="-16" x2="-2" y2="10" stroke="#c084fc" stroke-width="1.2"/>
+      <line x1="2" y1="-16" x2="2" y2="10" stroke="#c084fc" stroke-width="1.2"/>
+      <ellipse cx="0" cy="15" rx="12" ry="5" fill="#e2e8f0"/>
+    </g>
+
+    <text x="177" y="225" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="18" font-weight="900" fill="#ffffff" letter-spacing="3">
+      ПОЭЗИЯ
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="11" font-style="italic" fill="#e9d5ff" letter-spacing="2">
+      СТИХИ · ЛИРИКА · ДРАМА
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#c084fc">
+      id: #pattern-poetry
+    </text>
+  </g>
+
+  <!-- CARD 5: НАУКА И НОН-ФИКШН -->
+  <g id="cover-science" transform="translate(435, 445)" filter="url(#card-shadow)">
+    <rect width="330" height="310" rx="16" fill="url(#grad-science)"/>
+    <rect width="330" height="310" rx="16" fill="url(#pattern-science)"/>
+
+    <!-- Spine Accent -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#34d399" opacity="0.25"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#34d399" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Blueprint Technical Border -->
+    <rect x="42" y="18" width="270" height="274" rx="10" fill="none" stroke="#34d399" stroke-width="1.8" opacity="0.8"/>
+    <rect x="48" y="24" width="258" height="262" rx="8" fill="none" stroke="#6ee7b7" stroke-width="0.8" opacity="0.4"/>
+    <!-- Technical Corner Marks -->
+    <line x1="36" y1="18" x2="48" y2="18" stroke="#34d399" stroke-width="2"/>
+    <line x1="42" y1="12" x2="42" y2="24" stroke="#34d399" stroke-width="2"/>
+
+    <!-- Center Atomic / Molecular Symbol -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#022c22" stroke="#34d399" stroke-width="2" opacity="0.9"/>
+      <!-- 3 Orbital Rings -->
+      <ellipse cx="0" cy="0" rx="34" ry="12" fill="none" stroke="#34d399" stroke-width="1.5"/>
+      <ellipse cx="0" cy="0" rx="34" ry="12" fill="none" stroke="#34d399" stroke-width="1.5" transform="rotate(60)"/>
+      <ellipse cx="0" cy="0" rx="34" ry="12" fill="none" stroke="#34d399" stroke-width="1.5" transform="rotate(-60)"/>
+      <circle cx="0" cy="0" r="7" fill="#00f0ff" filter="url(#cyan-glow)"/>
+      <circle cx="28" cy="-5" r="2.5" fill="#fef08a"/>
+    </g>
+
+    <text x="177" y="225" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" fill="#ffffff" letter-spacing="2.5">
+      НАУКА И ЗНАНИЕ
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="700" fill="#6ee7b7" letter-spacing="1.5">
+      SCIENCE · TECH · NATURE
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#a7f3d0">
+      id: #pattern-science
+    </text>
+  </g>
+
+  <!-- CARD 6: КРАЕВЕДЕНИЕ / ВЛАДИМИР -->
+  <g id="cover-vladimir" transform="translate(810, 445)" filter="url(#card-shadow)">
+    <rect width="330" height="310" rx="16" fill="url(#grad-vladimir)"/>
+    <rect width="330" height="310" rx="16" fill="url(#pattern-vladimir)"/>
+
+    <!-- Spine Accent -->
+    <path d="M 0 16 Q 0 0 16 0 L 28 0 L 28 310 L 16 310 Q 0 310 0 294 Z" fill="#f59e0b" opacity="0.25"/>
+    <line x1="28" y1="0" x2="28" y2="310" stroke="#f59e0b" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Old Russian Ancient Gold Border -->
+    <rect x="42" y="18" width="270" height="274" rx="10" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.85" filter="url(#gold-glow)"/>
+    <rect x="48" y="24" width="258" height="262" rx="8" fill="none" stroke="#fde68a" stroke-width="0.8" opacity="0.4"/>
+
+    <!-- Center Golden Gates of Vladimir Symbol -->
+    <g transform="translate(177, 135)">
+      <circle cx="0" cy="0" r="44" fill="#291104" stroke="#f59e0b" stroke-width="2" opacity="0.95"/>
+      <!-- Golden Gates (Золотые Ворота г. Владимира) -->
+      <!-- Mighty White-Stone Arch Base -->
+      <path d="M -22 24 L -22 -4 L -12 -4 L -12 24 Z" fill="#fef3c7" stroke="#78350f" stroke-width="1"/>
+      <path d="M 22 24 L 22 -4 L 12 -4 L 12 24 Z" fill="#fef3c7" stroke="#78350f" stroke-width="1"/>
+      <!-- Semicircular Arch Top -->
+      <path d="M -12 -4 A 12 12 0 0 1 12 -4 L 12 -2 A 10 10 0 0 0 -12 -2 Z" fill="#fef3c7"/>
+      <!-- Gatekeeper Chapel (Church Above Gates) -->
+      <rect x="-18" y="-16" width="36" height="12" fill="#d97706" stroke="#78350f" stroke-width="1"/>
+      <!-- Golden Dome & Cross -->
+      <path d="M -9 -16 C -9 -28 0 -34 0 -34 C 0 -34 9 -28 9 -16 Z" fill="#f59e0b" stroke="#78350f" stroke-width="1"/>
+      <line x1="0" y1="-34" x2="0" y2="-40" stroke="#fef08a" stroke-width="1.5"/>
+      <line x1="-3" y1="-37" x2="3" y2="-37" stroke="#fef08a" stroke-width="1.5"/>
+    </g>
+
+    <text x="177" y="225" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="17" font-weight="900" fill="#fef08a" letter-spacing="2.5">
+      КРАЕВЕДЕНИЕ
+    </text>
+    <text x="177" y="245" text-anchor="middle" font-family="'Times New Roman', Georgia, serif" font-size="11" font-weight="700" fill="#fde68a" letter-spacing="2">
+      ВЛАДИМИРСКИЙ КРАЙ
+    </text>
+    <text x="177" y="272" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#fed7aa">
+      id: #pattern-vladimir
+    </text>
+  </g>
+</svg>

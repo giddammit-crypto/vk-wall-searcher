@@ -97,6 +97,12 @@ import {
 } from './promo.js?v=4.25.4';
 
 import {
+    initOpacModal,
+    openOpacModal,
+    closeOpacModal
+} from './opac_modal.js?v=4.43.0';
+
+import {
     initLeagueModal,
     openLeagueModal,
     closeLeagueModal,
@@ -113,7 +119,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.25.4';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.25.5';
+export const APP_VERSION = '4.43.0';
 
 function initApp() {
 
@@ -240,6 +246,7 @@ function initApp() {
         countAnalytics: document.getElementById('count-analytics'),
         countSummary: document.getElementById('count-summary'),
         promoModalBtn: document.getElementById('promo-modal-btn'),
+        opacModalBtn: document.getElementById('opac-modal-btn'),
         leagueModalBtn: document.getElementById('league-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
@@ -3559,6 +3566,15 @@ function initApp() {
     }
     window.__openPromoModal = openPromoModal;
 
+    // Инициализация модального окна электронного каталога OPAC
+    initOpacModal();
+    if (elements.opacModalBtn) {
+        elements.opacModalBtn.addEventListener('click', () => {
+            openOpacModal();
+        });
+    }
+    window.__openOpacModal = (query = '') => openOpacModal(query);
+
     if (elements.leagueModalBtn) {
         elements.leagueModalBtn.addEventListener('click', () => {
             openLeagueModal(state.stats, state.matchedPosts);
@@ -3898,6 +3914,8 @@ function initApp() {
         CosmicUniverse,
         openPromoModal,
         closePromoModal,
+        openOpacModal,
+        closeOpacModal,
         renderRadarSection,
         computeTimingHeatmap,
         renderTimingHeatmapSection,

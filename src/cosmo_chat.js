@@ -891,6 +891,10 @@ export class CosmoChatModal {
                             <span class="material-symbols-outlined">sentiment_satisfied</span>
                             <span class="tool-btn-text">Стикеры</span>
                         </button>
+                        <button type="button" class="cosmo-chat-tool-btn cosmo-chat-opac-btn" data-chat-open-opac title="Электронный каталог книг (OPAC) — открыть каталог">
+                            <span class="material-symbols-outlined">menu_book</span>
+                            <span class="tool-btn-text">Каталог OPAC</span>
+                        </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-export title="Скачать диалог в Markdown">
                             <span class="material-symbols-outlined">download</span>
                             <span class="tool-btn-text">Экспорт</span>
@@ -952,6 +956,7 @@ export class CosmoChatModal {
                 </div>
 
                 <!-- Всплывающая панель Sticker Picker со всеми 17 стикерами Космо -->
+                <div class="cosmo-sticker-picker-backdrop" data-chat-stickers-backdrop aria-hidden="true"></div>
                 <div class="cosmo-sticker-picker" data-chat-sticker-picker aria-hidden="true">
                     <div class="sticker-picker-header">
                         <div class="sticker-picker-title-group">
@@ -1103,6 +1108,11 @@ export class CosmoChatModal {
                         <span class="attach-btn-label">Файл</span>
                     </button>
 
+                    <button type="button" class="cosmo-chat-attach-btn cosmo-chat-stickers-footer-btn" data-chat-stickers title="Стикеры Космо (17 прозрачных эмоций)">
+                        <span class="material-symbols-outlined">sentiment_satisfied</span>
+                        <span class="attach-btn-label">Стикеры</span>
+                    </button>
+
                     <div class="cosmo-chat-input-wrap">
                         <textarea class="cosmo-chat-input"
                                   data-chat-input
@@ -1132,6 +1142,7 @@ export class CosmoChatModal {
         this.presetsPopoverEl = overlay.querySelector('[data-chat-presets-popover]');
         this.presetsBtnEl = overlay.querySelector('[data-chat-presets-toggle]');
         this.stickersPickerEl = overlay.querySelector('[data-chat-sticker-picker]');
+        this.stickersBackdropEl = overlay.querySelector('[data-chat-stickers-backdrop]');
         this.stickersBtnEl = overlay.querySelector('[data-chat-stickers]');
         this.formatBarEl = overlay.querySelector('[data-chat-format-bar]');
         this.previewEl = overlay.querySelector('[data-chat-preview]');
@@ -1150,12 +1161,10 @@ export class CosmoChatModal {
             // Если открыт поповер и клик был не внутри него и не по кнопке открытия — закрываем поповер
             if (this.isPresetsOpen && !e.target.closest('[data-chat-presets-popover]') && !e.target.closest('[data-chat-presets-toggle]')) {
                 this.closePresetsPopover();
-                return;
             }
-            // Если открыта панель стикеров и клик вне неё и вне кнопки стикеров — закрываем панель
+            // Если открыта панель стикеров и клик был вне неё и вне кнопки вызова — закрываем
             if (this.isStickersOpen && !e.target.closest('[data-chat-sticker-picker]') && !e.target.closest('[data-chat-stickers]')) {
                 this.closeStickersPicker();
-                return;
             }
             if (e.target === this.overlayEl) {
                 this.close();
@@ -1166,14 +1175,21 @@ export class CosmoChatModal {
         const closeBtn = this.overlayEl.querySelector('[data-chat-close]');
         if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
-        // Кнопки открытия/закрытия поповера пресетов
-        const toggleBtns = this.overlayEl.querySelectorAll('[data-chat-presets-toggle]');
-        toggleBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        // Кнопка открытия/закрытия пресетов анализа
+        if (this.presetsBtnEl) {
+            this.presetsBtnEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.togglePresetsPopover();
             });
-        });
+        }
+
+        const quickPresetPill = this.overlayEl.querySelector('.cosmo-chat-quick-presets-pill');
+        if (quickPresetPill) {
+            quickPresetPill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.togglePresetsPopover();
+            });
+        }
 
         const closePresetsBtn = this.overlayEl.querySelector('[data-chat-presets-close]');
         if (closePresetsBtn) {
@@ -1191,18 +1207,40 @@ export class CosmoChatModal {
             });
         }
 
-        // Кнопка вызова стикеров Космо
-        if (this.stickersBtnEl) {
-            this.stickersBtnEl.addEventListener('click', (e) => {
+        // Кнопки вызова стикеров Космо (в шапке диалога и в нижней панели)
+        const stickersBtns = this.overlayEl.querySelectorAll('[data-chat-stickers]');
+        stickersBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.toggleStickersPicker();
             });
-        }
+        });
+
+        // Кнопка открытия электронного каталога OPAC
+        const opacBtns = this.overlayEl.querySelectorAll('[data-chat-open-opac]');
+        opacBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof window.__openOpacModal === 'function') {
+                    window.__openOpacModal();
+                } else {
+                    import('./opac_modal.js').then(m => m.openOpacModal && m.openOpacModal());
+                }
+            });
+        });
 
         // Кнопка закрытия панели стикеров
         const closeStickersBtn = this.overlayEl.querySelector('[data-chat-stickers-close]');
         if (closeStickersBtn) {
             closeStickersBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeStickersPicker();
+            });
+        }
+
+        // Клик по бэкдропу панели стикеров
+        if (this.stickersBackdropEl) {
+            this.stickersBackdropEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.closeStickersPicker();
             });
@@ -1441,6 +1479,18 @@ export class CosmoChatModal {
             if (copyOpacBtn) {
                 const text = copyOpacBtn.getAttribute('data-copy-opac') || '';
                 this.copyToClipboard(text, copyOpacBtn, 'Наличие скопировано! 📚');
+                return;
+            }
+
+            // Открытие книги в полноэкранном модальном окне каталога OPAC
+            const openOpacBtn = e.target.closest('[data-open-opac-modal]');
+            if (openOpacBtn) {
+                const bookQuery = openOpacBtn.getAttribute('data-open-opac-modal') || '';
+                if (typeof window.__openOpacModal === 'function') {
+                    window.__openOpacModal(bookQuery);
+                } else {
+                    import('./opac_modal.js').then(m => m.openOpacModal && m.openOpacModal(bookQuery));
+                }
                 return;
             }
 
@@ -2172,9 +2222,13 @@ export class CosmoChatModal {
         this.isStickersOpen = true;
         this.stickersPickerEl.classList.add('is-open');
         this.stickersPickerEl.setAttribute('aria-hidden', 'false');
-        if (this.stickersBtnEl) this.stickersBtnEl.classList.add('is-active');
+        if (this.stickersBackdropEl) {
+            this.stickersBackdropEl.classList.add('is-open');
+            this.stickersBackdropEl.setAttribute('aria-hidden', 'false');
+        }
+        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => btn.classList.add('is-active'));
 
-        if (this.mascot && this.mascot.playVoice && this.audioEnabled) {
+        if (this.mascot && typeof this.mascot.playVoice === 'function' && this.audioEnabled) {
             this.mascot.playVoice('greet_2');
         }
     }
@@ -2184,7 +2238,11 @@ export class CosmoChatModal {
         this.isStickersOpen = false;
         this.stickersPickerEl.classList.remove('is-open');
         this.stickersPickerEl.setAttribute('aria-hidden', 'true');
-        if (this.stickersBtnEl) this.stickersBtnEl.classList.remove('is-active');
+        if (this.stickersBackdropEl) {
+            this.stickersBackdropEl.classList.remove('is-open');
+            this.stickersBackdropEl.setAttribute('aria-hidden', 'true');
+        }
+        this.overlayEl?.querySelectorAll('[data-chat-stickers]').forEach(btn => btn.classList.remove('is-active'));
     }
 
     /* ---------------------------------------------------------------------
@@ -2193,6 +2251,9 @@ export class CosmoChatModal {
     sendSticker(stickerId) {
         if (!stickerId) return;
         this.closeStickersPicker();
+
+        const stickerMeta = COSMO_STICKERS.find(s => s.id === stickerId) || { name: 'Стикер', title: 'Стикер' };
+        const stickerSrc = stickerMeta.src || `assets/images/mascot/${stickerId}.png`;
 
         // 1. Добавляем стикер пользователя в чат на 100% прозрачном фоне
         const userMsgDiv = document.createElement('div');
@@ -2204,7 +2265,7 @@ export class CosmoChatModal {
             <div class="msg-content">
                 <div class="msg-author">Вы</div>
                 <div class="msg-body msg-bubble transparent-sticker">
-                    <img src="assets/images/mascot/${escapeHtml(stickerId)}.png" alt="${escapeHtml(stickerId)}" class="sticker-img" />
+                    <img src="${escapeHtml(stickerSrc)}" alt="${escapeHtml(stickerMeta.title || stickerId)}" class="sticker-img" />
                 </div>
             </div>
         `;
@@ -2216,14 +2277,17 @@ export class CosmoChatModal {
 
         // 3. Задержка 400мс: бот реагирует подходящим ответом и ответным стикером
         setTimeout(() => {
-            this.appendBotStickerResponse(replyInfo.text, replyInfo.replyStickerId, replyInfo.mascotState);
+            this.appendBotStickerResponse(replyInfo.text, replyInfo.replyStickerId, replyInfo.mascotState, stickerMeta.name);
         }, 400);
     }
 
-    appendBotStickerResponse(reactionText, replyStickerId, mascotState = 'smile') {
+    appendBotStickerResponse(reactionText, replyStickerId, mascotState = 'smile', userStickerName = '') {
         const botMsgDiv = document.createElement('div');
         botMsgDiv.className = 'cosmo-chat-msg cosmo-chat-msg-bot chat-msg is-bot is-sticker-reply';
         const authorLabel = this.isShelfMode ? 'Космо • Книжный робот' : 'Космо • SMM-гуру';
+
+        const replyMeta = COSMO_STICKERS.find(s => s.id === replyStickerId);
+        const replySrc = replyMeta ? replyMeta.src : `assets/images/mascot/${replyStickerId}.png`;
 
         botMsgDiv.innerHTML = `
             <div class="msg-avatar">
@@ -2234,7 +2298,7 @@ export class CosmoChatModal {
                 <div class="msg-body">
                     <p class="cosmo-sticker-bot-text">${escapeHtml(reactionText)}</p>
                     <div class="msg-bubble transparent-sticker bot-transparent-sticker">
-                        <img src="assets/images/mascot/${escapeHtml(replyStickerId)}.png" alt="${escapeHtml(replyStickerId)}" class="sticker-img bot-sticker-img" />
+                        <img src="${escapeHtml(replySrc)}" alt="${escapeHtml(replyStickerId)}" class="sticker-img bot-sticker-img" />
                     </div>
                 </div>
                 <div class="msg-actions">
@@ -2249,8 +2313,9 @@ export class CosmoChatModal {
         this.scrollToBottom();
 
         // Добавляем в историю сообщений диалога
+        const userEntry = userStickerName ? `[Стикер: ${userStickerName}]` : `[Стикер: ${replyStickerId}]`;
         this.messages.push(
-            { role: 'user', content: `[Стикер: ${replyStickerId}]` },
+            { role: 'user', content: userEntry },
             { role: 'assistant', content: `${reactionText} [Стикер Космо: ${replyStickerId}]` }
         );
 

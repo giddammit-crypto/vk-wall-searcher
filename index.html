@@ -219,8 +219,9 @@
     <link rel="stylesheet" href="src/warp_hud.css?v=4.25.4">
     <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.25.4">
     <link rel="stylesheet" href="src/space_cinematic.css?v=4.25.4">
-    <link rel="stylesheet" href="src/mascot.css?v=4.42.1">
+    <link rel="stylesheet" href="src/mascot.css?v=4.43.0">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
+    <link rel="stylesheet" href="src/opac_search.css?v=4.43.0">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -368,6 +369,11 @@
                 <button type="button" id="promo-modal-btn" class="btn btn-tonal" title="Генератор фирменных QR-плакатов и закладок для филиалов">
                     <span class="material-symbols-outlined icon">qr_code_2</span>
                     <span class="settings-btn-text">QR-плакаты</span>
+                </button>
+                <button type="button" id="opac-modal-btn" class="btn btn-tonal opac-header-btn" title="Электронный каталог книг OPAC ЦГБ г. Владимира">
+                    <span class="material-symbols-outlined icon">menu_book</span>
+                    <span class="settings-btn-text">Каталог книг</span>
+                    <span class="opac-nav-badge">OPAC</span>
                 </button>
                 <button type="button" id="league-modal-btn" class="btn btn-tonal" title="Лига филиалов: рейтинг активности, дивизионы и награды от Космо">
                     <span class="material-symbols-outlined icon">emoji_events</span>
@@ -1765,7 +1771,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.42.1"></script>
+    <script type="module" src="src/app.js?v=4.43.0"></script>
 
     <script>
     /* =============================================================

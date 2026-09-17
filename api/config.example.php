@@ -102,6 +102,8 @@ return [
     'opac_password'        => 'MNBVCXZ',
     'opac_type_access'     => 'PayAccess',
     'opac_db_id'           => '62',
-    'opac_rate_limit_ms'   => 200,
-
+    'opac_rate_limit_ms'             => 350,     // 350мс безопасный интервал для защиты OPAC от падения
+    'opac_circuit_breaker_enabled'   => true,     // Автоматический предохранитель при сбоях
+    'opac_circuit_breaker_threshold' => 2,        // 2 ошибки подряд активируют кулдаун
+    'opac_circuit_breaker_cooldown'  => 60,       // 60 секунд на остывание OPAC-Global
 ];

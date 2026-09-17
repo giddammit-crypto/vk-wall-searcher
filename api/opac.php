@@ -42,18 +42,21 @@ if (file_exists(__DIR__ . '/OpacClient.php')) {
 // Конфигурация по умолчанию и загрузка переопределений из config.php
 // -----------------------------------------------------------------------------
 $opacGlobalConfig = [
-    'opac_base_url'        => 'https://opac.lib33.ru',
-    'opac_login'           => 'CGBRD',
-    'opac_password'        => 'MNBVCXZ',
-    'opac_type_access'     => 'PayAccess',
-    'opac_db_id'           => '62',
-    'opac_rate_limit_ms'   => 200,
-    'opac_connect_timeout' => 4,
-    'opac_timeout'         => 10,
-    'opac_session_ttl'     => 3600,     // 1 час
-    'opac_search_ttl'      => 14400,    // 4 часа
-    'opac_copies_ttl'      => 3600,     // 1 час
-    'user_agent'           => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'opac_base_url'                  => 'https://opac.lib33.ru',
+    'opac_login'                     => 'CGBRD',
+    'opac_password'                  => 'MNBVCXZ',
+    'opac_type_access'               => 'PayAccess',
+    'opac_db_id'                     => '62',
+    'opac_rate_limit_ms'             => 350,     // 350мс безопасная пауза между запросами к OPAC-Global
+    'opac_connect_timeout'           => 4,
+    'opac_timeout'                   => 10,
+    'opac_session_ttl'               => 3600,     // 1 час
+    'opac_search_ttl'                => 21600,    // 6 часов (экономия вызовов к OPAC)
+    'opac_copies_ttl'                => 10800,    // 3 часа (кэш экземпляров)
+    'opac_circuit_breaker_enabled'   => true,     // Предохранитель от падения OPAC
+    'opac_circuit_breaker_threshold' => 2,        // Порог: 2 сбоя подряд активируют кулдаун
+    'opac_circuit_breaker_cooldown'  => 60,       // 60 секунд на остывание OPAC при сбоях
+    'user_agent'                     => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 ];
 
 $configFile = __DIR__ . DIRECTORY_SEPARATOR . 'config.php';
@@ -119,52 +122,114 @@ function opac_atomic_write_json($path, $data)
 }
 
 /**
- * Защита от перегрузки OPAC-сервера (Rate Limiting)
- * Обеспечивает минимальный зазор между последовательными исходящими запросами
+ * Проверка состояния аварийного предохранителя OPAC (Circuit Breaker)
+ * Если удалённый сервер возвращает 5xx или сетевые тайм-ауты, предохранитель
+ * размыкает цепь на заданное время (по умолчанию 60 сек), чтобы защитить
+ * сервер OPAC от лавины повторных запросов и предотвратить его падение.
+ *
+ * @return array|null [tripped => true, retry_after => int, reason => string] или null
  */
-function opac_rate_limit()
+function opac_check_circuit_breaker()
 {
-    $rateLimitMs = (int)opac_get_config('opac_rate_limit_ms');
-    if ($rateLimitMs <= 0) {
+    if (!opac_get_config('opac_circuit_breaker_enabled')) {
+        return null;
+    }
+
+    $cacheDir = opac_get_cache_dir();
+    $breakerFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_circuit_breaker.json';
+    if (!is_file($breakerFile)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($breakerFile);
+    $data = json_decode((string)$raw, true);
+    if (!is_array($data)) {
+        return null;
+    }
+
+    $now = time();
+    $trippedUntil = (int)($data['tripped_until'] ?? 0);
+    if ($trippedUntil > $now) {
+        $remaining = $trippedUntil - $now;
+        return [
+            'tripped'     => true,
+            'retry_after' => $remaining,
+            'reason'      => $data['last_error'] ?? 'Защита от перегрузки OPAC-сервера',
+            'failures'    => (int)($data['failures'] ?? 0),
+        ];
+    }
+
+    return null;
+}
+
+/**
+ * Фиксация сбоя сетевого запроса к OPAC и автоматическое срабатывание Circuit Breaker
+ *
+ * @param string $errorMessage
+ * @param int $httpCode
+ */
+function opac_record_circuit_failure($errorMessage, $httpCode = 0)
+{
+    if (!opac_get_config('opac_circuit_breaker_enabled')) {
         return;
     }
 
-    $lockFile = opac_get_cache_dir() . DIRECTORY_SEPARATOR . 'opac_rate.lock';
-    $fp = @fopen($lockFile, 'c+');
-    if (!$fp) {
-        usleep($rateLimitMs * 1000);
-        return;
-    }
+    $cacheDir = opac_get_cache_dir();
+    $breakerFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_circuit_breaker.json';
+    $threshold = (int)(opac_get_config('opac_circuit_breaker_threshold') ?: 2);
+    $cooldown  = (int)(opac_get_config('opac_circuit_breaker_cooldown') ?: 60);
 
-    if (@flock($fp, LOCK_EX)) {
-        $lastTimeStr = trim((string)@stream_get_contents($fp));
-        $lastTime = $lastTimeStr !== '' ? (float)$lastTimeStr : 0.0;
-        $now = microtime(true);
-        $elapsedMs = ($now - $lastTime) * 1000.0;
+    $data = [
+        'failures'      => 0,
+        'tripped_until' => 0,
+        'last_error'    => '',
+        'last_time'     => time(),
+    ];
 
-        if ($lastTime > 0 && $elapsedMs < $rateLimitMs) {
-            $sleepMicro = (int)(($rateLimitMs - $elapsedMs) * 1000);
-            if ($sleepMicro > 0) {
-                usleep($sleepMicro);
-            }
+    if (is_file($breakerFile)) {
+        $existing = json_decode((string)@file_get_contents($breakerFile), true);
+        if (is_array($existing)) {
+            $data = array_merge($data, $existing);
         }
-
-        @ftruncate($fp, 0);
-        @rewind($fp);
-        @fwrite($fp, (string)microtime(true));
-        @fflush($fp);
-        @flock($fp, LOCK_UN);
     }
 
-    @fclose($fp);
+    $data['failures'] = (int)($data['failures'] ?? 0) + 1;
+    $data['last_error'] = "HTTP {$httpCode}: {$errorMessage}";
+    $data['last_time'] = time();
+
+    // Если число последовательных сбоев превысило порог — активируем аварийный кулдаун
+    if ($data['failures'] >= $threshold) {
+        $data['tripped_until'] = time() + $cooldown;
+    }
+
+    opac_atomic_write_json($breakerFile, $data);
+}
+
+/**
+ * Сброс состояния сбоев при успешном ответе от OPAC-Global
+ */
+function opac_record_circuit_success()
+{
+    $cacheDir = opac_get_cache_dir();
+    $breakerFile = $cacheDir . DIRECTORY_SEPARATOR . 'opac_circuit_breaker.json';
+    if (is_file($breakerFile)) {
+        @unlink($breakerFile);
+    }
 }
 
 // -----------------------------------------------------------------------------
-// 1. Сетевой транспорт cURL
+// 1. Сетевой транспорт cURL с однопоточным гейткипером (Anti-Crash Shield)
 // -----------------------------------------------------------------------------
 
 /**
  * Выполнение HTTP-запроса через cURL к сервисам OPAC-Global
+ *
+ * ВАЖНЕЙШАЯ АРХИТЕКТУРНАЯ ЗАЩИТА:
+ * 1. Предохранитель (Circuit Breaker): мгновенный отбой без запроса, если OPAC сбоил.
+ * 2. Глобальный гейткипер (Exclusive Mutex): блокирует параллельные обращения
+ *    к OPAC-Global со стороны разных PHP-процессов, гарантируя строго последовательное
+ *    исполнение и интервал не менее opac_rate_limit_ms (350мс).
+ *    Это 100% исключает крах Windows CGI (opac.exe / direct.exe) от всплесков нагрузки!
  *
  * @param string $url URL назначения
  * @param array|string $postFields POST-параметры (ассоциативный массив или query string)
@@ -185,13 +250,48 @@ function opac_make_request($url, $postFields, $cookieStr = null)
         ];
     }
 
-    // Защита от перегрузки удалённого сервера
-    opac_rate_limit();
+    // 1. Проверка аварийного предохранителя (Circuit Breaker)
+    $breakerStatus = opac_check_circuit_breaker();
+    if ($breakerStatus !== null) {
+        return [
+            'ok'              => false,
+            'circuit_breaker' => true,
+            'http_code'       => 503,
+            'body'            => '',
+            'headers'         => '',
+            'cookies'         => [],
+            'errno'           => 503,
+            'retry_after'     => $breakerStatus['retry_after'],
+            'error'           => "Сервер каталога OPAC временно восстанавливает стабильность (пауза {$breakerStatus['retry_after']} сек для предотвращения перегрузки сервера). Повторите попытку чуть позже.",
+        ];
+    }
 
-    $payload = is_array($postFields) ? http_build_query($postFields) : (string)$postFields;
+    $payload        = is_array($postFields) ? http_build_query($postFields) : (string)$postFields;
     $connectTimeout = (int)opac_get_config('opac_connect_timeout');
-    $timeout = (int)opac_get_config('opac_timeout');
-    $userAgent = (string)opac_get_config('user_agent');
+    $timeout        = (int)opac_get_config('opac_timeout');
+    $userAgent      = (string)opac_get_config('user_agent');
+    $rateLimitMs    = max(300, (int)opac_get_config('opac_rate_limit_ms'));
+
+    // 2. Глобальный гейткипер (Exclusive Mutex):
+    // Держим эксклюзивную файловую блокировку на время сетевого вызова,
+    // чтобы ни один другой процесс не мог одновременно долбить OPAC CGI.
+    $gateFile = opac_get_cache_dir() . DIRECTORY_SEPARATOR . 'opac_network_gate.lock';
+    $gateFp = @fopen($gateFile, 'c+');
+
+    if ($gateFp) {
+        @flock($gateFp, LOCK_EX);
+        $lastFinishedStr = trim((string)@stream_get_contents($gateFp));
+        $lastFinished = $lastFinishedStr !== '' ? (float)$lastFinishedStr : 0.0;
+        $now = microtime(true);
+        $gapMs = ($now - $lastFinished) * 1000.0;
+
+        if ($lastFinished > 0 && $gapMs < $rateLimitMs) {
+            $sleepMicro = (int)(($rateLimitMs - $gapMs) * 1000);
+            if ($sleepMicro > 0) {
+                usleep($sleepMicro);
+            }
+        }
+    }
 
     $makeAttempt = function ($sslVerifyPeer, $sslVerifyHost) use ($url, $payload, $cookieStr, $connectTimeout, $timeout, $userAgent) {
         $ch = curl_init();
@@ -263,6 +363,23 @@ function opac_make_request($url, $postFields, $cookieStr = null)
     if ($result['errno'] === 60 || $result['errno'] === 77) {
         $result = $makeAttempt(false, 0);
         $result['ssl_fallback'] = true;
+    }
+
+    // Освобождение гейткипера и фиксация времени завершения
+    if ($gateFp) {
+        @ftruncate($gateFp, 0);
+        @rewind($gateFp);
+        @fwrite($gateFp, (string)microtime(true));
+        @fflush($gateFp);
+        @flock($gateFp, LOCK_UN);
+        @fclose($gateFp);
+    }
+
+    // Фиксация успеха или сбоя для Circuit Breaker
+    if ($result['ok']) {
+        opac_record_circuit_success();
+    } elseif ($result['http_code'] >= 500 || $result['errno'] === 28 /* CURLE_OPERATION_TIMEDOUT */) {
+        opac_record_circuit_failure($result['error'] ?: "HTTP {$result['http_code']}", $result['http_code']);
     }
 
     return $result;
@@ -872,6 +989,38 @@ function opac_parse_copies_xml($xml)
 // -----------------------------------------------------------------------------
 
 /**
+ * Очистка поискового запроса от стоп-слов («книга», «найди», «роман» и т.п.)
+ *
+ * @param string $query
+ * @return string
+ */
+function opac_clean_search_query($query)
+{
+    $q = trim((string)$query);
+    if ($q === '') return '';
+
+    // Если уже есть операторы OPAC — не трогаем
+    if (preg_match('/^(?:FT|TI|AU|SH|BC|IN|PU|PY)\s+/i', $q) || strpos($q, '(') !== false) {
+        return $q;
+    }
+
+    $stopWords = [
+        'книга', 'книгу', 'книги', 'книжек', 'книжка', 'книжки',
+        'найди', 'найдите', 'найти', 'поищи', 'поиск', 'ищи',
+        'пожалуйста', 'плиз', 'есть ли', 'наличие', 'в наличии',
+        'автор', 'автора', 'написал', 'роман', 'повесть', 'рассказ',
+        'стихи', 'поэма', 'сказка', 'сказки', 'произведение', 'том'
+    ];
+
+    $pattern = '/\b(' . implode('|', array_map('preg_quote', $stopWords)) . ')\b/ui';
+    $cleaned = preg_replace($pattern, ' ', $q);
+    $cleaned = preg_replace('/\s+/u', ' ', $cleaned);
+    $cleaned = trim($cleaned);
+
+    return ($cleaned !== '') ? $cleaned : $q;
+}
+
+/**
  * Нормализация и форматирование поискового выражения для OPAC-Global
  *
  * @param string $query Входной запрос
@@ -891,8 +1040,10 @@ function opac_format_query($query)
         return $q;
     }
 
+    $qClean = opac_clean_search_query($q);
+
     // Разделение на слова
-    $words = preg_split('/[\s,]+/u', $q, -1, PREG_SPLIT_NO_EMPTY);
+    $words = preg_split('/[\s,]+/u', $qClean, -1, PREG_SPLIT_NO_EMPTY);
     if (empty($words)) {
         return "FT '{$q}'";
     }
@@ -935,6 +1086,28 @@ function opac_search_raw($query, $length = 5, $start = 0)
         return [
             'ok'          => false,
             'error'       => 'Поисковый запрос не может быть пустым.',
+            'total_found' => 0,
+            'items'       => [],
+        ];
+    }
+
+    // Защита от опасных запросов, перегружающих сервер OPAC-Global:
+    // 1. Одиночные буквы («а», «и», «в») вызывают полный скан базы RUSMARC и зависание CGI opac.exe
+    $cleanedQuery = opac_clean_search_query($query);
+    if (mb_strlen($cleanedQuery, 'UTF-8') < 2 && !preg_match('/^\d{2,}$/', $cleanedQuery)) {
+        return [
+            'ok'          => false,
+            'error'       => 'Поисковый запрос слишком короткий (минимум 2 символа). Уточните фамилию автора или название книги.',
+            'total_found' => 0,
+            'items'       => [],
+        ];
+    }
+
+    // 2. Блокировка запросов из одних лишь спецсимволов и подстановок (*, %, ?)
+    if (preg_match('/^[\p{P}\s\*\?%_`~^$#@!+=<>|]+$/u', $query)) {
+        return [
+            'ok'          => false,
+            'error'       => 'Поисковый запрос содержит только спецсимволы. Пожалуйста, введите название книги или автора.',
             'total_found' => 0,
             'items'       => [],
         ];
@@ -1147,6 +1320,13 @@ function opac_cascade_search($query, $length = 5, $start = 0)
         return $res1;
     }
 
+    // Если при 1-м каскаде возникла сетевая ошибка или сработал предохранитель —
+    // НЕМЕДЛЕННО ПРЕКРАЩАЕМ каскад, чтобы не добивать сервер OPAC!
+    if (empty($res1['ok']) || !empty($res1['circuit_breaker'])) {
+        $res1['cascade_tier'] = 0;
+        return $res1;
+    }
+
     // 2-й каскад: фразовый поиск в кавычках FT '...'
     $phraseQuery = "FT '" . str_replace(["'", '"'], '', $clean) . "'";
     $res2 = opac_search_raw($phraseQuery, $length, $start);
@@ -1155,9 +1335,14 @@ function opac_cascade_search($query, $length = 5, $start = 0)
         return $res2;
     }
 
-    // 3-й каскад: поиск по заглавию TI
+    if (empty($res2['ok']) || !empty($res2['circuit_breaker'])) {
+        $res2['cascade_tier'] = 0;
+        return $res2;
+    }
+
+    // 3-й каскад: поиск по заглавию TI (только для фраз из 2-5 слов)
     $words = preg_split('/[\s,]+/u', $clean, -1, PREG_SPLIT_NO_EMPTY);
-    if (count($words) > 1) {
+    if (count($words) > 1 && count($words) <= 5) {
         $tiParts = [];
         foreach ($words as $w) {
             $cw = str_replace(["'", '"'], '', $w);
@@ -1302,15 +1487,138 @@ function opac_handle_http_request()
 
         // Поиск библиографических записей
         case 'search':
-            $query   = isset($params['query']) ? (string)$params['query'] : (string)($params['q'] ?? '');
-            $length  = isset($params['length']) ? (int)$params['length'] : 5;
-            $start   = isset($params['start']) ? (int)$params['start'] : 0;
-            $cascade = !empty($params['cascade']);
+            $query         = isset($params['query']) ? (string)$params['query'] : (string)($params['q'] ?? '');
+            $length        = isset($params['length']) ? (int)$params['length'] : 6;
+            $start         = isset($params['start']) ? (int)$params['start'] : 0;
+            $cascade       = isset($params['cascade']) ? !empty($params['cascade']) : true;
+            $includeCopies = !empty($params['include_copies']) || !empty($params['include_holdings']) || !empty($params['copies']);
+            $branchFilter  = isset($params['branch']) ? trim((string)$params['branch']) : '';
+            $onlyAvailable = !empty($params['only_available']) || !empty($params['available']);
+
+            // Защита сервера OPAC: при include_copies жестко ограничиваем длину максимум 8 записями
+            if ($includeCopies) {
+                $length = max(1, min(8, $length));
+            } else {
+                $length = max(1, min(20, $length));
+            }
 
             if ($cascade) {
                 $result = opac_cascade_search($query, $length, $start);
             } else {
                 $result = opac_search_raw($query, $length, $start);
+            }
+
+            // Пакетное обогащение экземплярами (holdings) с защитой от перегрузки OPAC
+            if ($includeCopies && !empty($result['ok']) && !empty($result['items'])) {
+                $maxEnrichItems = 6;
+                $enrichedCount = 0;
+
+                foreach ($result['items'] as &$item) {
+                    if (!empty($item['id'])) {
+                        if ($enrichedCount >= $maxEnrichItems) {
+                            $item['copies']           = [];
+                            $item['total_copies']     = $item['available_quantity'] ?? 0;
+                            $item['available_copies'] = $item['available_possible'] ?? 0;
+                            $item['holding_branches'] = $item['locations'] ?? [];
+                            $item['has_dobroye']      = in_array('ф4', $item['locations'] ?? [], true) || in_array('аб', $item['locations'] ?? [], true);
+                            $item['has_branch4']      = in_array('ф4', $item['locations'] ?? [], true);
+                            $item['copies_on_demand'] = true;
+                            continue;
+                        }
+
+                        $copiesData = opac_get_copies_raw($item['id']);
+                        $copies = $copiesData['copies'] ?? [];
+                        $availableCount = 0;
+                        $branchList = [];
+                        $hasDobroye = false;
+                        $hasBranch4 = false;
+
+                        foreach ($copies as $c) {
+                            if (!empty($c['is_available'])) {
+                                $availableCount++;
+                            }
+                            $bCode = $c['branch_code'] ?? ($c['subfield_b'] ?? '');
+                            if ($bCode !== '' && !in_array($bCode, $branchList, true)) {
+                                $branchList[] = $bCode;
+                            }
+                            if (!empty($c['is_dobroye'])) {
+                                $hasDobroye = true;
+                            }
+                            if (($c['subfield_b'] ?? '') === 'ф4' || ($c['branch_code'] ?? '') === 'Филиал №4') {
+                                $hasBranch4 = true;
+                            }
+                        }
+
+                        $item['copies']           = $copies;
+                        $item['total_copies']     = count($copies);
+                        $item['available_copies'] = $availableCount;
+                        $item['holding_branches'] = $branchList;
+                        $item['has_dobroye']      = $hasDobroye;
+                        $item['has_branch4']      = $hasBranch4;
+                        $enrichedCount++;
+
+                        // Если данные экземпляров получены по сети (не из кэша) — делаем вежливую паузу 200мс
+                        if (empty($copiesData['_cached'])) {
+                            usleep(200000);
+                        }
+                    }
+                }
+                unset($item);
+
+                // Фильтрация по филиалу при наличии параметра branch
+                if ($branchFilter !== '') {
+                    $bFilterLower = mb_strtolower($branchFilter, 'UTF-8');
+                    $filteredItems = [];
+                    foreach ($result['items'] as $item) {
+                        $matches = false;
+                        if ($bFilterLower === 'ф4' || $bFilterLower === 'f4') {
+                            $matches = !empty($item['has_branch4']);
+                        } elseif ($bFilterLower === 'доброе' || $bFilterLower === 'dobroye') {
+                            $matches = !empty($item['has_dobroye']);
+                        } elseif ($bFilterLower === 'цдб' || $bFilterLower === 'cdb') {
+                            foreach ($item['copies'] ?? [] as $c) {
+                                if (!empty($c['is_center']) || ($c['subfield_b'] ?? '') === 'цдб') {
+                                    $matches = true;
+                                    break;
+                                }
+                            }
+                        } elseif ($bFilterLower === 'цгб' || $bFilterLower === 'cgb') {
+                            foreach ($item['copies'] ?? [] as $c) {
+                                if (($c['branch_code'] ?? '') === 'ЦГБ' || in_array($c['subfield_b'] ?? '', ['аб', 'чз', 'до', 'кх'], true)) {
+                                    $matches = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            foreach ($item['copies'] ?? [] as $c) {
+                                if (mb_stripos($c['branch_code'] ?? '', $branchFilter) !== false ||
+                                    mb_stripos($c['subfield_b'] ?? '', $branchFilter) !== false ||
+                                    mb_stripos($c['branch_name'] ?? '', $branchFilter) !== false ||
+                                    mb_stripos($c['branch_address'] ?? '', $branchFilter) !== false) {
+                                    $matches = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($matches) {
+                            $filteredItems[] = $item;
+                        }
+                    }
+                    $result['items'] = $filteredItems;
+                    $result['count'] = count($filteredItems);
+                }
+
+                // Фильтрация «только в наличии»
+                if ($onlyAvailable) {
+                    $availableItems = [];
+                    foreach ($result['items'] as $item) {
+                        if (!empty($item['available_copies']) && $item['available_copies'] > 0) {
+                            $availableItems[] = $item;
+                        }
+                    }
+                    $result['items'] = $availableItems;
+                    $result['count'] = count($availableItems);
+                }
             }
 
             // Не отдаём сырой XML клиенту по умолчанию для экономии трафика, если не запрошено
