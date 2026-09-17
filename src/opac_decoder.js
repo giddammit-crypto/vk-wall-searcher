@@ -39,7 +39,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
-    phone: '8(4922) 21-65-63'
+    phone: '8(4922) 21-65-63, 21-66-80'
   },
   'кх': {
     code: 'кх',
@@ -50,7 +50,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
-    phone: '8(4922) 21-65-63'
+    phone: '8(4922) 21-65-63, 21-66-80'
   },
   'ибо': {
     code: 'ибо',
@@ -61,7 +61,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
-    phone: '8(4922) 21-65-63'
+    phone: '8(4922) 21-65-63, 21-66-80'
   },
   'ооо': {
     code: 'ооо',
@@ -72,7 +72,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
     district: 'Доброе',
     isDobroye: true,
     isCenter: false,
-    phone: '8(4922) 21-65-63'
+    phone: '8(4922) 21-65-63, 21-66-80'
   },
   'цдб': {
     code: 'цдб',

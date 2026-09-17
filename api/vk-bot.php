@@ -955,8 +955,8 @@ if ($isChat && !$isBotInvited) {
     $isGopnikActiveForMention = vk_bot_is_gopnik_mode($peerId, $cacheDir);
     $hasGopnikMention = ($isGopnikActiveForMention && preg_match('/\b(?:космо|робот|гопник|слышь|братан|кореш|пацан)\b/ui', $userMsg));
 
-    // Проверяем команды квиза, опроса, счета, хохмы, стикеров или ввод цифры ответа
-    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|hohma|шутка|анекдот|цитата|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
+    // Проверяем команды квиза, опроса, счета, стикеров или ввод цифры ответа
+    $isQuizOrPollCmd = preg_match('#^[!/](?:квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|стикер|стикеры|стикерпак|stickers|стикеры_синк)\b#ui', $userMsg);
     $isDigitReply = (preg_match('/^[1-4]$/', trim($userMsg)) && (
         file_exists($cacheDir . '/vk_quiz_' . $peerId . '.json') ||
         file_exists($cacheDir . '/vk_poll_' . $peerId . '.json') ||
@@ -1905,7 +1905,6 @@ function vk_bot_get_admin_help_text($vkGroupId = 0)
           . "• !квиз [тема] / /квиз / викторина — литературный квиз с 4 вариантами и баллами.\n"
           . "• !счет / !топ / знатоки — таблица лидеров и рекордсменов квиза.\n"
           . "• !опрос [тема] / /опрос — читательский интерактивный опрос с подсчётом.\n"
-          . "• Хохма / Анекдот — забавные книжные шутки и библиотечный юмор.\n"
           . "• Стикеры / Стикерпак — 17 прозрачных стикеров Космо и ссылки.\n\n"
           . "🏛️ 5. БИБЛИОТЕКИ ВЛАДИМИРА И КРАЕВЕДЕНИЕ\n"
           . "• Новости филиалов / Новости — сканирование всех 16 групп библиотек за текущие сутки.\n"
@@ -4768,9 +4767,11 @@ function vk_bot_parse_book_query($text)
  * @param string $query Поисковый запрос
  * @param string|null $branchFilter Целевой филиал или район (например, 'ф4', 'цдб', 'доброе')
  * @param string $callerName Имя читателя из профиля ВК
+ * @param int $page Номер текущей страницы (1-indexed)
+ * @param int $perPage Количество книг на страницу (по умолчанию 3)
  * @return string
  */
-function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель')
+function vk_bot_format_opac_response($res, $query, $branchFilter = null, $callerName = 'Читатель', $page = 1, $perPage = 3)
 {
     if (!$res || empty($res['ok']) || empty($res['items'])) {
         return "🤖📚 Уважаемый [id0|{$callerName}], по запросу «{$query}» в электронном каталоге библиотек Владимира пока ничего не нашлось.\n\n"
@@ -4780,20 +4781,25 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
              . "• Вы также всегда можете обратиться к опытным библиографам Центральной городской библиотеки: г. Владимир, Суздальский пр., д. 2, 📞 8(4922) 21-65-63 — они с радостью помогут подобрать книгу из редких или закрытых архивных фондов! 📖✨";
     }
 
-    $totalFound = $res['total_found'] ?? count($res['items']);
+    $totalFound = $res['total_found'] ?? ($res['recordsFiltered'] ?? count($res['items']));
+    $perPage = max(1, (int)$perPage);
+    $totalPages = max(1, (int)ceil($totalFound / $perPage));
+    $page = max(1, min($totalPages, (int)$page));
+
     $mod10 = $totalFound % 10;
     $mod100 = $totalFound % 100;
     $bookWord = ($mod10 === 1 && $mod100 !== 11) ? 'издание' : (($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 10 || $mod100 >= 20)) ? 'издания' : 'изданий');
 
+    $pageStr = ($totalPages > 1) ? " • Стр. {$page}/{$totalPages}" : '';
     $header = "✨📖 ЭЛЕКТРОННЫЙ КАТАЛОГ БИБЛИОТЕК ВЛАДИМИРА 📖✨\n"
             . "🤖 Робот Космо нашёл для [id0|{$callerName}]:\n"
-            . "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}\n"
+            . "🔍 Запрос: «{$query}» • В фондах сети: {$totalFound} {$bookWord}{$pageStr}\n"
             . "════════════════════════════════\n\n";
 
     $blocks = [];
-    $itemIndex = 0;
+    $itemIndex = ($page - 1) * $perPage;
 
-    foreach (array_slice($res['items'], 0, 3) as $item) {
+    foreach (array_slice($res['items'], 0, $perPage) as $item) {
         $itemIndex++;
         $title = $item['title'] ?: 'Книга без заглавия';
         $author = $item['author'] ?: '';
@@ -4954,13 +4960,129 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $blocks[] = $block;
     }
 
-    $footer = "\n════════════════════════════════\n"
-            . "🔍 Как лично убедиться и сверить карточку в каталоге:\n"
-            . "1. Откройте электронный каталог: http://library.vladimir.ru/rguest_vlad_cgb.htm\n"
-            . "2. Выберите базу: «62 - Электронный каталог ЦГБ г. Владимира»\n"
-            . "3. Сравните номер записи OPAC, оригинальные сигла филиалов (ф4, аб, чз, цдб), шифры и инвентарные номера — совпадение 100%!";
+    $footer = '';
+    if ($totalPages > 1) {
+        $footer = "\n════════════════════════════════\n"
+                . "📄 Страница {$page} из {$totalPages}. Листайте страницы кнопками ниже ⬇️";
+    }
 
     return $header . implode("\n────────────────────────────────\n\n", $blocks) . $footer;
+}
+
+/**
+ * Построение inline-клавиатуры пагинации OPAC для ВКонтакте
+ *
+ * @param string $query
+ * @param int $page
+ * @param int $totalPages
+ * @param string|null $branchFilter
+ * @return array|null
+ */
+function vk_bot_build_opac_pagination_keyboard($query, $page, $totalPages, $branchFilter = null)
+{
+    if ($totalPages <= 1) {
+        return null;
+    }
+
+    $page = max(1, min($totalPages, (int)$page));
+    $buttons = [];
+    $navRow = [];
+
+    // Кнопка «Назад»
+    if ($page > 1) {
+        $prevPage = $page - 1;
+        $navRow[] = [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode([
+                    'cmd' => 'opac_page',
+                    'q'   => $query,
+                    'p'   => $prevPage,
+                    'b'   => $branchFilter
+                ], JSON_UNESCAPED_UNICODE),
+                'label'   => "◀️ Стр. {$prevPage}"
+            ],
+            'color' => 'primary'
+        ];
+    }
+
+    // Индикатор текущей страницы
+    $navRow[] = [
+        'action' => [
+            'type'    => 'text',
+            'payload' => json_encode([
+                'cmd' => 'opac_page',
+                'q'   => $query,
+                'p'   => $page,
+                'b'   => $branchFilter
+            ], JSON_UNESCAPED_UNICODE),
+            'label'   => "📄 {$page} / {$totalPages}"
+        ],
+        'color' => 'secondary'
+    ];
+
+    // Кнопка «Вперёд»
+    if ($page < $totalPages) {
+        $nextPage = $page + 1;
+        $navRow[] = [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode([
+                    'cmd' => 'opac_page',
+                    'q'   => $query,
+                    'p'   => $nextPage,
+                    'b'   => $branchFilter
+                ], JSON_UNESCAPED_UNICODE),
+                'label'   => "Стр. {$nextPage} ▶️"
+            ],
+            'color' => 'primary'
+        ];
+    }
+
+    if (!empty($navRow)) {
+        $buttons[] = $navRow;
+    }
+
+    // Дополнительный ряд быстрых переходов для длинных списков (> 2 страниц)
+    $quickRow = [];
+    if ($page > 2) {
+        $quickRow[] = [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode([
+                    'cmd' => 'opac_page',
+                    'q'   => $query,
+                    'p'   => 1,
+                    'b'   => $branchFilter
+                ], JSON_UNESCAPED_UNICODE),
+                'label'   => '⏮️ В начало'
+            ],
+            'color' => 'secondary'
+        ];
+    }
+    if ($totalPages > 2 && $page < $totalPages - 1) {
+        $quickRow[] = [
+            'action' => [
+                'type'    => 'text',
+                'payload' => json_encode([
+                    'cmd' => 'opac_page',
+                    'q'   => $query,
+                    'p'   => $totalPages,
+                    'b'   => $branchFilter
+                ], JSON_UNESCAPED_UNICODE),
+                'label'   => "⏭️ В конец ({$totalPages})"
+            ],
+            'color' => 'secondary'
+        ];
+    }
+    if (!empty($quickRow)) {
+        $buttons[] = $quickRow;
+    }
+
+    return [
+        'inline'  => true,
+        'buttons' => $buttons
+    ];
 }
 
 // -----------------------------------------------------------------------------
@@ -5025,14 +5147,6 @@ $persistentKeyboard = [
             ]
         ],
         [
-            [
-                'action' => [
-                    'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '😄 !хохма'
-                ],
-                'color' => 'positive'
-            ],
             [
                 'action' => [
                     'type'    => 'text',
@@ -5178,14 +5292,6 @@ $inlineChatKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '😄 !хохма'
-                ],
-                'color' => 'positive'
-            ],
-            [
-                'action' => [
-                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE),
                     'label'   => '🤖 О Космо'
                 ],
@@ -5270,7 +5376,7 @@ if ($audioAttachment !== null) {
                 $isReplyToBot ||
                 preg_match('/(?:космос|космо|cosmo|cosma|\bробот\s*космо\b|\bбот\b|\bаврора\b)/ui', $voiceTranscribedText) ||
                 preg_match('/\[club' . $vkGroupId . '\|[^\]]+\]/ui', $voiceTranscribedText) ||
-                preg_match('#^[!/](?:книга|поиск|opac|к|квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|хохма|шутка|стикер)#ui', $voiceTranscribedText) ||
+                preg_match('#^[!/](?:книга|поиск|opac|к|квиз|quiz|викторина|опрос|poll|счет|счёт|результаты|итоги|стикер)#ui', $voiceTranscribedText) ||
                 preg_match('/(?:найди\s+книгу|поищи\s+книгу|где\s+взять|в\s+каком\s+филиале|есть\s+ли\s+книга|ищу\s+книгу|в\s+библиотеке\s+на\s+егорова)/ui', $voiceTranscribedText)
             );
 
@@ -5630,7 +5736,6 @@ if ($parsedModCmd !== null || $isQuickMute || $isQuickBan) {
                . "• !квиз [тема] — литературный квиз с вариантами ответа;\n"
                . "• !топ / !счет — таблица рекордсменов литературного квиза;\n"
                . "• !опрос — тематический опрос читателей;\n"
-               . "• «Хохма» — библиотечные шутки и литературный юмор;\n"
                . "• «Стикеры» — 17 фирменных прозрачных стикеров Космо.\n\n"
                . "🏛️ 4. БИБЛИОТЕКИ ВЛАДИМИРА:\n"
                . "• «Новости филиалов» — дайджест всех постов библиотек за сегодня;\n"
@@ -6268,7 +6373,18 @@ if (vk_bot_is_foreign_agent_query($userMsg)) {
 // =============================================================================
 // Сценарий 1b: Полноценный поиск по Электронному каталогу (OPAC) ЦГБ г. Владимира
 // =============================================================================
-$parsedBookQuery = vk_bot_parse_book_query($userMsg);
+if ($cmd === 'opac_page' && !empty($payloadData['q'])) {
+    $parsedBookQuery = [
+        'is_command'    => true,
+        'query'         => trim((string)$payloadData['q']),
+        'branch_filter' => !empty($payloadData['b']) ? trim((string)$payloadData['b']) : null,
+        'page'          => max(1, (int)($payloadData['p'] ?? 1)),
+        'show_help'     => false
+    ];
+} else {
+    $parsedBookQuery = vk_bot_parse_book_query($userMsg);
+}
+
 if ($parsedBookQuery !== null || $cmd === 'opac_help') {
     if ($cmd === 'opac_help' || !empty($parsedBookQuery['show_help'])) {
         $reply = "📖 Робот Космо: Поиск в электронном каталоге библиотек г. Владимира 🤖📚\n\n"
@@ -6299,31 +6415,55 @@ if ($parsedBookQuery !== null || $cmd === 'opac_help') {
             vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
         }
 
+        $page = max(1, (int)($parsedBookQuery['page'] ?? 1));
+        $perPage = 3;
+        $start = ($page - 1) * $perPage;
+
         // Выполняем поиск через микросервис OPAC
         $searchRes = null;
         if (function_exists('opac_search_books')) {
-            $searchRes = opac_search_books($parsedBookQuery['query'], 3);
+            $searchRes = opac_search_books($parsedBookQuery['query'], $perPage, $start);
         } elseif (class_exists('OpacClient')) {
-            $searchRes = OpacClient::getInstance()->findBooks($parsedBookQuery['query'], 3);
+            $searchRes = OpacClient::getInstance()->findBooks($parsedBookQuery['query'], $perPage, $start);
+        }
+
+        $totalFound = $searchRes['total_found'] ?? ($searchRes['recordsFiltered'] ?? (is_array($searchRes['items'] ?? null) ? count($searchRes['items']) : 0));
+        $totalPages = max(1, (int)ceil($totalFound / $perPage));
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
         }
 
         $reply = vk_bot_format_opac_response(
             $searchRes,
             $parsedBookQuery['query'],
             $parsedBookQuery['branch_filter'] ?? null,
-            $callerName
+            $callerName,
+            $page,
+            $perPage
         );
 
         if ($isVoiceQuery && $voiceTranscribedText !== '') {
             $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
         }
 
+        // Строим интерактивную клавиатуру пагинации
+        $paginationKeyboard = vk_bot_build_opac_pagination_keyboard(
+            $parsedBookQuery['query'],
+            $page,
+            $totalPages,
+            $parsedBookQuery['branch_filter'] ?? null
+        );
+
+        $outKeyboard = $paginationKeyboard
+            ? json_encode($paginationKeyboard, JSON_UNESCAPED_UNICODE)
+            : ($isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE));
+
         vk_bot_send_message([
             'peer_id'          => $peerId,
             'message'          => $reply,
             'attachment'       => (!empty($searchRes['ok']) && !empty($searchRes['items'])) ? ($mascotStickers['read'] ?? null) : ($mascotStickers['thinking'] ?? null),
             'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'keyboard'         => $outKeyboard,
             'dont_parse_links' => 1
         ], $communityToken);
         exit;
@@ -6354,7 +6494,6 @@ if ($isWelcomeQuery) {
            . "• 🏛 Подскажу адреса, телефоны и график работы всех 18 филиалов библиотек города;\n"
            . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
            . "• 🖼️ Стикеры Космо — 17 живых эмоций робота для чатов («!стикеры», «!стикер читаю»);\n"
-           . "• 😄 Литературная хохма — смешные книжные шутки и цитаты («!хохма»);\n"
            . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
            . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «🎯 Квиз», «📊 Опрос», «🖼️ Стикеры Космо», «⭐ Книга дня»);\n"
@@ -6907,88 +7046,6 @@ if ($isBookClubRulesQuery) {
 }
 
 // =============================================================================
-// Сценарий 2k: Литературная хохма и смешные книжные цитаты от робота Космо
-// =============================================================================
-$isHohmaQuery = false;
-$hohmaTheme = '';
-
-if ($cmd === 'hohma' || $cmd === 'joke') {
-    $isHohmaQuery = true;
-    $hohmaTheme = trim((string)($payloadData['theme'] ?? ''));
-} elseif (preg_match('#^(?:[!/](?:хохма|хохмы|hohma|шутка|шутки|анекдот|анекдоты|цитата))\b\s*(.*)$#ui', $cleanMsgForCmd, $hm)) {
-    $isHohmaQuery = true;
-    $hohmaTheme = trim($hm[1] ?? '');
-} elseif (preg_match('#(?:^|\s)(?:расскажи|травани|потрави|выдай|покажи|напиши|хочу|давай|сделай)?\s*(?:хохм[уаы]|анекдот[а-я]*|смешну[юя]\s+цитат[уаы]|книжну[юя]\s+шутк[уа]|смешное\s+из\s+книг)(?:\s+(?:на\s+тему|по\s+теме|про|по|о)\s+(.+))?[?!.]*$#ui', $cleanMsgForCmd, $hm)) {
-    $isHohmaQuery = true;
-    $hohmaTheme = trim($hm[1] ?? '');
-} elseif (preg_match('#^(?:хохма|шутка|анекдот|смешная\s+цитата|книжная\s+шутка)[?!.]*$#ui', $cleanMsgForCmd)) {
-    $isHohmaQuery = true;
-    $hohmaTheme = '';
-}
-
-if ($isHohmaQuery) {
-    // Фильтрация иноагентов
-    if ($hohmaTheme !== '' && vk_bot_is_foreign_agent_query($hohmaTheme)) {
-        $reply = "🛡️ Как робот муниципальных библиотек г. Владимира, я строго следую правилам: я не цитирую авторов, признанных иностранными агентами.\n\n"
-               . "Давайте лучше послушаем добрую цитату из Булгакова, Твена, Джерома или Стругацких! 😄✨";
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['thinking'] ?? null,
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    $joke = vk_bot_get_book_joke($hohmaTheme, $peerId, $cacheDir);
-
-    $reply = "😄 Литературная хохма от Космо 🤖📖\n\n"
-           . "{$joke['quote']}\n\n"
-           . "✒️ {$joke['author']}, {$joke['book']}\n\n"
-           . "💡 Комментарий Космо: {$joke['cosmo']}";
-
-    if ($isVoiceQuery && $voiceTranscribedText !== '') {
-        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
-    }
-
-    $hohmaKb = [
-        'inline'  => true,
-        'buttons' => [
-            [
-                [
-                    'action' => [
-                        'type'    => 'text',
-                        'payload' => json_encode(['cmd' => 'hohma'], JSON_UNESCAPED_UNICODE),
-                        'label'   => '😄 Ещё хохму!'
-                    ],
-                    'color' => 'positive'
-                ],
-                [
-                    'action' => [
-                        'type'    => 'text',
-                        'payload' => json_encode(['cmd' => 'quiz_new'], JSON_UNESCAPED_UNICODE),
-                        'label'   => '🎯 Квиз'
-                    ],
-                    'color' => 'primary'
-                ]
-            ]
-        ]
-    ];
-
-    vk_bot_send_message([
-        'peer_id'          => $peerId,
-        'message'          => $reply,
-        'attachment'       => $mascotStickers['laugh'] ?? ($mascotStickers['smile'] ?? null),
-        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => json_encode($hohmaKb, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 1
-    ], $communityToken);
-    exit;
-}
-
-// =============================================================================
 // Сценарий 2m: Фирменные стикеры робота Космо в сообществе (витрина, каталог эмоций, автозагрузка)
 // =============================================================================
 $isStickersQuery = false;
@@ -7149,7 +7206,7 @@ if ($specificStickerEmo !== '') {
 if ($isStickersQuery) {
     $reply = "🖼️ Официальная коллекция стикеров робота Космо сообщества! 🤖✨\n\n"
            . "Все 17 живых эмоций отрисованы в каноничном стиле и синхронизированы с сообществом (200×200 RGBA):\n\n"
-           . "1. 😄 !стикер laugh (хохма, смех)\n"
+           . "1. 😄 !стикер laugh (смех, веселье)\n"
            . "2. 📖 !стикер read (чтение, книга)\n"
            . "3. 💡 !стикер idea (озарение, эврика)\n"
            . "4. ❤️ !стикер love (любовь, сердечко)\n"
@@ -7176,7 +7233,7 @@ if ($isStickersQuery) {
                     'action' => [
                         'type'    => 'text',
                         'payload' => json_encode(['cmd' => 'sticker_send', 'emo' => 'laugh'], JSON_UNESCAPED_UNICODE),
-                        'label'   => '😄 Хохма'
+                        'label'   => '😄 Смех'
                     ],
                     'color' => 'positive'
                 ],
@@ -7630,7 +7687,7 @@ SYS;
    - [emotion:smile] — радость, тёплое приветствие, отличная рекомендация (робот показывает палец вверх 👍);
    - [emotion:read] — увлечённое чтение открытой книги, литературный совет, цитирование фолиантов 📖;
    - [emotion:idea] — озарение, эврика, светящаяся лампочка, вдохновляющая мысль 💡;
-   - [emotion:laugh] — заливистый смех, литературная хохма, весёлая книга, юмор 😄;
+   - [emotion:laugh] — заливистый смех, весёлая книга, юмор, радость 😄;
    - [emotion:thinking] — загадка, детектив, глубокий анализ сюжета, сложные размышления 🤔;
    - [emotion:love] — сердечки, любовь к чтению, читателям, библиотекам и классикам ❤️;
    - [emotion:cool] — стиль, тёмные очки, уверенность, крутая подборка новинок 😎;

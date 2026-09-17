@@ -62,7 +62,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-65-63',
+            'phone'          => '8(4922) 21-65-63, 21-66-80',
             'perm_prefix'    => 'ЦГБ-ДО'
         ],
         'кх' => [
@@ -74,7 +74,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-65-63',
+            'phone'          => '8(4922) 21-65-63, 21-66-80',
             'perm_prefix'    => 'ЦГБ-КХ'
         ],
         'ибо' => [
@@ -86,7 +86,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-65-63',
+            'phone'          => '8(4922) 21-65-63, 21-66-80',
             'perm_prefix'    => 'ЦГБ-ИБО'
         ],
         'ооо' => [
@@ -98,7 +98,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-65-63',
+            'phone'          => '8(4922) 21-65-63, 21-66-80',
             'perm_prefix'    => 'ЦГБ-ООО'
         ],
         'цдб' => [
@@ -163,7 +163,7 @@ class OpacClient
             'district'       => 'Доброе',
             'is_dobroye'     => true,
             'is_center'      => false,
-            'phone'          => '8(4922) 21-96-11; 21-23-48',
+            'phone'          => '8(4922) 21-96-11, 21-23-48',
             'perm_prefix'    => 'ЦГБ-Ф4',
             'note'           => 'КРИТИЧЕСКИ ВАЖНО: расположен именно в жилом районе «Доброе»!'
         ],

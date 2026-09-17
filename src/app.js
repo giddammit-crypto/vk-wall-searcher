@@ -52,7 +52,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.43.3';
+} from './branches.js?v=4.44.0';
 
 import {
     calculateKPIs,
@@ -100,7 +100,7 @@ import {
     initOpacModal,
     openOpacModal,
     closeOpacModal
-} from './opac_modal.js?v=4.43.3';
+} from './opac_modal.js?v=4.44.0';
 
 import {
     initLeagueModal,
@@ -116,10 +116,10 @@ import {
 import { Space3D } from './space3d.js?v=4.25.4';
 import { SpaceWarp } from './space_warp.js?v=4.25.4';
 import { SpaceAudio } from './space_audio.js?v=4.25.4';
-import { Mascot } from './mascot.js?v=4.43.3';
+import { Mascot } from './mascot.js?v=4.44.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.43.3';
+export const APP_VERSION = '4.44.0';
 
 function initApp() {
 

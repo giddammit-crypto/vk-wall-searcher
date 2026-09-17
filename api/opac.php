@@ -1589,6 +1589,23 @@ function opac_handle_http_request()
                                     break;
                                 }
                             }
+                        } elseif (preg_match('/^[fф]-?(\d+)$/ui', $bFilterLower, $fnum)) {
+                            $num = (int)$fnum[1];
+                            $siglaKey = 'ф' . $num;
+                            $filialKey = '№' . $num;
+                            foreach ($item['copies'] ?? [] as $c) {
+                                $sub = mb_strtolower($c['subfield_b'] ?? '', 'UTF-8');
+                                $code = mb_strtolower($c['branch_code'] ?? '', 'UTF-8');
+                                $name = mb_strtolower($c['branch_name'] ?? '', 'UTF-8');
+                                $loc = mb_strtolower($c['permanent_location'] ?? '', 'UTF-8');
+                                if (strpos($sub, $siglaKey) !== false ||
+                                    strpos($code, $filialKey) !== false ||
+                                    strpos($name, $filialKey) !== false ||
+                                    strpos($loc, $siglaKey) !== false) {
+                                    $matches = true;
+                                    break;
+                                }
+                            }
                         } else {
                             foreach ($item['copies'] ?? [] as $c) {
                                 if (mb_stripos($c['branch_code'] ?? '', $branchFilter) !== false ||

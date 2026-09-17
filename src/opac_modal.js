@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { escapeHtml } from './branches.js?v=4.43.3';
+import { escapeHtml } from './branches.js?v=4.44.0';
 
 let opacModalEl = null;
 let opacInputEl = null;
@@ -30,17 +30,31 @@ let searchResultsCache = new Map();
 const googleBooksCoversCache = new Map();
 
 /**
- * Очистка названия и автора для точного поиска обложек в Google Books
+ * Очистка названия для точного поиска обложек в Google Books, OpenLibrary и Wikipedia
  */
 function cleanSearchTerm(text) {
     if (!text) return '';
-    return text
-        .replace(/\[.*?\]/g, '')
-        .replace(/\(.*?\)/g, '')
-        .replace(/\s*\/\s*.*$/, '')
-        .replace(/[:;,\.]\s*$/g, '')
-        .replace(/[\"\'«»]/g, '')
-        .trim();
+    let t = String(text);
+    // Отрезаем незакрытые скобки OPAC [..., (...
+    t = t.replace(/\[.*$/, '').replace(/\(.*$/, '');
+    // Отрезаем подзаголовки через двоеточие, тире или точку с запятой
+    t = t.split(/[:;–—]/)[0];
+    // Удаляем кавычки, слэши, знаки препинания в конце
+    t = t.replace(/[\"\'«»]/g, '').replace(/\s*\/\s*.*$/, '').replace(/[,.]\s*$/g, '');
+    return t.trim();
+}
+
+/**
+ * Очистка автора книги для поиска обложек (удаление инициалов)
+ */
+function cleanAuthorForCover(rawAuthor) {
+    if (!rawAuthor) return '';
+    let a = cleanSearchTerm(rawAuthor);
+    // Отрезаем инициалы: "Пушкин А. С." -> "Пушкин", "Чехов А.П." -> "Чехов"
+    a = a.replace(/\s+[А-ЯA-Z]\.?\s*[А-ЯA-Z]?\.?$/u, '').trim();
+    // На случай "Пушкин, Александр Сергеевич"
+    a = a.split(/[,]/)[0].trim();
+    return a;
 }
 
 /**
@@ -57,7 +71,12 @@ function extractCoverFromGbData(data) {
 }
 
 /**
- * Загрузка обложки книги через Google Books API (с умным резервным OpenLibrary)
+ * Многоуровневый поиск обложки книги:
+ *   1. Google Books API (поля intitle + inauthor)
+ *   2. Google Books API (общий поисковый запрос)
+ *   3. OpenLibrary Search API (перебор до 5 документов для поиска cover_i)
+ *   4. Wikipedia REST API (для русской и мировой классики)
+ *   5. Локальный кэш sessionStorage
  *
  * @param {string} rawTitle Заглавие книги
  * @param {string} rawAuthor Автор книги
@@ -65,7 +84,7 @@ function extractCoverFromGbData(data) {
  */
 async function fetchGoogleBooksCover(rawTitle, rawAuthor) {
     const title = cleanSearchTerm(rawTitle);
-    const author = cleanSearchTerm(rawAuthor).replace(/\s*[А-ЯA-Z]\.?\s*[А-ЯA-Z]\.?$/u, '').trim();
+    const author = cleanAuthorForCover(rawAuthor);
 
     if (!title) return null;
 
@@ -82,7 +101,7 @@ async function fetchGoogleBooksCover(rawTitle, rawAuthor) {
         }
     } catch (e) {}
 
-    // 1. Попытка поиска через Google Books API (intitle + inauthor)
+    // 1. Попытка Google Books API (intitle + inauthor)
     try {
         let q = `intitle:"${encodeURIComponent(title)}"`;
         if (author) {
@@ -101,9 +120,7 @@ async function fetchGoogleBooksCover(rawTitle, rawAuthor) {
                 return coverUrl;
             }
         }
-    } catch (err) {
-        // Фоллбэк
-    }
+    } catch (err) {}
 
     // 2. Вторая попытка Google Books (общий поисковый запрос)
     try {
@@ -122,16 +139,36 @@ async function fetchGoogleBooksCover(rawTitle, rawAuthor) {
         }
     } catch (err) {}
 
-    // 3. Резервный источник: OpenLibrary Covers API
+    // 3. Резервный источник: OpenLibrary Covers API (проверка до 5 документов на cover_i)
     try {
         const olQuery = encodeURIComponent(`${title} ${author}`.trim());
-        const olUrl = `https://openlibrary.org/search.json?q=${olQuery}&limit=1`;
+        const olUrl = `https://openlibrary.org/search.json?q=${olQuery}&limit=5`;
         const res = await fetch(olUrl, { headers: { 'Accept': 'application/json' } });
 
         if (res.ok) {
             const data = await res.json();
-            if (data && data.docs && data.docs[0] && data.docs[0].cover_i) {
-                const coverUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-M.jpg`;
+            if (data && Array.isArray(data.docs)) {
+                for (const doc of data.docs) {
+                    if (doc.cover_i) {
+                        const coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+                        googleBooksCoversCache.set(cacheKey, coverUrl);
+                        try { sessionStorage.setItem(`opac_gb_cov_${cacheKey}`, coverUrl); } catch (e) {}
+                        return coverUrl;
+                    }
+                }
+            }
+        }
+    } catch (err) {}
+
+    // 4. Резервный источник: Wikipedia REST API (для русской и мировой классики)
+    try {
+        const wikiUrl = `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+        const res = await fetch(wikiUrl, { headers: { 'Accept': 'application/json' } });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.thumbnail && data.thumbnail.source) {
+                const coverUrl = data.thumbnail.source;
                 googleBooksCoversCache.set(cacheKey, coverUrl);
                 try { sessionStorage.setItem(`opac_gb_cov_${cacheKey}`, coverUrl); } catch (e) {}
                 return coverUrl;
@@ -324,20 +361,48 @@ export function initOpacModal() {
                         <button type="button" class="opac-quick-tag" data-tag="История Владимира">Владимир</button>
                     </div>
 
-                    <!-- Панель быстрых фильтров -->
+                    <!-- Панель фильтров: выпадающий список всех 18 филиалов + быстрые чипсы -->
                     <div class="opac-filters-bar">
+                        <div class="opac-branch-select-wrap">
+                            <label for="opac-branch-select" class="opac-branch-select-label">
+                                <span class="material-symbols-outlined icon">domain</span>
+                                <span class="label-text">Филиал:</span>
+                            </label>
+                            <select id="opac-branch-select" class="opac-branch-select" data-opac-branch-select title="Выбор конкретного филиала из 18 библиотек Владимира">
+                                <option value="all">🏢 Все 18 библиотек Владимира</option>
+                                <option value="cgb">📚 ЦГБ (Суздальский пр., 2)</option>
+                                <option value="cdb">🏛 ЦДБ — Детская (ул. Большая Московская, 31)</option>
+                                <option value="f4">🌟 Филиал №4 — Доброе (ул. Егорова, 10)</option>
+                                <option value="f1">📍 Филиал №1 (пр-т Строителей, 38 а)</option>
+                                <option value="f2">📍 Филиал №2 (пр. Ленина, 12)</option>
+                                <option value="f3">📍 Филиал №3 (мкр. Юрьевец, Школьный пр., 4)</option>
+                                <option value="f5">📍 Филиал №5 (ул. Верхняя Дуброва, 10)</option>
+                                <option value="f6">📍 Филиал №6 (мкр. Юрьевец, Институтский гор., 2)</option>
+                                <option value="f7">📍 Филиал №7 (ул. Мира, 55, ДК Молодежи)</option>
+                                <option value="f8">📍 Филиал №8 (ул. Сурикова, 26)</option>
+                                <option value="f9">📍 Филиал №9 — Добролит (ул. Юбилейная, 38)</option>
+                                <option value="f10">📍 Филиал №10 (ул. Диктора Левитана, 55)</option>
+                                <option value="f11">📍 Филиал №11 (мкр. Лесной, ул. Лесная, 10 А)</option>
+                                <option value="f12">📍 Филиал №12 (мкр. Энергетик, ул. Энергетиков, 27)</option>
+                                <option value="f13">📍 Филиал №13 — Книголенд (ул. Горького, 69)</option>
+                                <option value="f14">📍 Филиал №14 (мкр. Оргтруд, ул. Октябрьская, 26 «б»)</option>
+                                <option value="f15">📍 Филиал №15 (пос. Заклязьменский, ул. Центральная, 11 А)</option>
+                                <option value="f16">📍 Филиал №16 (мкр. Коммунар, ул. Песочная, 15)</option>
+                            </select>
+                        </div>
+
                         <div class="opac-branch-chips">
                             <button type="button" class="opac-branch-chip is-active" data-branch="all">
-                                Все 18 библиотек
+                                Все 18
                             </button>
                             <button type="button" class="opac-branch-chip is-dobroe" data-branch="f4" title="Филиал №4 на ул. Егорова, 10 (жилой район Доброе)">
-                                📍 Доброе (Филиал №4)
+                                📍 Доброе (Ф-4)
                             </button>
                             <button type="button" class="opac-branch-chip" data-branch="cdb" title="Центральная детская библиотека (ул. Большая Московская, 31)">
                                 🏛 Центр (ЦДБ)
                             </button>
                             <button type="button" class="opac-branch-chip" data-branch="cgb" title="Центральная городская библиотека (Суздальский пр., 2)">
-                                📚 ЦГБ (Суздальский, 2)
+                                📚 ЦГБ
                             </button>
                         </div>
 
@@ -464,13 +529,40 @@ function bindModalEvents() {
         });
     });
 
-    // Фильтры по филиалам
+    // Выпадающий список всех 18 филиалов
+    const branchSelectEl = opacModalEl.querySelector('[data-opac-branch-select]');
     const branchChips = opacModalEl.querySelectorAll('.opac-branch-chip');
+
+    if (branchSelectEl) {
+        branchSelectEl.addEventListener('change', () => {
+            currentBranchFilter = branchSelectEl.value || 'all';
+
+            // Синхронизация чипсов: подсвечиваем активный, если совпадает
+            branchChips.forEach(c => {
+                if (c.getAttribute('data-branch') === currentBranchFilter) {
+                    c.classList.add('is-active');
+                } else {
+                    c.classList.remove('is-active');
+                }
+            });
+
+            const query = opacInputEl ? opacInputEl.value.trim() : '';
+            if (query) {
+                executeOpacSearch(query, true);
+            }
+        });
+    }
+
+    // Быстрые чипсы филиалов
     branchChips.forEach(chip => {
         chip.addEventListener('click', () => {
             branchChips.forEach(c => c.classList.remove('is-active'));
             chip.classList.add('is-active');
             currentBranchFilter = chip.getAttribute('data-branch') || 'all';
+
+            if (branchSelectEl) {
+                branchSelectEl.value = currentBranchFilter;
+            }
 
             const query = opacInputEl ? opacInputEl.value.trim() : '';
             if (query) {
@@ -730,6 +822,34 @@ function renderCircuitBreakerState(message) {
 }
 
 /**
+ * Проверка соответствия экземпляра книги выбранному фильтру филиала
+ */
+function matchesBranchFilter(copy, filter) {
+    if (!copy || !filter || filter === 'all') return true;
+    const f = String(filter).toLowerCase();
+    const sub = String(copy.subfield_b || '').toLowerCase();
+    const code = String(copy.branch_code || '').toLowerCase();
+    const name = String(copy.branch_name || '').toLowerCase();
+    const loc = String(copy.permanent_location || '').toLowerCase();
+    const addr = String(copy.branch_address || '').toLowerCase();
+
+    if (f === 'f4' || f === 'ф4') {
+        return sub === 'ф4' || sub === 'ф4д' || code.includes('4') || name.includes('4') || loc.includes('ф4') || addr.includes('егорова');
+    }
+    if (f === 'cgb' || f === 'цгб') {
+        return ['аб', 'чз', 'до', 'кх', 'ибо', 'ооо'].includes(sub) || code === 'цгб' || name.includes('центральная городская') || loc.includes('цгб');
+    }
+    if (f === 'cdb' || f === 'цдб') {
+        return ['цдб', 'цдч', 'цди', 'цки'].includes(sub) || code === 'цдб' || name.includes('детская') || loc.includes('цдб');
+    }
+    if (f.startsWith('f') || f.startsWith('ф')) {
+        const num = f.replace(/^[fф]-?/i, '');
+        return sub === `ф${num}` || sub === `ф${num}д` || sub === `ф${num}н` || sub === `ф${num}нд` || code.includes(`№${num}`) || name.includes(`№${num}`) || loc.includes(`ф${num}`);
+    }
+    return sub.includes(f) || code.includes(f) || name.includes(f) || loc.includes(f);
+}
+
+/**
  * Отрисовка результатов поиска
  */
 function renderSearchResults(data, query) {
@@ -758,16 +878,47 @@ function renderSearchResults(data, query) {
         return;
     }
 
-    const totalFound = data.total_found || data.items.length;
+    // Фильтрация на клиенте по выбранному филиалу
+    let itemsToDisplay = data.items;
+    if (currentBranchFilter && currentBranchFilter !== 'all') {
+        itemsToDisplay = itemsToDisplay.filter(item => {
+            const copies = item.copies || [];
+            return copies.some(c => matchesBranchFilter(c, currentBranchFilter));
+        });
+    }
+
+    if (itemsToDisplay.length === 0) {
+        opacStatusEl.innerHTML = `
+            <div class="opac-status-empty">
+                По запросу «<strong>${escapeHtml(query)}</strong>» в выбранном филиале книг не найдено.
+            </div>
+        `;
+        opacGridEl.innerHTML = `
+            <div class="opac-notice-card">
+                <div class="opac-notice-icon">
+                    <span class="material-symbols-outlined">filter_alt_off</span>
+                </div>
+                <div class="opac-notice-content">
+                    <h3 class="opac-notice-title">В выбранном филиале эта книга отсутствует</h3>
+                    <p class="opac-notice-desc">
+                        Книга найдена в других филиалах Владимира! Переключите фильтр филиалов на «🏢 Все 18 библиотек Владимира», чтобы увидеть наличие по всей сети города.
+                    </p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const totalFound = itemsToDisplay.length;
     opacStatusEl.innerHTML = `
         <div class="opac-status-summary">
-            <span>Найдено в каталоге: <strong>${totalFound}</strong> изд. по запросу «${escapeHtml(query)}»</span>
+            <span>Найдено изданий: <strong>${totalFound}</strong> по запросу «${escapeHtml(query)}»</span>
             ${data._cached ? '<span class="opac-cache-tag" title="Данные ускорены кэшем каталога">⚡ Кэш</span>' : ''}
         </div>
     `;
 
     let cardsHtml = '';
-    data.items.forEach((item, index) => {
+    itemsToDisplay.forEach((item, index) => {
         const title = item.title || 'Книга без заглавия';
         const author = item.author || '';
         const year = item.year ? `${item.year} г.` : '';
@@ -820,7 +971,7 @@ function renderSearchResults(data, query) {
                             <strong>Экземпляры в библиотеках (${copies.length}):</strong>
                         </div>
                         <div class="opac-copies-list">
-                            ${renderCopiesListHtml(copies)}
+                            ${renderCopiesListHtml(copies, currentBranchFilter)}
                         </div>
                     </div>
 
@@ -858,15 +1009,25 @@ function renderSearchResults(data, query) {
 }
 
 /**
- * Отрисовка списка экземпляров по филиалам
+ * Отрисовка списка экземпляров по филиалам с сортировкой и подсветкой выбранного
  */
-function renderCopiesListHtml(copies) {
+function renderCopiesListHtml(copies, activeFilter = 'all') {
     if (!copies || copies.length === 0) {
         return `<div class="opac-no-copies">ℹ️ Детальные сведения об экземплярах уточняются в ЦГБ.</div>`;
     }
 
-    return copies.map(c => {
+    const sortedCopies = [...copies].sort((a, b) => {
+        if (activeFilter && activeFilter !== 'all') {
+            const aMatch = matchesBranchFilter(a, activeFilter) ? 1 : 0;
+            const bMatch = matchesBranchFilter(b, activeFilter) ? 1 : 0;
+            if (bMatch !== aMatch) return bMatch - aMatch;
+        }
+        return (b.is_available ? 1 : 0) - (a.is_available ? 1 : 0);
+    });
+
+    return sortedCopies.map(c => {
         const isBranch4 = (c.subfield_b === 'ф4' || c.branch_code === 'Филиал №4' || (c.permanent_location && c.permanent_location.includes('Ф4')));
+        const isTargetBranch = (activeFilter && activeFilter !== 'all' && matchesBranchFilter(c, activeFilter));
         const isAvailable = !!c.is_available;
         const bName = c.branch_name || c.branch_code || 'Библиотека';
         const bAddress = c.branch_address || '';
@@ -875,6 +1036,7 @@ function renderCopiesListHtml(copies) {
 
         const itemClass = [
             'opac-copy-item',
+            isTargetBranch ? 'is-target-branch' : '',
             isBranch4 ? 'is-f4' : '',
             isAvailable ? 'is-available' : 'is-unavailable'
         ].filter(Boolean).join(' ');
@@ -883,7 +1045,7 @@ function renderCopiesListHtml(copies) {
             <div class="${itemClass}">
                 <div class="opac-copy-top">
                     <span class="opac-copy-name">
-                        ${isBranch4 ? '🌟 <strong>[Доброе] ' + escapeHtml(bName) + '</strong>' : escapeHtml(bName)}
+                        ${isTargetBranch ? '🎯 <strong>' + escapeHtml(bName) + '</strong>' : (isBranch4 ? '🌟 <strong>[Доброе] ' + escapeHtml(bName) + '</strong>' : escapeHtml(bName))}
                     </span>
                     <span class="opac-copy-badge ${isAvailable ? 'badge-available' : 'badge-unavailable'}">
                         ${isAvailable ? '🟢 В наличии' : '⏳ На руках / фонд'}
