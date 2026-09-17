@@ -4917,9 +4917,9 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
 
     foreach (array_slice($res['items'], 0, $perPage) as $item) {
         $itemIndex++;
-        $title = $item['title'] ?: 'Книга без заглавия';
-        $author = $item['author'] ?: '';
-        $year = $item['year'] ? " ({$item['year']} г.)" : '';
+        $title = !empty($item['title']) ? $item['title'] : 'Книга без заглавия';
+        $author = !empty($item['author']) ? $item['author'] : '';
+        $year = !empty($item['year']) ? " ({$item['year']} г.)" : '';
 
         $block = "📘 [№{$itemIndex}] «{$title}»\n";
         if ($author) {
@@ -4968,14 +4968,25 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
         $branch4Available = 0;
 
         foreach ($copies as $c) {
-            $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
+            $subB = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
+            $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
+            $permLocLower = mb_strtolower(trim($permLoc), 'UTF-8');
+            $isDoSigla = ($subB === 'до' || strpos($permLocLower, 'цгб-до') !== false);
+
+            if ($isDoSigla) {
+                $bCode = 'ЦДБ';
+            } else {
+                $bCode = ($c['branch_code'] ?? '') ?: (($c['subfield_b'] ?? '') ?: 'ЦГБ');
+            }
+
             if (!isset($branchGroups[$bCode])) {
                 $branchPhone = ($c['branch_phone'] ?? '') ?: '';
                 $branchAddress = ($c['branch_address'] ?? '') ?: '';
-                $subB = $c['subfield_b'] ?? '';
-                $permLoc = $c['permanent_location'] ?? ($c['location'] ?? '');
 
-                if (empty($branchPhone) || empty($branchAddress)) {
+                if ($isDoSigla) {
+                    $branchPhone = '8(4922) 32-32-42, 32-47-73';
+                    $branchAddress = 'г. Владимир, ул. Большая Московская, д. 31';
+                } elseif (empty($branchPhone) || empty($branchAddress)) {
                     if (class_exists('OpacClient')) {
                         $resSig = OpacClient::resolveBranchBySigla($subB ?: $bCode);
                         if (!$resSig && !empty($permLoc)) {
@@ -4990,12 +5001,12 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
                 }
 
                 $branchGroups[$bCode] = [
-                    'name'         => ($c['branch_name'] ?? '') ?: 'Библиотека сети',
+                    'name'         => $isDoSigla ? 'Центральная детская библиотека (ЦДБ)' : (($c['branch_name'] ?? '') ?: 'Библиотека сети'),
                     'address'      => $branchAddress,
                     'phone'        => $branchPhone,
-                    'district'     => $c['branch_district'] ?? ($c['district'] ?? ''),
-                    'is_dobroye'   => !empty($c['is_dobroye']),
-                    'is_center'    => !empty($c['is_center']),
+                    'district'     => $isDoSigla ? 'Исторический центр' : ($c['branch_district'] ?? ($c['district'] ?? '')),
+                    'is_dobroye'   => $isDoSigla ? false : !empty($c['is_dobroye']),
+                    'is_center'    => $isDoSigla ? true : !empty($c['is_center']),
                     'shifr'        => ($c['shifr'] ?? '') ?: '',
                     'available'    => 0,
                     'on_loan'      => 0,

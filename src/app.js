@@ -52,7 +52,7 @@ import {
     isDogAvatarUrl,
     declOfNum,
     escapeHtml
-} from './branches.js?v=4.44.0';
+} from './branches.js?v=4.51.0';
 
 import {
     calculateKPIs,
@@ -100,7 +100,7 @@ import {
     initOpacModal,
     openOpacModal,
     closeOpacModal
-} from './opac_modal.js?v=4.50.0';
+} from './opac_modal.js?v=4.51.0';
 
 import {
     initLeagueModal,

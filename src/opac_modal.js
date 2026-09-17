@@ -1466,8 +1466,9 @@ function matchesBranchFilter(copy, filter) {
 
     // 1. ЦГБ (Центральная городская библиотека, Суздальский пр., 2)
     if (filterKey === 'cgb' || filterKey === 'цгб') {
+        if (sub === 'до') return false; // Сигла ДО — это ЦДБ, а не ЦГБ!
         return code.includes('цгб') ||
-               ['аб', 'чз', 'до', 'кх'].includes(sub) ||
+               ['аб', 'чз', 'кх'].includes(sub) ||
                name.includes('цгб') ||
                name.includes('суздальский') ||
                loc.includes('цгб') ||
@@ -1478,10 +1479,12 @@ function matchesBranchFilter(copy, filter) {
     if (filterKey === 'cdb' || filterKey === 'цдб') {
         return item.is_center === true ||
                sub === 'цдб' ||
+               sub === 'до' ||
                code.includes('цдб') ||
                name.includes('цдб') ||
                name.includes('детская') ||
                loc.includes('цдб') ||
+               loc.includes('цгб-до') ||
                addr.includes('большая московская');
     }
 

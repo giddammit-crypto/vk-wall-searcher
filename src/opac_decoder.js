@@ -32,14 +32,14 @@ export const VLADIMIR_BRANCH_SIGLAS = {
   },
   'до': {
     code: 'до',
-    branchNum: 'ЦГБ',
-    branchName: 'Центральная городская библиотека, Детский отдел',
-    department: 'Детский отдел',
-    address: 'г. Владимир, Суздальский пр., д. 2',
-    district: 'Доброе',
-    isDobroye: true,
-    isCenter: false,
-    phone: '8(4922) 21-65-63, 21-66-80'
+    branchNum: 'ЦДБ',
+    branchName: 'Центральная детская библиотека',
+    department: 'Центральная детская библиотека (Детский отдел)',
+    address: 'г. Владимир, ул. Большая Московская, д. 31',
+    district: 'Исторический центр',
+    isDobroye: false,
+    isCenter: true,
+    phone: '8(4922) 32-32-42, 32-47-73'
   },
   'кх': {
     code: 'кх',
@@ -76,7 +76,7 @@ export const VLADIMIR_BRANCH_SIGLAS = {
   },
   'цдб': {
     code: 'цдб',
-    aliases: ['цдч', 'цди', 'цки'],
+    aliases: ['до', 'цдч', 'цди', 'цки'],
     branchNum: 'ЦДБ',
     branchName: 'Центральная детская библиотека',
     department: 'Центральная детская библиотека',

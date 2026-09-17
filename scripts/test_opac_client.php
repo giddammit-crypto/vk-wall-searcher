@@ -88,10 +88,9 @@ class OpacTestSuite
         $f4 = OpacClient::resolveBranchBySigla('ф4');
         $f4Ok = ($f4 !== null && $f4['is_dobroye'] === true && $f4['is_center'] === false && strpos($f4['address'], 'Егорова') !== false);
 
-        // Проверяем ЦГБ и филиал №9 (Добролит, ул. Юбилейная, 38)
+        // Проверяем ЦГБ (отделы аб, чз, кх) и филиал №9 (Добролит, ул. Юбилейная, 38)
         $cgbAb = OpacClient::resolveBranchBySigla('аб');
         $cgbChz = OpacClient::resolveBranchBySigla('чз');
-        $cgbDo = OpacClient::resolveBranchBySigla('до');
         $cgbKh = OpacClient::resolveBranchBySigla('кх');
         $f9 = OpacClient::resolveBranchBySigla('ф9');
         $f9Ok = ($f9 !== null && $f9['is_dobroye'] === true && strpos($f9['address'], 'Юбилейная') !== false);
@@ -104,7 +103,7 @@ class OpacTestSuite
 
         $allDobroyeOk = (
             $f4Ok && $f9Ok &&
-            $cgbAb['is_dobroye'] && $cgbChz['is_dobroye'] && $cgbDo['is_dobroye'] && $cgbKh['is_dobroye'] &&
+            $cgbAb['is_dobroye'] && $cgbChz['is_dobroye'] && $cgbKh['is_dobroye'] &&
             !$f12['is_dobroye'] && !$f14['is_dobroye'] && !$f15['is_dobroye'] && !$f16['is_dobroye']
         );
 
@@ -120,19 +119,25 @@ class OpacTestSuite
         $cdb = OpacClient::resolveBranchBySigla('цдб');
         $cdbOk = ($cdb !== null && $cdb['is_center'] === true && $cdb['is_dobroye'] === false && strpos($cdb['address'], 'Большая Московская') !== false);
 
-        // Проверяем, что ни одна другая библиотека не помечена как исторический центр
+        // Сигла 'до' — это Центральная детская библиотека (ЦДБ) на Большой Московской, 31!
+        $cdbDo = OpacClient::resolveBranchBySigla('до');
+        $cdbDoOk = ($cdbDo !== null && $cdbDo['branch_num'] === 'ЦДБ' && $cdbDo['is_center'] === true && $cdbDo['is_dobroye'] === false && strpos($cdbDo['address'], 'Большая Московская') !== false);
+
+        // Проверяем, что в историческом центре только записи ЦДБ (коды цдб и до)
         $dict = OpacClient::getSiglaDictionary();
-        $centerCount = 0;
+        $centerEntries = [];
         foreach ($dict as $code => $info) {
-            if ($info['is_center']) $centerCount++;
+            if ($info['is_center']) {
+                $centerEntries[] = $code;
+            }
         }
 
-        $onlyCdbInCenter = ($cdbOk && $centerCount === 1);
+        $onlyCdbInCenter = ($cdbOk && $cdbDoOk && in_array('цдб', $centerEntries, true) && in_array('до', $centerEntries, true) && count($centerEntries) === 2);
 
         $this->assert(
-            'ЦДБ — единственная библиотека сети в историческом центре (Большая Московская, 31)',
+            'ЦДБ и сигла «до» — Центральная детская библиотека в историческом центре (Большая Московская, 31)',
             $onlyCdbInCenter,
-            "ЦДБ: is_center=true, всего библиотек в центре: {$centerCount}"
+            "ЦДБ и ДО: is_center=true, адреса совпадают, записей ЦДБ в центре: " . implode(', ', $centerEntries)
         );
     }
 

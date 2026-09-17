@@ -853,11 +853,11 @@ function opac_map_branch($branchCode, $locationStr = '')
     } elseif (preg_match('/филиал\s*(?:№|no\.|#)?\s*(\d+)/u', $locationClean, $m)) {
         $targetNum = 'Ф-' . (int)$m[1];
         $branchNumInt = (int)$m[1];
-    } elseif (in_array($branchCodeClean, ['аб', 'чз', 'до', 'ибо', 'ооо', 'кх'], true) ||
+    } elseif ($branchCodeClean === 'до' || strpos($branchCodeClean, 'цдб') !== false || strpos($locationClean, 'цдб') !== false || strpos($locationClean, 'цгб-до') !== false) {
+        $targetNum = 'ЦДБ';
+    } elseif (in_array($branchCodeClean, ['аб', 'чз', 'ибо', 'ооо', 'кх'], true) ||
               strpos($locationClean, 'цгб') !== false) {
         $targetNum = 'ЦГБ';
-    } elseif (strpos($branchCodeClean, 'цдб') !== false || strpos($locationClean, 'цдб') !== false) {
-        $targetNum = 'ЦДБ';
     }
 
     if ($targetNum !== null) {
@@ -2053,14 +2053,17 @@ function opac_handle_http_request()
                             $matches = !empty($item['has_dobroye']);
                         } elseif ($bFilterLower === 'цдб' || $bFilterLower === 'cdb') {
                             foreach ($item['copies'] ?? [] as $c) {
-                                if (!empty($c['is_center']) || ($c['subfield_b'] ?? '') === 'цдб') {
+                                $sub = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
+                                if (!empty($c['is_center']) || $sub === 'цдб' || $sub === 'до' || ($c['branch_code'] ?? '') === 'ЦДБ') {
                                     $matches = true;
                                     break;
                                 }
                             }
                         } elseif ($bFilterLower === 'цгб' || $bFilterLower === 'cgb') {
                             foreach ($item['copies'] ?? [] as $c) {
-                                if (($c['branch_code'] ?? '') === 'ЦГБ' || in_array($c['subfield_b'] ?? '', ['аб', 'чз', 'до', 'кх'], true)) {
+                                $sub = mb_strtolower(trim($c['subfield_b'] ?? ''), 'UTF-8');
+                                if ($sub === 'до') continue; // Сигла ДО это ЦДБ!
+                                if (($c['branch_code'] ?? '') === 'ЦГБ' || in_array($sub, ['аб', 'чз', 'кх'], true)) {
                                     $matches = true;
                                     break;
                                 }
