@@ -793,10 +793,13 @@ export function initOpacModal() {
                         </button>
                     </div>
 
-                    <!-- Подсказка о наличии -->
+                    <!-- Подсказка о наличии и обложках -->
                     <p class="opac-availability-hint">
                         <span class="material-symbols-outlined">info</span>
                         Наличие книги в филиале уточняйте по телефонам филиала!
+                        <span class="opac-hint-sep">·</span>
+                        <span class="material-symbols-outlined">auto_stories</span>
+                        Обложки могут отличаться!
                     </p>
 
                     <!-- Горячие чипсы быстрых категорий -->

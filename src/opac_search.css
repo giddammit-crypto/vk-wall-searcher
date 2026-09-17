@@ -552,6 +552,10 @@ button.opac-search-btn,
     color: var(--opac-accent, #60a5fa);
     flex-shrink: 0;
 }
+.opac-hint-sep {
+    margin: 0 4px;
+    opacity: 0.4;
+}
 
 /* Горячие чипсы быстрых запросов (.opac-quick-tags) */
 .opac-quick-tags {
