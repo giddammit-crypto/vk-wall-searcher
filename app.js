@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatViews(val) {
         const num = extractNum(val);
         if (!num) return '0';
-        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-        if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-        return num.toString();
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + ' млн';
+        if (num >= 1000) return (num / 1000).toFixed(1) + ' тыс.';
+        return num.toLocaleString('ru-RU');
     }
 
     function formatHumanDate(dateObj) {
@@ -1871,6 +1871,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.matchedCount = 0;
         state.totalCount = 0;
         state.matchedPosts = [];
+        state.seenPostKeys = new Set();
         state.targetsInfo = [];
 
         // UI toggles
@@ -2048,6 +2049,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             break;
                         }
 
+                        // Guarantee pinned posts outside target period never leak into results
+                        if (post.is_pinned && year < yearStart) {
+                            continue;
+                        }
+
                         state.scannedCount++;
                         wallScannedCount++;
 
@@ -2073,6 +2079,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (onlyPhotos && !hasPhoto) textMatches = false;
 
                         if (inYearRange && isTargetMonth && isTargetDay && textMatches) {
+                            const postKey = `${post.owner_id || targetInfo.id}_${post.id}`;
+                            if (state.seenPostKeys && state.seenPostKeys.has(postKey)) {
+                                continue;
+                            }
+                            if (state.seenPostKeys) {
+                                state.seenPostKeys.add(postKey);
+                            }
+
                             state.matchedCount++;
                             post.humanDate = formatHumanDate(postDate);
                             post.targetInfo = targetInfo;
@@ -2238,6 +2252,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: target, owner_id: target.id }, state.activeBranchFilter);
                 const displayName = target.canonicalName || target.name;
+                const avgV = pCount > 0 ? Math.round(views / pCount) : 0;
+                const viewsTitle = `Суммарный охват филиала: ${views.toLocaleString('ru-RU')} просмотров (~${avgV} на пост)`;
 
                 return `
                     <div class="source-showcase-card ${isSelected ? 'selected' : ''} ${pCount === 0 ? 'zero-posts' : 'has-posts'}" data-target-id="${target.id}">
@@ -2267,7 +2283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="source-stats-row">
                                 <span class="source-stat" title="Лайки"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ${likes}</span>
                                 <span class="source-stat" title="Репосты"><span class="material-symbols-outlined stat-icon text-warning">share</span> ${reposts}</span>
-                                <span class="source-stat" title="Просмотры"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${formatViews(views)}</span>
+                                <span class="source-stat" title="${viewsTitle}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${formatViews(views)}${pCount > 0 ? `<span style="font-size:10px;opacity:0.75;margin-left:2px">(~${avgV})</span>` : ''}</span>
                             </div>
                             <button class="source-filter-trigger-btn" type="button" title="Фильтровать ленту по этому источнику">
                                 <span>${isSelected ? 'Выбран' : 'Фильтровать'}</span>
@@ -2882,6 +2898,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const reposts = posts.reduce((sum, p) => sum + (p.reposts ? (p.reposts.count || 0) : 0), 0);
             const comments = posts.reduce((sum, p) => sum + (p.comments ? (p.comments.count || 0) : 0), 0);
             const views = posts.reduce((sum, p) => sum + (p.views ? (p.views.count || 0) : 0), 0);
+            const avgViews = postsCount > 0 ? Math.round(views / postsCount) : 0;
             const reactions = likes + reposts + comments;
             const er = views > 0 ? (reactions / views) * 100 : 0;
             const reactionsPerPost = postsCount > 0 ? (reactions / postsCount) : 0;
@@ -2904,6 +2921,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 reposts,
                 comments,
                 views,
+                avgViews,
                 reactions,
                 reactionsPerPost,
                 er,
@@ -3055,6 +3073,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const erText = item.views > 0 ? `${item.er.toFixed(2)}%` : (item.postsCount > 0 ? '—' : '0.00%');
+            const avgV = item.avgViews || (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
 
             tr.innerHTML = `
                 <td style="text-align: center; font-weight: 700; color: var(--text-tertiary);">${index + 1}</td>
@@ -3068,7 +3087,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
                 <td style="text-align: right; font-weight: 700;">${item.postsCount}</td>
-                <td style="text-align: right;">${item.views.toLocaleString('ru-RU')}</td>
+                <td style="text-align: right;" title="Суммарный охват: ${item.views.toLocaleString('ru-RU')} (в среднем ~${avgV} на пост)">
+                    <div>${item.views.toLocaleString('ru-RU')}</div>
+                    <div style="font-size: 11px; opacity: 0.75; font-weight: 400;">~${avgV}/пост</div>
+                </td>
                 <td style="text-align: right;">${item.likes.toLocaleString('ru-RU')}</td>
                 <td style="text-align: right;">${item.reposts.toLocaleString('ru-RU')}</td>
                 <td style="text-align: right;">${item.comments.toLocaleString('ru-RU')}</td>

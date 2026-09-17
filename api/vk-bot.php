@@ -4654,11 +4654,13 @@ function vk_bot_filter_branch_news($newsData, $keyword)
     };
 
     $filteredToday = array_values(array_filter($newsData['today'] ?? [], $filterFunc));
-    $filtered24h   = array_values(array_filter($newsData['last_24h'] ?? [], $filterFunc));
+    $filtered24h   = array_values(array_filter($newsData['last_24h'] ?? ($newsData['all_24h'] ?? []), $filterFunc));
 
     return [
         'today'    => $filteredToday,
         'last_24h' => $filtered24h,
+        'all_24h'  => $filtered24h,
+        'branches' => $newsData['branches'] ?? [],
         'keyword'  => $keyword
     ];
 }
@@ -4791,7 +4793,18 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
                 $postDate = (int)($item['date'] ?? 0);
                 $postText = trim((string)($item['text'] ?? ''));
                 $postId   = (int)($item['id'] ?? 0);
-                if ($postId <= 0 || $postText === '') continue;
+                if ($postId <= 0) continue;
+
+                // Если у записи нет прямого текста, извлекаем текст репоста или медиа-описание
+                if ($postText === '') {
+                    if (!empty($item['copy_history'][0]['text'])) {
+                        $postText = '📢 ' . trim((string)$item['copy_history'][0]['text']);
+                    } elseif (!empty($item['attachments'])) {
+                        $postText = '📷 [Фото/медиа публикация филиала]';
+                    } else {
+                        $postText = '📖 Новая запись на стене филиала';
+                    }
+                }
 
                 $postData = [
                     'owner_id' => $item['owner_id'] ?? $gid,
@@ -4803,7 +4816,8 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
 
                 if ($postDate >= $todayStart) {
                     $todayPosts[] = $postData;
-                } elseif ($postDate >= $last24h) {
+                }
+                if ($postDate >= $last24h) {
                     $recent24hPosts[] = $postData;
                 }
             }
@@ -4815,7 +4829,9 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
 
     $result = [
         'today'    => $todayPosts,
-        'last_24h' => $recent24hPosts
+        'last_24h' => $recent24hPosts,
+        'all_24h'  => $recent24hPosts,
+        'branches' => $branches
     ];
 
     if (!empty($todayPosts) || !empty($recent24hPosts)) {
@@ -4858,7 +4874,16 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
     $recentPosts = $newsData['last_24h'] ?? [];
 
     $isToday = count($todayPosts) > 0;
-    $postsToShow = $isToday ? $todayPosts : $recentPosts;
+
+    // Формируем список постов за 24 часа
+    if (!empty($newsData['all_24h'])) {
+        $postsToShow = $newsData['all_24h'];
+    } elseif ($isToday && !empty($recentPosts)) {
+        $postsToShow = array_merge($todayPosts, $recentPosts);
+    } else {
+        $postsToShow = $isToday ? $todayPosts : $recentPosts;
+    }
+    usort($postsToShow, function($a, $b) { return ($b['date'] ?? 0) - ($a['date'] ?? 0); });
 
     if (empty($postsToShow)) {
         if ($keyword !== '') {
@@ -4886,16 +4911,16 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
             : "📰 Постов за сегодня нет (с 00:00 новых записей пока нет). Вот свежие публикации филиалов за последние 24 часа:\n\n";
     }
 
-    $footerBase = "\n\n💡 Нажмите на ссылку любого поста, чтобы открыть его целиком ВКонтакте!";
+    $footerBase = "\n\n💡 Нажмите на ссылку любого поста или стены сообщества, чтобы открыть ВКонтакте!";
     $blocks = [];
     $maxSummaryLength = 3900; // Безопасный порог длины одного сообщения ВКонтакте (лимит ВК 4096 символов)
     $totalCount = count($postsToShow);
     $addedCount = 0;
 
-    // Подбираем оптимальный размер аннотации, чтобы выдать ВСЕ посты филиалов за день
+    // Подбираем оптимальный размер аннотации, чтобы выдать ВСЕ посты филиалов за 24 часа
     $annotLen = 180;
     if ($totalCount > 10) {
-        $annotLen = 85;
+        $annotLen = 80;
     } elseif ($totalCount > 5) {
         $annotLen = 120;
     }
@@ -4904,12 +4929,14 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
         $bName = $p['branch']['name'] ?? 'Филиал';
         $timeStr = date('H:i', $p['date']);
         $postUrl = vk_bot_build_post_url($p);
+        $wallUrl = !empty($p['branch']['vk']) ? $p['branch']['vk'] : ('https://vk.com/wall' . ($p['owner_id'] ?? ''));
         $annot = vk_bot_format_cosmo_annotation($p['text'], $annotLen);
 
-        // Эргономичная карточка: филиал со временем публикации, выразительная аннотация и прямой линк
+        // Эргономичная карточка: филиал со временем публикации, аннотация, прямая ссылка на пост и ссылка на стену группы
         $block = "🏛 " . $bName . " • " . $timeStr . "\n"
                . "💬 «" . $annot . "»\n"
-               . "👉 Читать пост: " . $postUrl;
+               . "👉 Читать пост: " . $postUrl . "\n"
+               . "🔗 Стена: " . $wallUrl;
 
         // Проверяем суммарную длину с текущим блоком
         $tempBlocks = array_merge($blocks, [$block]);
@@ -4941,6 +4968,20 @@ function vk_bot_resolve_vladimir_library_query($text)
 {
     if (!is_string($text) || trim($text) === '') return null;
     $t = function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+
+    // 0. Вопрос о филиале №10 (ул. Диктора Левитана, 55) — временно не работает!
+    if (preg_match('/(?:левитан|диктор[а-я]*\s*левитан|филиал\s*(?:№\s*)?10\b|библиотек[а-я]*\s*(?:№\s*)?10\b)/ui', $t)) {
+        return "🏛 Библиотека-филиал 10 - временно не работает!\n\n"
+             . "📍 Адрес: г. Владимир, ул. Диктора Левитана, 55\n"
+             . "📞 Телефон: нет телефона\n\n"
+             . "⚠️ Внимание: библиотека-филиал 10 временно не работает! Приёма читателей и выдачи книг нет.\n"
+             . "Пожалуйста, воспользуйтесь ближайшими действующими библиотеками сети МБУК «ЦГБ»:\n"
+             . "• Филиал №2: пр-т Ленина, 12 (Садовая пл. / «Заря», 📞 32-15-84, 32-15-85)\n"
+             . "• Филиал №5: ул. Верхняя Дуброва, 10 (ЮЗР / рынок «Слобода», 📞 54-28-43)\n"
+             . "• Филиал №8: ул. Сурикова, 26 (📞 54-65-11)\n"
+             . "• Центральная детская библиотека (ЦДБ): ул. Большая Московская, 31 (📞 32-32-42)\n\n"
+             . "🌐 Официальный сайт: biblioteka33.ru";
+    }
 
     // 1. Вопрос о филиале на ул. Егорова (филиал №4) и районе Доброе
     if (preg_match('/(?:егоров|филиал\s*(?:№\s*)?4\b)/ui', $t) && preg_match('/(?:где|район|адрес|находитс|расположен|центр|добр|библио|филиал|номер|книг|телефон)/ui', $t)) {
@@ -8420,7 +8461,7 @@ if ($isLibrariesQuery) {
            . "• Филиал №2: пр-т Ленина, 12 (Садовая пл. / «Заря») (📞 32-15-84, 32-15-85)\n"
            . "• Филиал №5: ул. Верхняя Дуброва, 10 (ЮЗР / рынок «Слобода») (📞 54-28-43)\n"
            . "• Филиал №8: ул. Сурикова, 26 (📞 54-65-11)\n"
-           . "• Филиал №10: ул. Диктора Левитана, 55\n\n"
+           . "• Библиотека-филиал 10 - временно не работает! (ул. Диктора Левитана, 55, нет телефона)\n\n"
            . "📍 ОКТЯБРЬСКИЙ РАЙОН:\n"
            . "• Филиал №7: ул. Мира, 55 (здание ДК Молодёжи) (📞 53-45-54)\n"
            . "• Филиал №13 («Книголенд»): ул. Горького, 69 (ВлГУ / пл. Ленина) (📞 33-15-67)\n\n"
@@ -8674,7 +8715,7 @@ SYS;
    - Филиал №2: пр-т Ленина, 12 (Садовая пл. / «Заря») (тел. 32-15-84, 32-15-85)
    - Филиал №5: ул. Верхняя Дуброва, 10 (ЮЗР / рынок «Слобода») (тел. 54-28-43)
    - Филиал №8: ул. Сурикова, 26 (тел. 54-65-11)
-   - Филиал №10: ул. Диктора Левитана, 55
+   - Библиотека-филиал 10 - временно не работает! (ул. Диктора Левитана, 55, нет телефона. ВНИМАНИЕ: филиал временно закрыт для посещения, телефона нет, при любых вопросах читателей обязательно предупреждай: «Библиотека-филиал 10 - временно не работает!» и «нет телефона»).
 
    📍 ОКТЯБРЬСКИЙ РАЙОН:
    - Филиал №7: ул. Мира, 55 (здание ДК Молодёжи) (тел. 53-45-54)

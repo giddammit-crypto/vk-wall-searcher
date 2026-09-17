@@ -1031,6 +1031,7 @@ function initApp() {
         state.totalCount = 0;
         state.matchedPosts = [];
         state.filteredPosts = [];
+        state.seenPostKeys = new Set();
         state.activeBranchFilter = null;
         state.activeHashtagFilter = null;
         state.cardPage = 0;
@@ -1408,6 +1409,11 @@ function initApp() {
                             break;
                         }
 
+                        // Guarantee pinned posts outside target period never leak into results
+                        if (post.is_pinned && year < yearStart) {
+                            continue;
+                        }
+
                         state.scannedCount++;
 
                         // Date filters
@@ -1469,7 +1475,15 @@ function initApp() {
                             if (!postTags.includes(hashtagFilter)) continue;
                         }
 
-                        // Passed all filters!
+                        // Passed all filters! Deduplicate before adding
+                        const postKey = `${post.owner_id || targetInfo.id}_${post.id}`;
+                        if (state.seenPostKeys && state.seenPostKeys.has(postKey)) {
+                            continue;
+                        }
+                        if (state.seenPostKeys) {
+                            state.seenPostKeys.add(postKey);
+                        }
+
                         post.targetInfo = targetInfo;
                         post.humanDate = formatHumanDate(postDate);
                         state.matchedPosts.push(post);
@@ -2038,7 +2052,8 @@ function initApp() {
             const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter);
             const card = document.createElement('div');
             card.className = `source-showcase-card ${isSelected ? 'selected' : ''}`;
-            card.dataset.targetId = t.id;
+            const avgV = item.avgViews || (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
+            const viewsTitle = `Суммарный охват филиала: ${item.views.toLocaleString('ru-RU')} просмотров (~${avgV} на пост)`;
 
             card.innerHTML = `
                 <div class="source-card-top">
@@ -2065,7 +2080,7 @@ function initApp() {
                     <div class="source-stats-row">
                         <span class="source-stat" title="Лайки"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ${item.likes}</span>
                         <span class="source-stat" title="Репосты"><span class="material-symbols-outlined stat-icon text-warning">share</span> ${item.reposts}</span>
-                        <span class="source-stat" title="Просмотры"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${formatViews(item.views)}</span>
+                        <span class="source-stat" title="${viewsTitle}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${formatViews(item.views)}${item.postsCount > 0 ? `<span style="font-size:10px;opacity:0.75;margin-left:2px">(~${avgV})</span>` : ''}</span>
                     </div>
                     <button class="source-filter-trigger-btn" type="button">
                         <span>${isSelected ? 'Выбран' : 'Фильтровать'}</span>
@@ -2267,6 +2282,7 @@ function initApp() {
             const tr = document.createElement('tr');
             const displayName = item.info.canonicalName || item.info.name;
             const address = item.info.address ? `<div class="summary-source-sub">${escapeHtml(item.info.address)}</div>` : '';
+            const avgV = item.avgViews || (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
 
             tr.innerHTML = `
                 <td style="text-align: center; font-weight: 700; color: var(--muted);">${index + 1}</td>
@@ -2280,7 +2296,10 @@ function initApp() {
                     </div>
                 </td>
                 <td style="text-align: right; font-weight: 700; color: var(--accent);">${item.postsCount}</td>
-                <td style="text-align: right; font-family: var(--font-mono);">${formatViews(item.views)}</td>
+                <td style="text-align: right; font-family: var(--font-mono);" title="Суммарный охват: ${item.views.toLocaleString('ru-RU')} (в среднем ~${avgV} на пост)">
+                    <div>${formatViews(item.views)}</div>
+                    <div style="font-size: 11px; color: var(--muted); font-weight: 400;">~${avgV}/пост</div>
+                </td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.likes}</td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.reposts}</td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.comments}</td>
@@ -2472,9 +2491,12 @@ function initApp() {
         const rLikesEl = document.getElementById('report-total-likes');
         const rRepostsEl = document.getElementById('report-total-reposts');
         const rViewsEl = document.getElementById('report-total-views');
-        if (rLikesEl) rLikesEl.textContent = grandLikes;
-        if (rRepostsEl) rRepostsEl.textContent = grandReposts;
-        if (rViewsEl) rViewsEl.textContent = formatViews(grandViews);
+        if (rLikesEl) rLikesEl.textContent = grandLikes.toLocaleString('ru-RU');
+        if (rRepostsEl) rRepostsEl.textContent = grandReposts.toLocaleString('ru-RU');
+        if (rViewsEl) {
+            rViewsEl.textContent = grandViews.toLocaleString('ru-RU');
+            rViewsEl.title = `Суммарный охват: ${grandViews.toLocaleString('ru-RU')} (${formatViews(grandViews)})`;
+        }
 
         if (elements.reportDatesFilter) {
             const dayVal = state.lastDayFilter || elements.daySelect?.value || 'all';
@@ -2519,9 +2541,9 @@ function initApp() {
                     <td style="text-align:center;">${pi + 1}</td>
                     <td style="white-space:nowrap;">${p.humanDate}</td>
                     <td class="report-col-text">${textHtml}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.likes)}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.reposts)}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${formatViews(p.views)}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.likes).toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.reposts).toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.views).toLocaleString('ru-RU')}</td>
                     <td style="text-align:center;">
                         <a href="https://vk.com/wall${p.targetInfo?.id || p.owner_id}_${p.id}" target="_blank" rel="noopener noreferrer" class="btn-report-link btn-outlined">
                             <span>ССЫЛКА</span>
@@ -2848,7 +2870,7 @@ function initApp() {
             `1. ОБЩИЕ ПОКАЗАТЕЛИ СЕТИ:`,
             `— Всего проанализировано филиалов: ${stats.length}`,
             `— Опубликовано записей за период: ${kpis.count}`,
-            `— Суммарный читательский охват (просмотры): ${formatViews(kpis.totalViews)}`,
+            `— Суммарный читательский охват (просмотры): ${kpis.totalViews.toLocaleString('ru-RU')} (в среднем ~${kpis.avgViews} на запись)`,
             `— Общее количество взаимодействий (лайки, репосты, комменты): ${kpis.totalInteractions}`,
             `— Средний коэффициент читательского вовлечения (ER): ${kpis.erViews}`,
             ``,
