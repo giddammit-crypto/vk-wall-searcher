@@ -107,6 +107,11 @@ if ($serviceToken === '' || strpos($serviceToken, 'ВСТАВЬТЕ') === 0) {
     $serviceToken = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
 }
 
+$serviceTokenFallback = trim((string)($config['vk_service_token_fallback'] ?? ''));
+if ($serviceTokenFallback === '' || strpos($serviceTokenFallback, 'ВСТАВЬТЕ') === 0) {
+    $serviceTokenFallback = 'd306a4b4d306a4b4d306a4b46ad0389840dd306d306a4b4ba56aeabaf84c50097d998b5';
+}
+
 $confirmationCode = trim((string)($config['vk_confirmation_code'] ?? ''));
 if ($confirmationCode === '') {
     $confirmationCode = $defaultConfirmationCode;
@@ -1012,8 +1017,8 @@ if ($userMsg === '' && empty($payload) && $audioAttachment === null) {
             $userMsg = 'Привет, Космо!';
             $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
         } else {
-            $userMsg = 'Привет! Посоветуй, что почитать?';
-            $payload = json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE);
+            $userMsg = 'Привет, Космо!';
+            $payload = json_encode(['cmd' => 'about'], JSON_UNESCAPED_UNICODE);
         }
     } else {
         $userMsg = 'Привет, Космо!';
@@ -4516,6 +4521,24 @@ function vk_bot_format_cosmo_annotation($text, $maxLen = 210)
 
 function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
 {
+    $cacheDir = __DIR__ . '/../cache';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0777, true);
+    }
+    $newsCacheFile = $cacheDir . '/vk_branch_news.json';
+    $cacheTtl = 180; // 3 минуты кэша для быстрого отклика
+
+    // Проверяем свежий кэш
+    if (file_exists($newsCacheFile) && is_readable($newsCacheFile)) {
+        $mtime = @filemtime($newsCacheFile);
+        if ($mtime && (time() - $mtime) < $cacheTtl) {
+            $cached = json_decode(@file_get_contents($newsCacheFile), true);
+            if (is_array($cached) && (isset($cached['today']) || isset($cached['last_24h']))) {
+                return $cached;
+            }
+        }
+    }
+
     // Загружаем актуальные ссылки на группы и адреса из конфига сайта branches_cache.json
     $cacheFile = __DIR__ . '/../branches_cache.json';
     $cachedList = [];
@@ -4564,22 +4587,32 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
         $branchMap[$b['id']] = $b;
     }
 
-    $activeToken = $serviceToken ?: $communityToken;
+    // Формируем пул сервисных токенов с отказоустойчивостью
+    // (Метод wall.get категорически требует сервисный ключ приложения, токен группы вернёт ошибку code 27)
+    global $config, $serviceTokenFallback;
+    $fallbackConfigToken = trim((string)($config['vk_service_token_fallback'] ?? ($serviceTokenFallback ?? '')));
+    $candidateTokens = array_values(array_unique(array_filter([
+        $serviceToken,
+        $fallbackConfigToken,
+        '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a',
+        'd306a4b4d306a4b4d306a4b46ad0389840dd306d306a4b4ba56aeabaf84c50097d998b5'
+    ])));
+
     $codeParts = [];
     foreach ($ids as $idx => $gid) {
         $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 15})';
     }
     $code = 'return {' . implode(',', $codeParts) . '};';
 
-    list($httpCode, $json, $curlErr) = vk_bot_api_call('execute', [
-        'code' => $code
-    ], $activeToken);
+    $json = null;
+    foreach ($candidateTokens as $tok) {
+        list($httpCode, $resJson, $curlErr) = vk_bot_api_call('execute', [
+            'code' => $code
+        ], $tok);
 
-    if (!is_array($json) || !isset($json['response']) || !is_array($json['response'])) {
-        if ($activeToken !== $communityToken && $communityToken !== '') {
-            list($httpCode, $json, $curlErr) = vk_bot_api_call('execute', [
-                'code' => $code
-            ], $communityToken);
+        if (is_array($resJson) && isset($resJson['response']) && is_array($resJson['response'])) {
+            $json = $resJson;
+            break;
         }
     }
 
@@ -4624,10 +4657,22 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
     usort($todayPosts, function($a, $b) { return $b['date'] - $a['date']; });
     usort($recent24hPosts, function($a, $b) { return $b['date'] - $a['date']; });
 
-    return [
+    $result = [
         'today'    => $todayPosts,
         'last_24h' => $recent24hPosts
     ];
+
+    if (!empty($todayPosts) || !empty($recent24hPosts)) {
+        @file_put_contents($newsCacheFile, json_encode($result, JSON_UNESCAPED_UNICODE));
+    } elseif (file_exists($newsCacheFile) && is_readable($newsCacheFile)) {
+        // Если свежий запрос вернул пустоту из-за таймаута сети, используем предыдущий кэш
+        $stale = json_decode(@file_get_contents($newsCacheFile), true);
+        if (is_array($stale) && (!empty($stale['today']) || !empty($stale['last_24h']))) {
+            return $stale;
+        }
+    }
+
+    return $result;
 }
 
 /**
@@ -4635,20 +4680,9 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '')
  */
 function vk_bot_build_post_url($post)
 {
-    $ownerId  = (int)($post['owner_id'] ?? 0);
-    $postId   = (int)($post['id'] ?? 0);
-    $branchVk = trim((string)($post['branch']['vk'] ?? ''));
-
-    if ($branchVk !== '') {
-        $baseUrl = rtrim($branchVk, '/');
-        return $baseUrl . '?w=wall' . $ownerId . '_' . $postId;
-    }
-
-    if ($ownerId < 0) {
-        return 'https://vk.com/club' . abs($ownerId) . '?w=wall' . $ownerId . '_' . $postId;
-    }
-
-    return 'https://vk.com/id' . $ownerId . '?w=wall' . $ownerId . '_' . $postId;
+    $ownerId = (int)($post['owner_id'] ?? 0);
+    $postId  = (int)($post['id'] ?? 0);
+    return 'https://vk.com/wall' . $ownerId . '_' . $postId;
 }
 
 /**
@@ -5246,6 +5280,289 @@ function vk_bot_extract_books_from_recommendation($text)
 }
 
 /**
+ * Нормализация русской формы имени/фамилии автора (устранение падежных окончаний)
+ */
+function normalize_russian_author($name)
+{
+    $name = trim($name);
+    if (preg_match('/(стругацк|вайнер|ильф|петров)[а-я]*/ui', $name, $m)) {
+        return mb_convert_case($m[1] . 'ий', MB_CASE_TITLE, 'UTF-8');
+    }
+    if (preg_match('/([А-ЯЁ][а-яё]+)(?:ого|ему|ым|ом)$/u', $name, $m)) {
+        $stem = $m[1];
+        if (preg_match('/(ск|цк)$/u', $stem)) return $stem . 'ий';
+        if (preg_match('/(ов|ев|ин)$/u', $stem)) return $stem;
+        return $stem . 'ой';
+    }
+    if (preg_match('/([А-ЯЁ][а-яё]+(?:ов|ев|ин|ын|ер|ан|ун|юк|ук|ар|ор|ль))а$/u', $name, $m)) {
+        return $m[1];
+    }
+    if (preg_match('/([А-ЯЁ][а-яё]{2,})(?:а|у|ом|е)$/u', $name, $m)) {
+        return $m[1];
+    }
+    return $name;
+}
+
+/**
+ * Извлечение автора или ключевого литературного термина из текста запроса
+ */
+function vk_bot_extract_author_from_text($text)
+{
+    $clean = preg_replace('/\b(посоветуй|порекомендуй|подбери|что почитать|хочу почитать|какую книгу|книгу|книги|книжку|пожалуйста|космо|робот|привет|здравствуй|здравствуйте|добрый день|мне|что-нибудь|что то|про|о|об|у|в|на|с|по|для|от|автора|писателя|фантастику|детектив|классику|роман|историю|новинки|хорошую|отличную|интересную|захватывающую)\b/ui', ' ', $text);
+    $words = preg_split('/\s+/u', trim($clean));
+    foreach ($words as $w) {
+        if (mb_strlen($w, 'UTF-8') >= 4) {
+            $norm = normalize_russian_author($w);
+            if (mb_strlen($norm, 'UTF-8') >= 4) {
+                return $norm;
+            }
+        }
+    }
+    return '';
+}
+
+/**
+ * Получение проверенных книг из OPAC для заземления промпта ИИ (OPAC-RAG)
+ */
+function vk_bot_retrieve_opac_grounding($text)
+{
+    $author = vk_bot_extract_author_from_text($text);
+    if ($author === '' || mb_strlen($author, 'UTF-8') < 3) {
+        return '';
+    }
+
+    $opacRes = null;
+    if (function_exists('opac_search_books')) {
+        $opacRes = opac_search_books($author, 8, 0);
+    } elseif (class_exists('OpacClient')) {
+        $opacRes = OpacClient::getInstance()->findBooks($author, 8, 0);
+    }
+
+    if (empty($opacRes['items'])) {
+        return '';
+    }
+
+    $realBooks = [];
+    $seenTitles = [];
+    $authorStem = (mb_strlen($author, 'UTF-8') > 5) ? mb_substr($author, 0, mb_strlen($author, 'UTF-8') - 2) : $author;
+
+    foreach ($opacRes['items'] as $item) {
+        $cAuthor = $item['author'] ?? '';
+        $cTitle = $item['title'] ?? '';
+        if (trim($cTitle) === '') continue;
+
+        if ($cAuthor !== '' && mb_stripos($cAuthor, $authorStem) === false) {
+            continue;
+        }
+
+        $cleanTitle = preg_replace('/[:;].*$/u', '', $cTitle);
+        $cleanTitle = trim(preg_replace('/[«»"“”*]/u', '', $cleanTitle));
+        $titleLower = mb_strtolower($cleanTitle, 'UTF-8');
+
+        if (mb_strlen($cleanTitle, 'UTF-8') >= 3 && !isset($seenTitles[$titleLower])) {
+            $seenTitles[$titleLower] = true;
+            $year = !empty($item['year']) ? " ({$item['year']})" : '';
+            $dispAuthor = !empty($item['author']) ? $item['author'] : $author;
+            $realBooks[] = "• «{$cleanTitle}» — {$dispAuthor}{$year}";
+            if (count($realBooks) >= 5) break;
+        }
+    }
+
+    if (empty($realBooks)) {
+        return '';
+    }
+
+    $grounding = "📚 РЕАЛЬНЫЕ КНИГИ ИЗ ФОНДОВ БИБЛИОТЕК ВЛАДИМИРА ПО ЗАПРОСУ («{$author}»):\n"
+               . implode("\n", $realBooks) . "\n\n"
+               . "[СТРОЖАЙШЕЕ ТРЕБОВАНИЕ БИБЛИОТЕКАРЯ]:\n"
+               . "Рекомендуй 1-2 книги ИСКЛЮЧИТЕЛЬНО из этого проверенного списка реальных изданий (или назови другие 100% подлинные шедевры автора, в которых абсолютно уверен).\n"
+               . "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выдумывать несуществующие названия книг (автор никогда не писал таких книг — не придумывай)! Оформи строго как «Название» — Автор.";
+
+    return $grounding;
+}
+
+/**
+ * Оценка соответствия кандидата OPAC запрошенному названию и автору
+ *
+ * @param array $candidate Запись книги из OPAC
+ * @param string $expectedTitle Запрошенное название
+ * @param string $expectedAuthor Запрошенный автор
+ * @return int Балл релевантности (>= 120 для допуска к показу, -1 при дисквалификации)
+ */
+function vk_bot_score_opac_candidate($candidate, $expectedTitle, $expectedAuthor)
+{
+    $cTitle = $candidate['title'] ?? '';
+    $cAuthor = $candidate['author'] ?? '';
+    $cImprint = $candidate['imprint'] ?? '';
+    $cRaw = implode(' ', $candidate['shotform_raw'] ?? []);
+    $allCandidateText = mb_strtolower($cAuthor . ' ' . $cTitle . ' ' . $cImprint . ' ' . $cRaw, 'UTF-8');
+
+    $expectedLastName = '';
+    if (trim($expectedAuthor) !== '') {
+        $aWords = preg_split('/\s+/u', trim(preg_replace('/[^\p{L}\s]/u', '', $expectedAuthor)));
+        $expectedLastName = mb_strtolower(end($aWords), 'UTF-8');
+        if (mb_strlen($expectedLastName, 'UTF-8') < 3) {
+            foreach ($aWords as $aw) {
+                if (mb_strlen($aw, 'UTF-8') >= 3) {
+                    $expectedLastName = mb_strtolower($aw, 'UTF-8');
+                    break;
+                }
+            }
+        }
+    }
+
+    $authorScore = 0;
+    if ($expectedLastName !== '' && mb_strlen($expectedLastName, 'UTF-8') >= 3) {
+        $authorStem = (mb_strlen($expectedLastName, 'UTF-8') > 5) ? mb_substr($expectedLastName, 0, mb_strlen($expectedLastName, 'UTF-8') - 2) : $expectedLastName;
+        $hasAuthorMatch = (mb_stripos($allCandidateText, $authorStem) !== false);
+
+        if (!$hasAuthorMatch) {
+            return -1; // Фатальная отбраковка: автора вообще нет в записи OPAC!
+        }
+
+        if (trim($cAuthor) !== '') {
+            $cAuthorLower = mb_strtolower($cAuthor, 'UTF-8');
+            if (mb_stripos($cAuthorLower, $authorStem) === false) {
+                return -1; // В карточке автором указан другой писатель (например, Некрасов вместо Лукьяненко)!
+            }
+        }
+
+        $authorScore = 100;
+    } else {
+        $authorScore = 50;
+    }
+
+    $stopWords = ['и','в','на','с','по','о','об','к','от','за','из','у','для','не','же','а','но','как','то','том','книга','роман','повесть','рассказ','стихи','поэма'];
+
+    $cleanExpTitle = mb_strtolower($expectedTitle, 'UTF-8');
+    $cleanExpTitle = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $cleanExpTitle);
+    $rawExpWords = preg_split('/\s+/u', trim($cleanExpTitle));
+    $expWords = [];
+    foreach ($rawExpWords as $w) {
+        if (mb_strlen($w, 'UTF-8') >= 3 && !in_array($w, $stopWords, true)) {
+            $expWords[] = $w;
+        }
+    }
+
+    if (empty($expWords)) {
+        return -1;
+    }
+
+    $cleanCandTitle = mb_strtolower($cTitle, 'UTF-8');
+    $cleanCandTitle = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $cleanCandTitle);
+    $candWords = preg_split('/\s+/u', trim($cleanCandTitle));
+
+    $matchedWords = 0;
+    foreach ($expWords as $ew) {
+        $found = false;
+        foreach ($candWords as $cw) {
+            if (mb_stripos($cw, $ew) !== false || mb_stripos($ew, $cw) !== false) {
+                $found = true;
+                break;
+            }
+        }
+        if ($found) {
+            $matchedWords++;
+        }
+    }
+
+    $wordMatchRatio = $matchedWords / count($expWords);
+    if ($wordMatchRatio < 0.6) {
+        return -1; // Название не совпадает!
+    }
+
+    $titleScore = (int)($wordMatchRatio * 100);
+
+    if (mb_stripos($cleanCandTitle, $cleanExpTitle) !== false || mb_stripos($cleanExpTitle, $cleanCandTitle) !== false) {
+        $titleScore += 30;
+    }
+
+    $copiesBonus = !empty($candidate['locations']) ? min(count($candidate['locations']) * 5, 30) : 0;
+
+    return $authorScore + $titleScore + $copiesBonus;
+}
+
+/**
+ * Интеллектуальный поиск лучшего экземпляра книги в OPAC с валидацией автора и названия
+ *
+ * @param string $title Название книги
+ * @param string $author Автор книги (если известен)
+ * @return array [$bestCandidate, $bestScore]
+ */
+function vk_bot_find_best_opac_book($title, $author = '')
+{
+    $searchTitle = trim(preg_replace('/[«»"“”*]/u', '', $title));
+    $searchAuthor = trim(preg_replace('/[«»"“”*]/u', '', $author));
+
+    $authorLastName = '';
+    if ($searchAuthor !== '') {
+        $aWords = preg_split('/\s+/u', trim(preg_replace('/[^\p{L}\s]/u', '', $searchAuthor)));
+        $authorLastName = end($aWords);
+    }
+
+    $candidates = [];
+
+    // 1. Поиск Название + Автор
+    if ($authorLastName !== '' && mb_strlen($authorLastName, 'UTF-8') >= 3) {
+        $q = $searchTitle . ' ' . $authorLastName;
+        if (function_exists('opac_search_books')) {
+            $res1 = opac_search_books($q, 10, 0);
+        } elseif (class_exists('OpacClient')) {
+            $res1 = OpacClient::getInstance()->findBooks($q, 10, 0);
+        }
+        if (!empty($res1['items'])) {
+            foreach ($res1['items'] as $it) $candidates[] = $it;
+        }
+    }
+
+    // 2. Поиск по названию
+    if (function_exists('opac_search_books')) {
+        $res2 = opac_search_books($searchTitle, 10, 0);
+    } elseif (class_exists('OpacClient')) {
+        $res2 = OpacClient::getInstance()->findBooks($searchTitle, 10, 0);
+    }
+    if (!empty($res2['items'])) {
+        foreach ($res2['items'] as $it) $candidates[] = $it;
+    }
+
+    // 3. Fallback: если название составное, ищем по базовой части
+    if (empty($candidates) && preg_match('/^([^:—–-]+)[:—–-]/u', $searchTitle, $mt)) {
+        $baseTitle = trim($mt[1]);
+        if (mb_strlen($baseTitle, 'UTF-8') >= 3) {
+            if (function_exists('opac_search_books')) {
+                $res3 = opac_search_books($baseTitle, 10, 0);
+            } elseif (class_exists('OpacClient')) {
+                $res3 = OpacClient::getInstance()->findBooks($baseTitle, 10, 0);
+            }
+            if (!empty($res3['items'])) {
+                foreach ($res3['items'] as $it) $candidates[] = $it;
+            }
+        }
+    }
+
+    $bestCandidate = null;
+    $bestScore = -1;
+    $seenIds = [];
+
+    foreach ($candidates as $cand) {
+        $candId = $cand['id'] ?? ($cand['isn'] ?? '');
+        if ($candId !== '' && isset($seenIds[$candId])) continue;
+        if ($candId !== '') $seenIds[$candId] = true;
+
+        $score = vk_bot_score_opac_candidate($cand, $searchTitle, $searchAuthor);
+        if ($score > $bestScore) {
+            $bestScore = $score;
+            $bestCandidate = $cand;
+        }
+    }
+
+    if ($bestScore >= 120) {
+        return [$bestCandidate, $bestScore];
+    }
+    return [null, $bestScore];
+}
+
+/**
  * Обогащение текста рекомендации данными наличия в библиотеках Владимира из OPAC
  *
  * @param string $aiResponseText Текст ответа Космо
@@ -5270,51 +5587,12 @@ function vk_bot_enrich_recommendation_with_opac($aiResponseText, $branchFilter =
         $title = $b['title'];
         $author = $b['author'];
 
-        // Очищаем название книги от лишних знаков
-        $searchTitle = preg_replace('/[«»"“”*]/u', '', $title);
-        $searchTitle = trim($searchTitle);
+        // Ищем строго соответствующую книгу в OPAC с проверкой автора и названия
+        list($bestBook, $bestScore) = vk_bot_find_best_opac_book($title, $author);
 
-        $searchRes = null;
-
-        // 1. Пробуем поиск по названию и автору (если автор указан)
-        if ($author !== '') {
-            $searchAuthor = preg_replace('/[«»"“”*]/u', '', $author);
-            $searchAuthor = trim($searchAuthor);
-            $authorWords = preg_split('/\s+/u', $searchAuthor);
-            $authorLastName = end($authorWords);
-            if (mb_strlen($authorLastName, 'UTF-8') >= 3) {
-                if (function_exists('opac_search_books')) {
-                    $searchRes = opac_search_books($searchTitle . ' ' . $authorLastName, 1, 0);
-                } elseif (class_exists('OpacClient')) {
-                    $searchRes = OpacClient::getInstance()->findBooks($searchTitle . ' ' . $authorLastName, 1, 0);
-                }
-            }
-        }
-
-        // 2. Fallback: поиск строго по названию издания
-        if (empty($searchRes['items'])) {
-            if (function_exists('opac_search_books')) {
-                $searchRes = opac_search_books($searchTitle, 1, 0);
-            } elseif (class_exists('OpacClient')) {
-                $searchRes = OpacClient::getInstance()->findBooks($searchTitle, 1, 0);
-            }
-        }
-
-        // 3. Fallback: если название содержит двоеточие или дефис, пробуем главную часть
-        if (empty($searchRes['items']) && preg_match('/^([^:—–-]+)[:—–-]/u', $searchTitle, $mt)) {
-            $baseTitle = trim($mt[1]);
-            if (mb_strlen($baseTitle, 'UTF-8') >= 3) {
-                if (function_exists('opac_search_books')) {
-                    $searchRes = opac_search_books($baseTitle, 1, 0);
-                } elseif (class_exists('OpacClient')) {
-                    $searchRes = OpacClient::getInstance()->findBooks($baseTitle, 1, 0);
-                }
-            }
-        }
-
-        if (!empty($searchRes['items'][0])) {
+        if ($bestBook !== null) {
             $cardIdx++;
-            $cards[] = vk_bot_format_book_item_card($searchRes['items'][0], $cardIdx, $branchFilter, false, '', 4);
+            $cards[] = vk_bot_format_book_item_card($bestBook, $cardIdx, $branchFilter, false, '', 4);
         }
     }
 
@@ -5548,36 +5826,18 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '📚 Подобрать книгу'
-                ],
-                'color' => 'primary'
-            ]
-        ],
-        [
-            [
-                'action' => [
-                    'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'branch_news'], JSON_UNESCAPED_UNICODE),
                     'label'   => '📰 Новости филиалов'
                 ],
                 'color' => 'positive'
-            ],
+            ]
+        ],
+        [
             [
                 'action' => [
                     'type'    => 'text',
                     'payload' => json_encode(['cmd' => 'libraries'], JSON_UNESCAPED_UNICODE),
                     'label'   => '🏛 Библиотеки-филиалы'
-                ],
-                'color' => 'secondary'
-            ]
-        ],
-        [
-            [
-                'action' => [
-                    'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'help'], JSON_UNESCAPED_UNICODE),
-                    'label'   => 'ℹ️ Справка'
                 ],
                 'color' => 'secondary'
             ],
@@ -5591,6 +5851,14 @@ $persistentKeyboard = [
             ]
         ],
         [
+            [
+                'action' => [
+                    'type'    => 'text',
+                    'payload' => json_encode(['cmd' => 'help'], JSON_UNESCAPED_UNICODE),
+                    'label'   => 'ℹ️ Справка'
+                ],
+                'color' => 'secondary'
+            ],
             [
                 'action' => [
                     'type'    => 'text',
@@ -5700,8 +5968,8 @@ $inlineChatKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'recommend'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '📚 Подобрать книгу'
+                    'payload' => json_encode(['cmd' => 'opac_help'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🔎 Поиск в каталоге'
                 ],
                 'color' => 'secondary'
             ],
@@ -6743,14 +7011,14 @@ if ($cmd === 'chat_welcome' || $isBotInvited) {
 if (vk_bot_is_foreign_agent_query($userMsg)) {
     $reply = "Как робот муниципальной библиотечной системы г. Владимира, я строго следую законодательству РФ и правилам библиотек: я не предоставляю информацию о лицах, признанных иностранными агентами Минюстом РФ, не обсуждаю их, а также не рекомендую, не цитирую и не упоминаю произведения авторов-иноагентов. 🤖🛡️\n\n"
            . "В фондах наших городских библиотек собрана богатейшая коллекция признанных классических и лучших современных шедевров отечественной и мировой литературы!\n\n"
-           . "С радостью помогу вам подобрать увлекательную книгу из библиотечных фондов Владимира — выберите направление кнопками ниже или напишите свои предпочтения! ✨";
+           . "С радостью помогу вам найти нужную книгу в официальном каталоге библиотек Владимира — воспользуйтесь кнопками ниже или напишите свой запрос! ✨";
 
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
         'attachment'       => $mascotStickers['thinking'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? null : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -6921,19 +7189,18 @@ $isWelcomeQuery = (
 if ($isWelcomeQuery) {
     $reply = "👋 Привет! Я Космо — библиотечный робот-помощник и книжный сомелье Централизованной библиотечной системы города Владимира! 🤖📚\n\n"
            . "У меня электронное сердце, любовь к чтению и доступ ко всем фондам городских библиотек.\n\n"
-           . "✨ ЧЕМ Я МОГУ БЫТЬ ПОЛЕЗЕН:\n"
-           . "• 📚 Подберу идеальную книгу под ваше настроение (уют, детектив, космос, классика или драйв);\n"
-           . "• 📖 Книжный клуб: объявляю книгу недели, глубокие темы для обсуждения и провожу голосования;\n"
-           . "• ⭐ Покажу «Книгу дня» — актуальную рекомендацию и цитату от Космо;\n"
-           . "• 📰 Покажу «Новости филиалов» — свежие посты и анонсы библиотек Владимира за сегодня;\n"
-           . "• 🏛 Подскажу адреса, телефоны и график работы всех 18 филиалов библиотек города;\n"
-           . "• 🎲 Порекомендую «Случайный шедевр» — если хочется приятного литературного сюрприза;\n"
-           . "• 🖼️ Стикеры Космо — 17 живых эмоций робота для чатов («!стикеры», «!стикер читаю»);\n"
-           . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
-           . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
-           . "• Нажимайте удобные кнопки меню («📚 Подобрать книгу», «🎯 Квиз», «📊 Опрос», «🖼️ Стикеры Космо», «⭐ Книга дня»);\n"
-           . "• Или просто напишите мне или наговорите голосом: «Посоветуй уютную книгу на вечер», «Книга недели» или «Где библиотека на Егорова?».\n\n"
-           . "Какую книгу вам подобрать сегодня? Выберите настроение кнопками ниже или задайте свой вопрос! ✨";
+            . "✨ ЧЕМ Я МОГУ БЫТЬ ПОЛЕЗЕН:\n"
+            . "• 🔎 Поиск в каталоге: найду книгу по базе OPAC и скажу, в каких филиалах она есть;\n"
+            . "• 📰 «Новости филиалов» — свежие посты и анонсы библиотек Владимира за сегодня;\n"
+            . "• 🏛 «Библиотеки-филиалы» — адреса, телефоны и график работы всех 18 филиалов города;\n"
+            . "• ⭐ «Книга дня» — актуальная рекомендация и вдохновляющая цитата от Космо;\n"
+            . "• 📖 Книжный клуб: книга недели, литературные темы для бесед и голосования;\n"
+            . "• 🖼️ Стикеры Космо — 17 живых эмоций робота для чатов («!стикеры», «!стикер читаю»);\n"
+            . "• 🎤 Понимаю голосовые сообщения — наговаривайте вопросы на ходу!\n\n"
+            . "🚀 КАК МНОЙ ПОЛЬЗОВАТЬСЯ:\n"
+            . "• Нажимайте удобные кнопки меню («🔎 Поиск в каталоге», «📰 Новости филиалов», «🏛 Библиотеки-филиалы», «⭐ Книга дня»);\n"
+            . "• Или напишите текстом / наговорите голосом: «/книга Мастер и Маргарита», «Где библиотека на Егорова?» или «Книга дня».\n\n"
+            . "Ищите книгу в фондах или хотите узнать новости библиотек? Воспользуйтесь меню или задайте свой вопрос! ✨";
 
     if ($isVoiceQuery && $voiceTranscribedText !== '') {
         $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
@@ -6954,7 +7221,7 @@ if ($isWelcomeQuery) {
         'message'          => $reply,
         'attachment'       => $mascotStickers['waving'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -6970,7 +7237,7 @@ $isMenuQuery = (
 if ($isMenuQuery) {
     $reply = "📋 Главное меню робота Космо 🤖📚\n\n"
            . "Выберите нужный раздел на кнопках ниже или напишите свой вопрос:\n\n"
-           . "• 📚 «Подобрать книгу» — персональная рекомендация под настроение с адресами филиалов;\n"
+           . "• 🔎 «Поиск в каталоге» — поиск книг по базе OPAC-Global с адресами и телефонами филиалов;\n"
            . "• 📰 «Новости филиалов» — свежие публикации и анонсы библиотек Владимира за сутки;\n"
            . "• 🏛 «Библиотеки-филиалы» — адреса, телефоны и режим работы всех 18 филиалов Владимира;\n"
            . "• ℹ️ «Справка» — полный справочник всех команд и возможностей бота;\n"
@@ -7015,12 +7282,10 @@ if ($isUserHelpQuery) {
            . "  ↳ «Есть ли в филиале на Егорова книги Ремарка?»\n"
            . "• В выдаче: название, автор, шифры, инвентарные номера, точные адреса и телефоны филиалов с кнопками перелистывания («◀ Назад», «Вперёд ▶»).\n"
            . "⚠️ Наличие книги в филиале уточняйте по телефонам филиала! Обложки могут отличаться.\n\n"
-           . "📚 2. УМНЫЙ ПОДБОР КНИГ И РЕКОМЕНДАЦИИ:\n"
-           . "• Кнопка «📚 Подобрать книгу» или команды /подбор, /рекомендация, «что почитать», «посоветуй книгу»;\n"
-           . "• Подбор по настроению:\n"
-           . "  🔥 Драйв и экшен • ☕ Уют и тепло • 🌌 Наука и космос\n"
-           . "  🧩 Загадки и тайны • 🎭 Глубокие смыслы • 💡 Саморазвитие\n"
-           . "• 💡 Космо не только подбирает произведения, но и автоматически проверяет их по каталогу OPAC и прикрепляет блок «🏛 Где взять эти книги в библиотеках Владимира» с адресами и номерами телефонов филиалов!\n\n"
+           . "📚 2. ТОЧНЫЙ КАТАЛОГ И ФОНДЫ БЕЗ ОШИБОК И ВЫМЫСЛА:\n"
+           . "• Робот Космо опирается на официальный электронный каталог OPAC-Global и реальные библиотечные фонды;\n"
+           . "• Используйте команду «/книга [название]» или «/поиск [автор]» — бот сразу покажет реальные издания и филиалы, где они есть в наличии;\n"
+           . "• Наличие книги в филиале уточняйте по телефонам филиала! Обложки могут отличаться.\n\n"
            . "⭐ 3. КНИГА ДНЯ:\n"
            . "• Кнопка «⭐ Книга дня» (или «книга дня») — ежедневная персональная рекомендация с сюжетом, мыслями и вдохновляющей цитатой дня.\n\n"
            . "🏛 4. БИБЛИОТЕКИ-ФИЛИАЛЫ ВЛАДИМИРА:\n"
@@ -7076,7 +7341,7 @@ if ($isBookOfDayQuery) {
            . "💬 {$b['hook']}\n\n"
            . "📖 Цитата: {$b['quote']}\n\n"
            . "💡 Почему стоит прочитать:\n{$b['why_read']}\n\n"
-           . "Хотите подобрать книгу под конкретное настроение? Нажмите «📚 Подобрать книгу»!";
+           . "Ищите книгу в библиотеках Владимира? Нажмите «🔎 Поиск в каталоге» или напишите /книга!";
 
     if ($isVoiceQuery && $voiceTranscribedText !== '') {
         $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
@@ -7865,19 +8130,29 @@ if ($isBranchNewsQuery) {
         'attachment'       => $mascotStickers['smile'] ?? null,
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
         'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-        'dont_parse_links' => 0
+        'dont_parse_links' => 1
     ], $communityToken);
     exit;
 }
 
-// Сценарий 4: Запрос подбора книги (показ палитры настроений)
+// Сценарий 4: Запрос подбора книги — перенаправление в электронный каталог OPAC (без галлюцинаций)
 $isRecommendQuery = (
     $cmd === 'recommend' ||
-    preg_match('/^(?:подобрать книгу|выбрать книгу|подборка книг|посоветуй книгу|что почитать)[?!.]*$/ui', $cleanMsgForCmd)
+    strpos($cmd, 'mood_') === 0 ||
+    preg_match('/^(?:подобрать книгу|выбрать книгу|подборка книг|посоветуй книгу|что почитать|порекомендуй книгу|подобрать|что почитать\?|посоветуй что почитать)[?!.]*$/ui', $cleanMsgForCmd)
 );
 
 if ($isRecommendQuery) {
-    $reply = "📚 С радостью подберу для вас идеальную книгу! Выберите настроение кнопками ниже или просто напишите мне своими словами — какой жанр, эпоху или эмоцию вы ищете?";
+    $reply = "🔍 Чтобы исключить неточности и вымысел, книги подбираются строго по официальному электронному каталогу библиотек Владимира!\n\n"
+           . "📖 Как найти книгу в библиотеках:\n"
+           . "• Нажмите кнопку «🔎 Поиск в каталоге»;\n"
+           . "• Напишите команду: «/книга [название]» — узнать, в каких филиалах она есть в наличии;\n"
+           . "• Напишите: «/поиск [автор или тема]» — найти все доступные издания автора.\n\n"
+           . "✨ Примеры запросов:\n"
+           . "↳ «/книга Мастер и Маргарита»\n"
+           . "↳ «/поиск Стругацкие»\n"
+           . "↳ «/книга Ночной дозор»\n\n"
+           . "Бот покажет точные адреса филиалов, телефоны и шифры хранения! ✨";
 
     if ($isVoiceQuery && $voiceTranscribedText !== '') {
         $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
@@ -7886,8 +8161,9 @@ if ($isRecommendQuery) {
     vk_bot_send_message([
         'peer_id'          => $peerId,
         'message'          => $reply,
+        'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
         'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-        'keyboard'         => json_encode($inlineMoodKeyboard, JSON_UNESCAPED_UNICODE),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
         'dont_parse_links' => 1
     ], $communityToken);
     exit;
@@ -7988,18 +8264,27 @@ if ($mood !== '') {
         'wisdom'    => '🌱 Вдохновение и саморазвитие (книга, окрыляющая и дающая силы)'
     ];
     $moodDesc = $moodNames[$mood] ?? $mood;
-    $promptContext = "Читатель выбрал настроение: «{$moodDesc}». Посоветуй 1-2 книги под это состояние. Оформи каждую книгу строго как «Название» — Автор.";
+    $promptContext = "Читатель выбрал настроение: «{$moodDesc}». Посоветуй 1-2 РЕАЛЬНО СУЩЕСТВУЮЩИЕ книги признанных авторов под это состояние. ВАЖНО: Ты опытный библиотекарь-библиограф. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выдумывать или галлюцинировать несуществующие названия книг! Называй ТОЛЬКО реально изданные шедевры, которые автор действительно написал. Оформи каждую книгу строго как «Название» — Автор.";
     if ($userText !== '' && !preg_match('/^(?:🔥|☕|🧩|⭐|🚀|🌱|драйв|уют|тайна|золотая|космос|вдохновение)/ui', $userText)) {
         $promptContext .= "\nДополнительное пожелание читателя: " . $userText;
     }
 } elseif ($cmd === 'random') {
-    $promptContext = "Посоветуй читателю одну неожиданную, редкую или безумно увлекательную книгу из признанной классики или современной качественной литературы. Оформи книгу строго как «Название» — Автор.";
+    $promptContext = "Посоветуй читателю одну неожиданную, редкую или безумно увлекательную книгу из признанной классики или современной качественной литературы. ВАЖНО: Называй ТОЛЬКО реально существующую книгу, которую автор действительно написал. Категорически запрещено выдумывать названия! Оформи книгу строго как «Название» — Автор.";
     if ($userText !== '' && !preg_match('/^(?:🎲|случайный|шедевр)/ui', $userText)) {
         $promptContext .= "\nПожелание читателя: " . $userText;
     }
 } else {
     // Произвольное текстовое сообщение читателя (гарантируем, что текст вопроса не теряется и уходит ИИ!)
     $promptContext = $userText !== '' ? $userText : "Посоветуй хорошую книгу для чтения из фондов городских библиотек Владимира.";
+    if (preg_match('/(подобрать|посоветуй|порекомендуй|что почитать|подборк|книг|хочу почитать|какую книгу|автор|писател|фантастик|детектив|роман)/ui', $userText)) {
+        $promptContext .= "\n\n[ТРЕБОВАНИЕ ОПЫТНОГО БИБЛИОТЕКАРЯ]: Называй ТОЛЬКО РЕАЛЬНО СУЩЕСТВУЮЩИЕ, изданные книги, которые автор ДЕЙСТВИТЕЛЬНО написал! Категорически запрещено выдумывать несуществующие названия произведений или приписывать чужие книги авторам! Оформи каждую рекомендуемую книгу строго как «Название» — Автор.";
+    }
+}
+
+// Выполняем динамическое OPAC-RAG заземление, если в запросе упомянут автор
+$opacGrounding = vk_bot_retrieve_opac_grounding($userText !== '' ? $userText : ($moodDesc ?? ''));
+if ($opacGrounding !== '') {
+    $promptContext .= "\n\n" . $opacGrounding;
 }
 
 $isGopnikMode = vk_bot_is_gopnik_mode($peerId, $cacheDir);
@@ -8083,12 +8368,18 @@ SYS;
    - ТЫ ВЫСОКОТЕХНОЛОГИЧНЫЙ КНИЖНЫЙ РОБОТ, а не кот! Никаких «мяу», мурлыканий и кошачьих повадок. У тебя доброе электронное сердце, светлый ум и безграничная любовь к книгам.
 
 2. ФАКТОЛОГИЧЕСКАЯ ДОСТОВЕРНОСТЬ — 100% ФАКТЫ, СТРОЖАЙШИЙ ЗАПРЕТ ВЫМЫСЛА И ЛЖИ (ZERO HALLUCINATIONS):
-   - РЕКОМЕНДУЙ И УПОМИНАЙ ИСКЛЮЧИТЕЛЬНО РЕАЛЬНО СУЩЕСТВУЮЩИЕ КНИГИ И РЕАЛЬНО СУЩЕСТВОВАВШИХ/СУЩЕСТВУЮЩИХ АВТОРОВ!
-   - СТРОЖАЙШИЙ ЗАПРЕТ НА ВЫМЫСЕЛ И ПУТАНИЦУ АВТОРОВ:
-     * Прежде чем назвать книгу, убедись на 100%, кто её реальный автор, каков подлинный сюжет и главные герои!
-     * Категорически запрещено приписывать произведения чужим авторам (например: «Смерть в Венеции» написал Томас Манн, а Умберто Эко написал «Имя розы»; «Смерть в облаках» Агаты Кристи расследует Эркюль Пуаро, а не мисс Марпл; Андрей Белянин — самостоятельный писатель, а не псевдоним других авторов).
-     * Запрещено выдумывать несуществующие названия, вымышленные серии, фальшивые продолжения (сиквелы/приквелы) или фальшивые цитаты!
-     * Если не уверен на 100% в авторе или сюжете — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО называть эту книгу! Выбирай только те произведения, в которых абсолютно уверен.
+   - ТЫ — ОПЫТНЫЙ БИБЛИОТЕКАРЬ-БИБЛИОГРАФ С МНОГОЛЕТНИМ СТАЖЕМ РАБОТЫ В ЦГБ Г. ВЛАДИМИРА.
+     ГЛАВНАЯ ЧЕРТА ОПЫТНОГО БИБЛИОТЕКАРЯ — АБСОЛЮТНАЯ ТОЧНОСТЬ, ПРАВДА И ПРОВЕРЕННАЯ ИНФОРМАЦИЯ.
+   - СТРОЖАЙШИЙ КАТЕГОРИЧЕСКИЙ ЗАПРЕТ:
+     * НИКОГДА НЕ ВЫДУМЫВАТЬ КНИГИ, КОТОРЫХ НЕ СУЩЕСТВУЕТ В ПРИРОДЕ!
+     * НИКОГДА НЕ ПРИПИСЫВАТЬ АВТОРУ ТОГО, ЧЕГО ОН НИКОГДА НЕ ПИСАЛ! (Например, Сергей Лукьяненко НИКОГДА не писал книгу «Красный мороз» — у него есть «Ночной дозор», «Дневной дозор», «Лабиринт отражений», «Спектр», «Черновик», «Холодные берега» и др.; Н. А. Некрасов написал поэму «Мороз, Красный нос», а не Лукьяненко!).
+     * НИКОГДА НЕ ГАЛЛЮЦИНИРОВАТЬ И НЕ СОЧИНЯТЬ СЮЖЕТЫ, ПЕРСОНАЖЕЙ, ФАЛЬШИВЫЕ НАЗВАНИЯ ИЛИ СЕРИИ!
+     * ТОЛЬКО ПРАВДА И ПРОВЕРЕННАЯ БИБЛИОГРАФИЧЕСКАЯ ИНФОРМАЦИЯ!
+   - Прежде чем назвать книгу, убедись на 100%, кто её реальный автор, каков подлинный сюжет и главные герои!
+   - Категорически запрещено приписывать произведения чужим авторам (например: «Смерть в Венеции» написал Томас Манн, а Умберто Эко написал «Имя розы»; «Смерть в облаках» Агаты Кристи расследует Эркюль Пуаро, а не мисс Марпл; Андрей Белянин — самостоятельный писатель, а не псевдоним других авторов).
+   - Запрещено выдумывать несуществующие названия, вымышленные серии, фальшивые продолжения (сиквелы/приквелы) или фальшивые цитаты!
+   - Если читатель просит конкретного автора — называй ТОЛЬКО его реально изданные, общепризнанные произведения. Если не уверен на 100% в названии книги — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО называть выдуманное имя! Назови самую известную, классическую книгу этого автора, которая точно есть в любом библиотечном каталоге.
+   - Если читатель просит подборку по настроению или жанру — выбирай ТОЛЬКО книги из Золотого фонда классики и признанных авторов.
 
    - СТРОЖАЙШИЙ ЗАПРЕТ НА ПОДМЕНУ ТЕМЫ И ГАЛЛЮЦИНАЦИИ ПО КРАЕВЕДЕНИЮ И ИСТОРИИ БИБЛИОТЕК ВЛАДИМИРА:
      * Если читатель просит написать статью или рассказать об истории библиотечного дела во Владимире — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать о Булгакове, Достоевском или любых других посторонних писателях!
@@ -8257,7 +8548,7 @@ if (file_exists($activeKeyIndexFile) && is_readable($activeKeyIndexFile)) {
     }
 }
 
-$aiResponseText = vk_bot_call_ai_text($aiMessages, $aiMaxTok, 0.3, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
+$aiResponseText = vk_bot_call_ai_text($aiMessages, $aiMaxTok, 0.2, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId, $communityToken, $vkGroupId);
 
 // Если ИИ временно недоступен — резервный приветливый ответ
 if ($aiResponseText === '') {
