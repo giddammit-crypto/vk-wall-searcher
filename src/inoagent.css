@@ -449,42 +449,6 @@ body.inoagent-modal-open {
     transform: translateY(0);
 }
 
-/* Быстрые теги поиска (популярные запросы) */
-.inoagent-quick-tags {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.inoagent-quick-tags-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--ino-text-dim);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.inoagent-quick-tag {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--ino-text-muted);
-    font-size: 0.8rem;
-    padding: 4px 11px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.inoagent-quick-tag:hover {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: rgba(56, 189, 248, 0.4);
-    color: #ffffff;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
-    transform: translateY(-1px);
-}
-
 /* ============================================================================
    5. ПАНЕЛЬ ФИЛЬТРОВ-ЧИПОВ (.inoagent-filters-bar)
    ========================================================================== */
@@ -1053,18 +1017,6 @@ body.inoagent-modal-open {
     color: #94a3b8;
 }
 
-[data-theme="light"] .inoagent-quick-tag {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #475569;
-}
-
-[data-theme="light"] .inoagent-quick-tag:hover {
-    background: #e0f2fe;
-    border-color: #38bdf8;
-    color: #0284c7;
-}
-
 [data-theme="light"] .inoagent-filters-bar {
     background: #f8fafc;
     border-color: #e2e8f0;
@@ -1129,6 +1081,36 @@ body.inoagent-modal-open {
     color: #0f172a;
 }
 
+[data-theme="light"] .inoagent-type-badge {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+[data-theme="light"] .inoagent-status-badge.is-active {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+[data-theme="light"] .inoagent-status-badge.is-excluded {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #16a34a;
+}
+
+[data-theme="light"] .inoagent-reg-num {
+    background: #e0f2fe;
+    border-color: #bae6fd;
+    color: #0284c7;
+}
+
+[data-theme="light"] .inoagent-card-aliases .alias-pill {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
 [data-theme="light"] .inoagent-card-meta {
     background: #f8fafc;
     border-color: #e2e8f0;
@@ -1159,13 +1141,14 @@ body.inoagent-modal-open {
 }
 
 [data-theme="light"] .inoagent-btn-action {
-    background: #f8fafc;
+    background: #ffffff;
     border-color: #cbd5e1;
-    color: #475569;
+    color: #334155;
 }
 
 [data-theme="light"] .inoagent-btn-action:hover {
-    background: #e2e8f0;
+    background: #f1f5f9;
+    border-color: #94a3b8;
     color: #0f172a;
 }
 
@@ -1177,7 +1160,12 @@ body.inoagent-modal-open {
 
 [data-theme="light"] .inoagent-btn-action.btn-cosmo:hover {
     background: #fce7f3;
+    border-color: #f472b6;
     color: #be185d;
+}
+
+[data-theme="light"] .inoagent-card-actions {
+    border-top-color: #e2e8f0;
 }
 
 [data-theme="light"] .inoagent-empty-state {
@@ -1263,5 +1251,62 @@ body.inoagent-modal-open {
 
     .inoagent-card-meta {
         grid-template-columns: 1fr;
+    }
+
+    .inoagent-card-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .inoagent-btn-action {
+        padding: 8px 14px;
+        min-height: 40px;
+        font-size: 0.82rem;
+    }
+
+    .inoagent-btn-action.btn-cosmo {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    #inoagent-modal-overlay {
+        padding: 4px;
+    }
+
+    .inoagent-modal-dialog {
+        border-radius: 12px;
+        max-height: 98vh;
+        max-height: 98dvh;
+    }
+
+    .inoagent-modal-banner {
+        padding: 10px 12px;
+    }
+
+    .inoagent-banner-title {
+        font-size: 1rem;
+    }
+
+    .inoagent-modal-body {
+        padding: 12px 8px;
+        gap: 10px;
+    }
+
+    .inoagent-chip {
+        padding: 6px 10px;
+        font-size: 0.78rem;
+    }
+
+    .inoagent-card {
+        padding: 14px;
+    }
+
+    .inoagent-card-title {
+        font-size: 1.05rem;
     }
 }

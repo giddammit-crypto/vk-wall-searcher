@@ -45,7 +45,6 @@ let searchBtnEl = null;
 let spinnerEl = null;
 let resultsGridEl = null;
 let summaryBadgeEl = null;
-let quickTagsEl = null;
 
 // Состояние фильтрации
 let currentSearchQuery = '';
@@ -1108,14 +1107,18 @@ function filterRegistry(items, query, typeFilter, statusFilter) {
 /**
  * Отрисовка списка карточек результатов
  */
-function renderResults(matchedItems) {
+function renderResults(matchedItems, totalCount = null, source = 'live') {
     if (!resultsGridEl || !summaryBadgeEl) return;
+
+    const displayCount = (totalCount !== null && totalCount !== undefined) ? totalCount : matchedItems.length;
+    const sourceLabel = source === 'snapshot' ? ' (снимок)' : (source === 'cache' ? ' (кэш)' : ' (Минюст РФ)');
 
     // Обновляем счётчик
     summaryBadgeEl.innerHTML = `
         <span class="material-symbols-outlined" style="font-size: 16px;">policy</span>
-        Найдено: <strong>${matchedItems.length}</strong>
+        Найдено: <strong>${displayCount}</strong>
     `;
+    summaryBadgeEl.title = `Источник данных: ${source}${sourceLabel}`;
 
     // Если ничего не найдено
     if (matchedItems.length === 0) {
@@ -1372,12 +1375,54 @@ function updateFilterChipsUI() {
 }
 
 /**
- * Выполнение поиска и фильтрации
+ * Выполнение поиска и фильтрации (прямой опрос Минюста через API шлюз, как в OPAC)
  */
 async function executeSearch() {
-    const data = await loadRegistryData();
-    const filtered = filterRegistry(data, currentSearchQuery, currentTypeFilter, currentStatusFilter);
-    renderResults(filtered);
+    if (spinnerEl) {
+        spinnerEl.classList.add('active');
+    }
+
+    const query = currentSearchQuery.trim();
+    const type = currentTypeFilter;
+    const status = currentStatusFilter;
+
+    try {
+        const queryParams = new URLSearchParams({
+            action: 'search',
+            query: query,
+            type: type,
+            status: status,
+            limit: '24',
+            page: '1'
+        });
+
+        const url = resolveApiUrl('api/inoagent.php?' + queryParams.toString());
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.ok && Array.isArray(data.values)) {
+                renderResults(data.values, data.total, data.source);
+                if (spinnerEl) spinnerEl.classList.remove('active');
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('[InoagentModal] Запрос к live API не удался, переходим на локальный резерв:', err);
+    }
+
+    // Резервный фолбэк (offline snapshot / default items)
+    try {
+        const localData = await loadRegistryData();
+        const filtered = filterRegistry(localData, query, type, status);
+        renderResults(filtered, filtered.length, 'snapshot');
+    } catch (err) {
+        console.error('[InoagentModal] Критическая ошибка выборки данных:', err);
+        renderResults([], 0, 'error');
+    } finally {
+        if (spinnerEl) {
+            spinnerEl.classList.remove('active');
+        }
+    }
 }
 
 /**
@@ -1400,9 +1445,6 @@ function onSearchInput(val) {
 
     debounceTimer = setTimeout(async () => {
         await executeSearch();
-        if (spinnerEl) {
-            spinnerEl.classList.remove('active');
-        }
     }, 300);
 }
 
@@ -1418,7 +1460,6 @@ function bindModalEvents() {
     spinnerEl = modalOverlayEl.querySelector('[data-inoagent-spinner]');
     resultsGridEl = modalOverlayEl.querySelector('[data-inoagent-grid]');
     summaryBadgeEl = modalOverlayEl.querySelector('[data-inoagent-summary]');
-    quickTagsEl = modalOverlayEl.querySelector('.inoagent-quick-tags');
 
     // Ввод в поисковую строку (debounce 300мс)
     if (searchInputEl) {
@@ -1453,19 +1494,6 @@ function bindModalEvents() {
             if (debounceTimer) clearTimeout(debounceTimer);
             if (spinnerEl) spinnerEl.classList.remove('active');
             executeSearch();
-        });
-    }
-
-    // Быстрые теги (популярные поиски)
-    if (quickTagsEl) {
-        quickTagsEl.addEventListener('click', (e) => {
-            const tagBtn = e.target.closest('.inoagent-quick-tag');
-            if (!tagBtn) return;
-            const query = tagBtn.getAttribute('data-tag') || tagBtn.textContent.trim();
-            if (searchInputEl) {
-                searchInputEl.value = query;
-            }
-            onSearchInput(query);
         });
     }
 
@@ -1604,23 +1632,6 @@ export function initInoagentModal() {
                             <span class="material-symbols-outlined icon">travel_explore</span>
                             <span class="inoagent-search-btn-text">Искать</span>
                         </button>
-                    </div>
-
-                    <!-- Горячие подсказки популярных авторов/персон -->
-                    <div class="inoagent-quick-tags">
-                        <span class="inoagent-quick-tags-label">
-                            <span class="material-symbols-outlined" style="font-size: 15px;">trending_up</span>
-                            Популярное:
-                        </span>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Акунин">Акунин</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Глуховский">Глуховский</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Быков">Быков</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Улицкая">Улицкая</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Зыгарь">Зыгарь</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Шульман">Шульман</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Земфира">Земфира</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Дождь">Дождь</button>
-                        <button type="button" class="inoagent-quick-tag" data-tag="Голос">Голос</button>
                     </div>
                 </section>
 

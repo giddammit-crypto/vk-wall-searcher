@@ -525,80 +525,153 @@ function inoagent_handle_request($params = null, $returnOnly = false) {
                 }
             }
 
-            // Получаем сырые данные реестра
-            $registry = inoagent_get_registry($forceSnapshot);
-            $rawValues = $registry['values'];
-            $source = $registry['source'];
-            $lastModified = $registry['last_modified'];
+            // Прямой парсинг / запрос к сайту Минюста в реальном времени (как в OPAC)
+            $liveSuccess = false;
+            $rawValues = [];
+            $total = 0;
+            $source = 'live';
+            $lastModified = date('Y-m-d H:i:s');
 
-            // Нормализуем поисковые слова
-            $normQuery = inoagent_normalize_text($query);
-            $queryWords = array_filter(explode(' ', $normQuery), function($w) {
-                return $w !== '';
-            });
-
-            $filtered = [];
-
-            foreach ($rawValues as $rawRow) {
-                $item = inoagent_normalize_record($rawRow);
-
-                // Фильтр по статусу
-                if ($statusFilter !== 'all' && $item['status'] !== $statusFilter) {
-                    continue;
+            if (!$forceSnapshot) {
+                // Если задан поисковый запрос от пользователя — парсим напрямую с сайта Минюста в реальном времени!
+                // Минюст REST API фильтрует по search в реальном времени.
+                $minjustSearchTerm = $query;
+                if ($minjustSearchTerm === '' && $typeFilter !== 'all') {
+                    if ($typeFilter === 'fiz') $minjustSearchTerm = 'физическ';
+                    elseif ($typeFilter === 'ur') $minjustSearchTerm = 'юридическ';
+                    elseif ($typeFilter === 'other') $minjustSearchTerm = 'объединен';
                 }
 
-                // Фильтр по типу
-                if ($typeFilter !== 'all' && $item['type'] !== $typeFilter) {
-                    continue;
-                }
+                $offset = ($page - 1) * $limit;
+                list($curlOk, $curlBody) = inoagent_curl(INOAGENT_API_BASE . '/values', [
+                    'offset' => ($typeFilter === 'all' && $statusFilter === 'all') ? $offset : 0,
+                    'limit'  => ($typeFilter === 'all' && $statusFilter === 'all') ? $limit : 150,
+                    'search' => $minjustSearchTerm
+                ], INOAGENT_TIMEOUT, INOAGENT_CONNECT_TIMEOUT);
 
-                // Поиск по ключевым словам
-                if (!empty($queryWords)) {
-                    $searchVector = inoagent_normalize_text(
-                        $item['name'] . ' ' .
-                        $item['reg_num'] . ' ' .
-                        $item['inn'] . ' ' .
-                        $item['ogrn'] . ' ' .
-                        $item['snils'] . ' ' .
-                        $item['domains'] . ' ' .
-                        $item['grounds'] . ' ' .
-                        $item['members'] . ' ' .
-                        implode(' ', $item['aliases'])
-                    );
+                if ($curlOk) {
+                    $minjustJson = json_decode($curlBody, true);
+                    if (is_array($minjustJson) && isset($minjustJson['values']) && is_array($minjustJson['values'])) {
+                        $liveSuccess = true;
+                        $totalFromMinjust = (int)($minjustJson['size'] ?? count($minjustJson['values']));
+                        
+                        if ($typeFilter === 'all' && $statusFilter === 'all') {
+                            $total = $totalFromMinjust;
+                            $normalizedBatch = [];
+                            foreach ($minjustJson['values'] as $row) {
+                                $normalizedBatch[] = inoagent_normalize_record($row);
+                            }
+                            $pages = max(1, (int)ceil($total / $limit));
+                            if ($page > $pages && $total > 0) $page = $pages;
 
-                    $matched = true;
-                    foreach ($queryWords as $word) {
-                        if (mb_strpos($searchVector, $word) === false) {
-                            $matched = false;
-                            break;
+                            $response = [
+                                'ok'            => true,
+                                'total'         => $total,
+                                'page'          => $page,
+                                'pages'         => $pages,
+                                'values'        => $normalizedBatch,
+                                'source'        => 'live',
+                                'last_modified' => $lastModified
+                            ];
+                        } else {
+                            // При фильтрации по типу/статусу накладываем фильтры на полученные из Минюста результаты
+                            $allFiltered = [];
+                            foreach ($minjustJson['values'] as $row) {
+                                $item = inoagent_normalize_record($row);
+                                if ($statusFilter !== 'all' && $item['status'] !== $statusFilter) continue;
+                                if ($typeFilter !== 'all' && $item['type'] !== $typeFilter) continue;
+                                $allFiltered[] = $item;
+                            }
+                            $total = count($allFiltered);
+                            $pages = max(1, (int)ceil($total / $limit));
+                            if ($page > $pages && $total > 0) $page = $pages;
+                            $pageValues = array_slice($allFiltered, $offset, $limit);
+
+                            $response = [
+                                'ok'            => true,
+                                'total'         => $total,
+                                'page'          => $page,
+                                'pages'         => $pages,
+                                'values'        => $pageValues,
+                                'source'        => 'live',
+                                'last_modified' => $lastModified
+                            ];
                         }
                     }
-                    if (!$matched) {
+                }
+            }
+
+            // Если сетевой запрос к Минюсту не удался или включен офлайн — fallback на локальный снимок
+            if (!$liveSuccess) {
+                $registry = inoagent_get_registry($forceSnapshot);
+                $rawValues = $registry['values'];
+                $source = $registry['source'];
+                $lastModified = $registry['last_modified'];
+
+                $normQuery = inoagent_normalize_text($query);
+                $queryWords = array_filter(explode(' ', $normQuery), function($w) {
+                    return $w !== '';
+                });
+
+                $filtered = [];
+                foreach ($rawValues as $rawRow) {
+                    $item = inoagent_normalize_record($rawRow);
+
+                    if ($statusFilter !== 'all' && $item['status'] !== $statusFilter) {
                         continue;
                     }
+
+                    if ($typeFilter !== 'all' && $item['type'] !== $typeFilter) {
+                        continue;
+                    }
+
+                    if (!empty($queryWords)) {
+                        $searchVector = inoagent_normalize_text(
+                            $item['name'] . ' ' .
+                            $item['reg_num'] . ' ' .
+                            $item['inn'] . ' ' .
+                            $item['ogrn'] . ' ' .
+                            $item['snils'] . ' ' .
+                            $item['domains'] . ' ' .
+                            $item['grounds'] . ' ' .
+                            $item['members'] . ' ' .
+                            implode(' ', $item['aliases'])
+                        );
+
+                        $matched = true;
+                        foreach ($queryWords as $word) {
+                            if (mb_strpos($searchVector, $word) === false) {
+                                $matched = false;
+                                break;
+                            }
+                        }
+                        if (!$matched) {
+                            continue;
+                        }
+                    }
+
+                    $filtered[] = $item;
                 }
 
-                $filtered[] = $item;
+                $total = count($filtered);
+                $pages = max(1, (int)ceil($total / $limit));
+                if ($page > $pages && $total > 0) {
+                    $page = $pages;
+                }
+
+                $offset = ($page - 1) * $limit;
+                $pageValues = array_slice($filtered, $offset, $limit);
+
+                $response = [
+                    'ok'            => true,
+                    'total'         => $total,
+                    'page'          => $page,
+                    'pages'         => $pages,
+                    'values'        => $pageValues,
+                    'source'        => $source,
+                    'last_modified' => $lastModified
+                ];
             }
-
-            $total = count($filtered);
-            $pages = max(1, (int)ceil($total / $limit));
-            if ($page > $pages && $total > 0) {
-                $page = $pages;
-            }
-
-            $offset = ($page - 1) * $limit;
-            $pageValues = array_slice($filtered, $offset, $limit);
-
-            $response = [
-                'ok'            => true,
-                'total'         => $total,
-                'page'          => $page,
-                'pages'         => $pages,
-                'values'        => $pageValues,
-                'source'        => $source,
-                'last_modified' => $lastModified
-            ];
 
             // Сохраняем в поисковый кэш
             if (!is_dir(INOAGENT_CACHE_DIR)) {
