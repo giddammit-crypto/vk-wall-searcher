@@ -222,11 +222,7 @@
     <link rel="stylesheet" href="src/mascot.css?v=4.61.0">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/opac_search.css?v=4.61.0">
-    <link rel="stylesheet" href="src/splash_loader.css?v=5.0.0">
-
-    <!-- Three.js 3D Engine & GLTF Loader -->
-    <script src="assets/vendor/three/three.min.js"></script>
-    <script src="assets/vendor/three/GLTFLoader.js"></script>
+    <link rel="stylesheet" href="src/splash_loader.css?v=5.1.0">
 
     <!-- JSZip library for creating zip files in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -313,11 +309,47 @@
                 </svg>
             </div>
 
-            <!-- WebGL 3D Robot Viewport (Strictly <= 128px height) -->
+            <!-- Cartoon Robot Cosmo Character Viewport (Strictly <= 128px height) -->
             <div class="aurora-splash-robot-viewport">
-                <canvas id="aurora-splash-webgl"></canvas>
-                <div class="aurora-splash-hover-shadow"></div>
-                <div class="aurora-splash-ion-glow"></div>
+                <div class="cosmo-toon act-sleeping" id="cosmo-toon">
+                    <div class="cosmo-aura"></div>
+                    <div class="cosmo-toon-body-group">
+                        <div class="cosmo-toon-antenna">
+                            <div class="antenna-orb">
+                                <div class="antenna-pulse"></div>
+                            </div>
+                            <div class="antenna-rod"></div>
+                        </div>
+                        <div class="cosmo-toon-head">
+                            <div class="cosmo-ear cosmo-ear-left"></div>
+                            <div class="cosmo-ear cosmo-ear-right"></div>
+                            <div class="cosmo-visor">
+                                <div class="cosmo-visor-glare"></div>
+                                <div class="cosmo-eyes eyes-sleeping" id="cosmo-eyes">
+                                    <div class="cosmo-eye cosmo-eye-left"><span class="eye-symbol"></span></div>
+                                    <div class="cosmo-eye cosmo-eye-right"><span class="eye-symbol"></span></div>
+                                </div>
+                                <div class="cosmo-blush cosmo-blush-left"></div>
+                                <div class="cosmo-blush cosmo-blush-right"></div>
+                            </div>
+                        </div>
+                        <div class="cosmo-toon-torso">
+                            <div class="cosmo-arm cosmo-arm-left">
+                                <div class="arm-segment"></div>
+                                <div class="hand-segment"></div>
+                            </div>
+                            <div class="torso-core-badge">
+                                <div class="core-pulsar"></div>
+                            </div>
+                            <div class="cosmo-arm cosmo-arm-right" id="cosmo-arm-wave">
+                                <div class="arm-segment"></div>
+                                <div class="hand-segment"></div>
+                            </div>
+                        </div>
+                        <div class="cosmo-thruster-flame"></div>
+                    </div>
+                    <div class="cosmo-hover-shadow"></div>
+                </div>
             </div>
         </div>
 
@@ -338,14 +370,13 @@
         </div>
     </div>
     <script type="module">
-    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.0.0';
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.1.0';
     (function() {
         try {
             const p = new URLSearchParams(window.location.search);
             if (p.get('mode') !== 'shelf_recommend') {
                 window.__auroraSplash = new AuroraSplashLoader({
-                    duration: 8.0,
-                    modelUrl: 'assets/models/cute_robot.glb'
+                    duration: 8.5
                 });
             } else {
                 const splash = document.getElementById('aurora-splash');
