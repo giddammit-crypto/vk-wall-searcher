@@ -1,127 +1,76 @@
 /**
- * Aurora Splash Screen & Cartoon Cosmo Story Engine
- * 6-Act Cinematic Cartoon Intro:
- * 1. Sleeping Guard & Floating Books
- * 2. System Alert Impulse & Magenta Exclamation
- * 3. Morning Stretch & Sensor Calibration
- * 4. Joyful Jump & Neon Arc «КОСМО» Starburst
- * 5. Friendly Hand-Wave & Floating Levitation
- * 6. Photonic Warp Dissolve into Aurora Site
+ * Aurora Splash Screen & 3D Cosmo Robot Engine
+ * Uses the authentic 3D GLB model (assets/models/cute_robot.glb) and official mascot assets
+ * with Three.js WebGL rendering, studio lighting, Lissajous hover physics,
+ * curved typography «КОСМО», and HUD progress bar.
  */
 
 export class AuroraSplashLoader {
     constructor(options = {}) {
-        this.totalDuration = options.duration || 9.0; // 9 seconds rich story
+        this.totalDuration = options.duration || 8.0; // 8 seconds
         this.onComplete = options.onComplete || (() => {});
+        this.modelUrl = options.modelUrl || 'assets/models/cute_robot.glb';
 
         this.container = document.getElementById('aurora-splash');
-        this.stage = document.querySelector('.aurora-splash-stage');
-        this.canvas = document.getElementById('aurora-splash-stars');
+        this.starsCanvas = document.getElementById('aurora-splash-stars');
+        this.webglCanvas = document.getElementById('aurora-splash-webgl');
+        this.mascotFallback = document.getElementById('aurora-splash-mascot-fallback');
         this.arcContainer = document.getElementById('aurora-splash-arc-letters');
         this.progressFill = document.getElementById('aurora-splash-progress-fill');
         this.progressPercent = document.getElementById('aurora-splash-percent');
         this.progressStatus = document.getElementById('aurora-splash-status-text');
         this.skipBtn = document.getElementById('aurora-splash-skip');
-        this.shadowEl = document.querySelector('.cosmo-hover-shadow');
-
-        // Cartoon Actor Elements
-        this.cosmoToon = document.getElementById('cosmo-toon');
-        this.cosmoEyes = document.getElementById('cosmo-eyes');
-        this.armRight = document.getElementById('cosmo-arm-wave');
+        this.shadowEl = document.querySelector('.aurora-splash-hover-shadow');
+        this.ionGlowEl = document.querySelector('.aurora-splash-ion-glow');
 
         this.isRunning = false;
         this.isClosed = false;
         this.startTime = null;
         this.animFrameId = null;
 
-        // Letters elements
-        this.letterEls = [];
+        // Three.js instances
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.robotGroup = null;
+        this.robotMesh = null;
+        this.isModelLoaded = false;
+        this.isThreeReady = false;
 
-        // Canvas 2D Particle and Entity Store
-        this.ctx = null;
-        this.stars = [];
-        this.books = [];
-        this.zzzParticles = [];
-        this.shockwaves = [];
-        this.sparkles = [];
-        this.burstTriggered = false;
-        this.alertTriggered = false;
+        // Entry trajectory coordinates
+        this.xStart = -4.2;
+        this.xTarget = 0.0;
+        this.targetHeight = 1.42; // Strictly ~115-125px on 38deg FOV camera at z=3.4
+
+        // SVG letters elements
+        this.letterEls = [];
 
         this.init();
     }
 
-    init() {
+    async init() {
         if (!this.container) return;
 
-        // Ensure cartoon DOM is properly present
-        this.ensureCartoonDom();
-
-        // Setup Controls (Skip button & Keyboard)
+        // 1. Setup Controls (Skip button & Keyboard)
         this.setupControls();
 
-        // Setup SVG Arc Typography
+        // 2. Background Starfield & Cosmic Dust Canvas
+        this.initStarfield();
+
+        // 3. Setup Curved Text Elements «КОСМО»
         this.setupCurvedLetters();
 
-        // Initialize 2D Canvas Story Environment
-        this.initCanvasFx();
+        // 4. Ensure Three.js and GLTFLoader are loaded
+        await this.ensureThreeLibraries();
 
-        // Start Master Story Timeline
+        // 5. Setup WebGL 3D Scene
+        this.initWebGL();
+
+        // 6. Load Authentic 3D GLB Model
+        this.loadModel();
+
+        // 7. Start Master Animation Timeline
         this.start();
-    }
-
-    ensureCartoonDom() {
-        const viewport = document.querySelector('.aurora-splash-robot-viewport');
-        if (!viewport) return;
-
-        // If WebGL canvas is present, replace or overlay with cartoon Cosmo
-        const existingToon = document.getElementById('cosmo-toon');
-        if (!existingToon) {
-            viewport.innerHTML = `
-                <div class="cosmo-toon act-sleeping" id="cosmo-toon">
-                    <div class="cosmo-aura"></div>
-                    <div class="cosmo-toon-body-group">
-                        <div class="cosmo-toon-antenna">
-                            <div class="antenna-orb">
-                                <div class="antenna-pulse"></div>
-                            </div>
-                            <div class="antenna-rod"></div>
-                        </div>
-                        <div class="cosmo-toon-head">
-                            <div class="cosmo-ear cosmo-ear-left"></div>
-                            <div class="cosmo-ear cosmo-ear-right"></div>
-                            <div class="cosmo-visor">
-                                <div class="cosmo-visor-glare"></div>
-                                <div class="cosmo-eyes eyes-sleeping" id="cosmo-eyes">
-                                    <div class="cosmo-eye cosmo-eye-left"><span class="eye-symbol"></span></div>
-                                    <div class="cosmo-eye cosmo-eye-right"><span class="eye-symbol"></span></div>
-                                </div>
-                                <div class="cosmo-blush cosmo-blush-left"></div>
-                                <div class="cosmo-blush cosmo-blush-right"></div>
-                            </div>
-                        </div>
-                        <div class="cosmo-toon-torso">
-                            <div class="cosmo-arm cosmo-arm-left">
-                                <div class="arm-segment"></div>
-                                <div class="hand-segment"></div>
-                            </div>
-                            <div class="torso-core-badge">
-                                <div class="core-pulsar"></div>
-                            </div>
-                            <div class="cosmo-arm cosmo-arm-right" id="cosmo-arm-wave">
-                                <div class="arm-segment"></div>
-                                <div class="hand-segment"></div>
-                            </div>
-                        </div>
-                        <div class="cosmo-thruster-flame"></div>
-                    </div>
-                    <div class="cosmo-hover-shadow"></div>
-                </div>
-            `;
-            this.cosmoToon = document.getElementById('cosmo-toon');
-            this.cosmoEyes = document.getElementById('cosmo-eyes');
-            this.armRight = document.getElementById('cosmo-arm-wave');
-            this.shadowEl = document.querySelector('.cosmo-hover-shadow');
-        }
     }
 
     setupControls() {
@@ -147,68 +96,260 @@ export class AuroraSplashLoader {
             const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
             tspan.textContent = char;
             tspan.setAttribute('class', 'aurora-splash-arc-letter');
-            tspan.setAttribute('dx', index === 0 ? '0' : '16');
+            tspan.setAttribute('dx', index === 0 ? '0' : '15');
             tspan.style.opacity = '0';
             this.arcContainer.appendChild(tspan);
             this.letterEls.push(tspan);
         });
     }
 
-    initCanvasFx() {
-        if (!this.canvas) return;
-        this.ctx = this.canvas.getContext('2d');
-        if (!this.ctx) return;
+    initStarfield() {
+        if (!this.starsCanvas) return;
+        const canvas = this.starsCanvas;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        let w = this.canvas.width = window.innerWidth;
-        let h = this.canvas.height = window.innerHeight;
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
 
-        // 1. Static & Drifting Stars
-        const starCount = Math.min(180, Math.floor((w * h) / 7500));
-        for (let i = 0; i < starCount; i++) {
-            this.stars.push({
-                x: Math.random() * w,
-                y: Math.random() * h,
+        const stars = [];
+        const count = Math.min(160, Math.floor((width * height) / 7500));
+
+        for (let i = 0; i < count; i++) {
+            stars.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
                 radius: Math.random() * 1.5 + 0.5,
-                vy: -(Math.random() * 0.22 + 0.04),
+                vy: -(Math.random() * 0.22 + 0.05),
                 vx: (Math.random() - 0.5) * 0.08,
-                opacity: Math.random() * 0.6 + 0.2,
+                opacity: Math.random() * 0.5 + 0.2,
                 pulseAngle: Math.random() * Math.PI * 2,
-                color: Math.random() > 0.35 ? '56, 189, 248' : (Math.random() > 0.5 ? '236, 72, 153' : '139, 92, 246')
+                color: Math.random() > 0.4 ? '56, 189, 248' : '236, 72, 153'
             });
         }
 
-        // 2. Zero-Gravity Floating Magical Books (Library Theme)
-        const bookCount = 7;
-        const bookPalettes = [
-            { cover: '#38bdf8', pages: '#e0f2fe' },
-            { cover: '#ec4899', pages: '#fce7f3' },
-            { cover: '#8b5cf6', pages: '#ede9fe' },
-            { cover: '#6366f1', pages: '#e0e7ff' }
-        ];
-
-        for (let b = 0; b < bookCount; b++) {
-            const side = b % 2 === 0 ? -1 : 1;
-            this.books.push({
-                x: w * 0.5 + side * (120 + Math.random() * (w * 0.35)),
-                y: h * 0.35 + (Math.random() - 0.5) * 200,
-                width: 24 + Math.random() * 10,
-                height: 32 + Math.random() * 10,
-                angle: (Math.random() - 0.5) * 0.6,
-                vAngle: (Math.random() - 0.5) * 0.008,
-                vx: (Math.random() - 0.5) * 0.25,
-                vy: (Math.random() - 0.5) * 0.2,
-                opacity: 0.75,
-                palette: bookPalettes[b % bookPalettes.length],
-                openAngle: 0.25 + Math.random() * 0.4
-            });
-        }
-
-        this.resizeHandler = () => {
-            if (!this.canvas) return;
-            w = this.canvas.width = window.innerWidth;
-            h = this.canvas.height = window.innerHeight;
+        const resizeStars = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
         };
-        window.addEventListener('resize', this.resizeHandler);
+        window.addEventListener('resize', resizeStars);
+
+        const drawStars = () => {
+            if (this.isClosed) return;
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < stars.length; i++) {
+                const s = stars[i];
+                s.y += s.vy;
+                s.x += s.vx;
+                s.pulseAngle += 0.02;
+
+                if (s.y < -5) { s.y = height + 5; s.x = Math.random() * width; }
+                if (s.x < -5) s.x = width + 5;
+                if (s.x > width + 5) s.x = -5;
+
+                const alpha = Math.max(0.12, Math.min(0.85, s.opacity + Math.sin(s.pulseAngle) * 0.25));
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${s.color}, ${alpha})`;
+                ctx.fill();
+            }
+
+            if (this.isRunning && !this.isClosed) {
+                requestAnimationFrame(drawStars);
+            }
+        };
+        drawStars();
+    }
+
+    async ensureThreeLibraries() {
+        if (window.THREE && window.THREE.GLTFLoader) {
+            this.isThreeReady = true;
+            return;
+        }
+
+        const loadScript = (src) => {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${src}"]`);
+                if (existing) {
+                    if (existing.dataset.loaded === 'true' || window.THREE) {
+                        return resolve();
+                    }
+                    existing.addEventListener('load', () => resolve());
+                    existing.addEventListener('error', (e) => reject(e));
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = (e) => reject(e);
+                document.head.appendChild(script);
+            });
+        };
+
+        try {
+            if (!window.THREE) {
+                await loadScript('assets/vendor/three/three.min.js');
+            }
+            if (window.THREE && !window.THREE.GLTFLoader) {
+                await loadScript('assets/vendor/three/GLTFLoader.js');
+            }
+            this.isThreeReady = !!(window.THREE && window.THREE.GLTFLoader);
+        } catch (err) {
+            console.warn('[Splash] Error loading Three.js scripts, using official mascot asset fallback:', err);
+            this.activateMascotFallback();
+        }
+    }
+
+    activateMascotFallback() {
+        if (this.webglCanvas) this.webglCanvas.style.display = 'none';
+        if (this.mascotFallback) {
+            this.mascotFallback.style.display = 'block';
+        }
+    }
+
+    initWebGL() {
+        if (!window.THREE || !this.webglCanvas) {
+            this.activateMascotFallback();
+            return;
+        }
+
+        const THREE = window.THREE;
+        const rect = this.webglCanvas.parentElement.getBoundingClientRect();
+        const width = rect.width || 600;
+        const height = rect.height || 175;
+
+        try {
+            this.scene = new THREE.Scene();
+
+            // Camera: tuned so model fits strictly within 128px height
+            this.camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
+            this.camera.position.set(0, 0, 3.4);
+            this.camera.lookAt(0, 0, 0);
+
+            // WebGL Renderer with ACES Tone Mapping
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.webglCanvas,
+                alpha: true,
+                antialias: true,
+                powerPreference: 'high-performance'
+            });
+            this.renderer.setSize(width, height, false);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            if (THREE.ACESFilmicToneMapping) {
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.05;
+            }
+
+            // --- Studio Lighting Rig (Balanced & Crisp) ---
+            // 1. Soft Ambient (prevents deep blacks without blowing out)
+            const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+            this.scene.add(ambient);
+
+            // 2. Key Light (Top-Front-Right) for clean highlights
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+            keyLight.position.set(2.2, 2.8, 2.5);
+            this.scene.add(keyLight);
+
+            // 3. Cyan Fill Light (Aurora palette signature)
+            const fillLight = new THREE.DirectionalLight(0x38bdf8, 1.6);
+            fillLight.position.set(-3.0, 1.5, 1.8);
+            this.scene.add(fillLight);
+
+            // 4. Magenta Rim Backlight (Accentuates silhouette)
+            const rimLight = new THREE.DirectionalLight(0xec4899, 1.8);
+            rimLight.position.set(2.5, -1.0, -2.5);
+            this.scene.add(rimLight);
+
+            // 5. Under-Thruster Point Light (Simulates ion engine)
+            const ionLight = new THREE.PointLight(0x38bdf8, 1.3, 3.5);
+            ionLight.position.set(0, -0.85, 0.2);
+            this.scene.add(ionLight);
+
+            // Robot Root Group
+            this.robotGroup = new THREE.Group();
+            this.scene.add(this.robotGroup);
+
+            // Start off-screen at left, facing forward in direction of motion (+X)
+            this.robotGroup.position.set(this.xStart, 0, 0);
+            this.robotGroup.rotation.set(0, Math.PI / 2, 0); // Profile view facing right
+
+            // Resize handling
+            this.resizeHandler = () => {
+                if (!this.renderer || !this.camera || !this.webglCanvas) return;
+                const r = this.webglCanvas.parentElement.getBoundingClientRect();
+                const w = r.width || 600;
+                const h = r.height || 175;
+                this.camera.aspect = w / h;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(w, h, false);
+            };
+            window.addEventListener('resize', this.resizeHandler);
+
+        } catch (e) {
+            console.warn('[Splash] WebGL initialization failed, switching to mascot asset fallback:', e);
+            this.activateMascotFallback();
+        }
+    }
+
+    loadModel() {
+        if (!window.THREE || !window.THREE.GLTFLoader || !this.scene) {
+            this.activateMascotFallback();
+            return;
+        }
+
+        const THREE = window.THREE;
+        const loader = new THREE.GLTFLoader();
+
+        loader.load(
+            this.modelUrl,
+            (gltf) => {
+                if (this.isClosed) return;
+                const model = gltf.scene;
+
+                // Compute bounding box to normalize height precisely
+                const box = new THREE.Box3().setFromObject(model);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+
+                const scale = this.targetHeight / (size.y || 1);
+                model.scale.set(scale, scale, scale);
+
+                // Center model pivot at exact center of robot
+                model.position.x = -center.x * scale;
+                model.position.y = -center.y * scale;
+                model.position.z = -center.z * scale;
+
+                // Optimize PBR material properties
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        if (child.material) {
+                            child.material.metalness = 0.08;
+                            child.material.roughness = 0.38;
+                            child.material.needsUpdate = true;
+                        }
+                    }
+                });
+
+                this.robotMesh = model;
+                this.robotGroup.add(model);
+                this.isModelLoaded = true;
+                console.log('[Splash] 3D Cosmo Robot loaded successfully!');
+            },
+            undefined,
+            (error) => {
+                console.warn('[Splash] Could not load 3D GLB model, using mascot asset fallback:', error);
+                this.activateMascotFallback();
+            }
+        );
     }
 
     start() {
@@ -223,11 +364,13 @@ export class AuroraSplashLoader {
         const now = performance.now();
         const elapsed = (now - this.startTime) / 1000; // seconds
 
-        // Update narrative state machine & timeline
-        this.updateStory(elapsed);
+        // Update 3D Robot & Narrative Timeline
+        this.updateTimeline(elapsed);
 
-        // Render Canvas 2D frame
-        this.renderCanvas(elapsed);
+        // Render WebGL Scene if active
+        if (this.renderer && this.scene && this.camera) {
+            this.renderer.render(this.scene, this.camera);
+        }
 
         if (elapsed >= this.totalDuration) {
             this.finish(false);
@@ -237,343 +380,121 @@ export class AuroraSplashLoader {
         this.animFrameId = requestAnimationFrame(() => this.loop());
     }
 
-    updateStory(t) {
+    updateTimeline(t) {
         const clampedT = Math.min(this.totalDuration, Math.max(0, t));
-        const normT = clampedT / this.totalDuration;
 
-        // Progress Bar Calculation (Subtle cubic ease)
+        // -------------------------------------------------------------
+        // 1. Robot Translation X & Forward Flight Lean (0.0s - 2.2s)
+        // -------------------------------------------------------------
+        if (this.robotGroup) {
+            if (clampedT < 2.2) {
+                const tau = clampedT / 2.2;
+                // Quartic Ease-Out: 1 - (1 - tau)^4
+                const u = 1 - Math.pow(1 - tau, 4);
+                this.robotGroup.position.x = this.xStart + (this.xTarget - this.xStart) * u;
+                // Forward drive inertial lean
+                this.robotGroup.rotation.z = -0.12 * Math.pow(1 - tau, 3) * Math.sin(Math.PI * tau);
+            } else {
+                this.robotGroup.position.x = this.xTarget;
+            }
+
+            // -------------------------------------------------------------
+            // 2. 90° Turn to Face User Frontal (1.8s - 3.2s)
+            // -------------------------------------------------------------
+            if (clampedT < 1.8) {
+                this.robotGroup.rotation.y = Math.PI / 2; // Facing right in direction of movement
+            } else if (clampedT >= 1.8 && clampedT < 3.2) {
+                const tTurn = (clampedT - 1.8) / 1.4;
+                // Damped harmonic spring: 1 - exp(-3.8 * t) * (cos(3.6 * t) + 0.25 * sin(3.6 * t))
+                const dampedResponse = 1 - Math.exp(-3.8 * tTurn) * (Math.cos(3.6 * tTurn) + 0.25 * Math.sin(3.6 * tTurn));
+                this.robotGroup.rotation.y = (Math.PI / 2) * (1 - dampedResponse);
+            } else {
+                this.robotGroup.rotation.y = 0; // Directly facing user front view!
+            }
+
+            // -------------------------------------------------------------
+            // 3. Zero-G Hover & Bobbing Physics (2.0s - 8.0s)
+            // -------------------------------------------------------------
+            if (clampedT >= 2.0) {
+                const bobWeight = this.smoothstep(2.0, 3.0, clampedT);
+                // Lissajous superposition
+                const bobY = 0.045 * Math.sin(2 * Math.PI * 0.65 * clampedT) + 0.012 * Math.sin(2 * Math.PI * 1.30 * clampedT);
+                const bobRotX = 0.032 * Math.cos(2 * Math.PI * 0.65 * clampedT);
+                const bobRotZ = 0.024 * Math.sin(2 * Math.PI * 0.45 * clampedT);
+
+                // Celebratory Jump pulse between 5.0s and 6.2s
+                let jumpY = 0;
+                let jumpScale = 1.0;
+                if (clampedT >= 5.0 && clampedT < 6.2) {
+                    const tJump = (clampedT - 5.0) / 1.2;
+                    jumpY = 0.24 * Math.sin(Math.PI * tJump);
+                    jumpScale = 1.0 + 0.08 * Math.sin(Math.PI * tJump);
+                }
+
+                this.robotGroup.position.y = (bobWeight * bobY) + jumpY;
+                this.robotGroup.rotation.x = bobWeight * bobRotX;
+                if (clampedT >= 2.5) {
+                    this.robotGroup.rotation.z = bobWeight * bobRotZ;
+                }
+                this.robotGroup.scale.set(jumpScale, jumpScale, jumpScale);
+
+                // Synchronize floor shadow and ion glow with bobbing/jumping
+                if (this.shadowEl) {
+                    const shadowScale = Math.max(0.65, Math.min(1.3, 1 - ((bobWeight * bobY + jumpY) * 1.8)));
+                    this.shadowEl.style.transform = `translateX(-50%) scale(${shadowScale})`;
+                    this.shadowEl.style.opacity = `${Math.max(0.35, Math.min(0.9, 0.75 - (bobWeight * bobY + jumpY) * 2))}`;
+                }
+                if (this.ionGlowEl) {
+                    const glowScale = Math.max(0.7, Math.min(1.4, 1 + jumpY * 2));
+                    this.ionGlowEl.style.transform = `translateX(-50%) scale(${glowScale})`;
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 4. Curved Text «КОСМО» Staggered Reveal (5.0s - 6.6s)
+        // -------------------------------------------------------------
+        const textStartBase = 5.0;
+        const staggerStep = 0.11;
+        this.letterEls.forEach((el, i) => {
+            const letterStart = textStartBase + i * staggerStep;
+            if (clampedT < letterStart) {
+                el.style.opacity = '0';
+            } else {
+                const tau = Math.min(1, (clampedT - letterStart) / 0.45);
+                const opacity = this.smoothstep(0, 1, tau);
+                el.style.opacity = opacity.toFixed(3);
+                if (tau < 0.65) {
+                    el.style.filter = 'drop-shadow(0 0 4px #ffffff) drop-shadow(0 0 16px #38bdf8) drop-shadow(0 0 26px #ec4899)';
+                } else {
+                    el.style.filter = '';
+                }
+            }
+        });
+
+        // -------------------------------------------------------------
+        // 5. HUD Progress Bar (0% -> 100% over 8.0s)
+        // -------------------------------------------------------------
+        const normT = clampedT / this.totalDuration;
         const progressRaw = 100 * (0.68 * normT + 0.18 * Math.sin(Math.PI * normT) + 0.14 * Math.pow(normT, 3));
         const progress = Math.min(100, Math.max(0, progressRaw));
 
         if (this.progressFill) this.progressFill.style.width = `${progress.toFixed(1)}%`;
         if (this.progressPercent) this.progressPercent.textContent = `${Math.floor(progress)}%`;
 
-        // =====================================================================
-        // ACT 1: Sleeping Guard of Aurora (0.0s - 2.4s)
-        // =====================================================================
-        if (clampedT < 2.4) {
-            if (this.cosmoToon && !this.cosmoToon.classList.contains('act-sleeping')) {
-                this.resetActClasses();
-                this.cosmoToon.classList.add('act-sleeping');
-                if (this.cosmoEyes) {
-                    this.cosmoEyes.className = 'cosmo-eyes eyes-sleeping';
-                }
-            }
-            if (this.progressStatus) {
-                this.progressStatus.textContent = 'КОСМО В РЕЖИМЕ ГЛУБОКОГО СНА...';
-            }
-
-            // Emit Zzz particles from Cosmo antenna
-            if (Math.random() < 0.08) {
-                this.spawnZzz();
-            }
-        }
-
-        // =====================================================================
-        // ACT 2: System Alert Impulse (2.4s - 3.4s)
-        // =====================================================================
-        else if (clampedT >= 2.4 && clampedT < 3.4) {
-            if (!this.alertTriggered) {
-                this.alertTriggered = true;
-                if (this.stage) {
-                    this.stage.classList.add('screen-shake');
-                    setTimeout(() => this.stage && this.stage.classList.remove('screen-shake'), 450);
-                }
-                this.triggerAlertSonar();
-            }
-
-            if (this.cosmoToon && !this.cosmoToon.classList.contains('act-alert')) {
-                this.resetActClasses();
-                this.cosmoToon.classList.add('act-alert');
-                if (this.cosmoEyes) {
-                    this.cosmoEyes.className = 'cosmo-eyes eyes-alert';
-                }
-            }
-            if (this.progressStatus) {
-                this.progressStatus.textContent = '⚡ СИСТЕМНЫЙ СИГНАЛ! ЗАПРОС ЧИТАТЕЛЯ...';
-            }
-        }
-
-        // =====================================================================
-        // ACT 3: Morning Stretch & Sensor Calibration (3.4s - 5.0s)
-        // =====================================================================
-        else if (clampedT >= 3.4 && clampedT < 5.0) {
-            if (this.cosmoToon && !this.cosmoToon.classList.contains('act-stretch')) {
-                this.resetActClasses();
-                this.cosmoToon.classList.add('act-stretch');
-                if (this.cosmoEyes) {
-                    this.cosmoEyes.className = 'cosmo-eyes eyes-scanning';
-                    // After short calibration, blink into wide curious eyes
-                    setTimeout(() => {
-                        if (this.cosmoEyes && !this.isClosed) {
-                            this.cosmoEyes.className = 'cosmo-eyes eyes-curious';
-                        }
-                    }, 700);
-                }
-            }
-            if (this.progressStatus) {
-                this.progressStatus.textContent = 'КАЛИБРОВКА СЕРВОПРИВОДОВ И БАЗ ДАННЫХ...';
-            }
-        }
-
-        // =====================================================================
-        // ACT 4: Joyful Heroic Jump & Neon Arc «КОСМО» (5.0s - 6.6s)
-        // =====================================================================
-        else if (clampedT >= 5.0 && clampedT < 6.6) {
-            if (!this.burstTriggered) {
-                this.burstTriggered = true;
-                this.triggerStarburst();
-            }
-
-            if (this.cosmoToon && !this.cosmoToon.classList.contains('act-jump')) {
-                this.resetActClasses();
-                this.cosmoToon.classList.add('act-jump');
-                if (this.cosmoEyes) {
-                    this.cosmoEyes.className = 'cosmo-eyes eyes-happy';
-                }
-            }
-            if (this.progressStatus) {
-                this.progressStatus.textContent = 'СИНХРОНИЗАЦИЯ С 16 БИБЛИОТЕКАМИ ВЛАДИМИРА...';
-            }
-        }
-
-        // =====================================================================
-        // ACT 5: Friendly Hand-Wave & Floating Levitation (6.6s - 8.4s)
-        // =====================================================================
-        else if (clampedT >= 6.6 && clampedT < 8.4) {
-            if (this.cosmoToon && !this.cosmoToon.classList.contains('act-wave')) {
-                this.resetActClasses();
-                this.cosmoToon.classList.add('act-wave', 'act-floating');
-                if (this.cosmoEyes) {
-                    this.cosmoEyes.className = 'cosmo-eyes eyes-wink';
-                    setTimeout(() => {
-                        if (this.cosmoEyes && !this.isClosed) {
-                            this.cosmoEyes.className = 'cosmo-eyes eyes-happy';
-                        }
-                    }, 900);
-                }
-            }
-            if (this.progressStatus) {
-                this.progressStatus.textContent = 'КОСМО ПРИВЕТСТВУЕТ ВАС В АВРОРЕ!';
-            }
-        }
-
-        // =====================================================================
-        // ACT 6: Ready & Photonic Warp Transition (8.4s - end)
-        // =====================================================================
-        else {
-            if (this.progressStatus) {
+        // Dynamic status updates according to phase
+        if (this.progressStatus) {
+            if (clampedT < 1.8) {
+                this.progressStatus.textContent = 'ИНИЦИАЛИЗАЦИЯ ЯДРА АВРОРЫ...';
+            } else if (clampedT < 3.2) {
+                this.progressStatus.textContent = 'КАЛИБРОВКА СЕРВОПРИВОДОВ КОСМО...';
+            } else if (clampedT < 5.0) {
+                this.progressStatus.textContent = 'СИНХРОНИЗАЦИЯ С 16 БИБЛИОТЕКАМИ...';
+            } else if (clampedT < 7.0) {
+                this.progressStatus.textContent = 'ПОДГОТОВКА СЛУЖЕБНОГО ДАШБОРДА...';
+            } else {
                 this.progressStatus.textContent = 'СИСТЕМА ГОТОВА К РАБОТЕ!';
             }
-        }
-
-        // -------------------------------------------------------------
-        // SVG Arc Typography «КОСМО» Staggered Reveal (5.2s - 7.0s)
-        // -------------------------------------------------------------
-        const arcStart = 5.1;
-        const arcStagger = 0.12;
-        this.letterEls.forEach((el, i) => {
-            const letterT = arcStart + i * arcStagger;
-            if (clampedT < letterT) {
-                el.style.opacity = '0';
-            } else {
-                const u = Math.min(1, (clampedT - letterT) / 0.45);
-                const opacity = this.smoothstep(0, 1, u);
-                el.style.opacity = opacity.toFixed(3);
-                if (u < 0.6) {
-                    el.style.filter = 'drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 18px #38bdf8) drop-shadow(0 0 28px #ec4899)';
-                } else {
-                    el.style.filter = '';
-                }
-            }
-        });
-    }
-
-    resetActClasses() {
-        if (!this.cosmoToon) return;
-        this.cosmoToon.classList.remove('act-sleeping', 'act-alert', 'act-stretch', 'act-jump', 'act-wave', 'act-floating');
-    }
-
-    spawnZzz() {
-        const viewport = document.querySelector('.aurora-splash-robot-viewport');
-        if (!viewport) return;
-        const rect = viewport.getBoundingClientRect();
-        this.zzzParticles.push({
-            x: rect.left + rect.width / 2 + (Math.random() - 0.5) * 12,
-            y: rect.top + 35,
-            size: 14 + Math.random() * 6,
-            opacity: 0.9,
-            vy: -(0.7 + Math.random() * 0.4),
-            vx: 0.3 + (Math.random() - 0.5) * 0.2,
-            life: 1.0,
-            angle: (Math.random() - 0.5) * 0.3
-        });
-    }
-
-    triggerAlertSonar() {
-        const viewport = document.querySelector('.aurora-splash-robot-viewport');
-        if (!viewport) return;
-        const rect = viewport.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-
-        this.shockwaves.push({ cx, cy, radius: 10, maxRadius: 160, opacity: 0.9, color: '236, 72, 153', lw: 3 });
-        this.shockwaves.push({ cx, cy, radius: 5, maxRadius: 130, opacity: 0.8, color: '56, 189, 248', lw: 2 });
-    }
-
-    triggerStarburst() {
-        const viewport = document.querySelector('.aurora-splash-robot-viewport');
-        if (!viewport) return;
-        const rect = viewport.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-
-        // 45 celebratory sparkles
-        for (let i = 0; i < 48; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 2.5 + Math.random() * 5.5;
-            this.sparkles.push({
-                x: cx,
-                y: cy,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed - 1.5,
-                radius: 2 + Math.random() * 3,
-                color: Math.random() > 0.5 ? '#38bdf8' : (Math.random() > 0.5 ? '#ec4899' : '#ffffff'),
-                life: 1.0,
-                decay: 0.016 + Math.random() * 0.014
-            });
-        }
-    }
-
-    renderCanvas(t) {
-        if (!this.ctx || !this.canvas) return;
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-
-        ctx.clearRect(0, 0, w, h);
-
-        // 1. Cosmic Stars Layer
-        for (let i = 0; i < this.stars.length; i++) {
-            const s = this.stars[i];
-            s.y += s.vy;
-            s.x += s.vx;
-            s.pulseAngle += 0.025;
-
-            if (s.y < -5) { s.y = h + 5; s.x = Math.random() * w; }
-            if (s.x < -5) s.x = w + 5;
-            if (s.x > w + 5) s.x = -5;
-
-            const alpha = Math.max(0.12, Math.min(0.9, s.opacity + Math.sin(s.pulseAngle) * 0.28));
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${s.color}, ${alpha})`;
-            ctx.fill();
-        }
-
-        // 2. Floating Zero-G Magical Books
-        for (let b = 0; b < this.books.length; b++) {
-            const bk = this.books[b];
-            bk.x += bk.vx;
-            bk.y += bk.vy;
-            bk.angle += bk.vAngle;
-
-            // Gentle soft bounce on boundaries
-            if (bk.x < 30 || bk.x > w - 30) bk.vx *= -1;
-            if (bk.y < 50 || bk.y > h - 120) bk.vy *= -1;
-
-            ctx.save();
-            ctx.translate(bk.x, bk.y);
-            ctx.rotate(bk.angle);
-            ctx.globalAlpha = bk.opacity;
-
-            // Glowing Book Spine & Cover
-            ctx.shadowColor = bk.palette.cover;
-            ctx.shadowBlur = 12;
-            ctx.fillStyle = bk.palette.cover;
-            ctx.beginPath();
-            ctx.roundRect(-bk.width / 2, -bk.height / 2, bk.width, bk.height, 3);
-            ctx.fill();
-
-            // Glowing illuminated pages
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = bk.palette.pages;
-            ctx.fillRect(-bk.width / 2 + 3, -bk.height / 2 + 2, bk.width - 6, bk.height - 4);
-
-            // Mini Bookmark ribbon
-            ctx.fillStyle = '#ec4899';
-            ctx.fillRect(-1, bk.height / 2 - 3, 2, 7);
-
-            ctx.restore();
-        }
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1.0;
-
-        // 3. Sleeping "Zzz" Particles
-        for (let z = this.zzzParticles.length - 1; z >= 0; z--) {
-            const zp = this.zzzParticles[z];
-            zp.x += zp.vx + Math.sin(t * 3 + z) * 0.4;
-            zp.y += zp.vy;
-            zp.life -= 0.015;
-
-            if (zp.life <= 0) {
-                this.zzzParticles.splice(z, 1);
-                continue;
-            }
-
-            ctx.save();
-            ctx.font = `bold ${zp.size}px 'Unbounded', sans-serif`;
-            ctx.fillStyle = `rgba(56, 189, 248, ${zp.life * 0.85})`;
-            ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 8;
-            ctx.fillText('Z', zp.x, zp.y);
-            ctx.restore();
-        }
-
-        // 4. Alert Sonar Shockwaves
-        for (let sw = this.shockwaves.length - 1; sw >= 0; sw--) {
-            const wave = this.shockwaves[sw];
-            wave.radius += 5.5;
-            wave.opacity = Math.max(0, 1 - (wave.radius / wave.maxRadius));
-
-            if (wave.opacity <= 0 || wave.radius >= wave.maxRadius) {
-                this.shockwaves.splice(sw, 1);
-                continue;
-            }
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(wave.cx, wave.cy, wave.radius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(${wave.color}, ${wave.opacity})`;
-            ctx.lineWidth = wave.lw;
-            ctx.shadowColor = `rgb(${wave.color})`;
-            ctx.shadowBlur = 14;
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // 5. Starburst Sparkles
-        for (let sp = this.sparkles.length - 1; sp >= 0; sp--) {
-            const p = this.sparkles[sp];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.08; // gravity
-            p.life -= p.decay;
-
-            if (p.life <= 0) {
-                this.sparkles.splice(sp, 1);
-                continue;
-            }
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = 10;
-            ctx.globalAlpha = p.life;
-            ctx.fill();
-            ctx.restore();
         }
     }
 
@@ -610,14 +531,30 @@ export class AuroraSplashLoader {
             this.container.classList.add('aurora-splash-closing');
             setTimeout(() => {
                 this.container.classList.add('aurora-splash-hidden');
+                this.destroyThree();
                 if (typeof this.onComplete === 'function') {
                     this.onComplete();
                 }
             }, fadeDuration);
         } else {
+            this.destroyThree();
             if (typeof this.onComplete === 'function') {
                 this.onComplete();
             }
         }
+    }
+
+    destroyThree() {
+        try {
+            if (this.renderer) {
+                this.renderer.dispose();
+                this.renderer.forceContextLoss();
+                this.renderer = null;
+            }
+            this.scene = null;
+            this.camera = null;
+            this.robotGroup = null;
+            this.robotMesh = null;
+        } catch (e) {}
     }
 }

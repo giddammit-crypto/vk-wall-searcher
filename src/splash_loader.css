@@ -1,7 +1,7 @@
 /**
- * Aurora Splash Screen & Cartoon Cosmo Preloader
- * Style system for dark space backdrop, floating library atmosphere,
- * high-fidelity cartoon robot Cosmo with expressive eyes, articulated limbs, and cyber HUD.
+ * Aurora Splash Screen & 3D Cosmo Robot Loader
+ * Authentic 3D GLB Model & Official Mascot Assets with cinematic Three.js WebGL rendering,
+ * curved typography «КОСМО», ion glow, and HUD progress bar.
  */
 
 #aurora-splash {
@@ -26,22 +26,22 @@
     -webkit-user-select: none;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.7s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0.7s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transition: opacity 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0.65s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 #aurora-splash.aurora-splash-closing {
     opacity: 0;
     pointer-events: none;
-    transform: scale(1.03);
-    filter: blur(8px);
-    transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1), transform 0.65s cubic-bezier(0.4, 0, 0.2, 1), filter 0.65s ease;
+    transform: scale(1.02);
+    filter: blur(6px);
+    transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1), transform 0.65s ease, filter 0.65s ease;
 }
 
 #aurora-splash.aurora-splash-hidden {
     display: none !important;
 }
 
-/* Background Canvas for micro-stars, floating books, Zzz and cosmic FX */
+/* Background Canvas for micro-stars and cosmic dust */
 #aurora-splash-stars {
     position: absolute;
     top: 0;
@@ -50,18 +50,6 @@
     height: 100%;
     pointer-events: none;
     z-index: 1;
-}
-
-/* Screen Shake Effect during Alert Phase */
-.aurora-splash-stage.screen-shake {
-    animation: cosmoAlertShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-}
-
-@keyframes cosmoAlertShake {
-    10%, 90% { transform: translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translate3d(2px, -1px, 0); }
-    30%, 50%, 70% { transform: translate3d(-3px, 2px, 0); }
-    40%, 60% { transform: translate3d(3px, -1px, 0); }
 }
 
 /* Top Skip Button */
@@ -114,12 +102,11 @@
     z-index: 10;
     width: 100%;
     max-width: 600px;
-    height: 360px;
+    height: 350px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease;
 }
 
 /* Arc Container with Curved SVG Typography */
@@ -156,538 +143,78 @@
     transition: opacity 0.45s ease-out, filter 0.45s ease-out;
 }
 
-/* =========================================================================
-   CARTOON ROBOT COSMO STAGE & ACTORS (Max Height: 128px)
-   ========================================================================= */
-
+/* WebGL Robot 3D Canvas Area (Strictly <= 128px visual height) */
 .aurora-splash-robot-viewport {
     position: relative;
     width: 100%;
-    height: 180px;
+    height: 175px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 32px;
+    margin-top: 36px;
 }
 
-/* Root cartoon wrapper */
-.cosmo-toon {
+#aurora-splash-webgl {
     position: relative;
-    width: 130px;
-    height: 130px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    perspective: 800px;
-    will-change: transform;
-}
-
-/* Ambient Pulsing Aura Behind Cosmo */
-.cosmo-aura {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(139, 92, 246, 0.12) 45%, transparent 70%);
-    filter: blur(14px);
-    pointer-events: none;
-    animation: cosmoAuraBreathe 3s ease-in-out infinite alternate;
-    z-index: 1;
-}
-
-@keyframes cosmoAuraBreathe {
-    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; }
-    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.95; }
-}
-
-/* Body group that executes the physics / jumping / bobbing */
-.cosmo-toon-body-group {
-    position: relative;
-    width: 110px;
-    height: 120px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 5;
-    transform-origin: center bottom;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* --- ANTENNA --- */
-.cosmo-toon-antenna {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 24px;
-    margin-bottom: -4px;
-    z-index: 6;
-    transform-origin: bottom center;
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.antenna-orb {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #38bdf8 55%, #0284c7 100%);
-    box-shadow: 0 0 10px #38bdf8, 0 0 20px #0284c7;
-    position: relative;
-    z-index: 2;
-}
-
-.antenna-pulse {
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(56, 189, 248, 0.7);
-    animation: antennaSignalPing 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-    pointer-events: none;
-}
-
-@keyframes antennaSignalPing {
-    0% { transform: scale(0.6); opacity: 1; }
-    100% { transform: scale(2.2); opacity: 0; }
-}
-
-.antenna-rod {
-    width: 3px;
-    height: 15px;
-    background: linear-gradient(180deg, #38bdf8 0%, #1e293b 100%);
-    border-radius: 2px;
-    margin-top: -1px;
-}
-
-/* --- HEAD & VISOR --- */
-.cosmo-toon-head {
-    position: relative;
-    width: 78px;
-    height: 52px;
-    background: linear-gradient(160deg, #334155 0%, #1e293b 50%, #0f172a 100%);
-    border: 2px solid rgba(56, 189, 248, 0.7);
-    border-radius: 28px 28px 24px 24px;
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Cyber Ears / Side Sensors */
-.cosmo-ear {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 22px;
-    background: #0f172a;
-    border: 1.5px solid #38bdf8;
-    border-radius: 4px;
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
-}
-
-.cosmo-ear-left {
-    left: -7px;
-    border-right: none;
-}
-
-.cosmo-ear-right {
-    right: -7px;
-    border-left: none;
-}
-
-/* Glass Screen / CRT Visor */
-.cosmo-visor {
-    position: relative;
-    width: 62px;
-    height: 38px;
-    background: radial-gradient(circle at 50% 40%, #0c1222 0%, #030712 100%);
-    border: 1.5px solid rgba(56, 189, 248, 0.4);
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    overflow: hidden;
-    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.9), 0 0 8px rgba(56, 189, 248, 0.2);
-}
-
-.cosmo-visor-glare {
-    position: absolute;
-    top: 2px;
-    left: 4px;
-    right: 4px;
-    height: 10px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 100%);
-    border-radius: 14px 14px 4px 4px;
-    pointer-events: none;
-}
-
-/* Animated Expressive Eyes */
-.cosmo-eyes {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    z-index: 3;
-    transition: transform 0.25s ease;
-}
-
-.cosmo-eye {
-    position: relative;
-    width: 14px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.eye-symbol {
+    z-index: 12;
     display: block;
     width: 100%;
     height: 100%;
-    background: #38bdf8;
-    border-radius: 4px;
-    box-shadow: 0 0 10px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.85);
-    transition: all 0.2s ease;
+    max-height: 175px;
+    outline: none;
 }
 
-/* Eye States */
-
-/* 1. Sleeping State: Gentle narrow curved slits */
-.cosmo-eyes.eyes-sleeping .eye-symbol {
-    height: 3px;
-    border-radius: 2px;
-    background: #38bdf8;
-    opacity: 0.6;
-    box-shadow: 0 0 6px #38bdf8;
-    animation: eyeSleepBreath 2.2s ease-in-out infinite alternate;
-}
-
-@keyframes eyeSleepBreath {
-    0% { transform: scaleX(0.9); opacity: 0.45; }
-    100% { transform: scaleX(1.05); opacity: 0.75; }
-}
-
-/* 2. Alert State: Flashing Magenta Exclamation Marks */
-.cosmo-eyes.eyes-alert .eye-symbol {
-    background: #ec4899;
-    box-shadow: 0 0 14px #ec4899, 0 0 24px #ec4899;
-    clip-path: polygon(25% 0%, 75% 0%, 65% 65%, 35% 65%);
-    animation: eyeAlertFlash 0.35s ease-in-out infinite alternate;
-}
-
-@keyframes eyeAlertFlash {
-    0% { transform: scale(0.95); filter: brightness(1); }
-    100% { transform: scale(1.15); filter: brightness(1.5); }
-}
-
-/* 3. Scanning / Calibration State: Spinning dots */
-.cosmo-eyes.eyes-scanning .eye-symbol {
-    width: 12px;
-    height: 12px;
-    border: 2px dashed #38bdf8;
-    border-radius: 50%;
-    background: transparent;
-    box-shadow: 0 0 8px #38bdf8;
-    animation: eyeScanSpin 0.9s linear infinite;
-}
-
-@keyframes eyeScanSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* 4. Curious / Wide Awake State: Big round pupils with sparkle */
-.cosmo-eyes.eyes-curious .eye-symbol {
-    width: 15px;
-    height: 17px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #ffffff 15%, #38bdf8 60%, #0284c7 100%);
-    box-shadow: 0 0 12px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.9);
-}
-
-/* 5. Happy Joyful State: Adorable upward smiling arcs ^ ^ */
-.cosmo-eyes.eyes-happy .eye-symbol {
-    width: 14px;
-    height: 9px;
-    background: transparent;
-    border: 3px solid #38bdf8;
-    border-bottom: none;
-    border-radius: 12px 12px 0 0;
-    box-shadow: 0 -2px 10px #38bdf8;
-    transform: translateY(-2px);
-    animation: eyeHappyBounce 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes eyeHappyBounce {
-    0% { transform: translateY(-2px) scaleY(1); }
-    100% { transform: translateY(-4px) scaleY(1.2); }
-}
-
-/* 6. Wink State */
-.cosmo-eyes.eyes-wink .cosmo-eye-right .eye-symbol {
-    height: 3px;
-    border-radius: 2px;
-    background: #38bdf8;
-    transform: translateY(2px);
-    box-shadow: 0 0 8px #38bdf8;
-}
-
-/* Cyber Blush */
-.cosmo-blush {
-    position: absolute;
-    bottom: 4px;
-    width: 8px;
-    height: 3px;
-    background: #ec4899;
-    border-radius: 50%;
-    opacity: 0;
-    filter: blur(1.5px);
-    transition: opacity 0.3s ease;
-}
-
-.cosmo-blush-left { left: 8px; }
-.cosmo-blush-right { right: 8px; }
-
-.cosmo-eyes.eyes-happy ~ .cosmo-blush,
-.cosmo-eyes.eyes-curious ~ .cosmo-blush {
-    opacity: 0.75;
-}
-
-/* --- TORSO & CHEST --- */
-.cosmo-toon-torso {
+/* Official Mascot Asset Fallback / Companion */
+.aurora-splash-mascot-fallback {
     position: relative;
-    width: 58px;
-    height: 42px;
-    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    border: 2px solid rgba(56, 189, 248, 0.6);
-    border-radius: 16px;
-    margin-top: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.2);
-    z-index: 4;
+    z-index: 12;
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.65)) drop-shadow(0 0 32px rgba(236, 72, 153, 0.35));
+    animation: mascotBobbing 2.4s ease-in-out infinite alternate;
 }
 
-.torso-core-badge {
-    position: relative;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #090d16;
-    border: 1.5px solid rgba(56, 189, 248, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+@keyframes mascotBobbing {
+    0% { transform: translateY(-4px) rotate(-1deg); }
+    100% { transform: translateY(6px) rotate(1.5deg); }
 }
 
-.core-pulsar {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #ffffff 0%, #ec4899 60%, #8b5cf6 100%);
-    box-shadow: 0 0 8px #ec4899, 0 0 16px #8b5cf6;
-    animation: corePulse 1.4s ease-in-out infinite alternate;
-}
-
-@keyframes corePulse {
-    0% { transform: scale(0.75); opacity: 0.7; }
-    100% { transform: scale(1.2); opacity: 1; }
-}
-
-/* --- ARMS --- */
-.cosmo-arm {
+/* Dynamic Hover Shadow & Ion Propulsion Glow */
+.aurora-splash-hover-shadow {
     position: absolute;
-    top: 6px;
-    width: 10px;
-    height: 26px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 3;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.cosmo-arm-left {
-    left: -8px;
-    transform-origin: top right;
-    transform: rotate(18deg);
-}
-
-.cosmo-arm-right {
-    right: -8px;
-    transform-origin: top left;
-    transform: rotate(-18deg);
-}
-
-.arm-segment {
-    width: 7px;
-    height: 18px;
-    background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-    border: 1.5px solid rgba(56, 189, 248, 0.6);
-    border-radius: 6px;
-    box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
-}
-
-.hand-segment {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #38bdf8;
-    box-shadow: 0 0 8px #38bdf8;
-    margin-top: -3px;
-}
-
-/* --- THRUSTER & ION PLUME --- */
-.cosmo-thruster-flame {
-    position: relative;
-    width: 22px;
-    height: 18px;
-    margin-top: -2px;
-    background: radial-gradient(ellipse at top, #ffffff 0%, #38bdf8 45%, #ec4899 85%, transparent 100%);
-    border-radius: 50% 50% 60% 60%;
-    filter: blur(1px);
-    box-shadow: 0 0 14px #38bdf8, 0 0 24px #ec4899;
-    animation: thrusterFlicker 0.15s ease-in-out infinite alternate;
-    z-index: 2;
-}
-
-@keyframes thrusterFlicker {
-    0% { transform: scaleX(0.85) scaleY(0.9); opacity: 0.75; }
-    100% { transform: scaleX(1.15) scaleY(1.2); opacity: 1; }
-}
-
-/* --- SHADOW --- */
-.cosmo-hover-shadow {
-    position: absolute;
-    bottom: -16px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 70px;
-    height: 14px;
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(2, 4, 10, 0.45) 50%, transparent 80%);
+    width: 80px;
+    height: 16px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.8) 0%, rgba(2, 4, 10, 0.45) 50%, transparent 80%);
     border-radius: 50%;
     pointer-events: none;
-    z-index: 2;
+    z-index: 11;
     filter: blur(4px);
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-/* =========================================================================
-   STORY ACTS ANIMATIONS (Classes toggled by splash_loader.js timeline)
-   ========================================================================= */
-
-/* ACT 1: Sleeping Guard */
-.cosmo-toon.act-sleeping .cosmo-toon-head {
-    transform: rotate(-14deg) translateY(2px);
-}
-.cosmo-toon.act-sleeping .cosmo-toon-antenna {
-    transform: rotate(-24deg);
-}
-.cosmo-toon.act-sleeping .cosmo-arm-left {
-    transform: rotate(35deg) translateY(-2px);
-}
-.cosmo-toon.act-sleeping .cosmo-arm-right {
-    transform: rotate(-35deg) translateY(-2px);
-}
-.cosmo-toon.act-sleeping .cosmo-toon-body-group {
-    animation: cosmoSleepBob 2.8s ease-in-out infinite alternate;
-}
-
-@keyframes cosmoSleepBob {
-    0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(3px) rotate(-1deg); }
-    100% { transform: translateY(0px) rotate(0deg); }
-}
-
-/* ACT 2: System Alert */
-.cosmo-toon.act-alert .cosmo-toon-head {
-    transform: rotate(0deg) scale(1.06);
-}
-.cosmo-toon.act-alert .cosmo-toon-antenna {
-    transform: rotate(0deg) scale(1.25);
-    animation: antennaAlertJitter 0.2s linear infinite alternate;
-}
-.cosmo-toon.act-alert .cosmo-arm-left {
-    transform: rotate(50deg) translateY(-6px);
-}
-.cosmo-toon.act-alert .cosmo-arm-right {
-    transform: rotate(-50deg) translateY(-6px);
-}
-
-@keyframes antennaAlertJitter {
-    0% { transform: rotate(-8deg) scale(1.2); }
-    100% { transform: rotate(8deg) scale(1.2); }
-}
-
-/* ACT 3: Morning Stretch & Calibration */
-.cosmo-toon.act-stretch .cosmo-toon-body-group {
-    transform: scaleY(1.18) scaleX(0.92) translateY(-6px);
-}
-.cosmo-toon.act-stretch .cosmo-toon-head {
-    transform: rotate(0deg) translateY(-4px);
-}
-.cosmo-toon.act-stretch .cosmo-arm-left {
-    transform: rotate(85deg) translateY(-14px) scaleX(1.2);
-}
-.cosmo-toon.act-stretch .cosmo-arm-right {
-    transform: rotate(-85deg) translateY(-14px) scaleX(1.2);
-}
-
-/* ACT 4: Joyful Heroic Jump */
-.cosmo-toon.act-jump .cosmo-toon-body-group {
-    animation: cosmoHeroicJump 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes cosmoHeroicJump {
-    0% { transform: translateY(0) scaleY(1) scaleX(1); }
-    20% { transform: translateY(8px) scaleY(0.85) scaleX(1.15); } /* Anticipation squash */
-    50% { transform: translateY(-36px) scaleY(1.2) scaleX(0.9); } /* Peak jump */
-    75% { transform: translateY(-12px) scaleY(0.95) scaleX(1.05); } /* Rebound */
-    100% { transform: translateY(0px) scaleY(1) scaleX(1); }
-}
-
-/* ACT 5: Waving Hello to User */
-.cosmo-toon.act-wave .cosmo-toon-head {
-    transform: rotate(6deg);
-}
-.cosmo-toon.act-wave .cosmo-arm-right {
-    animation: cosmoArmWave 1.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-
-@keyframes cosmoArmWave {
-    0%, 100% { transform: rotate(-120deg) translateY(-8px); }
-    25% { transform: rotate(-155deg) translateY(-12px); }
-    50% { transform: rotate(-115deg) translateY(-8px); }
-    75% { transform: rotate(-150deg) translateY(-12px); }
-}
-
-/* Continuous Idle Floating during later acts */
-.cosmo-toon.act-floating .cosmo-toon-body-group {
-    animation: cosmoFloatBob 2.2s ease-in-out infinite alternate;
-}
-
-@keyframes cosmoFloatBob {
-    0% { transform: translateY(-2px) rotate(0deg); }
-    100% { transform: translateY(5px) rotate(1.5deg); }
+.aurora-splash-ion-glow {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 96px;
+    height: 22px;
+    background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.6) 0%, rgba(139, 92, 246, 0.3) 45%, transparent 75%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+    filter: blur(6px);
+    mix-blend-mode: screen;
 }
 
 /* Bottom Cyber HUD Section */
 .aurora-splash-hud {
     position: absolute;
-    bottom: 46px;
+    bottom: 44px;
     left: 50%;
     transform: translateX(-50%);
     width: min(360px, calc(100vw - 44px));
@@ -810,21 +337,18 @@
         display: none;
     }
     .aurora-splash-stage {
-        height: 320px;
+        height: 310px;
     }
     .aurora-splash-arc-container {
         width: 260px;
         height: 95px;
-        top: 18px;
+        top: 16px;
     }
     .aurora-splash-arc-letter {
         font-size: 19px;
     }
-    .cosmo-toon {
-        transform: scale(0.9);
-    }
     .aurora-splash-hud {
-        bottom: 32px;
+        bottom: 30px;
         width: calc(100vw - 36px);
     }
 }
