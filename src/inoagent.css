@@ -372,6 +372,25 @@ body.inoagent-modal-open {
     font-family: inherit;
     min-width: 0;
     padding: 10px 0;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Отключаем браузерный нативный крестик для type="search" чтобы не дублировать кастомную кнопку очистки */
+.inoagent-search-input::-webkit-search-cancel-button,
+.inoagent-search-input::-webkit-search-decoration,
+.inoagent-search-input::-webkit-search-results-button,
+.inoagent-search-input::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+}
+
+.inoagent-search-input::-ms-clear,
+.inoagent-search-input::-ms-reveal {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 .inoagent-search-input::placeholder {
@@ -1203,12 +1222,25 @@ body.inoagent-modal-open {
         padding: 8px;
     }
 
+    .inoagent-modal-dialog {
+        width: 100vw;
+        max-height: 96vh;
+        max-height: 96dvh;
+        border-radius: 16px;
+    }
+
     .inoagent-modal-banner {
-        padding: 14px 16px;
+        padding: 12px 14px;
+        gap: 12px;
     }
 
     .inoagent-banner-title {
         font-size: 1.1rem;
+    }
+
+    .inoagent-banner-badge {
+        font-size: 0.68rem;
+        padding: 2px 7px;
     }
 
     .inoagent-banner-subtitle {
@@ -1216,13 +1248,38 @@ body.inoagent-modal-open {
     }
 
     .inoagent-banner-icon-badge {
-        width: 42px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+    }
+
+    .inoagent-banner-icon-badge .material-symbols-outlined {
+        font-size: 24px;
+    }
+
+    .inoagent-close-btn {
+        width: 36px;
+        height: 36px;
     }
 
     .inoagent-modal-body {
-        padding: 16px 12px;
-        gap: 14px;
+        padding: 14px 10px;
+        gap: 12px;
+    }
+
+    .inoagent-search-input-wrap {
+        padding: 2px 4px 2px 12px;
+        border-radius: 12px;
+    }
+
+    .inoagent-search-icon {
+        margin-right: 8px;
+        font-size: 20px;
+    }
+
+    .inoagent-search-input {
+        font-size: 0.95rem;
+        padding: 8px 0;
     }
 
     .inoagent-search-btn-text {
@@ -1231,6 +1288,7 @@ body.inoagent-modal-open {
 
     .inoagent-search-btn {
         padding: 8px 12px;
+        border-radius: 10px;
     }
 
     .inoagent-filters-bar {
@@ -1238,19 +1296,68 @@ body.inoagent-modal-open {
         align-items: stretch;
         gap: 10px;
         padding: 10px 12px;
+        border-radius: 12px;
     }
 
     .inoagent-filters-group {
+        display: flex;
+        align-items: center;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
         padding-bottom: 2px;
+        gap: 6px;
+    }
+
+    .inoagent-filters-group::-webkit-scrollbar {
+        display: none;
+    }
+
+    .inoagent-filter-label {
+        font-size: 0.72rem;
+        flex-shrink: 0;
+    }
+
+    .inoagent-chip {
+        padding: 6px 11px;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .inoagent-summary-badge {
+        align-self: flex-start;
+        font-size: 0.76rem;
+        padding: 4px 10px;
+    }
+
+    .inoagent-notice-box {
+        padding: 12px 14px;
+        flex-direction: column;
+        gap: 10px;
+        border-radius: 12px;
+    }
+
+    .inoagent-notice-box .inoagent-btn-action.btn-cosmo {
+        width: 100%;
+        margin-left: 0;
+        justify-content: center;
     }
 
     .inoagent-card {
         padding: 16px;
+        border-radius: 12px;
+        gap: 12px;
+    }
+
+    .inoagent-card-title {
+        font-size: 1.1rem;
     }
 
     .inoagent-card-meta {
         grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 8px;
     }
 
     .inoagent-card-actions {
@@ -1264,10 +1371,13 @@ body.inoagent-modal-open {
         padding: 8px 14px;
         min-height: 40px;
         font-size: 0.82rem;
+        flex: 1 1 auto;
+        justify-content: center;
     }
 
     .inoagent-btn-action.btn-cosmo {
         margin-left: 0;
+        flex: 1 1 100%;
         width: 100%;
         justify-content: center;
     }
@@ -1275,11 +1385,11 @@ body.inoagent-modal-open {
 
 @media (max-width: 480px) {
     #inoagent-modal-overlay {
-        padding: 4px;
+        padding: 2px;
     }
 
     .inoagent-modal-dialog {
-        border-radius: 12px;
+        border-radius: 10px;
         max-height: 98vh;
         max-height: 98dvh;
     }
@@ -1289,24 +1399,28 @@ body.inoagent-modal-open {
     }
 
     .inoagent-banner-title {
-        font-size: 1rem;
+        font-size: 0.98rem;
     }
 
     .inoagent-modal-body {
-        padding: 12px 8px;
+        padding: 10px 6px;
         gap: 10px;
     }
 
     .inoagent-chip {
-        padding: 6px 10px;
-        font-size: 0.78rem;
+        padding: 5px 9px;
+        font-size: 0.74rem;
     }
 
     .inoagent-card {
-        padding: 14px;
+        padding: 12px;
     }
 
     .inoagent-card-title {
-        font-size: 1.05rem;
+        font-size: 1rem;
+    }
+
+    .inoagent-meta-value {
+        font-size: 0.8rem;
     }
 }

@@ -1617,7 +1617,8 @@ export function initInoagentModal() {
                     <div class="inoagent-search-input-wrap">
                         <span class="material-symbols-outlined inoagent-search-icon">search</span>
                         <input
-                            type="search"
+                            type="text"
+                            inputmode="search"
                             class="inoagent-search-input"
                             data-inoagent-input
                             placeholder="Поиск по ФИО, наименованию, псевдониму, ИНН или номеру в реестре..."

@@ -240,6 +240,13 @@ if (file_exists(__DIR__ . '/opac.php')) {
     require_once __DIR__ . '/OpacClient.php';
 }
 
+// -----------------------------------------------------------------------------
+// Подключение модуля поиска по Единому реестру иноагентов Минюста РФ (255-ФЗ)
+// -----------------------------------------------------------------------------
+if (file_exists(__DIR__ . '/inoagent.php')) {
+    require_once __DIR__ . '/inoagent.php';
+}
+
 // Пул ключей ИИ (4 ключа, суммарно 3 000 000 токенов в сутки)
 // Ключи 1 и 2: по 1 000 000 токенов/24ч; 3 и 4: по 500 000 токенов/24ч
 $defaultAiKeys = [
@@ -2079,7 +2086,8 @@ function vk_bot_get_admin_help_text($vkGroupId = 0)
           . "• Vision AI модерация картинок: авто-сканирование фото нейросетью на 18+ контент с удалением.\n"
           . "• Голосовой Космо (STT): приём голосовых сообщений и распознавание речи.\n"
           . "• Имена из профилей ВК: подтягивание реальных имён участников (users.get).\n"
-          . "• Защита от иноагентов: строжайший запрет на авторов-иноагентов.\n\n"
+          . "• Защита от иноагентов: строжайший запрет на авторов-иноагентов.\n"
+          . "• /ino [имя/ФИО] / !ino / /ино — официальная проверка и поиск по Единому реестру иноагентов Минюста РФ (255-ФЗ).\n\n"
           . "📚 3. КНИГИ И ЭЛЕКТРОННЫЙ КАТАЛОГ (OPAC)\n"
           . "• /книга [название] / !книга / /поиск [автор/книга] / /opac / /к — поиск книг в каталоге OPAC-Global (база 62) по 18 филиалам Владимира (адреса, шифры, статус «В наличии»).\n"
           . "  ↳ NLP/голос: «Космо, найди книгу ...», «В каком филиале есть ...», «Есть ли на Егорова ...».\n"
@@ -7221,6 +7229,145 @@ if ($cmd === 'chat_welcome' || $isBotInvited) {
     exit;
 }
 
+// =============================================================================
+// Сценарий 1-INO: Проверка и поиск по Единому реестру иноагентов Минюста РФ (/ino, !ino, /ино, !ино)
+// Обрабатывается СТРОГО ДО фильтра vk_bot_is_foreign_agent_query, чтобы позволить читателям
+// легитимно проверить правовой статус лица или книги в соответствии с 255-ФЗ.
+// =============================================================================
+$isInoCommand = false;
+$inoSearchQuery = '';
+
+if ($cmd === 'ino_search' && !empty($payloadData['q'])) {
+    $isInoCommand = true;
+    $inoSearchQuery = trim((string)$payloadData['q']);
+} elseif (preg_match('/^[\/!](?:ino|ино)\b\s*(.*)$/ui', $userMsg, $inoMatches)) {
+    $isInoCommand = true;
+    $inoSearchQuery = trim($inoMatches[1] ?? '');
+} elseif (preg_match('/^(?:космо,?\s*)?(?:проверь|найди|кто\s+такой|статус)\s+(?:иноагент[а-я]*|в\s+реестре\s+иноагентов)\s*(.+)$/ui', $userMsg, $inoMatches)) {
+    $isInoCommand = true;
+    $inoSearchQuery = trim($inoMatches[1] ?? '');
+}
+
+if ($isInoCommand) {
+    if ($botTyping && $peerId > 0) {
+        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
+    }
+
+    if ($inoSearchQuery === '') {
+        $reply = "🔍 Робот Космо: Поиск по Единому реестру иностранных агентов Минюста РФ (255-ФЗ) 🤖🛡️\n\n"
+               . "Я умею проверять актуальный правовой статус физических и юридических лиц, общественных объединений и авторов по официальному реестру Минюста России.\n\n"
+               . "📌 Как пользоваться командой:\n"
+               . "• /ino [ФИО, псевдоним или организация]\n"
+               . "• !ino [запрос]\n"
+               . "• /ино [запрос]\n\n"
+               . "Примеры запросов:\n"
+               . "  ↳ /ino Акунин\n"
+               . "  ↳ /ino Галкин\n"
+               . "  ↳ /ino Макаревич\n"
+               . "  ↳ /ino Мемориал\n\n"
+               . "💡 Введите фамилию или название, и я выведу официальные данные из реестра Минюста РФ!";
+
+        if ($isChat && $fromId > 0) {
+            $reply = "[id{$fromId}|{$callerName}], " . $reply;
+        }
+
+        vk_bot_send_message([
+            'peer_id'          => $peerId,
+            'message'          => $reply,
+            'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
+            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+            'dont_parse_links' => 1
+        ], $communityToken);
+        exit;
+    }
+
+    // Выполняем поиск по реестру через модуль inoagent.php
+    $inoResults = null;
+    if (function_exists('inoagent_handle_request')) {
+        list($inoCode, $inoData) = inoagent_handle_request([
+            'action' => 'search',
+            'query'  => $inoSearchQuery,
+            'limit'  => 3,
+            'page'   => 1
+        ], true);
+
+        if ($inoCode === 200 && !empty($inoData['ok'])) {
+            $inoResults = $inoData;
+        }
+    }
+
+    $totalFound = (int)($inoResults['total'] ?? 0);
+    $items = $inoResults['values'] ?? [];
+
+    if ($totalFound === 0 || empty($items)) {
+        $reply = "🔍 Результат проверки по Единому реестру иноагентов Минюста РФ 🤖📄\n\n"
+               . "По запросу «{$inoSearchQuery}» совпадений в официальном реестре иностранных агентов НЕ НАЙДЕНО. ✅\n\n"
+               . "Лицо или организация с таким наименованием в действующем списке Минюста России не числится (либо запрос сформулирован иначе).\n\n"
+               . "💡 Для более точного поиска укажите полное ФИО или официальное наименование: /ino [ФИО]";
+    } else {
+        $reply = "🔍 Единый реестр иностранных агентов Минюста РФ (255-ФЗ) 🤖🛡️\n\n"
+               . "По запросу «{$inoSearchQuery}» найдено записей: {$totalFound}\n"
+               . "────────────────────\n";
+
+        foreach ($items as $idx => $item) {
+            $num = $idx + 1;
+            $name = $item['name'] ?? 'Без имени';
+            $regNum = $item['reg_num'] ?? '—';
+            $statusLabel = $item['status_label'] ?? ($item['is_active'] ? 'В реестре' : 'Исключён');
+            $statusIcon = !empty($item['is_active']) ? '⚠️' : '🟢';
+            $typeLabel = $item['type_label'] ?? 'Физическое лицо';
+            $incDate = $item['inclusion_date'] ?? ($item['include_date'] ?? '—');
+            $grounds = $item['grounds'] ?? '';
+            $aliases = !empty($item['aliases']) ? implode(', ', $item['aliases']) : '';
+
+            $reply .= "{$num}. {$statusIcon} {$name}\n";
+            $reply .= "   • Статус: {$statusLabel}\n";
+            $reply .= "   • Реестровый №: {$regNum}\n";
+            $reply .= "   • Тип: {$typeLabel}\n";
+            $reply .= "   • Дата включения: {$incDate}\n";
+
+            if (!empty($item['exclude_date'])) {
+                $reply .= "   • Дата исключения: {$item['exclude_date']}\n";
+            }
+
+            if ($aliases !== '') {
+                $reply .= "   • Псевдонимы/наименования: {$aliases}\n";
+            }
+
+            if ($grounds !== '') {
+                // Ограничиваем длину правового основания для компактности сообщения
+                $groundsSnippet = mb_strlen($grounds) > 160 ? mb_substr($grounds, 0, 157) . '...' : $grounds;
+                $reply .= "   • Основание: {$groundsSnippet}\n";
+            }
+
+            $reply .= "\n";
+        }
+
+        $reply .= "────────────────────\n"
+               . "🏛️ Справка библиотечной системы г. Владимира:\n"
+               . "Согласно Федеральному закону № 255-ФЗ и правилам комплектования фондов, книги и материалы авторов со статусом иностранного агента подлежат специальному учёту, маркировке знаком «18+», хранению в закрытых фондах и не выдаются несовершеннолетним читателям.";
+    }
+
+    if ($isChat && $fromId > 0) {
+        $reply = "[id{$fromId}|{$callerName}], " . $reply;
+    }
+
+    if ($isVoiceQuery && $voiceTranscribedText !== '') {
+        $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
+    }
+
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
+}
+
 // Сценарий 1: Проверка на авторов-иноагентов, их книги и информацию об иноагентах (строжайший запрет)
 if (vk_bot_is_foreign_agent_query($userMsg)) {
     $reply = "Как робот муниципальной библиотечной системы г. Владимира, я строго следую законодательству РФ и правилам библиотек: я не предоставляю информацию о лицах, признанных иностранными агентами Минюстом РФ, не обсуждаю их, а также не рекомендую, не цитирую и не упоминаю произведения авторов-иноагентов. 🤖🛡️\n\n"
@@ -7519,6 +7666,8 @@ if ($isUserHelpQuery) {
            . "• Напишите «стикеры» или «!стикеры» — пришлю коллекцию из 17 авторских прозрачных стикеров Космо для общения.\n\n"
            . "🤖 9. О РОБОТЕ КОСМО:\n"
            . "• Кнопка «🤖 Кто ты, Космо?» — рассказ о создании робота, его создателях (МБУК «ЦГБ» г. Владимира) и веб-платформе biblioteka33.ru.\n\n"
+           . "🛡️ 10. РЕЕСТР ИНОАГЕНТОВ (255-ФЗ):\n"
+           . "• /ino [имя/ФИО] или !ino — официальная проверка персоны или организации по Единому реестру иноагентов Минюста РФ (например: /ino Акунин).\n\n"
            . "💡 Просто напишите мне любой вопрос о книгах — я всегда рад помочь! ✨";
 
     if ($isChat && $fromId > 0) {
