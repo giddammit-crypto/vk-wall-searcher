@@ -16,8 +16,8 @@ export function extractNum(val) {
 export function formatViews(val) {
     const num = extractNum(val);
     if (!num) return '0';
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + ' млн';
-    if (num >= 10000) return (num / 1000).toFixed(1) + ' тыс.';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + '\u00A0млн';
+    if (num >= 10000) return (num / 1000).toFixed(1) + '\u00A0тыс.';
     if (num >= 1000) return num.toLocaleString('ru-RU');
     return num.toString();
 }
@@ -112,12 +112,18 @@ export function calculateGroupStats(posts, targets = []) {
         const erViews = s.views > 0 ? (totalInteractions / s.views) * 100 : 0;
         const erPosts = s.postsCount > 0 ? (totalInteractions / s.postsCount) : 0;
         const avgViews = s.postsCount > 0 ? Math.round(s.views / s.postsCount) : 0;
+        const avgLikes = s.postsCount > 0 ? Math.round(s.likes / s.postsCount) : 0;
+        const avgReposts = s.postsCount > 0 ? Math.round(s.reposts / s.postsCount) : 0;
+        const avgComments = s.postsCount > 0 ? Math.round(s.comments / s.postsCount) : 0;
         return {
             ...s,
             totalInteractions,
             erViews,
             erPosts,
-            avgViews
+            avgViews,
+            avgLikes,
+            avgReposts,
+            avgComments
         };
     });
 

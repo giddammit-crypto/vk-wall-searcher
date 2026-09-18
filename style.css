@@ -3130,8 +3130,8 @@ textarea::placeholder {
 .source-posts-badge .badge-text { font-family: var(--font-mono); font-size: 0.5625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; margin-top: 2px; }
 
 .source-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--divider-color); }
-.source-stats-row { display: flex; align-items: center; gap: 10px; }
-.source-stat { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 2px; font-weight: 500; }
+.source-stats-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow: hidden; }
+.source-stat { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 2px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .source-stat .stat-icon { font-size: 14px; }
 
 .source-filter-trigger-btn { border: none; background: var(--surface); color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; padding: 5px 10px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; transition: all var(--duration) var(--ease); }

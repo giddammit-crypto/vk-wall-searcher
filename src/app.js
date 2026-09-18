@@ -377,9 +377,9 @@ function initApp() {
     // =========================================================================
     function initFormInputs() {
         const currentYear = new Date().getFullYear();
-        // v3.4.1: по умолчанию сканируем последние 2 года — это в разы быстрее;
-        // глубокий архив доступен через явное расширение диапазона лет.
-        if (elements.yearStartInput) elements.yearStartInput.value = currentYear - 1;
+        // По умолчанию сканируем только текущий год — это быстрее и не пугает пользователей
+        // "бешеными цифрами" охватов за 2+ года. Глубокий архив доступен вручную.
+        if (elements.yearStartInput) elements.yearStartInput.value = currentYear;
         if (elements.yearEndInput) elements.yearEndInput.value = currentYear;
 
         // Day select options
@@ -1273,6 +1273,19 @@ function initApp() {
                 console.warn('Не удалось получить живые данные сообществ/пользователей:', liveErr.message);
             }
 
+            // Deduplicate targets by normalized ID so duplicate manual inputs don't launch parallel duplicate workers
+            const uniqueTargets = [];
+            const seenTargetIds = new Set();
+            for (const t of resolvedTargets) {
+                const idKey = String(t.id || t.rawId || t.link);
+                if (!seenTargetIds.has(idKey)) {
+                    seenTargetIds.add(idKey);
+                    uniqueTargets.push(t);
+                }
+            }
+            resolvedTargets.length = 0;
+            resolvedTargets.push(...uniqueTargets);
+
             // Canonical sort
             resolvedTargets.sort((a, b) => (a.sortOrder || 999) - (b.sortOrder || 999));
             state.targetsInfo = resolvedTargets;
@@ -1663,8 +1676,11 @@ function initApp() {
         // Calculate KPIs from FILTERED posts
         const kpis = calculateKPIs(state.filteredPosts);
         
-        // Calculate Group Stats from ALL matched posts (so showcase/reports stay intact)
-        const stats = calculateGroupStats(state.matchedPosts, state.targetsInfo);
+        // Calculate Group Stats from matched posts (respecting excludePinned if active)
+        const postsForStats = elements.excludePinnedCheck?.checked 
+            ? state.matchedPosts.filter(p => !p.is_pinned) 
+            : state.matchedPosts;
+        const stats = calculateGroupStats(postsForStats, state.targetsInfo);
         state.lastGroupsStats = stats;
 
         // Fill KPI cards
@@ -2108,8 +2124,12 @@ function initApp() {
             const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter);
             const card = document.createElement('div');
             card.className = `source-showcase-card ${isSelected ? 'selected' : ''}`;
-            const avgV = item.avgViews || (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
-            const viewsTitle = `Суммарный охват филиала: ${item.views.toLocaleString('ru-RU')} просмотров (~${avgV} на пост)`;
+            const avgV = item.avgViews !== undefined ? item.avgViews : (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
+            const avgL = item.avgLikes !== undefined ? item.avgLikes : (item.postsCount > 0 ? Math.round(item.likes / item.postsCount) : 0);
+            const avgR = item.avgReposts !== undefined ? item.avgReposts : (item.postsCount > 0 ? Math.round(item.reposts / item.postsCount) : 0);
+            const viewsTitle = `В среднем: ${avgV} просм./пост (Суммарный охват: ${item.views.toLocaleString('ru-RU')})`;
+            const likesTitle = `В среднем: ${avgL} лайков/пост (Суммарно: ${item.likes.toLocaleString('ru-RU')})`;
+            const repostsTitle = `В среднем: ${avgR} репостов/пост (Суммарно: ${item.reposts.toLocaleString('ru-RU')})`;
 
             card.innerHTML = `
                 <div class="source-card-top">
@@ -2132,16 +2152,19 @@ function initApp() {
                         </div>
                     </div>
                 </div>
-                <div class="source-card-bottom">
-                    <div class="source-stats-row">
-                        <span class="source-stat" title="Лайки"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ${item.likes}</span>
-                        <span class="source-stat" title="Репосты"><span class="material-symbols-outlined stat-icon text-warning">share</span> ${item.reposts}</span>
-                        <span class="source-stat" title="${viewsTitle}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${formatViews(item.views)}${item.postsCount > 0 ? `<span style="font-size:10px;opacity:0.75;margin-left:2px">(~${avgV})</span>` : ''}</span>
+                <div class="source-card-bottom" style="flex-direction: column; align-items: stretch; gap: 4px;">
+                    <div class="source-stats-row" style="margin-bottom:0; justify-content: space-between; width: 100%;">
+                        <span class="source-stat" title="${likesTitle}"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ~${avgL}</span>
+                        <span class="source-stat" title="${repostsTitle}"><span class="material-symbols-outlined stat-icon text-warning">share</span> ~${avgR}</span>
+                        <span class="source-stat" title="${viewsTitle}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ~<span style="white-space:nowrap">${formatViews(avgV)}</span></span>
                     </div>
-                    <button class="source-filter-trigger-btn" type="button">
-                        <span>${isSelected ? 'Выбран' : 'Фильтровать'}</span>
-                        <span class="material-symbols-outlined">${isSelected ? 'check' : 'arrow_forward'}</span>
-                    </button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; width: 100%;">
+                        <span style="font-size:11px; color:var(--muted); font-weight:500;">Охват: <span style="white-space:nowrap">${formatViews(item.views)}</span></span>
+                        <button class="source-filter-trigger-btn" type="button" style="margin: 0; padding: 4px 10px;">
+                            <span>${isSelected ? 'Выбран' : 'Фильтровать'}</span>
+                            <span class="material-symbols-outlined">${isSelected ? 'check' : 'arrow_forward'}</span>
+                        </button>
+                    </div>
                 </div>
             `;
 
