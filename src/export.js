@@ -449,10 +449,10 @@ export function exportRatingToCsv(groupsStats = []) {
     ];
 
     const rows = groupsStats.map((s, idx) => {
-        const views = extractNum(s.views) || 1;
+        const views = extractNum(s.views);
         const totalReactions = s.likes + s.reposts + s.comments;
         const avgReactions = s.postsCount > 0 ? (totalReactions / s.postsCount).toFixed(1) : '0.0';
-        const er = (((totalReactions) / views) * 100).toFixed(2);
+        const er = views > 0 ? ((totalReactions / views) * 100).toFixed(2) : '0.00';
 
         return [
             idx + 1,

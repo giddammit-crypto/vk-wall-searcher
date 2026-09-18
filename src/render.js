@@ -454,10 +454,10 @@ export function createPostCard(post) {
         </div>
         <div class="post-card-footer">
             <div class="post-stats-row">
-                <span class="stat-item stat-likes" title="Лайки"><span class="material-symbols-outlined">favorite</span> ${likes}</span>
-                <span class="stat-item stat-reposts" title="Репосты"><span class="material-symbols-outlined">share</span> ${reposts}</span>
-                <span class="stat-item stat-comments" title="Комментарии"><span class="material-symbols-outlined">chat_bubble</span> ${comments}</span>
-                ${views ? `<span class="stat-item stat-views" title="Просмотры"><span class="material-symbols-outlined">visibility</span> ${formatViews(views)}</span>` : ''}
+                <span class="stat-item stat-likes" title="Лайки: ${likes.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">favorite</span> ${likes.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-reposts" title="Репосты: ${reposts.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">share</span> ${reposts.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-comments" title="Комментарии: ${comments.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">chat_bubble</span> ${comments.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-views" title="Просмотры: ${views.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">visibility</span> ${views.toLocaleString('ru-RU')}</span>
             </div>
             <div class="post-actions-row">
                 <button type="button" class="btn btn-secondary btn-sm post-copy-link-btn" title="Скопировать ссылку на запись VK" data-post-url="${postLink}">

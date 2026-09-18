@@ -6,11 +6,21 @@
 import { enrichTargetWithCanonical, renderBranchAvatarHtml, declOfNum, escapeHtml } from './branches.js?v=4.21.0';
 
 export function extractNum(val) {
-    if (!val) return 0;
-    if (typeof val === 'number') return val;
-    if (typeof val === 'object' && val !== null && typeof val.count === 'number') return val.count;
-    const parsed = parseInt(val, 10);
-    return isNaN(parsed) ? 0 : parsed;
+    if (val == null) return 0;
+    if (typeof val === 'number') return isFinite(val) ? Math.trunc(val) : 0;
+    if (typeof val === 'object') {
+        if ('count' in val) {
+            const c = Number(val.count);
+            return (!isNaN(c) && isFinite(c)) ? Math.trunc(c) : 0;
+        }
+        return 0;
+    }
+    const parsed = Number(val);
+    return (!isNaN(parsed) && isFinite(parsed)) ? Math.trunc(parsed) : 0;
+}
+
+export function formatExactNum(val) {
+    return extractNum(val).toLocaleString('ru-RU');
 }
 
 export function formatViews(val) {
@@ -41,7 +51,9 @@ export function calculateKPIs(posts) {
     const count = posts.length;
     const totalInteractions = totalLikes + totalReposts + totalComments;
     const avgViews = count > 0 ? Math.round(totalViews / count) : 0;
-    const avgLikes = count > 0 ? (totalLikes / count).toFixed(1) : 0;
+    const avgLikes = count > 0 ? Math.round(totalLikes / count) : 0;
+    const avgReposts = count > 0 ? Math.round(totalReposts / count) : 0;
+    const avgComments = count > 0 ? Math.round(totalComments / count) : 0;
     const erViews = totalViews > 0 ? ((totalInteractions / totalViews) * 100).toFixed(2) : '0.00';
     const erPosts = count > 0 ? ((totalInteractions / count)).toFixed(1) : '0.0';
 
@@ -61,6 +73,18 @@ export function calculateKPIs(posts) {
     };
 }
 
+function getBranchKey(targetObj) {
+    if (!targetObj) return 'unknown';
+    if (targetObj.sortOrder != null && targetObj.sortOrder !== 999) {
+        return `canon_${targetObj.sortOrder}`;
+    }
+    const numId = parseInt(targetObj.id || targetObj.rawId, 10);
+    if (!isNaN(numId) && numId !== 0) {
+        return `id_${Math.abs(numId)}`;
+    }
+    return `name_${String(targetObj.canonicalName || targetObj.name || '').trim().toLowerCase()}`;
+}
+
 /**
  * Calculate per-branch statistics for comparison and ranking
  */
@@ -70,7 +94,7 @@ export function calculateGroupStats(posts, targets = []) {
     // Initialize all scanned targets so 0-post branches are included
     targets.forEach(t => {
         const targetObj = enrichTargetWithCanonical({ ...t });
-        const key = String(targetObj.id || targetObj.rawId || targetObj.canonicalName || targetObj.name);
+        const key = getBranchKey(targetObj);
         if (!key) return;
         map.set(key, {
             info: targetObj,
@@ -86,7 +110,7 @@ export function calculateGroupStats(posts, targets = []) {
     posts.forEach(p => {
         const t = p.targetInfo || { id: p.owner_id, rawId: p.owner_id, name: p._targetName || 'Источник' };
         enrichTargetWithCanonical(t);
-        const key = String(t.id || t.rawId || t.canonicalName || t.name);
+        const key = getBranchKey(t);
         if (!map.has(key)) {
             map.set(key, {
                 info: t,

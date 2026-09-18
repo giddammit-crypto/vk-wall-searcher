@@ -493,6 +493,9 @@ function initApp() {
                 }
             });
         }
+
+        // Default to current month preset so initial search doesn't scan years of history
+        applyPeriodPreset('current-month');
     }
 
     function applyPeriodPreset(key) {
@@ -1003,8 +1006,9 @@ function initApp() {
         }
 
         // Read and prepare filter parameters
-        const yearStart = parseInt(elements.yearStartInput?.value || '2010', 10);
-        const yearEnd = parseInt(elements.yearEndInput?.value || String(new Date().getFullYear()), 10);
+        const currentYearNum = new Date().getFullYear();
+        const yearStart = parseInt(elements.yearStartInput?.value || String(currentYearNum), 10);
+        const yearEnd = parseInt(elements.yearEndInput?.value || String(currentYearNum), 10);
         if (isNaN(yearStart) || isNaN(yearEnd) || yearStart > yearEnd) {
             alert('Некорректный диапазон годов!');
             return;
@@ -1024,6 +1028,10 @@ function initApp() {
         const onlyPolls = elements.onlyPollsCheck?.checked || false;
         const onlyLinks = elements.onlyLinksCheck?.checked || false;
 
+        // Generation tracking to prevent stale worker collisions
+        state.scanSessionId = (state.scanSessionId || 0) + 1;
+        const currentScanSession = state.scanSessionId;
+
         // Reset search state
         state.isScanning = true;
         state.shouldCancel = false;
@@ -1033,6 +1041,8 @@ function initApp() {
         state.matchedPosts = [];
         state.filteredPosts = [];
         state.seenPostKeys = new Set();
+        state.lastGroupsStats = [];
+        state.crossPostingData = null;
         state.activeBranchFilter = null;
         state.activeHashtagFilter = null;
         state.cardPage = 0;
@@ -1040,6 +1050,12 @@ function initApp() {
         state.lastYearStart = yearStart;
         state.lastYearEnd = yearEnd;
         state.lastSelectedMonths = new Set(state.selectedMonths);
+
+        // Reset UI grids and tables
+        if (elements.postsGrid) elements.postsGrid.innerHTML = '';
+        if (elements.sourcesShowcaseGrid) elements.sourcesShowcaseGrid.innerHTML = '';
+        if (elements.analyticsRatingTbody) elements.analyticsRatingTbody.innerHTML = '';
+        if (elements.reportTablesContainer) elements.reportTablesContainer.innerHTML = '';
 
         // UI Reset & Open Fullscreen Dimmed Motion Search Overlay
         if (elements.submitBtn) {
@@ -1292,8 +1308,18 @@ function initApp() {
             state.targetInfo = resolvedTargets[0];
 
             // 2. Batch Scanning via VK API execute
-            // minTime is the Unix timestamp of the oldest date we care about (Jan 1 of yearStart)
-            const minTime = yearStart > 0 ? Math.floor(new Date(yearStart, 0, 1).getTime() / 1000) : 0;
+            // Precise period boundary calculation (MSK / UTC+3)
+            let targetMonthsList = Array.from(state.selectedMonths);
+            if (targetMonthsList.length === 0) {
+                targetMonthsList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            }
+            const minMonth = Math.min(...targetMonthsList); // 1-12
+            const maxMonth = Math.max(...targetMonthsList); // 1-12
+
+            // Start of period in UTC seconds (MSK is UTC+3)
+            const minTime = Math.floor(Date.UTC(yearStart, minMonth - 1, 1, 0, 0, 0) / 1000) - (3 * 3600);
+            // End of period: last second of the target month
+            const maxTime = Math.floor(Date.UTC(yearEnd, maxMonth, 0, 23, 59, 59) / 1000) - (3 * 3600);
 
             // 2. Batch Scanning: параллельный опрос стен батчами по 2-3 филиала
             const BATCH_SIZE = 3;
@@ -1346,6 +1372,7 @@ function initApp() {
             }
 
             async function scanTargetWall(targetInfo) {
+                if (state.scanSessionId !== currentScanSession || state.shouldCancel) return;
                 const targetName = targetInfo.canonicalName || targetInfo.name || `Филиал ${targetInfo.id}`;
                 activeTargetNames.add(targetName);
                 targetProgressMap.set(targetInfo.id, 0);
@@ -1358,7 +1385,7 @@ function initApp() {
                 let executeFailedForGroup = false;
                 let emptyBatchStreak = 0;
 
-                while (!finished && !state.shouldCancel) {
+                while (!finished && !state.shouldCancel && state.scanSessionId === currentScanSession) {
                     let res;
                     if (!executeFailedForGroup) {
                         try {
@@ -1392,7 +1419,7 @@ function initApp() {
                         }
                     }
 
-                    if (state.shouldCancel) break;
+                    if (state.shouldCancel || state.scanSessionId !== currentScanSession) break;
 
                     if (!res || !res.items || res.items.length === 0) {
                         emptyBatchStreak++;
@@ -1423,25 +1450,32 @@ function initApp() {
                     resolveMissingAuthors(posts, state.token).catch(() => {});
 
                     for (let post of posts) {
-                        if (state.shouldCancel) break;
+                        if (state.shouldCancel || state.scanSessionId !== currentScanSession) break;
 
-                        const postDate = new Date(post.date * 1000);
-                        const year = postDate.getFullYear();
-                        const month = postDate.getMonth() + 1;
-                        const day = postDate.getDate();
+                        // Moscow time (MSK, UTC+3) conversion
+                        const mskDate = new Date((post.date + 3 * 3600) * 1000);
+                        const year = mskDate.getUTCFullYear();
+                        const month = mskDate.getUTCMonth() + 1;
+                        const day = mskDate.getUTCDate();
 
-                        // Early break check: if oldest post is older than yearStart and not pinned
-                        if (!post.is_pinned && year < yearStart) {
+                        // Early break check: wall posts are in descending chronological order (except pinned).
+                        // If an unpinned post is older than minTime, we have completely passed the target period!
+                        if (!post.is_pinned && minTime > 0 && post.date < minTime) {
                             finished = true;
                             break;
                         }
 
                         // Guarantee pinned posts outside target period never leak into results
-                        if (post.is_pinned && year < yearStart) {
-                            continue;
+                        if (post.is_pinned) {
+                            if ((minTime > 0 && post.date < minTime) || (maxTime > 0 && post.date > maxTime)) {
+                                continue;
+                            }
                         }
 
-                        state.scannedCount++;
+                        // Skip posts newer than maxTime (e.g. searching an older historical period)
+                        if (maxTime > 0 && post.date > maxTime) {
+                            continue;
+                        }
 
                         // Date filters
                         const inYearRange = year >= yearStart && year <= yearEnd;
@@ -1451,6 +1485,8 @@ function initApp() {
                         if (!inYearRange || !isTargetMonth || !isTargetDay) {
                             continue;
                         }
+
+                        state.scannedCount++;
 
                         // Attachments and Repost checks
                         const isRepost = Array.isArray(post.copy_history) && post.copy_history.length > 0;
@@ -1513,7 +1549,7 @@ function initApp() {
                         }
 
                         post.targetInfo = targetInfo;
-                        post.humanDate = formatHumanDate(postDate);
+                        post.humanDate = formatHumanDate(mskDate);
                         state.matchedPosts.push(post);
                         state.matchedCount++;
                         groupPostCount++;
@@ -1910,13 +1946,22 @@ function initApp() {
             if (pTargetRawAbs === filterAbs) return true;
         }
 
-        // 4. Name / Shortcode matching
+        // 4. Name / Shortcode matching with strict boundary to prevent "Филиал №1" matching "Филиал №10"
         const filterStr = String(branchFilter).trim().toLowerCase();
         const pName = (post.targetInfo?.canonicalName || post.targetInfo?.name || post._targetName || '').toLowerCase();
-        if (pName && (pName === filterStr || pName.includes(filterStr))) return true;
+        if (pName) {
+            if (pName === filterStr) return true;
+            const escaped = filterStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(^|\\s|«|„|\\b)${escaped}(\\b|»|“|\\s|$)`, 'i');
+            if (regex.test(pName)) return true;
+        }
 
         const pCode = (post.targetInfo?.shortCode || post.targetInfo?.branchNum || '').toLowerCase();
-        if (pCode && pCode === filterStr) return true;
+        if (pCode) {
+            if (pCode === filterStr) return true;
+            const cleanFilter = filterStr.replace(/^ф-?/i, '');
+            if (cleanFilter && pCode === cleanFilter) return true;
+        }
 
         return false;
     }
@@ -2111,6 +2156,8 @@ function initApp() {
             list.sort((a, b) => b.postsCount - a.postsCount || (a.info.sortOrder || 999) - (b.info.sortOrder || 999));
         } else if (sortMode === 'likes-desc') {
             list.sort((a, b) => b.likes - a.likes || (a.info.sortOrder || 999) - (b.info.sortOrder || 999));
+        } else if (sortMode === 'views-desc') {
+            list.sort((a, b) => b.views - a.views || (a.info.sortOrder || 999) - (b.info.sortOrder || 999));
         } else if (sortMode === 'name-asc') {
             list.sort((a, b) => (a.info.canonicalName || a.info.name).localeCompare(b.info.canonicalName || b.info.name, 'ru'));
         } else { // canonical
@@ -2124,12 +2171,10 @@ function initApp() {
             const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter);
             const card = document.createElement('div');
             card.className = `source-showcase-card ${isSelected ? 'selected' : ''}`;
-            const avgV = item.avgViews !== undefined ? item.avgViews : (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
-            const avgL = item.avgLikes !== undefined ? item.avgLikes : (item.postsCount > 0 ? Math.round(item.likes / item.postsCount) : 0);
-            const avgR = item.avgReposts !== undefined ? item.avgReposts : (item.postsCount > 0 ? Math.round(item.reposts / item.postsCount) : 0);
-            const viewsTitle = `В среднем: ${avgV} просм./пост (Суммарный охват: ${item.views.toLocaleString('ru-RU')})`;
-            const likesTitle = `В среднем: ${avgL} лайков/пост (Суммарно: ${item.likes.toLocaleString('ru-RU')})`;
-            const repostsTitle = `В среднем: ${avgR} репостов/пост (Суммарно: ${item.reposts.toLocaleString('ru-RU')})`;
+            const likesCount = item.likes.toLocaleString('ru-RU');
+            const repostsCount = item.reposts.toLocaleString('ru-RU');
+            const commentsCount = (item.comments || 0).toLocaleString('ru-RU');
+            const viewsCount = item.views.toLocaleString('ru-RU');
 
             card.innerHTML = `
                 <div class="source-card-top">
@@ -2152,14 +2197,14 @@ function initApp() {
                         </div>
                     </div>
                 </div>
-                <div class="source-card-bottom" style="flex-direction: column; align-items: stretch; gap: 4px;">
-                    <div class="source-stats-row" style="margin-bottom:0; justify-content: space-between; width: 100%;">
-                        <span class="source-stat" title="${likesTitle}"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ~${avgL}</span>
-                        <span class="source-stat" title="${repostsTitle}"><span class="material-symbols-outlined stat-icon text-warning">share</span> ~${avgR}</span>
-                        <span class="source-stat" title="${viewsTitle}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ~<span style="white-space:nowrap">${formatViews(avgV)}</span></span>
+                <div class="source-card-bottom" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                    <div class="source-stats-row" style="margin-bottom:0; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 6px;">
+                        <span class="source-stat" title="Лайки за период: ${likesCount}"><span class="material-symbols-outlined stat-icon text-danger">favorite</span> ${likesCount}</span>
+                        <span class="source-stat" title="Репосты за период: ${repostsCount}"><span class="material-symbols-outlined stat-icon text-warning">share</span> ${repostsCount}</span>
+                        <span class="source-stat" title="Комментарии за период: ${commentsCount}"><span class="material-symbols-outlined stat-icon text-success">chat_bubble</span> ${commentsCount}</span>
+                        <span class="source-stat" title="Просмотры за период: ${viewsCount}"><span class="material-symbols-outlined stat-icon text-info">visibility</span> ${viewsCount}</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; width: 100%;">
-                        <span style="font-size:11px; color:var(--muted); font-weight:500;">Охват: <span style="white-space:nowrap">${formatViews(item.views)}</span></span>
+                    <div style="display:flex; justify-content:flex-end; align-items:center; width: 100%; margin-top: 2px;">
                         <button class="source-filter-trigger-btn" type="button" style="margin: 0; padding: 4px 10px;">
                             <span>${isSelected ? 'Выбран' : 'Фильтровать'}</span>
                             <span class="material-symbols-outlined">${isSelected ? 'check' : 'arrow_forward'}</span>
@@ -2375,13 +2420,12 @@ function initApp() {
                     </div>
                 </td>
                 <td style="text-align: right; font-weight: 700; color: var(--accent);">${item.postsCount}</td>
-                <td style="text-align: right; font-family: var(--font-mono);" title="Суммарный охват: ${item.views.toLocaleString('ru-RU')} (в среднем ~${avgV} на пост)">
-                    <div>${formatViews(item.views)}</div>
-                    <div style="font-size: 11px; color: var(--muted); font-weight: 400;">~${avgV}/пост</div>
+                <td style="text-align: right; font-family: var(--font-mono);" title="Суммарный охват: ${item.views.toLocaleString('ru-RU')}">
+                    <div>${item.views.toLocaleString('ru-RU')}</div>
                 </td>
-                <td style="text-align: right; font-family: var(--font-mono);">${item.likes}</td>
-                <td style="text-align: right; font-family: var(--font-mono);">${item.reposts}</td>
-                <td style="text-align: right; font-family: var(--font-mono);">${item.comments}</td>
+                <td style="text-align: right; font-family: var(--font-mono);">${item.likes.toLocaleString('ru-RU')}</td>
+                <td style="text-align: right; font-family: var(--font-mono);">${item.reposts.toLocaleString('ru-RU')}</td>
+                <td style="text-align: right; font-family: var(--font-mono);">${item.comments.toLocaleString('ru-RU')}</td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.erPosts.toFixed(1)}</td>
                 <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;">${item.erViews.toFixed(2)}%</td>
             `;
@@ -2949,9 +2993,9 @@ function initApp() {
             `1. ОБЩИЕ ПОКАЗАТЕЛИ СЕТИ:`,
             `— Всего проанализировано филиалов: ${stats.length}`,
             `— Опубликовано записей за период: ${kpis.count}`,
-            `— Суммарный читательский охват (просмотры): ${kpis.totalViews.toLocaleString('ru-RU')} (в среднем ~${kpis.avgViews} на запись)`,
-            `— Общее количество взаимодействий (лайки, репосты, комменты): ${kpis.totalInteractions}`,
-            `— Средний коэффициент читательского вовлечения (ER): ${kpis.erViews}`,
+            `— Суммарный читательский охват (просмотры): ${kpis.totalViews.toLocaleString('ru-RU')}`,
+            `— Общее количество взаимодействий: ${kpis.totalInteractions.toLocaleString('ru-RU')} (лайков: ${kpis.totalLikes.toLocaleString('ru-RU')}, репостов: ${kpis.totalReposts.toLocaleString('ru-RU')}, комментариев: ${kpis.totalComments.toLocaleString('ru-RU')})`,
+            `— Средний коэффициент читательского вовлечения (ER): ${kpis.erViews}%`,
             ``,
             `2. СТАТУС ВЫПОЛНЕНИЯ ПЛАНА ПУБЛИКАЦИОННОЙ АКТИВНОСТИ:`,
             `— Выполнили норматив (≥10 постов): ${activeBranches.length} филиалов (${activeBranches.map(b => b.info.canonicalName).join(', ') || 'нет'})`,

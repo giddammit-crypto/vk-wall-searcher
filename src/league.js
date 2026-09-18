@@ -419,9 +419,9 @@ function renderLeagueRow(entry) {
                         <span class="material-symbols-outlined stat-icon">trending_up</span>
                         ER: <strong>${erVal.toFixed(2)}%</strong>
                     </span>
-                    <span class="mini-stat-pill" title="Средний охват просмотров">
+                    <span class="mini-stat-pill" title="Суммарный охват просмотров за период">
                         <span class="material-symbols-outlined stat-icon">visibility</span>
-                        ~<strong>${avgViews}</strong> охват
+                        <strong>${totalViews.toLocaleString('ru-RU')}</strong> охват
                     </span>
                     <span class="mini-stat-pill" title="Публикаций за период">
                         <span class="material-symbols-outlined stat-icon">article</span>
@@ -531,7 +531,7 @@ export function printLeagueDiploma(entry, allEntries = []) {
         return;
     }
 
-    const { rank, name, xp, division, awards, erVal, avgViews, totalPosts } = entry;
+    const { rank, name, xp, division, awards, erVal, totalViews, totalPosts } = entry;
     const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const awardsHtml = awards.map(a => `
@@ -869,8 +869,8 @@ export function printLeagueDiploma(entry, allEntries = []) {
                     <div class="stat-item-lbl">Вовлечённость (ER)</div>
                 </div>
                 <div>
-                    <div class="stat-item-num">${avgViews}</div>
-                    <div class="stat-item-lbl">Средний охват</div>
+                    <div class="stat-item-num">${totalViews.toLocaleString('ru-RU')}</div>
+                    <div class="stat-item-lbl">Суммарный охват</div>
                 </div>
                 <div>
                     <div class="stat-item-num">${totalPosts}</div>
