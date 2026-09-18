@@ -63,7 +63,7 @@ import {
     extractNum,
     computeTimingHeatmap,
     renderTimingHeatmapSection
-} from './analytics.js?v=4.23.2';
+} from './analytics.js?v=4.62.0';
 
 import {
     createPostCard,
@@ -119,7 +119,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.48.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.62.0';
+export const APP_VERSION = '4.62.1';
 
 function initApp() {
 

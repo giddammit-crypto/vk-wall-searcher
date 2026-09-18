@@ -222,14 +222,14 @@
     <link rel="stylesheet" href="src/mascot.css?v=4.61.0">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/opac_search.css?v=4.61.0">
-    <link rel="stylesheet" href="src/splash_loader.css?v=5.2.0">
+    <link rel="stylesheet" href="src/splash_loader.css?v=5.4.0">
 
     <!-- Three.js 3D Engine & GLTF Loader for Cosmo 3D Model -->
-    <script src="assets/vendor/three/three.min.js"></script>
-    <script src="assets/vendor/three/GLTFLoader.js"></script>
+    <script defer src="assets/vendor/three/three.min.js"></script>
+    <script defer src="assets/vendor/three/GLTFLoader.js"></script>
 
     <!-- JSZip library for creating zip files in the browser -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
     <!-- Standalone Reader Mode Splash & Direct Instant Loader (Для читателей по QR-коду со стеллажа) -->
@@ -339,7 +339,7 @@
         </div>
     </div>
     <script type="module">
-    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.3.0';
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.4.0';
     (function() {
         try {
             const p = new URLSearchParams(window.location.search);
@@ -1892,7 +1892,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.62.0"></script>
+    <script type="module" src="src/app.js?v=4.62.1"></script>
 
     <script>
     /* =============================================================

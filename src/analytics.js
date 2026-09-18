@@ -257,8 +257,12 @@ export function detectCrossPosts(posts) {
             const a = candidates[i];
             const b = candidates[j];
 
-            // Only consider cross-branch posts
-            if (a.post.owner_id === b.post.owner_id) continue;
+            // Only consider cross-branch posts. When owner_id is absent on both sides the
+            // strict equality used to evaluate true and silently skip every pair, so fall
+            // back to targetInfo.id and only skip when a real, known owner matches.
+            const ownerA = a.post.owner_id ?? a.post.targetInfo?.id;
+            const ownerB = b.post.owner_id ?? b.post.targetInfo?.id;
+            if (ownerA != null && ownerA === ownerB) continue;
 
             // Substring match for substantial quotes
             let isMatch = false;
@@ -271,8 +275,13 @@ export function detectCrossPosts(posts) {
             }
 
             if (!isMatch) {
-                const simShingles = jaccardSimilarity(a.shingles, b.shingles);
-                const simWords = jaccardSimilarity(a.words, b.words);
+                // Jaccard(A,B) <= min(|A|,|B|)/max(|A|,|B|). Computing this bound is O(1) and
+                // lets us skip the full set intersection whenever the threshold is unreachable,
+                // which removes the dominant cost of the O(n^2) pair loop without changing results.
+                const wBound = Math.min(a.words.size, b.words.size) / Math.max(a.words.size, b.words.size, 1);
+                const sBound = Math.min(a.shingles.size, b.shingles.size) / Math.max(a.shingles.size, b.shingles.size, 1);
+                const simShingles = sBound >= 0.45 ? jaccardSimilarity(a.shingles, b.shingles) : 0;
+                const simWords = wBound >= 0.55 ? jaccardSimilarity(a.words, b.words) : 0;
                 if (simShingles >= 0.45 || simWords >= 0.55) {
                     isMatch = true;
                 }
@@ -303,7 +312,8 @@ export function detectCrossPosts(posts) {
             clusterPosts.sort((a, b) => (a.date || 0) - (b.date || 0));
 
             const originalPost = clusterPosts[0];
-            const originalDate = new Date(originalPost.date * 1000);
+            const originalTs = originalPost.date > 1e11 ? Math.floor(originalPost.date / 1000) : (originalPost.date || 0);
+            const originalDate = new Date(originalTs * 1000);
 
             // Calculate engagement score for each post in cluster
             let leaderPost = clusterPosts[0];
@@ -332,8 +342,9 @@ export function detectCrossPosts(posts) {
                 }
 
                 // Time delta relative to original
-                const pDate = new Date(p.date * 1000);
-                const diffSec = Math.max(0, p.date - originalPost.date);
+                const pTs = p.date > 1e11 ? Math.floor(p.date / 1000) : (p.date || 0);
+                const pDate = new Date(pTs * 1000);
+                const diffSec = Math.max(0, pTs - originalTs);
                 let delayStr = 'Первоисточник';
                 if (diffSec >= 86400) {
                     const days = Math.round(diffSec / 86400);

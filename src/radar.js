@@ -12,7 +12,7 @@
  */
 
 import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.21.0';
-import { extractNum } from './analytics.js?v=4.21.0';
+import { extractNum } from './analytics.js?v=4.62.0';
 
 export const RADAR_AXES = [
     { id: 'regularity', label: 'Регулярность', desc: 'Частота и ритмичность постов' },

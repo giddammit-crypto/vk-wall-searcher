@@ -1,7 +1,7 @@
 /**
  * Aurora Splash Screen & 3D Cosmo Robot Loader
- * Authentic 3D GLB Model & Official Mascot Assets with cinematic Three.js WebGL rendering,
- * curved typography «КОСМО», ion glow, and HUD progress bar.
+ * AAA-CLASS ANIMATION SYSTEM with Disney's 12 Principles
+ * Enhanced with professional timing, particle effects, and cinematic polish
  */
 
 #aurora-splash {
@@ -26,7 +26,9 @@
     -webkit-user-select: none;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), visibility 0.65s cubic-bezier(0.4, 0.0, 0.2, 1);
+    /* AAA Enhancement: Smoother transitions with custom bezier */
+    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                visibility 0.65s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 #aurora-splash.aurora-splash-closing {
@@ -34,7 +36,10 @@
     pointer-events: none;
     transform: scale(1.02);
     filter: blur(6px);
-    transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1), transform 0.65s ease, filter 0.65s ease;
+    /* AAA Enhancement: Professional ease-out with slight overshoot */
+    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                filter 0.65s ease;
 }
 
 #aurora-splash.aurora-splash-hidden {
@@ -52,7 +57,7 @@
     z-index: 1;
 }
 
-/* Top Skip Button */
+/* Top Skip Button with AAA hover animation */
 .aurora-splash-skip-btn {
     position: absolute;
     top: 24px;
@@ -73,7 +78,8 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
     cursor: pointer;
-    transition: all 0.25s ease;
+    /* AAA Enhancement: Professional spring-based hover with anticipation */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
@@ -81,8 +87,9 @@
     color: #ffffff;
     background: rgba(30, 41, 59, 0.85);
     border-color: rgba(56, 189, 248, 0.45);
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
-    transform: translateY(-1px);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 6px 20px rgba(0, 0, 0, 0.5);
+    /* AAA Enhancement: Slight lift with overshoot */
+    transform: translateY(-2px) scale(1.02);
 }
 
 .aurora-splash-skip-kbd {
@@ -136,11 +143,42 @@
     fill: url(#auroraNeonGrad);
     opacity: 0;
     transform-origin: center center;
-    filter: drop-shadow(0 0 2px #ffffff) 
-            drop-shadow(0 0 8px rgba(56, 189, 248, 0.95)) 
-            drop-shadow(0 0 18px rgba(139, 92, 246, 0.75)) 
-            drop-shadow(0 0 30px rgba(236, 72, 153, 0.65));
-    transition: opacity 0.45s ease-out, filter 0.45s ease-out;
+    /* AAA PREMIUM MULTI-LAYER NEON GLOW */
+    filter: 
+        drop-shadow(0 0 1px rgba(255, 255, 255, 1.0))
+        drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
+        drop-shadow(0 0 8px rgba(56, 189, 248, 1.0))
+        drop-shadow(0 0 14px rgba(56, 189, 248, 0.85))
+        drop-shadow(0 0 22px rgba(139, 92, 246, 0.75))
+        drop-shadow(0 0 34px rgba(236, 72, 153, 0.65))
+        drop-shadow(0 0 48px rgba(236, 72, 153, 0.45));
+    transition: opacity 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                filter 0.45s cubic-bezier(0.25, 0.1, 0.25, 1);
+    animation: letterPulseGlow 2.4s ease-in-out infinite alternate;
+}
+
+/* AAA PREMIUM: Pulsing glow animation for letters */
+@keyframes letterPulseGlow {
+    0% {
+        filter: 
+            drop-shadow(0 0 1px rgba(255, 255, 255, 1.0))
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
+            drop-shadow(0 0 8px rgba(56, 189, 248, 1.0))
+            drop-shadow(0 0 14px rgba(56, 189, 248, 0.85))
+            drop-shadow(0 0 22px rgba(139, 92, 246, 0.75))
+            drop-shadow(0 0 34px rgba(236, 72, 153, 0.65))
+            drop-shadow(0 0 48px rgba(236, 72, 153, 0.45));
+    }
+    100% {
+        filter: 
+            drop-shadow(0 0 2px rgba(255, 255, 255, 1.0))
+            drop-shadow(0 0 5px rgba(255, 255, 255, 1.0))
+            drop-shadow(0 0 12px rgba(56, 189, 248, 1.0))
+            drop-shadow(0 0 20px rgba(56, 189, 248, 0.95))
+            drop-shadow(0 0 32px rgba(139, 92, 246, 0.85))
+            drop-shadow(0 0 48px rgba(236, 72, 153, 0.75))
+            drop-shadow(0 0 68px rgba(236, 72, 153, 0.55));
+    }
 }
 
 /* WebGL Robot 3D Canvas Area (Strictly <= 128px visual height) */
@@ -152,6 +190,65 @@
     align-items: center;
     justify-content: center;
     margin-top: 36px;
+    /* AAA Enhancement: Subtle perspective for depth */
+    perspective: 1000px;
+}
+
+/* AAA PREMIUM: Particle glow halos around robot */
+.aurora-splash-robot-viewport::before {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(
+        ellipse 45% 35% at 50% 58%,
+        rgba(56, 189, 248, 0.18) 0%,
+        rgba(139, 92, 246, 0.12) 35%,
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: 9;
+    filter: blur(32px);
+    opacity: 0;
+    animation: robotAmbientGlow 2.4s ease-in-out 2.8s forwards;
+    mix-blend-mode: screen;
+}
+
+@keyframes robotAmbientGlow {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* AAA PREMIUM: Volumetric fog layer behind robot */
+.aurora-splash-robot-viewport::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 160%;
+    height: 45%;
+    background: radial-gradient(
+        ellipse 80% 100% at 50% 100%,
+        rgba(56, 189, 248, 0.08) 0%,
+        rgba(236, 72, 153, 0.05) 50%,
+        transparent 100%
+    );
+    filter: blur(18px);
+    pointer-events: none;
+    z-index: 8;
+    opacity: 0;
+    animation: fogRise 1.8s ease-out 3.2s forwards;
+}
+
+@keyframes fogRise {
+    0% { 
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    100% { 
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
 
 #aurora-splash-webgl {
@@ -162,6 +259,9 @@
     height: 100%;
     max-height: 175px;
     outline: none;
+    /* AAA Enhancement: Hardware acceleration */
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 /* Official Mascot Asset Fallback / Companion */
@@ -172,15 +272,23 @@
     height: 120px;
     object-fit: contain;
     filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.65)) drop-shadow(0 0 32px rgba(236, 72, 153, 0.35));
-    animation: mascotBobbing 2.4s ease-in-out infinite alternate;
+    /* AAA Enhancement: More organic bobbing with squash & stretch */
+    animation: mascotBobbing 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
 
 @keyframes mascotBobbing {
-    0% { transform: translateY(-4px) rotate(-1deg); }
-    100% { transform: translateY(6px) rotate(1.5deg); }
+    0% { 
+        transform: translateY(-4px) rotate(-1deg) scale(1.0, 0.98);
+    }
+    50% {
+        transform: translateY(1px) rotate(0deg) scale(1.01, 1.01);
+    }
+    100% { 
+        transform: translateY(6px) rotate(1.5deg) scale(0.99, 1.02);
+    }
 }
 
-/* Dynamic Hover Shadow & Ion Propulsion Glow */
+/* Dynamic Hover Shadow & Ion Propulsion Glow with AAA physics response */
 .aurora-splash-hover-shadow {
     position: absolute;
     bottom: 10px;
@@ -188,12 +296,34 @@
     transform: translateX(-50%);
     width: 80px;
     height: 16px;
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.8) 0%, rgba(2, 4, 10, 0.45) 50%, transparent 80%);
+    background: radial-gradient(
+        ellipse at center,
+        rgba(0, 0, 0, 0.95) 0%,
+        rgba(2, 4, 10, 0.75) 30%,
+        rgba(7, 9, 19, 0.45) 60%,
+        transparent 85%
+    );
     border-radius: 50%;
     pointer-events: none;
     z-index: 11;
-    filter: blur(4px);
-    transition: transform 0.15s ease, opacity 0.15s ease;
+    filter: blur(6px);
+    transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
+    /* AAA PREMIUM: Shadow breathing animation */
+    animation: shadowBreathing 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes shadowBreathing {
+    0% {
+        transform: translateX(-50%) scale(1.0);
+        opacity: 0.8;
+        filter: blur(6px);
+    }
+    100% {
+        transform: translateX(-50%) scale(1.12);
+        opacity: 0.65;
+        filter: blur(8px);
+    }
 }
 
 .aurora-splash-ion-glow {
@@ -203,12 +333,36 @@
     transform: translateX(-50%);
     width: 96px;
     height: 22px;
-    background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.6) 0%, rgba(139, 92, 246, 0.3) 45%, transparent 75%);
+    background: radial-gradient(
+        ellipse at center,
+        rgba(56, 189, 248, 0.75) 0%,
+        rgba(56, 189, 248, 0.55) 25%,
+        rgba(139, 92, 246, 0.35) 50%,
+        rgba(236, 72, 153, 0.15) 75%,
+        transparent 90%
+    );
     border-radius: 50%;
     pointer-events: none;
     z-index: 10;
-    filter: blur(6px);
+    filter: blur(10px);
     mix-blend-mode: screen;
+    /* AAA PREMIUM: Intense thruster pulse animation */
+    animation: ionThrusterPulse 0.8s ease-in-out infinite alternate;
+    transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), 
+                opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+@keyframes ionThrusterPulse {
+    0% {
+        transform: translateX(-50%) scale(1.0);
+        opacity: 0.75;
+        filter: blur(10px);
+    }
+    100% {
+        transform: translateX(-50%) scale(1.25);
+        opacity: 1.0;
+        filter: blur(14px);
+    }
 }
 
 /* Bottom Cyber HUD Section */
@@ -228,25 +382,47 @@
 .aurora-splash-progress-track {
     position: relative;
     width: 100%;
-    height: 5px;
+    height: 6px;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
     overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 0, 0, 0.5);
+    box-shadow: 
+        inset 0 2px 6px rgba(0, 0, 0, 0.85),
+        0 0 16px rgba(0, 0, 0, 0.6),
+        0 0 2px rgba(56, 189, 248, 0.2);
 }
 
 .aurora-splash-progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #38bdf8 0%, #8b5cf6 55%, #ec4899 100%);
+    background: linear-gradient(
+        90deg,
+        #38bdf8 0%,
+        #6366f1 25%,
+        #8b5cf6 55%,
+        #a855f7 75%,
+        #ec4899 100%
+    );
     border-radius: 9999px;
     position: relative;
-    box-shadow: 0 0 12px rgba(56, 189, 248, 0.75), 0 0 22px rgba(236, 72, 153, 0.5);
+    box-shadow: 
+        0 0 16px rgba(56, 189, 248, 0.85),
+        0 0 28px rgba(139, 92, 246, 0.65),
+        0 0 42px rgba(236, 72, 153, 0.55),
+        inset 0 1px 2px rgba(255, 255, 255, 0.4);
     transition: width 0.06s linear;
+    /* AAA PREMIUM: Animated gradient flow */
+    background-size: 200% 100%;
+    animation: progressGradientFlow 3.5s linear infinite;
 }
 
-/* Photonic Light Sweep running on the progress bar */
+@keyframes progressGradientFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+/* Photonic Light Sweep running on the progress bar - AAA Enhanced */
 .aurora-splash-progress-fill::after {
     content: '';
     position: absolute;
@@ -262,15 +438,28 @@
         rgba(56, 189, 248, 0.4) 55%,
         transparent 80%
     );
-    animation: auroraSplashSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    /* AAA Enhancement: More dramatic sweep with professional easing */
+    animation: auroraSplashSweep 1.8s cubic-bezier(0.65, 0.05, 0.35, 1) infinite;
 }
 
 @keyframes auroraSplashSweep {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(200%); }
+    0% { 
+        transform: translateX(-120%);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% { 
+        transform: translateX(220%);
+        opacity: 0;
+    }
 }
 
-/* Leading Photon Spark at the tip of progress bar */
+/* Leading Photon Spark at the tip of progress bar - AAA Enhanced */
 .aurora-splash-progress-spark {
     position: absolute;
     right: 0;
@@ -281,6 +470,19 @@
     background: #ffffff;
     border-radius: 50%;
     box-shadow: 0 0 6px #ffffff, 0 0 12px #38bdf8, 0 0 18px #ec4899;
+    /* AAA Enhancement: Pulsing spark animation */
+    animation: sparkPulse 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes sparkPulse {
+    0%, 100% {
+        transform: translate(50%, -50%) scale(1.0);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(50%, -50%) scale(1.4);
+        opacity: 0.7;
+    }
 }
 
 /* HUD Micro-Typography details */
@@ -301,6 +503,8 @@
     gap: 6px;
     color: #cbd5e1;
     font-weight: 500;
+    /* AAA Enhancement: Smooth text transitions */
+    transition: color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .aurora-splash-status-dot {
@@ -310,12 +514,21 @@
     border-radius: 50%;
     background: #38bdf8;
     box-shadow: 0 0 8px #38bdf8;
-    animation: auroraDotPulse 1.2s ease-in-out infinite alternate;
+    /* AAA Enhancement: More dramatic pulse with squash & stretch */
+    animation: auroraDotPulse 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
 
 @keyframes auroraDotPulse {
-    from { opacity: 0.4; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1.3); }
+    0% { 
+        opacity: 0.4; 
+        transform: scale(0.75);
+        box-shadow: 0 0 4px #38bdf8;
+    }
+    100% { 
+        opacity: 1; 
+        transform: scale(1.35);
+        box-shadow: 0 0 12px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.4);
+    }
 }
 
 .aurora-splash-percent {
@@ -323,6 +536,8 @@
     color: #38bdf8;
     font-variant-numeric: tabular-nums;
     text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    /* AAA Enhancement: Smooth number transitions */
+    transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* Responsive adjustments */
@@ -350,5 +565,60 @@
     .aurora-splash-hud {
         bottom: 30px;
         width: calc(100vw - 36px);
+    }
+}
+
+/* ============================================================================
+   AAA PREMIUM ENHANCEMENTS: Motion Blur, Speed Lines & Chromatic Aberration
+   ============================================================================ */
+
+/* Motion blur hint during robot walking phase */
+.aurora-splash-robot-viewport.walking #aurora-splash-webgl {
+    filter: blur(0.4px);
+    transform: translateX(2px);
+    transition: filter 0.08s ease-out, transform 0.08s ease-out;
+}
+
+/* Speed lines effect during fast movement (0.5s - 2.5s) */
+.aurora-splash-stage::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -10%;
+    right: -10%;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(56, 189, 248, 0.4) 30%,
+        rgba(56, 189, 248, 0.6) 50%,
+        rgba(56, 189, 248, 0.4) 70%,
+        transparent 100%
+    );
+    transform: translateY(-50%) scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+    z-index: 8;
+    filter: blur(1.5px);
+    opacity: 0;
+    animation: speedLineSweep 2.0s cubic-bezier(0.4, 0, 0.2, 1) 0.5s 1;
+}
+
+@keyframes speedLineSweep {
+    0% {
+        transform: translateY(-50%) scaleX(0);
+        opacity: 0;
+    }
+    15% {
+        transform: translateY(-50%) scaleX(1);
+        opacity: 1;
+    }
+    85% {
+        transform: translateY(-50%) scaleX(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-50%) scaleX(0);
+        opacity: 0;
     }
 }
