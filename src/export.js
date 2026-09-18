@@ -261,7 +261,19 @@ export function exportToDocx(posts, stats = [], meta = {}) {
         </tr>
         <tr>
             <td class="passport-label">Всего найдено записей:</td>
-            <td><b>${posts.length}</b></td>
+            <td><b>${posts.length.toLocaleString('ru-RU')}</b></td>
+        </tr>
+        <tr>
+            <td class="passport-label">Всего лайков:</td>
+            <td><b>${totLikes.toLocaleString('ru-RU')}</b></td>
+        </tr>
+        <tr>
+            <td class="passport-label">Всего репостов:</td>
+            <td><b>${totReposts.toLocaleString('ru-RU')}</b></td>
+        </tr>
+        <tr>
+            <td class="passport-label">Всего комментариев:</td>
+            <td><b>${totComments.toLocaleString('ru-RU')}</b></td>
         </tr>
         <tr>
             <td class="passport-label">Суммарный охват (просмотры):</td>
@@ -310,6 +322,7 @@ export function exportToDocx(posts, stats = [], meta = {}) {
                     <th>Текст публикации</th>
                     <th style="width: 50px;" class="text-right">Лайки</th>
                     <th style="width: 50px;" class="text-right">Репосты</th>
+                    <th style="width: 65px;" class="text-right">Коммент.</th>
                     <th style="width: 65px;" class="text-right">Просмотры</th>
                     <th style="width: 80px;" class="text-center">Ссылка</th>
                 </tr>
@@ -342,9 +355,10 @@ export function exportToDocx(posts, stats = [], meta = {}) {
                         <td class="text-center">${pi + 1}</td>
                         <td style="white-space: nowrap;">${p.humanDate || ''}</td>
                         <td class="post-text">${docPostText}</td>
-                        <td class="text-right">${extractNum(p.likes)}</td>
-                        <td class="text-right">${extractNum(p.reposts)}</td>
-                        <td class="text-right">${formatViews(p.views)}</td>
+                        <td class="text-right">${extractNum(p.likes).toLocaleString('ru-RU')}</td>
+                        <td class="text-right">${extractNum(p.reposts).toLocaleString('ru-RU')}</td>
+                        <td class="text-right">${extractNum(p.comments).toLocaleString('ru-RU')}</td>
+                        <td class="text-right">${extractNum(p.views).toLocaleString('ru-RU')}</td>
                         <td class="text-center"><a class="post-link" href="https://vk.com/wall${p.targetInfo?.id || p.owner_id}_${p.id}">Ссылка VK</a></td>
                     </tr>
                     `;

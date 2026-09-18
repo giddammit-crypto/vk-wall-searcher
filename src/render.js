@@ -717,10 +717,10 @@ export function openPostModal(post) {
             </div>
 
             <div class="pm-footer">
-                <span class="stat-item stat-likes"><span class="material-symbols-outlined">favorite</span> ${likes}</span>
-                <span class="stat-item stat-reposts"><span class="material-symbols-outlined">share</span> ${reposts}</span>
-                <span class="stat-item stat-comments"><span class="material-symbols-outlined">chat_bubble</span> ${comments}</span>
-                ${views ? `<span class="stat-item stat-views"><span class="material-symbols-outlined">visibility</span> ${formatViews(views)}</span>` : ''}
+                <span class="stat-item stat-likes" title="Лайки: ${likes.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">favorite</span> ${likes.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-reposts" title="Репосты: ${reposts.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">share</span> ${reposts.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-comments" title="Комментарии: ${comments.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">chat_bubble</span> ${comments.toLocaleString('ru-RU')}</span>
+                <span class="stat-item stat-views" title="Просмотры: ${views.toLocaleString('ru-RU')}"><span class="material-symbols-outlined">visibility</span> ${views.toLocaleString('ru-RU')}</span>
             </div>
         </div>
     `;

@@ -372,7 +372,7 @@ export function renderLeagueDashboard(container, leagueEntries = []) {
 }
 
 function renderLeagueRow(entry) {
-    const { rank, code, name, avatar, xp, division, awards, erVal, avgViews, totalPosts, cosmoVerdict } = entry;
+    const { rank, code, name, avatar, xp, division, awards, erVal, totalViews, totalPosts, cosmoVerdict } = entry;
 
     const rankBadgeClass = rank === 1 ? 'rank-gold' : (rank === 2 ? 'rank-silver' : (rank === 3 ? 'rank-bronze' : 'rank-regular'));
     const rankLabel = rank === 1 ? '🥇 1' : (rank === 2 ? '🥈 2' : (rank === 3 ? '🥉 3' : `#${rank}`));
@@ -421,7 +421,7 @@ function renderLeagueRow(entry) {
                     </span>
                     <span class="mini-stat-pill" title="Суммарный охват просмотров за период">
                         <span class="material-symbols-outlined stat-icon">visibility</span>
-                        <strong>${totalViews.toLocaleString('ru-RU')}</strong> охват
+                        <strong>${(totalViews || 0).toLocaleString('ru-RU')}</strong> охват
                     </span>
                     <span class="mini-stat-pill" title="Публикаций за период">
                         <span class="material-symbols-outlined stat-icon">article</span>

@@ -1702,12 +1702,12 @@ function initApp() {
         // Calculate filtered feed first
         applySortAndFilterFeed();
 
-        // Update tab badges
-        const count = state.filteredPosts.length;
-        if (elements.countFeed) elements.countFeed.textContent = count;
-        if (elements.countPassport) elements.countPassport.textContent = count;
-        if (elements.countAnalytics) elements.countAnalytics.textContent = count;
-        if (elements.countSummary) elements.countSummary.textContent = count;
+        // Update tab badges (passport, analytics, summary reflect total search matches)
+        const totalMatchesCount = state.matchedPosts.length;
+        if (elements.countFeed) elements.countFeed.textContent = state.filteredPosts.length;
+        if (elements.countPassport) elements.countPassport.textContent = totalMatchesCount;
+        if (elements.countAnalytics) elements.countAnalytics.textContent = totalMatchesCount;
+        if (elements.countSummary) elements.countSummary.textContent = totalMatchesCount;
 
         // Calculate KPIs from FILTERED posts
         const kpis = calculateKPIs(state.filteredPosts);
@@ -1725,14 +1725,15 @@ function initApp() {
         if (elements.kpiTotalReactions) elements.kpiTotalReactions.textContent = kpis.totalInteractions.toLocaleString('ru-RU');
         if (elements.kpiAvgEr) elements.kpiAvgEr.textContent = kpis.erViews;
         if (elements.kpiAvgViews) elements.kpiAvgViews.textContent = kpis.avgViews.toLocaleString('ru-RU');
-        renderSourcesShowcase(stats);
-        renderAnalyticsTab(stats, kpis);
-        renderOfficialReport(stats);
-        renderMethodistMemo(kpis, stats);
-        renderHashtagsAndLinks(state.matchedPosts);
+
+        try { renderSourcesShowcase(stats); } catch (e) { console.error('[renderSourcesShowcase error]:', e); }
+        try { renderAnalyticsTab(stats, kpis); } catch (e) { console.error('[renderAnalyticsTab error]:', e); }
+        try { renderOfficialReport(stats); } catch (e) { console.error('[renderOfficialReport error]:', e); }
+        try { renderMethodistMemo(kpis, stats); } catch (e) { console.error('[renderMethodistMemo error]:', e); }
+        try { renderHashtagsAndLinks(state.matchedPosts); } catch (e) { console.error('[renderHashtagsAndLinks error]:', e); }
 
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
-        updateAdviceAndSubscribers(stats);
+        try { updateAdviceAndSubscribers(stats); } catch (e) { console.error('[updateAdviceAndSubscribers error]:', e); }
 
         // Информирование робота-ассистента о результатах сканирования
         if (state.matchedPosts.length > 0) {
@@ -2603,19 +2604,22 @@ function initApp() {
         if (!elements.reportTablesContainer) return;
 
         const totalPosts = state.matchedPosts.length;
-        let grandLikes = 0, grandReposts = 0, grandViews = 0;
+        let grandLikes = 0, grandReposts = 0, grandComments = 0, grandViews = 0;
         state.matchedPosts.forEach(p => {
             grandLikes += extractNum(p.likes);
             grandReposts += extractNum(p.reposts);
+            grandComments += extractNum(p.comments);
             grandViews += extractNum(p.views);
         });
 
-        if (elements.reportTotalMatches) elements.reportTotalMatches.textContent = totalPosts;
+        if (elements.reportTotalMatches) elements.reportTotalMatches.textContent = totalPosts.toLocaleString('ru-RU');
         const rLikesEl = document.getElementById('report-total-likes');
         const rRepostsEl = document.getElementById('report-total-reposts');
+        const rCommentsEl = document.getElementById('report-total-comments');
         const rViewsEl = document.getElementById('report-total-views');
         if (rLikesEl) rLikesEl.textContent = grandLikes.toLocaleString('ru-RU');
         if (rRepostsEl) rRepostsEl.textContent = grandReposts.toLocaleString('ru-RU');
+        if (rCommentsEl) rCommentsEl.textContent = grandComments.toLocaleString('ru-RU');
         if (rViewsEl) {
             rViewsEl.textContent = grandViews.toLocaleString('ru-RU');
             rViewsEl.title = `Суммарный охват: ${grandViews.toLocaleString('ru-RU')} (${formatViews(grandViews)})`;
@@ -2656,17 +2660,28 @@ function initApp() {
         // Tables per group (collapsed by default, accordion toggle on title)
         elements.reportTablesContainer.innerHTML = stats.map((s, idx) => {
             if (s.postsCount === 0) return '';
+            let branchLikes = 0, branchReposts = 0, branchComments = 0, branchViews = 0;
             const rows = s.posts.map((p, pi) => {
                 const textHtml = buildReportPostText(p);
+                const pLikes = extractNum(p.likes);
+                const pReposts = extractNum(p.reposts);
+                const pComments = extractNum(p.comments);
+                const pViews = extractNum(p.views);
+
+                branchLikes += pLikes;
+                branchReposts += pReposts;
+                branchComments += pComments;
+                branchViews += pViews;
 
                 return `
                 <tr>
                     <td style="text-align:center;">${pi + 1}</td>
                     <td style="white-space:nowrap;">${p.humanDate}</td>
                     <td class="report-col-text">${textHtml}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.likes).toLocaleString('ru-RU')}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.reposts).toLocaleString('ru-RU')}</td>
-                    <td style="text-align:right;font-family:var(--font-mono);">${extractNum(p.views).toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${pLikes.toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${pReposts.toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${pComments.toLocaleString('ru-RU')}</td>
+                    <td style="text-align:right;font-family:var(--font-mono);">${pViews.toLocaleString('ru-RU')}</td>
                     <td style="text-align:center;">
                         <a href="https://vk.com/wall${p.targetInfo?.id || p.owner_id}_${p.id}" target="_blank" rel="noopener noreferrer" class="btn-report-link btn-outlined">
                             <span>ССЫЛКА</span>
@@ -2707,11 +2722,22 @@ function initApp() {
                                         <th>Текст публикации</th>
                                         <th style="width:70px; text-align:right;">Лайки</th>
                                         <th style="width:70px; text-align:right;">Репосты</th>
+                                        <th style="width:70px; text-align:right;">Комменты</th>
                                         <th style="width:85px; text-align:right;">Просмотры</th>
                                         <th style="width:110px; text-align:center;" class="no-sort" data-no-sort>Ссылка</th>
                                     </tr>
                                 </thead>
                                 <tbody>${rows}</tbody>
+                                <tfoot>
+                                    <tr style="font-weight:700; background:rgba(0,0,0,0.03);">
+                                        <td colspan="3" style="text-align:right;">ИТОГО ПО ФИЛИАЛУ (${s.postsCount} ${declOfNum(s.postsCount, ['запись', 'записи', 'записей'])}):</td>
+                                        <td style="text-align:right;font-family:var(--font-mono);">${branchLikes.toLocaleString('ru-RU')}</td>
+                                        <td style="text-align:right;font-family:var(--font-mono);">${branchReposts.toLocaleString('ru-RU')}</td>
+                                        <td style="text-align:right;font-family:var(--font-mono);">${branchComments.toLocaleString('ru-RU')}</td>
+                                        <td style="text-align:right;font-family:var(--font-mono);">${branchViews.toLocaleString('ru-RU')}</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
