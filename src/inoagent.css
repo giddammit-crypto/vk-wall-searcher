@@ -372,6 +372,7 @@ body.inoagent-modal-open {
     font-family: inherit;
     min-width: 0;
     padding: 10px 0;
+    margin-right: 20px;
     -webkit-appearance: none;
     appearance: none;
 }
@@ -408,7 +409,7 @@ body.inoagent-modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 6px;
+    margin-right: 20px;
     transition: all 0.2s ease;
 }
 
@@ -428,7 +429,7 @@ body.inoagent-modal-open {
     border-top-color: var(--ino-accent-cyan);
     border-radius: 50%;
     animation: inoSpin 0.75s linear infinite;
-    margin-right: 8px;
+    margin-right: 20px;
     display: none;
     flex-shrink: 0;
 }
@@ -453,6 +454,7 @@ body.inoagent-modal-open {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: auto;
     box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
     transition: all 0.2s ease;
     flex-shrink: 0;
@@ -1280,6 +1282,15 @@ body.inoagent-modal-open {
     .inoagent-search-input {
         font-size: 0.95rem;
         padding: 8px 0;
+        margin-right: 20px;
+    }
+
+    .inoagent-clear-btn {
+        margin-right: 20px;
+    }
+
+    .inoagent-search-spinner {
+        margin-right: 20px;
     }
 
     .inoagent-search-btn-text {
@@ -1289,6 +1300,7 @@ body.inoagent-modal-open {
     .inoagent-search-btn {
         padding: 8px 12px;
         border-radius: 10px;
+        margin-left: auto;
     }
 
     .inoagent-filters-bar {
