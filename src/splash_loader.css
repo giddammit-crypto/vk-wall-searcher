@@ -1,7 +1,7 @@
 /**
- * Aurora Splash Screen & 3D Cosmo Robot Loader
- * AAA-CLASS ANIMATION SYSTEM with Disney's 12 Principles
- * Enhanced with professional timing, particle effects, and cinematic polish
+ * Aurora Splash Screen & 3D Cosmo Robot Loader — «PIXAR EDITION»
+ * Тёплый игрушечный мир, комедийная хореография Космо, живой HUD.
+ * Дизайн-пак: режиссёрский бит-лист + дизайн-спека (см. git history).
  */
 
 #aurora-splash {
@@ -15,19 +15,20 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #070913;
-    background-image: 
-        radial-gradient(ellipse 60% 50% at 50% 45%, rgba(139, 92, 246, 0.18) 0%, transparent 70%),
-        radial-gradient(circle 340px at 30% 30%, rgba(56, 189, 248, 0.14) 0%, transparent 60%),
-        radial-gradient(circle 320px at 70% 55%, rgba(236, 72, 153, 0.16) 0%, transparent 60%),
-        radial-gradient(circle 500px at 50% 50%, rgba(7, 9, 19, 0.45) 0%, #070913 100%);
+    background-color: #0a0d1f;
+    background-image:
+        radial-gradient(ellipse 60% 50% at 50% 42%, rgba(139, 92, 246, 0.20) 0%, transparent 70%),
+        radial-gradient(circle 360px at 28% 28%, rgba(56, 189, 248, 0.16) 0%, transparent 60%),
+        radial-gradient(circle 340px at 72% 52%, rgba(244, 114, 182, 0.18) 0%, transparent 60%),
+        /* Тёплый «рассветный» подсвет низа — Pixar-тепло */
+        radial-gradient(ellipse 70% 34% at 50% 104%, rgba(251, 191, 36, 0.13) 0%, transparent 70%),
+        radial-gradient(circle 520px at 50% 50%, rgba(10, 13, 31, 0.45) 0%, #0a0d1f 100%);
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     opacity: 1;
     visibility: visible;
-    /* AAA Enhancement: Smoother transitions with custom bezier */
-    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1), 
+    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1),
                 visibility 0.65s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
@@ -36,9 +37,8 @@
     pointer-events: none;
     transform: scale(1.02);
     filter: blur(6px);
-    /* AAA Enhancement: Professional ease-out with slight overshoot */
-    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1), 
-                transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), 
+    transition: opacity 0.65s cubic-bezier(0.25, 0.1, 0.25, 1),
+                transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1),
                 filter 0.65s ease;
 }
 
@@ -46,7 +46,7 @@
     display: none !important;
 }
 
-/* Background Canvas for micro-stars and cosmic dust */
+/* Background star canvas */
 #aurora-splash-stars {
     position: absolute;
     top: 0;
@@ -57,7 +57,182 @@
     z-index: 1;
 }
 
-/* Top Skip Button with AAA hover animation */
+/* Full-screen FX overlay: confetti, speed lines, shockwaves, hearts */
+#aurora-splash-fx {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 30;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ФОНОВЫЙ МИР: планеты, НЛО-подглядывальщик, финальные шарики
+   ═══════════════════════════════════════════════════════════════ */
+
+.aurora-splash-props {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.cosmo-prop {
+    position: absolute;
+    will-change: transform;
+}
+
+/* Мягкая янтарная планета с колечком */
+.cosmo-prop.planet-amber {
+    top: 16%;
+    left: 11%;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 32% 30%, #fde68a 0%, #fbbf24 45%, #d97706 100%);
+    box-shadow:
+        inset -10px -8px 18px rgba(124, 45, 18, 0.55),
+        0 0 26px rgba(251, 191, 36, 0.28);
+    animation: planetDrift 16s ease-in-out infinite alternate;
+}
+
+.cosmo-prop.planet-amber::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 108px;
+    height: 30px;
+    margin: -15px 0 0 -54px;
+    border-radius: 50%;
+    border: 3px solid rgba(253, 230, 138, 0.55);
+    border-bottom-color: transparent;
+    transform: rotate(-18deg);
+}
+
+/* Мятная планета поменьше */
+.cosmo-prop.planet-teal {
+    bottom: 20%;
+    right: 9%;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #99f6e4 0%, #2dd4bf 50%, #0f766e 100%);
+    box-shadow:
+        inset -7px -5px 12px rgba(19, 78, 74, 0.6),
+        0 0 20px rgba(45, 212, 191, 0.25);
+    animation: planetDrift 13s ease-in-out -5s infinite alternate-reverse;
+}
+
+@keyframes planetDrift {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(10px, -16px) rotate(8deg); }
+}
+
+/* НЛО: высовывается на бите «скука» (2.2–2.7с), прячется, когда Космо заметил */
+.cosmo-prop.ufo {
+    top: 23%;
+    right: 16%;
+    width: 52px;
+    height: 24px;
+    opacity: 0;
+    transform: translate(34px, 8px) rotate(6deg);
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.cosmo-prop.ufo::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 26px;
+    height: 14px;
+    margin-left: -13px;
+    border-radius: 13px 13px 4px 4px;
+    background: radial-gradient(circle at 50% 20%, #bae6fd 0%, #7dd3fc 60%, #38bdf8 100%);
+}
+
+.cosmo-prop.ufo::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 12px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #a5b4fc 0%, #6366f1 100%);
+    box-shadow: 0 0 14px rgba(129, 140, 248, 0.65);
+}
+
+.cosmo-prop.ufo span {
+    position: absolute;
+    left: 6px;
+    bottom: -5px;
+    width: 40px;
+    height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(253, 224, 71, 0.85) 0%, transparent 70%);
+    filter: blur(1px);
+}
+
+.cosmo-prop.ufo.is-peeking {
+    opacity: 1;
+    transform: translate(0, 0) rotate(-4deg);
+    animation: ufoHover 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes ufoHover {
+    0%   { transform: translate(0, 0) rotate(-4deg); }
+    100% { transform: translate(-4px, -5px) rotate(-7deg); }
+}
+
+/* Воздушные шарики: залп на финальном конфетти-буме */
+.cosmo-prop.balloon {
+    top: 100%;
+    width: 34px;
+    height: 42px;
+    border-radius: 50% 50% 46% 46%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cosmo-prop.balloon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 1.5px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.cosmo-prop.balloon-1 { left: 38%; background: radial-gradient(circle at 34% 28%, #fecdd3 0%, #fb7185 70%); }
+.cosmo-prop.balloon-2 { left: 50%; background: radial-gradient(circle at 34% 28%, #fef08a 0%, #facc15 70%); }
+.cosmo-prop.balloon-3 { left: 61%; background: radial-gradient(circle at 34% 28%, #a5f3fc 0%, #22d3ee 70%); }
+
+.cosmo-prop.balloon.is-launched {
+    animation: balloonRise 3.4s cubic-bezier(0.3, 0.4, 0.5, 1) forwards;
+}
+
+.cosmo-prop.balloon-2.is-launched { animation-delay: 0.18s; }
+.cosmo-prop.balloon-3.is-launched { animation-delay: 0.34s; }
+
+@keyframes balloonRise {
+    0%   { opacity: 0; transform: translateY(0) rotate(-4deg); }
+    12%  { opacity: 1; }
+    50%  { transform: translateY(-46vh) rotate(5deg) translateX(12px); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-92vh) rotate(-4deg) translateX(-8px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   КНОПКА «ПРОПУСТИТЬ» — мягкая пилюля
+   ═══════════════════════════════════════════════════════════════ */
+
 .aurora-splash-skip-btn {
     position: absolute;
     top: 24px;
@@ -66,44 +241,55 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 16px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: rgba(226, 232, 240, 0.85);
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 9px 18px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #e0e7ff;
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.30), rgba(49, 46, 129, 0.45));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(165, 180, 252, 0.35);
     border-radius: 9999px;
     cursor: pointer;
-    /* AAA Enhancement: Professional spring-based hover with anticipation */
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 14px rgba(2, 6, 23, 0.4);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .aurora-splash-skip-btn:hover {
-    color: #ffffff;
-    background: rgba(30, 41, 59, 0.85);
-    border-color: rgba(56, 189, 248, 0.45);
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 6px 20px rgba(0, 0, 0, 0.5);
-    /* AAA Enhancement: Slight lift with overshoot */
-    transform: translateY(-2px) scale(1.02);
+    transform: translateY(-2px);
+    border-color: rgba(165, 180, 252, 0.7);
+    box-shadow: 0 0 14px rgba(165, 180, 252, 0.35), 0 6px 18px rgba(2, 6, 23, 0.5);
+}
+
+.aurora-splash-skip-btn:hover .material-symbols-outlined {
+    transform: translateX(2px);
+}
+
+.aurora-splash-skip-btn .material-symbols-outlined {
+    transition: transform 0.25s ease;
+}
+
+.aurora-splash-skip-btn:active {
+    transform: scale(0.96);
 }
 
 .aurora-splash-skip-kbd {
     display: inline-block;
     padding: 1px 6px;
     font-size: 0.68rem;
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+    color: #c7d2fe;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
     margin-left: 2px;
 }
 
-/* Central Stage Container */
+/* ═══════════════════════════════════════════════════════════════
+   ЦЕНТРАЛЬНАЯ СЦЕНА
+   ═══════════════════════════════════════════════════════════════ */
+
 .aurora-splash-stage {
     position: relative;
     z-index: 10;
@@ -119,11 +305,11 @@
 /* Arc Container with Curved SVG Typography */
 .aurora-splash-arc-container {
     position: absolute;
-    top: 20px;
+    top: 12px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;
-    height: 110px;
+    width: 310px;
+    height: 118px;
     pointer-events: none;
     overflow: visible;
     z-index: 15;
@@ -135,53 +321,82 @@
     overflow: visible;
 }
 
-.aurora-splash-arc-letter {
+/* Отдельные буквы «КОСМО»: pop-in с overshoot */
+.cosmo-letter {
     font-family: 'Unbounded', 'Montserrat', sans-serif;
     font-weight: 800;
-    font-size: 22px;
-    letter-spacing: 0.34em;
-    fill: url(#auroraNeonGrad);
+    font-size: 30px;
+    fill: url(#cosmoCandyGrad);
+    stroke: #ffffff;
+    stroke-width: 4px;
+    paint-order: stroke fill;
+    stroke-linejoin: round;
     opacity: 0;
-    transform-origin: center center;
-    /* AAA PREMIUM MULTI-LAYER NEON GLOW */
-    filter: 
-        drop-shadow(0 0 1px rgba(255, 255, 255, 1.0))
-        drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
-        drop-shadow(0 0 8px rgba(56, 189, 248, 1.0))
-        drop-shadow(0 0 14px rgba(56, 189, 248, 0.85))
-        drop-shadow(0 0 22px rgba(139, 92, 246, 0.75))
-        drop-shadow(0 0 34px rgba(236, 72, 153, 0.65))
-        drop-shadow(0 0 48px rgba(236, 72, 153, 0.45));
-    transition: opacity 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), 
-                filter 0.45s cubic-bezier(0.25, 0.1, 0.25, 1);
-    animation: letterPulseGlow 2.4s ease-in-out infinite alternate;
+    transform-box: fill-box;
+    transform-origin: 50% 85%;
+    filter:
+        drop-shadow(0 0 1px rgba(255, 255, 255, 0.9))
+        drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))
+        drop-shadow(0 0 18px rgba(236, 72, 153, 0.45));
 }
 
-/* AAA PREMIUM: Pulsing glow animation for letters */
-@keyframes letterPulseGlow {
+.cosmo-letter.is-on {
+    animation: cosmoLetterPop 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+@keyframes cosmoLetterPop {
     0% {
-        filter: 
-            drop-shadow(0 0 1px rgba(255, 255, 255, 1.0))
-            drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
-            drop-shadow(0 0 8px rgba(56, 189, 248, 1.0))
-            drop-shadow(0 0 14px rgba(56, 189, 248, 0.85))
-            drop-shadow(0 0 22px rgba(139, 92, 246, 0.75))
-            drop-shadow(0 0 34px rgba(236, 72, 153, 0.65))
-            drop-shadow(0 0 48px rgba(236, 72, 153, 0.45));
+        opacity: 0;
+        transform: scale(0) rotate(-14deg) translateY(16px);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.25) rotate(4deg) translateY(-4px);
+    }
+    80% {
+        transform: scale(0.94) rotate(-2deg) translateY(1px);
     }
     100% {
-        filter: 
-            drop-shadow(0 0 2px rgba(255, 255, 255, 1.0))
-            drop-shadow(0 0 5px rgba(255, 255, 255, 1.0))
-            drop-shadow(0 0 12px rgba(56, 189, 248, 1.0))
-            drop-shadow(0 0 20px rgba(56, 189, 248, 0.95))
-            drop-shadow(0 0 32px rgba(139, 92, 246, 0.85))
-            drop-shadow(0 0 48px rgba(236, 72, 153, 0.75))
-            drop-shadow(0 0 68px rgba(236, 72, 153, 0.55));
+        opacity: 1;
+        transform: scale(1) rotate(0deg) translateY(0);
     }
 }
 
-/* WebGL Robot 3D Canvas Area (Strictly <= 128px visual height) */
+/* Idle-покачивание собранного заголовка (на родительской группе) */
+.cosmo-letter-idle {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: cosmoLetterBob 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes cosmoLetterBob {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-2.5px); }
+}
+
+/* Звёзды-спарклы у заголовка */
+.cosmo-sparkle {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: sparkleTwinkle 1.2s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 4px rgba(253, 230, 138, 0.9));
+}
+
+.sparkle-big  { animation: sparkleTwinkleBig 8s linear infinite; }
+.sparkle-small { animation-delay: 1.2s; }
+
+@keyframes sparkleTwinkle {
+    0%   { transform: scale(1) rotate(0deg); opacity: 0.85; }
+    100% { transform: scale(1.18) rotate(45deg); opacity: 1; }
+}
+
+@keyframes sparkleTwinkleBig {
+    0%    { transform: scale(1) rotate(0deg); opacity: 0.9; }
+    50%   { transform: scale(1.22) rotate(180deg); opacity: 1; }
+    100%  { transform: scale(1) rotate(360deg); opacity: 0.9; }
+}
+
+/* 3D Robot viewport */
 .aurora-splash-robot-viewport {
     position: relative;
     width: 100%;
@@ -190,26 +405,25 @@
     align-items: center;
     justify-content: center;
     margin-top: 36px;
-    /* AAA Enhancement: Subtle perspective for depth */
     perspective: 1000px;
 }
 
-/* AAA PREMIUM: Particle glow halos around robot */
+/* Тёплый световой ореол вокруг робота */
 .aurora-splash-robot-viewport::before {
     content: '';
     position: absolute;
     inset: -20%;
     background: radial-gradient(
         ellipse 45% 35% at 50% 58%,
-        rgba(56, 189, 248, 0.18) 0%,
-        rgba(139, 92, 246, 0.12) 35%,
+        rgba(251, 191, 36, 0.14) 0%,
+        rgba(56, 189, 248, 0.16) 35%,
         transparent 70%
     );
     pointer-events: none;
     z-index: 9;
     filter: blur(32px);
     opacity: 0;
-    animation: robotAmbientGlow 2.4s ease-in-out 2.8s forwards;
+    animation: robotAmbientGlow 1.6s ease-out 0.9s forwards;
     mix-blend-mode: screen;
 }
 
@@ -218,7 +432,7 @@
     100% { opacity: 1; }
 }
 
-/* AAA PREMIUM: Volumetric fog layer behind robot */
+/* Мягкая объёмная дымка под роботом */
 .aurora-splash-robot-viewport::after {
     content: '';
     position: absolute;
@@ -229,26 +443,20 @@
     height: 45%;
     background: radial-gradient(
         ellipse 80% 100% at 50% 100%,
-        rgba(56, 189, 248, 0.08) 0%,
-        rgba(236, 72, 153, 0.05) 50%,
+        rgba(125, 211, 252, 0.10) 0%,
+        rgba(249, 168, 212, 0.06) 50%,
         transparent 100%
     );
     filter: blur(18px);
     pointer-events: none;
     z-index: 8;
     opacity: 0;
-    animation: fogRise 1.8s ease-out 3.2s forwards;
+    animation: fogRise 1.2s ease-out 0.8s forwards;
 }
 
 @keyframes fogRise {
-    0% { 
-        opacity: 0;
-        transform: translateX(-50%) translateY(20px);
-    }
-    100% { 
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
+    0%   { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 #aurora-splash-webgl {
@@ -259,36 +467,28 @@
     height: 100%;
     max-height: 175px;
     outline: none;
-    /* AAA Enhancement: Hardware acceleration */
     will-change: transform;
     transform: translateZ(0);
 }
 
-/* Official Mascot Asset Fallback / Companion */
+/* Official Mascot Asset Fallback */
 .aurora-splash-mascot-fallback {
     position: relative;
     z-index: 12;
     width: 120px;
     height: 120px;
     object-fit: contain;
-    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.65)) drop-shadow(0 0 32px rgba(236, 72, 153, 0.35));
-    /* AAA Enhancement: More organic bobbing with squash & stretch */
+    filter: drop-shadow(0 0 16px rgba(125, 211, 252, 0.65)) drop-shadow(0 0 32px rgba(249, 168, 212, 0.35));
     animation: mascotBobbing 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
 
 @keyframes mascotBobbing {
-    0% { 
-        transform: translateY(-4px) rotate(-1deg) scale(1.0, 0.98);
-    }
-    50% {
-        transform: translateY(1px) rotate(0deg) scale(1.01, 1.01);
-    }
-    100% { 
-        transform: translateY(6px) rotate(1.5deg) scale(0.99, 1.02);
-    }
+    0%   { transform: translateY(-4px) rotate(-1deg) scale(1.0, 0.98); }
+    50%  { transform: translateY(1px) rotate(0deg) scale(1.01, 1.01); }
+    100% { transform: translateY(6px) rotate(1.5deg) scale(0.99, 1.02); }
 }
 
-/* Dynamic Hover Shadow & Ion Propulsion Glow with AAA physics response */
+/* Тень под парящим роботом (трансформом управляет JS) */
 .aurora-splash-hover-shadow {
     position: absolute;
     bottom: 10px;
@@ -298,34 +498,25 @@
     height: 16px;
     background: radial-gradient(
         ellipse at center,
-        rgba(0, 0, 0, 0.95) 0%,
-        rgba(2, 4, 10, 0.75) 30%,
-        rgba(7, 9, 19, 0.45) 60%,
+        rgba(2, 4, 12, 0.9) 0%,
+        rgba(4, 8, 22, 0.7) 30%,
+        rgba(10, 13, 31, 0.4) 60%,
         transparent 85%
     );
     border-radius: 50%;
     pointer-events: none;
     z-index: 11;
     filter: blur(6px);
-    transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), 
-                opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
-    /* AAA PREMIUM: Shadow breathing animation */
+    transition: opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
     animation: shadowBreathing 2.4s ease-in-out infinite alternate;
 }
 
 @keyframes shadowBreathing {
-    0% {
-        transform: translateX(-50%) scale(1.0);
-        opacity: 0.8;
-        filter: blur(6px);
-    }
-    100% {
-        transform: translateX(-50%) scale(1.12);
-        opacity: 0.65;
-        filter: blur(8px);
-    }
+    0%   { opacity: 0.8; }
+    100% { opacity: 0.62; }
 }
 
+/* Ионная тяга (масштабом управляет JS, CSS пульсирует только прозрачностью) */
 .aurora-splash-ion-glow {
     position: absolute;
     bottom: 8px;
@@ -335,10 +526,10 @@
     height: 22px;
     background: radial-gradient(
         ellipse at center,
-        rgba(56, 189, 248, 0.75) 0%,
+        rgba(165, 243, 252, 0.85) 0%,
         rgba(56, 189, 248, 0.55) 25%,
-        rgba(139, 92, 246, 0.35) 50%,
-        rgba(236, 72, 153, 0.15) 75%,
+        rgba(129, 140, 248, 0.35) 50%,
+        rgba(249, 168, 212, 0.18) 75%,
         transparent 90%
     );
     border-radius: 50%;
@@ -346,26 +537,178 @@
     z-index: 10;
     filter: blur(10px);
     mix-blend-mode: screen;
-    /* AAA PREMIUM: Intense thruster pulse animation */
-    animation: ionThrusterPulse 0.8s ease-in-out infinite alternate;
-    transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), 
-                opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
+    transition: opacity 0.12s cubic-bezier(0.25, 0.1, 0.25, 1);
+    animation: ionThrusterPulse 0.7s ease-in-out infinite alternate;
 }
 
 @keyframes ionThrusterPulse {
+    0%   { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   РЕАКЦИИ-СТИКЕРЫ (PNG-эмоции, «прихлопнутые» рядом с роботом)
+   ═══════════════════════════════════════════════════════════════ */
+
+.aurora-splash-sticker {
+    position: absolute;
+    top: -8px;
+    width: clamp(72px, 17vw, 94px);
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    opacity: 0;
+    z-index: 16;
+    pointer-events: none;
+    /* Белый die-cut кант по силуэту PNG + lift-тень */
+    filter:
+        drop-shadow(0 0 1.5px #ffffff)
+        drop-shadow(0 0 1.5px #ffffff)
+        drop-shadow(0 0 1px #ffffff)
+        drop-shadow(0 6px 12px rgba(2, 6, 23, 0.5));
+    --sticker-rot: -8deg;
+}
+
+.aurora-splash-sticker.sticker-right {
+    left: calc(50% + 58px);
+    --sticker-rot: -8deg;
+}
+
+.aurora-splash-sticker.sticker-left {
+    right: calc(50% + 58px);
+    --sticker-rot: 8deg;
+}
+
+.aurora-splash-sticker.is-visible {
+    animation: stickerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               stickerWiggle 2.4s ease-in-out 0.55s infinite alternate;
+    transition: opacity 0.25s ease;
+}
+
+@keyframes stickerPop {
     0% {
-        transform: translateX(-50%) scale(1.0);
-        opacity: 0.75;
-        filter: blur(10px);
+        opacity: 0;
+        transform: scale(0) rotate(calc(var(--sticker-rot) - 16deg));
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.15) rotate(calc(var(--sticker-rot) + 3deg));
     }
     100% {
-        transform: translateX(-50%) scale(1.25);
-        opacity: 1.0;
-        filter: blur(14px);
+        opacity: 1;
+        transform: scale(1) rotate(var(--sticker-rot));
     }
 }
 
-/* Bottom Cyber HUD Section */
+.aurora-splash-sticker.is-wiggling {
+    animation: stickerWiggle 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes stickerWiggle {
+    0%   { transform: scale(1) rotate(calc(var(--sticker-rot) - 2deg)); }
+    100% { transform: scale(1.03) rotate(calc(var(--sticker-rot) + 2deg)); }
+}
+
+.aurora-splash-sticker.is-hiding {
+    animation: stickerOut 0.25s ease-in both;
+}
+
+@keyframes stickerOut {
+    0%   { opacity: 1; transform: scale(1) rotate(var(--sticker-rot)); }
+    100% { opacity: 0; transform: scale(0.6) rotate(var(--sticker-rot)); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   КОМИКС-ОБЛАЧКО РЕПЛИКИ
+   ═══════════════════════════════════════════════════════════════ */
+
+.aurora-splash-bubble {
+    position: absolute;
+    top: -4px;
+    z-index: 18;
+    padding: 8px 14px;
+    min-width: 64px;
+    max-width: 150px;
+    text-align: center;
+    background: linear-gradient(180deg, #ffffff 0%, #dbeafe 100%);
+    border: 2.5px solid #312e81;
+    border-radius: 18px;
+    box-shadow:
+        0 5px 0 rgba(49, 46, 129, 0.4),
+        0 12px 24px rgba(2, 6, 23, 0.5);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.aurora-splash-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    width: 14px;
+    height: 14px;
+    background: #dbeafe;
+    border-right: 2.5px solid #312e81;
+    border-bottom: 2.5px solid #312e81;
+    transform: rotate(45deg);
+    border-radius: 2px;
+    z-index: -1;
+}
+
+.aurora-splash-bubble.bubble-from-left {
+    left: calc(50% - 196px);
+}
+.aurora-splash-bubble.bubble-from-left::after {
+    right: 12px;
+}
+
+.aurora-splash-bubble.bubble-from-right {
+    left: calc(50% + 66px);
+}
+.aurora-splash-bubble.bubble-from-right::after {
+    left: 12px;
+}
+
+.aurora-splash-bubble span {
+    font-family: 'Unbounded', 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: #1e1b4b;
+    white-space: nowrap;
+}
+
+.aurora-splash-bubble.is-visible {
+    animation: bubblePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bubblePop {
+    0%   { opacity: 0; transform: scale(0.3) translateY(8px); }
+    60%  { opacity: 1; transform: scale(1.08) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.aurora-splash-bubble.is-visible.is-bobbing {
+    animation: bubblePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               bubbleBob 2.6s ease-in-out 0.45s infinite alternate;
+}
+
+@keyframes bubbleBob {
+    0%   { transform: rotate(-1.5deg) translateY(0); }
+    100% { transform: rotate(1.5deg) translateY(-2px); }
+}
+
+.aurora-splash-bubble.is-hiding {
+    animation: bubbleOut 0.28s ease-in both;
+}
+
+@keyframes bubbleOut {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HUD: игрушечный конфетный прогрессбар
+   ═══════════════════════════════════════════════════════════════ */
+
 .aurora-splash-hud {
     position: absolute;
     bottom: 44px;
@@ -382,15 +725,14 @@
 .aurora-splash-progress-track {
     position: relative;
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    height: 14px;
+    background: rgba(255, 255, 255, 0.10);
     border-radius: 9999px;
-    overflow: hidden;
-    box-shadow: 
-        inset 0 2px 6px rgba(0, 0, 0, 0.85),
-        0 0 16px rgba(0, 0, 0, 0.6),
-        0 0 2px rgba(56, 189, 248, 0.2);
+    overflow: visible;
+    box-shadow:
+        inset 0 2px 4px rgba(2, 6, 23, 0.55),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+        0 0 14px rgba(2, 6, 23, 0.35);
 }
 
 .aurora-splash-progress-fill {
@@ -398,94 +740,130 @@
     width: 0%;
     background: linear-gradient(
         90deg,
-        #38bdf8 0%,
-        #6366f1 25%,
-        #8b5cf6 55%,
-        #a855f7 75%,
-        #ec4899 100%
+        #7dd3fc 0%,
+        #38bdf8 35%,
+        #a78bfa 60%,
+        #f472b6 85%,
+        #fbbf24 100%
     );
     border-radius: 9999px;
     position: relative;
-    box-shadow: 
-        0 0 16px rgba(56, 189, 248, 0.85),
-        0 0 28px rgba(139, 92, 246, 0.65),
-        0 0 42px rgba(236, 72, 153, 0.55),
-        inset 0 1px 2px rgba(255, 255, 255, 0.4);
-    transition: width 0.06s linear;
-    /* AAA PREMIUM: Animated gradient flow */
-    background-size: 200% 100%;
-    animation: progressGradientFlow 3.5s linear infinite;
+    overflow: hidden;
+    box-shadow:
+        0 0 10px rgba(125, 211, 252, 0.45),
+        0 0 20px rgba(244, 114, 182, 0.25),
+        inset 0 2px 2px rgba(255, 255, 255, 0.55);
+    transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: left center;
 }
 
-@keyframes progressGradientFlow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-}
-
-/* Photonic Light Sweep running on the progress bar - AAA Enhanced */
+/* Верхний «желейный» блик */
 .aurora-splash-progress-fill::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        105deg,
-        transparent 20%,
-        rgba(255, 255, 255, 0.3) 45%,
-        rgba(255, 255, 255, 0.95) 50%,
-        rgba(56, 189, 248, 0.4) 55%,
-        transparent 80%
-    );
-    /* AAA Enhancement: More dramatic sweep with professional easing */
-    animation: auroraSplashSweep 1.8s cubic-bezier(0.65, 0.05, 0.35, 1) infinite;
+    top: 1.5px;
+    left: 6px;
+    right: 6px;
+    height: 3px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.75), rgba(255,255,255,0.25));
 }
 
-@keyframes auroraSplashSweep {
-    0% { 
-        transform: translateX(-120%);
-        opacity: 0;
-    }
-    10% {
-        opacity: 1;
-    }
-    90% {
-        opacity: 1;
-    }
-    100% { 
-        transform: translateX(220%);
-        opacity: 0;
-    }
+.aurora-splash-progress-fill.is-wobbling {
+    animation: jellyWobble 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Leading Photon Spark at the tip of progress bar - AAA Enhanced */
-.aurora-splash-progress-spark {
+@keyframes jellyWobble {
+    0%   { transform: scaleY(1); }
+    30%  { transform: scaleY(1.45); }
+    60%  { transform: scaleY(0.8); }
+    100% { transform: scaleY(1); }
+}
+
+/* Второй затык: бар «стесняется» и тускнеет */
+.aurora-splash-progress-track.is-stalled .aurora-splash-progress-fill {
+    filter: saturate(0.4) brightness(0.75);
+    transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
+}
+
+/* Крутящаяся звёздочка на кончике бара */
+.aurora-splash-progress-tip {
     position: absolute;
-    right: 0;
     top: 50%;
-    transform: translate(50%, -50%);
-    width: 7px;
-    height: 7px;
-    background: #ffffff;
-    border-radius: 50%;
-    box-shadow: 0 0 6px #ffffff, 0 0 12px #38bdf8, 0 0 18px #ec4899;
-    /* AAA Enhancement: Pulsing spark animation */
-    animation: sparkPulse 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    left: 0%;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    pointer-events: none;
+    filter: drop-shadow(0 0 5px #fde68a) drop-shadow(0 0 11px #fbbf24);
 }
 
-@keyframes sparkPulse {
-    0%, 100% {
-        transform: translate(50%, -50%) scale(1.0);
-        opacity: 1;
-    }
-    50% {
-        transform: translate(50%, -50%) scale(1.4);
-        opacity: 0.7;
-    }
+.aurora-splash-progress-tip svg {
+    width: 100%;
+    height: 100%;
+    animation: tipSpin 1.4s linear infinite;
 }
 
-/* HUD Micro-Typography details */
+.aurora-splash-progress-tip svg path {
+    fill: #ffffff;
+    stroke: #fde68a;
+    stroke-width: 1;
+}
+
+@keyframes tipSpin {
+    0%   { transform: rotate(0deg) scale(1); }
+    50%  { transform: rotate(180deg) scale(1.15); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Звёзды-майлстоуны 25/50/75/100% */
+.hud-star {
+    position: absolute;
+    top: -21px;
+    width: 17px;
+    height: 17px;
+    margin-left: -8.5px;
+    opacity: 0;
+    transform: scale(0);
+    pointer-events: none;
+    filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.8));
+}
+
+.hud-star.hud-star-final {
+    margin-left: -17px;
+}
+
+.hud-star svg {
+    width: 100%;
+    height: 100%;
+}
+
+.hud-star svg path {
+    fill: #fbbf24;
+    stroke: #fde68a;
+    stroke-width: 1;
+}
+
+.hud-star.is-pop {
+    animation: starPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes starPop {
+    0%   { opacity: 0; transform: scale(0) rotate(-24deg) translateY(8px); }
+    55%  { opacity: 1; transform: scale(1.45) rotate(6deg) translateY(-3px); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
+}
+
+.hud-star.is-twinkling {
+    animation: starTwinkle 1.6s ease-in-out 0.55s infinite alternate;
+}
+
+@keyframes starTwinkle {
+    0%   { transform: scale(1) rotate(0deg); opacity: 0.85; }
+    100% { transform: scale(1.15) rotate(12deg); opacity: 1; }
+}
+
+/* HUD-инфо */
 .aurora-splash-hud-info {
     display: flex;
     justify-content: space-between;
@@ -493,8 +871,8 @@
     width: 100%;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.73rem;
-    letter-spacing: 0.12em;
-    color: #94a3b8;
+    letter-spacing: 0.08em;
+    color: #a5b4fc;
 }
 
 .aurora-splash-status {
@@ -503,44 +881,58 @@
     gap: 6px;
     color: #cbd5e1;
     font-weight: 500;
-    /* AAA Enhancement: Smooth text transitions */
     transition: color 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .aurora-splash-status-dot {
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: #38bdf8;
     box-shadow: 0 0 8px #38bdf8;
-    /* AAA Enhancement: More dramatic pulse with squash & stretch */
     animation: auroraDotPulse 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
 }
 
 @keyframes auroraDotPulse {
-    0% { 
-        opacity: 0.4; 
-        transform: scale(0.75);
-        box-shadow: 0 0 4px #38bdf8;
-    }
-    100% { 
-        opacity: 1; 
-        transform: scale(1.35);
-        box-shadow: 0 0 12px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.4);
-    }
+    0%   { opacity: 0.4; transform: scale(0.75); box-shadow: 0 0 4px #38bdf8; }
+    100% { opacity: 1; transform: scale(1.35); box-shadow: 0 0 12px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.4); }
 }
 
 .aurora-splash-percent {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-weight: 700;
-    color: #38bdf8;
+    font-size: 0.95rem;
+    color: #7dd3fc;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
-    /* AAA Enhancement: Smooth number transitions */
-    transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    text-shadow: 0 0 8px rgba(125, 211, 252, 0.6);
 }
 
-/* Responsive adjustments */
+.aurora-splash-percent.is-bouncing {
+    animation: percentBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes percentBounce {
+    0%   { transform: translateY(0) scale(1); }
+    40%  { transform: translateY(-6px) scale(1.18); }
+    70%  { transform: translateY(1px) scale(0.96); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+.aurora-splash-percent.is-final-pop {
+    animation: percentFinalPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes percentFinalPop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.5); color: #fde68a; }
+    100% { transform: scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   АДАПТИВ
+   ═══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 580px) {
     .aurora-splash-skip-btn {
         top: 16px;
@@ -555,70 +947,86 @@
         height: 310px;
     }
     .aurora-splash-arc-container {
-        width: 260px;
-        height: 95px;
-        top: 16px;
+        width: 250px;
+        height: 96px;
+        top: 10px;
     }
-    .aurora-splash-arc-letter {
-        font-size: 19px;
+    .cosmo-letter {
+        font-size: 24px;
+        stroke-width: 3.2px;
     }
+    .aurora-splash-robot-viewport {
+        height: 150px;
+        margin-top: 26px;
+    }
+    #aurora-splash-webgl {
+        max-height: 150px;
+    }
+    .aurora-splash-sticker {
+        width: 72px;
+        top: -4px;
+    }
+    .aurora-splash-sticker.sticker-right { left: calc(50% + 46px); }
+    .aurora-splash-sticker.sticker-left  { right: calc(50% + 46px); }
+    .aurora-splash-bubble {
+        max-width: 128px;
+        padding: 7px 11px;
+        top: 8px;
+    }
+    .aurora-splash-bubble span {
+        font-size: 11px;
+    }
+    .aurora-splash-bubble.bubble-from-left  { left: 16px; }
+    .aurora-splash-bubble.bubble-from-right { left: auto; right: 12px; }
     .aurora-splash-hud {
-        bottom: 30px;
-        width: calc(100vw - 36px);
+        bottom: 26px;
+        width: calc(100vw - 40px);
     }
-}
-
-/* ============================================================================
-   AAA PREMIUM ENHANCEMENTS: Motion Blur, Speed Lines & Chromatic Aberration
-   ============================================================================ */
-
-/* Motion blur hint during robot walking phase */
-.aurora-splash-robot-viewport.walking #aurora-splash-webgl {
-    filter: blur(0.4px);
-    transform: translateX(2px);
-    transition: filter 0.08s ease-out, transform 0.08s ease-out;
-}
-
-/* Speed lines effect during fast movement (0.5s - 2.5s) */
-.aurora-splash-stage::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: -10%;
-    right: -10%;
-    height: 2px;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(56, 189, 248, 0.4) 30%,
-        rgba(56, 189, 248, 0.6) 50%,
-        rgba(56, 189, 248, 0.4) 70%,
-        transparent 100%
-    );
-    transform: translateY(-50%) scaleX(0);
-    transform-origin: left center;
-    pointer-events: none;
-    z-index: 8;
-    filter: blur(1.5px);
-    opacity: 0;
-    animation: speedLineSweep 2.0s cubic-bezier(0.4, 0, 0.2, 1) 0.5s 1;
-}
-
-@keyframes speedLineSweep {
-    0% {
-        transform: translateY(-50%) scaleX(0);
-        opacity: 0;
+    .aurora-splash-percent {
+        font-size: 0.85rem;
     }
-    15% {
-        transform: translateY(-50%) scaleX(1);
+    .hud-star {
+        width: 13px;
+        height: 13px;
+        top: -17px;
+    }
+    .cosmo-prop.planet-amber { width: 46px; height: 46px; }
+    .cosmo-prop.planet-teal { width: 30px; height: 30px; }
+    .cosmo-prop.ufo { width: 40px; height: 20px; right: 8%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ДОСТУПНОСТЬ: prefers-reduced-motion — спокойный вариант
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmo-letter.is-on {
+        animation: none;
         opacity: 1;
+        transform: none;
+        transition: opacity 0.6s ease;
     }
-    85% {
-        transform: translateY(-50%) scaleX(1);
-        opacity: 0.8;
+    .cosmo-letter-idle,
+    .cosmo-sparkle,
+    .cosmo-prop,
+    .aurora-splash-mascot-fallback,
+    .aurora-splash-progress-tip svg,
+    .aurora-splash-progress-fill.is-wobbling,
+    .hud-star.is-pop,
+    .aurora-splash-percent.is-bouncing,
+    .aurora-splash-percent.is-final-pop,
+    .aurora-splash-sticker.is-visible,
+    .aurora-splash-bubble.is-visible,
+    .aurora-splash-bubble.is-visible.is-bobbing {
+        animation: none !important;
     }
-    100% {
-        transform: translateY(-50%) scaleX(0);
-        opacity: 0;
+    .hud-star.is-pop,
+    .aurora-splash-sticker.is-visible,
+    .aurora-splash-bubble.is-visible {
+        opacity: 1;
+        transform: rotate(var(--sticker-rot, 0deg));
+    }
+    .aurora-splash-progress-fill {
+        transition: width 0.2s linear;
     }
 }

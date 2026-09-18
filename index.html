@@ -205,7 +205,7 @@
     <!-- Typography: Montserrat + JetBrains Mono + Cosmic Sci-Fi Fonts (Unbounded, Tektur, Exo 2 with full Cyrillic support) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Unbounded:wght@700;800&display=swap" rel="stylesheet">
 
     <!-- Material Symbols Outlined (icons) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,7 +223,7 @@
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/opac_search.css?v=4.61.0">
     <link rel="stylesheet" href="src/inoagent.css?v=4.62.1">
-    <link rel="stylesheet" href="src/splash_loader.css?v=5.4.0">
+    <link rel="stylesheet" href="src/splash_loader.css?v=5.5.0">
 
     <!-- Three.js 3D Engine & GLTF Loader for Cosmo 3D Model -->
     <script defer src="assets/vendor/three/three.min.js"></script>
@@ -280,10 +280,23 @@
     })();
     </script>
 
-    <!-- 8-Second Cinematic 3D Cosmo Preloader & Splash Screen -->
+    <!-- 8-Second Pixar-Style 3D Cosmo Preloader & Splash Screen -->
     <div id="aurora-splash" role="dialog" aria-modal="true" aria-label="Загрузка системы Аврора">
         <!-- Background Star Dust Canvas -->
         <canvas id="aurora-splash-stars"></canvas>
+
+        <!-- Pixar Background Props: planets, curious UFO, finale balloons -->
+        <div class="aurora-splash-props" aria-hidden="true">
+            <div class="cosmo-prop planet-amber"></div>
+            <div class="cosmo-prop planet-teal"></div>
+            <div class="cosmo-prop ufo" id="aurora-splash-ufo"><span></span></div>
+            <div class="cosmo-prop balloon balloon-1"></div>
+            <div class="cosmo-prop balloon balloon-2"></div>
+            <div class="cosmo-prop balloon balloon-3"></div>
+        </div>
+
+        <!-- Full-screen FX overlay: confetti, speed lines, shockwaves, hearts -->
+        <canvas id="aurora-splash-fx"></canvas>
 
         <!-- Top Right Skip Button -->
         <button id="aurora-splash-skip" class="aurora-splash-skip-btn" title="Пропустить заставку (Esc)" aria-label="Пропустить заставку">
@@ -293,54 +306,66 @@
         </button>
 
         <!-- Central Stage -->
-        <div class="aurora-splash-stage">
-            <!-- Curved SVG Typography «КОСМО» -->
+        <div class="aurora-splash-stage" id="aurora-splash-stage">
+            <!-- Curved SVG Typography «КОСМО»: per-letter pop -->
             <div class="aurora-splash-arc-container">
                 <svg class="aurora-splash-arc-svg" viewBox="0 0 290 105">
                     <defs>
-                        <linearGradient id="auroraNeonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#38bdf8" />
-                            <stop offset="35%" stop-color="#6366f1" />
-                            <stop offset="70%" stop-color="#8b5cf6" />
-                            <stop offset="100%" stop-color="#ec4899" />
+                        <linearGradient id="cosmoCandyGrad" x1="0%" y1="0%" x2="100%" y2="30%">
+                            <stop offset="0%" stop-color="#7DD3FC" />
+                            <stop offset="28%" stop-color="#38BDF8" />
+                            <stop offset="52%" stop-color="#818CF8" />
+                            <stop offset="74%" stop-color="#C084FC" />
+                            <stop offset="100%" stop-color="#F9A8D4" />
                         </linearGradient>
                         <path id="cosmo-arc-path" d="M 20,85 A 125,75 0 0,1 270,85" fill="none" />
                     </defs>
-                    <text class="cosmo-arc-text">
-                        <textPath href="#cosmo-arc-path" startOffset="50%" text-anchor="middle" id="aurora-splash-arc-letters">
-                            <!-- Injected by splash_loader.js: К О С М О -->
-                        </textPath>
-                    </text>
+                    <g id="aurora-splash-arc-letters">
+                        <g class="cosmo-letter-idle" style="animation-delay:-0.3s"><text class="cosmo-letter"><textPath href="#cosmo-arc-path" startOffset="29%" text-anchor="middle">К</textPath></text></g>
+                        <g class="cosmo-letter-idle" style="animation-delay:-0.9s"><text class="cosmo-letter"><textPath href="#cosmo-arc-path" startOffset="39.5%" text-anchor="middle">О</textPath></text></g>
+                        <g class="cosmo-letter-idle" style="animation-delay:-1.5s"><text class="cosmo-letter"><textPath href="#cosmo-arc-path" startOffset="50%" text-anchor="middle">С</textPath></text></g>
+                        <g class="cosmo-letter-idle" style="animation-delay:-2.1s"><text class="cosmo-letter"><textPath href="#cosmo-arc-path" startOffset="60.5%" text-anchor="middle">М</textPath></text></g>
+                        <g class="cosmo-letter-idle" style="animation-delay:-2.7s"><text class="cosmo-letter"><textPath href="#cosmo-arc-path" startOffset="71%" text-anchor="middle">О</textPath></text></g>
+                    </g>
+                    <g transform="translate(266,18)"><path class="cosmo-sparkle sparkle-big" d="M0,-9 C1.5,-2 2,-1.5 9,0 C2,1.5 1.5,2 0,9 C-1.5,2 -2,1.5 -9,0 C-2,-1.5 -1.5,-2 0,-9" fill="#FDE68A" /></g>
+                    <g transform="translate(14,34)"><path class="cosmo-sparkle sparkle-small" d="M0,-6 C1,-1.4 1.4,-1 6,0 C1.4,1 1,1.4 0,6 C-1,1.4 -1.4,1 -6,0 C-1.4,-1 -1,-1.4 0,-6" fill="#F9A8D4" /></g>
                 </svg>
             </div>
 
-            <!-- 3D Robot Cosmo Viewport (Using our 3D Model cute_robot.glb & Mascot Assets) -->
+            <!-- 3D Robot Cosmo Viewport (3D Model cute_robot.glb + emotion stickers) -->
             <div class="aurora-splash-robot-viewport">
                 <canvas id="aurora-splash-webgl"></canvas>
                 <img id="aurora-splash-mascot-fallback" class="aurora-splash-mascot-fallback" src="assets/images/mascot/robot_waving.png" alt="Космо" style="display: none;" />
                 <div class="aurora-splash-hover-shadow"></div>
                 <div class="aurora-splash-ion-glow"></div>
+                <img id="aurora-splash-sticker" class="aurora-splash-sticker" alt="" aria-hidden="true" />
+                <div id="aurora-splash-bubble" class="aurora-splash-bubble"><span id="aurora-splash-bubble-text"></span></div>
             </div>
         </div>
 
-        <!-- Bottom Cyber HUD Progress Bar -->
+        <!-- Bottom Toy HUD Progress Bar -->
         <div class="aurora-splash-hud">
             <div class="aurora-splash-progress-track">
-                <div id="aurora-splash-progress-fill" class="aurora-splash-progress-fill">
-                    <div class="aurora-splash-progress-spark"></div>
+                <div id="aurora-splash-progress-fill" class="aurora-splash-progress-fill"></div>
+                <div id="aurora-splash-progress-tip" class="aurora-splash-progress-tip" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
                 </div>
+                <span class="hud-star" style="left:25%" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg></span>
+                <span class="hud-star" style="left:50%" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg></span>
+                <span class="hud-star" style="left:75%" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg></span>
+                <span class="hud-star hud-star-final" style="left:100%" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg></span>
             </div>
             <div class="aurora-splash-hud-info">
                 <span id="aurora-splash-status" class="aurora-splash-status">
                     <span class="aurora-splash-status-dot"></span>
-                    <span id="aurora-splash-status-text">ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ...</span>
+                    <span id="aurora-splash-status-text">РАЗОГРЕВ ИОНОВЫХ ТУРБИН...</span>
                 </span>
                 <span id="aurora-splash-percent" class="aurora-splash-percent">0%</span>
             </div>
         </div>
     </div>
     <script type="module">
-    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.4.0';
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.5.0';
     (function() {
         try {
             const p = new URLSearchParams(window.location.search);
