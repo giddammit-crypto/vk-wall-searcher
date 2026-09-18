@@ -491,9 +491,13 @@ export class Space3DEngine {
         // 3. Стеллаж постов: поиск внутри ленты и сортировка
         const feedFilter = this.world.querySelector('#space-feed-filter');
         if (feedFilter) {
+            let spaceDebounce;
             feedFilter.addEventListener('input', (e) => {
-                this.feedSearchQuery = e.target.value.toLowerCase().trim();
-                this.refreshShowcaseStation();
+                clearTimeout(spaceDebounce);
+                spaceDebounce = setTimeout(() => {
+                    this.feedSearchQuery = e.target.value.toLowerCase().trim();
+                    this.refreshShowcaseStation();
+                }, 300);
             });
         }
 

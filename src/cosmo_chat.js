@@ -1322,25 +1322,29 @@ export class CosmoChatModal {
         const presetsGridEl = this.presetsPopoverEl ? this.presetsPopoverEl.querySelector('[data-presets-grid]') : null;
 
         if (searchInput && presetsGridEl) {
+            let debounceTimer;
             searchInput.addEventListener('input', () => {
-                const q = searchInput.value.trim().toLowerCase();
-                const cards = presetsGridEl.querySelectorAll('.preset-card');
-                let visibleCount = 0;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const q = searchInput.value.trim().toLowerCase();
+                    const cards = presetsGridEl.querySelectorAll('.preset-card');
+                    let visibleCount = 0;
 
-                cards.forEach(card => {
-                    const title = (card.querySelector('.preset-title')?.textContent || '').toLowerCase();
-                    const desc = (card.querySelector('.preset-desc')?.textContent || '').toLowerCase();
-                    const badge = (card.querySelector('.preset-badge')?.textContent || '').toLowerCase();
-                    const id = (card.dataset.presetId || '').toLowerCase();
-                    const match = !q || title.includes(q) || desc.includes(q) || badge.includes(q) || id.includes(q);
+                    cards.forEach(card => {
+                        const title = (card.querySelector('.preset-title')?.textContent || '').toLowerCase();
+                        const desc = (card.querySelector('.preset-desc')?.textContent || '').toLowerCase();
+                        const badge = (card.querySelector('.preset-badge')?.textContent || '').toLowerCase();
+                        const id = (card.dataset.presetId || '').toLowerCase();
+                        const match = !q || title.includes(q) || desc.includes(q) || badge.includes(q) || id.includes(q);
 
-                    card.style.display = match ? '' : 'none';
-                    if (match) visibleCount++;
-                });
+                        card.style.display = match ? '' : 'none';
+                        if (match) visibleCount++;
+                    });
 
-                if (emptyStateEl) {
-                    emptyStateEl.style.display = (visibleCount === 0) ? 'flex' : 'none';
-                }
+                    if (emptyStateEl) {
+                        emptyStateEl.style.display = (visibleCount === 0 && q) ? 'flex' : 'none';
+                    }
+                }, 300);
             });
 
             searchInput.addEventListener('keydown', (e) => {

@@ -70,7 +70,7 @@ export function calculateGroupStats(posts, targets = []) {
     // Initialize all scanned targets so 0-post branches are included
     targets.forEach(t => {
         const targetObj = enrichTargetWithCanonical({ ...t });
-        const key = targetObj.id || targetObj.rawId || targetObj.canonicalName || targetObj.name;
+        const key = String(targetObj.id || targetObj.rawId || targetObj.canonicalName || targetObj.name);
         if (!key) return;
         map.set(key, {
             info: targetObj,
@@ -86,7 +86,7 @@ export function calculateGroupStats(posts, targets = []) {
     posts.forEach(p => {
         const t = p.targetInfo || { id: p.owner_id, rawId: p.owner_id, name: p._targetName || 'Источник' };
         enrichTargetWithCanonical(t);
-        const key = t.id || t.rawId || t.canonicalName || t.name;
+        const key = String(t.id || t.rawId || t.canonicalName || t.name);
         if (!map.has(key)) {
             map.set(key, {
                 info: t,

@@ -728,6 +728,24 @@
                                     </div>
                                     <div class="adv-field-hint">Без # — добавится автоматически</div>
                                 </div>
+                                <!-- Min Likes -->
+                                <div class="adv-search-field">
+                                    <div class="adv-field-label">Мин. лайков</div>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined input-leading-icon">favorite</span>
+                                        <input type="number" id="min-likes-input" min="0" placeholder="0">
+                                    </div>
+                                    <div class="adv-field-hint">Оставить пустым для отключения</div>
+                                </div>
+                                <!-- Min Views -->
+                                <div class="adv-search-field">
+                                    <div class="adv-field-label">Мин. просмотров</div>
+                                    <div class="input-icon-wrap">
+                                        <span class="material-symbols-outlined input-leading-icon">visibility</span>
+                                        <input type="number" id="min-views-input" min="0" placeholder="0">
+                                    </div>
+                                    <div class="adv-field-hint">Оставить пустым для отключения</div>
+                                </div>
                             </div>
 
                             <!-- Content & Media Filters Section -->
@@ -806,6 +824,18 @@
                                         <span class="adv-filter-card-text">
                                             <strong>Только с ссылками</strong>
                                             <small>Внешние URL и сниппеты</small>
+                                        </span>
+                                    </label>
+
+                                    <!-- Без закрепов -->
+                                    <label class="adv-filter-card" for="exclude-pinned-check">
+                                        <input type="checkbox" id="exclude-pinned-check">
+                                        <span class="adv-filter-card-box">
+                                            <span class="material-symbols-outlined">push_pin</span>
+                                        </span>
+                                        <span class="adv-filter-card-text">
+                                            <strong>Без закрепов</strong>
+                                            <small>Исключить закрепленные записи</small>
                                         </span>
                                     </label>
                                 </div>

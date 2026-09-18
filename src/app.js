@@ -208,6 +208,7 @@ function initApp() {
         onlyRepostsCheck: document.getElementById('only-reposts-check') || document.getElementById('filter-only-reposts'),
         onlyPollsCheck: document.getElementById('only-polls-check') || document.getElementById('filter-only-polls'),
         onlyLinksCheck: document.getElementById('only-links-check') || document.getElementById('filter-only-links'),
+        excludePinnedCheck: document.getElementById('exclude-pinned-check'),
 
         // Date & Period
         monthsContainer: document.getElementById('months-container'),
@@ -1489,7 +1490,8 @@ function initApp() {
                         }
 
                         // Passed all filters! Deduplicate before adding
-                        const postKey = `${post.owner_id || targetInfo.id}_${post.id}`;
+                        const actualOwner = (post.owner_id != null && post.owner_id !== 0) ? post.owner_id : targetInfo.id;
+                        const postKey = `${actualOwner}_${post.id}`;
                         if (state.seenPostKeys && state.seenPostKeys.has(postKey)) {
                             continue;
                         }
@@ -1648,15 +1650,20 @@ function initApp() {
     function renderAllResults() {
         elements.resultsContainer.classList.remove('hidden');
 
+        // Calculate filtered feed first
+        applySortAndFilterFeed();
+
         // Update tab badges
-        const count = state.matchedPosts.length;
+        const count = state.filteredPosts.length;
         if (elements.countFeed) elements.countFeed.textContent = count;
         if (elements.countPassport) elements.countPassport.textContent = count;
         if (elements.countAnalytics) elements.countAnalytics.textContent = count;
         if (elements.countSummary) elements.countSummary.textContent = count;
 
-        // Calculate KPIs & Group Stats
-        const kpis = calculateKPIs(state.matchedPosts);
+        // Calculate KPIs from FILTERED posts
+        const kpis = calculateKPIs(state.filteredPosts);
+        
+        // Calculate Group Stats from ALL matched posts (so showcase/reports stay intact)
         const stats = calculateGroupStats(state.matchedPosts, state.targetsInfo);
         state.lastGroupsStats = stats;
 
@@ -1666,9 +1673,6 @@ function initApp() {
         if (elements.kpiTotalReactions) elements.kpiTotalReactions.textContent = kpis.totalInteractions.toLocaleString('ru-RU');
         if (elements.kpiAvgEr) elements.kpiAvgEr.textContent = kpis.erViews;
         if (elements.kpiAvgViews) elements.kpiAvgViews.textContent = kpis.avgViews.toLocaleString('ru-RU');
-
-        // Render visual feed with current sort
-        applySortAndFilterFeed();
         renderSourcesShowcase(stats);
         renderAnalyticsTab(stats, kpis);
         renderOfficialReport(stats);
@@ -1914,6 +1918,21 @@ function initApp() {
             posts = posts.filter(p => (p.text || '').toLowerCase().includes(state.activeHashtagFilter.toLowerCase()));
         }
 
+        // Extra filters
+        const minLikes = parseInt(elements.minLikesInput?.value || '0', 10);
+        const minViews = parseInt(elements.minViewsInput?.value || '0', 10);
+        const excludePinned = elements.excludePinnedCheck?.checked;
+
+        if (minLikes > 0) {
+            posts = posts.filter(p => extractNum(p.likes) >= minLikes);
+        }
+        if (minViews > 0) {
+            posts = posts.filter(p => extractNum(p.views) >= minViews);
+        }
+        if (excludePinned) {
+            posts = posts.filter(p => !p.is_pinned);
+        }
+
         // Sort posts
         const sortBy = elements.cardsSortSelect?.value || state.sortBy;
         switch (sortBy) {
@@ -1967,6 +1986,15 @@ function initApp() {
         }
 
         state.filteredPosts = posts;
+
+        // Recalculate KPIs for the filtered set and update DOM
+        const kpis = calculateKPIs(state.filteredPosts);
+        if (elements.kpiTotalPosts) elements.kpiTotalPosts.textContent = kpis.count;
+        if (elements.kpiTotalViews) elements.kpiTotalViews.textContent = formatViews(kpis.totalViews);
+        if (elements.kpiTotalReactions) elements.kpiTotalReactions.textContent = kpis.totalInteractions.toLocaleString('ru-RU');
+        if (elements.kpiAvgEr) elements.kpiAvgEr.textContent = kpis.erViews;
+        if (elements.kpiAvgViews) elements.kpiAvgViews.textContent = kpis.avgViews.toLocaleString('ru-RU');
+
         state.cardPage = 0;
         elements.postsGrid.innerHTML = '';
 
@@ -2014,6 +2042,21 @@ function initApp() {
         }, { rootMargin: '250px' });
         obs.observe(elements.scrollSentinel);
     }
+
+    // Live filters with debounce
+    let liveFilterTimer;
+    const triggerLiveFilter = () => {
+        clearTimeout(liveFilterTimer);
+        liveFilterTimer = setTimeout(() => {
+            if (state.matchedPosts && state.matchedPosts.length > 0) {
+                applySortAndFilterFeed();
+            }
+        }, 300);
+    };
+
+    if (elements.minLikesInput) elements.minLikesInput.addEventListener('input', triggerLiveFilter);
+    if (elements.minViewsInput) elements.minViewsInput.addEventListener('input', triggerLiveFilter);
+    if (elements.excludePinnedCheck) elements.excludePinnedCheck.addEventListener('change', triggerLiveFilter);
 
     if (elements.cardsSortSelect) {
         elements.cardsSortSelect.addEventListener('change', () => {

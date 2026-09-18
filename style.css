@@ -13893,14 +13893,6 @@ select:hover { border-color: var(--accent-medium); }
 }
 
 /* Неоновые пульсации — глушим сами keyframes (позднее определение побеждает) */
-@keyframes pulseGlow { 0%, 100% { } }
-@keyframes badgePulse { 0%, 100% { } }
-@keyframes auroraBadgePulse { 0%, 100% { } }
-@keyframes pulseResultsBtn { 0%, 100% { } }
-@keyframes btnShimmerSweep { 0%, 100% { } }
-@keyframes galaxySpin { 0%, 100% { } }
-@keyframes galaxyPulse { 0%, 100% { } }
-@keyframes starTwinkle { 0%, 100% { } }
 @keyframes serverKeyPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 /* ---------------------------------------------------------------------------

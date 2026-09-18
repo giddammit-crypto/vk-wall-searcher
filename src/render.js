@@ -282,12 +282,13 @@ export function createPostCard(post) {
     const dateStr = post.humanDate || (post.date ? formatHumanDate(post.date) : '');
     
     // Header
+    const pinnedBadge = post.is_pinned ? `<span class="post-pinned-badge" title="Закреплённая запись" style="margin-left:5px;font-size:14px;">📌</span>` : '';
     const headerHtml = `
         <div class="post-card-header">
             ${renderBranchAvatarHtml(target, 'md', 'author-avatar-wrap')}
             <div class="author-info">
                 <span class="author-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
-                <span class="post-date">${dateStr}</span>
+                <span class="post-date">${dateStr}${pinnedBadge}</span>
             </div>
         </div>
     `;
@@ -585,7 +586,7 @@ export function openPostModal(post) {
         else if (photoList.length === 3) gc = 'count-3';
         else if (photoList.length >= 4) gc = 'count-4';
         return `<div class="pm-photos post-attachments ${gc}">` +
-            photoList.map(u => `<img class="attachment-img pm-photo" src="${u}" data-src="${u}" alt="Фото">`).join('') +
+            photoList.map(u => `<img class="attachment-img pm-photo" src="${u}" data-src="${u}" alt="Фото" loading="lazy">`).join('') +
             `</div>`;
     }
 
@@ -603,7 +604,7 @@ export function openPostModal(post) {
                             <iframe class="pm-video-iframe" src="${playerUrl}" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
                         ` : `
                             <div class="pm-video-fallback">
-                                ${thumbUrl ? `<img src="${thumbUrl}" class="pm-video-fallback-thumb" alt="${escapeHtml(v.title || '')}">` : ''}
+                                ${thumbUrl ? `<img src="${thumbUrl}" class="pm-video-fallback-thumb" alt="${escapeHtml(v.title || '')}" loading="lazy">` : ''}
                                 <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary pm-video-open-btn">
                                     <span class="material-symbols-outlined">play_arrow</span>
                                     <span>Смотреть во ВКонтакте</span>
