@@ -139,27 +139,38 @@ class BranchNewsTestSuite
         );
 
         // Проверяем работу бейджа остатка при большом числе постов (>25)
-        $overflowNews = ['today' => array_merge($cacheData['today'], $cacheData['today']), 'last_24h' => []];
+        $manyPosts = [];
+        for ($i = 0; $i < 30; $i++) {
+            $manyPosts[] = [
+                'id' => 1000 + $i,
+                'owner_id' => -51714771,
+                'date' => time() - ($i * 60),
+                'text' => "Тестовый анонс филиала номер {$i} о культурных мероприятиях и новинках литературы города Владимира.",
+                'branch' => ['name' => 'Центральная городская библиотека']
+            ];
+        }
+        $overflowNews = ['today' => $manyPosts, 'last_24h' => []];
         $overflowMsg = vk_bot_format_branch_news_message($overflowNews);
         $hasRemainingBadge = (strpos($overflowMsg, 'И ещё') !== false);
         $this->assert('Индикатор не поместившихся постов при переполнении («➕ И ещё X свежих записей»)', $hasRemainingBadge);
     }
 
     /**
-     * 3. Проверка фразы «Постов за сегодня нет»
+     * 3. Проверка режима отсутствия постов за сегодня (строго текущий день)
      */
     private function testNoTodayPostsPhrase()
     {
         echo "\n3. Проверка режима отсутствия постов за сегодня:\n";
 
-        // Моделируем ситуацию: за сегодня постов нет (today=[]), но есть за последние 24 часа
+        // Моделируем ситуацию: за сегодня постов нет (today=[]), но есть вчерашние посты
+        $yesterdayStart = strtotime('yesterday midnight');
         $mockNews = [
             'today' => [],
             'last_24h' => [
                 [
                     'id' => 501,
                     'owner_id' => -51714771,
-                    'date' => time() - 36000,
+                    'date' => $yesterdayStart + 3600,
                     'text' => 'Вчерашняя вечерняя лекция о космонавтике собрала полный зал читателей.',
                     'branch' => [
                         'name' => 'Центральная городская библиотека'
@@ -171,8 +182,7 @@ class BranchNewsTestSuite
         $output = vk_bot_format_branch_news_message($mockNews);
 
         $hasNoTodayPhrase = (strpos($output, 'Постов за сегодня нет') !== false);
-        $hasLast24h = (strpos($output, 'за последние 24 часа') !== false);
-        $hasPostContent = (strpos($output, 'Вчерашняя вечерняя лекция') !== false);
+        $doesNotShowYesterday = (strpos($output, 'Вчерашняя вечерняя лекция') === false);
 
         $this->assert(
             'Наличие фразы «Постов за сегодня нет» в заголовке сообщения',
@@ -181,17 +191,17 @@ class BranchNewsTestSuite
         );
 
         $this->assert(
-            'Автоматический показ постов за последние 24 часа при отсутствии сегодняшних',
-            $hasLast24h && $hasPostContent
+            'Исключение постов за прошлый день (строго только текущий день)',
+            $doesNotShowYesterday
         );
     }
 
     /**
-     * 4. Полное отсутствие постов (0 за сегодня и 0 за 24 часа)
+     * 4. Полное отсутствие постов за сегодня
      */
     private function testCompletelyEmptyPosts()
     {
-        echo "\n4. Проверка поведения при полностью пустой ленте:\n";
+        echo "\n4. Проверка поведения при полностью пустой ленте за сегодня:\n";
 
         $emptyNews = [
             'today' => [],
@@ -200,11 +210,11 @@ class BranchNewsTestSuite
 
         $output = vk_bot_format_branch_news_message($emptyNews);
 
-        $hasNotice = (strpos($output, 'за последние 24 часа пока нет новых записей') !== false);
+        $hasNotice = (strpos($output, 'пока нет новых записей') !== false && strpos($output, 'за сегодня') !== false);
         $hasBranchButtonTip = (strpos($output, 'Библиотеки-филиалы') !== false);
 
         $this->assert(
-            'Корректная заглушка при 0 постов за 24 часа во всех 16 филиалах',
+            'Корректная заглушка при 0 постов за сегодня во всех 16 филиалах',
             $hasNotice && $hasBranchButtonTip
         );
     }

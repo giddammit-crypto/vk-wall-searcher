@@ -23,6 +23,7 @@
 
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
+date_default_timezone_set('Europe/Moscow');
 
 // Разрешаем скрипту работать после закрытия HTTP-соединения
 ignore_user_abort(true);
@@ -4654,12 +4655,12 @@ function vk_bot_filter_branch_news($newsData, $keyword)
     };
 
     $filteredToday = array_values(array_filter($newsData['today'] ?? [], $filterFunc));
-    $filtered24h   = array_values(array_filter($newsData['last_24h'] ?? ($newsData['all_24h'] ?? []), $filterFunc));
+    $filteredLast24h = array_values(array_filter($newsData['last_24h'] ?? [], $filterFunc));
 
     return [
+        'date'     => $newsData['date'] ?? date('Y-m-d'),
         'today'    => $filteredToday,
-        'last_24h' => $filtered24h,
-        'all_24h'  => $filtered24h,
+        'last_24h' => $filteredLast24h,
         'branches' => $newsData['branches'] ?? [],
         'keyword'  => $keyword
     ];
@@ -4674,12 +4675,12 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
     $newsCacheFile = $cacheDir . '/vk_branch_news.json';
     $cacheTtl = 180; // 3 минуты кэша для быстрого отклика
 
-    // Проверяем свежий кэш
+    // Проверяем свежий кэш (строго за сегодняшнюю дату)
     if (file_exists($newsCacheFile) && is_readable($newsCacheFile)) {
         $mtime = @filemtime($newsCacheFile);
         if ($mtime && (time() - $mtime) < $cacheTtl) {
             $cached = json_decode(@file_get_contents($newsCacheFile), true);
-            if (is_array($cached) && (isset($cached['today']) || isset($cached['last_24h']))) {
+            if (is_array($cached) && isset($cached['today']) && ($cached['date'] ?? '') === date('Y-m-d')) {
                 if ($filterKeyword !== '') {
                     return vk_bot_filter_branch_news($cached, $filterKeyword);
                 }
@@ -4718,67 +4719,57 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
         $byNum = [];
         foreach ($cachedList as $cb) {
             $numKey = trim((string)($cb['branch_num'] ?? ''));
-            if ($numKey !== '') $byNum[$numKey] = $cb;
-            $codeKey = trim((string)($cb['branch_code'] ?? ''));
-            if ($codeKey !== '') $byNum[$codeKey] = $cb;
-            $canonKey = trim((string)($cb['canonical_num'] ?? ''));
-            if ($canonKey !== '') $byNum[$canonKey] = $cb;
-            if (preg_match('/(?:филиал\s*(?:№\s*)?|ф-?)(\d+)/ui', $numKey, $mNum)) {
-                $byNum['Ф-' . $mNum[1]] = $cb;
-                $byNum['Филиал №' . $mNum[1]] = $cb;
+            if ($numKey !== '') {
+                $byNum[$numKey] = $cb;
             }
         }
         foreach ($branches as &$b) {
-            if (isset($byNum[$b['code']])) {
-                $cb = $byNum[$b['code']];
-                if (!empty($cb['branch_name'])) $b['name'] = $cb['branch_name'];
-                if (!empty($cb['address'])) $b['addr'] = $cb['address'];
-                if (!empty($cb['vk_links'][0])) $b['vk'] = $cb['vk_links'][0];
+            $code = $b['code'];
+            if (isset($byNum[$code])) {
+                $info = $byNum[$code];
+                if (!empty($info['branch_name'])) $b['name'] = $info['branch_name'];
+                if (!empty($info['address']))     $b['addr'] = $info['address'];
+                if (!empty($info['vk_links'][0])) $b['vk']   = $info['vk_links'][0];
             }
         }
         unset($b);
     }
 
-    $ids = array_column($branches, 'id');
     $branchMap = [];
     foreach ($branches as $b) {
         $branchMap[$b['id']] = $b;
     }
 
-    // Формируем пул сервисных токенов с отказоустойчивостью
-    // (Метод wall.get категорически требует сервисный ключ приложения, токен группы вернёт ошибку code 27)
+    $ids = array_column($branches, 'id');
+    $codeParts = [];
+    foreach ($ids as $idx => $gid) {
+        $codeParts[] = 'g' . $idx . ': API.wall.get({owner_id: ' . $gid . ', count: 10})';
+    }
+    $vkScript = 'return {' . implode(', ', $codeParts) . '};';
+
+    // Пул сервисных токенов приложения с автоматическим переключением при сбоях
     global $config, $serviceTokenFallback;
-    $fallbackConfigToken = trim((string)($config['vk_service_token_fallback'] ?? ($serviceTokenFallback ?? '')));
-    $candidateTokens = array_values(array_unique(array_filter([
+    $serviceTokensPool = array_values(array_unique(array_filter([
         $serviceToken,
-        $fallbackConfigToken,
+        $serviceTokenFallback ?? '',
+        $config['vk_service_token_fallback'] ?? '',
         '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a',
         'd306a4b4d306a4b4d306a4b46ad0389840dd306d306a4b4ba56aeabaf84c50097d998b5'
     ])));
 
-    $codeParts = [];
-    foreach ($ids as $idx => $gid) {
-        $codeParts[] = '"g' . $idx . '": API.wall.get({"owner_id": ' . $gid . ', "count": 15})';
-    }
-    $code = 'return {' . implode(',', $codeParts) . '};';
-
     $json = null;
-    foreach ($candidateTokens as $tok) {
-        list($httpCode, $resJson, $curlErr) = vk_bot_api_call('execute', [
-            'code' => $code
-        ], $tok);
-
-        if (is_array($resJson) && isset($resJson['response']) && is_array($resJson['response'])) {
-            $json = $resJson;
+    $httpCode = 0;
+    foreach ($serviceTokensPool as $tCandidate) {
+        list($httpCode, $json, $err) = vk_bot_api_call('execute', ['code' => $vkScript], $tCandidate);
+        if ($httpCode === 200 && is_array($json) && !empty($json['response'])) {
             break;
         }
     }
 
     $todayStart = strtotime('today midnight');
-    $last24h    = time() - 86400;
+    $todayEnd   = strtotime('tomorrow midnight') - 1;
 
-    $todayPosts     = [];
-    $recent24hPosts = [];
+    $todayPosts = [];
 
     if (is_array($json) && isset($json['response']) && is_array($json['response'])) {
         foreach ($ids as $idx => $gid) {
@@ -4795,7 +4786,12 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
                 $postId   = (int)($item['id'] ?? 0);
                 if ($postId <= 0) continue;
 
-                // Если у записи нет прямого текста, извлекаем текст репоста или медиа-описание
+                // Строгий фильтр: учитываем публикации ИСКЛЮЧИТЕЛЬНО за текущие сутки (сегодня с 00:00)
+                if ($postDate < $todayStart || $postDate > $todayEnd) {
+                    continue;
+                }
+
+                // Информативное описание, если пост без текста (репост или фотоальбом)
                 if ($postText === '') {
                     if (!empty($item['copy_history'][0]['text'])) {
                         $postText = '📢 ' . trim((string)$item['copy_history'][0]['text']);
@@ -4814,32 +4810,25 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
                     'branch'   => $bInfo
                 ];
 
-                if ($postDate >= $todayStart) {
-                    $todayPosts[] = $postData;
-                }
-                if ($postDate >= $last24h) {
-                    $recent24hPosts[] = $postData;
-                }
+                $todayPosts[] = $postData;
             }
         }
     }
 
     usort($todayPosts, function($a, $b) { return $b['date'] - $a['date']; });
-    usort($recent24hPosts, function($a, $b) { return $b['date'] - $a['date']; });
 
     $result = [
+        'date'     => date('Y-m-d'),
         'today'    => $todayPosts,
-        'last_24h' => $recent24hPosts,
-        'all_24h'  => $recent24hPosts,
         'branches' => $branches
     ];
 
-    if (!empty($todayPosts) || !empty($recent24hPosts)) {
+    if (!empty($todayPosts)) {
         @file_put_contents($newsCacheFile, json_encode($result, JSON_UNESCAPED_UNICODE));
     } elseif (file_exists($newsCacheFile) && is_readable($newsCacheFile)) {
-        // Если свежий запрос вернул пустоту из-за таймаута сети, используем предыдущий кэш
+        // Если свежий сетевой запрос вернул пустоту из-за сбоя сети, используем кэш, только если он сегодняшний
         $stale = json_decode(@file_get_contents($newsCacheFile), true);
-        if (is_array($stale) && (!empty($stale['today']) || !empty($stale['last_24h']))) {
+        if (is_array($stale) && !empty($stale['today']) && ($stale['date'] ?? '') === date('Y-m-d')) {
             $result = $stale;
         }
     }
@@ -4862,7 +4851,7 @@ function vk_bot_build_post_url($post)
 }
 
 /**
- * Форматирование новостей филиалов с краткими аннотациями и ссылками
+ * Форматирование новостей филиалов строго за текущий день (сегодня)
  */
 function vk_bot_format_branch_news_message($newsData, $keyword = '')
 {
@@ -4871,30 +4860,18 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
     }
 
     $todayPosts = $newsData['today'] ?? [];
-    $recentPosts = $newsData['last_24h'] ?? [];
+    $todayStart = strtotime('today midnight');
+    $todayEnd   = strtotime('tomorrow midnight') - 1;
 
-    $isToday = count($todayPosts) > 0;
-
-    // Формируем список постов за 24 часа
-    if (!empty($newsData['all_24h'])) {
-        $postsToShow = $newsData['all_24h'];
-    } elseif ($isToday && !empty($recentPosts)) {
-        $postsToShow = array_merge($todayPosts, $recentPosts);
-    } else {
-        $postsToShow = $isToday ? $todayPosts : $recentPosts;
+    // Гарантируем, что в ленту попадают публикации ИСКЛЮЧИТЕЛЬНО за текущий день (сегодня)
+    $postsToShow = [];
+    foreach ($todayPosts as $p) {
+        $pDate = (int)($p['date'] ?? 0);
+        if ($pDate >= $todayStart && $pDate <= $todayEnd) {
+            $postsToShow[] = $p;
+        }
     }
     usort($postsToShow, function($a, $b) { return ($b['date'] ?? 0) - ($a['date'] ?? 0); });
-
-    if (empty($postsToShow)) {
-        if ($keyword !== '') {
-            return "📰 Постов за сегодня нет.\n\n"
-                 . "🔍 В свежих публикациях 16 групп библиотек Владимира по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "» ничего не найдено.\n\n"
-                 . "💡 Попробуйте другое слово или напишите «Новости филиалов», чтобы посмотреть общую ленту всех филиалов за сутки! ✨";
-        }
-        return "📰 Постов за сегодня нет.\n\n"
-             . "В группах 16 филиалов библиотек города Владимира за последние 24 часа пока нет новых записей.\n\n"
-             . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Библиотеки-филиалы». ✨";
-    }
 
     $monthsRu = [
         1 => 'января', 2 => 'февраля', 3 => 'марта', 4 => 'апреля',
@@ -4903,12 +4880,21 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
     ];
     $todayDateStr = date('j') . ' ' . ($monthsRu[(int)date('n')] ?? '');
 
+    if (empty($postsToShow)) {
+        if ($keyword !== '') {
+            return "📰 Постов за сегодня нет.\n\n"
+                 . "🔍 В публикациях 16 групп филиалов библиотек Владимира за сегодня ({$todayDateStr}) по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "» ничего не найдено.\n\n"
+                 . "💡 Попробуйте другое слово или напишите «Новости филиалов», чтобы посмотреть общую ленту всех филиалов за сегодня! ✨";
+        }
+        return "📰 Постов за сегодня нет.\n\n"
+             . "В группах 16 филиалов библиотек города Владимира за сегодня ({$todayDateStr}, с 00:00) пока нет новых записей.\n\n"
+             . "Библиотекари готовят новые анонсы, книжные обзоры и фотоотчёты! Загляните чуть позже или выберите филиал через кнопку «🏛 Библиотеки-филиалы». ✨";
+    }
+
     if ($keyword !== '') {
-        $header = "📰 Найденные посты в группах библиотек по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "»:\n\n";
+        $header = "📰 Найденные посты в группах библиотек за сегодня ({$todayDateStr}) по запросу «" . htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8') . "»:\n\n";
     } else {
-        $header = $isToday
-            ? "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n"
-            : "📰 Постов за сегодня нет (с 00:00 новых записей пока нет). Вот свежие публикации филиалов за последние 24 часа:\n\n";
+        $header = "📰 Свежие посты филиалов ЦГБ г. Владимира за сегодня ({$todayDateStr}):\n\n";
     }
 
     $footerBase = "\n\n💡 Нажмите на ссылку любого поста или стены сообщества, чтобы открыть ВКонтакте!";
@@ -4917,7 +4903,7 @@ function vk_bot_format_branch_news_message($newsData, $keyword = '')
     $totalCount = count($postsToShow);
     $addedCount = 0;
 
-    // Подбираем оптимальный размер аннотации, чтобы выдать ВСЕ посты филиалов за 24 часа
+    // Подбираем оптимальный размер аннотации, чтобы выдать посты филиалов за сегодня
     $annotLen = 180;
     if ($totalCount > 10) {
         $annotLen = 80;
@@ -5867,7 +5853,8 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
     $displayQuery = $isInvSearch ? trim(preg_replace('/^IN\s+/i', '', $query)) : $query;
     $callerMention = ($callerId > 0) ? "[id{$callerId}|{$callerName}]" : $callerName;
 
-    if (!$res || empty($res['ok']) || empty($res['items'])) {
+    $isOk = !empty($res['ok']) || !empty($res['success']);
+    if (!$res || !$isOk || empty($res['items'])) {
         if ($isInvSearch) {
             return "🤖📚 Уважаемый {$callerMention}, по инвентарному номеру «№{$displayQuery}» в электронном каталоге библиотек Владимира книга пока не найдена.\n\n"
                  . "💡 Пожалуйста, перепроверьте цифры инвентарного номера или найдите книгу по автору/названию (например: «/поиск Чехов» или «/книга Мастер и Маргарита»). 📖✨";
@@ -5879,7 +5866,7 @@ function vk_bot_format_opac_response($res, $query, $branchFilter = null, $caller
              . "• Вы также всегда можете обратиться к опытным библиографам Центральной городской библиотеки: г. Владимир, Суздальский пр., д. 2, 📞 8(4922) 21-65-63 — они с радостью помогут подобрать книгу из редких или закрытых архивных фондов! 📖✨";
     }
 
-    $totalFound = $res['total_found'] ?? ($res['recordsFiltered'] ?? count($res['items']));
+    $totalFound = $res['total_found'] ?? ($res['recordsFiltered'] ?? ($res['total'] ?? count($res['items'])));
     $perPage = max(1, (int)$perPage);
     $totalPages = max(1, (int)ceil($totalFound / $perPage));
     $page = max(1, min($totalPages, (int)$page));
@@ -7308,7 +7295,7 @@ if ($parsedBookQuery !== null || $cmd === 'opac_help') {
             $searchRes = OpacClient::getInstance()->findBooks($parsedBookQuery['query'], $perPage, $start);
         }
 
-        $totalFound = $searchRes['total_found'] ?? ($searchRes['recordsFiltered'] ?? (is_array($searchRes['items'] ?? null) ? count($searchRes['items']) : 0));
+        $totalFound = $searchRes['total_found'] ?? ($searchRes['recordsFiltered'] ?? ($searchRes['total'] ?? (is_array($searchRes['items'] ?? null) ? count($searchRes['items']) : 0)));
         $totalPages = max(1, (int)ceil($totalFound / $perPage));
         if ($page > $totalPages && $totalPages > 0) {
             $page = $totalPages;
@@ -7340,10 +7327,11 @@ if ($parsedBookQuery !== null || $cmd === 'opac_help') {
             ? json_encode($paginationKeyboard, JSON_UNESCAPED_UNICODE)
             : ($isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE));
 
+        $hasResults = (!empty($searchRes['ok']) || !empty($searchRes['success'])) && !empty($searchRes['items']);
         vk_bot_send_message([
             'peer_id'          => $peerId,
             'message'          => $reply,
-            'attachment'       => (!empty($searchRes['ok']) && !empty($searchRes['items'])) ? ($mascotStickers['read'] ?? null) : ($mascotStickers['thinking'] ?? null),
+            'attachment'       => $hasResults ? ($mascotStickers['read'] ?? null) : ($mascotStickers['thinking'] ?? null),
             'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
             'keyboard'         => $outKeyboard,
             'dont_parse_links' => 1

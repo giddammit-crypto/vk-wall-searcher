@@ -13,7 +13,7 @@
 
 import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.23.3';
 import { computeAllRadarScores } from './radar.js?v=4.23.2';
-import { extractNum } from './analytics.js?v=4.61.1';
+import { extractNum } from './analytics.js?v=4.62.0';
 
 export const LEAGUE_DIVISIONS = {
     cosmic: {

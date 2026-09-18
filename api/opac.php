@@ -2268,7 +2268,16 @@ function opac_handle_http_request()
         }
     }
 
-    $action = isset($params['action']) ? trim((string)$params['action']) : 'status';
+    $action = isset($params['action']) ? trim((string)$params['action']) : '';
+    if ($action === '' || $action === 'status') {
+        if (!empty($params['q']) || !empty($params['query'])) {
+            $action = 'search';
+        } elseif (!empty($params['id']) || !empty($params['idbr'])) {
+            $action = 'copies';
+        } elseif ($action === '') {
+            $action = 'status';
+        }
+    }
 
     switch ($action) {
         // Проверка статуса сессии

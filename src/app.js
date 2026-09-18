@@ -13,7 +13,7 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.61.1';
+} from './api.js?v=4.62.0';
 
 import {
     buildBranchAdvice,
@@ -107,7 +107,7 @@ import {
     openLeagueModal,
     closeLeagueModal,
     renderLeagueSection
-} from './league.js?v=4.61.1';
+} from './league.js?v=4.62.0';
 
 import {
     renderRadarSection
@@ -119,7 +119,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.48.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.61.1';
+export const APP_VERSION = '4.62.0';
 
 function initApp() {
 
@@ -132,6 +132,7 @@ function initApp() {
             try { return localStorage.getItem('vkws_custom_token') || ''; } catch (e) { return ''; }
         })(),
         isScanning: false,
+        hasSearched: false,
         shouldCancel: false,
         targetInfo: null,
         targetsInfo: [],
@@ -943,7 +944,7 @@ function initApp() {
             if (btnText) btnText.textContent = 'Начать поиск';
         }
         document.body.style.overflow = '';
-        if (state.matchedPosts && state.matchedPosts.length > 0 && elements.resultsContainer) {
+        if (elements.resultsContainer && (state.hasSearched || (state.matchedPosts && state.matchedPosts.length > 0))) {
             elements.resultsContainer.classList.remove('hidden');
         }
     }
@@ -1034,6 +1035,7 @@ function initApp() {
 
         // Reset search state
         state.isScanning = true;
+        state.hasSearched = true;
         state.shouldCancel = false;
         state.scannedCount = 0;
         state.matchedCount = 0;
