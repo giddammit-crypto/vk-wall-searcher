@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.24.2';
+import { resolveApiUrl } from './api.js?v=4.61.1';
 import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.44.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');

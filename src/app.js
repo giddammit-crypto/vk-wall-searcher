@@ -13,7 +13,7 @@ import {
     getAuthorFromCache,
     resolveMissingAuthors,
     resolveApiUrl
-} from './api.js?v=4.23.2';
+} from './api.js?v=4.61.1';
 
 import {
     buildBranchAdvice,
@@ -107,7 +107,7 @@ import {
     openLeagueModal,
     closeLeagueModal,
     renderLeagueSection
-} from './league.js?v=4.25.4';
+} from './league.js?v=4.61.1';
 
 import {
     renderRadarSection
@@ -119,7 +119,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.48.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.48.0';
+export const APP_VERSION = '4.61.1';
 
 function initApp() {
 
@@ -2603,13 +2603,15 @@ function initApp() {
     function renderOfficialReport(stats) {
         if (!elements.reportTablesContainer) return;
 
-        const totalPosts = state.matchedPosts.length;
+        // Итоги шапки считаем из тех же данных (stats), что и таблицы по филиалам,
+        // иначе при включённых фильтрах шапка не сходится с суммой строк.
+        const totalPosts = stats.reduce((sum, s) => sum + (s.postsCount || 0), 0);
         let grandLikes = 0, grandReposts = 0, grandComments = 0, grandViews = 0;
-        state.matchedPosts.forEach(p => {
-            grandLikes += extractNum(p.likes);
-            grandReposts += extractNum(p.reposts);
-            grandComments += extractNum(p.comments);
-            grandViews += extractNum(p.views);
+        stats.forEach(s => {
+            grandLikes += s.likes || 0;
+            grandReposts += s.reposts || 0;
+            grandComments += s.comments || 0;
+            grandViews += s.views || 0;
         });
 
         if (elements.reportTotalMatches) elements.reportTotalMatches.textContent = totalPosts.toLocaleString('ru-RU');

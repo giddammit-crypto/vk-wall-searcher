@@ -442,7 +442,7 @@ while (i < max_calls) {
     if (r.groups) {
         groups = groups + r.groups;
     }
-    if (r.items.length < per_page) {
+    if (r.items.length < per_page && (total == 0 || offset + (i * per_page) + r.items.length >= total)) {
         has_more = 0;
         return { "count": total, "items": items, "profiles": profiles, "groups": groups, "has_more": has_more, "calls": i + 1 };
     }

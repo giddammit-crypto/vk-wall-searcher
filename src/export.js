@@ -5,7 +5,7 @@
 
 import { extractNum, formatViews } from './analytics.js?v=4.21.0';
 import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js?v=4.21.0';
-import { resolveApiUrl } from './api.js?v=4.21.0';
+import { resolveApiUrl } from './api.js?v=4.61.1';
 import { resolveRepostAuthor } from './render.js?v=4.21.0';
 
 /** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */

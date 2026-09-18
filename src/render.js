@@ -5,7 +5,7 @@
 
 import { enrichTargetWithCanonical, renderBranchAvatarHtml, escapeHtml, findCanonicalBranch } from './branches.js?v=4.21.0';
 import { extractNum, formatViews } from './analytics.js?v=4.21.0';
-import { authorCache, getAuthorFromCache } from './api.js?v=4.21.0';
+import { authorCache, getAuthorFromCache } from './api.js?v=4.61.1';
 
 export function linkifyText(text) {
     if (!text) return '';

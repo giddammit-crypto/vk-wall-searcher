@@ -13,6 +13,7 @@
 
 import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.23.3';
 import { computeAllRadarScores } from './radar.js?v=4.23.2';
+import { extractNum } from './analytics.js?v=4.61.1';
 
 export const LEAGUE_DIVISIONS = {
     cosmic: {
@@ -125,7 +126,7 @@ export function computeBranchLeague(groupsStats = [], posts = []) {
     posts.forEach(p => {
         const tInfo = p.targetInfo || p.canonicalBranch || {};
         const code = tInfo.shortCode || p.canonicalBranch?.shortCode || p.sourceName || String(p.owner_id);
-        const comms = p.comments?.count || p.commentsCount || 0;
+        const comms = extractNum(p.comments) || p.commentsCount || 0;
         commentCounts.set(code, (commentCounts.get(code) || 0) + comms);
     });
 
