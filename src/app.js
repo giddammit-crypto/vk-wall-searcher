@@ -103,6 +103,12 @@ import {
 } from './opac_modal.js?v=4.51.0';
 
 import {
+    initInoagentModal,
+    openInoagentModal,
+    closeInoagentModal
+} from './inoagent_modal.js?v=4.62.1';
+
+import {
     initLeagueModal,
     openLeagueModal,
     closeLeagueModal,
@@ -249,6 +255,7 @@ function initApp() {
         countSummary: document.getElementById('count-summary'),
         promoModalBtn: document.getElementById('promo-modal-btn'),
         opacModalBtn: document.getElementById('opac-modal-btn'),
+        inoagentModalBtn: document.getElementById('inoagent-modal-btn'),
         leagueModalBtn: document.getElementById('league-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
@@ -3410,6 +3417,10 @@ function initApp() {
                 const v = document.getElementById('aurora-guide-video');
                 if (v) v.pause();
             }
+            const inoagentModal = document.getElementById('inoagent-modal-overlay');
+            if (inoagentModal && (inoagentModal.classList.contains('is-open') || !inoagentModal.classList.contains('hidden'))) {
+                closeInoagentModal();
+            }
             return;
         }
 
@@ -3824,6 +3835,15 @@ function initApp() {
     }
     window.__openOpacModal = (query = '') => openOpacModal(query);
 
+    // Инициализация модального окна реестра иностранных агентов Минюста РФ
+    initInoagentModal();
+    if (elements.inoagentModalBtn) {
+        elements.inoagentModalBtn.addEventListener('click', () => {
+            openInoagentModal();
+        });
+    }
+    window.__openInoagentModal = (query = '') => openInoagentModal(query);
+
     if (elements.leagueModalBtn) {
         elements.leagueModalBtn.addEventListener('click', () => {
             openLeagueModal(state.stats, state.matchedPosts);
@@ -4165,6 +4185,8 @@ function initApp() {
         closePromoModal,
         openOpacModal,
         closeOpacModal,
+        openInoagentModal,
+        closeInoagentModal,
         renderRadarSection,
         computeTimingHeatmap,
         renderTimingHeatmapSection,
