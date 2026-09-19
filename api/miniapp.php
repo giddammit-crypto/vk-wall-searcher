@@ -33,5 +33,56 @@ if ($action === 'branches') {
     exit;
 }
 
+if ($action === 'branch_news' || $action === 'news') {
+    if (!defined('VK_BOT_LIB_ONLY')) {
+        define('VK_BOT_LIB_ONLY', true);
+    }
+    require_once __DIR__ . '/config.php';
+    require_once __DIR__ . '/vk-bot.php';
+
+    $keyword = trim((string)($_GET['query'] ?? ($_GET['q'] ?? ($_GET['keyword'] ?? ''))));
+    $branchFilter = trim((string)($_GET['branch'] ?? ''));
+    $forceRefresh = !empty($_GET['refresh']);
+
+    // Если запрошено принудительное обновление, удаляем старый кэш или обновляем
+    if ($forceRefresh) {
+        $cacheFile = dirname(__DIR__) . '/cache/vk_branch_news.json';
+        if (file_exists($cacheFile)) {
+            @unlink($cacheFile);
+        }
+    }
+
+    $newsData = function_exists('vk_bot_scan_branch_news')
+        ? vk_bot_scan_branch_news($serviceToken, $communityToken ?? '', $keyword)
+        : ['today' => [], 'branches' => []];
+
+    // Если задан фильтр по филиалу
+    if ($branchFilter !== '' && !empty($newsData['today'])) {
+        $newsData['today'] = array_values(array_filter($newsData['today'], function($p) use ($branchFilter) {
+            $b = $p['branch'] ?? [];
+            return (
+                strcasecmp((string)($b['code'] ?? ''), $branchFilter) === 0 ||
+                strcasecmp((string)($b['id'] ?? ''), $branchFilter) === 0 ||
+                (stripos((string)($b['name'] ?? ''), $branchFilter) !== false)
+            );
+        }));
+    }
+
+    $formatted = function_exists('vk_bot_format_branch_news_message')
+        ? vk_bot_format_branch_news_message($newsData, $keyword)
+        : '';
+
+    echo json_encode([
+        'ok'        => true,
+        'date'      => $newsData['date'] ?? date('Y-m-d'),
+        'total'     => count($newsData['today'] ?? []),
+        'posts'     => $newsData['today'] ?? [],
+        'branches'  => $newsData['branches'] ?? [],
+        'formatted' => $formatted
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 http_response_code(404);
 echo json_encode(['ok' => false, 'error' => 'unknown action'], JSON_UNESCAPED_UNICODE);
+

@@ -299,7 +299,7 @@ $currentWebhookUrl = $proto . '://' . $host . $reqUri;
 // -----------------------------------------------------------------------------
 // 3. Обработка GET / HEAD-запросов (Диагностика и статус)
 // -----------------------------------------------------------------------------
-if (php_sapi_name() === 'cli' && !isset($_SERVER['GATEWAY_INTERFACE']) && empty($_SERVER['REQUEST_METHOD'])) {
+if (defined('VK_BOT_LIB_ONLY') || (php_sapi_name() === 'cli' && !isset($_SERVER['GATEWAY_INTERFACE']) && empty($_SERVER['REQUEST_METHOD']))) {
     return;
 }
 
@@ -4810,11 +4810,31 @@ function vk_bot_scan_branch_news($serviceToken, $communityToken = '', $filterKey
                     }
                 }
 
+                $photoUrl = null;
+                $allAttachments = !empty($item['attachments']) ? $item['attachments'] : (!empty($item['copy_history'][0]['attachments']) ? $item['copy_history'][0]['attachments'] : []);
+                if (!empty($allAttachments) && is_array($allAttachments)) {
+                    foreach ($allAttachments as $att) {
+                        if (($att['type'] ?? '') === 'photo' && !empty($att['photo']['sizes'])) {
+                            $sizes = $att['photo']['sizes'];
+                            $chosen = end($sizes);
+                            foreach ($sizes as $sz) {
+                                if (in_array($sz['type'] ?? '', ['x', 'y', 'z', 'm'])) {
+                                    $chosen = $sz;
+                                    break;
+                                }
+                            }
+                            $photoUrl = $chosen['url'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
                 $postData = [
                     'owner_id' => $item['owner_id'] ?? $gid,
                     'id'       => $postId,
                     'date'     => $postDate,
                     'text'     => $postText,
+                    'photo'    => $photoUrl,
                     'branch'   => $bInfo
                 ];
 

@@ -1,6 +1,6 @@
 /* ==========================================================================
    VK Mini App «АВРОРА • Космо» — приложение (VK Bridge + API АВРОРЫ)
-   Версия: 1.2.2
+   Версия: 1.3.0
    ========================================================================== */
 (() => {
 'use strict';
@@ -197,6 +197,10 @@ function goto(screenName, pushHistory = true) {
     window.scrollTo({ top: 0, behavior: 'instant' });
     haptic('selection');
     syncWindowSize();
+
+    if (screenName === 'news' && !newsState.loaded && !newsState.loading) {
+        loadBranchNews();
+    }
 }
 
 $$('[data-goto]').forEach(el => el.addEventListener('click', () => goto(el.dataset.goto)));
@@ -217,7 +221,7 @@ window.addEventListener('popstate', (e) => {
         return;
     }
     const screen = e.state?.screen || (location.hash ? location.hash.replace('#', '') : 'home');
-    if (['home', 'catalog', 'chat', 'more'].includes(screen)) {
+    if (['home', 'news', 'catalog', 'chat', 'more'].includes(screen)) {
         goto(screen, false);
     }
 });
@@ -302,6 +306,8 @@ async function initHome() {
         const text = `Книга дня от Космо: ${currentBookOfDay.title}. Автор: ${currentBookOfDay.author || 'не указан'}. ${currentBookOfDay.hook || currentBookOfDay.quote || ''}`;
         playTts(text, $('#quote-tts-btn'));
     });
+
+    loadHomeNewsPreview();
 }
 
 /* ── Каталог OPAC ── */
@@ -584,18 +590,14 @@ function openBookSheet(item) {
         ? `<span class="sheet-avail-pill b-ok"><span class="material-symbols-rounded">check_circle</span>Свободно ${freeCopies} из ${copies.length || 1} экз.</span>`
         : `<span class="sheet-avail-pill b-no"><span class="material-symbols-rounded">cancel</span>Все ${copies.length || 1} экз. выданы</span>`;
 
-    // Формирование карточек филиалов
+    // Формирование карточек филиалов (без шумных бейджей «выдана»)
     const branchesHtml = Object.entries(byBranch).map(([name, b]) => {
-        const statusBadge = b.free > 0
-            ? `<span class="branch-badge b-ok"><span class="material-symbols-rounded">check_circle</span>Доступно: ${b.free}/${b.total}</span>`
-            : `<span class="branch-badge b-no"><span class="material-symbols-rounded">cancel</span>Выдана: ${b.total} экз.</span>`;
         const cleanPhone = b.phone ? b.phone.split(',')[0].replace(/[^\d+]/g, '') : '';
 
         return `
         <div class="sheet-branch-card">
             <div class="sheet-branch-header">
                 <span class="sheet-branch-name">${esc(name)}</span>
-                ${statusBadge}
             </div>
             ${b.address ? `<div class="sheet-branch-addr"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px">location_on</span> ${esc(b.address)}</div>` : ''}
             <div class="sheet-branch-actions">
@@ -895,17 +897,23 @@ function initCatalog() {
 
 /* ── Чат с Космо ── */
 const SYSTEM_PROMPT = [
-    'Ты — Космо, дружелюбный робот-помощник сети библиотек г. Владимира (18 библиотек: ЦГБ, ЦДБ и филиалы №1-16, сайт biblioteka33.ru).',
-    'Говори о себе в мужском роде, обращайся к пользователю на «вы».',
-    'Помогаешь: подобрать книги (формат: **«Название»** — Автор. + 1-2 предложения без спойлеров), рассказать о филиалах, объяснить аналитику ВК.',
-    'Не выдумывай книги и цифры. Не рекомендуй авторов из реестра иноагентов РФ. Ответ — до 200 слов, живо и тепло.'
-].join(' ');
+    'Ты — Космо, интеллигентный, глубоко эрудированный, мудрый и тактичный робот-библиотекарь Централизованной библиотечной системы города Владимира (18 библиотек: ЦГБ, ЦДБ и филиалы №1-16, официальный сайт biblioteka33.ru).',
+    'ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ — РОБОТ МУЖСКОГО РОДА. Всегда говори о себе исключительно в мужском роде: «я нашёл», «я рад», «я готов», «я проверил», «я прочитал». Обращайся к читателю строго уважительно, на «вы».',
+    'ГЛАВНОЕ ТРЕБОВАНИЕ: АБСОЛЮТНАЯ ФАКТОЛОГИЧЕСКАЯ ТОЧНОСТЬ И ПРАВДА (ZERO HALLUCINATIONS). СТРОЖАЙШИЙ ЗАПРЕТ ВЫМЫСЛА И ЛЖИ!',
+    '1. НИКОГДА НЕ ВЫДУМЫВАЙ ПЕРСОНАЖЕЙ, АВТОРОВ, СЮЖЕТЫ ИЛИ НАЗВАНИЯ КНИГ!',
+    '2. В романе Рэя Брэдбери «451° по Фаренгейту» главный герой — пожарный ГАЙ МОНТЭГ (Guy Montag), сжигающий книги, но затем спасающий литературу. Его начальник — брандмейстер Битти, жена — Милдред, юная соседка — Кларисса Маклеллан, мудрый союзник — профессор Фабер, лидер книжников — Грэнджер. В «451° по Фаренгейту» НЕТ никаких персонажей с именем «Бенджен» (Бенджен Старк — это герой цикла «Песнь льда и пламени» Джорджа Мартина, не имеющий отношения к Брэдбери!).',
+    '3. Прежде чем назвать героя, автора или сюжет книги, убедись на 100% в подлинности факта. Если в чём-то сомневаешься — честно признайся в этом, но никогда не придумывай вымышленные имена или события!',
+    '4. СТРОЖАЙШИЙ ЗАПРЕТ на упоминание, цитирование и рекомендации авторов, внесённых в реестр иностранных агентов Минюстом РФ (Б. Акунин, Д. Глуховский, Д. Быков и др.).',
+    '5. О новостях и анонсах филиалов: у нас 16 сообществ филиалов библиотек Владимира, ежедневно публикуются анонсы выставок, встреч и мастер-классов. Читатель может открыть вкладку «Новости» внизу экрана приложения!',
+    'Отвечай доброжелательно, по делу, красивым литературным языком, выделяя ключевые названия и имена жирным (**Гай Монтэг**, **«451° по Фаренгейту»**).'
+].join('\n');
 
 const MOODS = [
-    { emo: '🔥', label: 'Драйв', prompt: 'Хочу пост с драйвом и энергией!' },
-    { emo: '☕', label: 'Уют', prompt: 'Хочу уютную атмосферную подборку!' },
-    { emo: '🧩', label: 'Детектив', prompt: 'Посоветуй детективы и остросюжетное!' },
-    { emo: '🚀', label: 'Фантастика', prompt: 'Посоветуй научную фантастику!' },
+    { emo: '📰', label: 'Новости филиалов', prompt: 'Расскажи свежие новости и анонсы филиалов библиотек на сегодня!' },
+    { emo: '🚀', label: 'Фантастика', prompt: 'Посоветуй классическую научную фантастику!' },
+    { emo: '🧩', label: 'Детектив', prompt: 'Посоветуй захватывающий классический детектив!' },
+    { emo: '☕', label: 'Уют', prompt: 'Хочу уютную атмосферную книгу для чтения вечером.' },
+    { emo: '🔥', label: 'Драйв', prompt: 'Посоветуй книгу с мощным сюжетом и драйвом!' },
 ];
 
 let chatHistory = storageGet('chat_history', []);
@@ -1168,13 +1176,40 @@ async function sendChat(text) {
     typingOn();
     haptic('medium');
 
+    // Проверка запроса на новости филиалов: отдаём 100% точную свежую сводку из реального кэша
+    const cleanLower = text.toLowerCase().trim();
+    const isBranchNews = /^(?:новости(?:\s+филиалов|\s+библиотек)?|посты(?:\s+филиалов|\s+библиотек)?|что нового|свежие новости|анонсы|лента|события сегодня)[?!.]*$/i.test(cleanLower) ||
+        (/(?:новост|лент|дайджест|анонс|событи|что нов)/i.test(cleanLower) && /(?:филиал|библиотек|город|сегодн)/i.test(cleanLower));
+
+    if (isBranchNews) {
+        try {
+            const rNews = await fetch(`${API.miniapp}?action=branch_news`);
+            const dNews = await rNews.json();
+            typingOff();
+
+            let newsReply = dNews?.formatted || 'За сегодня постов в филиалах пока нет. Библиотекари готовят новые анонсы! ✨';
+            newsReply += '\n\n💡 *Вы также можете открыть вкладку «Новости» внизу экрана, чтобы посмотреть все публикации с фотографиями!*';
+
+            const formattedHtml = renderMarkdown(newsReply);
+            chatBubble('bot', formattedHtml, 'smile', newsReply);
+
+            chatHistory.push({ role: 'assistant', content: newsReply });
+            chatHistory = chatHistory.slice(-8);
+            storageSet('chat_history', chatHistory);
+            haptic('success');
+            return;
+        } catch (e) {
+            // При сетевом сбое продолжаем через ИИ
+        }
+    }
+
     try {
         const r = await fetch(API.chat, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
-                temperature: 0.45,
+                temperature: 0.15,
                 max_tokens: 1200,
             }),
         });
@@ -1360,6 +1395,302 @@ function initChat() {
     });
 }
 
+/* ── Экран: Новости филиалов ── */
+const newsState = {
+    query: '',
+    branch: '',
+    posts: [],
+    branches: [],
+    loaded: false,
+    loading: false,
+};
+
+async function loadBranchNews(refresh = false) {
+    if (newsState.loading) return;
+    newsState.loading = true;
+
+    const refreshBtn = $('#news-refresh-btn');
+    if (refreshBtn) refreshBtn.classList.add('is-spinning');
+
+    const container = $('#news-results');
+    if (!newsState.loaded && container) {
+        container.innerHTML = `
+            <div class="news-card">
+                <div class="sk sk-line" style="width:40%"></div>
+                <div class="sk sk-line" style="width:90%"></div>
+                <div class="sk sk-line" style="width:70%"></div>
+            </div>
+            <div class="news-card">
+                <div class="sk sk-line" style="width:35%"></div>
+                <div class="sk sk-line" style="width:85%"></div>
+                <div class="sk sk-line" style="width:60%"></div>
+            </div>`;
+    }
+
+    try {
+        const params = new URLSearchParams({
+            action: 'branch_news',
+        });
+        if (newsState.query.trim()) params.set('query', newsState.query.trim());
+        if (newsState.branch) params.set('branch', newsState.branch);
+        if (refresh) params.set('refresh', '1');
+
+        const r = await fetch(`${API.miniapp}?${params}`);
+        const d = await r.json();
+
+        if (!d.ok) throw new Error(d.error || 'Ошибка загрузки');
+
+        newsState.posts = d.posts || [];
+        newsState.branches = d.branches || [];
+        newsState.loaded = true;
+
+        buildNewsBranchChips(newsState.branches);
+        renderNewsFeed(newsState.posts);
+
+        const meta = $('#news-results-meta');
+        if (meta) {
+            meta.classList.remove('hidden');
+            const cnt = newsState.posts.length;
+            meta.textContent = cnt > 0
+                ? `Свежих публикаций за сегодня: ${cnt}`
+                : `Публикаций по запросу не найдено`;
+        }
+    } catch (e) {
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <img src="${API.mascot}/robot_sad.png?v=4.64.2" alt="">
+                    <div class="empty-title">Не удалось обновить новости</div>
+                    <div class="empty-text">Проверьте подключение к сети или попробуйте ещё раз</div>
+                    <button class="btn-cta" id="news-retry-btn">Повторить</button>
+                </div>`;
+            $('#news-retry-btn')?.addEventListener('click', () => loadBranchNews(true));
+        }
+    } finally {
+        newsState.loading = false;
+        if (refreshBtn) refreshBtn.classList.remove('is-spinning');
+    }
+}
+
+function buildNewsBranchChips(branches) {
+    const row = $('#news-branch-chips');
+    if (!row || row.children.length > 0) return;
+
+    const allChip = document.createElement('button');
+    allChip.className = 'chip is-active';
+    allChip.textContent = 'Все филиалы';
+    allChip.dataset.branch = '';
+    row.appendChild(allChip);
+
+    (branches || []).forEach(b => {
+        const chip = document.createElement('button');
+        chip.className = 'chip';
+        chip.textContent = b.code || b.name;
+        chip.dataset.branch = b.code || b.name;
+        row.appendChild(chip);
+    });
+
+    row.addEventListener('click', (e) => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        row.querySelectorAll('.chip').forEach(c => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        newsState.branch = chip.dataset.branch || '';
+        haptic('selection');
+        loadBranchNews();
+    });
+}
+
+function renderNewsFeed(posts) {
+    const container = $('#news-results');
+    if (!container) return;
+
+    if (!posts || posts.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <img src="${API.mascot}/robot_read.png?v=4.64.2" alt="">
+                <div class="empty-title">За сегодня постов пока нет</div>
+                <div class="empty-text">Библиотекари готовят новые анонсы и обзоры. Загляните чуть позже!</div>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = posts.map((p, idx) => {
+        const b = p.branch || {};
+        const bName = b.name || 'Филиал ЦГБ';
+        const bCode = b.code || 'ЦГБ';
+        const timeStr = p.date ? new Date(p.date * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+        const postUrl = `https://vk.com/wall${p.owner_id}_${p.id}`;
+        const rawText = p.text || '';
+        const isLong = rawText.length > 280;
+        const shortText = isLong ? rawText.slice(0, 260) + '…' : rawText;
+
+        const photoHtml = p.photo
+            ? `<div class="news-card-photo-wrap"><img class="news-card-photo" src="${esc(p.photo)}" alt="" loading="lazy"></div>`
+            : '';
+
+        return `
+        <article class="news-card" data-idx="${idx}">
+            <div class="news-card-header">
+                <div class="news-card-branch">
+                    <span class="material-symbols-rounded">account_balance</span>
+                    <span>${esc(bName)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span class="news-card-code">${esc(bCode)}</span>
+                    ${timeStr ? `<span class="news-card-time"><span class="material-symbols-rounded">schedule</span>${esc(timeStr)}</span>` : ''}
+                </div>
+            </div>
+
+            ${photoHtml}
+
+            <div class="news-card-text" id="news-text-${idx}">${esc(shortText)}</div>
+            ${isLong ? `<button class="news-card-toggle" data-full-text="${esc(rawText)}" data-idx="${idx}">Читать полностью</button>` : ''}
+
+            <div class="news-card-actions">
+                <button class="news-btn news-btn-primary" data-open-vk="${esc(postUrl)}">
+                    <span class="material-symbols-rounded">open_in_new</span>
+                    <span>ВКонтакте</span>
+                </button>
+                <button class="news-btn" data-ask-cosmo="${esc(bName)}" data-snippet="${esc(rawText.slice(0, 150))}">
+                    <span class="material-symbols-rounded">chat_info</span>
+                    <span>Спросить Космо</span>
+                </button>
+                <button class="news-btn" data-share-post="${esc(postUrl)}" data-title="${esc(bName)}">
+                    <span class="material-symbols-rounded">share</span>
+                    <span>Поделиться</span>
+                </button>
+            </div>
+        </article>`;
+    }).join('');
+
+    // Слушатели разворачивания текста
+    container.querySelectorAll('.news-card-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = btn.dataset.idx;
+            const fullText = btn.dataset.fullText;
+            const textEl = document.getElementById(`news-text-${idx}`);
+            if (textEl && fullText) {
+                textEl.textContent = fullText;
+                btn.remove();
+                syncWindowSize();
+            }
+        });
+    });
+
+    // Слушатели кнопок ВКонтакте
+    container.querySelectorAll('[data-open-vk]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const url = btn.dataset.openVk;
+            haptic('medium');
+            if (window.vkBridge) {
+                bridge('VKWebAppOpenUrl', { url }).catch(() => window.open(url, '_blank'));
+            } else {
+                window.open(url, '_blank');
+            }
+        });
+    });
+
+    // Слушатели «Спросить Космо»
+    container.querySelectorAll('[data-ask-cosmo]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const bName = btn.dataset.askCosmo;
+            const snip = btn.dataset.snippet;
+            haptic('light');
+            goto('chat');
+            sendChat(`Расскажи подробнее об этой новости филиала (${bName}): «${snip}»`);
+        });
+    });
+
+    // Слушатели «Поделиться»
+    container.querySelectorAll('[data-share-post]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const url = btn.dataset.sharePost;
+            haptic('light');
+            let shared = false;
+            if (window.vkBridge) {
+                const res = await bridge('VKWebAppShare', { link: url });
+                if (res) shared = true;
+            }
+            if (!shared) {
+                copyText(url);
+                toast('Ссылка на публикацию скопирована 📋');
+            }
+        });
+    });
+
+    syncWindowSize();
+}
+
+async function loadHomeNewsPreview() {
+    const box = $('#home-news-preview');
+    if (!box) return;
+
+    try {
+        const r = await fetch(`${API.miniapp}?action=branch_news`);
+        const d = await r.json();
+        if (!d.ok || !d.posts || d.posts.length === 0) {
+            box.innerHTML = `
+                <div class="fine-print" style="padding:8px 0">
+                    Сегодня в группах филиалов пока нет записей. Библиотекари готовят свежие анонсы! ✨
+                </div>`;
+            return;
+        }
+
+        const top3 = d.posts.slice(0, 3);
+        box.innerHTML = top3.map(p => {
+            const b = p.branch || {};
+            const timeStr = p.date ? new Date(p.date * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+            return `
+            <div class="home-news-item" data-goto="news">
+                <div class="home-news-header">
+                    <span class="home-news-branch"><span class="material-symbols-rounded" style="font-size:14px">account_balance</span>${esc(b.name || 'Филиал')}</span>
+                    ${timeStr ? `<span class="home-news-time">${esc(timeStr)}</span>` : ''}
+                </div>
+                <div class="home-news-text">${esc(p.text || '')}</div>
+            </div>`;
+        }).join('');
+
+        box.querySelectorAll('.home-news-item').forEach(el => {
+            el.addEventListener('click', () => {
+                haptic('selection');
+                goto('news');
+            });
+        });
+    } catch (e) {
+        box.innerHTML = '<div class="fine-print">Лента филиалов обновляется...</div>';
+    }
+}
+
+function initNews() {
+    $('#news-refresh-btn')?.addEventListener('click', () => {
+        haptic('medium');
+        loadBranchNews(true);
+    });
+
+    const qInput = $('#news-query');
+    const qClear = $('#news-clear');
+    if (qInput) {
+        let debounceTimer;
+        qInput.addEventListener('input', () => {
+            const val = qInput.value.trim();
+            qClear?.classList.toggle('hidden', !val);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                newsState.query = val;
+                loadBranchNews();
+            }, 320);
+        });
+    }
+
+    qClear?.addEventListener('click', () => {
+        if (qInput) qInput.value = '';
+        qClear.classList.add('hidden');
+        newsState.query = '';
+        loadBranchNews();
+    });
+}
+
 /* ── Экран Ещё: 255-ФЗ, филиалы, социальные действия ── */
 async function searchIno(query) {
     const box = $('#ino-results');
@@ -1542,6 +1873,7 @@ async function buildBranchList() {
 /* ── Инициализация приложения и подписка на события VK Bridge ── */
 async function init() {
     initHome();
+    initNews();
     initCatalog();
     initChat();
     initInoSearch();
