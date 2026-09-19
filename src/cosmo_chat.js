@@ -210,6 +210,34 @@ export function parseCosmoMarkdown(text) {
         if (code) {
             const rawCode = code.lines.join('\n');
             const lang = code.lang || '';
+            // Протокол «```table»: JSON {headers: [...], rows: [[...]]} →
+            // гарантированно ровная таблица (нейросеть надёжнее пишет JSON, чем md-таблицы)
+            if (lang === 'table') {
+                code = null;
+                try {
+                    // Контент пришёл через escapeHtml — возвращаем кавычки и амперсанды
+                    const unescaped = rawCode
+                        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+                        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&');
+                    const data = JSON.parse(unescaped);
+                    const headers = (data.headers || []).map(v => String(v));
+                    const rows = (data.rows || []).map(r => Array.isArray(r) ? r.map(v => String(v)) : [String(r)]);
+                    if (headers.length && rows.length) {
+                        out.push(renderDataTable(headers, rows));
+                        return;
+                    }
+                } catch (e) { /* невалидный JSON — показываем как обычный код */ }
+                out.push(`
+                    <div class="cosmo-chat-codeblock-wrap">
+                        <div class="cosmo-chat-codeblock-header"><span class="cosmo-code-lang">TABLE</span>
+                        <button type="button" class="cosmo-chat-copy-code-btn" data-copy-code title="Скопировать код">
+                            <span class="material-symbols-outlined">content_copy</span> <span class="copy-code-label">Скопировать</span>
+                        </button></div>
+                        <pre class="cosmo-chat-codeblock"><code>${escapeHtml(rawCode)}</code></pre>
+                    </div>`);
+                return;
+            }
             const langLabel = lang ? lang.toUpperCase() : 'КОД';
             out.push(`
                 <div class="cosmo-chat-codeblock-wrap">
@@ -226,6 +254,18 @@ export function parseCosmoMarkdown(text) {
         }
     };
 
+    const renderDataTable = (headerRow, dataRows) => {
+        let t = '<div class="cosmo-chat-table-wrap"><table class="cosmo-chat-table"><thead><tr>';
+        t += headerRow.map(c => `<th class=" align-left">${mdInline(c)}</th>`).join('') + '</tr></thead>';
+        if (dataRows.length) {
+            t += '<tbody>' + dataRows.map(r =>
+                '<tr>' + headerRow.map((_, i) => `<td class=" align-left">${mdInline(String(r[i] ?? '—'))}</td>`).join('') + '</tr>'
+            ).join('') + '</tbody>';
+        }
+        t += '</table></div>';
+        return t;
+    };
+
     const flushTable = () => {
         if (table.length) {
             // Реконструкция строк, разорванных ИИ переносом: длинная строка
@@ -235,7 +275,9 @@ export function parseCosmoMarkdown(text) {
             const expected = Math.max(1, ...table.map(r => r.length));
             const rowsRaw = [];
             let pending = null;
+            const isGarbageRow = (row) => row.length > 1 && row.slice(1).every(c => !/[\wа-яё\d]/i.test(String(c)));
             for (const row of table) {
+                if (isGarbageRow(row)) continue;
                 const isSep = row.length > 1 && row.every(c => /^\s*:?-{2,}:?\s*$/.test(c) || /^\s*:-+:\s*$/.test(c)) && row.some(c => c.includes('-'));
                 if (isSep) {
                     if (pending) { rowsRaw.push(pending); pending = null; }
@@ -256,8 +298,10 @@ export function parseCosmoMarkdown(text) {
             // нормализуем к одиночному тире «нет данных»
             const cleanCell = (c) => {
                 // ИИ рвёт **-маркеры между ячейками («**» | «7**» | «** *») —
-                // в таблицах звёздочки не оставляем вовсе: чистые числа и текст
-                let t = c.replace(/\*+/g, '').trim();
+                // в таблицах звёздочки не оставляем вовсе: чистые числа и текст.
+                // Одиночные \ — тоже мусор («пустая ячейка» от ИИ).
+                let t = c.replace(/\*+/g, '').replace(/\\+/g, ' ').trim();
+                if (!t) return '—';
                 if (/^[\u2014\u2013-][\s\u2014\u2013-]*$/.test(t) && (t.match(/[\u2014\u2013-]/g) || []).length >= 3) return '—';
                 return t;
             };
@@ -283,21 +327,10 @@ export function parseCosmoMarkdown(text) {
                 }
             }
             if (headerRow) {
-                let t = '<div class="cosmo-chat-table-wrap"><table class="cosmo-chat-table"><thead><tr>';
-                t += headerRow.map((c, i) => {
-                    const al = alignments[i] ? ` align-${alignments[i]}` : '';
-                    return `<th class="${al}">${mdInline(cleanCell(c))}</th>`;
-                }).join('') + '</tr></thead>';
-                if (dataRows.length) {
-                    t += '<tbody>' + dataRows.map(r =>
-                        '<tr>' + headerRow.map((_, i) => {
-                            const al = alignments[i] ? ` align-${alignments[i]}` : '';
-                            return `<td class="${al}">${mdInline(cleanCell(r[i] || ''))}</td>`;
-                        }).join('') + '</tr>'
-                    ).join('') + '</tbody>';
-                }
-                t += '</table></div>';
-                out.push(t);
+                out.push(renderDataTable(
+                    headerRow.map(c => cleanCell(c)),
+                    dataRows.map(r => headerRow.map((_, i) => cleanCell(r[i] || '')))
+                ));
             }
         }
         table = [];
@@ -3092,8 +3125,10 @@ ${statsContext}
 
 ПРАВИЛА ФОРМАТА ОТВЕТА:
 - Используй красивую структуру Markdown: таблицы (| Заголовок | Данные |), нумерованные списки, выделения **жирным**, курсив, цитаты > и горизонтальные разделители ---.
-- Таблицы всегда с выравниванием: | Колонка | Значение |\\n|---|---|
-- ГИГИЕНА ТАБЛИЦ (критично!): каждая строка таблицы — ОДНА строка текста, начинай её с «|» и заканчивай «|»; никаких переносов внутри ячеек. Для отсутствующих данных ставь одиночное тире «—» — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО заполнять ячейки последовательностями тире («———», «— — — —») или звёздочками («*»); вместо «*» пиши «—» или «н/д». ВНУТРИ ЯЧЕЕК ТАБЛИЦЫ ЗАПРЕЩЕНЫ символы ** и * ВО ВСЕХ видах — пиши числа и текст чистыми, без жирного и курсива! Жирный используй только ВНЕ таблиц и всегда сбалансированными парами **текст**.
+- ТАБЛИЦЫ — ТОЛЬКО через отдельный блок из трёх обратных апострофов с меткой table, внутри которого ВАЛИДНЫЙ JSON одной строкой:
+  {\"headers\": [\"Филиал\", \"Посты\", \"ER\"], \"rows\": [[\"Филиал №1\", \"7\", \"10,1%\"], [\"Филиал №2\", \"5\", \"8%\"]]}
+  Правила: headers — массив строк-заголовков; rows — массив строк-массивов значений; каждое значение — СТРОКА; отсутствующие данные — «—»; внутри значений ЗАПРЕЩЕНЫ символы pipe, звёздочка, обратный слэш и переносы строк; количество значений в каждой строке rows = количеству headers. Сначала мысленно проверь валидность JSON! Markdown-синтаксис таблиц с вертикальными чертами ЗАПРЕЩЁН.
+- ВНЕ табличного блока жирный **текст** разрешён и всегда сбалансированными парами; одиночные звёздочки и обратные слэши запрещены везде.
 - Для аналитики: ВСЕГДА начинай с краткой **сводки** (1–2 предложения), затем детали.
 - Для постов: ВСЕГДА предоставляй **готовый текст поста** (не шаблон, а конкретный пост), затем краткие пояснения.
 - Длина ответа: средний ответ 200–500 слов. Если пользователь просит краткость — 2–3 абзаца. Если просит детальный анализ — до 800 слов с таблицей.

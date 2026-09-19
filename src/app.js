@@ -122,7 +122,7 @@ import {
 import { Space3D } from './space3d.js?v=4.25.4';
 import { SpaceWarp } from './space_warp.js?v=4.25.4';
 import { SpaceAudio } from './space_audio.js?v=4.25.4';
-import { Mascot } from './mascot.js?v=4.63.0';
+import { Mascot } from './mascot.js?v=4.64.2';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
 export const APP_VERSION = '4.62.1';

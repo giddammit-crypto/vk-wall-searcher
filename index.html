@@ -260,7 +260,7 @@
         try {
             const p = new URLSearchParams(window.location.search);
             if (p.get('mode') === 'shelf_recommend') {
-                import('./src/cosmo_chat.js?v=4.63.0').then(({ CosmoChatModal }) => {
+                import('./src/cosmo_chat.js?v=4.64.2').then(({ CosmoChatModal }) => {
                     const genre = p.get('genre') || 'universal';
                     const branch = p.get('branch') || 'cgb';
                     window.__shelfCosmoChat = new CosmoChatModal({ mascot: null });
@@ -1927,7 +1927,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.63.0"></script>
+    <script type="module" src="src/app.js?v=4.64.2"></script>
 
     <script>
     /* =============================================================
