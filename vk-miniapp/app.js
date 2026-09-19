@@ -1235,6 +1235,118 @@ const MOODS = [
     { emo: '🔥', label: 'Драйв', prompt: 'Посоветуй книгу с мощным сюжетом и драйвом!' },
 ];
 
+/* ─────────────────────────────────────────────────────────────────────────
+   BRANCH DETECT MAP — сопоставление любых упоминаний филиалов с кодами.
+   Используется для инжекта реальных VK-постов в контекст чата Космо.
+   ───────────────────────────────────────────────────────────────────────── */
+const BRANCH_DETECT_MAP = [
+    // ЦГБ
+    { code: 'ЦГБ',  patterns: ['цгб', 'центральн', 'владцгб', 'суздальск', 'централь', 'hlavnaya', 'ЦГБ'] },
+    // ЦДБ
+    { code: 'ЦДБ',  patterns: ['цдб', 'детск', 'большая московская', 'золотых ворот', 'cdbvladimir', 'ЦДБ'] },
+    // Филиал 1
+    { code: 'Ф-1',  patterns: ['филиал 1', 'филиал №1', 'ф-1', 'ф1', '1-й филиал', 'строителей', 'черёмушки', 'влгу', 'студенческий'] },
+    // Филиал 2
+    { code: 'Ф-2',  patterns: ['филиал 2', 'филиал №2', 'ф-2', 'ф2', '2-й филиал', 'biblfil2', 'ленина 12', 'буревестник', 'заря', 'садовая'] },
+    // Филиал 3
+    { code: 'Ф-3',  patterns: ['филиал 3', 'филиал №3', 'ф-3', 'ф3', '3-й филиал', 'юрьевец', 'школьный проезд'] },
+    // Филиал 4
+    { code: 'Ф-4',  patterns: ['филиал 4', 'филиал №4', 'ф-4', 'ф4', '4-й филиал', 'егорова', 'комиссарова'] },
+    // Филиал 5
+    { code: 'Ф-5',  patterns: ['филиал 5', 'филиал №5', 'ф-5', 'ф5', '5-й филиал', 'biblfil5', 'дуброва', 'слобода', 'юзр'] },
+    // Филиал 6
+    { code: 'Ф-6',  patterns: ['филиал 6', 'филиал №6', 'ф-6', 'ф6', '6-й филиал', 'институтский', 'юрьевец 6'] },
+    // Филиал 7
+    { code: 'Ф-7',  patterns: ['филиал 7', 'филиал №7', 'ф-7', 'ф7', '7-й филиал', 'ул. мира', 'ул мира', 'мира 55', 'дк молодёжи', 'октябрьск'] },
+    // Филиал 8
+    { code: 'Ф-8',  patterns: ['филиал 8', 'филиал №8', 'ф-8', 'ф8', '8-й филиал', 'filial8cgb', 'сурикова', 'чайковского'] },
+    // Филиал 9 — Добролит
+    { code: 'Ф-9',  patterns: ['филиал 9', 'филиал №9', 'ф-9', 'ф9', '9-й филиал', 'добролит', 'dobrolit', 'юбилейная 38', 'юбилейная, 38'] },
+    // Филиал 11
+    { code: 'Ф-11', patterns: ['филиал 11', 'филиал №11', 'ф-11', 'ф11', '11-й филиал', 'лесной', 'лесная 10'] },
+    // Филиал 12
+    { code: 'Ф-12', patterns: ['филиал 12', 'филиал №12', 'ф-12', 'ф12', '12-й филиал', 'энергетик', 'энергетиков 27'] },
+    // Филиал 13 — Книголенд
+    { code: 'Ф-13', patterns: ['филиал 13', 'филиал №13', 'ф-13', 'ф13', '13-й филиал', 'книголенд', 'knigolend', 'горького 69', 'горького, 69'] },
+    // Филиал 15
+    { code: 'Ф-15', patterns: ['филиал 15', 'филиал №15', 'ф-15', 'ф15', '15-й филиал', 'заклязьменский', 'центральная 11'] },
+    // Филиал 16
+    { code: 'Ф-16', patterns: ['филиал 16', 'филиал №16', 'ф-16', 'ф16', '16-й филиал', 'коммунар', 'песочная 15'] },
+];
+
+/**
+ * Определяет, упоминается ли в вопросе конкретный филиал.
+ * @param {string} text — текст вопроса пользователя
+ * @returns {{ code: string, name: string }|null}
+ */
+function detectBranchInQuestion(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase()
+        .replace(/ё/g, 'е')
+        .replace(/[«»"']/g, '')
+        .trim();
+
+    // Если общий вопрос о «всех филиалах» — не привязываем к одному
+    if (/всех\s+филиал|все\s+филиал|все\s+библиотек/.test(lower)) return null;
+
+    for (const entry of BRANCH_DETECT_MAP) {
+        for (const pat of entry.patterns) {
+            const norm = pat.toLowerCase().replace(/ё/g, 'е');
+            if (lower.includes(norm)) {
+                return { code: entry.code };
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Запрашивает реальные посты из VK-группы филиала за последние 7 дней.
+ * Возвращает строку-контекст для вставки в system-сообщение к ИИ.
+ * @param {string} branchCode — «Ф-5», «ЦГБ» и т.д.
+ * @returns {Promise<string|null>}
+ */
+async function fetchBranchContext(branchCode) {
+    try {
+        const url = `${API.miniapp}?action=branch_wall&branch=${encodeURIComponent(branchCode)}&days=7&count=15`;
+        const resp = await withTimeout(fetch(url), 8000);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (!data?.ok || !Array.isArray(data.posts)) return null;
+
+        const b = data.branch || {};
+        const bName = b.name || branchCode;
+        const bAddr = b.addr ? ` (${b.addr})` : '';
+
+        if (data.posts.length === 0) {
+            return `=== РЕАЛЬНЫЕ ДАННЫЕ ИЗ VK-ГРУППЫ ===\n` +
+                   `Филиал: ${bName}${bAddr}\n` +
+                   `За последние 7 дней в VK-группе этого филиала публикаций не найдено.\n` +
+                   `СТРОЖАЙШИЙ ЗАПРЕТ: не выдумывай мероприятия, события, расписания или любую другую информацию!\n` +
+                   `Честно сообщи читателю, что данных о недавних событиях нет, и предложи позвонить в библиотеку.`;
+        }
+
+        let ctx = `=== РЕАЛЬНЫЕ ДАННЫЕ ИЗ VK-ГРУППЫ ===\n`;
+        ctx += `Филиал: ${bName}${bAddr}\n`;
+        ctx += `Последние ${data.posts.length} публикаций за 7 дней:\n\n`;
+
+        data.posts.forEach((p, i) => {
+            ctx += `[${i + 1}] ${p.date_str}\n${p.text}\nСсылка: ${p.url}\n\n`;
+        });
+
+        ctx += `=== ИНСТРУКЦИЯ ДЛЯ КОСМО ===\n`;
+        ctx += `СТРОЖАЙШИЙ ЗАПРЕТ: отвечай ИСКЛЮЧИТЕЛЬНО на основе приведённых выше реальных постов из VK-группы.\n`;
+        ctx += `НЕ ВЫДУМЫВАЙ события, мероприятия, выставки, расписания или любую другую информацию, которой НЕТ в этих постах!\n`;
+        ctx += `Если читатель спрашивает о том, чего нет в постах — честно скажи, что такой информации нет, и порекомендуй позвонить в библиотеку.\n`;
+        ctx += `Можешь красиво пересказать и структурировать информацию из постов, добавив эмодзи, но только то, что РЕАЛЬНО написано.`;
+
+        return ctx;
+    } catch (e) {
+        return null;
+    }
+}
+
+
 let chatHistory = storageGet('chat_history', []);
 let chatBusy = false;
 let currentTtsAudio = null;
@@ -1480,7 +1592,7 @@ function fallbackWebSpeech(text, onEnd) {
     window.speechSynthesis.speak(utter);
 }
 
-async function sendChat(text) {
+ async function sendChat(text) {
     if (chatBusy || !text.trim()) return;
     chatBusy = true;
 
@@ -1496,7 +1608,7 @@ async function sendChat(text) {
     haptic('medium');
 
     try {
-        // Проверка запроса на новости филиалов: отдаём 100% точную свежую сводку из реального кэша
+        // ── Путь 1: Общие новости всех филиалов (точное совпадение) ───────────────
         const cleanLower = text.toLowerCase().trim();
         const isBranchNews = /^(?:новости(?:\s+филиалов|\s+библиотек)?|посты(?:\s+филиалов|\s+библиотек)?|что нового|свежие новости|анонсы|лента|события сегодня)[?!.]*$/i.test(cleanLower) ||
             (/(?:новост|лент|дайджест|анонс|событи|что нов)/i.test(cleanLower) && /(?:филиал|библиотек|город|сегодн)/i.test(cleanLower));
@@ -1523,13 +1635,36 @@ async function sendChat(text) {
             }
         }
 
+        // ── Путь 2: Вопрос о конкретном филиале → инжект реального VK-контекста ──
+        const branchMatch = detectBranchInQuestion(text);
+        let extraSystemContext = null;
+
+        if (branchMatch) {
+            // Показываем пользователю, что идёт загрузка живых данных
+            const toastMsg = document.createElement('div');
+            toastMsg.className = 'toast toast-info';
+            toastMsg.textContent = `📡 Загружаю данные из VK-группы ${branchMatch.code}...`;
+            document.body.appendChild(toastMsg);
+            setTimeout(() => toastMsg.remove(), 4000);
+
+            extraSystemContext = await fetchBranchContext(branchMatch.code);
+        }
+
+        // ── Формируем финальный массив messages с опциональным VK-контекстом ──────
+        const systemMessages = [{ role: 'system', content: SYSTEM_PROMPT }];
+        if (extraSystemContext) {
+            // Вставляем живой контекст вторым system-сообщением — ИИ видит его последним
+            // и воспринимает как «актуальную оперативку» поверх базового промпта
+            systemMessages.push({ role: 'system', content: extraSystemContext });
+        }
+
         const r = await fetch(API.chat, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
-                temperature: 0.15,
-                max_tokens: 1200,
+                messages: [...systemMessages, ...chatHistory],
+                temperature: branchMatch ? 0.05 : 0.15, // минимальная температура при работе с реальными данными
+                max_tokens: 1400,
             }),
         });
         const d = await r.json();
@@ -1566,6 +1701,7 @@ async function sendChat(text) {
         if (sendBtn) sendBtn.disabled = false;
     }
 }
+
 
 /* ── Стикеры Космо и интерактивные реакции ── */
 const STICKER_REPLIES = {

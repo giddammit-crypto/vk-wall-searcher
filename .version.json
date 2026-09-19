@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.67.6",
+  "version": "4.67.7",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-19T20:03:09Z",
-  "release_name": "AURORA 4.67.6 — VK Mini App: исправление блокировки чата, Enter-поиск с закрытием клавиатуры, центрирование шторки книги на планшете, Safe Area таб-бар, адаптивный футер лайтбокса 320px, уведомление выбора филиала"
+  "commit_date": "2026-09-19T20:15:00Z",
+  "release_name": "AURORA 4.67.7 — ИИ-чат: реальные данные из VK-групп филиалов (zero hallucinations), инжект контекста из стены группы за 7 дней"
 }
