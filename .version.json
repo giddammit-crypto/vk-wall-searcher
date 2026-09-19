@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.65.0",
+  "version": "4.64.3",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
   "commit_date": "2026-09-19T13:10:00+03:00",
-  "release_name": "AURORA 4.65.0 — VK Mini App «Космо»: мобильное приложение по функционалу бота (каталог OPAC с наличием по филиалам, чат с ИИ, проверка 255-ФЗ, книга дня), VK Bridge, новые стикеры, стильное тёмное/светлое оформление; allowlist VK-iframe в ai-proxy/tts-proxy"
+  "release_name": "AURORA 4.64.3 — VK Mini App: кнопка «Добавить в сообщество» (VKWebAppAddToCommunity)"
 }
