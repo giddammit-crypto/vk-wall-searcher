@@ -1,6 +1,6 @@
 /* ==========================================================================
    VK Mini App «АВРОРА • Космо» — приложение (VK Bridge + API АВРОРЫ)
-   Версия: 1.1.0
+   Версия: 1.2.0
    ========================================================================== */
 (() => {
 'use strict';
@@ -107,6 +107,60 @@ async function copyText(text) {
     }
 }
 
+/* ── Управление высотой окна VK Mini App (десктопный iframe VK) ── */
+let lastWindowHeight = 0;
+let resizeDebounceTimer = null;
+
+function isDesktopWebPlatform() {
+    const params = new URLSearchParams(window.location.search);
+    const platform = params.get('vk_platform');
+    if (platform === 'desktop_web') return true;
+    return window.vkBridge && typeof window.vkBridge.supports === 'function' && window.vkBridge.supports('VKWebAppResizeWindow');
+}
+
+function syncWindowSize(extra = 0) {
+    if (!bridgeReady || !window.vkBridge || !isDesktopWebPlatform()) return;
+
+    clearTimeout(resizeDebounceTimer);
+    resizeDebounceTimer = setTimeout(async () => {
+        const activeScreen = $('.screen.is-active');
+        const sheetOpen = !$('#book-sheet-backdrop')?.classList.contains('hidden');
+        
+        let contentHeight = activeScreen ? activeScreen.scrollHeight : document.body.scrollHeight;
+        let targetHeight = contentHeight + 48 + extra;
+
+        if (activeScreen?.dataset.screen === 'catalog') {
+            targetHeight = Math.max(targetHeight, 1050);
+        }
+        if (sheetOpen) {
+            targetHeight = Math.max(targetHeight, 1180);
+        }
+
+        const clamped = Math.min(Math.max(targetHeight, 800), 4050);
+
+        if (Math.abs(clamped - lastWindowHeight) >= 20) {
+            lastWindowHeight = clamped;
+            try {
+                await window.vkBridge.send('VKWebAppResizeWindow', {
+                    width: 800,
+                    height: clamped,
+                });
+            } catch (e) {}
+        }
+    }, 90);
+}
+
+function initWindowResizeManager() {
+    if (!isDesktopWebPlatform()) return;
+    syncWindowSize();
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => syncWindowSize());
+        $$('.screen').forEach(s => observer.observe(s));
+        const sheetContent = $('#book-sheet-content');
+        if (sheetContent) observer.observe(sheetContent);
+    }
+}
+
 function storageGet(key, fallback) {
     try {
         const v = localStorage.getItem('aurora_miniapp_' + key);
@@ -141,6 +195,7 @@ function goto(screenName, pushHistory = true) {
     $$('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.goto === screenName));
     window.scrollTo({ top: 0, behavior: 'instant' });
     haptic('selection');
+    syncWindowSize();
 }
 
 $$('[data-goto]').forEach(el => el.addEventListener('click', () => goto(el.dataset.goto)));
@@ -324,6 +379,99 @@ function emptyState(kind, customText = null) {
 
 function rateLimited() { emptyState('limited'); }
 
+/* ── Хэширование строки в индекс темы (0..7) ── */
+function getBookThemeIndex(str) {
+    let hash = 0;
+    const s = String(str || 'aurora');
+    for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash) % 8;
+}
+
+/* ── 8 тем виртуальных переплётов АВРОРЫ ── */
+const BOOK_THEMES = [
+    { id: 0, name: 'indigo',   bg1: '#1c1e4e', bg2: '#0c0e27', accent: '#38bdf8', glow: 'rgba(56, 189, 248, 0.35)', foil: '#a5f3fc' },
+    { id: 1, name: 'emerald',  bg1: '#0c3629', bg2: '#051912', accent: '#10b981', glow: 'rgba(16, 185, 129, 0.35)', foil: '#6ee7b7' },
+    { id: 2, name: 'purple',   bg1: '#35124c', bg2: '#180625', accent: '#c084fc', glow: 'rgba(192, 132, 252, 0.35)', foil: '#e9d5ff' },
+    { id: 3, name: 'ruby',     bg1: '#460e22', bg2: '#20040f', accent: '#fb7185', glow: 'rgba(251, 113, 133, 0.35)', foil: '#fecdd3' },
+    { id: 4, name: 'amber',    bg1: '#3c2406', bg2: '#1c1102', accent: '#fbbf24', glow: 'rgba(251, 191, 36, 0.35)', foil: '#fde68a' },
+    { id: 5, name: 'sapphire', bg1: '#0b2545', bg2: '#041121', accent: '#38bdf8', glow: 'rgba(56, 189, 248, 0.35)', foil: '#bae6fd' },
+    { id: 6, name: 'rose',     bg1: '#3a0f30', bg2: '#1a0415', accent: '#f472b6', glow: 'rgba(244, 114, 182, 0.35)', foil: '#fbcfe8' },
+    { id: 7, name: 'teal',     bg1: '#0a343b', bg2: '#03181c', accent: '#2dd4bf', glow: 'rgba(45, 212, 191, 0.35)', foil: '#99f6e4' },
+];
+
+/* ── Нормализация сырых OPAC-заглавий ── */
+function normalizeBookTitle(raw) {
+    if (!raw) return 'Без названия';
+    let t = String(raw).trim();
+
+    // Исправление склеек («451по Фаренгейту»)
+    t = t.replace(/\b451\s*по\s*фаренгейту\b/gi, '451° по Фаренгейту');
+    t = t.replace(/(\d+)\s*([а-яА-ЯёЁ])/g, '$1 $2');
+
+    // Устранение MARC-маркеров
+    t = t.replace(/\[\s*текст\s*\]/gi, '');
+    t = t.replace(/\/\s*\[?[^;\]]+\]?$/g, '');
+
+    // Замена точек с запятой между произведениями на разделитель с точкой
+    t = t.replace(/\s*;\s*/g, ' • ');
+
+    // Очистка дублирующихся подзаголовков
+    const parts = t.split(/\s*:\s*/);
+    if (parts.length > 1) {
+        const main = parts[0].trim();
+        const sub = parts.slice(1).join(': ').trim();
+        const wordsMain = main.toLowerCase().split(/\s+/);
+        const wordsSub = sub.toLowerCase().split(/\s+/);
+        const isDuplicate = wordsSub.every(w => wordsMain.includes(w)) || sub.length < 3;
+        t = isDuplicate ? main : `${main}: ${sub}`;
+    }
+
+    t = t.replace(/[\s;:/.]+$/, '').trim();
+    return t || 'Без названия';
+}
+
+/* ── Генератор DOM-компонента космической заглушки ── */
+function createBookStubElement(title, author, isLarge = false) {
+    const themeIdx = getBookThemeIndex((title || '') + (author || ''));
+    const theme = BOOK_THEMES[themeIdx];
+    const cleanTitle = normalizeBookTitle(title);
+    const cleanAuthor = author ? author.replace(/\b[а-яА-ЯёЁ]\.\s*/g, '').trim() : '';
+
+    const stub = document.createElement('div');
+    stub.className = `aurora-book-stub theme-${theme.name} ${isLarge ? 'is-large' : ''}`;
+    stub.style.setProperty('--stub-bg1', theme.bg1);
+    stub.style.setProperty('--stub-bg2', theme.bg2);
+    stub.style.setProperty('--stub-accent', theme.accent);
+    stub.style.setProperty('--stub-glow', theme.glow);
+    stub.style.setProperty('--stub-foil', theme.foil);
+
+    stub.innerHTML = `
+        <div class="stub-spine" aria-hidden="true"></div>
+        <div class="stub-border-emboss" aria-hidden="true"></div>
+        <div class="stub-inner">
+            <div class="stub-brand">
+                <span class="stub-brand-star">✦</span>
+                <span class="stub-brand-text">АВРОРА</span>
+                <span class="stub-brand-star">✦</span>
+            </div>
+            <div class="stub-emblem" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    <circle cx="12" cy="9" r="2.5" fill="currentColor" opacity="0.3"></circle>
+                    <path d="M12 5v1.5M12 11.5V13M8 9h1.5M14.5 9H16" opacity="0.6"></path>
+                </svg>
+            </div>
+            <div class="stub-title" title="${esc(cleanTitle)}">${esc(cleanTitle)}</div>
+            ${cleanAuthor ? `<div class="stub-author">${esc(cleanAuthor)}</div>` : ''}
+        </div>
+    `;
+    return stub;
+}
+
 // Редирект на реальную обложку через серверный шлюз
 function coverUrl(item) {
     const params = new URLSearchParams({
@@ -345,38 +493,49 @@ function renderItems(items) {
     box.innerHTML = items.map((it, i) => {
         const idKey = it.id || ('item_' + i);
         opacItemsMap[idKey] = it;
+        
+        // Подсчёт общего наличия без вывода нагромождения филиалов (по запросу пользователя)
         const copies = it.copies || [];
-        const byBranch = {};
-        copies.forEach(c => {
-            const name = c.branch_name || c.location || 'Филиал';
-            byBranch[name] = byBranch[name] || { free: 0, total: 0 };
-            byBranch[name].total++;
-            if (c.is_available) byBranch[name].free++;
-        });
-        const badges = Object.entries(byBranch).slice(0, 3).map(([name, b]) => {
-            const cls = b.free > 1 ? 'b-ok' : (b.free === 1 ? 'b-low' : 'b-no');
-            const ico = b.free > 0 ? 'check_circle' : 'cancel';
-            return `<span class="branch-badge ${cls}"><span class="material-symbols-rounded">${ico}</span>${esc(name)}: ${b.free}/${b.total}</span>`;
-        });
+        let totalFree = 0;
+        copies.forEach(c => { if (c.is_available) totalFree++; });
+
+        const normTitle = normalizeBookTitle(it.title);
+        const normAuthor = it.author ? it.author.trim() : 'Автор не указан';
+        const yearText = it.year ? ` • ${it.year} г.` : '';
+
+        // Чистый и лаконичный индикатор наличия
+        const stockHtml = totalFree > 0
+            ? `<span class="book-stock-pill is-avail"><span class="material-symbols-rounded">check_circle</span>В наличии (${totalFree} экз.)</span>`
+            : `<span class="book-stock-pill is-busy"><span class="material-symbols-rounded">schedule</span>Все экз. на руках</span>`;
 
         return `
-        <article class="book-card" data-book-id="${esc(idKey)}" style="animation-delay:${Math.min(i, 8) * 50}ms">
-            <img class="book-cover" loading="lazy" data-title="${esc(it.title || '')}" data-author="${esc(it.author || '')}"
-                 src="${coverUrl(it)}" alt="Обложка">
-            <div style="flex:1;min-width:0">
-                <div class="book-title">${esc(it.title || 'Без названия')}</div>
-                <div class="book-author">${esc(it.author || 'автор не указан')}${it.year ? ' • ' + esc(it.year) : ''}</div>
-                <div class="book-branches">${badges.join('') || '<span class="branch-badge b-no">нет данных о наличии</span>'}</div>
+        <article class="book-card" data-book-id="${esc(idKey)}" style="--stagger:${Math.min(i, 10)}">
+            <div class="book-cover-container" data-title="${esc(it.title)}" data-author="${esc(it.author || '')}">
+                <img class="book-cover" loading="lazy" src="${coverUrl(it)}" alt="${esc(normTitle)}">
             </div>
-            <span class="material-symbols-rounded" style="color:var(--text-dim);font-size:20px;align-self:center">chevron_right</span>
+            <div class="book-info">
+                <div class="book-title" title="${esc(normTitle)}">${esc(normTitle)}</div>
+                <div class="book-author">${esc(normAuthor)}${esc(yearText)}</div>
+                <div class="book-meta-row">
+                    ${stockHtml}
+                    ${it.shelfmark ? `<span class="book-chip-shelf">${esc(it.shelfmark)}</span>` : ''}
+                </div>
+            </div>
+            <div class="book-card-arrow" aria-hidden="true">
+                <span class="material-symbols-rounded">chevron_right</span>
+            </div>
         </article>`;
     }).join('');
 
-    box.querySelectorAll('img.book-cover').forEach(img => {
+    // Подмена отсутствующих обложек на космические переплёты АВРОРЫ
+    box.querySelectorAll('.book-cover-container').forEach(container => {
+        const img = container.querySelector('img.book-cover');
+        if (!img) return;
         img.addEventListener('error', () => {
-            img.classList.add('is-empty');
-            img.alt = 'нет обложки';
-            img.removeAttribute('src');
+            const title = container.dataset.title;
+            const author = container.dataset.author;
+            const stub = createBookStubElement(title, author, false);
+            img.replaceWith(stub);
         }, { once: true });
     });
 
@@ -391,6 +550,8 @@ function renderItems(items) {
             }
         });
     });
+
+    syncWindowSize();
 }
 
 /* ── Шторка деталей книги (Bottom Sheet) ── */
@@ -449,14 +610,17 @@ function openBookSheet(item) {
         annotation = item.shotform_raw.join(' ');
     }
 
+    const normTitle = normalizeBookTitle(item.title);
+    const normAuthor = item.author ? item.author.trim() : 'Автор не указан';
+
     content.innerHTML = `
         <div class="sheet-hero">
             <div class="sheet-cover-box" id="sheet-cover-container">
-                <img src="${coverUrl(item)}" alt="Обложка" onerror="this.parentElement.classList.add('is-empty');this.remove();this.parentElement.textContent='нет обложки';">
+                <img src="${coverUrl(item)}" alt="${esc(normTitle)}">
             </div>
             <div class="sheet-meta-info">
-                <div class="sheet-title">${esc(item.title || 'Без названия')}</div>
-                <div class="sheet-author">${esc(item.author || 'Автор не указан')}</div>
+                <div class="sheet-title">${esc(normTitle)}</div>
+                <div class="sheet-author">${esc(normAuthor)}</div>
                 ${item.imprint || item.year ? `<div class="sheet-imprint">${esc(item.imprint || (item.year + ' г.'))}</div>` : ''}
                 ${item.shelfmark ? `<div class="sheet-code">ББК/Шифр: <strong>${esc(item.shelfmark)}</strong></div>` : ''}
                 ${availBadge}
@@ -489,6 +653,15 @@ function openBookSheet(item) {
             <div class="sheet-branches-list">${branchesHtml}</div>
         </div>
     `;
+
+    // Подмена отсутствующей обложки в шторке на крупный виртуальный переплёт
+    const sheetImg = $('#sheet-cover-container img');
+    if (sheetImg) {
+        sheetImg.addEventListener('error', () => {
+            const stub = createBookStubElement(item.title, item.author, true);
+            sheetImg.replaceWith(stub);
+        }, { once: true });
+    }
 
     // Копирование адреса филиала
     content.querySelectorAll('[data-copy-addr]').forEach(btn => {
@@ -531,6 +704,7 @@ function openBookSheet(item) {
     backdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     haptic('light');
+    syncWindowSize(180);
 
     try {
         history.pushState({ modal: 'book' }, '', location.hash);
@@ -543,9 +717,65 @@ function closeBookSheet(popHist = true) {
     backdrop.classList.add('hidden');
     document.body.style.overflow = '';
     haptic('light');
+    syncWindowSize();
     if (popHist && history.state?.modal === 'book') {
         history.back();
     }
+}
+
+function initSheetSwipeGesture() {
+    const sheet = $('#book-sheet');
+    const handle = $('#book-sheet-handle');
+    if (!sheet || !handle) return;
+
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    let startTime = 0;
+
+    const onPointerDown = (e) => {
+        if (!e.target.closest('#book-sheet-handle') && !e.target.closest('.sheet-top-bar')) return;
+        isDragging = true;
+        startY = e.clientY || e.touches?.[0]?.clientY || 0;
+        currentY = startY;
+        startTime = Date.now();
+        sheet.style.transition = 'none';
+    };
+
+    const onPointerMove = (e) => {
+        if (!isDragging) return;
+        const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
+        const deltaY = clientY - startY;
+        if (deltaY > 0) {
+            currentY = clientY;
+            sheet.style.transform = `translateY(${deltaY}px)`;
+            if (e.cancelable) e.preventDefault();
+        }
+    };
+
+    const onPointerUp = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        sheet.style.transition = 'transform 260ms var(--ease-spring)';
+        const deltaY = currentY - startY;
+        const timeDiff = Math.max(Date.now() - startTime, 1);
+        const velocity = deltaY / timeDiff;
+
+        if (deltaY > 90 || velocity > 0.4) {
+            sheet.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                closeBookSheet();
+                sheet.style.transform = '';
+            }, 200);
+        } else {
+            sheet.style.transform = 'translateY(0)';
+        }
+    };
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
 }
 
 $('#book-sheet-close')?.addEventListener('click', () => closeBookSheet());
@@ -625,6 +855,7 @@ function initCatalog() {
         deb = setTimeout(() => { opacState.page = 1; runSearch(); }, 450);
     });
     $('#opac-clear')?.addEventListener('click', () => {
+        clearTimeout(deb);
         $('#opac-query').value = '';
         opacState.query = '';
         $('#opac-clear').classList.add('hidden');
@@ -673,21 +904,115 @@ let chatBusy = false;
 let currentTtsAudio = null;
 let currentPlayingBtn = null;
 
-function chatBubble(role, html, sticker = null, rawText = '') {
+/* ── Легковесный и безопасный Markdown-парсер для чата Космо ── */
+function renderMarkdown(md) {
+    if (!md) return '';
+    let text = String(md).replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+    // Защита блоков кода перед экранированием
+    const codeBlocks = [];
+    text = text.replace(/```(?:([a-zA-Z0-9_-]+)\n)?([\s\S]*?)```/g, (_, lang, code) => {
+        const id = '%%CODEBLOCK_' + codeBlocks.length + '%%';
+        codeBlocks.push('<pre class="md-pre"><code>' + esc(code.trim()) + '</code></pre>');
+        return id;
+    });
+
+    const inlineCodes = [];
+    text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+        const id = '%%INLINECODE_' + inlineCodes.length + '%%';
+        inlineCodes.push('<code class="md-code">' + esc(code) + '</code>');
+        return id;
+    });
+
+    // Экранируем оставшийся текст для XSS-безопасности
+    let safe = esc(text);
+
+    // Разделяем на смысловые блоки по двойному переводу строки
+    const rawBlocks = safe.split(/\n{2,}/);
+    const htmlBlocks = rawBlocks.map(block => {
+        block = block.trim();
+        if (!block) return '';
+        if (block.startsWith('%%CODEBLOCK_')) return block;
+
+        const lines = block.split('\n');
+
+        // Блок цитаты (> ...)
+        if (lines.every(l => /^\s*&gt;/.test(l))) {
+            const quoteContent = lines.map(l => l.replace(/^\s*&gt;\s?/, '')).map(formatMdInline).join('<br>');
+            return '<blockquote class="md-quote">' + quoteContent + '</blockquote>';
+        }
+
+        // Блок списка (- / * / • или 1. / 2.)
+        if (lines.every(l => /^(\s*[-*•]|\s*\d+\.)\s+/.test(l))) {
+            const isOrdered = /^\s*\d+\.\s+/.test(lines[0]);
+            const tag = isOrdered ? 'ol' : 'ul';
+            const items = lines.map(l => {
+                const clean = l.replace(/^(\s*[-*•]|\s*\d+\.)\s+/, '');
+                return '<li>' + formatMdInline(clean) + '</li>';
+            }).join('');
+            return '<' + tag + ' class="md-list' + (isOrdered ? ' md-olist' : '') + '">' + items + '</' + tag + '>';
+        }
+
+        // Заголовки ###, ##, #
+        if (/^###\s+/.test(block)) {
+            return '<h4 class="md-h3">' + formatMdInline(block.replace(/^###\s+/, '')) + '</h4>';
+        }
+        if (/^##\s+/.test(block)) {
+            return '<h3 class="md-h2">' + formatMdInline(block.replace(/^##\s+/, '')) + '</h3>';
+        }
+        if (/^#\s+/.test(block)) {
+            return '<h2 class="md-h1">' + formatMdInline(block.replace(/^#\s+/, '')) + '</h2>';
+        }
+
+        // Обычный абзац с мягким переносом строк
+        const paragraph = lines.map(formatMdInline).join('<br>');
+        return '<p class="md-p">' + paragraph + '</p>';
+    });
+
+    let result = htmlBlocks.filter(Boolean).join('');
+
+    // Восстанавливаем сохраненный код
+    result = result.replace(/%%INLINECODE_(\d+)%%/g, (_, i) => inlineCodes[+i] || '');
+    result = result.replace(/%%CODEBLOCK_(\d+)%%/g, (_, i) => codeBlocks[+i] || '');
+
+    return result;
+}
+
+function formatMdInline(str) {
+    if (!str) return '';
+    return str
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+        .replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3')
+        .replace(/(^|[^_])_([^_]+)_([^_]|$)/g, '$1<em>$2</em>$3')
+        .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+        .replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/|tel:|mailto:)[^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function chatBubble(role, content, sticker = null, rawText = '') {
     const list = $('#chat-list');
     if (!list) return;
 
     if (sticker) {
+        const msgClass = role === 'user' ? 'msg-user' : 'msg-bot';
         list.insertAdjacentHTML('beforeend', `
-            <div class="chat-msg msg-bot">
-                <img class="chat-sticker" src="${API.mascot}/robot_${esc(sticker)}.png?v=4.64.2" alt="${esc(sticker)}">
+            <div class="chat-msg ${msgClass}">
+                <img class="chat-sticker" src="${API.mascot}/robot_${esc(sticker)}.png?v=4.66.0" alt="${esc(sticker)}">
             </div>`);
     } else if (role === 'user') {
+        const html = typeof content === 'string' && (content.startsWith('<p') || content.startsWith('<div'))
+            ? content
+            : renderMarkdown(content);
         list.insertAdjacentHTML('beforeend', `
             <div class="chat-msg msg-user">
-                <div class="chat-bubble">${html}</div>
+                <div class="chat-bubble-wrap">
+                    <div class="chat-bubble">${html}</div>
+                </div>
             </div>`);
     } else {
+        const html = typeof content === 'string' && (content.startsWith('<p') || content.startsWith('<div') || content.startsWith('<blockquote'))
+            ? content
+            : renderMarkdown(content);
         const bubbleId = 'bubble_' + Math.random().toString(36).substring(2, 9);
         const ttsBtnHtml = rawText ? `
             <button class="chat-tts-btn" data-tts-text="${esc(rawText)}" aria-label="Озвучить ответ">
@@ -697,7 +1022,7 @@ function chatBubble(role, html, sticker = null, rawText = '') {
 
         list.insertAdjacentHTML('beforeend', `
             <div class="chat-msg msg-bot" id="${bubbleId}">
-                <img class="chat-avatar" src="${API.mascot}/robot_smile.png?v=4.64.2" alt="">
+                <img class="chat-avatar" src="${API.mascot}/robot_smile.png?v=4.66.0" alt="">
                 <div class="chat-bubble-wrap">
                     <div class="chat-bubble bubble-bot">${html}</div>
                     ${ttsBtnHtml}
@@ -719,7 +1044,7 @@ function typingOn() {
     if (!list) return;
     list.insertAdjacentHTML('beforeend', `
         <div class="chat-msg msg-bot is-typing-msg">
-            <img class="chat-avatar" src="${API.mascot}/robot_thinking.png?v=4.64.2" alt="">
+            <img class="chat-avatar" src="${API.mascot}/robot_thinking.png?v=4.66.0" alt="">
             <div class="chat-bubble bubble-bot">
                 <span class="typing-dots"><i></i><i></i><i></i></span>
             </div>
@@ -736,7 +1061,6 @@ function typingOff() {
 async function playTts(text, btnElement) {
     if (!text) return;
 
-    // Если сейчас уже играет это аудио — останавливаем
     if (currentTtsAudio && !currentTtsAudio.paused) {
         currentTtsAudio.pause();
         currentTtsAudio = null;
@@ -788,7 +1112,9 @@ async function playTts(text, btnElement) {
         const d = await r.json();
 
         if (d && d.status === 'success' && d.audio_url) {
-            const fullAudioUrl = d.audio_url.startsWith('http') ? d.audio_url : API.tts + d.audio_url;
+            const fullAudioUrl = d.audio_url.startsWith('http')
+                ? d.audio_url
+                : (d.audio_url.startsWith('?') ? API.tts + d.audio_url : BASE + (d.audio_url.startsWith('/') ? '' : '/') + d.audio_url);
             const audio = new Audio(fullAudioUrl);
             currentTtsAudio = audio;
             audio.addEventListener('ended', resetBtn);
@@ -800,7 +1126,6 @@ async function playTts(text, btnElement) {
         }
     } catch (e) {}
 
-    // Fallback на Web Speech API
     fallbackWebSpeech(cleanText, resetBtn);
 }
 
@@ -828,7 +1153,7 @@ async function sendChat(text) {
     if (input) input.disabled = true;
     if (sendBtn) sendBtn.disabled = true;
 
-    chatBubble('user', esc(text));
+    chatBubble('user', text);
     chatHistory.push({ role: 'user', content: text });
     chatHistory = chatHistory.slice(-8);
     typingOn();
@@ -858,7 +1183,7 @@ async function sendChat(text) {
             return '';
         }).trim();
 
-        const formattedHtml = esc(reply).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        const formattedHtml = renderMarkdown(reply);
         chatBubble('bot', formattedHtml, sticker, reply);
 
         chatHistory.push({ role: 'assistant', content: reply });
@@ -867,7 +1192,7 @@ async function sendChat(text) {
         haptic('light');
     } catch (e) {
         typingOff();
-        chatBubble('bot', esc('Связь с ИИ прервалась 🛰️ Попробуй ещё раз через минуту!'));
+        chatBubble('bot', 'Связь с ИИ прервалась 🛰️ Попробуй ещё раз через минуту!');
         haptic('error');
     } finally {
         chatBusy = false;
@@ -879,26 +1204,98 @@ async function sendChat(text) {
     }
 }
 
+/* ── Стикеры Космо и интерактивные реакции ── */
+const STICKER_REPLIES = {
+    waving: { text: 'Привет-привет! Рад видеть тебя на борту АВРОРЫ! 🚀 Что почитаем сегодня?', emo: 'smile' },
+    smile: { text: 'Какая тёплая улыбка! С хорошим настроением любая книга читается на одном дыхании ✨', emo: 'wink' },
+    wink: { text: 'Подмигивание принято! У меня как раз припрятана пара секретных бестселлеров 😉', emo: 'cool' },
+    love: { text: 'Книжная любовь — самая искренняя во Вселенной! 💖 Всегда рад помочь с выбором!', emo: 'love' },
+    laugh: { text: 'Ха-ха, позитив принят в бортовой журнал! Заряжаем хорошее настроение на всю неделю! 😄', emo: 'laugh' },
+    cool: { text: 'Стиль на максимуме! Уже летишь в библиотеку за новым шедевром? 😎', emo: 'cool' },
+    party: { text: 'Ура, праздник в библиотеке! Танцуем между стеллажей и празднуем чтение! 🎉', emo: 'party' },
+    idea: { text: 'О, у тебя появилась отличная идея? Расскажи, я помогу развить мысль или подберу книги! 💡', emo: 'idea' },
+    thinking: { text: 'Глубокая мысль... Давай подумаем вместе! Задавай любой вопрос по книгам или каталогу 🌌', emo: 'thinking' },
+    shock: { text: 'Вот это поворот сюжета! Даже квантовые датчики зашкалили от неожиданности! ⚡', emo: 'shock' },
+    sad: { text: 'Не грусти! Держи виртуальное какао ☕ и добрую вдохновляющую книгу для душевного тепла.', emo: 'smile' },
+    tired: { text: 'Тяжёлый день? Понимаю. Отдохни и наберись сил, а книги подождут на полочке 🛋️', emo: 'sleep' },
+    sleep: { text: 'Сладких снов и приятных космических путешествий в сновидениях! 💤 До встречи завтра!', emo: 'sleep' },
+    yawn: { text: 'Зеваем синхронно! Пора заварить бодрящий чай или почитать что-нибудь лёгкое ☕', emo: 'smile' },
+    angry: { text: 'Ой-ой, остываем! Дышим глубоко: вдох... выдох... Спокойствие — лучший спутник читателя 🌿', emo: 'smile' },
+    read: { text: 'Чтение — лучший способ путешествовать во времени и пространстве! Что сейчас читаешь? 📚', emo: 'read' },
+    idle: { text: 'Я всегда на связи! Спрашивай что угодно о книгах Владимира и каталоге АВРОРА 🤖', emo: 'waving' },
+};
+
+function toggleStickers(force) {
+    const sheet = $('#stickers-sheet');
+    const backdrop = $('#stickers-backdrop');
+    if (!sheet) return;
+    const willOpen = (typeof force === 'boolean') ? force : !sheet.classList.contains('is-open');
+    if (willOpen) {
+        sheet.classList.remove('hidden');
+        sheet.classList.add('is-open');
+        if (backdrop) {
+            backdrop.classList.remove('hidden');
+            backdrop.classList.add('is-open');
+        }
+        haptic('light');
+    } else {
+        sheet.classList.remove('is-open');
+        if (backdrop) {
+            backdrop.classList.remove('is-open');
+            setTimeout(() => {
+                if (!sheet.classList.contains('is-open')) {
+                    backdrop.classList.add('hidden');
+                }
+            }, 260);
+        }
+    }
+}
+
+async function sendSticker(emo) {
+    toggleStickers(false);
+    haptic('medium');
+    chatBubble('user', '', emo);
+
+    const replyData = STICKER_REPLIES[emo] || {
+        text: 'Классный стикер! Принято по квантовой связи! ✨ Что ищем в библиотеке?',
+        emo: 'smile'
+    };
+
+    typingOn();
+    await new Promise(r => setTimeout(r, 550));
+    typingOff();
+
+    chatBubble('bot', replyData.text, replyData.emo, replyData.text);
+    chatHistory.push({ role: 'assistant', content: replyData.text });
+    chatHistory = chatHistory.slice(-8);
+    storageSet('chat_history', chatHistory);
+    haptic('light');
+}
+
 function buildStickers() {
     const grid = $('#stickers-grid');
     if (!grid) return;
     grid.innerHTML = EMOJI.map(e =>
-        `<img src="${API.mascot}/robot_${e}.png?v=4.64.2" alt="${e}" data-emo="${e}" loading="lazy">`).join('');
+        `<img src="${API.mascot}/robot_${e}.png?v=4.66.0" alt="${e}" data-emo="${e}" loading="lazy">`).join('');
+
     grid.addEventListener('click', (e) => {
         const img = e.target.closest('img[data-emo]');
         if (!img) return;
-        const emo = img.dataset.emo;
-        haptic('medium');
-        chatBubble('bot', '', emo);
-        $('#stickers-sheet')?.classList.remove('is-open');
+        sendSticker(img.dataset.emo);
     });
-    $('#stickers-btn')?.addEventListener('click', () => {
-        haptic('light');
-        $('#stickers-sheet')?.classList.add('is-open');
+
+    $('#stickers-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleStickers();
     });
+
     $('#stickers-close')?.addEventListener('click', () => {
         haptic('light');
-        $('#stickers-sheet')?.classList.remove('is-open');
+        toggleStickers(false);
+    });
+
+    $('#stickers-backdrop')?.addEventListener('click', () => {
+        toggleStickers(false);
     });
 }
 
@@ -906,10 +1303,9 @@ function initChat() {
     buildStickers();
     (chatHistory || []).forEach(m => {
         if (m.role === 'user') {
-            chatBubble('user', esc(m.content));
+            chatBubble('user', m.content);
         } else if (m.role === 'assistant') {
-            const formatted = esc(m.content).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            chatBubble('bot', formatted, null, m.content);
+            chatBubble('bot', renderMarkdown(m.content), null, m.content);
         }
     });
 
@@ -947,8 +1343,10 @@ function initChat() {
         if (list) {
             list.innerHTML = `
                 <div class="chat-msg msg-bot">
-                    <img class="chat-avatar" src="${API.mascot}/robot_smile.png?v=4.64.2" alt="">
-                    <div class="chat-bubble bubble-bot">Диалог очищен ✨ Я готов к новым вопросам о книгах и библиотеках!</div>
+                    <img class="chat-avatar" src="${API.mascot}/robot_smile.png?v=4.66.0" alt="">
+                    <div class="chat-bubble-wrap">
+                        <div class="chat-bubble bubble-bot">Диалог очищен ✨ Я готов к новым вопросам о книгах и библиотеках!</div>
+                    </div>
                 </div>`;
         }
         toast('История диалога очищена');
@@ -1000,6 +1398,7 @@ function initInoSearch() {
         deb = setTimeout(() => searchIno(q), 300);
     });
     $('#ino-clear')?.addEventListener('click', () => {
+        clearTimeout(deb);
         $('#ino-query').value = '';
         $('#ino-clear').classList.add('hidden');
         $('#ino-results').innerHTML = '';
@@ -1010,20 +1409,36 @@ function initInoSearch() {
 function initAddToCommunity() {
     const btn = $('#add-to-community');
     if (!btn) return;
+    const TARGET_GID = 241534292;
+    const APP_ID = 54780136;
+
     btn.addEventListener('click', async () => {
         haptic('medium');
-        if (!bridgeReady || !window.vkBridge) {
-            toast('Доступно внутри ВКонтакте — открой приложение из сообщества');
-            return;
+        if (bridgeReady && window.vkBridge) {
+            try {
+                const res = await window.vkBridge.send('VKWebAppAddToCommunity', { group_id: TARGET_GID });
+                if (res && res.group_id) {
+                    toast('Готово! Приложение добавлено в сообщество ✅');
+                    haptic('success');
+                    return;
+                }
+            } catch (e) {
+                if (e?.error_data?.error_code === 4) {
+                    toast('Отменено');
+                    return;
+                }
+            }
         }
-        try {
-            await window.vkBridge.send('VKWebAppAddToCommunity');
-            toast('Готово! Приложение добавлено в сообщество ✅');
-            haptic('success');
-        } catch (e) {
-            if (e?.error_data?.error_code === 4) toast('Отменено');
-            else toast('Добавьте через меню «⋯» приложения');
+
+        // Direct link fallback
+        const directUrl = `https://vk.ru/add_community_app?aid=${APP_ID}&gid=${TARGET_GID}`;
+        if (bridgeReady && window.vkBridge) {
+            try {
+                await window.vkBridge.send('VKWebAppOpenUrl', { url: directUrl });
+                return;
+            } catch (err) {}
         }
+        window.open(directUrl, '_blank');
     });
 }
 
@@ -1126,6 +1541,8 @@ async function init() {
     initAddToCommunity();
     initSocialButtons();
     buildBranchList();
+    initSheetSwipeGesture();
+    initWindowResizeManager();
 
     setTimeout(() => {
         const sub = $('#hero-sub');
@@ -1156,6 +1573,7 @@ async function init() {
                     document.documentElement.style.setProperty('--vk-safe-bottom', data.insets.bottom + 'px');
                 }
             }
+            syncWindowSize();
         }
 
         // Физическая / жестовая кнопка «Назад» на устройствах Android
@@ -1163,7 +1581,7 @@ async function init() {
             if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
                 closeBookSheet();
             } else if ($('#stickers-sheet')?.classList.contains('is-open')) {
-                $('#stickers-sheet').classList.remove('is-open');
+                toggleStickers(false);
             } else {
                 const activeScreen = $('.screen.is-active')?.dataset.screen;
                 if (activeScreen && activeScreen !== 'home') {

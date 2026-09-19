@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1.1.1">
+<link rel="stylesheet" href="style.css?v=1.2.0">
 </head>
 <body>
     <div class="app-bg" aria-hidden="true">
@@ -160,10 +160,13 @@
             <button id="chat-send" class="composer-send" aria-label="Отправить">
                 <span class="material-symbols-rounded">send</span>
             </button>
-        </div>
-        <div class="stickers-sheet hidden" id="stickers-sheet">
+        <div class="stickers-backdrop hidden" id="stickers-backdrop"></div>
+        <div class="stickers-sheet" id="stickers-sheet">
             <div class="stickers-head">
-                <span>Стикеры Космо</span>
+                <div class="stickers-title-box" style="display:flex;align-items:center;gap:6px">
+                    <span class="material-symbols-rounded" style="color:var(--aurora-cyan)">mood</span>
+                    <span>Стикеры и эмоции Космо</span>
+                </div>
                 <button id="stickers-close" class="stickers-close" aria-label="Закрыть">
                     <span class="material-symbols-rounded">close</span>
                 </button>
@@ -262,6 +265,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="app.js?v=1.1.1"></script>
+    <script src="app.js?v=1.2.0"></script>
 </body>
 </html>
