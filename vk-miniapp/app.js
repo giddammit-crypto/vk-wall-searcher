@@ -983,6 +983,10 @@ function openBookSheet(item) {
     haptic('light');
     syncWindowSize(980);
 
+    if (window.vkBridge) {
+        window.vkBridge.send('VKWebAppDisableSwipeBack').catch(() => {});
+    }
+
     try {
         history.pushState({ modal: 'book' }, '', location.hash);
     } catch (e) {}
@@ -995,6 +999,11 @@ function closeBookSheet(popHist = true) {
     document.body.style.overflow = '';
     haptic('light');
     syncWindowSize();
+
+    if (window.vkBridge) {
+        window.vkBridge.send('VKWebAppEnableSwipeBack').catch(() => {});
+    }
+
     if (popHist && history.state?.modal === 'book') {
         history.back();
     }
@@ -1132,6 +1141,17 @@ function initCatalog() {
         $('#opac-clear')?.classList.toggle('hidden', !e.target.value);
         clearTimeout(deb);
         deb = setTimeout(() => { opacState.page = 1; runSearch(); }, 450);
+    });
+    $('#opac-query')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(deb);
+            opacState.query = e.target.value;
+            opacState.page = 1;
+            $('#opac-clear')?.classList.toggle('hidden', !e.target.value);
+            e.target.blur();
+            runSearch();
+        }
     });
     $('#opac-clear')?.addEventListener('click', () => {
         clearTimeout(deb);
@@ -1475,34 +1495,34 @@ async function sendChat(text) {
     typingOn();
     haptic('medium');
 
-    // Проверка запроса на новости филиалов: отдаём 100% точную свежую сводку из реального кэша
-    const cleanLower = text.toLowerCase().trim();
-    const isBranchNews = /^(?:новости(?:\s+филиалов|\s+библиотек)?|посты(?:\s+филиалов|\s+библиотек)?|что нового|свежие новости|анонсы|лента|события сегодня)[?!.]*$/i.test(cleanLower) ||
-        (/(?:новост|лент|дайджест|анонс|событи|что нов)/i.test(cleanLower) && /(?:филиал|библиотек|город|сегодн)/i.test(cleanLower));
-
-    if (isBranchNews) {
-        try {
-            const rNews = await fetch(`${API.miniapp}?action=branch_news`);
-            const dNews = await rNews.json();
-            typingOff();
-
-            let newsReply = dNews?.formatted || 'За сегодня постов в филиалах пока нет. Библиотекари готовят новые анонсы! ✨';
-            newsReply += '\n\n💡 *Вы также можете открыть вкладку «Новости» внизу экрана, чтобы посмотреть все публикации с фотографиями!*';
-
-            const formattedHtml = renderMarkdown(newsReply);
-            chatBubble('bot', formattedHtml, 'smile', newsReply);
-
-            chatHistory.push({ role: 'assistant', content: newsReply });
-            chatHistory = chatHistory.slice(-8);
-            storageSet('chat_history', chatHistory);
-            haptic('success');
-            return;
-        } catch (e) {
-            // При сетевом сбое продолжаем через ИИ
-        }
-    }
-
     try {
+        // Проверка запроса на новости филиалов: отдаём 100% точную свежую сводку из реального кэша
+        const cleanLower = text.toLowerCase().trim();
+        const isBranchNews = /^(?:новости(?:\s+филиалов|\s+библиотек)?|посты(?:\s+филиалов|\s+библиотек)?|что нового|свежие новости|анонсы|лента|события сегодня)[?!.]*$/i.test(cleanLower) ||
+            (/(?:новост|лент|дайджест|анонс|событи|что нов)/i.test(cleanLower) && /(?:филиал|библиотек|город|сегодн)/i.test(cleanLower));
+
+        if (isBranchNews) {
+            try {
+                const rNews = await fetch(`${API.miniapp}?action=branch_news`);
+                const dNews = await rNews.json();
+                typingOff();
+
+                let newsReply = dNews?.formatted || 'За сегодня постов в филиалах пока нет. Библиотекари готовят новые анонсы! ✨';
+                newsReply += '\n\n💡 *Вы также можете открыть вкладку «Новости» внизу экрана, чтобы посмотреть все публикации с фотографиями!*';
+
+                const formattedHtml = renderMarkdown(newsReply);
+                chatBubble('bot', formattedHtml, 'smile', newsReply);
+
+                chatHistory.push({ role: 'assistant', content: newsReply });
+                chatHistory = chatHistory.slice(-8);
+                storageSet('chat_history', chatHistory);
+                haptic('success');
+                return;
+            } catch (e) {
+                // При сетевом сбое продолжаем через ИИ
+            }
+        }
+
         const r = await fetch(API.chat, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2197,6 +2217,16 @@ function initNews() {
                 loadBranchNews();
             }, 320);
         });
+        qInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                newsState.query = qInput.value.trim();
+                qClear?.classList.toggle('hidden', !newsState.query);
+                qInput.blur();
+                loadBranchNews();
+            }
+        });
     }
 
     qClear?.addEventListener('click', () => {
@@ -2250,6 +2280,16 @@ function initInoSearch() {
         $('#ino-clear')?.classList.toggle('hidden', !q);
         clearTimeout(deb);
         deb = setTimeout(() => searchIno(q), 300);
+    });
+    $('#ino-query')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(deb);
+            const q = e.target.value.trim();
+            $('#ino-clear')?.classList.toggle('hidden', !q);
+            e.target.blur();
+            searchIno(q);
+        }
     });
     $('#ino-clear')?.addEventListener('click', () => {
         clearTimeout(deb);
@@ -2380,7 +2420,12 @@ async function buildBranchList() {
                 selectBranchChip(chipVal);
                 opacState.branch = chipVal;
                 opacState.page = 1;
-                runSearch();
+                const input = $('#opac-query');
+                if (input) input.focus();
+                toast(`Выбран филиал: ${branchStr} 📚 Введите запрос для поиска`);
+                if (opacState.query.trim()) {
+                    runSearch();
+                }
             });
         });
 
