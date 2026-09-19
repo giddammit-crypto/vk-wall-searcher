@@ -284,6 +284,11 @@ $$('[data-scroll]').forEach(el => el.addEventListener('click', () => {
 }));
 
 window.addEventListener('popstate', (e) => {
+    // Если открыт полноэкранный просмотр фото — закрываем его
+    if (!$('#photo-lightbox')?.classList.contains('hidden')) {
+        closePhotoLightbox(false);
+        return;
+    }
     // Если открыта шторка книги — закрываем её
     if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
         closeBookSheet(false);
@@ -291,7 +296,7 @@ window.addEventListener('popstate', (e) => {
     }
     // Если открыта панель стикеров — закрываем её
     if ($('#stickers-sheet')?.classList.contains('is-open')) {
-        $('#stickers-sheet').classList.remove('is-open');
+        toggleStickers(false);
         return;
     }
     const screen = e.state?.screen || (location.hash ? location.hash.replace('#', '') : 'home');
@@ -867,9 +872,8 @@ function openBookSheet(item) {
                 <span class="material-symbols-rounded">share</span>
                 <span>Поделиться</span>
             </button>
-            <button class="sheet-act-btn" id="sheet-btn-copy">
+            <button class="sheet-act-btn icon-only" id="sheet-btn-copy" aria-label="Скопировать краткую информацию" title="Скопировать краткую инфо">
                 <span class="material-symbols-rounded">content_copy</span>
-                <span>Инфо</span>
             </button>
         </div>
 
@@ -1870,6 +1874,14 @@ function openPhotoLightbox(photoUrl, postUrl, branchName, branchCode, caption) {
     document.body.style.overflow = 'hidden';
     haptic('medium');
 
+    try {
+        history.pushState({ modal: 'photo' }, '', location.hash);
+    } catch (e) {}
+
+    if (window.vkBridge) {
+        window.vkBridge.send('VKWebAppDisableSwipeBack').catch(() => {});
+    }
+
     const onKeyDown = (e) => {
         if (e.key === 'Escape') {
             closePhotoLightbox();
@@ -1880,19 +1892,27 @@ function openPhotoLightbox(photoUrl, postUrl, branchName, branchCode, caption) {
     box._escHandler = onKeyDown;
 }
 
-function closePhotoLightbox() {
+function closePhotoLightbox(popHist = true) {
     const box = $('#photo-lightbox');
     const img = $('#lightbox-img');
-    if (!box) return;
+    if (!box || box.classList.contains('hidden')) return;
 
     box.classList.add('hidden');
     if (img) img.src = '';
     document.body.style.overflow = '';
     haptic('light');
 
+    if (window.vkBridge) {
+        window.vkBridge.send('VKWebAppEnableSwipeBack').catch(() => {});
+    }
+
     if (box._escHandler) {
         document.removeEventListener('keydown', box._escHandler);
         box._escHandler = null;
+    }
+
+    if (popHist && history.state?.modal === 'photo') {
+        history.back();
     }
 }
 
@@ -1912,6 +1932,19 @@ function initPhotoLightbox() {
     $('#photo-lightbox-stage')?.addEventListener('click', (e) => {
         if (e.target !== $('#lightbox-img')) {
             closePhotoLightbox();
+        }
+    });
+
+    $('.photo-lightbox-footer')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    $('#lightbox-vk-link')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        haptic('medium');
+        const url = e.currentTarget.getAttribute('href');
+        if (url && url !== '#' && window.vkBridge) {
+            window.vkBridge.send('VKWebAppOpenUrl', { url }).catch(() => {});
         }
     });
 }
@@ -2408,7 +2441,9 @@ async function init() {
 
         // Физическая / жестовая кнопка «Назад» на устройствах Android
         if (type === 'VKWebAppBackButtonPressed') {
-            if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
+            if (!$('#photo-lightbox')?.classList.contains('hidden')) {
+                closePhotoLightbox();
+            } else if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
                 closeBookSheet();
             } else if ($('#stickers-sheet')?.classList.contains('is-open')) {
                 toggleStickers(false);

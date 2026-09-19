@@ -977,6 +977,20 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 .sheet-act-btn:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
 .sheet-act-btn:active { transform: scale(0.96); }
+.sheet-act-btn.icon-only {
+    flex: 0 0 42px !important;
+    min-width: 42px !important;
+    width: 42px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    box-sizing: border-box !important;
+}
+.sheet-act-btn.icon-only span:not(.material-symbols-rounded),
+.sheet-copy-citation-btn.icon-only span:not(.material-symbols-rounded) {
+    display: none !important;
+}
 
 .sheet-section-title {
     font: 600 12px/1.2 Unbounded, sans-serif;
@@ -1364,8 +1378,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .news-media-wrap {
     position: relative;
     width: 100%;
-    min-height: 200px;
-    max-height: 400px;
+    min-height: 260px;
+    max-height: 520px;
     border-radius: var(--radius-md);
     overflow: hidden;
     background: rgba(8, 12, 22, 0.85);
@@ -1404,7 +1418,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     position: relative;
     z-index: 3;
     max-width: 100%;
-    max-height: 390px;
+    max-height: 510px;
     width: auto;
     height: auto;
     object-fit: contain;
@@ -1606,8 +1620,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     }
 
     .news-media-wrap {
-        min-height: 180px;
-        max-height: 320px;
+        min-height: 220px;
+        max-height: 460px;
+    }
+    .news-media-img {
+        max-height: 450px;
     }
 
     .news-card-actions {
@@ -1701,8 +1718,90 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     pointer-events: none;
 }
 
-/* Шапка управления */
-.photo-lightbox-header {
+/* Верхняя плавающая панель закрытия */
+.photo-lightbox-topbar {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.lightbox-close-floating {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(14, 19, 32, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: var(--text-primary);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    transition: all 180ms ease;
+}
+
+.lightbox-close-floating .material-symbols-rounded {
+    font-size: 22px;
+}
+
+.lightbox-close-floating:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+    transform: rotate(90deg) scale(1.08);
+}
+
+.lightbox-close-floating:active {
+    transform: scale(0.92);
+}
+
+/* Сцена фото (занимает всё доступное пространство) */
+.photo-lightbox-stage {
+    pointer-events: auto;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0;
+    min-height: 0;
+    cursor: zoom-out;
+}
+
+/* Мягкая фоновая туманность за картинкой */
+.photo-lightbox-ambient {
+    position: absolute;
+    width: min(85vw, 750px);
+    height: min(85vh, 650px);
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.28;
+    pointer-events: none;
+    background: radial-gradient(circle, var(--aurora-cyan) 0%, var(--aurora-purple) 60%, transparent 100%);
+    transition: opacity 300ms ease;
+}
+
+/* Сама увеличенная картинка на весь экран */
+.photo-lightbox-img {
+    position: relative;
+    z-index: 2;
+    max-width: min(98vw, 1350px);
+    max-height: min(84vh, 920px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.88), 0 0 40px rgba(56, 189, 248, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    animation: lightboxSpringZoom 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    cursor: default;
+}
+
+/* Адаптивный подвал с описанием внизу */
+.photo-lightbox-footer {
     pointer-events: auto;
     display: flex;
     align-items: center;
@@ -1710,14 +1809,16 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     gap: 12px;
     padding: 10px 16px;
     border-radius: var(--radius-lg);
-    background: rgba(19, 23, 38, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(14, 19, 32, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--hairline);
-    box-shadow: var(--elev-2);
-    max-width: 940px;
-    margin: 0 auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    max-width: 920px;
+    margin: 8px auto 0;
     width: 100%;
+    box-sizing: border-box;
+    z-index: 10;
 }
 
 .photo-lightbox-info {
@@ -1801,62 +1902,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     box-shadow: 0 4px 18px rgba(77, 141, 255, 0.5);
 }
 
-.lightbox-btn-close {
-    width: 38px;
-    padding: 0;
-    border-radius: 50%;
-    color: var(--text-secondary);
-}
-
-.lightbox-btn-close:hover {
-    background: rgba(240, 96, 96, 0.2);
-    border-color: rgba(240, 96, 96, 0.4);
-    color: #ff7676;
-    transform: rotate(90deg);
-}
-
-/* Сцена фото */
-.photo-lightbox-stage {
-    pointer-events: auto;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    padding: 12px 0;
-    min-height: 0;
-    cursor: zoom-out;
-}
-
-/* Мягкая фоновая туманность за картинкой */
-.photo-lightbox-ambient {
-    position: absolute;
-    width: min(80vw, 600px);
-    height: min(80vh, 500px);
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.25;
-    pointer-events: none;
-    background: radial-gradient(circle, var(--aurora-cyan) 0%, var(--aurora-purple) 60%, transparent 100%);
-    transition: opacity 300ms ease;
-}
-
-/* Сама увеличенная картинка */
-.photo-lightbox-img {
-    position: relative;
-    z-index: 2;
-    max-width: min(94vw, 1100px);
-    max-height: min(82vh, 880px);
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: var(--radius-md);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(56, 189, 248, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    animation: lightboxSpringZoom 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    cursor: default;
-}
-
 /* Анимации появления */
 @keyframes lightboxFadeIn {
     from { opacity: 0; }
@@ -1877,23 +1922,25 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* Мобильная адаптация лайтбокса (< 480px) */
 @media (max-width: 480px) {
     .photo-lightbox-container {
-        padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
-    }
-    .photo-lightbox-header {
-        padding: 8px 12px;
+        padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
     }
     .photo-lightbox-img {
-        max-width: 96vw;
-        max-height: 78vh;
+        max-width: 98vw;
+        max-height: calc(100vh - 120px);
         border-radius: var(--radius-sm);
     }
-    .lightbox-action-btn {
-        height: 36px;
+    .photo-lightbox-footer {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    .lightbox-close-floating {
+        width: 38px;
+        height: 38px;
+    }
+    .lightbox-btn-vk {
+        height: 34px;
         padding: 0 10px;
         font-size: 12px;
-    }
-    .lightbox-btn-close {
-        width: 36px;
     }
 }
 
