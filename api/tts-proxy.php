@@ -71,7 +71,7 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
         // VK Mini App: iframe приложения живёт на доменах VK — разрешаем их
         $isVkOrigin = (bool)preg_match('/(\.|^)(vk-apps\.com|vk\.com|vk-portal\.net|userapi\.com)$/i', (string)$originHost);
         if (!$isVkOrigin) {
-            ai_error('Запросы со сторонних доменов запрещены.', 403);
+            tts_error('Запросы со сторонних доменов запрещены.', 403);
         }
     }
 }

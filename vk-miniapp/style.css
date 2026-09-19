@@ -2,6 +2,8 @@
    VK Mini App «АВРОРА • Космо» — дизайн-система (спека: веб-дизайнер)
    ========================================================================== */
 :root {
+    --vk-safe-top: env(safe-area-inset-top, 0px);
+    --vk-safe-bottom: env(safe-area-inset-bottom, 0px);
     --bg-page: #131726;
     --bg-page-gradient: radial-gradient(circle at 50% -10%, #243048 0%, #1b2234 40%, #131726 80%, #0c0f1a 100%);
     --surface: rgba(35, 41, 56, 0.78);
@@ -95,10 +97,29 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .hidden { display: none !important; }
 
 /* ── Экраны ── */
-.screen { display: none; padding: 16px 16px calc(76px + env(safe-area-inset-bottom)); min-height: 100vh; animation: screenIn 200ms var(--ease-smooth) both; }
+.screen { display: none; padding: calc(12px + var(--vk-safe-top, 0px)) 16px calc(76px + var(--vk-safe-bottom, 0px)); min-height: 100vh; animation: screenIn 200ms var(--ease-smooth) both; }
 .screen.is-active { display: block; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.app-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; }
+.app-logo-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1 Unbounded, sans-serif; color: var(--text-primary); }
+.logo-spark { color: var(--neon-cyan); font-size: 18px; filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6)); }
+.header-actions { display: flex; gap: 8px; }
+.header-btn {
+    width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--hairline); color: var(--text-tertiary);
+    transition: transform 120ms var(--ease-spring), border-color 200ms ease, color 200ms ease;
+}
+.header-btn:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
+.header-btn:active { transform: scale(0.92); }
 .page-head { margin: 8px 0 16px; }
+.page-head-flex { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.icon-action-btn {
+    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--hairline); color: var(--text-dim);
+    transition: transform 120ms var(--ease-spring), color 200ms ease, border-color 200ms ease;
+}
+.icon-action-btn:hover { color: var(--color-danger); border-color: rgba(240, 96, 96, 0.4); }
+.icon-action-btn:active { transform: scale(0.92); }
 .page-title { font: 700 18px/1.3 Unbounded, sans-serif; color: var(--text-primary); }
 .page-sub { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
 .section { margin-bottom: 24px; }
@@ -175,6 +196,33 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .quote-text { font-style: italic; color: var(--text-secondary); }
 .sk { background: rgba(220, 230, 255, 0.07); border-radius: 6px; height: 14px; margin-bottom: 10px; animation: skShimmer 1.4s linear infinite; }
 @keyframes skShimmer { from { background-position: -320px 0; } to { background-position: 320px 0; } }
+.quote-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+.quote-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 12px; border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--hairline);
+    font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+    transition: transform 120ms var(--ease-spring), border-color 150ms ease, color 150ms ease;
+}
+.quote-btn .material-symbols-rounded { font-size: 16px; }
+.quote-btn:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
+.quote-btn:active { transform: scale(0.95); }
+.quote-btn.btn-primary {
+    background: var(--accent-gradient); color: #fff; border: none; box-shadow: var(--elev-1);
+}
+.actions-stack { display: flex; flex-direction: column; gap: 10px; }
+.btn-secondary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 44px; padding: 0 18px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    color: var(--text-secondary); font-weight: 600; font-size: 13px;
+    transition: transform 120ms var(--ease-spring), border-color 150ms ease, color 150ms ease;
+}
+.btn-secondary:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
+.btn-secondary:active { transform: scale(0.96); }
 
 .vk-dm-card {
     display: flex; align-items: center; gap: 10px; text-decoration: none;
@@ -217,7 +265,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     background: var(--surface); border: 1px solid var(--hairline);
     border-radius: var(--radius-card); box-shadow: var(--elev-2);
     animation: cardIn 320ms var(--ease-spring) both;
+    cursor: pointer; user-select: none;
+    transition: transform 120ms var(--ease-spring), border-color 200ms ease, box-shadow 200ms ease;
 }
+.book-card:hover { border-color: rgba(56, 189, 248, 0.4); box-shadow: var(--elev-3), 0 0 16px rgba(56, 189, 248, 0.12); }
+.book-card:active { transform: scale(0.97); }
 @keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 .book-cover { width: 72px; height: 108px; border-radius: var(--radius-md); object-fit: cover; background: rgba(220, 230, 255, 0.07); flex-shrink: 0; }
 .book-cover.is-empty { display: grid; place-items: center; color: var(--text-dim); font-size: 10px; text-align: center; padding: 4px; }
@@ -352,6 +404,179 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     border: 1px solid var(--hairline); color: var(--text-primary); font-size: 13px;
     box-shadow: var(--elev-2); animation: screenIn 240ms var(--ease-spring) both;
 }
+
+/* ── Озвучка и элементы чата ── */
+.chat-bubble-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.chat-tts-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500; color: var(--text-dim);
+    background: var(--surface); border: 1px solid var(--hairline);
+    cursor: pointer; transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+    margin-top: 2px;
+}
+.chat-tts-btn .material-symbols-rounded { font-size: 14px; }
+.chat-tts-btn:hover { color: var(--aurora-cyan); border-color: var(--aurora-cyan); }
+.chat-tts-btn:active { transform: scale(0.94); }
+.chat-tts-btn.is-playing {
+    color: var(--neon-cyan); border-color: var(--neon-cyan); background: rgba(0, 240, 255, 0.12);
+}
+.composer-input:disabled { opacity: 0.6; pointer-events: none; }
+.composer-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Bottom Sheet (Шторка деталей книги) ── */
+.sheet-backdrop {
+    position: fixed; inset: 0; z-index: 150;
+    background: rgba(6, 9, 24, 0.72);
+    backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    animation: fadeIn 200ms ease both;
+}
+.sheet-backdrop.hidden { display: none !important; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.book-sheet {
+    background: var(--surface-glass);
+    backdrop-filter: blur(24px) saturate(1.4);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border: 1px solid var(--hairline);
+    border-bottom: none;
+    box-shadow: var(--elev-3);
+    max-height: 88vh;
+    display: flex; flex-direction: column;
+    animation: sheetSlideUp 280ms var(--ease-spring) both;
+    padding-bottom: calc(16px + var(--vk-safe-bottom, env(safe-area-inset-bottom, 0px)));
+}
+@keyframes sheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.sheet-handle-bar {
+    display: flex; justify-content: center; padding: 10px 0 4px;
+    cursor: grab;
+}
+.sheet-handle {
+    width: 38px; height: 4px; border-radius: 999px;
+    background: rgba(220, 230, 255, 0.28);
+}
+.sheet-top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 16px 8px; border-bottom: 1px solid var(--divider);
+}
+.sheet-category {
+    font: 600 11px/1.2 Unbounded, sans-serif;
+    letter-spacing: 1px; text-transform: uppercase;
+    color: var(--aurora-cyan);
+}
+.sheet-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--hairline);
+    color: var(--text-dim); transition: color 150ms ease, transform 120ms var(--ease-spring);
+}
+.sheet-close:hover { color: var(--text-primary); }
+.sheet-close:active { transform: scale(0.9); }
+
+.book-sheet-scroll {
+    overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 16px;
+    scrollbar-width: thin;
+}
+.sheet-hero {
+    display: flex; gap: 14px;
+}
+.sheet-cover-box {
+    width: 90px; height: 135px; border-radius: var(--radius-md);
+    background: rgba(220, 230, 255, 0.06); flex-shrink: 0;
+    overflow: hidden; box-shadow: var(--elev-2);
+}
+.sheet-cover-box img {
+    width: 100%; height: 100%; object-fit: cover;
+}
+.sheet-cover-box.is-empty {
+    display: grid; place-items: center; text-align: center;
+    color: var(--text-dim); font-size: 11px; padding: 6px;
+}
+.sheet-meta-info {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;
+}
+.sheet-title {
+    font: 700 15px/1.3 Unbounded, sans-serif;
+    color: var(--text-primary);
+}
+.sheet-author {
+    font-size: 13px; font-weight: 600; color: var(--aurora-cyan);
+}
+.sheet-imprint, .sheet-code {
+    font-size: 11px; color: var(--text-dim);
+}
+.sheet-avail-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--radius-sm);
+    margin-top: 6px; align-self: flex-start;
+}
+.sheet-actions {
+    display: flex; flex-wrap: wrap; gap: 8px;
+}
+.sheet-act-btn {
+    flex: 1; min-width: 130px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 40px; padding: 0 14px; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--hairline);
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    transition: transform 120ms var(--ease-spring), border-color 150ms ease, background 150ms ease;
+}
+.sheet-act-btn .material-symbols-rounded { font-size: 18px; }
+.sheet-act-btn.is-accent {
+    background: var(--accent-gradient); color: #fff; border: none; box-shadow: var(--elev-1);
+}
+.sheet-act-btn:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
+.sheet-act-btn:active { transform: scale(0.96); }
+
+.sheet-section-title {
+    font: 600 12px/1.2 Unbounded, sans-serif;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-dim); margin-bottom: 6px;
+}
+.sheet-annotation {
+    font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+    background: var(--bg-card); padding: 12px; border-radius: var(--radius-md);
+    border: 1px solid var(--hairline);
+}
+.sheet-branch-card {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--radius-md); padding: 12px;
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 8px;
+}
+.sheet-branch-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.sheet-branch-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+.sheet-branch-addr { font-size: 12px; color: var(--text-dim); }
+.sheet-branch-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.branch-pill-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 500; text-decoration: none;
+    background: rgba(56, 189, 248, 0.1); color: var(--aurora-cyan);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    transition: background 150ms ease, transform 120ms var(--ease-spring);
+}
+.branch-pill-btn .material-symbols-rounded { font-size: 14px; }
+.branch-pill-btn:hover { background: rgba(56, 189, 248, 0.2); }
+.branch-pill-btn:active { transform: scale(0.95); }
+.branch-card-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--hairline);
+    color: var(--text-tertiary);
+    transition: border-color 150ms ease, color 150ms ease;
+}
+.branch-card-btn .material-symbols-rounded { font-size: 14px; }
+.branch-card-btn:hover { border-color: var(--aurora-cyan); color: var(--text-primary); }
+.branch-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
     .hero-cosmo, .hero-floor, .app-blob, .hero-blob, .bubble-bot, .empty-state img { animation: none !important; }

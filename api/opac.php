@@ -2551,6 +2551,15 @@ function opac_handle_http_request()
             $isbn         = isset($params['isbn']) ? (string)$params['isbn'] : '';
             $sourceFilter = isset($params['source']) ? (string)$params['source'] : '';
             $coverRes     = opac_resolve_book_cover($rawTitle, $rawAuthor, $isbn, $sourceFilter);
+            if (!empty($params['redirect'])) {
+                if (!empty($coverRes['ok']) && !empty($coverRes['found']) && !empty($coverRes['url'])) {
+                    header('Location: ' . $coverRes['url'], true, 302);
+                    exit;
+                }
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'error' => 'Обложка не найдена'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
             echo json_encode($coverRes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             exit;
 
