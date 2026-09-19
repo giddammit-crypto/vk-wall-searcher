@@ -32,23 +32,6 @@ if (file_exists($stickersCacheFile)) {
     }
 }
 
-// Известные рабочие стикеры первой и второй волны
-$defaultKnown = [
-    'smile'    => 'photo-241534292_457239033',
-    'tired'    => 'photo-241534292_457239034',
-    'yawn'     => 'photo-241534292_457239035',
-    'idle'     => 'photo-241534292_457239036',
-    'sleep'    => 'photo-241534292_457239037',
-    'thinking' => 'photo-241534292_457239038',
-    'angry'    => 'photo-241534292_457239039'
-];
-
-foreach ($defaultKnown as $k => $v) {
-    if (empty($stickersMap[$k])) {
-        $stickersMap[$k] = $v;
-    }
-}
-
 $files = glob($mascotVkDir . '/robot_*.png');
 if (!$files) {
     die("No sticker files found in {$mascotVkDir}\n");
