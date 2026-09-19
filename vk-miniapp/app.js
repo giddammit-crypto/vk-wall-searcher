@@ -875,10 +875,9 @@ function openBookSheet(item) {
 
         <div class="sheet-biblio-block">
             <div class="sheet-biblio-head">
-                <span class="sheet-section-title"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-2px;color:var(--aurora-cyan)">description</span> Библиографическое описание</span>
-                <button class="sheet-copy-citation-btn" id="sheet-btn-copy-citation" title="Скопировать библиографическую запись">
+                <span class="sheet-section-title"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-2px;color:var(--aurora-cyan)">description</span> Описание издания</span>
+                <button class="sheet-copy-citation-btn icon-only" id="sheet-btn-copy-citation" aria-label="Скопировать библиографическую запись" title="Скопировать библиографическую запись">
                     <span class="material-symbols-rounded">content_copy</span>
-                    <span>Копировать</span>
                 </button>
             </div>
 
@@ -1059,17 +1058,19 @@ $('#book-sheet-backdrop')?.addEventListener('click', (e) => {
 
 async function runSearch() {
     const q = opacState.query.trim();
+    const welcome = $('#catalog-welcome');
     if (!q) {
-        $('#catalog-results').innerHTML = `
-            <div class="empty-state">
-                <img src="${API.mascot}/robot_thinking.png?v=4.64.2" alt="">
-                <div class="empty-title">Что будем искать?</div>
-                <div class="empty-text">Например: «Мастер и Маргарита», «Булгаков» или инвентарный номер</div>
-            </div>`;
+        if (welcome) welcome.classList.remove('hidden');
+        $('#catalog-results').innerHTML = '';
         $('#opac-pager')?.classList.add('hidden');
         $('#results-meta')?.classList.add('hidden');
+        syncWindowSize();
         return;
     }
+
+    // При начале поиска крупный блок Космо скрывается
+    if (welcome) welcome.classList.add('hidden');
+
     const seq = ++searchSeq;
     skeletons();
     $('#opac-pager')?.classList.add('hidden');
@@ -1136,6 +1137,23 @@ function initCatalog() {
         haptic('light');
         runSearch();
     });
+
+    // Быстрые подсказки-чипы под крупным Космо
+    $$('[data-search-hint]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const hint = btn.dataset.searchHint;
+            const input = $('#opac-query');
+            if (input) {
+                input.value = hint;
+                $('#opac-clear')?.classList.remove('hidden');
+                opacState.query = hint;
+                opacState.page = 1;
+                haptic('light');
+                runSearch();
+            }
+        });
+    });
+
     $('#opac-prev')?.addEventListener('click', () => {
         if (opacState.page > 1) {
             opacState.page--;
