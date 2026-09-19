@@ -1,6 +1,6 @@
 /* ==========================================================================
    VK Mini App «АВРОРА • Космо» — приложение (VK Bridge + API АВРОРЫ)
-   Версия: 1.2.0
+   Версия: 1.2.2
    ========================================================================== */
 (() => {
 'use strict';
@@ -674,11 +674,19 @@ function openBookSheet(item) {
         });
     });
 
-    // Действия шторки
-    $('#sheet-btn-ask')?.addEventListener('click', () => {
-        closeBookSheet();
+    // Действия шторки: спросить Космо
+    $('#sheet-btn-ask')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        haptic('medium');
+        // Закрываем шторку без history.back(), чтобы popstate не сбил переход в чат
+        closeBookSheet(false);
+        const bTitle = normalizeBookTitle(item.title);
+        const bAuthor = item.author ? item.author.trim() : 'автор не указан';
+        const promptText = `Расскажи о книге «${bTitle}» (${bAuthor}): о чём она и кому будет интересна?`;
         goto('chat');
-        sendChat(`Расскажи подробнее о книге «${item.title}» (${item.author || 'автор не указан'}): сюжет, главные мысли и кому понравится?`);
+        setTimeout(() => {
+            sendChat(promptText);
+        }, 120);
     });
 
     $('#sheet-btn-share')?.addEventListener('click', async () => {
@@ -1233,22 +1241,20 @@ function toggleStickers(force) {
     const willOpen = (typeof force === 'boolean') ? force : !sheet.classList.contains('is-open');
     if (willOpen) {
         sheet.classList.remove('hidden');
+        if (backdrop) backdrop.classList.remove('hidden');
+        void sheet.offsetWidth; // force reflow for smooth slide-up
         sheet.classList.add('is-open');
-        if (backdrop) {
-            backdrop.classList.remove('hidden');
-            backdrop.classList.add('is-open');
-        }
+        if (backdrop) backdrop.classList.add('is-open');
         haptic('light');
     } else {
         sheet.classList.remove('is-open');
-        if (backdrop) {
-            backdrop.classList.remove('is-open');
-            setTimeout(() => {
-                if (!sheet.classList.contains('is-open')) {
-                    backdrop.classList.add('hidden');
-                }
-            }, 260);
-        }
+        if (backdrop) backdrop.classList.remove('is-open');
+        setTimeout(() => {
+            if (!sheet.classList.contains('is-open')) {
+                sheet.classList.add('hidden');
+                if (backdrop) backdrop.classList.add('hidden');
+            }
+        }, 280);
     }
 }
 
