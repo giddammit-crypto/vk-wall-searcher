@@ -22,7 +22,7 @@ import {
 
 import {
     buildAiSnapshot
-} from './ai.js?v=4.23.2';
+} from './ai.js?v=4.62.2';
 
 import {
     fetchHistory,
@@ -122,7 +122,7 @@ import {
 import { Space3D } from './space3d.js?v=4.25.4';
 import { SpaceWarp } from './space_warp.js?v=4.25.4';
 import { SpaceAudio } from './space_audio.js?v=4.25.4';
-import { Mascot } from './mascot.js?v=4.48.0';
+import { Mascot } from './mascot.js?v=4.62.2';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
 export const APP_VERSION = '4.62.1';
@@ -1059,6 +1059,14 @@ function initApp() {
         state.lastYearStart = yearStart;
         state.lastYearEnd = yearEnd;
         state.lastSelectedMonths = new Set(state.selectedMonths);
+        // Фиксируем параметры ИМЕННО этого скана — снимок для Космо должен
+        // описывать скан, а не то, что осталось в полях ввода сейчас
+        state.lastScanKeywords = elements.keywordInput?.value.trim() || '';
+        state.lastScanExclude = elements.excludeInput?.value.trim() || '';
+        state.lastScanQuery = state.lastScanKeywords;
+
+        // Старые цифры прошлых сканов не должны подмешиваться Космо в разговор во время нового скана
+        try { if (Mascot && typeof Mascot.onScanReset === 'function') Mascot.onScanReset(); } catch (e) { /* noop */ }
 
         // Reset UI grids and tables
         if (elements.postsGrid) elements.postsGrid.innerHTML = '';
@@ -1749,37 +1757,34 @@ function initApp() {
             const validStats = (stats || []).filter(s => (s.postsCount || 0) > 0);
             const sortedByViews = [...validStats].sort((a, b) => (b.views || 0) - (a.views || 0));
             const sortedByReactions = [...validStats].sort((a, b) => (b.totalInteractions || 0) - (a.totalInteractions || 0));
-            const sortedByEr = [...validStats].filter(s => (s.views || 0) >= 40).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
+            const sortedByEr = [...validStats].filter(s => (s.views || 0) >= 300 && (s.postsCount || 0) >= 2).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
 
-            // Средний ER считаем на месте: calculateKPIs() не возвращает avgEr (только erViews со знаком %)
-            const avgErValue = kpis.totalViews > 0 ? ((kpis.totalInteractions / kpis.totalViews) * 100).toFixed(2) : '0.00';
+            // Сетевые тоталы считаем из той же статистики, что и лидеров (postsForStats),
+            // иначе у Космо «count» из одного набора, а просмотры — из другого
+            const netTotals = (stats || []).reduce((a, s) => ({
+                views: a.views + (s.views || 0),
+                likes: a.likes + (s.likes || 0),
+                reposts: a.reposts + (s.reposts || 0),
+                comments: a.comments + (s.comments || 0)
+            }), { views: 0, likes: 0, reposts: 0, comments: 0 });
+            const netInteractions = netTotals.likes + netTotals.reposts + netTotals.comments;
+            const avgErValue = netTotals.views > 0 ? ((netInteractions / netTotals.views) * 100).toFixed(2) : '0.00';
 
-            const topByViews = sortedByViews[0] ? {
-                name: sortedByViews[0].info?.canonicalName || sortedByViews[0].info?.name || 'ЦГБ',
-                shortCode: sortedByViews[0].info?.shortCode || '',
-                views: sortedByViews[0].views || 0,
-                postsCount: sortedByViews[0].postsCount || 0,
-                interactions: sortedByViews[0].totalInteractions || 0,
-                er: (Number(sortedByViews[0].erViews) || 0).toFixed(2)
+            const buildTopEntry = (s) => s ? {
+                name: s.info?.canonicalName || s.info?.name || '',
+                shortCode: s.info?.shortCode || '',
+                views: s.views || 0,
+                postsCount: s.postsCount || 0,
+                interactions: s.totalInteractions || 0,
+                likes: s.likes || 0,
+                comments: s.comments || 0,
+                reposts: s.reposts || 0,
+                er: (Number(s.erViews) || 0).toFixed(2)
             } : null;
 
-            const secondByViews = sortedByViews[1] ? {
-                name: sortedByViews[1].info?.canonicalName || sortedByViews[1].info?.name || '',
-                shortCode: sortedByViews[1].info?.shortCode || '',
-                views: sortedByViews[1].views || 0,
-                postsCount: sortedByViews[1].postsCount || 0,
-                interactions: sortedByViews[1].totalInteractions || 0,
-                er: (Number(sortedByViews[1].erViews) || 0).toFixed(2)
-            } : null;
-
-            const thirdByViews = sortedByViews[2] ? {
-                name: sortedByViews[2].info?.canonicalName || sortedByViews[2].info?.name || '',
-                shortCode: sortedByViews[2].info?.shortCode || '',
-                views: sortedByViews[2].views || 0,
-                postsCount: sortedByViews[2].postsCount || 0,
-                interactions: sortedByViews[2].totalInteractions || 0,
-                er: (Number(sortedByViews[2].erViews) || 0).toFixed(2)
-            } : null;
+            const topByViews = buildTopEntry(sortedByViews[0]) || { name: 'ЦГБ', shortCode: '', views: 0, postsCount: 0, interactions: 0, likes: 0, comments: 0, reposts: 0, er: '0.00' };
+            const secondByViews = buildTopEntry(sortedByViews[1]);
+            const thirdByViews = buildTopEntry(sortedByViews[2]);
 
             const topByReactions = sortedByReactions[0] ? {
                 name: sortedByReactions[0].info?.canonicalName || sortedByReactions[0].info?.name || '',
@@ -1791,7 +1796,8 @@ function initApp() {
             const topByEr = sortedByEr[0] ? {
                 name: sortedByEr[0].info?.canonicalName || sortedByEr[0].info?.name || '',
                 shortCode: sortedByEr[0].info?.shortCode || '',
-                er: sortedByEr[0].erViews || 0
+                er: (Number(sortedByEr[0].erViews) || 0).toFixed(2),
+                views: sortedByEr[0].views || 0
             } : null;
 
             const rankedBranches = sortedByViews.map(s => ({
@@ -1800,12 +1806,32 @@ function initApp() {
                 views: s.views || 0,
                 interactions: s.totalInteractions || 0,
                 postsCount: s.postsCount || 0,
-                er: s.erViews || 0
+                likes: s.likes || 0,
+                comments: s.comments || 0,
+                reposts: s.reposts || 0,
+                er: (Number(s.erViews) || 0).toFixed(2)
             }));
+
+            // Карта «филиал → все метрики» для диагнозов и разборов Космо
+            const byBranchMap = {};
+            (stats || []).forEach(s => {
+                const n = s.info?.canonicalName || s.info?.name;
+                if (!n) return;
+                byBranchMap[n] = {
+                    posts: s.postsCount || 0,
+                    views: s.views || 0,
+                    likes: s.likes || 0,
+                    comments: s.comments || 0,
+                    reposts: s.reposts || 0,
+                    er: (Number(s.erViews) || 0).toFixed(2)
+                };
+            });
 
             try {
                 Mascot.onScanSuccess({
-                    count: state.matchedPosts.length,
+                    count: postsForStats.length,
+                    branchesWithPosts: validStats.length,
+                    zeroPostsCount: (stats || []).length - validStats.length,
                     topBranch: topByViews?.name || '',
                     topByViews,
                     secondByViews,
@@ -1813,16 +1839,16 @@ function initApp() {
                     topByReactions,
                     topByEr,
                     rankedBranches,
-                    totalViews: kpis.totalViews,
-                    totalLikes: kpis.totalLikes,
-                    totalReposts: kpis.totalReposts,
-                    totalComments: kpis.totalComments,
+                    totalViews: netTotals.views,
+                    totalLikes: netTotals.likes,
+                    totalReposts: netTotals.reposts,
+                    totalComments: netTotals.comments,
                     avgEr: avgErValue,
                     kpis,
                     rawStats: stats,
-                    byBranch: stats.byBranch,
+                    byBranch: byBranchMap,
                     matchedPosts: state.matchedPosts,
-                    query: elements.keywordInput ? elements.keywordInput.value.trim() : ''
+                    query: state.lastScanQuery || (elements.keywordInput ? elements.keywordInput.value.trim() : '')
                 });
             } catch (e) {
                 console.warn('[Mascot] onScanSuccess error:', e);
@@ -1853,6 +1879,13 @@ function initApp() {
             const dates = state.matchedPosts.map(p => p.date).filter(Boolean);
             if (dates.length >= 2) {
                 weeks = Math.max((Math.max(...dates) - Math.min(...dates)) / (7 * 86400), 1);
+                // Честная подпись фактического диапазона вместо «период: не определён»
+                const fmt = (ts) => new Date(ts * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+                const minTs = Math.min(...dates);
+                const maxTs = Math.max(...dates);
+                label = minTs === maxTs
+                    ? fmt(minTs)
+                    : `${fmt(minTs)} — ${fmt(maxTs)}`;
             }
         }
         return { weeks: Math.max(weeks, 0.25), label };
@@ -4143,6 +4176,10 @@ function initApp() {
     try {
         if (Mascot && typeof Mascot.setSnapshotGetter === 'function') {
             Mascot.setSnapshotGetter(() => {
+                const branchFilter = state.activeBranchFilter || null;
+                const filterActive = !!(branchFilter || state.activeHashtagFilter);
+                // Активный фильтр может сузить выборку до нуля — тогда снимок
+                // строится по полному скану, но с честной пометкой об этом
                 const posts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
                 let periodLabel = '';
                 try { periodLabel = computeScanPeriod().label; } catch (e) { /* опционально */ }
@@ -4150,8 +4187,10 @@ function initApp() {
                     posts,
                     stats: state.lastGroupsStats || [],
                     periodLabel,
-                    keywords: elements.keywordInput ? elements.keywordInput.value : '',
-                    exclude: elements.excludeInput ? elements.excludeInput.value : ''
+                    keywords: state.lastScanKeywords || (elements.keywordInput ? elements.keywordInput.value : ''),
+                    exclude: state.lastScanExclude || (elements.excludeInput ? elements.excludeInput.value : ''),
+                    branchFilter,
+                    filterActive
                 });
             });
         }

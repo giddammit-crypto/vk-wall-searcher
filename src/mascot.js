@@ -29,12 +29,24 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.23.2';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.48.0';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.62.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
 const BRANCHES_CACHE_URL = resolveApiUrl('branches_cache.json');
 const SUBSCRIBERS_URL = resolveApiUrl('data/subscribers.json');
+
+/**
+ * Сигнал таймаута для запросов к ИИ/TTS: зависший прокси не должен оставлять
+ * вечное «Космо думает…» — запрос прерывается и падает в обработчик ошибки
+ */
+function aiFetchSignal(ms) {
+    try {
+        return (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+    } catch (e) {
+        return undefined;
+    }
+}
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
@@ -1970,7 +1982,9 @@ export class AuroraMascot {
             }
 
             const sortedByViews = [...validStats].sort((a, b) => (b.views || 0) - (a.views || 0));
-            const sortedByEr = [...validStats].filter(g => (g.views || 0) >= 40).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
+            // «Чемпион по ER» только на репрезентативной выборке: микро-филиал
+            // с одним постом и 40 просмотрами не должен обходить сетевых лидеров
+            const sortedByEr = [...validStats].filter(g => (g.views || 0) >= 300 && (g.postsCount || 0) >= 2).sort((a, b) => (b.erViews || 0) - (a.erViews || 0));
             const sortedByReactions = [...validStats].sort((a, b) => (b.totalInteractions || 0) - (a.totalInteractions || 0));
 
             const totalViews = posts.reduce((sum, p) => sum + (Number(p.views?.count || p.views) || 0), 0);
@@ -1983,26 +1997,35 @@ export class AuroraMascot {
                 name: sortedByViews[0].info?.canonicalName || sortedByViews[0].info?.name || 'Лидер',
                 views: sortedByViews[0].views || 0,
                 postsCount: sortedByViews[0].postsCount || 0,
-                er: (sortedByViews[0].erViews || 0).toFixed(2)
+                likes: sortedByViews[0].likes || 0,
+                comments: sortedByViews[0].comments || 0,
+                reposts: sortedByViews[0].reposts || 0,
+                er: (Number(sortedByViews[0].erViews) || 0).toFixed(2)
             } : null;
 
             const secondByViews = sortedByViews[1] ? {
                 name: sortedByViews[1].info?.canonicalName || sortedByViews[1].info?.name || '',
                 views: sortedByViews[1].views || 0,
                 postsCount: sortedByViews[1].postsCount || 0,
-                er: (sortedByViews[1].erViews || 0).toFixed(2)
+                likes: sortedByViews[1].likes || 0,
+                comments: sortedByViews[1].comments || 0,
+                reposts: sortedByViews[1].reposts || 0,
+                er: (Number(sortedByViews[1].erViews) || 0).toFixed(2)
             } : null;
 
             const thirdByViews = sortedByViews[2] ? {
                 name: sortedByViews[2].info?.canonicalName || sortedByViews[2].info?.name || '',
                 views: sortedByViews[2].views || 0,
                 postsCount: sortedByViews[2].postsCount || 0,
-                er: (sortedByViews[2].erViews || 0).toFixed(2)
+                likes: sortedByViews[2].likes || 0,
+                comments: sortedByViews[2].comments || 0,
+                reposts: sortedByViews[2].reposts || 0,
+                er: (Number(sortedByViews[2].erViews) || 0).toFixed(2)
             } : null;
 
             const topByEr = sortedByEr[0] ? {
                 name: sortedByEr[0].info?.canonicalName || sortedByEr[0].info?.name || '',
-                er: (sortedByEr[0].erViews || 0).toFixed(2),
+                er: (Number(sortedByEr[0].erViews) || 0).toFixed(2),
                 views: sortedByEr[0].views || 0
             } : null;
 
@@ -2012,7 +2035,10 @@ export class AuroraMascot {
                 views: g.views || 0,
                 interactions: g.totalInteractions || 0,
                 postsCount: g.postsCount || 0,
-                er: (g.erViews || 0).toFixed(2)
+                likes: g.likes || 0,
+                comments: g.comments || 0,
+                reposts: g.reposts || 0,
+                er: (Number(g.erViews) || 0).toFixed(2)
             }));
 
             const byBranch = {};
@@ -2049,11 +2075,18 @@ export class AuroraMascot {
                 worstBranch: sortedByViews[sortedByViews.length - 1] ? {
                     name: sortedByViews[sortedByViews.length - 1].info?.canonicalName || sortedByViews[sortedByViews.length - 1].info?.name || '',
                     views: sortedByViews[sortedByViews.length - 1].views || 0,
-                    postsCount: sortedByViews[sortedByViews.length - 1].postsCount || 0
+                    postsCount: sortedByViews[sortedByViews.length - 1].postsCount || 0,
+                    likes: sortedByViews[sortedByViews.length - 1].likes || 0,
+                    comments: sortedByViews[sortedByViews.length - 1].comments || 0,
+                    reposts: sortedByViews[sortedByViews.length - 1].reposts || 0,
+                    er: (Number(sortedByViews[sortedByViews.length - 1].erViews) || 0).toFixed(2),
+                    noViewsData: (sortedByViews[sortedByViews.length - 1].views || 0) === 0 && (sortedByViews[sortedByViews.length - 1].postsCount || 0) > 0
                 } : null,
+                branchCount: validStats.length,
+                zeroPostsCount: Math.max(0, (groupsStats || []).length - validStats.length),
                 rankedBranches,
                 byBranch,
-                query: appState.lastSearchQuery || document.getElementById('keyword-input')?.value?.trim() || ''
+                query: appState.lastScanQuery || this.lastScanStats?.query || document.getElementById('keyword-input')?.value?.trim() || ''
             };
 
             this.lastScanStats = enriched;
@@ -2063,16 +2096,24 @@ export class AuroraMascot {
 
         // Если есть сохраненный snapshot
         if (s && (s.count > 0 || (Array.isArray(s.rankedBranches) && s.rankedBranches.length > 0))) {
+            // Нормализация контракта: payload onScanComplete({count, topBranch, stats})
+            // кладёт в кэш объект без тоталов — иначе потребители ловят undefined.toLocaleString
+            s.count = Number(s.count) || 0;
+            s.totalViews = Number(s.totalViews) || 0;
+            s.totalLikes = Number(s.totalLikes) || 0;
+            s.totalComments = Number(s.totalComments) || 0;
+            s.totalReposts = Number(s.totalReposts) || 0;
+            s.avgEr = s.avgEr != null ? String(s.avgEr) : '0.00';
             if (!s.byBranch && Array.isArray(s.rankedBranches)) {
                 s.byBranch = {};
                 s.rankedBranches.forEach(b => {
                     s.byBranch[b.name] = {
                         posts: b.postsCount || 0,
                         views: b.views || 0,
-                        likes: 0,
-                        comments: 0,
-                        reposts: 0,
-                        er: b.er || '0.00'
+                        likes: b.likes,
+                        comments: b.comments,
+                        reposts: b.reposts,
+                        er: (Number(b.er) || 0).toFixed(2)
                     };
                 });
             }
@@ -2110,16 +2151,28 @@ export class AuroraMascot {
         ctx += this.buildSubscribersSummary();
 
         if (stats && stats.count > 0) {
+            // Для модели — точные числа (toLocaleString), formatViews с округлениями
+            // оставляем только для человеческих реплик: ИИ должен называть точные цифры
+            const exact = (n) => (Number(n) || 0).toLocaleString('ru-RU');
             const avgViewsPerPost = stats.count > 0 ? Math.round(stats.totalViews / stats.count) : 0;
-            ctx += ` Всего найдено постов: ${stats.count}, суммарно просмотров: ${formatViews(stats.totalViews)} (в среднем ~${formatViews(avgViewsPerPost)} на пост), лайков: ${stats.totalLikes}, комментариев: ${stats.totalComments}, репостов: ${stats.totalReposts}, средний ER: ${stats.avgEr}%.`;
-            if (stats.topByViews) ctx += ` Абсолютный лидер по просмотрам: «${stats.topByViews.name}» (${formatViews(stats.topByViews.views)} просм, ${stats.topByViews.postsCount} постов, ER: ${stats.topByViews.er}%).`;
-            if (stats.secondByViews) ctx += ` 2-е место: «${stats.secondByViews.name}» (${formatViews(stats.secondByViews.views)} просм, ER: ${stats.secondByViews.er}%).`;
-            if (stats.thirdByViews) ctx += ` 3-е место: «${stats.thirdByViews.name}» (${formatViews(stats.thirdByViews.views)} просм, ER: ${stats.thirdByViews.er}%).`;
-            if (stats.topByEr) ctx += ` Чемпион по вовлечённости читателей (ER): «${stats.topByEr.name}» (ER: ${stats.topByEr.er}%, ${formatViews(stats.topByEr.views)} просм).`;
-            if (stats.worstBranch && stats.worstBranch.name !== stats.topByViews?.name) {
-                ctx += ` Самый отстающий филиал: «${stats.worstBranch.name}» (${formatViews(stats.worstBranch.views)} просм, ${stats.worstBranch.postsCount} постов, требуется реанимация контент-плана).`;
+            const scopeMark = branchFilter ? ' (весь скан, без учёта фильтра)' : '';
+            ctx += ` Всего найдено постов: ${stats.count}, суммарно просмотров: ${exact(stats.totalViews)} (в среднем ~${exact(avgViewsPerPost)} на пост), лайков: ${exact(stats.totalLikes)}, комментариев: ${exact(stats.totalComments)}, репостов: ${exact(stats.totalReposts)}, средний ER по сети: ${Number(stats.avgEr || 0).toFixed(2)}%.${scopeMark}`;
+            if (branchFilter) {
+                const fb = stats.byBranch?.[branchFilter] || stats.rankedBranches?.find(b => b.name === branchFilter);
+                if (fb) {
+                    ctx += ` По выбранному филиалу «${branchFilter}»: постов ${fb.posts ?? fb.postsCount ?? 0}, просмотров ${exact(fb.views)}, лайков ${exact(fb.likes)}, ER ${Number(fb.er || 0).toFixed(2)}% — отвечай на вопросы о цифрах именно этой выборки.`;
+                }
             }
-            if (stats.query) ctx += ` Текущий поисковый запрос: «${stats.query}».`;
+            if (stats.topByViews) ctx += ` Абсолютный лидер по просмотрам: «${stats.topByViews.name}» (${exact(stats.topByViews.views)} просм, ${stats.topByViews.postsCount} постов, ER: ${Number(stats.topByViews.er || 0).toFixed(2)}%).`;
+            if (stats.secondByViews) ctx += ` 2-е место: «${stats.secondByViews.name}» (${exact(stats.secondByViews.views)} просм, ER: ${Number(stats.secondByViews.er || 0).toFixed(2)}%).`;
+            if (stats.thirdByViews) ctx += ` 3-е место: «${stats.thirdByViews.name}» (${exact(stats.thirdByViews.views)} просм, ER: ${Number(stats.thirdByViews.er || 0).toFixed(2)}%).`;
+            if (stats.topByEr) ctx += ` Чемпион по вовлечённости читателей (ER по просмотрам): «${stats.topByEr.name}» (ER: ${Number(stats.topByEr.er || 0).toFixed(2)}%, ${exact(stats.topByEr.views)} просм).`;
+            if (stats.worstBranch && stats.worstBranch.name && stats.worstBranch.name !== stats.topByViews?.name) {
+                ctx += stats.worstBranch.noViewsData
+                    ? ` У филиала «${stats.worstBranch.name}» (${stats.worstBranch.postsCount} постов) просмотры не получены из API — данных нет, не интерпретируй это как нулевой охват.`
+                    : ` Самый отстающий филиал по просмотрам: «${stats.worstBranch.name}» (${exact(stats.worstBranch.views)} просм, ${stats.worstBranch.postsCount} постов).`;
+            }
+            if (stats.query) ctx += ` Поисковый запрос этого сканирования: «${stats.query}».`;
         } else {
             ctx += ` Посты ещё не сканированы (поиск не запущен).`;
         }
@@ -2354,7 +2407,8 @@ export class AuroraMascot {
             const branchLine = (place, b) => {
                 const posts = b.postsCount || b.posts || 0;
                 const avgViews = posts > 0 ? Math.round((b.views || 0) / posts) : 0;
-                return `${place}: «${b.name}» — ${formatViews(b.views || 0)} просмотров, ${posts} постов, лайков: ${b.likes ?? 0}, комментариев: ${b.comments ?? 0}, репостов: ${b.reposts ?? 0}, ER: ${b.er || 0}%, средний просмотр на пост: ${formatViews(avgViews)}.`;
+                const fmt = (v) => (v === null || v === undefined) ? 'нет данных' : String(v).toLocaleString('ru-RU');
+                return `${place}: «${b.name}» — ${(Number(b.views) || 0).toLocaleString('ru-RU')} просмотров, ${posts} постов, лайков: ${fmt(b.likes)}, комментариев: ${fmt(b.comments)}, репостов: ${fmt(b.reposts)}, ER: ${Number(b.er || 0).toFixed(2)}%, средний просмотр на пост: ${(Number(avgViews) || 0).toLocaleString('ru-RU')}.`;
             };
             const leadersInfo = [
                 branchLine('1 место', b1),
@@ -2385,6 +2439,7 @@ export class AuroraMascot {
             const aiResponse = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(90000),
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: systemPrompt },
@@ -2408,6 +2463,7 @@ export class AuroraMascot {
             const ttsResponse = await fetch(TTS_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(60000),
                 body: JSON.stringify({ text: voiceText })
             });
 
@@ -2439,7 +2495,8 @@ export class AuroraMascot {
                 const medal = ['🥇', '🥈', '🥉'][i];
                 const posts = b.postsCount || b.posts || 0;
                 const avgViews = posts > 0 ? Math.round((b.views || 0) / posts) : 0;
-                return `${medal} **${b.name}**: ${formatViews(b.views || 0)} просмотров, ${posts} постов, лайков: ${b.likes ?? 0}, ER: ${b.er || 0}%, средний просмотр на пост: ${formatViews(avgViews)}.`;
+                const fmt = (v) => (v === null || v === undefined) ? 'нет данных' : (Number(v) || 0).toLocaleString('ru-RU');
+                return `${medal} **${b.name}**: ${fmt(b.views)} просмотров, ${posts} постов, лайков: ${fmt(b.likes)}, ER: ${Number(b.er || 0).toFixed(2)}%, средний просмотр на пост: ${fmt(avgViews)}.`;
             }).join('\n\n');
             const fallbackText = `## Тройка лидеров 🏆\n${rows}\n\n*ИИ-аналитик временно недоступен — цифры напрямую из сканирования.*`;
             this.say(`ИИ на связи барахлит, но цифры не врут! Разбор — в окне по центру 🏆`, 7000, 'smile', 'critique_2', isUserAction);
@@ -2506,16 +2563,16 @@ export class AuroraMascot {
 
         let report = `## Пьедестал лидеров по просмотрам 🏆`;
         if (top1) {
-            report += `\n\n🥇 **${top1.name}**: ${top1.postsCount || top1.posts || 0} постов, ${formatViews(top1.views)} просмотров (ER: ${top1.er}%)`;
+            report += `\n\n🥇 **${top1.name}**: ${top1.postsCount || top1.posts || 0} постов, ${(Number(top1.views) || 0).toLocaleString('ru-RU')} просмотров (ER: ${Number(top1.er || 0).toFixed(2)}%)`;
         }
         if (top2) {
-            report += `\n\n🥈 **${top2.name}**: ${top2.postsCount || top2.posts || 0} постов, ${formatViews(top2.views)} просмотров`;
+            report += `\n\n🥈 **${top2.name}**: ${top2.postsCount || top2.posts || 0} постов, ${(Number(top2.views) || 0).toLocaleString('ru-RU')} просмотров`;
         }
         if (top3) {
-            report += `\n\n🥉 **${top3.name}**: ${top3.postsCount || top3.posts || 0} постов, ${formatViews(top3.views)} просмотров`;
+            report += `\n\n🥉 **${top3.name}**: ${top3.postsCount || top3.posts || 0} постов, ${(Number(top3.views) || 0).toLocaleString('ru-RU')} просмотров`;
         }
         if (stats.topByEr && stats.topByEr.name && stats.topByEr.name !== top1?.name) {
-            report += `\n\n⚡ **Лидер по вовлечённости (ER)**: **${stats.topByEr.name}** (${stats.topByEr.er}%)! Красавчики!`;
+            report += `\n\n⚡ **Лидер по вовлечённости (ER по просмотрам)**: **${stats.topByEr.name}** (${Number(stats.topByEr.er || 0).toFixed(2)}%)! Красавчики!`;
         }
         report += `\n\n*Космо в восторге! Все цифры строго из результатов сканирования филиалов!* 🕶️✨`;
 
@@ -3154,9 +3211,13 @@ export class AuroraMascot {
             return;
         }
 
-        // Ключ кэша включает сигнатуру статистики: после нового скана ответы обновятся
+        // Ключ кэша включает сигнатуру статистики: после нового скана ответы обновятся.
+        // totalViews в сигнатуре — иначе скан с тем же числом постов, но другими цифрами,
+        // получит устаревший текст с прежними показателями
         const stats = this.getLiveScanStats();
-        const statsSig = stats && stats.count > 0 ? `${stats.count}_${stats.topByViews?.name || ''}` : 'noscan';
+        const statsSig = stats && stats.count > 0
+            ? `${stats.count}_${stats.totalViews || 0}_${stats.topByViews?.name || ''}_${stats.topByViews?.views || 0}`
+            : 'noscan';
         const normalizedKey = `${userQuestion.toLowerCase().trim()}||${statsSig}`;
         if (this.aiResponseCache.has(normalizedKey)) {
             const cached = this.aiResponseCache.get(normalizedKey);
@@ -3214,6 +3275,7 @@ export class AuroraMascot {
             let response = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                signal: aiFetchSignal(60000),
                 body: payloadJson
             });
 
@@ -3224,6 +3286,7 @@ export class AuroraMascot {
                 response = await fetch(AI_PROXY_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    signal: aiFetchSignal(60000),
                     body: bodyParams.toString()
                 });
             }
@@ -3296,6 +3359,7 @@ export class AuroraMascot {
             const res = await fetch(TTS_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(60000),
                 body: JSON.stringify({ text: plain.slice(0, 450) })
             });
             if (!res.ok) return false;
@@ -3350,7 +3414,8 @@ export class AuroraMascot {
             totalViews: stats.totalViews || 0,
             totalLikes: stats.totalLikes || 0,
             topBranch: stats.topByViews?.name || '',
-            topViews: stats.topByViews?.views || 0
+            topViews: stats.topByViews?.views || 0,
+            query: (stats.query || '').trim().toLowerCase()
         };
 
         let history = [];
@@ -3360,7 +3425,11 @@ export class AuroraMascot {
 
         const prev = history[history.length - 1];
         if (prev && prev.ts !== entry.ts) {
-            this.lastScanInsight = this.buildScanInsight(prev, entry);
+            // Сравнивать сканы можно только при одинаковом запросе: год против недели
+            // или «сказки» против «все посты» дают фейковые «просмотры упали на 90%»
+            this.lastScanInsight = (prev.query || '') === entry.query
+                ? this.buildScanInsight(prev, entry)
+                : null;
         }
 
         history.push(entry);
@@ -3440,6 +3509,7 @@ export class AuroraMascot {
             const res = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(90000),
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: systemPrompt },
@@ -3484,6 +3554,7 @@ export class AuroraMascot {
             const res = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(90000),
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: `Ты — контент-стратег библиотечной сети. Сегодня ${dateStr}.${trendsNote} Составь подробный контент-план на ближайшие 7 дней для библиотек Владимира. Для каждого дня (все 7 подряд): заголовок дня жирным (**Понедельник**, **Вторник** и т.д.), тема поста (до 8 слов), формат (фото/видео/опрос/подборка/карточки) и одно предложение-описание, что именно делать. Форматируй в Markdown списком, без вступлений и заключений.` },
@@ -3516,9 +3587,15 @@ export class AuroraMascot {
             this.say(`Сначала запусти сканирование — мне нужны реальные посты, чтобы советовать теги! 🔍`, 7000, 'thinking', 'scan_wait_7', true);
             return;
         }
-        // Топ хэштегов ищем в последнем снапшоте сканирования (topHashtags)
-        const snapshot = window.__AURORA_LAST_SCAN_SNAPSHOT__;
-        const topTags = Array.isArray(snapshot?.stats?.topHashtags) ? snapshot.stats.topHashtags : null;
+        // Топ хэштегов берём из аналитического снимка сканирования (buildAiSnapshot.topHashtags)
+        let topTags = null;
+        try {
+            const raw = this.getAiSnapshot();
+            if (raw) {
+                const snap = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (Array.isArray(snap?.topHashtags)) topTags = snap.topHashtags;
+            }
+        } catch (e) { /* снимка нет — покажем общий совет */ }
 
         let msg = `## Хэштег-ревизия #️⃣`;
         if (topTags && topTags.length > 0) {
@@ -3551,11 +3628,17 @@ export class AuroraMascot {
         try {
             const info = this.findBranchInfo(branch.name);
             const subsNote = this.subscribersTrendsSummary();
+            // Полные метрики филиала: worstBranch приходит обогащённым из getLiveScanStats,
+            // на всякий случай добираем из карты byBranch
+            const full = (branch.likes !== undefined && branch.likes !== null) ? branch : (stats.byBranch?.[branch.name] || null);
+            const fmt = (v) => (v === null || v === undefined) ? 'нет данных' : (Number(v) || 0).toLocaleString('ru-RU');
             const context = [
                 `Филиал: ${branch.name}.`,
                 `Найдено постов за период: ${branch.postsCount || 0}.`,
-                `Просмотры: ${branch.views || 0}, лайки: ${branch.likes ?? 'нет данных'}, комментарии: ${branch.comments ?? 'нет данных'}, репосты: ${branch.reposts ?? 'нет данных'}.`,
-                `ER: ${branch.er != null ? branch.er + '%' : 'нет данных'}.`,
+                `Просмотры: ${fmt(branch.views)}, лайки: ${fmt(full?.likes)}, комментарии: ${fmt(full?.comments)}, репосты: ${fmt(full?.reposts)}.`,
+                full?.er != null
+                    ? `ER по просмотрам: ${Number(full.er).toFixed(2)}%.`
+                    : (branch.noViewsData ? 'Просмотры из API не получены — данных нет.' : 'ER: нет данных.'),
                 info ? `Справка: ${info.branch_num}, адрес ${info.address}.` : '',
                 subsNote ? `Подписчиков у сети всего: ${subsNote.totalNew}.` : ''
             ].filter(Boolean).join(' ');
@@ -3563,6 +3646,7 @@ export class AuroraMascot {
             const res = await fetch(AI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: aiFetchSignal(90000),
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: 'Ты — строгий, но доброжелательный SMM-аудитор библиотек. Проанализируй данные отстающего филиала и выдай: 1) краткий диагноз (1-2 предложения), 2) три вероятные причины слабых показателей, 3) три конкретных шага на ближайшую неделю. Пиши списком, без воды, опирайся только на данные.' },

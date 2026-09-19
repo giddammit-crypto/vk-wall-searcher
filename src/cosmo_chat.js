@@ -48,6 +48,18 @@ function formatBytes(bytes) {
 }
 
 /**
+ * Сигнал таймаута для сетевых запросов к ИИ/TTS: без него зависший прокси
+ * оставляет вечное «Космо печатает…» до таймаута самого браузера
+ */
+function aiFetchSignal(ms) {
+    try {
+        return (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+    } catch (e) {
+        return undefined;
+    }
+}
+
+/**
  * Инлайн-разметка Markdown: жирный, курсив, зачёркнутый, спойлеры, код, ссылки, выделения
  */
 function mdInline(s) {
@@ -313,12 +325,15 @@ export function parseCosmoMarkdown(text) {
             continue;
         }
 
-        // Таблицы | a | b |
-        if (/^\|.*\|$/.test(t)) {
+        // Таблицы | a | b | — допускаем строку без замыкающей вертикали (частый
+        // глюк ответов ИИ) и корректно режем экранированные \| внутри ячеек
+        if (/^\|.+/.test(t)) {
             flushPara();
             flushList();
             flushQuote();
-            table.push(t.slice(1, -1).split('|'));
+            const norm = t.replace(/^\|/, '').replace(/\|$/, '');
+            const cells = norm.split(/(?<!\\)\|/).map(c => c.replace(/\\\|/g, '|'));
+            table.push(cells);
             continue;
         }
 
@@ -2816,6 +2831,15 @@ export class CosmoChatModal {
                 return `- ${b.name}: подписчиков=${mem}, постов=${b.posts}, просмотров=${b.views.toLocaleString('ru-RU')}, лайков=${b.likes}, репостов=${b.reposts}, комментов=${b.comments}, ER_пост=${erP}, ER_просмотры=${erV}, ср.реакций_на_пост=${b.avgInteractionsPerPost}`;
             }).join('\n');
 
+            // Явные определения метрик — иначе модель начинает «пересчитывать» ER
+            // и путает ER по просмотрам с ER на подписчика
+            const metricLegend = `
+ЕДИНИЦЫ МЕТРИК (считать верными, не пересчитывать самим):
+- ER_просмотры = (лайки + репосты + комментарии) / просмотры × 100 — вовлечённость относительно охвата.
+- ER_пост = (лайки + репосты + комментарии) / посты / подписчики × 100 — вовлечённость на подписчика.
+- «н/д» или «неизвестно» означает, что данных нет (ВК API их не вернул) — так и говори, не подставляй ноль.
+`;
+
             const topPostsLines = Array.isArray(fullSnapshot.topPostsByEngagement) && fullSnapshot.topPostsByEngagement.length > 0
                 ? fullSnapshot.topPostsByEngagement.slice(0, 8).map((p, idx) =>
                     `${idx + 1}. [${p.branch || 'Филиал'}, ${p.date || 'дата'}] Лайков: ${p.likes}, Репостов: ${p.reposts}, Комментов: ${p.comments}, Просмотров: ${p.views}\n   Текст поста: "${(p.text || '').replace(/\n+/g, ' ')}"`
@@ -2830,6 +2854,7 @@ export class CosmoChatModal {
 
             statsContext = `
 ТОЧНЫЕ ДАННЫЕ ТЕКУЩЕГО СКАНИРОВАНИЯ БИБЛИОТЕК ВЛАДИМИРА:
+${metricLegend}
 - Период сканирования: ${fullSnapshot.period || 'не указан'}
 - Ключевые слова поиска: ${fullSnapshot.keywords ? `"${fullSnapshot.keywords}"` : 'все посты без фильтра по словам'}
 - Всего филиалов в базе: ${fullSnapshot.branchesCount || fullSnapshot.branches.length}
@@ -2853,18 +2878,25 @@ ${topTagsLines}
         } else if (this.mascot && typeof this.mascot.getLiveScanStats === 'function') {
             const stats = this.mascot.getLiveScanStats();
             if (stats && stats.count > 0) {
+                // Поля строго по контракту getLiveScanStats: count — посты (не филиалы!),
+                // topByEr (не topByER) с полем er, avgEr (не avgER)
+                const fmt = (n) => (Number(n) || 0).toLocaleString('ru-RU');
+                const branchCount = (stats.byBranch && Object.keys(stats.byBranch).length)
+                    || (Array.isArray(stats.rankedBranches) ? stats.rankedBranches.length : 0)
+                    || stats.branchCount || 0;
                 statsContext = `
 РЕАЛЬНЫЕ ДАННЫЕ ТЕКУЩЕГО СКАНИРОВАНИЯ БИБЛИОТЕК ВЛАДИМИРА:
-- Всего просканировано филиалов: ${stats.count}
-- Всего найдено постов: ${stats.totalPosts || 'несколько'}
-- Сумма просмотров: ${stats.totalViews.toLocaleString('ru-RU')}
-- Сумма лайков: ${stats.totalLikes.toLocaleString('ru-RU')}
-- Сумма репостов: ${stats.totalReposts.toLocaleString('ru-RU')}
-- Сумма комментариев: ${stats.totalComments.toLocaleString('ru-RU')}
-- Абсолютный лидер по просмотрам: ${stats.topByViews ? `${stats.topByViews.name} (${stats.topByViews.views.toLocaleString('ru-RU')} просмотров)` : 'нет'}
-- Лидер по вовлечённости (ER): ${stats.topByER ? `${stats.topByER.name} (ER ${stats.topByER.erPost}%)` : 'нет'}
-- Средний показатель ER по сети: ${stats.avgER}%
-- Филиалы с нулевой активностью в данном периоде: ${stats.zeroPostsCount || 0}
+- Всего найдено постов: ${stats.count}
+- Филиалов с постами в выборке: ${branchCount}
+- Филиалы с нулевой активностью в данном периоде: ${stats.zeroPostsCount ?? 0}
+- Сумма просмотров: ${fmt(stats.totalViews)}
+- Сумма лайков: ${fmt(stats.totalLikes)}
+- Сумма репостов: ${fmt(stats.totalReposts)}
+- Сумма комментариев: ${fmt(stats.totalComments)}
+- Средний ER по сети (реакции к просмотрам): ${Number(stats.avgEr || 0).toFixed(2)}%
+- Абсолютный лидер по просмотрам: ${stats.topByViews ? `${stats.topByViews.name} (${fmt(stats.topByViews.views)} просмотров, ER ${Number(stats.topByViews.er || 0).toFixed(2)}%)` : 'нет'}
+- Лидер по вовлечённости (ER по просмотрам): ${stats.topByEr ? `${stats.topByEr.name} (ER ${Number(stats.topByEr.er || 0).toFixed(2)}%)` : 'нет'}
+${stats.query ? `- Поисковый запрос этого сканирования: «${stats.query}»` : ''}
 `;
             }
         }
@@ -3074,8 +3106,10 @@ ${statsContext}
             if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
                 this.hideTypingIndicator();
                 const notFoundMsg = isInvSearch
-                    ? `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по инвентарному номеру **«№${escapeHtml(displayQuery)}»** книга не найдена.\n\nПожалуйста, перепроверьте цифры номера или попробуйте найти книгу по автору/названию (например: \`/книга Пушкин\` или \`/поиск Капитанская дочка\`).`
-                    : `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${escapeHtml(searchQuery)}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
+                    ? `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по инвентарному номеру **«№${displayQuery}»** книга не найдена.\n\nПожалуйста, перепроверьте цифры номера или попробуйте найти книгу по автору/названию (например: \`/книга Пушкин\` или \`/поиск Капитанская дочка\`).`
+                    : `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${searchQuery}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
+                // Без escapeHtml: parseCosmoMarkdown экранирует сам, иначе двойное
+                // экранирование даёт «&amp;lt;» в чате и в истории для ИИ
                 this.messages.push({ role: 'assistant', content: notFoundMsg });
                 this.appendBotMessage(notFoundMsg);
                 if (this.mascot && typeof this.mascot.setState === 'function') {
@@ -3127,8 +3161,8 @@ ${statsContext}
             // Формируем вводное сообщение Космо
             const totalFound = data.total_found || data.count || topBooks.length;
             let introText = isInvSearch
-                ? `📚 **Книга по инвентарному номеру №${escapeHtml(displayQuery)} в каталоге OPAC:**`
-                : `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${escapeHtml(searchQuery)}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
+                ? `📚 **Книга по инвентарному номеру №${displayQuery} в каталоге OPAC:**`
+                : `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${searchQuery}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
 
             if (hasInBranch4) {
                 introText += `\n\n🌟 **Отличная новость!** Экземпляр числится в **Филиале №4** (ул. Егорова, д. 10, жилой район *Доброе*)!`;
@@ -3284,6 +3318,9 @@ ${statsContext}
      * Системный промпт занимает ~3–6k токенов, выделяем под историю ~50k токенов.
      * ------------------------------------------------------------------- */
     async executeAiRequest({ maxTokens = 3000, temperature = 0.5 } = {}) {
+        // Защита от параллельных запросов: иначе два индикатора «печатает…»,
+        // и один из них зависает навсегда (hideTypingIndicator снимает только первый)
+        if (this.isBusy) return;
         this.isBusy = true;
         this.sendBtnEl.disabled = true;
         this.showTypingIndicator();
@@ -3314,6 +3351,7 @@ ${statsContext}
             }
 
             let data = null;
+            let lastErr = null; // иначе ReferenceError в strict mode: ретрай никогда не выполнялся
             // Очистка суррогатных символов и управляющих байтов во избежание ошибок JSON в PHP
             const sanitizeStr = (s) => {
                 if (typeof s !== 'string') return '';
@@ -3341,7 +3379,8 @@ ${statsContext}
                         response = await fetch(AI_PROXY_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                            body: payloadJson
+                            body: payloadJson,
+                            signal: aiFetchSignal(120000)
                         });
                     } else {
                         // Резервный формат application/x-www-form-urlencoded для хостингов, сбрасывающих raw php://input
@@ -3350,7 +3389,8 @@ ${statsContext}
                         response = await fetch(AI_PROXY_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                            body: bodyParams.toString()
+                            body: bodyParams.toString(),
+                            signal: aiFetchSignal(120000)
                         });
                     }
 

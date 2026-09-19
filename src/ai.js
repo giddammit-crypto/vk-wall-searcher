@@ -285,7 +285,7 @@ export function buildAiSnapshot(opts) {
         const info = s.info || {};
         const rawMembers = num(info.members_count);
         // null означает «данные о подписчиках не получены», 0 — реально ноль
-        const members = rawMembers > 0 ? rawMembers : (info.members_count === undefined ? null : 0);
+        const members = (info.members_count == null) ? null : (rawMembers > 0 ? rawMembers : 0);
         const postsCount = s.postsCount || 0;
         const interactions = num(s.likes) + num(s.reposts) + num(s.comments);
         // erPost — ER по постам на подписчика (%): interactions / посты / подписчики × 100.
@@ -329,7 +329,8 @@ export function buildAiSnapshot(opts) {
         .slice(0, 10)   // 10 постов × ~500 символов — разумный баланс токен/полнота
         .map(({ i }) => {
             const p  = posts[i];
-            const d  = p.date ? new Date(p.date * 1000).toISOString().slice(0, 10) : '';
+            // Локальная дата (МСК у пользователя), а не UTC — иначе посты до 03:00 уезжают на день назад
+            const d  = p.date ? new Date(p.date * 1000).toLocaleDateString('sv-SE') : '';
             const br = p.targetInfo
                 ? (p.targetInfo.canonicalName || p.targetInfo.name || '')
                 : '';
@@ -344,12 +345,16 @@ export function buildAiSnapshot(opts) {
             };
         });
 
-    // Хэштеги
+    // Хэштеги — формула строго как на вкладке «Хэштеги» (app.js):
+    // тег от 2 символов, одно вхождение на пост, без «слово#тег» и хвостовой пунктуации
     const tagMap = new Map();
     posts.forEach(p => {
-        const tags = String(p.text || '').match(/#[^\s#]+/g) || [];
+        const seen = new Set();
+        const tags = String(p.text || '').match(/(?:^|\s)#([a-zA-Zа-яА-ЯёЁ0-9_]{2,})/g) || [];
         tags.forEach(t => {
-            const k = t.toLowerCase();
+            const k = t.trim().slice(1).toLowerCase();
+            if (seen.has(k)) return;
+            seen.add(k);
             tagMap.set(k, (tagMap.get(k) || 0) + 1);
         });
     });
@@ -365,13 +370,6 @@ export function buildAiSnapshot(opts) {
      * явный opts.branchFilter (если передан) имеет приоритет.
      */
     function resolveScope() {
-        if (opts.branchFilter) {
-            return {
-                postsSource:  'filtered',
-                branchFilter: String(opts.branchFilter),
-                note:         'Топ-посты, totalPosts и хэштеги — только по указанному филиалу; branches охватывает весь скан.'
-            };
-        }
         // Группируем посты по филиалу (targetInfo) — имена формируются так же, как в branches
         const byBranch = new Map();
         posts.forEach(p => {
@@ -383,15 +381,26 @@ export function buildAiSnapshot(opts) {
         const missing = statsWithPosts.filter(b => !byBranch.has(b.name)).length;
         const reduced = statsWithPosts.filter(b => byBranch.has(b.name) && byBranch.get(b.name) < b.posts).length;
 
+        // Нулевая выборка проверяется первой: фолбэк снапшота на полный скан
+        // при активном фильтре не должен маскироваться под «топы по филиалу»
         if (posts.length === 0) {
             if (statsWithPosts.length > 0) {
                 return {
                     postsSource:  'filtered',
-                    branchFilter: null,
-                    note:         'В текущей выборке постов 0, хотя branches содержит посты всего скана — набор постов сужен фильтром.'
+                    branchFilter: opts.branchFilter ? String(opts.branchFilter) : null,
+                    note:         (opts.filterActive || opts.branchFilter)
+                        ? `Активный фильтр${opts.branchFilter ? ` («${opts.branchFilter}»)` : ''} дал 0 постов — топ-посты и хэштеги отсутствуют; branches содержат данные полного скана.`
+                        : 'В текущей выборке постов 0, хотя branches содержит посты всего скана — набор постов сужен фильтром.'
                 };
             }
             return { postsSource: 'all', branchFilter: null, note: 'Постов не найдено.' };
+        }
+        if (opts.branchFilter) {
+            return {
+                postsSource:  'filtered',
+                branchFilter: String(opts.branchFilter),
+                note:         'Топ-посты, totalPosts и хэштеги — только по указанному филиалу; branches охватывает весь скан.'
+            };
         }
         if (missing === 0 && reduced === 0) {
             return { postsSource: 'all', branchFilter: null, note: 'Посты и branches покрывают одну и ту же область — весь скан.' };
