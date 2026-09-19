@@ -59,10 +59,36 @@ body {
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
 }
-.app-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+/* Космический фон: градиент + Млечный путь + 3 слоя звёзд + туманности */
+.app-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+    background:
+        radial-gradient(ellipse 130% 80% at 50% 115%, #1b2234 0%, rgba(27, 34, 52, 0) 55%),
+        radial-gradient(ellipse 90% 65% at 80% -8%, rgba(138, 108, 255, 0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 10% 5%, rgba(56, 189, 248, 0.10) 0%, transparent 55%),
+        linear-gradient(180deg, #060918 0%, #0a0e1e 40%, #0c0f1a 72%, #10162a 100%);
+}
+.app-bg::before {
+    content: ''; position: absolute; top: 0; left: -10%; width: 120%; height: 55%;
+    transform: rotate(-13deg); filter: blur(18px);
+    background: linear-gradient(180deg, transparent 10%, rgba(138, 108, 255, 0.10) 35%,
+        rgba(56, 189, 248, 0.16) 52%, rgba(244, 114, 182, 0.08) 70%, transparent 90%);
+}
+.app-bg::after {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+        radial-gradient(circle, rgba(255, 255, 255, 0.9) 0.7px, transparent 1.5px),
+        radial-gradient(circle, rgba(199, 225, 255, 0.6) 0.9px, transparent 1.7px),
+        radial-gradient(circle, rgba(56, 189, 248, 0.55) 1.1px, transparent 2px),
+        radial-gradient(circle, rgba(244, 114, 182, 0.45) 1px, transparent 1.9px);
+    background-size: 170px 170px, 290px 290px, 420px 420px, 560px 560px;
+    background-position: 0 0, 70px 50px, 30px 130px, 120px 60px;
+    animation: starDrift 120s linear infinite;
+}
+@keyframes starDrift { to { background-position: -170px 85px, 340px -140px, -200px 190px, 90px 250px; } }
 .app-blob { position: absolute; width: 240px; height: 240px; border-radius: 50%; filter: blur(60px); }
-.blob-cyan { top: -60px; left: -60px; background: rgba(56, 189, 248, 0.10); animation: blobFlow 18s ease-in-out infinite alternate; }
-.blob-purple { bottom: -40px; right: -60px; background: rgba(138, 108, 255, 0.10); animation: blobFlow 24s ease-in-out -8s infinite alternate-reverse; }
+.blob-cyan { top: 22%; left: -80px; background: rgba(56, 189, 248, 0.12); animation: blobFlow 18s ease-in-out infinite alternate; }
+.blob-purple { bottom: 18%; right: -80px; background: rgba(138, 108, 255, 0.12); animation: blobFlow 24s ease-in-out -8s infinite alternate-reverse; }
 @keyframes blobFlow { to { transform: translate(40px, 30px) scale(1.15); } }
 
 button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
@@ -113,18 +139,23 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* ── Быстрые действия ── */
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .quick-tile {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-    text-align: left; padding: 12px;
-    background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    text-align: left; padding: 14px;
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, transparent 45%) padding-box,
+        var(--surface) padding-box;
+    border: 1px solid var(--hairline); border-radius: var(--radius-lg);
     box-shadow: var(--elev-1);
-    transition: transform 120ms var(--ease-spring), background 200ms ease;
+    transition: transform 120ms var(--ease-spring), border-color 200ms ease, box-shadow 200ms ease;
 }
+.quick-tile:hover { border-color: rgba(56, 189, 248, 0.45); box-shadow: var(--elev-2), 0 0 18px rgba(56, 189, 248, 0.12); }
 .quick-tile:active { transform: scale(0.96); }
 .quick-ico {
-    width: 44px; height: 44px; border-radius: var(--radius-md);
+    width: 46px; height: 46px; border-radius: 14px;
     display: grid; place-items: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 4px 12px rgba(3, 6, 16, 0.3);
 }
-.quick-ico .material-symbols-rounded { font-size: 24px; }
+.quick-ico .material-symbols-rounded { font-size: 26px; font-variation-settings: 'FILL' 1; }
 .ico-cyan { background: var(--accent-soft); color: var(--aurora-cyan); }
 .ico-pink { background: rgba(244, 114, 182, 0.14); color: var(--aurora-pink); }
 .ico-gold { background: rgba(251, 191, 36, 0.14); color: var(--aurora-gold); }

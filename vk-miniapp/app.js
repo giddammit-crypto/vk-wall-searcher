@@ -7,13 +7,16 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Внутри VK десктоп-iframe контент отдаётся через прокси-домен VK
+// (prod-appXXX-pages-vk-apps.com) — все запросы к API только абсолютными URL
+const BASE = location.hostname === 'biblioteka33.ru' ? '' : 'https://biblioteka33.ru';
 const API = {
-    opac: '/api/opac.php',
-    chat: '/api/ai-proxy.php',
-    ino: '/api/inoagent.php',
-    miniapp: '/api/miniapp.php',
-    vkproxy: '/api/vk-proxy.php',
-    mascot: '/assets/images/mascot',
+    opac: BASE + '/api/opac.php',
+    chat: BASE + '/api/ai-proxy.php',
+    ino: BASE + '/api/inoagent.php',
+    miniapp: BASE + '/api/miniapp.php',
+    vkproxy: BASE + '/api/vk-proxy.php',
+    mascot: BASE + '/assets/images/mascot',
 };
 const EMOJI = ['waving', 'idle', 'smile', 'wink', 'love', 'laugh', 'cool', 'party', 'idea', 'thinking', 'shock', 'sad', 'tired', 'sleep', 'yawn', 'angry', 'read'];
 
