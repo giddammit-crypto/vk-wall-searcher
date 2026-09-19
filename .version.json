@@ -4,5 +4,5 @@
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
   "commit_date": "2026-09-19T13:10:00+03:00",
-  "release_name": "AURORA 4.64.3 — VK Mini App: кнопка «Добавить в сообщество» (VKWebAppAddToCommunity)"
+  "release_name": "AURORA 4.64.3 — Mini App: состояния rate-limit/ошибок каталога с честными сообщениями, перехват ошибок рантайма, неблокирующий VK Bridge init"
 }

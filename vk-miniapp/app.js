@@ -3,6 +3,10 @@
    ========================================================================== */
 (() => {
 'use strict';
+// Диагностика: все ошибки рантайма собираются для аудита
+window.__appErrs = [];
+window.addEventListener('error', (e) => window.__appErrs.push(e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+window.addEventListener('unhandledrejection', (e) => window.__appErrs.push('rejection: ' + ((e.reason && e.reason.message) || e.reason)));
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -139,21 +143,23 @@ function skeletons(count = 4) {
         </div>`).join('');
 }
 
-function emptyState(kind) {
+function emptyState(kind, customText = null) {
     const map = {
         empty: ['robot_sad', 'Космо ничего не нашёл', 'Попробуй изменить запрос или фильтры — в фондах АВРОРЫ ещё тысячи книг.', 'Сбросить фильтры'],
         error: ['robot_shock', 'Связь с каталогом потеряна', 'OPAC не ответил вовремя. Попробуй ещё раз через минуту.', 'Повторить'],
+        limited: ['robot_sleep', 'Каталог отдыхает 60 секунд', 'Слишком много запросов подряд — дай OPAC передышку, потом жми «Повторить».', 'Повторить'],
     };
     const [img, title, text, btn] = map[kind] || map.empty;
     $('#catalog-results').innerHTML = `
         <div class="empty-state">
             <img src="../assets/images/mascot/${img}.png?v=4.64.2" alt="">
             <div class="empty-title">${title}</div>
-            <div class="empty-text">${text}</div>
+            <div class="empty-text">${customText ? esc(customText) : text}</div>
             <button class="btn-cta" id="empty-retry">${btn}</button>
         </div>`;
     $('#empty-retry')?.addEventListener('click', () => { opacState.page = 1; runSearch(); });
 }
+function rateLimited() { emptyState('limited'); }
 
 function coverUrl(item) {
     return `${API.opac}?action=cover&title=${encodeURIComponent(item.title || '')}&author=${encodeURIComponent(item.author || '')}`;
@@ -220,6 +226,15 @@ async function runSearch() {
         const r = await fetch(`${API.opac}?${params}`);
         const d = await r.json();
         if (seq !== searchSeq) return;
+        // Rate-limit / ошибки каталога — отдельные честные состояния
+        if (d.rate_limited || r.status === 429) {
+            rateLimited();
+            return;
+        }
+        if (d.ok === false) {
+            emptyState('error', d.error || 'Каталог временно недоступен');
+            return;
+        }
         const items = d.items || [];
         if (!items.length) { emptyState('empty'); return; }
         renderItems(items);
