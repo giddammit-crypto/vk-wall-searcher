@@ -1173,25 +1173,25 @@ export class AuroraMascot {
         } catch (e) { /* аудио недоступно */ }
 
         const BEATS = [
-            { t: 2500,   dur: 7000, sprite: 'waving',  voice: 'greet_2',      bubble: 'Салют! 👋',    sub: 'Салют! Я Космо — робот-помощник библиотечной аналитики. Вот что я умею!' },
-            { t: 9500,   dur: 7000, sprite: 'idle',    voice: null,           bubble: 'На орбите! 🛰️', sub: 'Живу в углу экрана: слежу за охватами, подмечаю тренды и подбадриваю команду.' },
-            { t: 16500,  dur: 8000, sprite: 'cool',    voice: 'post_scan_2',  bubble: 'Аудит! 🛰️',    sub: 'Сканирую стены ВКонтакте всех 16 филиалов: посты, просмотры, лайки, репосты — полный аудит охватов.' },
-            { t: 24500,  dur: 8000, sprite: 'thinking', voice: 'post_scan_7', bubble: 'Глубже! 📊',   sub: 'Считаю ER, лучшее время публикаций и нахожу посты-рекордсмены.' },
-            { t: 32500,  dur: 8000, sprite: 'party',   voice: 'post_scan_10', bubble: 'Топ-3! 🏆',    sub: 'Строю пьедестал лидеров и разбираю тройку лучших голосом Бэлы.' },
-            { t: 40500,  dur: 8000, sprite: 'smile',   voice: 'post_scan_5',  bubble: 'Голос! 🎙️',    sub: 'Да-да, это я сейчас говорю голосом Бэлы — синтез речи прямо в отчётах!' },
-            { t: 48500,  dur: 8000, sprite: 'read',    voice: null,           bubble: 'Книги! 📚',    sub: 'Найду книгу в каталоге OPAC: по названию, автору и даже инвентарному номеру.' },
-            { t: 56500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'Наличие! 🏛️',  sub: 'И скажу, в каком филиале издание стоит — хоть в Добром, хоть в Юрьевце.' },
-            { t: 64500,  dur: 8000, sprite: 'waving',  voice: null,           bubble: 'Пишу! ✍️',     sub: 'Сочиняю посты для ВКонтакте: анонсы, обзоры, викторины — под вашу аудиторию.' },
-            { t: 72500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'План! 📅',     sub: 'Составлю контент-план на неделю вперёд — со статьями и идеями постов.' },
-            { t: 80500,  dur: 8200, sprite: 'angry',   voice: null,           bubble: 'Ревизия! 💢',  sub: 'Провожу ревизию хэштегов: что работает, а что тянет охваты вниз.', gag: { t: 4200, sprite: 'shock', dur: 500 } },
-            { t: 88700,  dur: 8000, sprite: 'thinking', voice: null,          bubble: 'Диагноз! 🩺',  sub: 'Ставлю «диагноз» отстающим филиалам и подсказываю, как реанимировать охваты.' },
-            { t: 96700,  dur: 8000, sprite: 'smile',   voice: null,           bubble: 'Чат! 💬',      sub: 'Открой чат — подберу книги читателям по вкусу и отвечу на любые вопросы.' },
-            { t: 104700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Файлы! 📎',    sub: 'Прикрепи файл или ссылку — разберу текст, найду факты и подскажу улучшения.' },
-            { t: 112700, dur: 8000, sprite: 'love',    voice: 'post_scan_8',  bubble: 'Чувства! ❤️',  sub: 'Шлю стикеры-эмоции и веду лигу филиалов: очки, дивизионы, награды!' },
-            { t: 120700, dur: 8000, sprite: 'party',   voice: null,           bubble: 'Лига! 🏆',     sub: 'Рейтинг активности филиалов обновляется после каждого сканирования — участвуй!' },
-            { t: 128700, dur: 8000, sprite: 'cool',    voice: null,           bubble: 'Напомню! ⏰',  sub: 'И да: скажи, что напомнить — вовремя подниму тревогу на орбите.' },
-            { t: 136700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Финал! ⭐',    sub: 'Жми на меня в любой момент — я всегда на орбите!' },
-            { t: 144700, dur: 7000, sprite: 'waving',  voice: 'greet_1',      bubble: 'Поехали! 🚀',  sub: 'Поехали! До связи на орбите!' },
+            { t: 2500,   dur: 7000, sprite: 'waving',  voice: 'greet_2',      bubble: 'Салют! 👋',    sub: 'Салют! Я Космо — робот-помощник библиотечной аналитики. Вот что я умею!' , tts: 'assets/audio/cosmo/pres_01.ogg' },
+            { t: 9500,   dur: 7000, sprite: 'idle',    voice: null,           bubble: 'На орбите! 🛰️', sub: 'Живу в углу экрана: слежу за охватами, подмечаю тренды и подбадриваю команду.' , tts: 'assets/audio/cosmo/pres_02.ogg' },
+            { t: 16500,  dur: 8000, sprite: 'cool',    voice: 'post_scan_2',  bubble: 'Аудит! 🛰️',    sub: 'Сканирую стены ВКонтакте всех 16 филиалов: посты, просмотры, лайки, репосты — полный аудит охватов.' , tts: 'assets/audio/cosmo/pres_03.ogg' },
+            { t: 24500,  dur: 8000, sprite: 'thinking', voice: 'post_scan_7', bubble: 'Глубже! 📊',   sub: 'Считаю ER, лучшее время публикаций и нахожу посты-рекордсмены.' , tts: 'assets/audio/cosmo/pres_04.ogg' },
+            { t: 32500,  dur: 8000, sprite: 'party',   voice: 'post_scan_10', bubble: 'Топ-3! 🏆',    sub: 'Строю пьедестал лидеров и разбираю тройку лучших голосом Бэлы.' , tts: 'assets/audio/cosmo/pres_05.ogg' },
+            { t: 40500,  dur: 8000, sprite: 'smile',   voice: 'post_scan_5',  bubble: 'Голос! 🎙️',    sub: 'Да-да, это я сейчас говорю голосом Бэлы — синтез речи прямо в отчётах!' , tts: 'assets/audio/cosmo/pres_06.ogg' },
+            { t: 48500,  dur: 8000, sprite: 'read',    voice: null,           bubble: 'Книги! 📚',    sub: 'Найду книгу в каталоге OPAC: по названию, автору и даже инвентарному номеру.' , tts: 'assets/audio/cosmo/pres_07.ogg' },
+            { t: 56500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'Наличие! 🏛️',  sub: 'И скажу, в каком филиале издание стоит — хоть в Добром, хоть в Юрьевце.' , tts: 'assets/audio/cosmo/pres_08.ogg' },
+            { t: 64500,  dur: 8000, sprite: 'waving',  voice: null,           bubble: 'Пишу! ✍️',     sub: 'Сочиняю посты для ВКонтакте: анонсы, обзоры, викторины — под вашу аудиторию.' , tts: 'assets/audio/cosmo/pres_09.ogg' },
+            { t: 72500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'План! 📅',     sub: 'Составлю контент-план на неделю вперёд — со статьями и идеями постов.' , tts: 'assets/audio/cosmo/pres_10.ogg' },
+            { t: 80500,  dur: 8200, sprite: 'angry',   voice: null,           bubble: 'Ревизия! 💢',  sub: 'Провожу ревизию хэштегов: что работает, а что тянет охваты вниз.', gag: { t: 4200, sprite: 'shock', dur: 500 } , tts: 'assets/audio/cosmo/pres_11.ogg' },
+            { t: 88700,  dur: 8000, sprite: 'thinking', voice: null,          bubble: 'Диагноз! 🩺',  sub: 'Ставлю «диагноз» отстающим филиалам и подсказываю, как реанимировать охваты.' , tts: 'assets/audio/cosmo/pres_12.ogg' },
+            { t: 96700,  dur: 8000, sprite: 'smile',   voice: null,           bubble: 'Чат! 💬',      sub: 'Открой чат — подберу книги читателям по вкусу и отвечу на любые вопросы.' , tts: 'assets/audio/cosmo/pres_13.ogg' },
+            { t: 104700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Файлы! 📎',    sub: 'Прикрепи файл или ссылку — разберу текст, найду факты и подскажу улучшения.' , tts: 'assets/audio/cosmo/pres_14.ogg' },
+            { t: 112700, dur: 8000, sprite: 'love',    voice: 'post_scan_8',  bubble: 'Чувства! ❤️',  sub: 'Шлю стикеры-эмоции и веду лигу филиалов: очки, дивизионы, награды!' , tts: 'assets/audio/cosmo/pres_15.ogg' },
+            { t: 120700, dur: 8000, sprite: 'party',   voice: null,           bubble: 'Лига! 🏆',     sub: 'Рейтинг активности филиалов обновляется после каждого сканирования — участвуй!' , tts: 'assets/audio/cosmo/pres_16.ogg' },
+            { t: 128700, dur: 8000, sprite: 'cool',    voice: null,           bubble: 'Напомню! ⏰',  sub: 'И да: скажи, что напомнить — вовремя подниму тревогу на орбите.' , tts: 'assets/audio/cosmo/pres_17.ogg' },
+            { t: 136700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Финал! ⭐',    sub: 'Жми на меня в любой момент — я всегда на орбите!' , tts: 'assets/audio/cosmo/pres_18.ogg' },
+            { t: 144700, dur: 7000, sprite: 'waving',  voice: 'greet_1',      bubble: 'Поехали! 🚀',  sub: 'Поехали! До связи на орбите!' , tts: 'assets/audio/cosmo/pres_19.ogg' },
         ];
         this._stageBeats = BEATS;
         this._stageTimers = [];
@@ -1210,7 +1210,11 @@ export class AuroraMascot {
                 this.setState(beat.sprite, beat.dur);
                 this.bubbleTextEl.innerHTML = this.parseMarkdown(`## ${beat.bubble}`);
                 this.bubbleEl.classList.add('is-active');
-                if (beat.voice) this.playVoice(beat.voice, true);
+                if (beat.tts) {
+                    // Озвучка бита голосом Бэлы (ElevenLabs, прегенерация)
+                    AUDIO_CLIPS[`pres_tts_${i}`] = beat.tts;
+                    this.playVoice(`pres_tts_${i}`, true);
+                }
                 const subLine = this._stageEl.subLine;
                 subLine.textContent = beat.sub;
                 subLine.classList.remove('cosmo-sub-line');
@@ -1294,6 +1298,13 @@ export class AuroraMascot {
             this.container.classList.remove('is-on-stage', 'is-launching');
             this.container.classList.add('mascot-hidden');
             this.hideBubble(true);
+            // Демонтаж оверлея: иначе невидимый .cosmo-stage-catcher (z 100030,
+            // inset 0) навсегда перекрывает страницу — кнопки и драг умирают
+            if (this._stageWrap) {
+                this._stageWrap.remove();
+                this._stageWrap = null;
+                this._stageEl = null;
+            }
             // Сайт вернулся; маскот материализуется в родном углу
             setTimeout(() => {
                 this.container.classList.remove('mascot-hidden');

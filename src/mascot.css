@@ -166,15 +166,19 @@
 
 /* Светлая тема */
 [data-theme="light"] .mascot-bubble {
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(16, 185, 129, 0.4);
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 0 16px rgba(16, 185, 129, 0.15);
+    background:
+        linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.5) 50%, transparent 60%) padding-box,
+        linear-gradient(168deg, #ffffff 0%, #eef2fb 55%, #e2e9f5 100%) padding-box,
+        conic-gradient(from var(--bubble-hue, 0deg),
+            var(--edge-a) 0deg, var(--edge-b) 120deg, var(--edge-c) 240deg, var(--edge-a) 360deg) border-box;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 0 16px var(--edge-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -10px 20px -12px rgba(30, 41, 59, 0.18);
     color: #1e293b;
 }
 [data-theme="light"] .mascot-bubble::after {
-    background: rgba(255, 255, 255, 0.95);
-    border-right-color: rgba(16, 185, 129, 0.4);
-    border-bottom-color: rgba(16, 185, 129, 0.4);
+    background: linear-gradient(168deg, #ffffff, #e8edf8);
+    border-right-color: var(--edge-a, rgba(16, 185, 129, 0.4));
+    border-bottom-color: var(--edge-a, rgba(16, 185, 129, 0.4));
 }
 
 .mascot-bubble.is-active {
@@ -3091,6 +3095,8 @@ input.presets-search-input,
 .cosmo-chat-h2 { font-size: 1.05rem; color: #38bdf8; }
 .cosmo-chat-h3 { font-size: 0.95rem; color: #7dd3fc; }
 .cosmo-chat-h4 { font-size: 0.88rem; color: #bae6fd; }
+.cosmo-chat-h5 { font-size: 0.84rem; color: #bae6fd; }
+.cosmo-chat-h6 { font-size: 0.8rem; color: #94a3b8; }
 
 .cosmo-chat-code {
     font-family: 'JetBrains Mono', Consolas, monospace;
@@ -7697,7 +7703,7 @@ body.cosmo-stage-open .cosmo-stage-backdrop { opacity: 1; transform: scale(1); }
 
 /* Луч света и подиум с орбитальными кольцами */
 .cosmo-stage-beam {
-    position: absolute; bottom: calc(22vh - 6px); left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: calc(50vh - 205px); left: 50%; transform: translateX(-50%);
     width: 380px; height: 58vh;
     clip-path: polygon(42% 0%, 58% 0%, 100% 100%, 0% 100%);
     background: linear-gradient(180deg, rgba(56, 189, 248, 0) 0%, rgba(56, 189, 248, 0.10) 26%,
@@ -7710,7 +7716,7 @@ body.cosmo-stage-open .cosmo-stage-beam { opacity: 1; }
 @keyframes cosmoBeamShimmer { 0%, 100% { filter: blur(7px) brightness(0.75); } 50% { filter: blur(7px) brightness(1.15); } }
 
 .cosmo-stage-podium {
-    position: absolute; bottom: calc(22vh - 34px); left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: calc(50vh - 232px); left: 50%; transform: translateX(-50%);
     width: 320px; height: 46px; border-radius: 50%;
     background: radial-gradient(ellipse at 50% 42%, rgba(0, 240, 255, 0.22) 0%, rgba(138, 108, 255, 0.10) 52%, transparent 74%);
     border: 1px solid rgba(0, 240, 255, 0.38);
@@ -7738,16 +7744,22 @@ body.cosmo-stage-open .cosmo-stage-podium { opacity: 1; }
 /* Космо в центре ×2 */
 .aurora-mascot-container.is-on-stage {
     left: 50% !important;
-    bottom: 22vh !important;
-    transition: left 2.1s cubic-bezier(0.25, 1, 0.5, 1), bottom 2.1s cubic-bezier(0.25, 1, 0.5, 1);
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translate(-50%, -47%) !important;
+    align-items: center;
+    transition: left 2.1s cubic-bezier(0.25, 1, 0.5, 1), top 2.1s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .aurora-mascot-container.is-on-stage .mascot-body-wrapper {
-    width: 264px; height: 264px;
+    width: 396px; height: 396px; /* ×3 от 132px */
     transition: width 1s var(--mascot-spring-easing) 0.55s, height 1s var(--mascot-spring-easing) 0.55s;
 }
+/* Прозрачный фон: на сцене робот без собственных тени/ауры/частиц */
+.is-on-stage .mascot-shadow, .is-on-stage .mascot-aura,
+.is-on-stage .mascot-particles-layer { display: none !important; }
 .is-on-stage .mascot-bubble {
-    max-width: 520px; min-width: 300px; font-size: 1rem; padding: 16px 18px;
-    border-radius: 22px; margin-bottom: 30px;
+    max-width: 640px; min-width: 320px; font-size: 1.05rem; padding: 18px 22px;
+    border-radius: 22px; margin-bottom: 38px;
 }
 .is-on-stage .mascot-bubble::after { left: 50%; margin-left: -7px; }
 .is-on-stage .mascot-ai-chip-row, .is-on-stage .mascot-ai-input-wrap { display: none; }
@@ -7817,9 +7829,14 @@ body.cosmo-stage-open .cosmo-stage-progress { opacity: 1; }
     color: rgba(203, 213, 225, 0.55); animation: cosmoSkipPulse 2.6s ease-in-out infinite;
 }
 @keyframes cosmoSkipPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
-.cosmo-stage-catcher {
-    position: fixed; inset: 0; z-index: 100030; cursor: pointer; background: transparent;
-}
+/* Перехватчик кликов активен ТОЛЬКО пока сцена открыта — иначе
+   невидимый слой навсегда блокирует кнопки и перетаскивание Космо */
+.cosmo-stage-catcher { position: fixed; inset: 0; z-index: 100030; background: transparent; pointer-events: none; }
+body.cosmo-stage-open .cosmo-stage-catcher { pointer-events: auto; cursor: pointer; }
+
+/* Неинтерактивные слои сцены никогда не ловят клики */
+.cosmo-stage-subtitles, .cosmo-stage-progress, .cosmo-stage-skip,
+.cosmo-stage-beam, .cosmo-stage-podium, .cosmo-stage-backdrop { pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
     .cosmo-stage-stars, .cosmo-stage-beam, .cosmo-stage-ring, .cosmo-stage-skip,
