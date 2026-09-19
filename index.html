@@ -219,7 +219,7 @@
     <link rel="stylesheet" href="src/warp_hud.css?v=4.25.4">
     <link rel="stylesheet" href="src/cosmonaut_ring.css?v=4.25.4">
     <link rel="stylesheet" href="src/space_cinematic.css?v=4.25.4">
-    <link rel="stylesheet" href="src/mascot.css?v=4.61.0">
+    <link rel="stylesheet" href="src/mascot.css?v=4.62.3">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/opac_search.css?v=4.61.0">
     <link rel="stylesheet" href="src/inoagent.css?v=4.62.1">
@@ -260,7 +260,7 @@
         try {
             const p = new URLSearchParams(window.location.search);
             if (p.get('mode') === 'shelf_recommend') {
-                import('./src/cosmo_chat.js?v=4.62.2').then(({ CosmoChatModal }) => {
+                import('./src/cosmo_chat.js?v=4.62.3').then(({ CosmoChatModal }) => {
                     const genre = p.get('genre') || 'universal';
                     const branch = p.get('branch') || 'cgb';
                     window.__shelfCosmoChat = new CosmoChatModal({ mascot: null });

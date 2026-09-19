@@ -3109,6 +3109,46 @@ input.presets-search-input,
     background: rgba(0, 240, 255, 0.04);
 }
 
+/* Ячейки: безопасный перенос длинных последовательностей (тиры, URL, числа) */
+.cosmo-chat-table th,
+.cosmo-chat-table td {
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+/* Вложенные списки внутри <li> */
+.cosmo-chat-ul ul {
+    margin: 6px 0 2px 4px;
+    padding-left: 18px;
+    opacity: 0.95;
+}
+
+/* Вложенный список под элементом нумерованного списка (div-структура) */
+.cosmo-chat-ol-nested {
+    margin: 4px 0 2px 26px;
+}
+.cosmo-chat-ol-nested .cosmo-chat-ul {
+    margin: 2px 0;
+}
+
+/* Изображения в ответах Космо */
+.cosmo-chat-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin: 6px 0;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+/* Сноски [^1] */
+.cosmo-chat-footnote {
+    color: #7dd3fc;
+    font-size: 0.72em;
+    font-weight: 600;
+    vertical-align: super;
+    line-height: 0;
+}
+
 .cosmo-chat-quote {
     margin: 10px 0;
     padding: 10px 16px;

@@ -63,19 +63,40 @@ function aiFetchSignal(ms) {
  * Инлайн-разметка Markdown: жирный, курсив, зачёркнутый, спойлеры, код, ссылки, выделения
  */
 function mdInline(s) {
-    // Инлайн-код
-    s = s.replace(/`([^`\n]+)`/g, '<code class="cosmo-chat-code">$1</code>');
+    // Инлайн-код вынимаем из обработки плейсхолдерами: экранирования и акценты
+    // не должны трогать содержимое кода
+    const codeSpans = [];
+    s = s.replace(/`([^`\n]+)`/g, (m, code) => {
+        codeSpans.push('<code class="cosmo-chat-code">' + code + '</code>');
+        return '\uE000' + (codeSpans.length - 1) + '\uE001';
+    });
+    // Backslash-escape \* \_ \~ — прячем до акцентов, чтобы «литература\* и сноска\*»
+    // не открыл курсив
+    const escapes = [];
+    s = s.replace(/\\([*_~])/g, (m, ch) => {
+        escapes.push(ch);
+        return '\uE002' + (escapes.length - 1) + '\uE003';
+    });
     // Спойлеры ||скрытый текст||
     s = s.replace(/\|\|([^|\n]+)\|\|/g, '<span class="cosmo-chat-spoiler" title="Нажмите, чтобы показать">$1</span>');
     // Зачёркнутый текст ~~текст~~
     s = s.replace(/~~([^~\n]+)~~/g, '<del class="cosmo-chat-del">$1</del>');
-    // Клавиши клавиатуры <kbd>Ctrl</kbd>
-    s = s.replace(/<kbd>([^<]+)<\/kbd>/gi, '<kbd class="cosmo-chat-kbd">$1</kbd>');
+    // Клавиши клавиатуры: после escapeHtml теги приходят как &lt;kbd&gt;...&lt;/kbd&gt;
+    // (нежадный поиск — иначе пара <kbd>Ctrl</kbd>+<kbd>Enter</kbd> склеивается в один)
+    s = s.replace(/&lt;kbd&gt;([\s\S]+?)&lt;\/kbd&gt;/gi, '<kbd class="cosmo-chat-kbd">$1</kbd>');
+    // Изображения ![alt](url) — до ссылок, иначе «!» остаётся снаружи
+    s = s.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<img src="$2" alt="$1" loading="lazy" class="cosmo-chat-img" />');
     // Ссылки
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer" class="cosmo-chat-link">$1</a>');
+    // Автоссылки в угловых скобках <https://...> (после escapeHtml — &lt;...&gt;)
+    s = s.replace(/&lt;(https?:\/\/[^\s<]+)&gt;/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" class="cosmo-chat-link">$1</a>');
     s = s.replace(/(^|[\s(])((?:https?:\/\/)[^\s<]+)/g,
         '$1<a href="$2" target="_blank" rel="noopener noreferrer" class="cosmo-chat-link">$2</a>');
+    // Сноски [^1] → надстрочный маркер
+    s = s.replace(/\[\^(\d{1,3})\]/g, '<sup class="cosmo-chat-footnote">[$1]</sup>');
     // Акценты
     s = s.replace(/\*\*\*([^*\n]+)\*\*\*/g, '<strong><em>$1</em></strong>');
     s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
@@ -85,6 +106,9 @@ function mdInline(s) {
     // Подсветка цифр внутри жирного текста
     s = s.replace(/<strong>([^<]*)<\/strong>/g, (m, inner) =>
         '<strong>' + inner.replace(/(\d[\d\s.,%₽руб]*)/g, '<span class="cosmo-chat-num">$1</span>') + '</strong>');
+    // Восстанавливаем экранирования и код
+    s = s.replace(/\uE002(\d+)\uE003/g, (m, i) => escapes[+i]);
+    s = s.replace(/\uE000(\d+)\uE001/g, (m, i) => codeSpans[+i]);
     // Эмодзи-аватарки Космо (32×32px) — можно вставлять в ответы через шорткоды
     const COSMO_EMOJI = {
         ':cosmo_smile:':   'assets/images/mascot/robot_smile.png',
@@ -120,11 +144,10 @@ export function parseCosmoMarkdown(text) {
     const lines = src.split('\n');
     const out = [];
     let para = [];
-    let list = null; // {type: 'ul'|'ol', items: [], startFrom: 1}
+    let list = null; // {items: [{text:[], level, type:'ul'|'ol', num, task}]}
     let code = null; // {lang: '', lines: []}
     let table = [];  // [rows][cells]
     let quote = [];
-    let olCounter = 0;
 
     const flushPara = () => {
         if (para.length) {
@@ -134,32 +157,51 @@ export function parseCosmoMarkdown(text) {
     };
 
     const flushList = () => {
-        if (list) {
-            if (list.type === 'ol') {
-                out.push('<div class="cosmo-chat-ol">' +
-                    list.items.map((it, idx) => {
-                        const n = (list.startFrom || 1) + idx;
-                        return '<div class="cosmo-chat-ol-item"><span class="cosmo-chat-ol-num">' + n + '</span>'
-                            + '<span class="cosmo-chat-ol-text">' + mdInline(it.join('<br>')) + '</span></div>';
-                    }).join('') +
-                    '</div>');
-            } else {
-                out.push('<ul class="cosmo-chat-ul">' +
-                    list.items.map(it => {
-                        const itemText = it.join('<br>');
-                        const taskMatch = itemText.match(/^\[([ xX])\]\s+(.*)$/);
-                        if (taskMatch) {
-                            const isChecked = taskMatch[1].toLowerCase() === 'x';
-                            return `<li class="cosmo-task-item ${isChecked ? 'is-checked' : ''}">` +
-                                `<input type="checkbox" ${isChecked ? 'checked' : ''} disabled class="cosmo-task-check" /> ` +
-                                `<span class="cosmo-task-label">${mdInline(taskMatch[2])}</span></li>`;
+        if (list && list.items.length) {
+            // Рендер цепочки элементов одного уровня: последовательные элементы
+            // того же уровня и типа склеиваются в один список, более глубокие
+            // отступы уходят во вложенные списки (внутри <li> / после элемента ol)
+            const renderRun = (idx, level) => {
+                let html = '';
+                let i = idx;
+                while (i < list.items.length && list.items[i].level >= level) {
+                    const isOl = list.items[i].type === 'ol';
+                    let inner = '';
+                    let expected = (list.items[i].num) || 1;
+                    while (i < list.items.length
+                        && list.items[i].level >= level
+                        && (list.items[i].type === 'ol') === isOl) {
+                        const cur = list.items[i];
+                        let nested = '';
+                        if (i + 1 < list.items.length && list.items[i + 1].level > level) {
+                            const sub = renderRun(i + 1, list.items[i + 1].level);
+                            nested = sub.html;
+                            i = sub.idx;
+                        } else {
+                            i++;
                         }
-                        return '<li>' + mdInline(itemText) + '</li>';
-                    }).join('') +
-                    '</ul>');
-            }
-            list = null;
+                        if (isOl) {
+                            inner += '<div class="cosmo-chat-ol-item"><span class="cosmo-chat-ol-num">'
+                                + (cur.num || expected) + '</span>'
+                                + '<span class="cosmo-chat-ol-text">' + mdInline(cur.text.join('<br>')) + '</span></div>'
+                                + (nested ? '<div class="cosmo-chat-ol-nested">' + nested + '</div>' : '');
+                            expected = (cur.num || expected) + 1;
+                        } else if (cur.task) {
+                            inner += `<li class="cosmo-task-item ${cur.task.checked ? 'is-checked' : ''}">`
+                                + `<input type="checkbox" ${cur.task.checked ? 'checked' : ''} disabled class="cosmo-task-check" /> `
+                                + `<span class="cosmo-task-label">${mdInline(cur.task.label)}</span>${nested}</li>`;
+                        } else {
+                            inner += '<li>' + mdInline(cur.text.join('<br>')) + nested + '</li>';
+                        }
+                    }
+                    html += isOl ? '<div class="cosmo-chat-ol">' + inner + '</div>'
+                                 : '<ul class="cosmo-chat-ul">' + inner + '</ul>';
+                }
+                return { html, idx: i };
+            };
+            out.push(renderRun(0, list.items[0].level).html);
         }
+        list = null;
     };
 
     const flushCode = () => {
@@ -184,6 +226,13 @@ export function parseCosmoMarkdown(text) {
 
     const flushTable = () => {
         if (table.length) {
+            // Декоративные заполнители от ИИ («— — — —», «———») в ячейках
+            // нормализуем к одиночному тире «нет данных»
+            const cleanCell = (c) => {
+                const s = c.trim();
+                if (/^[\u2014\u2013-][\s\u2014\u2013-]*$/.test(s) && (s.match(/[\u2014\u2013-]/g) || []).length >= 3) return '—';
+                return s;
+            };
             let alignments = [];
             let dataRows = [];
             let headerRow = null;
@@ -209,13 +258,13 @@ export function parseCosmoMarkdown(text) {
                 let t = '<div class="cosmo-chat-table-wrap"><table class="cosmo-chat-table"><thead><tr>';
                 t += headerRow.map((c, i) => {
                     const al = alignments[i] ? ` align-${alignments[i]}` : '';
-                    return `<th class="${al}">${mdInline(c.trim())}</th>`;
+                    return `<th class="${al}">${mdInline(cleanCell(c))}</th>`;
                 }).join('') + '</tr></thead>';
                 if (dataRows.length) {
                     t += '<tbody>' + dataRows.map(r =>
                         '<tr>' + headerRow.map((_, i) => {
                             const al = alignments[i] ? ` align-${alignments[i]}` : '';
-                            return `<td class="${al}">${mdInline((r[i] || '').trim())}</td>`;
+                            return `<td class="${al}">${mdInline(cleanCell(r[i] || ''))}</td>`;
                         }).join('') + '</tr>'
                     ).join('') + '</tbody>';
                 }
@@ -272,7 +321,6 @@ export function parseCosmoMarkdown(text) {
         flushCode();
         flushTable();
         flushQuote();
-        olCounter = 0;
     };
 
     for (const raw of lines) {
@@ -294,14 +342,27 @@ export function parseCosmoMarkdown(text) {
             continue;
         }
 
-        // Пустая строка разделяет блоки
+        // Пустая строка разделяет блоки (кроме списков: «свободные» списки
+        // с пустыми строками между элементами склеиваются, как в стандарте MD)
         if (t === '') {
-            flushAll();
+            flushPara();
+            flushCode();
+            flushTable();
+            flushQuote();
             continue;
         }
 
-        // Горизонтальный разделитель ---
-        if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) {
+        // Разделитель таблицы без ведущего пайпа: «--- | ---» (частый глюк ИИ)
+        if (table.length && t.includes('|') && /^:?-{2,}:?(?:\s*\|\s*:?-{2,}:?)*\|?$/.test(t)) {
+            flushPara();
+            flushList();
+            flushQuote();
+            table.push(t.split(/(?<!\\)\|/).map(c => c.replace(/\\\|/g, '|')));
+            continue;
+        }
+
+        // Горизонтальный разделитель: ---, ***, ___, ———, - - -, * * *
+        if (/^(?:-{3,}|\*{3,}|_{3,}|\u2014{3,}|(?:[-*_\u2014][\s]*){3,})$/.test(t)) {
             flushAll();
             out.push('<hr class="cosmo-chat-hr">');
             continue;
@@ -326,8 +387,9 @@ export function parseCosmoMarkdown(text) {
         }
 
         // Таблицы | a | b | — допускаем строку без замыкающей вертикали (частый
-        // глюк ответов ИИ) и корректно режем экранированные \| внутри ячеек
-        if (/^\|.+/.test(t)) {
+        // глюк ответов ИИ) и корректно режем экранированные \| внутри ячеек.
+        // Спойлер-строка ||текст|| таблицей НЕ является
+        if (/^\|.+/.test(t) && !/^\|\|[^|]+\|\|$/.test(t)) {
             flushPara();
             flushList();
             flushQuote();
@@ -337,27 +399,28 @@ export function parseCosmoMarkdown(text) {
             continue;
         }
 
-        // Списки (маркированные или нумерованные)
+        // Списки (маркированные или нумерованные), вложенность — по отступу:
+        // каждые 2 пробела (или 1 таб) — новый уровень, максимум 3 уровня
+        const rawIndent = (raw.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '  ').length;
         const ul = t.match(/^[-*•]\s+(.+)$/);
         const ol = t.match(/^(\d{1,2})[.)]\s+(.+)$/);
         if (ul || ol) {
             flushPara();
             flushQuote();
             flushTable();
-            if (ol) {
-                if (list && list.type === 'ul') flushList();
-                olCounter++;
-                if (!list || list.type !== 'ol') {
-                    list = { type: 'ol', items: [], startFrom: olCounter };
-                }
-                list.items.push([ol[2]]);
-            } else {
-                if (list && list.type === 'ol') flushList();
-                if (!list || list.type !== 'ul') {
-                    list = { type: 'ul', items: [] };
-                }
-                list.items.push([ul[1]]);
+            if (!list) list = { items: [] };
+            const item = {
+                text: [(ul ? ul[1] : ol[2])],
+                level: Math.min(3, Math.floor(rawIndent / 2)),
+                type: ol ? 'ol' : 'ul',
+                num: ol ? parseInt(ol[1], 10) : null,
+                task: null,
+            };
+            const taskMatch = ul && ul[1].match(/^\[([ xX])\]\s+(.*)$/);
+            if (taskMatch) {
+                item.task = { checked: taskMatch[1].toLowerCase() === 'x', label: taskMatch[2] };
             }
+            list.items.push(item);
             continue;
         }
 
@@ -3002,6 +3065,7 @@ ${statsContext}
 ПРАВИЛА ФОРМАТА ОТВЕТА:
 - Используй красивую структуру Markdown: таблицы (| Заголовок | Данные |), нумерованные списки, выделения **жирным**, курсив, цитаты > и горизонтальные разделители ---.
 - Таблицы всегда с выравниванием: | Колонка | Значение |\\n|---|---|
+- ГИГИЕНА ТАБЛИЦ (критично!): каждая строка таблицы — ОДНА строка текста, начинай её с «|» и заканчивай «|»; никаких переносов внутри ячеек. Для отсутствующих данных ставь одиночное тире «—» — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО заполнять ячейки последовательностями тире («———», «— — — —») или звёздочками («*»); вместо «*» пиши «—» или «н/д». Жирный выделяй сбалансированными парами **текст** — никогда не оставляй одиночные «**» или «*» в ячейках.
 - Для аналитики: ВСЕГДА начинай с краткой **сводки** (1–2 предложения), затем детали.
 - Для постов: ВСЕГДА предоставляй **готовый текст поста** (не шаблон, а конкретный пост), затем краткие пояснения.
 - Длина ответа: средний ответ 200–500 слов. Если пользователь просит краткость — 2–3 абзаца. Если просит детальный анализ — до 800 слов с таблицей.
