@@ -868,10 +868,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Если скрипт вызывается напрямую веб-сервером или curl
-$isCliDirect = (php_sapi_name() === 'cli' && isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__));
-$isWeb = (php_sapi_name() !== 'cli');
+// Если скрипт вызывается напрямую веб-сервером или в CLI (а не через require_once из другого скрипта)
+$isDirect = (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__));
 
-if ($isWeb || $isCliDirect) {
+if ($isDirect) {
     inoagent_handle_request();
 }
