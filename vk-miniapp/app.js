@@ -873,12 +873,6 @@ function initCatalog() {
         haptic('light');
         runSearch();
     });
-    $('#only-available')?.addEventListener('change', (e) => {
-        opacState.onlyAvailable = e.target.checked;
-        opacState.page = 1;
-        haptic('selection');
-        runSearch();
-    });
     $('#opac-prev')?.addEventListener('click', () => {
         if (opacState.page > 1) {
             opacState.page--;
@@ -1501,6 +1495,50 @@ function buildNewsBranchChips(branches) {
     });
 }
 
+/* ==========================================================================
+   УМНОЕ ФОРМАТИРОВАНИЕ И НАДЕЖНАЯ НАВИГАЦИЯ ДЛЯ ЛЕНТЫ НОВОСТЕЙ
+   ========================================================================== */
+
+function formatNewsDate(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Сегодня в ${time}`;
+    if (isYesterday) return `Вчера в ${time}`;
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ` в ${time}`;
+}
+
+function getBranchBadgeClass(code) {
+    const c = (code || '').toUpperCase();
+    if (c.includes('ЦГБ')) return 'badge-cgb';
+    if (c.includes('ЦДБ')) return 'badge-cdb';
+    return 'badge-branch';
+}
+
+function formatNewsContent(rawText) {
+    if (!rawText) return '';
+    let text = esc(rawText);
+
+    // Преобразование упоминаний VK: [club123|Название] -> ссылка
+    text = text.replace(/\[(club|id|public)(\d+)\|([^\]]+)\]/g, (m, type, id, title) => {
+        return `<a href="https://vk.com/${type}${id}" target="_blank" rel="noopener noreferrer" class="news-mention">@${title}</a>`;
+    });
+
+    // Преобразование хэштегов: #слово -> интерактивный тег-чип
+    text = text.replace(/(^|\s)(#[a-zA-Zа-яА-ЯёЁ0-9_]+)/g, (m, space, tag) => {
+        return `${space}<button type="button" class="news-hashtag" data-tag="${tag}">${tag}</button>`;
+    });
+
+    return text;
+}
+
 function renderNewsFeed(posts) {
     const container = $('#news-results');
     if (!container) return;
@@ -1519,79 +1557,145 @@ function renderNewsFeed(posts) {
         const b = p.branch || {};
         const bName = b.name || 'Филиал ЦГБ';
         const bCode = b.code || 'ЦГБ';
-        const timeStr = p.date ? new Date(p.date * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+        const branchBadgeClass = getBranchBadgeClass(bCode);
+        const timeStr = formatNewsDate(p.date);
         const postUrl = `https://vk.com/wall${p.owner_id}_${p.id}`;
         const rawText = p.text || '';
-        const isLong = rawText.length > 280;
-        const shortText = isLong ? rawText.slice(0, 260) + '…' : rawText;
+        const formattedFull = formatNewsContent(rawText);
+        const isLong = rawText.length > 260;
 
-        const photoHtml = p.photo
-            ? `<div class="news-card-photo-wrap"><img class="news-card-photo" src="${esc(p.photo)}" alt="" loading="lazy"></div>`
-            : '';
-
-        return `
-        <article class="news-card" data-idx="${idx}">
-            <div class="news-card-header">
-                <div class="news-card-branch">
-                    <span class="material-symbols-rounded">account_balance</span>
-                    <span>${esc(bName)}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px">
-                    <span class="news-card-code">${esc(bCode)}</span>
-                    ${timeStr ? `<span class="news-card-time"><span class="material-symbols-rounded">schedule</span>${esc(timeStr)}</span>` : ''}
+        // Медиа-контейнер с адаптивным фоновым размытием (Ambient Blur Backdrop)
+        const photoHtml = p.photo ? `
+            <div class="news-media-wrap" data-photo-src="${esc(p.photo)}" data-post-url="${esc(postUrl)}">
+                <img class="news-media-backdrop" src="${esc(p.photo)}" alt="" aria-hidden="true" loading="lazy">
+                <div class="news-media-scrim"></div>
+                <img class="news-media-img" src="${esc(p.photo)}" alt="Иллюстрация к новости" loading="lazy">
+                <div class="news-media-badge" title="Открыть фото на весь экран">
+                    <span class="material-symbols-rounded">zoom_in</span>
                 </div>
             </div>
+        ` : '';
+
+        return `
+        <article class="news-card" data-idx="${idx}" data-url="${esc(postUrl)}">
+            <header class="news-card-header">
+                <a href="${esc(b.vk || postUrl)}" target="_blank" rel="noopener noreferrer" class="news-card-branch" title="Открыть группу ВКонтакте">
+                    <span class="news-branch-avatar">
+                        <span class="material-symbols-rounded">account_balance</span>
+                    </span>
+                    <span class="news-branch-name">${esc(bName)}</span>
+                </a>
+                <div class="news-card-meta">
+                    <span class="news-badge ${branchBadgeClass}">${esc(bCode)}</span>
+                    ${timeStr ? `
+                        <time class="news-card-time" datetime="${new Date(p.date * 1000).toISOString()}">
+                            <span class="material-symbols-rounded">schedule</span>
+                            <span>${esc(timeStr)}</span>
+                        </time>` : ''}
+                </div>
+            </header>
 
             ${photoHtml}
 
-            <div class="news-card-text" id="news-text-${idx}">${esc(shortText)}</div>
-            ${isLong ? `<button class="news-card-toggle" data-full-text="${esc(rawText)}" data-idx="${idx}">Читать полностью</button>` : ''}
+            <div class="news-card-body ${isLong ? 'is-clamped' : ''}" id="news-body-${idx}">
+                <div class="news-card-text">${formattedFull}</div>
+            </div>
+            
+            ${isLong ? `
+                <button type="button" class="news-toggle-btn" data-idx="${idx}">
+                    <span class="news-toggle-text">Читать полностью</span>
+                    <span class="material-symbols-rounded">expand_more</span>
+                </button>
+            ` : ''}
 
-            <div class="news-card-actions">
-                <button class="news-btn news-btn-primary" data-open-vk="${esc(postUrl)}">
+            <footer class="news-card-actions">
+                <a href="${esc(postUrl)}" target="_blank" rel="noopener noreferrer" class="news-btn news-btn-vk" title="Открыть публикацию ВКонтакте">
                     <span class="material-symbols-rounded">open_in_new</span>
                     <span>ВКонтакте</span>
-                </button>
-                <button class="news-btn" data-ask-cosmo="${esc(bName)}" data-snippet="${esc(rawText.slice(0, 150))}">
-                    <span class="material-symbols-rounded">chat_info</span>
+                </a>
+                
+                <button type="button" class="news-btn news-btn-cosmo" data-ask-cosmo="${esc(bName)}" data-snippet="${esc(rawText.slice(0, 150))}">
+                    <span class="material-symbols-rounded">auto_awesome</span>
                     <span>Спросить Космо</span>
                 </button>
-                <button class="news-btn" data-share-post="${esc(postUrl)}" data-title="${esc(bName)}">
+                
+                <button type="button" class="news-btn news-btn-share" data-share-post="${esc(postUrl)}" data-title="${esc(bName)}">
                     <span class="material-symbols-rounded">share</span>
                     <span>Поделиться</span>
                 </button>
-            </div>
+            </footer>
         </article>`;
     }).join('');
 
-    // Слушатели разворачивания текста
-    container.querySelectorAll('.news-card-toggle').forEach(btn => {
+    // Сворачивание / разворачивание текста
+    container.querySelectorAll('.news-toggle-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const idx = btn.dataset.idx;
-            const fullText = btn.dataset.fullText;
-            const textEl = document.getElementById(`news-text-${idx}`);
-            if (textEl && fullText) {
-                textEl.textContent = fullText;
-                btn.remove();
-                syncWindowSize();
+            const body = document.getElementById(`news-body-${idx}`);
+            const textSpan = btn.querySelector('.news-toggle-text');
+            const iconSpan = btn.querySelector('.material-symbols-rounded');
+            
+            if (!body) return;
+            const isClamped = body.classList.contains('is-clamped');
+            if (isClamped) {
+                body.classList.remove('is-clamped');
+                if (textSpan) textSpan.textContent = 'Свернуть';
+                if (iconSpan) iconSpan.textContent = 'expand_less';
+            } else {
+                body.classList.add('is-clamped');
+                if (textSpan) textSpan.textContent = 'Читать полностью';
+                if (iconSpan) iconSpan.textContent = 'expand_more';
             }
+            haptic('selection');
+            syncWindowSize();
         });
     });
 
-    // Слушатели кнопок ВКонтакте
-    container.querySelectorAll('[data-open-vk]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const url = btn.dataset.openVk;
+    // Нажатие на кнопку «ВКонтакте» (нативная ссылка работает сама, также шлем VKWebAppOpenUrl)
+    container.querySelectorAll('.news-btn-vk').forEach(a => {
+        a.addEventListener('click', () => {
             haptic('medium');
             if (window.vkBridge) {
-                bridge('VKWebAppOpenUrl', { url }).catch(() => window.open(url, '_blank'));
-            } else {
-                window.open(url, '_blank');
+                window.vkBridge.send('VKWebAppOpenUrl', { url: a.href }).catch(() => {});
             }
         });
     });
 
-    // Слушатели «Спросить Космо»
+    // Клик по хэштегам: быстрая фильтрация ленты
+    container.querySelectorAll('.news-hashtag').forEach(tagBtn => {
+        tagBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const tag = tagBtn.dataset.tag;
+            const queryInput = $('#news-query');
+            if (queryInput) {
+                queryInput.value = tag;
+                newsState.query = tag;
+                $('#news-clear')?.classList.remove('hidden');
+                haptic('light');
+                loadBranchNews();
+            }
+        });
+    });
+
+    // Просмотр фото на весь экран (VKWebAppShowImages или открытие фото в новой вкладке)
+    container.querySelectorAll('.news-media-wrap').forEach(wrap => {
+        wrap.addEventListener('click', async () => {
+            const photoSrc = wrap.dataset.photoSrc;
+            const postUrl = wrap.dataset.postUrl;
+            haptic('light');
+
+            if (window.vkBridge) {
+                try {
+                    const res = await window.vkBridge.send('VKWebAppShowImages', { images: [photoSrc] });
+                    if (res) return;
+                } catch (e) {}
+            }
+            window.open(photoSrc || postUrl, '_blank', 'noopener,noreferrer');
+        });
+    });
+
+    // Кнопка «Спросить Космо»
     container.querySelectorAll('[data-ask-cosmo]').forEach(btn => {
         btn.addEventListener('click', () => {
             const bName = btn.dataset.askCosmo;
@@ -1602,15 +1706,17 @@ function renderNewsFeed(posts) {
         });
     });
 
-    // Слушатели «Поделиться»
+    // Кнопка «Поделиться»
     container.querySelectorAll('[data-share-post]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const url = btn.dataset.sharePost;
             haptic('light');
             let shared = false;
             if (window.vkBridge) {
-                const res = await bridge('VKWebAppShare', { link: url });
-                if (res) shared = true;
+                try {
+                    const res = await window.vkBridge.send('VKWebAppShare', { link: url });
+                    if (res) shared = true;
+                } catch (e) {}
             }
             if (!shared) {
                 copyText(url);
@@ -1640,7 +1746,7 @@ async function loadHomeNewsPreview() {
         const top3 = d.posts.slice(0, 3);
         box.innerHTML = top3.map(p => {
             const b = p.branch || {};
-            const timeStr = p.date ? new Date(p.date * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+            const timeStr = formatNewsDate(p.date);
             return `
             <div class="home-news-item" data-goto="news">
                 <div class="home-news-header">
