@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.64.2",
+  "version": "4.65.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-19T12:20:00+03:00",
-  "release_name": "AURORA 4.64.2 — Окончательный фикс таблиц в чате: JSON-протокол ```table (валидный JSON → гарантированно ровная таблица), md-таблицы как fallback, санитизация \\ и пустых ячеек, отброс мусорных строк, реконструкция разорванных строк"
+  "commit_date": "2026-09-19T13:10:00+03:00",
+  "release_name": "AURORA 4.65.0 — VK Mini App «Космо»: мобильное приложение по функционалу бота (каталог OPAC с наличием по филиалам, чат с ИИ, проверка 255-ФЗ, книга дня), VK Bridge, новые стикеры, стильное тёмное/светлое оформление; allowlist VK-iframe в ai-proxy/tts-proxy"
 }

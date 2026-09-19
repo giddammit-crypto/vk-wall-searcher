@@ -67,8 +67,12 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
     $selfHost   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
     $localHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
     $isLocal = in_array($originHost, $localHosts, true) || in_array($selfHost, $localHosts, true);
-    if ($originHost && $selfHost && strcasecmp($originHost, (string)$selfHost) !== 0 && !$isLocal) {
-        tts_error('Запросы со сторонних доменов запрещены.', 403);
+        if ($originHost && $selfHost && strcasecmp($originHost, (string)$selfHost) !== 0 && !$isLocal) {
+        // VK Mini App: iframe приложения живёт на доменах VK — разрешаем их
+        $isVkOrigin = (bool)preg_match('/(\.|^)(vk-apps\.com|vk\.com|vk-portal\.net|userapi\.com)$/i', (string)$originHost);
+        if (!$isVkOrigin) {
+            ai_error('Запросы со сторонних доменов запрещены.', 403);
+        }
     }
 }
 
