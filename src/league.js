@@ -886,7 +886,7 @@ export function printLeagueDiploma(entry, allEntries = []) {
             ` : ''}
 
             <div class="cosmo-quote-box">
-                <img src="assets/images/mascot/robot_smile.png" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
                 <div>
                     <strong>Слово робота-маскота Космо:</strong>
                     <p>«Ваша творческая энергия зажигает сердца читателей Владимира! Благодарим за искренний вклад в развитие культуры!»</p>

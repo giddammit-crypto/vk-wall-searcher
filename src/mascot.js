@@ -29,7 +29,7 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.23.2';
-import { CosmoChatModal } from './cosmo_chat.js?v=4.62.3';
+import { CosmoChatModal } from './cosmo_chat.js?v=4.63.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');
@@ -50,26 +50,33 @@ function aiFetchSignal(ms) {
 
 // Базовые PNG-спрайты (100% чистый PNG, Zero SVG)
 const SPRITES = {
-    idle: 'assets/images/mascot/robot_idle.png?v=4.33.0',
-    smile: 'assets/images/mascot/robot_smile.png?v=4.33.0',
-    thinking: 'assets/images/mascot/robot_thinking.png?v=4.33.0',
-    yawn: 'assets/images/mascot/robot_yawn.png?v=4.33.0',
-    tired: 'assets/images/mascot/robot_tired.png?v=4.33.0',
-    sleep: 'assets/images/mascot/robot_sleep.png?v=4.33.0',
-    angry: 'assets/images/mascot/robot_angry.png?v=4.33.0',
-    cool: 'assets/images/mascot/robot_cool.png?v=4.33.0',
-    idea: 'assets/images/mascot/robot_idea.png?v=4.33.0',
-    laugh: 'assets/images/mascot/robot_laugh.png?v=4.33.0',
-    party: 'assets/images/mascot/robot_party.png?v=4.33.0',
-    read: 'assets/images/mascot/robot_read.png?v=4.33.0',
-    shock: 'assets/images/mascot/robot_shock.png?v=4.33.0',
-    waving: 'assets/images/mascot/robot_waving.png?v=4.33.0',
-    wink: 'assets/images/mascot/robot_wink.png?v=4.33.0',
-    sad: 'assets/images/mascot/robot_sad.png?v=4.33.0',
-    love: 'assets/images/mascot/robot_love.png?v=4.33.0'
+    idle: 'assets/images/mascot/robot_idle.png?v=4.63.0',
+    smile: 'assets/images/mascot/robot_smile.png?v=4.63.0',
+    thinking: 'assets/images/mascot/robot_thinking.png?v=4.63.0',
+    yawn: 'assets/images/mascot/robot_yawn.png?v=4.63.0',
+    tired: 'assets/images/mascot/robot_tired.png?v=4.63.0',
+    sleep: 'assets/images/mascot/robot_sleep.png?v=4.63.0',
+    angry: 'assets/images/mascot/robot_angry.png?v=4.63.0',
+    cool: 'assets/images/mascot/robot_cool.png?v=4.63.0',
+    idea: 'assets/images/mascot/robot_idea.png?v=4.63.0',
+    laugh: 'assets/images/mascot/robot_laugh.png?v=4.63.0',
+    party: 'assets/images/mascot/robot_party.png?v=4.63.0',
+    read: 'assets/images/mascot/robot_read.png?v=4.63.0',
+    shock: 'assets/images/mascot/robot_shock.png?v=4.63.0',
+    waving: 'assets/images/mascot/robot_waving.png?v=4.63.0',
+    wink: 'assets/images/mascot/robot_wink.png?v=4.63.0',
+    sad: 'assets/images/mascot/robot_sad.png?v=4.63.0',
+    love: 'assets/images/mascot/robot_love.png?v=4.63.0'
 };
 
 // 49 аудиофайлов голоса Космо (Бэла, ElevenLabs + Cartoon Pitch-Shift)
+/* Иконка-чип эмоции на облачке */
+const BUBBLE_EMO = {
+    idle: '🤖', smile: '✨', wink: '😉', love: '❤️', party: '🎉', laugh: '😂',
+    cool: '😎', idea: '💡', shock: '⚡', angry: '💢', sad: '💧', tired: '💤',
+    yawn: '🥱', thinking: '🤔', waving: '👋', read: '📖', sleep: '😴'
+};
+
 const AUDIO_CLIPS = {
     // 10 реплик оценки статистики
     post_scan_1: 'assets/audio/cosmo/post_scan_1.mp3?v=4.23.2',
@@ -840,6 +847,7 @@ export class AuroraMascot {
                     <button type="button" class="mascot-bubble-close" title="Закрыть реплику" data-bubble-close>&times;</button>
                 </div>
 
+                <div class="mascot-bubble-emo" data-bubble-emo>🤖</div>
                 <div class="mascot-bubble-text" data-bubble-text>
                     <div class="mascot-md-h2">Салют! Я Космо 🚀</div>
                     Твой озорной робот-маскот и главный SMM-эксперт галактики. Показывай стену, **прокачаем охваты до небес!** ✨
@@ -927,6 +935,7 @@ export class AuroraMascot {
         this.spriteImg = container.querySelector('[data-mascot-img]');
         this.bubbleEl = container.querySelector('[data-mascot-bubble]');
         this.bubbleTextEl = container.querySelector('[data-bubble-text]');
+        this.bubbleEmoEl = container.querySelector('[data-bubble-emo]');
         this.statusTitleEl = container.querySelector('[data-mascot-title]');
         this.moodBadgeEl = container.querySelector('[data-mascot-mood-badge]');
         this.particlesLayerEl = container.querySelector('[data-mascot-particles]');
@@ -1056,6 +1065,18 @@ export class AuroraMascot {
      * ------------------------------------------------------------------- */
     playVoice(key, isUserAction = false) {
         if (this.isMuted || !AUDIO_CLIPS[key]) return;
+        // Голосовой гейт: частота ×0.5 для фоновых реплик + защита от спама.
+        // say() предварительно прогоняет ключ через shouldSpeakVoice и ставит
+        // _voiceGatePass, чтобы монетка не бросалась дважды.
+        const gatePass = this._voiceGatePass === true;
+        this._voiceGatePass = false;
+        if (!gatePass && !isUserAction && !this.shouldSpeakVoice(key, false)) return null;
+        if (gatePass || isUserAction || this.shouldSpeakVoice(key, isUserAction)) {
+            const now = Date.now();
+            this._lastVoiceAt = now;
+            const cat = String(key).replace(/_\d+$/, '');
+            (this._voiceCatAt || (this._voiceCatAt = {}))[cat] = now;
+        }
         // Защита от перебивания: если уже говорит и это фоновый вызов, не перебиваем речь!
         if (!isUserAction && this.isSpeakingAudio && this.currentAudio && !this.currentAudio.paused) {
             return;
@@ -1117,6 +1138,192 @@ export class AuroraMascot {
         }
     }
 
+    /* ---------------------------------------------------------------------
+     * ПРЕЗЕНТАЦИЯ «КОСМО РАССКАЗЫВАЕТ О СЕБЕ» (кнопка «Заставка», ~36с)
+     * ------------------------------------------------------------------- */
+    startPresentation() {
+        if (this.isInPresentation || this.isCollapsed || this.isIn3D) return;
+        this.isInPresentation = true;
+
+        // Остановить автономный цикл и текущую речь
+        clearTimeout(this.activityCycleTimer);
+        this.stopVoice(true);
+        clearTimeout(this.speechTimer);
+        this.userDismissedBubble = false;
+
+        this.buildStageDom();
+        document.body.classList.add('cosmo-stage-open');
+        this.container.classList.add('is-on-stage');
+        this.setState('waving', 0);
+
+        // Космическая эмбиент-музыка: тихий фон на всю презентацию (loop 45с)
+        try {
+            this._stageMusic = this._stageMusic || new Audio('assets/audio/cosmo/presentation_ambient.ogg');
+            this._stageMusic.loop = true;
+            this._stageMusic.volume = 0;
+            this._stageMusic.play().catch(() => {});
+            const target = 0.26;
+            const fade = setInterval(() => {
+                try {
+                    this._stageMusic.volume = Math.min(target, this._stageMusic.volume + 0.02);
+                    if (this._stageMusic.volume >= target) clearInterval(fade);
+                } catch (e) { clearInterval(fade); }
+            }, 150);
+            this._musicFade = fade;
+        } catch (e) { /* аудио недоступно */ }
+
+        const BEATS = [
+            { t: 2500,   dur: 7000, sprite: 'waving',  voice: 'greet_2',      bubble: 'Салют! 👋',    sub: 'Салют! Я Космо — робот-помощник библиотечной аналитики. Вот что я умею!' },
+            { t: 9500,   dur: 7000, sprite: 'idle',    voice: null,           bubble: 'На орбите! 🛰️', sub: 'Живу в углу экрана: слежу за охватами, подмечаю тренды и подбадриваю команду.' },
+            { t: 16500,  dur: 8000, sprite: 'cool',    voice: 'post_scan_2',  bubble: 'Аудит! 🛰️',    sub: 'Сканирую стены ВКонтакте всех 16 филиалов: посты, просмотры, лайки, репосты — полный аудит охватов.' },
+            { t: 24500,  dur: 8000, sprite: 'thinking', voice: 'post_scan_7', bubble: 'Глубже! 📊',   sub: 'Считаю ER, лучшее время публикаций и нахожу посты-рекордсмены.' },
+            { t: 32500,  dur: 8000, sprite: 'party',   voice: 'post_scan_10', bubble: 'Топ-3! 🏆',    sub: 'Строю пьедестал лидеров и разбираю тройку лучших голосом Бэлы.' },
+            { t: 40500,  dur: 8000, sprite: 'smile',   voice: 'post_scan_5',  bubble: 'Голос! 🎙️',    sub: 'Да-да, это я сейчас говорю голосом Бэлы — синтез речи прямо в отчётах!' },
+            { t: 48500,  dur: 8000, sprite: 'read',    voice: null,           bubble: 'Книги! 📚',    sub: 'Найду книгу в каталоге OPAC: по названию, автору и даже инвентарному номеру.' },
+            { t: 56500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'Наличие! 🏛️',  sub: 'И скажу, в каком филиале издание стоит — хоть в Добром, хоть в Юрьевце.' },
+            { t: 64500,  dur: 8000, sprite: 'waving',  voice: null,           bubble: 'Пишу! ✍️',     sub: 'Сочиняю посты для ВКонтакте: анонсы, обзоры, викторины — под вашу аудиторию.' },
+            { t: 72500,  dur: 8000, sprite: 'idea',    voice: null,           bubble: 'План! 📅',     sub: 'Составлю контент-план на неделю вперёд — со статьями и идеями постов.' },
+            { t: 80500,  dur: 8200, sprite: 'angry',   voice: null,           bubble: 'Ревизия! 💢',  sub: 'Провожу ревизию хэштегов: что работает, а что тянет охваты вниз.', gag: { t: 4200, sprite: 'shock', dur: 500 } },
+            { t: 88700,  dur: 8000, sprite: 'thinking', voice: null,          bubble: 'Диагноз! 🩺',  sub: 'Ставлю «диагноз» отстающим филиалам и подсказываю, как реанимировать охваты.' },
+            { t: 96700,  dur: 8000, sprite: 'smile',   voice: null,           bubble: 'Чат! 💬',      sub: 'Открой чат — подберу книги читателям по вкусу и отвечу на любые вопросы.' },
+            { t: 104700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Файлы! 📎',    sub: 'Прикрепи файл или ссылку — разберу текст, найду факты и подскажу улучшения.' },
+            { t: 112700, dur: 8000, sprite: 'love',    voice: 'post_scan_8',  bubble: 'Чувства! ❤️',  sub: 'Шлю стикеры-эмоции и веду лигу филиалов: очки, дивизионы, награды!' },
+            { t: 120700, dur: 8000, sprite: 'party',   voice: null,           bubble: 'Лига! 🏆',     sub: 'Рейтинг активности филиалов обновляется после каждого сканирования — участвуй!' },
+            { t: 128700, dur: 8000, sprite: 'cool',    voice: null,           bubble: 'Напомню! ⏰',  sub: 'И да: скажи, что напомнить — вовремя подниму тревогу на орбите.' },
+            { t: 136700, dur: 8000, sprite: 'wink',    voice: null,           bubble: 'Финал! ⭐',    sub: 'Жми на меня в любой момент — я всегда на орбите!' },
+            { t: 144700, dur: 7000, sprite: 'waving',  voice: 'greet_1',      bubble: 'Поехали! 🚀',  sub: 'Поехали! До связи на орбите!' },
+        ];
+        this._stageBeats = BEATS;
+        this._stageTimers = [];
+
+        // Прогресс-точки
+        const dots = this._stageEl.progress;
+        dots.innerHTML = '';
+        BEATS.forEach((b, i) => {
+            const dot = document.createElement('span');
+            dot.className = 'cosmo-stage-dot';
+            dots.appendChild(dot);
+        });
+
+        BEATS.forEach((beat, i) => {
+            this._stageTimers.push(setTimeout(() => {
+                this.setState(beat.sprite, beat.dur);
+                this.bubbleTextEl.innerHTML = this.parseMarkdown(`## ${beat.bubble}`);
+                this.bubbleEl.classList.add('is-active');
+                if (beat.voice) this.playVoice(beat.voice, true);
+                const subLine = this._stageEl.subLine;
+                subLine.textContent = beat.sub;
+                subLine.classList.remove('cosmo-sub-line');
+                void subLine.offsetWidth;
+                subLine.classList.add('cosmo-sub-line');
+                [...dots.children].forEach((d, di) => {
+                    d.classList.toggle('is-active', di === i);
+                    d.classList.toggle('is-done', di < i);
+                });
+                if (beat.gag) {
+                    this._stageTimers.push(setTimeout(() => {
+                        this.setState(beat.gag.sprite, beat.gag.dur);
+                        this._stageTimers.push(setTimeout(() => this.setState(beat.sprite, beat.dur), beat.gag.dur));
+                    }, beat.gag.t));
+                }
+            }, beat.t));
+        });
+
+        // Финальный отлёт и восстановление (151.7с → конец ~156с)
+        this._stageTimers.push(setTimeout(() => this.endPresentation(false), 151700));
+    }
+
+    buildStageDom() {
+        if (this._stageEl) return;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+            <div class="cosmo-stage-dim"></div>
+            <div class="cosmo-stage-backdrop">
+                <div class="cosmo-stage-stars"></div>
+                <div class="cosmo-stage-vignette"></div>
+            </div>
+            <div class="cosmo-stage-beam"></div>
+            <div class="cosmo-stage-podium">
+                <div class="cosmo-stage-ring"></div>
+                <div class="cosmo-stage-ring r2"></div>
+            </div>
+            <div class="cosmo-stage-subtitles">
+                <span class="cosmo-sub-name">Космо • презентация</span>
+                <span class="cosmo-sub-line"></span>
+            </div>
+            <div class="cosmo-stage-progress"></div>
+            <div class="cosmo-stage-skip">Клик — пропуск</div>
+            <div class="cosmo-stage-catcher"></div>
+        `;
+        const els = {};
+        ['dim', 'backdrop', 'beam', 'podium', 'subtitles', 'progress', 'skip', 'catcher'].forEach(k => {
+            els[k] = wrap.querySelector(`.cosmo-stage-${k}`);
+        });
+        els.subLine = wrap.querySelector('.cosmo-sub-line');
+        document.body.appendChild(wrap);
+        this._stageWrap = wrap;
+        this._stageEl = els;
+        els.catcher.addEventListener('click', () => this.endPresentation(true));
+    }
+
+    endPresentation(skipped = false) {
+        if (!this.isInPresentation) return;
+        this.isInPresentation = false;
+        (this._stageTimers || []).forEach(clearTimeout);
+        this._stageTimers = [];
+        this.stopVoice(true);
+        // Музыка: мягкий fade-out 1.2с и стоп
+        try {
+            const mus = this._stageMusic;
+            if (mus) {
+                const f = setInterval(() => {
+                    try {
+                        mus.volume = Math.max(0, mus.volume - 0.04);
+                        if (mus.volume <= 0.02) { clearInterval(f); mus.pause(); mus.currentTime = 0; }
+                    } catch (e) { clearInterval(f); }
+                }, 100);
+            }
+        } catch (e) {}
+
+        if (!skipped) {
+            // Ракетный отлёт
+            this.container.classList.add('is-launching');
+        }
+        document.body.classList.remove('cosmo-stage-open');
+        setTimeout(() => {
+            this.container.classList.remove('is-on-stage', 'is-launching');
+            this.container.classList.add('mascot-hidden');
+            this.hideBubble(true);
+            // Сайт вернулся; маскот материализуется в родном углу
+            setTimeout(() => {
+                this.container.classList.remove('mascot-hidden');
+                this.container.classList.add('is-returning');
+                setTimeout(() => {
+                    this.container.classList.remove('is-returning');
+                    this.setState('idle', 2000);
+                    this.startAutonomousCycle();
+                }, 900);
+            }, skipped ? 100 : 500);
+        }, skipped ? 350 : 1500);
+    }
+
+    /**
+     * Решает, стоит ли озвучивать фразу: частота снижена вдвое
+     * (глобальная пауза 90с + монета 55%), одна категория — не чаще раза в 150с,
+     * пользовательские действия озвучиваются всегда с паузой 8с.
+     */
+    shouldSpeakVoice(key, isUserAction = false) {
+        const now = Date.now();
+        const last = this._lastVoiceAt || 0;
+        if (isUserAction) return (now - last) >= 8000;
+        if (now - last < 90000) return false;
+        if (Math.random() > 0.55) return false;
+        const cat = String(key).replace(/_\d+$/, '');
+        const catMap = this._voiceCatAt || (this._voiceCatAt = {});
+        if (now - (catMap[cat] || 0) < 150000) return false;
+        return true;
+    }
+
     stopVoice(immediate = false) {
         if (!this.currentAudio) {
             this.isSpeakingAudio = false;
@@ -1171,6 +1378,12 @@ export class AuroraMascot {
         ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
             window.addEventListener(evt, this.onUserActivity, { passive: true });
         });
+
+        // Кнопка «Заставка» в шапке: большая презентация возможностей Космо
+        const presBtn = document.getElementById('cosmo-presentation-btn');
+        if (presBtn) {
+            presBtn.addEventListener('click', () => this.startPresentation());
+        }
 
         // Клик по роботу: на мобильных устройствах одиночный тап сразу открывает чат с Космо;
         // на ПК: одиночный — тычок и реплика, двойной — открытие чата с Космо
@@ -2620,6 +2833,7 @@ export class AuroraMascot {
     }
 
     executeRandomActivity() {
+        if (this.isInPresentation) return;
         // Патруль имеет сбалансированный вес в цикле (20% вероятность) только на ПК
         if (!this.isMobile() && Math.random() < 0.20) {
             this.startContinuousPatrol(30000);
@@ -3005,6 +3219,7 @@ export class AuroraMascot {
      * 12. Речь и диалоговое облачко (с Markdown и речью Бэлы)
      * ------------------------------------------------------------------- */
     say(text, duration = 6000, spriteMood = 'smile', voiceKey = null, isUserAction = false) {
+        if (this.isInPresentation) return;
         if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
 
         // Если пользователь закрыл облачко вручную, не открываем его самопроизвольно
@@ -3033,7 +3248,10 @@ export class AuroraMascot {
         clearTimeout(this.speechTimer);
         this.currentSpeechDuration = duration;
 
-        if (voiceKey && !this.isMuted) {
+        const voiceAllowed = voiceKey && !this.isMuted && this.shouldSpeakVoice(voiceKey, isUserAction);
+        if (voiceAllowed) {
+            // пропускаем монету в playVoice: решение уже принято
+            this._voiceGatePass = true;
             this.playVoice(voiceKey, isUserAction);
             // Если играет голос — задаём таймер не менее 7500 мс (или обновится из metadata)
             const safeVoiceDuration = Math.max(duration, 7500);
@@ -3070,6 +3288,9 @@ export class AuroraMascot {
 
         if (SPRITES[state]) {
             this.spriteImg.src = SPRITES[state];
+        }
+        if (this.bubbleEmoEl) {
+            this.bubbleEmoEl.textContent = BUBBLE_EMO[state] || '🤖';
         }
 
         // Пружинный «поп» спрайта при каждой смене эмоции
@@ -3221,7 +3442,7 @@ export class AuroraMascot {
         const normalizedKey = `${userQuestion.toLowerCase().trim()}||${statsSig}`;
         if (this.aiResponseCache.has(normalizedKey)) {
             const cached = this.aiResponseCache.get(normalizedKey);
-            this.say(`Уже отвечал на это! Полный ответ — в окне по центру 💡`, 5000, 'smile', 'post_scan_8');
+            this.say(`Уже отвечал на это! Полный ответ — в окне по центру 💡`, 5000, 'smile');
             this.showCosmoModal('Ответ Космо 💡', cached);
             this.spawnSparkles(8);
             return;
@@ -3324,7 +3545,7 @@ export class AuroraMascot {
                     'critique_1', 'critique_2', 'critique_3', 'critique_4', 'critique_6',
                     'critique_7', 'critique_10', 'critique_11', 'critique_13', 'critique_15',
                     'critique_16', 'critique_17', 'critique_18', 'critique_20',
-                    'post_scan_1', 'post_scan_2', 'post_scan_3', 'post_scan_4', 'post_scan_8'
+                    'critique_5', 'critique_9', 'critique_14', 'critique_19'
                 ];
                 const chosenVoice = replyVoices[Math.floor(Math.random() * replyVoices.length)];
                 this.playVoice(chosenVoice);
@@ -3334,7 +3555,7 @@ export class AuroraMascot {
         } catch (err) {
             console.warn('[Cosmo AI] Fallback on error:', err);
             const fallbackReply = COSMO_LOCAL_BANTER[Math.floor(Math.random() * COSMO_LOCAL_BANTER.length)];
-            this.say(fallbackReply, 8000, 'smile', 'post_scan_5');
+            this.say(fallbackReply, 8000, 'smile');
         } finally {
             this.isAiLoading = false;
         }
@@ -3904,7 +4125,7 @@ export class AuroraMascot {
 
         const timer = setTimeout(() => this.fireReminder(reminder), minutes * 60000);
         this.reminderTimers.push(timer);
-        this.say(`## Напоминание принято! ⏰\nЧерез **${minutes} мин** напомню: ${escapeHtml(text)}`, 7000, 'smile', 'post_scan_5', true);
+        this.say(`## Напоминание принято! ⏰\nЧерез **${minutes} мин** напомню: ${escapeHtml(text)}`, 7000, 'smile', null, true);
         this.setMoodBadge('⏰', 4000);
     }
 

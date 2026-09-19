@@ -7,13 +7,13 @@
     'use strict';
 
     var SPRITES = {
-        idle: '../assets/images/mascot/robot_idle.png',
-        smile: '../assets/images/mascot/robot_smile.png',
-        thinking: '../assets/images/mascot/robot_thinking.png',
-        yawn: '../assets/images/mascot/robot_yawn.png',
-        tired: '../assets/images/mascot/robot_tired.png',
-        sleep: '../assets/images/mascot/robot_sleep.png',
-        angry: '../assets/images/mascot/robot_angry.png'
+        idle: '../assets/images/mascot/robot_idle.png?v=4.63.0',
+        smile: '../assets/images/mascot/robot_smile.png?v=4.63.0',
+        thinking: '../assets/images/mascot/robot_thinking.png?v=4.63.0',
+        yawn: '../assets/images/mascot/robot_yawn.png?v=4.63.0',
+        tired: '../assets/images/mascot/robot_tired.png?v=4.63.0',
+        sleep: '../assets/images/mascot/robot_sleep.png?v=4.63.0',
+        angry: '../assets/images/mascot/robot_angry.png?v=4.63.0'
     };
     window.SPRITES = SPRITES;
 
@@ -774,7 +774,7 @@
             return '/api/ai-proxy.php';
         })();
 
-        var BOT_AVATAR = '../assets/images/mascot/robot_smile.png';
+        var BOT_AVATAR = '../assets/images/mascot/robot_smile.png?v=4.63.0';
 
         var SYSTEM_PROMPT = [
             'Ты — Космо, интеллигентный, глубоко начитанный и тактичный робот-библиотекарь Централизованной библиотечной системы города Владимира.',

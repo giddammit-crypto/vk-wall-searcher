@@ -24,6 +24,7 @@
     position: fixed;
     bottom: 24px;
     left: 24px;
+    perspective: 900px;
     z-index: 100010 !important;
     display: flex;
     flex-direction: column;
@@ -51,24 +52,100 @@
     min-width: 220px;
     margin-bottom: 14px;
     padding: 12px 14px;
-    background: rgba(10, 16, 32, 0.88);
-    border: 1px solid rgba(56, 189, 248, 0.35);
+    border: 1.5px solid transparent;
     border-radius: 18px 18px 18px 4px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5),
-                0 0 24px rgba(56, 189, 248, 0.16),
-                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    /* Псевдо-3D: переливающаяся кайма (conic, border-box) + объёмное тело (padding-box) + стеклянный streak */
+    --edge-a: #38bdf8; --edge-b: #8A6CFF; --edge-c: #F472B6;
+    --edge-glow: rgba(56, 189, 248, 0.16);
+    --edge-speed: 6s;
+    background:
+        linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.06) 50%, transparent 60%) padding-box,
+        linear-gradient(168deg, rgba(34, 45, 74, 0.96) 0%, rgba(13, 19, 38, 0.95) 48%, rgba(7, 11, 24, 0.97) 100%) padding-box,
+        conic-gradient(from var(--bubble-hue, 0deg),
+            var(--edge-a) 0deg, var(--edge-b) 120deg, var(--edge-c) 240deg, var(--edge-a) 360deg) border-box;
+    box-shadow:
+        0 22px 44px -12px rgba(3, 6, 16, 0.65),
+        0 8px 18px -6px rgba(3, 6, 16, 0.5),
+        0 0 0 1px rgba(56, 189, 248, 0.07),
+        0 0 28px var(--edge-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -14px 26px -12px rgba(0, 0, 0, 0.5),
+        inset 2px 0 10px -4px rgba(0, 240, 255, 0.12),
+        inset -2px 0 10px -4px rgba(138, 108, 255, 0.10);
+    animation: bubbleBorderSpin var(--edge-speed) linear infinite;
     color: #f1f5f9;
     font-family: var(--font-body, system-ui, sans-serif);
-    font-size: 0.835rem;
+    font-size: 0.845rem;
     line-height: 1.5;
     pointer-events: auto;
     opacity: 0;
-    transform: translateY(14px) scale(0.7);
-    transform-origin: bottom left;
-    transition: opacity 0.3s var(--mascot-smooth-easing),
-                transform 0.4s var(--mascot-spring-easing);
+    transform: perspective(900px) translate3d(0, 22px, -46px) rotate(5deg) scale(0.7);
+    transform-origin: 28px calc(100% + 8px);
+    transition: opacity 0.22s var(--mascot-smooth-easing),
+                transform 0.34s var(--mascot-spring-easing),
+                box-shadow 0.3s var(--mascot-smooth-easing);
+    will-change: transform;
+}
+
+@keyframes bubbleBorderSpin { to { --bubble-hue: 360deg; } }
+
+/* Стеклянный блик-полоса сверху (глубина объёма) */
+.mascot-bubble::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 9%; right: 9%; height: 42%;
+    border-radius: 15px 15px 46% 46% / 15px 15px 20px 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 55%, transparent 100%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    z-index: 0;
+}
+.mascot-bubble > * { position: relative; z-index: 1; }
+
+/* Чип-иконка эмоции */
+.mascot-bubble-emo {
+    position: absolute;
+    top: -11px; right: 14px;
+    width: 22px; height: 22px;
+    z-index: 5;
+    display: grid; place-items: center;
+    font-size: 12px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), 0 0 12px var(--edge-glow);
+    animation: emoPop 0.35s var(--mascot-spring-easing) 0.15s both;
+}
+@keyframes emoPop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* Эмоциональные варианты каймы (по data-state контейнера) */
+.aurora-mascot-container[data-state="smile"] .mascot-bubble,
+.aurora-mascot-container[data-state="wink"] .mascot-bubble,
+.aurora-mascot-container[data-state="love"] .mascot-bubble {
+    --edge-a: #38bdf8; --edge-b: #FBBF24; --edge-c: #8A6CFF;
+    --edge-glow: rgba(251, 191, 36, 0.22); --edge-speed: 4.5s;
+}
+.aurora-mascot-container[data-state="party"] .mascot-bubble,
+.aurora-mascot-container[data-state="laugh"] .mascot-bubble,
+.aurora-mascot-container[data-state="cool"] .mascot-bubble,
+.aurora-mascot-container[data-state="idea"] .mascot-bubble,
+.aurora-mascot-container[data-state="shock"] .mascot-bubble {
+    --edge-a: #F472B6; --edge-b: #FBBF24; --edge-c: #8A6CFF;
+    --edge-glow: rgba(244, 114, 182, 0.30); --edge-speed: 2.2s;
+}
+.aurora-mascot-container[data-state="angry"] .mascot-bubble {
+    --edge-a: #ef4444; --edge-b: #f97316; --edge-c: #dc2626;
+    --edge-glow: rgba(239, 68, 68, 0.28); --edge-speed: 1.1s;
+    box-shadow: 0 18px 34px -10px rgba(3, 6, 16, 0.7), 0 0 30px rgba(239, 68, 68, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -14px 26px -12px rgba(0, 0, 0, 0.5);
+}
+.aurora-mascot-container[data-state="sad"] .mascot-bubble,
+.aurora-mascot-container[data-state="tired"] .mascot-bubble,
+.aurora-mascot-container[data-state="yawn"] .mascot-bubble {
+    --edge-a: #818cf8; --edge-b: #64748b; --edge-c: #8A6CFF;
+    --edge-glow: rgba(129, 140, 248, 0.14); --edge-speed: 9s;
 }
 
 /* Хвостик облачка, указывающий на антенну/голову робота */
@@ -79,11 +156,12 @@
     left: 28px;
     width: 14px;
     height: 14px;
-    background: rgba(10, 16, 32, 0.92);
-    border-right: 1px solid rgba(56, 189, 248, 0.35);
-    border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+    background: linear-gradient(168deg, rgba(30, 40, 66, 0.97), rgba(7, 11, 24, 0.97));
+    border-right: 1.5px solid var(--edge-a, #38bdf8);
+    border-bottom: 1.5px solid var(--edge-a, #38bdf8);
     transform: rotate(45deg);
     border-bottom-right-radius: 3px;
+    box-shadow: 3px 3px 8px -2px rgba(3, 6, 16, 0.5);
 }
 
 /* Светлая тема */
@@ -101,16 +179,40 @@
 
 .mascot-bubble.is-active {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    animation: mascotBubblePopSpring 0.42s var(--mascot-spring-easing) forwards;
+    animation:
+        cosmoBubbleIn 0.68s var(--mascot-spring-easing) both,
+        cosmoBubbleLevitate 5.4s ease-in-out 0.68s infinite;
 }
 
-@keyframes mascotBubblePopSpring {
-    0%   { opacity: 0; transform: translateY(14px) scale(0.7); }
-    65%  { opacity: 1; transform: translateY(-4px) scale(1.05); }
-    85%  { transform: translateY(1px) scale(0.98); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+/* Вход: elastic overshoot + двойной подпрыг (из хвостика) */
+@keyframes cosmoBubbleIn {
+    0%   { opacity: 0; transform: perspective(900px) translate3d(0, 34px, -80px) rotate(-9deg) scale(0.55); }
+    55%  { opacity: 1; transform: perspective(900px) translate3d(0, -7px, 14px) rotate(2.6deg) scale(1.09); }
+    72%  { transform: perspective(900px) translate3d(0, 3px, -2px) rotate(-1.3deg) scale(0.962); }
+    86%  { transform: perspective(900px) translate3d(0, -2px, 3px) rotate(0.6deg) scale(1.018); }
+    100% { transform: perspective(900px) translate3d(0, 0, 0) rotate(0deg) scale(1); }
 }
+
+/* Idle-левитация: парение с псевдо-3D наклонами и тенью в противофазе */
+@keyframes cosmoBubbleLevitate {
+    0%   { transform: perspective(900px) translate3d(0px, 0px, 0px) rotateY(-2.5deg) rotateX(1.6deg) rotate(0deg);
+           filter: drop-shadow(0 18px 20px rgba(3, 6, 16, 0.55)) drop-shadow(0 0 20px rgba(56, 189, 248, 0.18)); }
+    25%  { transform: perspective(900px) translate3d(3px, -5px, 10px) rotateY(-0.5deg) rotateX(0.5deg) rotate(0.4deg);
+           filter: drop-shadow(0 26px 30px rgba(3, 6, 16, 0.40)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.12)); }
+    50%  { transform: perspective(900px) translate3d(0px, -8px, 16px) rotateY(2.2deg) rotateX(-1.2deg) rotate(-0.3deg);
+           filter: drop-shadow(0 32px 36px rgba(3, 6, 16, 0.30)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.08)); }
+    75%  { transform: perspective(900px) translate3d(-3px, -4px, 8px) rotateY(0.6deg) rotateX(0.9deg) rotate(0.2deg);
+           filter: drop-shadow(0 24px 28px rgba(3, 6, 16, 0.44)) drop-shadow(0 0 15px rgba(56, 189, 248, 0.13)); }
+    100% { transform: perspective(900px) translate3d(0px, 0px, 0px) rotateY(-2.5deg) rotateX(1.6deg) rotate(0deg);
+           filter: drop-shadow(0 18px 20px rgba(3, 6, 16, 0.55)) drop-shadow(0 0 20px rgba(56, 189, 248, 0.18)); }
+}
+
+/* Типографика реплики */
+.mascot-bubble .mascot-md-h2 {
+    background: linear-gradient(90deg, #38bdf8, #8A6CFF 70%, #F472B6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mascot-bubble-text strong { color: #00f0ff; text-shadow: 0 0 12px rgba(0, 240, 255, 0.35); }
 
 .mascot-bubble-header {
     display: flex;
@@ -7529,3 +7631,197 @@ html.reader-shelf-standalone .cosmo-chat-format-bar,
     }
 }
 
+
+
+/* ==========================================================================
+   СЦЕНА-ПРЕЗЕНТАЦИЯ «КОСМО РАССКАЗЫВАЕТ О СЕБЕ» (кнопка «Заставка»)
+   ========================================================================== */
+.cosmo-stage-dim {
+    position: fixed; inset: 0; z-index: 100000; pointer-events: none;
+    background: radial-gradient(ellipse 120% 100% at 50% 50%, rgba(3, 5, 12, 0.82), rgba(2, 3, 8, 0.94));
+    opacity: 0; transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.cosmo-stage-open .cosmo-stage-dim { opacity: 1; }
+
+.cosmo-stage-backdrop {
+    position: fixed; inset: 0; z-index: 100001; overflow: hidden; pointer-events: none;
+    background:
+        radial-gradient(ellipse 130% 85% at 50% 118%, #1b2234 0%, rgba(27, 34, 52, 0) 55%),
+        radial-gradient(ellipse 90% 70% at 78% -10%, rgba(138, 108, 255, 0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 12% 8%, rgba(56, 189, 248, 0.08) 0%, transparent 55%),
+        linear-gradient(180deg, #060918 0%, #0a0e1e 38%, #0c0f1a 70%, #10162a 100%);
+    opacity: 0; transform: scale(1.045);
+    transition: opacity 0.7s ease-out, transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body.cosmo-stage-open .cosmo-stage-backdrop { opacity: 1; transform: scale(1); }
+
+/* Млечный путь под -14° */
+.cosmo-stage-backdrop::before {
+    content: ''; position: absolute; top: 4%; left: -12%; width: 124%; height: 46%;
+    transform: rotate(-14deg); filter: blur(22px);
+    background: linear-gradient(180deg, transparent 8%, rgba(138, 108, 255, 0.09) 34%,
+        rgba(56, 189, 248, 0.14) 50%, rgba(244, 114, 182, 0.07) 66%, transparent 92%);
+}
+.cosmo-stage-backdrop::after {
+    content: ''; position: absolute; top: 20%; left: -12%; width: 124%; height: 11%;
+    transform: rotate(-14deg); filter: blur(9px); background: rgba(232, 236, 248, 0.10);
+}
+
+/* Звёзды: три слоя + мерцающие яркие */
+.cosmo-stage-stars {
+    position: absolute; inset: 0; mix-blend-mode: screen; opacity: 0.8;
+    background-image:
+        radial-gradient(circle, rgba(255, 255, 255, 0.85) 0.7px, transparent 1.4px),
+        radial-gradient(circle, rgba(199, 225, 255, 0.60) 0.9px, transparent 1.6px),
+        radial-gradient(circle, rgba(56, 189, 248, 0.50) 1.1px, transparent 1.9px);
+    background-size: 190px 190px, 320px 320px, 460px 460px;
+    background-position: 0 0, 80px 60px, 40px 140px;
+    animation: cosmoStarDrift 90s linear infinite;
+}
+@keyframes cosmoStarDrift { to { background-position: -190px 95px, 400px -160px, -230px 210px; } }
+.cosmo-stage-stars::after {
+    content: ''; position: absolute; top: 12%; left: 18%; width: 2px; height: 2px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 24vw 6vh 0 0 rgba(255, 255, 255, 0.9), 68vw 10vh 0 1px rgba(199, 225, 255, 0.8),
+        82vw 30vh 0 0 rgba(56, 189, 248, 0.9), 10vw 44vh 0 1px rgba(244, 114, 182, 0.7),
+        90vw 55vh 0 0 rgba(255, 255, 255, 0.8), 6vw 20vh 0 0 rgba(138, 108, 255, 0.9);
+    animation: cosmoStarTwinkle 4s ease-in-out infinite;
+}
+@keyframes cosmoStarTwinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.cosmo-stage-vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 72% 66% at 50% 44%,
+        transparent 52%, rgba(4, 6, 14, 0.50) 80%, rgba(2, 4, 10, 0.90) 100%);
+}
+
+/* Луч света и подиум с орбитальными кольцами */
+.cosmo-stage-beam {
+    position: absolute; bottom: calc(22vh - 6px); left: 50%; transform: translateX(-50%);
+    width: 380px; height: 58vh;
+    clip-path: polygon(42% 0%, 58% 0%, 100% 100%, 0% 100%);
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0) 0%, rgba(56, 189, 248, 0.10) 26%,
+        rgba(138, 108, 255, 0.07) 62%, rgba(244, 114, 182, 0.04) 100%);
+    filter: blur(7px); mix-blend-mode: screen;
+    animation: cosmoBeamShimmer 6.5s ease-in-out infinite;
+    opacity: 0; transition: opacity 0.8s ease-out 1.8s;
+}
+body.cosmo-stage-open .cosmo-stage-beam { opacity: 1; }
+@keyframes cosmoBeamShimmer { 0%, 100% { filter: blur(7px) brightness(0.75); } 50% { filter: blur(7px) brightness(1.15); } }
+
+.cosmo-stage-podium {
+    position: absolute; bottom: calc(22vh - 34px); left: 50%; transform: translateX(-50%);
+    width: 320px; height: 46px; border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 42%, rgba(0, 240, 255, 0.22) 0%, rgba(138, 108, 255, 0.10) 52%, transparent 74%);
+    border: 1px solid rgba(0, 240, 255, 0.38);
+    box-shadow: 0 0 26px rgba(0, 240, 255, 0.28), inset 0 0 20px rgba(0, 240, 255, 0.16), 0 18px 30px -8px rgba(0, 0, 0, 0.6);
+    perspective: 700px;
+    opacity: 0; transition: opacity 0.8s ease-out 1.8s;
+}
+body.cosmo-stage-open .cosmo-stage-podium { opacity: 1; }
+.cosmo-stage-ring {
+    position: absolute; left: 50%; top: 50%; width: 280px; height: 280px;
+    margin: -140px 0 0 -140px; border-radius: 50%;
+    border: 1.5px dashed rgba(0, 240, 255, 0.40);
+    transform: rotateX(76deg);
+    animation: cosmoRingSpin 16s linear infinite;
+}
+.cosmo-stage-ring.r2 {
+    width: 200px; height: 200px; margin: -100px 0 0 -100px;
+    border: 1.5px solid rgba(138, 108, 255, 0.45);
+    transform: rotateX(70deg);
+    animation: cosmoRingSpinRev 10s linear infinite;
+}
+@keyframes cosmoRingSpin { from { transform: rotateX(76deg) rotateZ(0deg); } to { transform: rotateX(76deg) rotateZ(360deg); } }
+@keyframes cosmoRingSpinRev { from { transform: rotateX(70deg) rotateZ(360deg); } to { transform: rotateX(70deg) rotateZ(0deg); } }
+
+/* Космо в центре ×2 */
+.aurora-mascot-container.is-on-stage {
+    left: 50% !important;
+    bottom: 22vh !important;
+    transition: left 2.1s cubic-bezier(0.25, 1, 0.5, 1), bottom 2.1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.aurora-mascot-container.is-on-stage .mascot-body-wrapper {
+    width: 264px; height: 264px;
+    transition: width 1s var(--mascot-spring-easing) 0.55s, height 1s var(--mascot-spring-easing) 0.55s;
+}
+.is-on-stage .mascot-bubble {
+    max-width: 520px; min-width: 300px; font-size: 1rem; padding: 16px 18px;
+    border-radius: 22px; margin-bottom: 30px;
+}
+.is-on-stage .mascot-bubble::after { left: 50%; margin-left: -7px; }
+.is-on-stage .mascot-ai-chip-row, .is-on-stage .mascot-ai-input-wrap { display: none; }
+
+/* Ракетный отлёт в финале */
+.aurora-mascot-container.is-launching .mascot-body-wrapper {
+    animation: cosmoRocketExit 1.9s cubic-bezier(0.55, 0, 0.68, 0.19) forwards;
+}
+@keyframes cosmoRocketExit {
+    0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+    12%  { transform: translateY(12px) scale(0.94, 0.82) rotate(0deg); }
+    30%  { transform: translateY(-16vh) scale(0.85, 1.15) rotate(120deg); opacity: 1; }
+    100% { transform: translateY(-62vh) scale(0.05) rotate(720deg); opacity: 0; }
+}
+.aurora-mascot-container.is-returning .mascot-body-wrapper {
+    animation: cosmoReturnBounce 0.9s var(--mascot-spring-easing) both;
+}
+@keyframes cosmoReturnBounce {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.12, 0.92); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Субтитры */
+.cosmo-stage-subtitles {
+    position: fixed; left: 50%; bottom: 6.5vh; transform: translateX(-50%);
+    z-index: 100012; width: min(780px, 88vw); text-align: center; padding: 16px 26px;
+    background: rgba(6, 9, 24, 0.58); border: 1px solid rgba(56, 189, 248, 0.20); border-radius: 16px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    color: #E8ECF8; font: 500 clamp(16px, 1.75vw, 21px)/1.55 Montserrat, sans-serif; letter-spacing: 0.01em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85), 0 0 26px rgba(56, 189, 248, 0.22);
+    box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6);
+    opacity: 0; transition: opacity 0.5s ease 2.2s;
+}
+body.cosmo-stage-open .cosmo-stage-subtitles { opacity: 1; }
+.cosmo-sub-name {
+    display: block; margin-bottom: 6px;
+    font: 700 12px/1 Unbounded, sans-serif; letter-spacing: 0.22em; text-transform: uppercase;
+    background: linear-gradient(90deg, #38bdf8, #F472B6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.cosmo-sub-line { animation: cosmoSubBeatIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes cosmoSubBeatIn {
+    0% { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+    100% { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* Прогресс битов + подсказка пропуска + перехватчик кликов */
+.cosmo-stage-progress {
+    position: fixed; bottom: 2.6vh; left: 50%; transform: translateX(-50%);
+    z-index: 100012; display: flex; gap: 7px; align-items: center;
+    opacity: 0; transition: opacity 0.5s ease 2.2s;
+}
+body.cosmo-stage-open .cosmo-stage-progress { opacity: 1; }
+.cosmo-stage-dot {
+    width: 7px; height: 7px; border-radius: 999px; background: rgba(232, 236, 248, 0.22);
+    transition: width 0.45s var(--mascot-spring-easing), background 0.3s ease;
+}
+.cosmo-stage-dot.is-done { background: rgba(138, 108, 255, 0.55); }
+.cosmo-stage-dot.is-active {
+    width: 26px; background: linear-gradient(90deg, #38bdf8, #8A6CFF, #F472B6);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+.cosmo-stage-skip {
+    position: fixed; right: 26px; bottom: 22px; z-index: 100012;
+    font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(203, 213, 225, 0.55); animation: cosmoSkipPulse 2.6s ease-in-out infinite;
+}
+@keyframes cosmoSkipPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
+.cosmo-stage-catcher {
+    position: fixed; inset: 0; z-index: 100030; cursor: pointer; background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmo-stage-stars, .cosmo-stage-beam, .cosmo-stage-ring, .cosmo-stage-skip,
+    .cosmo-stage-stars::after { animation: none !important; }
+}

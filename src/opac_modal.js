@@ -664,7 +664,7 @@ function initCoverZoomModal() {
                         <div class="opac-cover-zoom-fallback" style="display: flex;">
                             <div class="opac-zoom-fallback-border">
                                 <span class="opac-zoom-fallback-no-cover-badge">НЕТ ОБЛОЖКИ !</span>
-                                <img class="opac-zoom-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png" alt="Космо удивлен" />
+                                <img class="opac-zoom-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png?v=4.63.0" alt="Космо удивлен" />
                                 <span class="material-symbols-outlined opac-zoom-genre-icon" data-zoom-genre-icon style="display: none;">menu_book</span>
                                 <span class="opac-zoom-title-preview" data-zoom-fallback-title></span>
                                 <span class="opac-zoom-year" data-zoom-fallback-year></span>
@@ -1815,7 +1815,7 @@ function renderSearchResults(data, query) {
                     <div class="opac-cover-fallback">
                         <div class="opac-fallback-border">
                             <span class="opac-fallback-no-cover-badge">НЕТ ОБЛОЖКИ !</span>
-                            <img class="opac-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png" alt="Космо удивлен" loading="lazy" />
+                            <img class="opac-fallback-cosmo-img" src="assets/images/mascot/robot_shock.png?v=4.63.0" alt="Космо удивлен" loading="lazy" />
                             <span class="opac-cover-title-preview">${escapeHtml(title)}</span>
                             ${year ? `<span class="opac-cover-year">${escapeHtml(year)}</span>` : ''}
                         </div>

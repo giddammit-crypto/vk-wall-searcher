@@ -111,26 +111,26 @@ function mdInline(s) {
     s = s.replace(/\uE000(\d+)\uE001/g, (m, i) => codeSpans[+i]);
     // Эмодзи-аватарки Космо (32×32px) — можно вставлять в ответы через шорткоды
     const COSMO_EMOJI = {
-        ':cosmo_smile:':   'assets/images/mascot/robot_smile.png',
-        ':cosmo_think:':   'assets/images/mascot/robot_thinking.png',
-        ':cosmo_yawn:':    'assets/images/mascot/robot_yawn.png',
-        ':cosmo_angry:':   'assets/images/mascot/robot_angry.png',
-        ':cosmo_sleep:':   'assets/images/mascot/robot_sleep.png',
-        ':cosmo_tired:':   'assets/images/mascot/robot_tired.png',
-        ':cosmo_cool:':    'assets/images/mascot/robot_cool.png',
-        ':cosmo_idea:':    'assets/images/mascot/robot_idea.png',
-        ':cosmo_laugh:':   'assets/images/mascot/robot_laugh.png',
-        ':cosmo_party:':   'assets/images/mascot/robot_party.png',
-        ':cosmo_read:':    'assets/images/mascot/robot_read.png',
-        ':cosmo_shock:':   'assets/images/mascot/robot_shock.png',
-        ':cosmo_waving:':  'assets/images/mascot/robot_waving.png',
-        ':cosmo_wink:':    'assets/images/mascot/robot_wink.png',
-        ':cosmo_sad:':     'assets/images/mascot/robot_sad.png',
-        ':cosmo_love:':    'assets/images/mascot/robot_love.png',
-        ':cosmo:':         'assets/images/mascot/robot_idle.png',
+        ':cosmo_smile:':   'assets/images/mascot/robot_smile.png?v=4.63.0',
+        ':cosmo_think:':   'assets/images/mascot/robot_thinking.png?v=4.63.0',
+        ':cosmo_yawn:':    'assets/images/mascot/robot_yawn.png?v=4.63.0',
+        ':cosmo_angry:':   'assets/images/mascot/robot_angry.png?v=4.63.0',
+        ':cosmo_sleep:':   'assets/images/mascot/robot_sleep.png?v=4.63.0',
+        ':cosmo_tired:':   'assets/images/mascot/robot_tired.png?v=4.63.0',
+        ':cosmo_cool:':    'assets/images/mascot/robot_cool.png?v=4.63.0',
+        ':cosmo_idea:':    'assets/images/mascot/robot_idea.png?v=4.63.0',
+        ':cosmo_laugh:':   'assets/images/mascot/robot_laugh.png?v=4.63.0',
+        ':cosmo_party:':   'assets/images/mascot/robot_party.png?v=4.63.0',
+        ':cosmo_read:':    'assets/images/mascot/robot_read.png?v=4.63.0',
+        ':cosmo_shock:':   'assets/images/mascot/robot_shock.png?v=4.63.0',
+        ':cosmo_waving:':  'assets/images/mascot/robot_waving.png?v=4.63.0',
+        ':cosmo_wink:':    'assets/images/mascot/robot_wink.png?v=4.63.0',
+        ':cosmo_sad:':     'assets/images/mascot/robot_sad.png?v=4.63.0',
+        ':cosmo_love:':    'assets/images/mascot/robot_love.png?v=4.63.0',
+        ':cosmo:':         'assets/images/mascot/robot_idle.png?v=4.63.0',
     };
     for (const [code, src] of Object.entries(COSMO_EMOJI)) {
-        s = s.split(code).join(`<img src="${src}?v=4.33.0" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
+        s = s.split(code).join(`<img src="${src}" alt="${code}" class="cosmo-emoji-img" width="32" height="32" />`);
     }
     return s;
 }
@@ -439,23 +439,23 @@ export function parseCosmoMarkdown(text) {
  * 17 ПРОЗРАЧНЫХ СТИКЕРОВ РОБОТА КОСМО
  * =========================================================================== */
 export const COSMO_STICKERS = [
-    { id: 'robot_smile',    name: 'Радость',      title: 'Улыбка и радость',        src: 'assets/images/mascot/robot_smile.png' },
-    { id: 'robot_wink',     name: 'Подмигивание', title: 'Хитрый подмиг',           src: 'assets/images/mascot/robot_wink.png' },
-    { id: 'robot_read',     name: 'Чтение',       title: 'Чтение книги',            src: 'assets/images/mascot/robot_read.png' },
-    { id: 'robot_idea',     name: 'Идея',         title: 'Креативная мысль',        src: 'assets/images/mascot/robot_idea.png' },
-    { id: 'robot_laugh',    name: 'Смех',         title: 'Весёлый смех',            src: 'assets/images/mascot/robot_laugh.png' },
-    { id: 'robot_love',     name: 'Любовь',       title: 'Любовь к книгам',         src: 'assets/images/mascot/robot_love.png' },
-    { id: 'robot_cool',     name: 'Крутой',       title: 'Стильный профи',          src: 'assets/images/mascot/robot_cool.png' },
-    { id: 'robot_party',    name: 'Праздник',     title: 'Вечеринка и салют',       src: 'assets/images/mascot/robot_party.png' },
-    { id: 'robot_waving',   name: 'Привет',       title: 'Приветственный взмах',    src: 'assets/images/mascot/robot_waving.png' },
-    { id: 'robot_thinking', name: 'Мысли',        title: 'Глубокие размышления',    src: 'assets/images/mascot/robot_thinking.png' },
-    { id: 'robot_shock',    name: 'Шок',          title: 'Искреннее изумление',     src: 'assets/images/mascot/robot_shock.png' },
-    { id: 'robot_sad',      name: 'Грусть',       title: 'Печаль и грусть',         src: 'assets/images/mascot/robot_sad.png' },
-    { id: 'robot_tired',    name: 'Усталость',    title: 'Устал от рутины',         src: 'assets/images/mascot/robot_tired.png' },
-    { id: 'robot_yawn',     name: 'Зевота',       title: 'Сладкая зевота',          src: 'assets/images/mascot/robot_yawn.png' },
-    { id: 'robot_sleep',    name: 'Сон',          title: 'Крепкий сон',             src: 'assets/images/mascot/robot_sleep.png' },
-    { id: 'robot_angry',    name: 'Сердитый',     title: 'Возмущение и гнев',       src: 'assets/images/mascot/robot_angry.png' },
-    { id: 'robot_idle',     name: 'Спокойствие',  title: 'Дежурный маскот',         src: 'assets/images/mascot/robot_idle.png' }
+    { id: 'robot_smile',    name: 'Радость',      title: 'Улыбка и радость',        src: 'assets/images/mascot/robot_smile.png?v=4.63.0' },
+    { id: 'robot_wink',     name: 'Подмигивание', title: 'Хитрый подмиг',           src: 'assets/images/mascot/robot_wink.png?v=4.63.0' },
+    { id: 'robot_read',     name: 'Чтение',       title: 'Чтение книги',            src: 'assets/images/mascot/robot_read.png?v=4.63.0' },
+    { id: 'robot_idea',     name: 'Идея',         title: 'Креативная мысль',        src: 'assets/images/mascot/robot_idea.png?v=4.63.0' },
+    { id: 'robot_laugh',    name: 'Смех',         title: 'Весёлый смех',            src: 'assets/images/mascot/robot_laugh.png?v=4.63.0' },
+    { id: 'robot_love',     name: 'Любовь',       title: 'Любовь к книгам',         src: 'assets/images/mascot/robot_love.png?v=4.63.0' },
+    { id: 'robot_cool',     name: 'Крутой',       title: 'Стильный профи',          src: 'assets/images/mascot/robot_cool.png?v=4.63.0' },
+    { id: 'robot_party',    name: 'Праздник',     title: 'Вечеринка и салют',       src: 'assets/images/mascot/robot_party.png?v=4.63.0' },
+    { id: 'robot_waving',   name: 'Привет',       title: 'Приветственный взмах',    src: 'assets/images/mascot/robot_waving.png?v=4.63.0' },
+    { id: 'robot_thinking', name: 'Мысли',        title: 'Глубокие размышления',    src: 'assets/images/mascot/robot_thinking.png?v=4.63.0' },
+    { id: 'robot_shock',    name: 'Шок',          title: 'Искреннее изумление',     src: 'assets/images/mascot/robot_shock.png?v=4.63.0' },
+    { id: 'robot_sad',      name: 'Грусть',       title: 'Печаль и грусть',         src: 'assets/images/mascot/robot_sad.png?v=4.63.0' },
+    { id: 'robot_tired',    name: 'Усталость',    title: 'Устал от рутины',         src: 'assets/images/mascot/robot_tired.png?v=4.63.0' },
+    { id: 'robot_yawn',     name: 'Зевота',       title: 'Сладкая зевота',          src: 'assets/images/mascot/robot_yawn.png?v=4.63.0' },
+    { id: 'robot_sleep',    name: 'Сон',          title: 'Крепкий сон',             src: 'assets/images/mascot/robot_sleep.png?v=4.63.0' },
+    { id: 'robot_angry',    name: 'Сердитый',     title: 'Возмущение и гнев',       src: 'assets/images/mascot/robot_angry.png?v=4.63.0' },
+    { id: 'robot_idle',     name: 'Спокойствие',  title: 'Дежурный маскот',         src: 'assets/images/mascot/robot_idle.png?v=4.63.0' }
 ];
 
 
@@ -990,7 +990,7 @@ export class CosmoChatModal {
                 <div class="cosmo-chat-header">
                     <div class="cosmo-chat-brand">
                         <div class="cosmo-chat-avatar-wrap">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.23.2"
+                            <img src="assets/images/mascot/robot_smile.png?v=4.63.0"
                                  alt="Космо"
                                  class="cosmo-chat-avatar-img" />
                             <span class="cosmo-chat-online-dot" title="Космо на связи"></span>
@@ -1100,7 +1100,7 @@ export class CosmoChatModal {
                         ${COSMO_STICKERS.map(s => `
                             <button type="button" class="cosmo-sticker-item" data-sticker-id="${s.id}" data-tooltip="${escapeHtml(s.title)}" aria-label="${escapeHtml(s.title)}: ${escapeHtml(s.name)}">
                                 <div class="sticker-item-preview">
-                                    <img src="${s.src}?v=4.33.0" alt="${s.id}" class="sticker-thumb" loading="lazy" />
+                                    <img src="${s.src}" alt="${s.id}" class="sticker-thumb" loading="lazy" />
                                 </div>
                                 <span class="sticker-name">${escapeHtml(s.name)}</span>
                             </button>
@@ -2125,7 +2125,7 @@ export class CosmoChatModal {
         const shelfGreetingHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot shelf-recommend-welcome">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.24.2" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • Книжный сомелье</div>
@@ -2171,7 +2171,7 @@ export class CosmoChatModal {
                     const q2Html = `
                         <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                             <div class="msg-avatar">
-                                <img src="assets/images/mascot/robot_smile.png?v=4.24.2" alt="Космо" />
+                                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
                             </div>
                             <div class="msg-content">
                                 <div class="msg-author">Космо • Книжный сомелье</div>
@@ -2435,7 +2435,7 @@ export class CosmoChatModal {
 
         botMsgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${authorLabel}</div>
@@ -2620,7 +2620,7 @@ export class CosmoChatModal {
         const welcomeHtml = `
             <div class="cosmo-chat-msg cosmo-chat-msg-bot">
                 <div class="msg-avatar">
-                    <img src="assets/images/mascot/robot_smile.png?v=4.25.4" alt="Космо" />
+                    <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
                 </div>
                 <div class="msg-content">
                     <div class="msg-author">Космо • Библиотечный робот и ИИ-сомелье</div>
@@ -2753,7 +2753,7 @@ export class CosmoChatModal {
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_smile.png?v=4.24.5" alt="Космо" />
+                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${authorLabel}</div>
@@ -2778,7 +2778,7 @@ export class CosmoChatModal {
 
         typingDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_thinking.png?v=4.24.5" alt="Космо думает" class="avatar-pulse" />
+                <img src="assets/images/mascot/robot_thinking.png?v=4.63.0" alt="Космо думает" class="avatar-pulse" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${typingAuthor}</div>
@@ -3297,7 +3297,7 @@ ${statsContext}
 
         msgDiv.innerHTML = `
             <div class="msg-avatar">
-                <img src="assets/images/mascot/robot_read.png?v=4.33.0" alt="Космо" />
+                <img src="assets/images/mascot/robot_read.png?v=4.63.0" alt="Космо" />
             </div>
             <div class="msg-content">
                 <div class="msg-author">${authorLabel}</div>
@@ -3515,9 +3515,8 @@ ${statsContext}
             if (this.mascot) {
                 this.mascot.setState('smile');
                 this.mascot.setMoodBadge('✨', 4000);
-                if (this.audioEnabled && this.mascot.playVoice) {
-                    this.mascot.playVoice('post_scan_8');
-                }
+                // Голос не играем: реплика ИИ произвольная, «статистическая»
+                // фраза не в тему. Пользователь может озвучить ответ кнопкой «Озвучить».
             }
 
         } catch (err) {

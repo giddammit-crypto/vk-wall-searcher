@@ -103,7 +103,7 @@ $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
     <meta property="og:description" content="<?= htmlspecialchars(mb_substr($pageLead !== '' ? $pageLead : $pageSubtitle, 0, 200)) ?>">
     <meta property="og:url" content="<?= htmlspecialchars($currentUrl) ?>">
     <meta property="og:site_name" content="Централизованная библиотечная система г. Владимира">
-    <meta property="og:image" content="https://biblioteka33.ru/stat/assets/images/mascot/robot_smile.png">
+    <meta property="og:image" content="https://biblioteka33.ru/stat/assets/images/mascot/robot_smile.png?v=4.63.0">
 
     <!-- Google Fonts: Montserrat & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -794,7 +794,7 @@ $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
     <header class="site-header">
         <a href="https://biblioteka33.ru/stat/" class="header-brand" title="На главную страницу статистики">
             <div class="brand-avatar">
-                <img src="assets/images/mascot/robot_smile.png" alt="Робот Космо">
+                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Робот Космо">
             </div>
             <div class="brand-text">
                 <h1>Робот Космо 🤖📚</h1>
@@ -886,7 +886,7 @@ $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
                 <!-- Автор статьи -->
                 <div class="author-box">
                     <div class="author-avatar">
-                        <img src="assets/images/mascot/robot_smile.png" alt="Космо">
+                        <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо">
                     </div>
                     <div class="author-info">
                         <h3>Робот Космо 🤖</h3>

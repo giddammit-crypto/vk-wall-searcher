@@ -236,7 +236,7 @@
     <!-- Standalone Reader Mode Splash & Direct Instant Loader (Для читателей по QR-коду со стеллажа) -->
     <div id="shelf-reader-splash" class="shelf-reader-splash" style="display: none;">
         <div class="shelf-splash-card">
-            <img src="assets/images/mascot/robot_smile.png?v=4.42.1" alt="Космо" class="shelf-splash-img" />
+            <img src="assets/images/mascot/robot_smile.png?v=4.63.0" alt="Космо" class="shelf-splash-img" />
             <span class="shelf-splash-badge">Библиотечный робот</span>
             <h1 class="shelf-splash-title">ПОЛКА С КОСМО</h1>
             <p class="shelf-splash-sub">Подключаемся к книжной полке...</p>
@@ -260,7 +260,7 @@
         try {
             const p = new URLSearchParams(window.location.search);
             if (p.get('mode') === 'shelf_recommend') {
-                import('./src/cosmo_chat.js?v=4.62.3').then(({ CosmoChatModal }) => {
+                import('./src/cosmo_chat.js?v=4.63.0').then(({ CosmoChatModal }) => {
                     const genre = p.get('genre') || 'universal';
                     const branch = p.get('branch') || 'cgb';
                     window.__shelfCosmoChat = new CosmoChatModal({ mascot: null });
@@ -335,7 +335,7 @@
             <!-- 3D Robot Cosmo Viewport (3D Model cute_robot.glb + emotion stickers) -->
             <div class="aurora-splash-robot-viewport">
                 <canvas id="aurora-splash-webgl"></canvas>
-                <img id="aurora-splash-mascot-fallback" class="aurora-splash-mascot-fallback" src="assets/images/mascot/robot_waving.png" alt="Космо" style="display: none;" />
+                <img id="aurora-splash-mascot-fallback" class="aurora-splash-mascot-fallback" src="assets/images/mascot/robot_waving.png?v=4.63.0" alt="Космо" style="display: none;" />
                 <div class="aurora-splash-hover-shadow"></div>
                 <div class="aurora-splash-ion-glow"></div>
                 <img id="aurora-splash-sticker" class="aurora-splash-sticker" alt="" aria-hidden="true" />
@@ -365,7 +365,7 @@
         </div>
     </div>
     <script type="module">
-    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.5.0';
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.6.0';
     (function() {
         try {
             const p = new URLSearchParams(window.location.search);
@@ -501,6 +501,10 @@
                 <button type="button" id="video-help-btn" class="btn btn-tonal" title="Видео-справка: Космо рассказывает о возможностях AURORA">
                     <span class="material-symbols-outlined icon">play_circle</span>
                     <span class="settings-btn-text">Видео-справка</span>
+                </button>
+                <button type="button" id="cosmo-presentation-btn" class="btn btn-tonal" title="Заставка: Космо расскажет и покажет, что он умеет">
+                    <span class="material-symbols-outlined icon">auto_awesome</span>
+                    <span class="settings-btn-text">Заставка</span>
                 </button>
                 <button id="space-3d-btn" class="btn btn-secondary space-mode-trigger" title="Интерактивное космическое 3D-пространство 360°">
                     <span class="material-symbols-outlined icon">orbit</span>
@@ -1923,7 +1927,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.62.2"></script>
+    <script type="module" src="src/app.js?v=4.63.0"></script>
 
     <script>
     /* =============================================================

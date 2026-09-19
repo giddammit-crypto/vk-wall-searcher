@@ -551,13 +551,13 @@ export function initPromoModal() {
                     </div>
                     <div class="shelf-tent-front">
                         <div class="shelf-tent-mascot-col">
-                            <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="shelf-tent-mascot-img" alt="Робот Космо" />
+                            <img src="assets/images/mascot/robot_smile.png?v=4.63.0" class="shelf-tent-mascot-img" alt="Робот Космо" />
                             <span class="shelf-mascot-caption">Привет! Я Космо 👍</span>
                         </div>
                         <div class="shelf-tent-main">
                             <div class="shelf-badge-row">
                                 <span class="shelf-cosmo-badge">
-                                    <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="cosmo-mini-avatar" alt="Космо" />
+                                    <img src="assets/images/mascot/robot_smile.png?v=4.63.0" class="cosmo-mini-avatar" alt="Космо" />
                                     <span>КНИЖНАЯ ПОЛКА С КОСМО</span>
                                 </span>
                                 <span class="shelf-genre-pill">
@@ -1854,13 +1854,13 @@ export function printPromoPoster(branch, format, slogan, template = PROMO_TEMPLA
                 </div>
                 <div class="print-shelf-front">
                     <div class="print-shelf-mascot-col">
-                        <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="print-shelf-mascot-img" alt="Робот Космо" />
+                        <img src="assets/images/mascot/robot_smile.png?v=4.63.0" class="print-shelf-mascot-img" alt="Робот Космо" />
                         <span class="print-mascot-caption">Привет! Я Космо 👍</span>
                     </div>
                     <div class="print-shelf-main">
                         <div class="print-shelf-badges">
                             <span class="print-shelf-badge-cosmo">
-                                <img src="assets/images/mascot/robot_smile.png?v=4.24.2" class="print-cosmo-mini-avatar" alt="Космо" />
+                                <img src="assets/images/mascot/robot_smile.png?v=4.63.0" class="print-cosmo-mini-avatar" alt="Космо" />
                                 <span>КНИЖНАЯ ПОЛКА С КОСМО</span>
                             </span>
                             <span class="print-shelf-badge-genre">${escapeHtml(genreObj.name)}</span>
