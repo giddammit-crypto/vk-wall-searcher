@@ -14,20 +14,28 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Внутри VK десктоп-iframe контент отдаётся через прокси-домен VK (*.vk-apps.com)
-// Все запросы к серверным скриптам формируются абсолютными URL
-const BASE = (location.hostname === 'biblioteka33.ru' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-    ? ''
-    : 'https://biblioteka33.ru';
+// Хост API: на сервере biblioteka33.ru веб-приложение развёрнуто в подпапке /stat/
+const getBaseUrl = () => {
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        return location.pathname.startsWith('/stat') ? '/stat' : '';
+    }
+    if (location.hostname === 'biblioteka33.ru') {
+        return '/stat';
+    }
+    return 'https://biblioteka33.ru/stat';
+};
+const BASE = getBaseUrl();
+const MASCOT_BASE = 'https://biblioteka33.ru/stat/assets/images/mascot';
 
 const API = {
+    base: BASE,
     opac: BASE + '/api/opac.php',
     chat: BASE + '/api/ai-proxy.php',
     ino: BASE + '/api/inoagent.php',
     miniapp: BASE + '/api/miniapp.php',
     vkproxy: BASE + '/api/vk-proxy.php',
     tts: BASE + '/api/tts-proxy.php',
-    mascot: BASE + '/assets/images/mascot',
+    mascot: MASCOT_BASE,
 };
 
 const EMOJI = ['waving', 'idle', 'smile', 'wink', 'love', 'laugh', 'cool', 'party', 'idea', 'thinking', 'shock', 'sad', 'tired', 'sleep', 'yawn', 'angry', 'read'];

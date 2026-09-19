@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.65.0",
+  "version": "4.65.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-19T19:30:00+03:00",
-  "release_name": "AURORA 4.65.0 — VK Mini App: шторка деталей книги (Bottom Sheet), фикс обложек через redirect=1, живой поиск 255-ФЗ, VK Bridge события (UpdateConfig, BackButtonPressed, Taptic), Книга дня, озвучка Космо (TTS) и шеринг"
+  "commit_date": "2026-09-19T19:48:00+03:00",
+  "release_name": "AURORA 4.65.1 — VK Mini App: исправление путей API (/stat/), доменов vk.ru / pages-vk-apps.com в Origin CORS, ассетов маскота и стабильности чата"
 }

@@ -63,16 +63,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 
 // Защита от прямого встраивания со сторонних недоверенных доменов
 if (isset($_SERVER['HTTP_ORIGIN'])) {
-    $originHost = parse_url($_SERVER['HTTP_ORIGIN'], PHP_URL_HOST);
+    $originRaw  = (string)$_SERVER['HTTP_ORIGIN'];
+    $originHost = parse_url($originRaw, PHP_URL_HOST) ?: $originRaw;
+    $originHost = preg_replace('/^https?:\/\//i', '', $originHost);
+    $originHost = strtolower(trim(explode(':', $originHost)[0]));
+
     $selfHost   = parse_url($_SERVER['HTTP_HOST'] ?? '', PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
+    $selfHost   = strtolower(trim(explode(':', (string)$selfHost)[0]));
+
     $localHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
-    $isLocal = in_array($originHost, $localHosts, true) || in_array($selfHost, $localHosts, true);
-        if ($originHost && $selfHost && strcasecmp($originHost, (string)$selfHost) !== 0 && !$isLocal) {
-        // VK Mini App: iframe приложения живёт на доменах VK — разрешаем их
-        $isVkOrigin = (bool)preg_match('/(\.|^)(vk-apps\.com|vk\.com|vk-portal\.net|userapi\.com)$/i', (string)$originHost);
-        if (!$isVkOrigin) {
-            tts_error('Запросы со сторонних доменов запрещены.', 403);
-        }
+    $isLocal    = in_array($originHost, $localHosts, true) || in_array($selfHost, $localHosts, true);
+    $isSelf     = ($originHost !== '' && strcasecmp($originHost, $selfHost) === 0);
+
+    // VK Mini App: iframe приложения живёт на доменах VK (vk.com, vk.ru, vk.me, vk-apps.com, prod-app*-pages-vk-apps.com и др.)
+    $isVkOrigin = (bool)preg_match('/(^|\.)(vk\.(com|ru|me)|userapi\.com|vk-portal\.net)$/i', $originHost)
+        || (bool)preg_match('/(^|[\.\-])(vk-apps\.(com|ru)|pages-vk-apps\.com)$/i', $originHost);
+
+    if (!$isLocal && !$isSelf && !$isVkOrigin) {
+        tts_error('Запросы со сторонних доменов запрещены.', 403);
     }
 }
 
