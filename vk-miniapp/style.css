@@ -105,11 +105,20 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .hidden { display: none !important; }
 
 /* ── Экраны ── */
-.screen { display: none; padding: calc(12px + var(--vk-safe-top, 0px)) 16px calc(76px + var(--vk-safe-bottom, 0px)); min-height: 100vh; animation: screenIn 200ms var(--ease-smooth) both; }
+.screen { display: none; padding: calc(12px + var(--vk-safe-top, 0px)) 16px calc(76px + var(--vk-safe-bottom, 0px)); animation: screenIn 200ms var(--ease-smooth) both; }
 .screen.is-active { display: block; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .app-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; }
-.app-logo-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1 Unbounded, sans-serif; color: var(--text-primary); }
+.app-logo-badge { display: inline-flex; align-items: center; gap: 8px; font: 700 13px/1 Unbounded, sans-serif; color: var(--text-primary); }
+.logo-icon-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    flex-shrink: 0;
+}
 .logo-spark { color: var(--neon-cyan); font-size: 18px; filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6)); }
 .header-actions { display: flex; gap: 8px; }
 .header-btn {

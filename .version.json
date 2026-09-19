@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.66.0",
+  "version": "4.66.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-19T20:30:00+03:00",
-  "release_name": "AURORA 4.66.0 — VK Mini App: адаптивность и Markdown в чате, космические переплёты без битых обложек, ресайз по вертикали, стикеры Космо, очистка бейджей и баннер приложения"
+  "commit_date": "2026-09-19T21:10:00+03:00",
+  "release_name": "AURORA 4.66.1 — VK Mini App: фикс вечного растягивания по вертикали (безопасные дискретные высоты десктопа без ResizeObserver loop), официальная 1:1 иконка приложения и manifest.json"
 }

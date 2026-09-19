@@ -107,58 +107,59 @@ async function copyText(text) {
     }
 }
 
-/* ── Управление высотой окна VK Mini App (десктопный iframe VK) ── */
-let lastWindowHeight = 0;
-let resizeDebounceTimer = null;
+/* ── Управление высотой окна VK Mini App на десктопе ── */
+let currentDesktopHeight = 0;
 
 function isDesktopWebPlatform() {
-    const params = new URLSearchParams(window.location.search);
-    const platform = params.get('vk_platform');
-    if (platform === 'desktop_web') return true;
-    return window.vkBridge && typeof window.vkBridge.supports === 'function' && window.vkBridge.supports('VKWebAppResizeWindow');
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('vk_platform') === 'desktop_web';
+    } catch (e) {
+        return false;
+    }
 }
 
-function syncWindowSize(extra = 0) {
+const DESKTOP_SCREEN_HEIGHTS = {
+    home: 860,
+    catalog: 960,
+    chat: 860,
+    more: 860,
+};
+
+async function setDesktopWindowHeight(targetHeight) {
     if (!bridgeReady || !window.vkBridge || !isDesktopWebPlatform()) return;
+    const clamped = Math.min(Math.max(Math.round(targetHeight || 860), 650), 1200);
+    if (clamped === currentDesktopHeight) return;
+    currentDesktopHeight = clamped;
+    try {
+        await window.vkBridge.send('VKWebAppResizeWindow', {
+            width: 800,
+            height: clamped,
+        });
+    } catch (e) {}
+}
 
-    clearTimeout(resizeDebounceTimer);
-    resizeDebounceTimer = setTimeout(async () => {
-        const activeScreen = $('.screen.is-active');
-        const sheetOpen = !$('#book-sheet-backdrop')?.classList.contains('hidden');
-        
-        let contentHeight = activeScreen ? activeScreen.scrollHeight : document.body.scrollHeight;
-        let targetHeight = contentHeight + 48 + extra;
-
-        if (activeScreen?.dataset.screen === 'catalog') {
-            targetHeight = Math.max(targetHeight, 1050);
-        }
-        if (sheetOpen) {
-            targetHeight = Math.max(targetHeight, 1180);
-        }
-
-        const clamped = Math.min(Math.max(targetHeight, 800), 4050);
-
-        if (Math.abs(clamped - lastWindowHeight) >= 20) {
-            lastWindowHeight = clamped;
-            try {
-                await window.vkBridge.send('VKWebAppResizeWindow', {
-                    width: 800,
-                    height: clamped,
-                });
-            } catch (e) {}
-        }
-    }, 90);
+function syncWindowSize(targetOrScreen = null) {
+    if (!isDesktopWebPlatform()) return;
+    if (typeof targetOrScreen === 'number') {
+        setDesktopWindowHeight(targetOrScreen);
+        return;
+    }
+    const sheetOpen = !$('#book-sheet-backdrop')?.classList.contains('hidden');
+    if (sheetOpen) {
+        setDesktopWindowHeight(980);
+        return;
+    }
+    const screen = (typeof targetOrScreen === 'string' && targetOrScreen)
+        ? targetOrScreen
+        : ($('.screen.is-active')?.dataset.screen || 'home');
+    const h = DESKTOP_SCREEN_HEIGHTS[screen] || 860;
+    setDesktopWindowHeight(h);
 }
 
 function initWindowResizeManager() {
     if (!isDesktopWebPlatform()) return;
-    syncWindowSize();
-    if (typeof ResizeObserver !== 'undefined') {
-        const observer = new ResizeObserver(() => syncWindowSize());
-        $$('.screen').forEach(s => observer.observe(s));
-        const sheetContent = $('#book-sheet-content');
-        if (sheetContent) observer.observe(sheetContent);
-    }
+    syncWindowSize('home');
 }
 
 function storageGet(key, fallback) {
@@ -704,7 +705,7 @@ function openBookSheet(item) {
     backdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     haptic('light');
-    syncWindowSize(180);
+    syncWindowSize(980);
 
     try {
         history.pushState({ modal: 'book' }, '', location.hash);
@@ -1573,7 +1574,6 @@ async function init() {
                     document.documentElement.style.setProperty('--vk-safe-bottom', data.insets.bottom + 'px');
                 }
             }
-            syncWindowSize();
         }
 
         // Физическая / жестовая кнопка «Назад» на устройствах Android
