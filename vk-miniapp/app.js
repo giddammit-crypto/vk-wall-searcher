@@ -185,6 +185,80 @@ function toast(text) {
     toast._t = setTimeout(() => t.classList.add('hidden'), 2600);
 }
 
+/* ── Мобильная телефония и телефонные вызовы ── */
+function isMobileDevice() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const p = params.get('vk_platform') || '';
+        if (p.startsWith('mobile_')) return true;
+    } catch (e) {}
+    return /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent || '');
+}
+
+function formatTelNumber(rawPhone) {
+    if (!rawPhone) return '';
+    // Извлекаем первый номер, если указано несколько через запятую, слэш или "или"
+    const first = String(rawPhone).split(/[,;/]|\bили\b/i)[0].trim();
+    const digits = first.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 11 && (digits.startsWith('8') || digits.startsWith('7'))) {
+        return '+7' + digits.slice(1);
+    }
+    if (digits.length === 10) {
+        return '+7' + digits;
+    }
+    if (digits.length === 6) {
+        // Городской 6-значный номер г. Владимира (код 4922)
+        return '+74922' + digits;
+    }
+    return '+' + digits;
+}
+
+function formatPrettyPhone(rawPhone) {
+    const tel = formatTelNumber(rawPhone);
+    if (!tel || tel.length !== 12) return rawPhone || '';
+    return `${tel.slice(0, 2)} (${tel.slice(2, 6)}) ${tel.slice(6, 8)}-${tel.slice(8, 10)}-${tel.slice(10, 12)}`;
+}
+
+function initiatePhoneCall(rawPhone, branchName = '') {
+    const tel = formatTelNumber(rawPhone);
+    if (!tel) {
+        toast('Номер телефона филиала не указан ℹ️');
+        return;
+    }
+
+    const telUrl = 'tel:' + tel;
+    const pretty = formatPrettyPhone(rawPhone) || tel;
+    haptic('medium');
+
+    // 1. VK Bridge VKWebAppOpenUrl (на мобильных клиентах VK iOS / Android)
+    if (window.vkBridge && typeof vkBridge.send === 'function') {
+        vkBridge.send('VKWebAppOpenUrl', { url: telUrl }).catch(() => {});
+    }
+
+    // 2. Прямой вызов системного диалера телефона для мобильных устройств
+    try {
+        if (window.top && window.top !== window) {
+            window.top.location.href = telUrl;
+        } else {
+            window.location.href = telUrl;
+        }
+    } catch (e) {
+        try {
+            window.location.href = telUrl;
+        } catch (e2) {}
+    }
+
+    // 3. Информирование пользователя
+    if (isMobileDevice()) {
+        toast(`Звоним: ${pretty} 📞`);
+    } else {
+        // На десктопе дополнительно копируем номер в буфер обмена для удобства
+        copyText(tel);
+        toast(`Набираем ${pretty} (номер скопирован 📋)`);
+    }
+}
+
 /* ── Навигация экранов с поддержкой истории и кнопки «Назад» ── */
 function goto(screenName, pushHistory = true) {
     if (pushHistory && history.state?.screen !== screenName) {
@@ -491,6 +565,112 @@ function coverUrl(item) {
     return `${API.opac}?${params.toString()}`;
 }
 
+/* ── Интеллектуальный парсинг и форматирование библиографического описания ── */
+function parseBibliographicInfo(item) {
+    const normTitle = normalizeBookTitle(item.title);
+    const normAuthor = item.author ? item.author.trim() : '';
+    const year = item.year || (item.imprint && (item.imprint.match(/\b(19\d\d|20\d\d)\b/) || [])[1]) || '';
+
+    // Объём / количество страниц
+    let pages = '';
+    const imprintStr = item.imprint || (Array.isArray(item.shotform_raw) ? item.shotform_raw.join(' ') : '');
+    const pagesMatch = imprintStr.match(/(\d+[\s,\[\]\d]*\s*(?:с|стр|с\.|c)\b)/i);
+    if (pagesMatch) {
+        pages = pagesMatch[1].replace(/c\b/i, 'с.').trim();
+        if (!pages.endsWith('.')) pages += '.';
+    }
+
+    // Издательство и город
+    let publisher = item.publisher || '';
+    if (!publisher && imprintStr) {
+        const pubMatch = imprintStr.match(/(?:[.-]\s*)([А-Яа-яA-Za-z\s.]+:\s*[А-Яа-яA-Za-z\s«»""—–-]+?)(?:,\s*\d{4}|\s*-\s*\d{4}|\.\s*-\s*\d{4})/);
+        if (pubMatch) {
+            publisher = pubMatch[1].trim();
+        }
+    }
+
+    // Возрастной ценз (16+, 12+, 18+, 6+, 0+)
+    let ageRating = '';
+    const ageMatch = imprintStr.match(/\b(\d{1,2}\+)\b/);
+    if (ageMatch) {
+        ageRating = ageMatch[1];
+    }
+
+    // Тип издания (Однотомник, Многотомник, Собрание сочинений)
+    let editionType = '';
+    if (Array.isArray(item.shotform_raw)) {
+        const rawJoined = item.shotform_raw.join(' ');
+        if (/Однотомник/i.test(rawJoined)) editionType = 'Однотомник';
+        else if (/Многотомник/i.test(rawJoined)) editionType = 'Многотомник';
+        else if (/Собрание сочинений/i.test(rawJoined)) editionType = 'Собрание соч.';
+    }
+
+    // Номер тома / части
+    let volume = '';
+    const volMatch = imprintStr.match(/\b(Т\.\s*\d+|Том\s*\d+|Ч\.\s*\d+|Часть\s*\d+)\b/i);
+    if (volMatch) {
+        volume = volMatch[1];
+    }
+
+    // Шифр / ББК
+    let shelfmark = item.shelfmark || '';
+    if (!shelfmark && Array.isArray(item.copies)) {
+        const found = item.copies.find(c => c.shifr && c.shifr !== 'Не задан');
+        if (found) shelfmark = found.shifr;
+    }
+    if (!shelfmark && Array.isArray(item.shotform_raw)) {
+        const rawJoined = item.shotform_raw.join(' ');
+        const shMatch = rawJoined.match(/Шифр\s*([^;]+)/i);
+        if (shMatch) shelfmark = shMatch[1].trim();
+    }
+
+    // Инвентарный номер
+    let inventory = item.inventory || '';
+    if (!inventory && Array.isArray(item.copies) && item.copies.length > 0) {
+        inventory = item.copies[0].inventory || item.copies[0].code1 || '';
+    }
+
+    // Чистая библиографическая запись по ГОСТу
+    let cleanCitation = '';
+    if (item.outform) {
+        cleanCitation = item.outform.replace(/\n+/g, ' ').trim();
+    } else if (item.imprint) {
+        cleanCitation = item.imprint.trim();
+    } else {
+        cleanCitation = `${normAuthor ? normAuthor + '. ' : ''}${normTitle}${year ? '.- ' + year : ''}`;
+    }
+
+    // Реальная аннотация (если есть)
+    let annotation = item.annotation || '';
+    if (!annotation && Array.isArray(item.shotform_raw)) {
+        const descLines = item.shotform_raw.filter(l => 
+            !l.includes('Инв.номер') && 
+            !l.includes('Место хранения') && 
+            !l.includes('Однотомник') && 
+            !l.includes('Многотомник') &&
+            l !== item.imprint
+        );
+        if (descLines.length > 0) {
+            annotation = descLines.join(' ').trim();
+        }
+    }
+
+    return {
+        normTitle,
+        normAuthor,
+        year,
+        pages,
+        publisher,
+        ageRating,
+        editionType,
+        volume,
+        shelfmark,
+        inventory,
+        cleanCitation,
+        annotation
+    };
+}
+
 function renderItems(items) {
     currentSearchItems = items || [];
     opacItemsMap = {};
@@ -500,20 +680,12 @@ function renderItems(items) {
     box.innerHTML = items.map((it, i) => {
         const idKey = it.id || ('item_' + i);
         opacItemsMap[idKey] = it;
-        
-        // Подсчёт общего наличия без вывода нагромождения филиалов (по запросу пользователя)
-        const copies = it.copies || [];
-        let totalFree = 0;
-        copies.forEach(c => { if (c.is_available) totalFree++; });
 
         const normTitle = normalizeBookTitle(it.title);
         const normAuthor = it.author ? it.author.trim() : 'Автор не указан';
         const yearText = it.year ? ` • ${it.year} г.` : '';
-
-        // Чистый и лаконичный индикатор наличия
-        const stockHtml = totalFree > 0
-            ? `<span class="book-stock-pill is-avail"><span class="material-symbols-rounded">check_circle</span>В наличии (${totalFree} экз.)</span>`
-            : `<span class="book-stock-pill is-busy"><span class="material-symbols-rounded">schedule</span>Все экз. на руках</span>`;
+        const shelfText = it.shelfmark ? `<span class="book-chip-shelf"><span class="material-symbols-rounded" style="font-size:11px;vertical-align:-1px">tag</span>${esc(it.shelfmark)}</span>` : '';
+        const invText = it.inventory ? `<span class="book-chip-shelf"><span class="material-symbols-rounded" style="font-size:11px;vertical-align:-1px">barcode</span>№ ${esc(it.inventory)}</span>` : '';
 
         return `
         <article class="book-card" data-book-id="${esc(idKey)}" style="--stagger:${Math.min(i, 10)}">
@@ -524,8 +696,8 @@ function renderItems(items) {
                 <div class="book-title" title="${esc(normTitle)}">${esc(normTitle)}</div>
                 <div class="book-author">${esc(normAuthor)}${esc(yearText)}</div>
                 <div class="book-meta-row">
-                    ${stockHtml}
-                    ${it.shelfmark ? `<span class="book-chip-shelf">${esc(it.shelfmark)}</span>` : ''}
+                    ${shelfText}
+                    ${invText}
                 </div>
             </div>
             <div class="book-card-arrow" aria-hidden="true">
@@ -568,31 +740,19 @@ function openBookSheet(item) {
     if (!backdrop || !content) return;
 
     const copies = item.copies || [];
-    let freeCopies = 0;
     const byBranch = {};
     copies.forEach(c => {
         const name = c.branch_name || c.location || 'Библиотека';
         byBranch[name] = byBranch[name] || {
-            free: 0,
-            total: 0,
             address: c.branch_address || '',
             phone: c.branch_phone || '',
             location: c.location || '',
         };
-        byBranch[name].total++;
-        if (c.is_available) {
-            byBranch[name].free++;
-            freeCopies++;
-        }
     });
 
-    const availBadge = freeCopies > 0
-        ? `<span class="sheet-avail-pill b-ok"><span class="material-symbols-rounded">check_circle</span>Свободно ${freeCopies} из ${copies.length || 1} экз.</span>`
-        : `<span class="sheet-avail-pill b-no"><span class="material-symbols-rounded">cancel</span>Все ${copies.length || 1} экз. выданы</span>`;
-
-    // Формирование карточек филиалов (без шумных бейджей «выдана»)
+    // Карточки филиалов (без меток наличия и количества экземпляров)
     const branchesHtml = Object.entries(byBranch).map(([name, b]) => {
-        const cleanPhone = b.phone ? b.phone.split(',')[0].replace(/[^\d+]/g, '') : '';
+        const cleanPhone = formatTelNumber(b.phone);
 
         return `
         <div class="sheet-branch-card">
@@ -601,20 +761,89 @@ function openBookSheet(item) {
             </div>
             ${b.address ? `<div class="sheet-branch-addr"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px">location_on</span> ${esc(b.address)}</div>` : ''}
             <div class="sheet-branch-actions">
-                ${cleanPhone ? `<a class="branch-pill-btn" href="tel:${cleanPhone}"><span class="material-symbols-rounded">call</span>Позвонить</a>` : ''}
+                ${cleanPhone ? `<a class="branch-pill-btn branch-call-btn" href="tel:${cleanPhone}" target="_top" rel="noopener noreferrer" data-call-phone="${cleanPhone}" data-branch-name="${esc(name)}"><span class="material-symbols-rounded">call</span>Позвонить</a>` : ''}
                 ${b.address ? `<button class="branch-card-btn" data-copy-addr="${esc(b.address)}"><span class="material-symbols-rounded">content_copy</span>Адрес</button>` : ''}
             </div>
         </div>`;
-    }).join('') || '<div class="fine-print">Данные о распределении по филиалам уточняются в ЦГБ.</div>';
+    }).join('') || '<div class="fine-print">Данные о филиалах уточняются в справочной службе ЦГБ.</div>';
 
-    // Формирование аннотации/описания
-    let annotation = item.annotation || '';
-    if (!annotation && Array.isArray(item.shotform_raw)) {
-        annotation = item.shotform_raw.join(' ');
+    const biblio = parseBibliographicInfo(item);
+    const normTitle = biblio.normTitle;
+    const normAuthor = biblio.normAuthor || 'Автор не указан';
+
+    // Карточки ключевых параметров книги (адаптивная сетка)
+    const pills = [];
+    if (biblio.year) {
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">calendar_today</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Год издания</span>
+                <span class="biblio-metric-value">${esc(biblio.year)} г.</span>
+            </div>
+        </div>`);
     }
-
-    const normTitle = normalizeBookTitle(item.title);
-    const normAuthor = item.author ? item.author.trim() : 'Автор не указан';
+    if (biblio.pages) {
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">menu_book</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Объём</span>
+                <span class="biblio-metric-value">${esc(biblio.pages)}</span>
+            </div>
+        </div>`);
+    }
+    if (biblio.publisher) {
+        pills.push(`
+        <div class="biblio-metric is-wide">
+            <span class="biblio-metric-icon material-symbols-rounded">apartment</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Издательство</span>
+                <span class="biblio-metric-value">${esc(biblio.publisher)}</span>
+            </div>
+        </div>`);
+    }
+    if (biblio.shelfmark) {
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">tag</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">ББК / Шифр</span>
+                <span class="biblio-metric-value">${esc(biblio.shelfmark)}</span>
+            </div>
+        </div>`);
+    }
+    if (biblio.inventory) {
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">barcode</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Инв. номер</span>
+                <span class="biblio-metric-value">№ ${esc(biblio.inventory)}</span>
+            </div>
+        </div>`);
+    }
+    if (biblio.editionType || biblio.volume) {
+        const typeStr = [biblio.editionType, biblio.volume].filter(Boolean).join(' • ');
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">auto_stories</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Издание</span>
+                <span class="biblio-metric-value">${esc(typeStr)}</span>
+            </div>
+        </div>`);
+    }
+    if (biblio.ageRating) {
+        pills.push(`
+        <div class="biblio-metric">
+            <span class="biblio-metric-icon material-symbols-rounded">verified_user</span>
+            <div class="biblio-metric-content">
+                <span class="biblio-metric-label">Возраст</span>
+                <span class="biblio-metric-value">${esc(biblio.ageRating)}</span>
+            </div>
+        </div>`);
+    }
 
     content.innerHTML = `
         <div class="sheet-hero">
@@ -624,9 +853,8 @@ function openBookSheet(item) {
             <div class="sheet-meta-info">
                 <div class="sheet-title">${esc(normTitle)}</div>
                 <div class="sheet-author">${esc(normAuthor)}</div>
-                ${item.imprint || item.year ? `<div class="sheet-imprint">${esc(item.imprint || (item.year + ' г.'))}</div>` : ''}
-                ${item.shelfmark ? `<div class="sheet-code">ББК/Шифр: <strong>${esc(item.shelfmark)}</strong></div>` : ''}
-                ${availBadge}
+                ${biblio.year ? `<div class="sheet-imprint">${esc(biblio.year)} г.</div>` : ''}
+                ${biblio.shelfmark ? `<div class="sheet-code">ББК/Шифр: <strong>${esc(biblio.shelfmark)}</strong></div>` : ''}
             </div>
         </div>
 
@@ -645,14 +873,31 @@ function openBookSheet(item) {
             </button>
         </div>
 
-        ${annotation ? `
-        <div>
-            <div class="sheet-section-title">Библиографическое описание</div>
-            <div class="sheet-annotation">${esc(annotation)}</div>
-        </div>` : ''}
+        <div class="sheet-biblio-block">
+            <div class="sheet-biblio-head">
+                <span class="sheet-section-title"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-2px;color:var(--aurora-cyan)">description</span> Библиографическое описание</span>
+                <button class="sheet-copy-citation-btn" id="sheet-btn-copy-citation" title="Скопировать библиографическую запись">
+                    <span class="material-symbols-rounded">content_copy</span>
+                    <span>Копировать</span>
+                </button>
+            </div>
+
+            ${pills.length > 0 ? `<div class="sheet-biblio-grid">${pills.join('')}</div>` : ''}
+
+            ${biblio.cleanCitation ? `
+            <div class="sheet-citation-card">
+                <div class="sheet-citation-text">${esc(biblio.cleanCitation)}</div>
+            </div>` : ''}
+
+            ${biblio.annotation ? `
+            <div class="sheet-annotation-box">
+                <div class="sheet-annotation-label"><span class="material-symbols-rounded">format_quote</span> Аннотация</div>
+                <div class="sheet-annotation-text">${esc(biblio.annotation)}</div>
+            </div>` : ''}
+        </div>
 
         <div>
-            <div class="sheet-section-title">Наличие в библиотеках города (${copies.length} экз.)</div>
+            <div class="sheet-section-title"><span class="material-symbols-rounded" style="font-size:15px;vertical-align:-2px;color:var(--aurora-cyan)">domain</span> Где найти книгу в библиотеках города</div>
             <div class="sheet-branches-list">${branchesHtml}</div>
         </div>
     `;
@@ -676,6 +921,24 @@ function openBookSheet(item) {
         });
     });
 
+    // Телефонные вызовы из шторки (активация звонка на смартфоне)
+    content.querySelectorAll('[data-call-phone]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            initiatePhoneCall(btn.dataset.callPhone, btn.dataset.branchName || '');
+        });
+    });
+
+    // Копирование библиографической записи
+    $('#sheet-btn-copy-citation')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fullCitation = biblio.cleanCitation || `${normAuthor}. ${normTitle}${biblio.year ? '.- ' + biblio.year : ''}`;
+        copyText(fullCitation);
+        toast('Библиографическая запись скопирована 📋');
+        haptic('light');
+    });
+
     // Действия шторки: спросить Космо
     $('#sheet-btn-ask')?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -693,7 +956,7 @@ function openBookSheet(item) {
 
     $('#sheet-btn-share')?.addEventListener('click', async () => {
         haptic('light');
-        const text = `📖 «${item.title}» — ${item.author || 'автор не указан'}\nКнига найдена в каталоге библиотек Владимира (ЦБС).\nИщи в приложении АВРОРА • Космо!`;
+        const text = `📖 «${normTitle}» — ${normAuthor}\nКнига найдена в каталоге библиотек Владимира (ЦБС).\nИщи в приложении АВРОРА • Космо!`;
         try {
             if (bridgeReady && window.vkBridge) {
                 await window.vkBridge.send('VKWebAppShare', { link: window.location.href });
@@ -706,7 +969,7 @@ function openBookSheet(item) {
     });
 
     $('#sheet-btn-copy')?.addEventListener('click', () => {
-        const text = `${item.title} — ${item.author || ''} ${item.year ? '(' + item.year + ')' : ''}${item.shelfmark ? ' [ББК: ' + item.shelfmark + ']' : ''}`;
+        const text = `${normTitle} — ${normAuthor} ${biblio.year ? '(' + biblio.year + ')' : ''}${biblio.shelfmark ? ' [ББК: ' + biblio.shelfmark + ']' : ''}`;
         copyText(text);
         toast('Название и шифр скопированы 📋');
         haptic('light');
@@ -2028,18 +2291,26 @@ async function buildBranchList() {
         const d = await r.json();
         const branches = (d.branches || []).slice(0, 18);
         list.innerHTML = branches.map(b => {
-            const cleanPhone = b.phone ? b.phone.split(',')[0].replace(/[^\d+]/g, '') : '';
+            const cleanPhone = formatTelNumber(b.phone);
             return `
             <div class="branch-card">
                 <div class="branch-name">${esc(b.branch_num || '')} — ${esc(b.branch_name || '')}</div>
                 <div class="branch-addr"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:-2px">location_on</span> ${esc(b.address || '')}</div>
                 <div class="branch-card-actions">
-                    ${cleanPhone ? `<a class="branch-pill-btn" href="tel:${cleanPhone}"><span class="material-symbols-rounded">call</span>Позвонить</a>` : ''}
+                    ${cleanPhone ? `<a class="branch-pill-btn branch-call-btn" href="tel:${cleanPhone}" target="_top" rel="noopener noreferrer" data-call-phone="${cleanPhone}" data-branch-name="${esc(b.branch_name || '')}"><span class="material-symbols-rounded">call</span>Позвонить</a>` : ''}
                     <button class="branch-card-btn" data-filter-branch="${esc(b.branch_num || b.branch_name || '')}"><span class="material-symbols-rounded">search</span>Книги филиала</button>
                     ${b.address ? `<button class="branch-card-btn" data-copy-addr="${esc(b.address)}"><span class="material-symbols-rounded">content_copy</span>Адрес</button>` : ''}
                 </div>
             </div>`;
         }).join('');
+
+        list.querySelectorAll('[data-call-phone]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initiatePhoneCall(btn.dataset.callPhone, btn.dataset.branchName || '');
+            });
+        });
 
         list.querySelectorAll('[data-filter-branch]').forEach(btn => {
             btn.addEventListener('click', () => {

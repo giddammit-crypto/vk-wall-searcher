@@ -853,10 +853,9 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .sheet-imprint, .sheet-code {
     font-size: 11px; color: var(--text-dim);
 }
-.sheet-avail-pill {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--radius-sm);
-    margin-top: 6px; align-self: flex-start;
+.sheet-avail-pill,
+.book-stock-pill {
+    display: none !important;
 }
 .sheet-actions {
     display: flex; flex-wrap: wrap; gap: 8px;
@@ -880,11 +879,151 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     text-transform: uppercase; letter-spacing: 0.8px;
     color: var(--text-dim); margin-bottom: 6px;
 }
-.sheet-annotation {
-    font-size: 13px; line-height: 1.55; color: var(--text-secondary);
-    background: var(--bg-card); padding: 12px; border-radius: var(--radius-md);
+
+/* ── Библиографическое описание (Адаптивный блок АВРОРЫ) ── */
+.sheet-biblio-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(14, 19, 32, 0.65);
     border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
+
+.sheet-biblio-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sheet-biblio-head .sheet-section-title {
+    margin-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sheet-copy-citation-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--aurora-cyan);
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    cursor: pointer;
+    transition: background 150ms ease, transform 120ms var(--ease-spring);
+}
+.sheet-copy-citation-btn .material-symbols-rounded { font-size: 14px; }
+.sheet-copy-citation-btn:hover { background: rgba(56, 189, 248, 0.18); }
+.sheet-copy-citation-btn:active { transform: scale(0.95); }
+
+.sheet-biblio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.biblio-metric {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(220, 235, 255, 0.035);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    min-width: 0;
+    transition: border-color 150ms ease, background 150ms ease;
+}
+.biblio-metric:hover {
+    border-color: rgba(56, 189, 248, 0.25);
+    background: rgba(56, 189, 248, 0.05);
+}
+
+.biblio-metric.is-wide {
+    grid-column: 1 / -1;
+}
+
+.biblio-metric-icon {
+    font-size: 18px;
+    color: var(--aurora-cyan);
+    flex-shrink: 0;
+}
+
+.biblio-metric-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.biblio-metric-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-dim);
+}
+
+.biblio-metric-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sheet-citation-card {
+    background: rgba(10, 14, 26, 0.8);
+    border: 1px dashed rgba(56, 189, 248, 0.28);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    position: relative;
+}
+
+.sheet-citation-text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    word-break: break-word;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+.sheet-annotation-box {
+    background: rgba(220, 235, 255, 0.025);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    padding: 11px 13px;
+}
+
+.sheet-annotation-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--aurora-cyan);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+.sheet-annotation-label .material-symbols-rounded { font-size: 14px; }
+
+.sheet-annotation-text {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
 .sheet-branch-card {
     background: var(--surface); border: 1px solid var(--hairline);
     border-radius: var(--radius-md); padding: 12px;
@@ -897,20 +1036,37 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .sheet-branch-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
 .sheet-branch-addr { font-size: 12px; color: var(--text-dim); }
 .sheet-branch-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
 .branch-pill-btn {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px; border-radius: var(--radius-sm);
-    font-size: 11px; font-weight: 500; text-decoration: none;
+    padding: 5px 12px; border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 600; text-decoration: none;
+    cursor: pointer;
     background: rgba(56, 189, 248, 0.1); color: var(--aurora-cyan);
     border: 1px solid rgba(56, 189, 248, 0.2);
-    transition: background 150ms ease, transform 120ms var(--ease-spring);
+    transition: background 150ms ease, transform 120ms var(--ease-spring), border-color 150ms ease;
 }
 .branch-pill-btn .material-symbols-rounded { font-size: 14px; }
 .branch-pill-btn:hover { background: rgba(56, 189, 248, 0.2); }
 .branch-pill-btn:active { transform: scale(0.95); }
+
+/* Специальная заметная кнопка звонка с телефона */
+.branch-pill-btn.branch-call-btn {
+    background: rgba(16, 185, 129, 0.14);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.32);
+}
+.branch-pill-btn.branch-call-btn:hover {
+    background: rgba(16, 185, 129, 0.24);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+.branch-pill-btn.branch-call-btn:active {
+    transform: scale(0.95);
+}
+
 .branch-card-btn {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px; border-radius: var(--radius-sm);
+    padding: 5px 12px; border-radius: var(--radius-sm);
     font-size: 11px; font-weight: 500; cursor: pointer;
     background: var(--surface); border: 1px solid var(--hairline);
     color: var(--text-tertiary);
