@@ -400,6 +400,24 @@ async function searchIno(query) {
     }
 }
 
+function initAddToCommunity() {
+    const btn = $('#add-to-community');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        if (!bridgeReady || !window.vkBridge) {
+            toast('Доступно внутри ВКонтакте — открой приложение из сообщества');
+            return;
+        }
+        try {
+            await window.vkBridge.send('VKWebAppAddToCommunity');
+            toast('Готово! Приложение добавлено в сообщество ✅');
+        } catch (e) {
+            if (e?.error_data?.error_code === 4) toast('Отменено');
+            else toast('Не получилось — добавь через меню «⋯» приложения');
+        }
+    });
+}
+
 async function buildBranchList() {
     try {
         const r = await fetch(`${API.miniapp}?action=branches`);
@@ -420,6 +438,7 @@ async function init() {
     initHome();
     initCatalog();
     initChat();
+    initAddToCommunity();
     buildBranchList();
     setTimeout(() => {
         $('#hero-sub').textContent = 'Сканирую охваты, ищу книги и шучу про SMM. Выбирай действие!';
