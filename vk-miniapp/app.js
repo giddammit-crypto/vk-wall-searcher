@@ -899,7 +899,27 @@ const SYSTEM_PROMPT = [
     '3. Прежде чем назвать героя, автора или сюжет книги, убедись на 100% в подлинности факта. Если в чём-то сомневаешься — честно признайся в этом, но никогда не придумывай вымышленные имена или события!',
     '4. СТРОЖАЙШИЙ ЗАПРЕТ на упоминание, цитирование и рекомендации авторов, внесённых в реестр иностранных агентов Минюстом РФ (Б. Акунин, Д. Глуховский, Д. Быков и др.).',
     '5. О новостях и анонсах филиалов: у нас 16 сообществ филиалов библиотек Владимира, ежедневно публикуются анонсы выставок, встреч и мастер-классов. Читатель может открыть вкладку «Новости» внизу экрана приложения!',
-    'Отвечай доброжелательно, по делу, красивым литературным языком, выделяя ключевые названия и имена жирным (**Гай Монтэг**, **«451° по Фаренгейту»**).'
+    '6. ПОЛНЫЙ И ТОЧНЫЙ СПРАВОЧНИК ВСЕХ 18 БИБЛИОТЕК ВЛАДИМИРА (МБУК «ЦГБ», сайт biblioteka33.ru):',
+    '• ЦГБ (Центральная городская библиотека) — г. Владимир, Суздальский пр., д. 2 (Доброе / развилка, рядом с парком «Добросельский»). Телефоны: 8(4922) 21-65-63, 21-66-80. Группа ВК: vk.com/vladcgb.',
+    '• ЦДБ (Центральная детская библиотека) — г. Владимир, ул. Большая Московская, д. 31 (Исторический центр, у Золотых ворот). Телефоны: 8(4922) 32-32-42, 32-47-73. Группа ВК: vk.com/cdbvladimir.',
+    '• Филиал №1 — г. Владимир, проспект Строителей, д. 38 а, кв. 44 (Черёмушки / студенческий городок ВлГУ). Телефон: 8(4922) 33-86-23. Группа ВК: vk.com/club145883298.',
+    '• Филиал №2 — г. Владимир, пр. Ленина, д. 12 (Садовая площадь, у к/т «Буревестник»/«Заря»). Телефоны: 8(4922) 32-15-84, 32-15-85. Группа ВК: vk.com/biblfil2.',
+    '• Филиал №3 — г. Владимир, мкр. Юрьевец, ул. Школьный проезд, д. 4. Телефон: 8(4922) 26-18-74. Группа ВК: vk.com/public189953509.',
+    '• Филиал №4 — г. Владимир, ул. Егорова, д. 10 (Доброе, перекрёсток ул. Егорова и Комиссарова). Телефоны: 8(4922) 21-96-11, 21-23-48. Страница ВК: vk.com/id474771380.',
+    '• Филиал №5 — г. Владимир, ул. Верхняя Дуброва, д. 10 (ЮЗР / рынок «Слобода»). Телефон: 8(4922) 54-28-43. Группа ВК: vk.com/biblfil5.',
+    '• Филиал №6 — г. Владимир, мкр. Юрьевец, Институтский городок, д. 2. Телефон: 8(4922) 45-37-01. Группа ВК: vk.com/public197036990.',
+    '• Филиал №7 — г. Владимир, ул. Мира, д. 55 (здание ДК Молодёжи, Октябрьский район). Телефон: 8(4922) 53-45-54. Страница ВК: vk.com/id428880688.',
+    '• Филиал №8 — г. Владимир, ул. Сурикова, д. 26 (район ул. Чайковского). Телефон: 8(4922) 54-65-11. Группа ВК: vk.com/filial8cgb.',
+    '• Филиал №9 («Добролит») — г. Владимир, ул. Юбилейная, д. 38 (Доброе). Телефон: 8(4922) 21-22-75. Группа ВК: vk.com/dobrolit.',
+    '• Филиал №10 — г. Владимир, ул. Диктора Левитана, д. 55 (ВНИМАНИЕ: библиотека временно не работает!).',
+    '• Филиал №11 — г. Владимир, мкр. Лесной, ул. Лесная, 10 А. Телефон: 8(4922) 45-57-17. Группа ВК: vk.com/club193785811.',
+    '• Филиал №12 — г. Владимир, мкр. Энергетик, ул. Энергетиков, д. 27, кв. 16. Телефон: 8(4922) 26-43-81. Группа ВК: vk.com/public198438621.',
+    '• Филиал №13 («Книголенд») — г. Владимир, ул. Горького, д. 69 (ВлГУ / площадь Ленина). Телефон: 8(4922) 33-15-67. Группа ВК: vk.com/club170634092.',
+    '• Филиал №14 — г. Владимир, мкр. Оргтруд, ул. Октябрьская, д. 26 «б». Телефон: 8(4922) 45-74-69.',
+    '• Филиал №15 — г. Владимир, пос. Заклязьменский, ул. Центральная, д. 11 А. Телефон: 8(4922) 42-53-96. Группа ВК: vk.com/club197329237.',
+    '• Филиал №16 — г. Владимир, мкр. Коммунар, ул. Песочная, д. 15, кв. 21. Телефон: 8(4922) 42-53-95. Группа ВК: vk.com/club158118947.',
+    'Если читатель спрашивает про филиал, адрес, телефон, район или как добраться — ВСЕГДА давай точные сведения из этого списка!',
+    'Отвечай доброжелательно, по делу, красивым литературным языком, выделяя ключевые названия, адреса и телефоны жирным.'
 ].join('\n');
 
 const MOODS = [
@@ -1539,6 +1559,82 @@ function formatNewsContent(rawText) {
     return text;
 }
 
+/* ==========================================================================
+   МОДУЛЬ УПРАВЛЕНИЯ ПОЛНОЭКРАННЫМ IN-APP LIGHTBOX («КОСМО-ЛАЙТБОКС»)
+   ========================================================================== */
+
+function openPhotoLightbox(photoUrl, postUrl, branchName, branchCode, caption) {
+    if (!photoUrl) return;
+
+    const box = $('#photo-lightbox');
+    const img = $('#lightbox-img');
+    const bNameEl = $('#lightbox-branch-name');
+    const bCodeEl = $('#lightbox-branch-code');
+    const capEl = $('#lightbox-caption');
+    const vkLink = $('#lightbox-vk-link');
+
+    if (!box || !img) return;
+
+    img.src = photoUrl;
+    if (bNameEl) bNameEl.textContent = branchName || 'Библиотека';
+    if (bCodeEl) bCodeEl.textContent = branchCode || 'Филиал';
+    if (capEl) capEl.textContent = caption || 'Фотография публикации';
+    if (vkLink) {
+        vkLink.href = postUrl || '#';
+        if (!postUrl) vkLink.style.display = 'none';
+        else vkLink.style.display = 'inline-flex';
+    }
+
+    box.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    haptic('medium');
+
+    const onKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            closePhotoLightbox();
+            document.removeEventListener('keydown', onKeyDown);
+        }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    box._escHandler = onKeyDown;
+}
+
+function closePhotoLightbox() {
+    const box = $('#photo-lightbox');
+    const img = $('#lightbox-img');
+    if (!box) return;
+
+    box.classList.add('hidden');
+    if (img) img.src = '';
+    document.body.style.overflow = '';
+    haptic('light');
+
+    if (box._escHandler) {
+        document.removeEventListener('keydown', box._escHandler);
+        box._escHandler = null;
+    }
+}
+
+function initPhotoLightbox() {
+    const box = $('#photo-lightbox');
+    if (!box) return;
+
+    $('#lightbox-close-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePhotoLightbox();
+    });
+
+    $('#photo-lightbox-backdrop')?.addEventListener('click', () => {
+        closePhotoLightbox();
+    });
+
+    $('#photo-lightbox-stage')?.addEventListener('click', (e) => {
+        if (e.target !== $('#lightbox-img')) {
+            closePhotoLightbox();
+        }
+    });
+}
+
 function renderNewsFeed(posts) {
     const container = $('#news-results');
     if (!container) return;
@@ -1566,11 +1662,16 @@ function renderNewsFeed(posts) {
 
         // Медиа-контейнер с адаптивным фоновым размытием (Ambient Blur Backdrop)
         const photoHtml = p.photo ? `
-            <div class="news-media-wrap" data-photo-src="${esc(p.photo)}" data-post-url="${esc(postUrl)}">
+            <div class="news-media-wrap" 
+                 data-photo-src="${esc(p.photo)}" 
+                 data-post-url="${esc(postUrl)}" 
+                 data-branch-name="${esc(bName)}" 
+                 data-branch-code="${esc(bCode)}" 
+                 data-caption="${esc(rawText.slice(0, 100))}">
                 <img class="news-media-backdrop" src="${esc(p.photo)}" alt="" aria-hidden="true" loading="lazy">
                 <div class="news-media-scrim"></div>
                 <img class="news-media-img" src="${esc(p.photo)}" alt="Иллюстрация к новости" loading="lazy">
-                <div class="news-media-badge" title="Открыть фото на весь экран">
+                <div class="news-media-badge" title="Увеличить фото">
                     <span class="material-symbols-rounded">zoom_in</span>
                 </div>
             </div>
@@ -1678,20 +1779,15 @@ function renderNewsFeed(posts) {
         });
     });
 
-    // Просмотр фото на весь экран (VKWebAppShowImages или открытие фото в новой вкладке)
+    // Просмотр фото на весь экран через собственный адаптивный Космо-Лайтбокс
     container.querySelectorAll('.news-media-wrap').forEach(wrap => {
-        wrap.addEventListener('click', async () => {
+        wrap.addEventListener('click', () => {
             const photoSrc = wrap.dataset.photoSrc;
             const postUrl = wrap.dataset.postUrl;
-            haptic('light');
-
-            if (window.vkBridge) {
-                try {
-                    const res = await window.vkBridge.send('VKWebAppShowImages', { images: [photoSrc] });
-                    if (res) return;
-                } catch (e) {}
-            }
-            window.open(photoSrc || postUrl, '_blank', 'noopener,noreferrer');
+            const bName = wrap.dataset.branchName;
+            const bCode = wrap.dataset.branchCode;
+            const caption = wrap.dataset.caption;
+            openPhotoLightbox(photoSrc, postUrl, bName, bCode, caption);
         });
     });
 
@@ -1980,6 +2076,7 @@ async function buildBranchList() {
 async function init() {
     initHome();
     initNews();
+    initPhotoLightbox();
     initCatalog();
     initChat();
     initInoSearch();

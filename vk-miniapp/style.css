@@ -1387,3 +1387,340 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 @media (prefers-reduced-motion: reduce) {
     .hero-cosmo, .hero-floor, .app-blob, .hero-blob, .bubble-bot, .empty-state img { animation: none !important; }
 }
+
+/* ==========================================================================
+   IN-APP LIGHTBOX («КОСМО-ЛАЙТБОКС» — АДАПТИВНЫЙ ПРОСМОТР ФОТОГРАФИЙ)
+   ========================================================================== */
+
+.photo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: lightboxFadeIn 220ms var(--ease-smooth) forwards;
+}
+
+.photo-lightbox.hidden {
+    display: none !important;
+}
+
+/* Глубокий космический фон с блюром */
+.photo-lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 6, 15, 0.92);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    z-index: 1;
+}
+
+.photo-lightbox-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+/* Шапка управления */
+.photo-lightbox-header {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: var(--radius-lg);
+    background: rgba(19, 23, 38, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--elev-2);
+    max-width: 940px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.photo-lightbox-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.photo-lightbox-badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.16);
+    color: var(--aurora-cyan);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.photo-lightbox-titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.photo-lightbox-branch {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.photo-lightbox-sub {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.photo-lightbox-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.lightbox-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid var(--hairline);
+    background: var(--surface-glass);
+    color: var(--text-primary);
+    transition: all 180ms ease;
+    user-select: none;
+}
+
+.lightbox-btn-vk {
+    background: var(--accent-gradient);
+    border: none;
+    color: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.4);
+}
+
+.lightbox-btn-vk:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 18px rgba(77, 141, 255, 0.5);
+}
+
+.lightbox-btn-close {
+    width: 38px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--text-secondary);
+}
+
+.lightbox-btn-close:hover {
+    background: rgba(240, 96, 96, 0.2);
+    border-color: rgba(240, 96, 96, 0.4);
+    color: #ff7676;
+    transform: rotate(90deg);
+}
+
+/* Сцена фото */
+.photo-lightbox-stage {
+    pointer-events: auto;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 12px 0;
+    min-height: 0;
+    cursor: zoom-out;
+}
+
+/* Мягкая фоновая туманность за картинкой */
+.photo-lightbox-ambient {
+    position: absolute;
+    width: min(80vw, 600px);
+    height: min(80vh, 500px);
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+    pointer-events: none;
+    background: radial-gradient(circle, var(--aurora-cyan) 0%, var(--aurora-purple) 60%, transparent 100%);
+    transition: opacity 300ms ease;
+}
+
+/* Сама увеличенная картинка */
+.photo-lightbox-img {
+    position: relative;
+    z-index: 2;
+    max-width: min(94vw, 1100px);
+    max-height: min(82vh, 880px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(56, 189, 248, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    animation: lightboxSpringZoom 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    cursor: default;
+}
+
+/* Анимации появления */
+@keyframes lightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes lightboxSpringZoom {
+    from {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Мобильная адаптация лайтбокса (< 480px) */
+@media (max-width: 480px) {
+    .photo-lightbox-container {
+        padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
+    }
+    .photo-lightbox-header {
+        padding: 8px 12px;
+    }
+    .photo-lightbox-img {
+        max-width: 96vw;
+        max-height: 78vh;
+        border-radius: var(--radius-sm);
+    }
+    .lightbox-action-btn {
+        height: 36px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+    .lightbox-btn-close {
+        width: 36px;
+    }
+}
+
+/* ==========================================================================
+   ОБЩИЙ РЕДИЗАЙН И ПОЛИРОВКА UI («АВРОРА • Космо 2026»)
+   ========================================================================== */
+
+/* Быстрые плитки на Главной: аккуратный 2x2 грид */
+.quick-tile {
+    background: var(--surface-glass);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+    padding: 16px 14px;
+    box-shadow: var(--elev-1);
+    transition: transform 200ms var(--ease-spring), box-shadow 200ms ease, border-color 200ms ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.quick-tile:hover {
+    transform: translateY(-3px) scale(1.02);
+    border-color: rgba(56, 189, 248, 0.45);
+    box-shadow: 0 10px 24px rgba(3, 6, 16, 0.45), 0 0 16px rgba(56, 189, 248, 0.18);
+}
+
+.quick-tile:active {
+    transform: scale(0.97);
+}
+
+/* Карточка дня / Цитата: благородное свечение */
+.quote-card {
+    background: linear-gradient(145deg, rgba(30, 38, 62, 0.85) 0%, rgba(18, 23, 38, 0.9) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: var(--radius-card);
+    box-shadow: 0 8px 32px rgba(3, 6, 16, 0.5), 0 0 20px rgba(251, 191, 36, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.quote-card::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Поле поиска: неоновый фокус-ринг */
+.search-wrap {
+    background: rgba(18, 24, 40, 0.78);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    transition: all 200ms ease;
+}
+
+.search-wrap:focus-within {
+    border-color: var(--aurora-cyan);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
+    background: rgba(24, 32, 54, 0.9);
+}
+
+/* Чат с Космо: космические пузыри */
+.chat-bubble.bubble-bot {
+    background: rgba(30, 39, 62, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 4px 16px rgba(3, 6, 16, 0.3);
+}
+
+.chat-bubble.bubble-user {
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 18px 18px 4px 18px;
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(77, 141, 255, 0.35);
+}
+
+/* Нижний таб-бар: неоновая подсветка активного таба */
+.tab-bar {
+    background: rgba(13, 17, 29, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--hairline);
+}
+
+.tab.is-active .material-symbols-rounded {
+    color: var(--aurora-cyan);
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+    transform: scale(1.1);
+    transition: transform 180ms var(--ease-spring);
+}
+
+.tab.is-active .tab-label {
+    color: var(--aurora-cyan);
+    font-weight: 700;
+}
