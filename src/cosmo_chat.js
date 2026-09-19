@@ -228,6 +228,30 @@ export function parseCosmoMarkdown(text) {
 
     const flushTable = () => {
         if (table.length) {
+            // Реконструкция строк, разорванных ИИ переносом: длинная строка
+            // таблицы едет на нескольких физических строках («| Филиал | 40
+            // | 3865 | ...»). Склеиваем подряд идущие строки, пока сумма
+            // ячеек меньше ширины таблицы (max по всем строкам).
+            const expected = Math.max(1, ...table.map(r => r.length));
+            const rowsRaw = [];
+            let pending = null;
+            for (const row of table) {
+                const isSep = row.length > 1 && row.every(c => /^\s*:?-{2,}:?\s*$/.test(c) || /^\s*:-+:\s*$/.test(c)) && row.some(c => c.includes('-'));
+                if (isSep) {
+                    if (pending) { rowsRaw.push(pending); pending = null; }
+                    rowsRaw.push(row);
+                    continue;
+                }
+                if (pending && pending.length + row.length <= expected) {
+                    pending = pending.concat(row);
+                } else {
+                    if (pending) rowsRaw.push(pending);
+                    pending = row;
+                }
+            }
+            if (pending) rowsRaw.push(pending);
+            table = rowsRaw;
+
             // Декоративные заполнители от ИИ («— — — —», «———») в ячейках
             // нормализуем к одиночному тире «нет данных»
             const cleanCell = (c) => {
