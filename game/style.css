@@ -1,22 +1,22 @@
 /* ==============================================================================
-   COSMO: LIBRARY RUNNER & CYBER FIXER — AAA Game Styles
-   Palette: Aurora Glassmorphism, Deep Navy, Neon Cyan, Cyber Gold, Emerald
+   COSMO: LIBRARY RUNNER & CYBER FIXER — AAA Visual Overhaul Styles
+   Palette: Aurora Cyber-Glassmorphism, Deep Space Navy, Electric Cyan, Gold, Emerald
    ============================================================================== */
 
 :root {
-    --bg-deep: #060A17;
-    --bg-dark: #0B1229;
+    --bg-deep: #050814;
+    --bg-dark: #0A1024;
     --cyan: #00F0FF;
-    --cyan-glow: rgba(0, 240, 255, 0.45);
+    --cyan-glow: rgba(0, 240, 255, 0.5);
     --gold: #FFB347;
-    --gold-glow: rgba(255, 179, 71, 0.45);
+    --gold-glow: rgba(255, 179, 71, 0.5);
     --green: #00FF9D;
-    --green-glow: rgba(0, 255, 157, 0.45);
-    --red: #FF3B69;
-    --red-glow: rgba(255, 59, 105, 0.5);
+    --green-glow: rgba(0, 255, 157, 0.5);
+    --red: #FF3366;
+    --red-glow: rgba(255, 51, 102, 0.6);
     --purple: #9D4EDD;
-    --surface: rgba(14, 22, 48, 0.85);
-    --surface-border: rgba(0, 240, 255, 0.25);
+    --surface: rgba(12, 19, 44, 0.82);
+    --surface-border: rgba(0, 240, 255, 0.28);
     --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
     --font-mono: 'SF Mono', Consolas, 'Courier New', monospace;
 }
@@ -45,7 +45,7 @@ html, body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 50%, #0d1738 0%, #060a17 100%);
+    background: radial-gradient(circle at 50% 45%, #0e193c 0%, #050814 100%);
 }
 
 canvas#gameCanvas {
@@ -55,11 +55,40 @@ canvas#gameCanvas {
     width: 100%;
     height: 100%;
     display: block;
-    image-rendering: auto;
+}
+
+/* CRT Scanline & Screen Vignette Effects */
+#screen-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: radial-gradient(circle at 50% 50%, transparent 65%, rgba(5, 8, 20, 0.7) 100%);
+    transition: box-shadow 0.4s ease;
+}
+
+#screen-vignette.urgent {
+    box-shadow: inset 0 0 80px rgba(255, 51, 102, 0.65);
+    animation: vignettePulse 0.9s infinite alternate ease-in-out;
+}
+
+@keyframes vignettePulse {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+.crt-scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    opacity: 0.18;
 }
 
 /* ==============================================================================
-   HUD OVERLAY
+   HUD OVERLAY (CYBER-GLASSMORPHISM)
    ============================================================================== */
 
 #hud {
@@ -72,7 +101,7 @@ canvas#gameCanvas {
     justify-content: space-between;
     align-items: flex-start;
     pointer-events: none;
-    z-index: 10;
+    z-index: 15;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -82,14 +111,14 @@ canvas#gameCanvas {
 .hud-pill {
     background: var(--surface);
     border: 1px solid var(--surface-border);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-radius: 14px;
     padding: 8px 16px;
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(0, 240, 255, 0.08);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(0, 240, 255, 0.08);
 }
 
 .hud-left {
@@ -97,33 +126,61 @@ canvas#gameCanvas {
     gap: 12px;
 }
 
+/* Animated Cyber Hearts */
 .hud-lives {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     align-items: center;
 }
 
 .heart-icon {
     display: inline-block;
-    width: 22px;
-    height: 22px;
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='%23FF3B69' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") no-repeat center;
+    width: 24px;
+    height: 24px;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='%23FF3366' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") no-repeat center;
     background-size: contain;
-    filter: drop-shadow(0 0 6px var(--red-glow));
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    filter: drop-shadow(0 0 8px var(--red-glow));
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    animation: heartBeat 2s infinite ease-in-out;
+}
+
+.heart-icon:nth-child(2) { animation-delay: 0.15s; }
+.heart-icon:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    12% { transform: scale(1.18); }
+    24% { transform: scale(1.04); }
+    36% { transform: scale(1.14); }
+    48% { transform: scale(1); }
 }
 
 .heart-icon.lost {
-    opacity: 0.25;
+    opacity: 0.2;
     filter: grayscale(1);
-    transform: scale(0.85);
+    transform: scale(0.8);
+    animation: none;
+}
+
+.hud-score-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hud-score-lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #89A2CD;
+    letter-spacing: 1px;
 }
 
 .hud-score-val {
     color: var(--gold);
     font-family: var(--font-mono);
-    font-size: 18px;
-    text-shadow: 0 0 10px var(--gold-glow);
+    font-size: 20px;
+    font-weight: 800;
+    text-shadow: 0 0 12px var(--gold-glow);
 }
 
 .hud-center {
@@ -134,39 +191,42 @@ canvas#gameCanvas {
 }
 
 .hud-level-name {
-    font-size: 13px;
+    font-size: 12px;
     text-transform: uppercase;
     color: #A3B8E0;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
+    font-weight: 800;
 }
 
 .hud-objective {
-    font-size: 15px;
+    font-size: 14px;
     color: var(--cyan);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .hud-pc-dots {
     display: flex;
-    gap: 5px;
+    gap: 6px;
+    align-items: center;
 }
 
 .pc-dot {
-    width: 12px;
-    height: 10px;
-    border-radius: 2px;
-    border: 1px solid var(--surface-border);
-    background: #25101a;
-    box-shadow: 0 0 5px var(--red-glow);
-    transition: all 0.3s ease;
+    width: 14px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 51, 102, 0.4);
+    background: rgba(45, 12, 22, 0.8);
+    box-shadow: 0 0 6px var(--red-glow);
+    transition: all 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
 .pc-dot.fixed {
     background: var(--green);
     border-color: var(--green);
-    box-shadow: 0 0 8px var(--green-glow);
+    box-shadow: 0 0 10px var(--green-glow);
+    transform: scale(1.15);
 }
 
 .hud-right {
@@ -178,41 +238,42 @@ canvas#gameCanvas {
 
 .hud-timer {
     font-family: var(--font-mono);
-    font-size: 20px;
+    font-size: 22px;
+    font-weight: 800;
     color: #FFFFFF;
-    min-width: 65px;
+    min-width: 68px;
     text-align: center;
 }
 
 .hud-timer.urgent {
     color: var(--red);
-    animation: pulseRed 0.8s infinite alternate;
+    animation: pulseRed 0.7s infinite alternate;
 }
 
 @keyframes pulseRed {
     0% { transform: scale(1); text-shadow: 0 0 6px var(--red-glow); }
-    100% { transform: scale(1.12); text-shadow: 0 0 16px var(--red); }
+    100% { transform: scale(1.15); text-shadow: 0 0 18px var(--red); }
 }
 
 .hud-btn {
     background: var(--surface);
     border: 1px solid var(--surface-border);
     color: #FFFFFF;
-    border-radius: 10px;
-    width: 38px;
-    height: 38px;
+    border-radius: 12px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 19px;
     transition: all 0.2s ease;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
 }
 
 .hud-btn:hover {
     border-color: var(--cyan);
-    box-shadow: 0 0 12px var(--cyan-glow);
+    box-shadow: 0 0 14px var(--cyan-glow);
     transform: translateY(-2px);
 }
 
@@ -221,39 +282,35 @@ canvas#gameCanvas {
 }
 
 /* ==============================================================================
-   BUFFS & STATUS OVERLAYS
+   OFF-SCREEN HAZARD TELEGRAPH WARNINGS
    ============================================================================== */
 
-#buff-indicator {
+#hazard-warnings {
     position: absolute;
-    top: 75px;
-    left: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    inset: 0;
     pointer-events: none;
-    z-index: 10;
+    z-index: 12;
 }
 
-.buff-chip {
-    background: var(--surface);
-    border: 1px solid var(--cyan);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
+.hazard-arrow {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 51, 102, 0.85);
+    color: white;
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: var(--cyan);
-    box-shadow: 0 4px 15px var(--cyan-glow);
-    animation: slideIn 0.3s ease-out;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    box-shadow: 0 0 16px var(--red-glow);
+    animation: pulseWarning 0.5s infinite alternate ease-in-out;
 }
 
-.buff-chip.gold {
-    border-color: var(--gold);
-    color: var(--gold);
-    box-shadow: 0 4px 15px var(--gold-glow);
+@keyframes pulseWarning {
+    0% { transform: scale(0.9); }
+    100% { transform: scale(1.15); }
 }
 
 /* ==============================================================================
@@ -266,15 +323,15 @@ canvas#gameCanvas {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(6, 10, 23, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(5, 8, 20, 0.88);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 100;
     opacity: 1;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
 .game-modal.hidden {
@@ -284,14 +341,14 @@ canvas#gameCanvas {
 }
 
 .modal-box {
-    background: linear-gradient(145deg, rgba(20, 31, 66, 0.95), rgba(9, 14, 33, 0.98));
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    border-radius: 24px;
-    padding: 36px 44px;
+    background: linear-gradient(145deg, rgba(20, 32, 68, 0.96), rgba(8, 13, 30, 0.98));
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 26px;
+    padding: 38px 46px;
     max-width: 580px;
     width: 90%;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 240, 255, 0.2);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 40px rgba(0, 240, 255, 0.22);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -306,25 +363,25 @@ canvas#gameCanvas {
 }
 
 .modal-mascot-img {
-    width: 110px;
-    height: 110px;
+    width: 120px;
+    height: 120px;
     object-fit: contain;
-    filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.5));
-    animation: floatMascot 2.5s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.55));
+    animation: floatMascot 2.6s ease-in-out infinite alternate;
 }
 
 @keyframes floatMascot {
     0% { transform: translateY(0) rotate(-2deg); }
-    100% { transform: translateY(-8px) rotate(2deg); }
+    100% { transform: translateY(-10px) rotate(2deg); }
 }
 
 .modal-title {
     font-size: 32px;
-    font-weight: 800;
+    font-weight: 900;
     color: #FFFFFF;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #FFFFFF 20%, var(--cyan) 80%);
+    background: linear-gradient(135deg, #FFFFFF 25%, var(--cyan) 85%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -332,7 +389,7 @@ canvas#gameCanvas {
 .modal-subtitle {
     font-size: 15px;
     color: #9BB3DE;
-    line-height: 1.5;
+    line-height: 1.6;
     max-width: 440px;
 }
 
@@ -346,9 +403,9 @@ canvas#gameCanvas {
 
 .stat-item {
     background: rgba(0, 240, 255, 0.06);
-    border: 1px solid rgba(0, 240, 255, 0.2);
-    border-radius: 12px;
-    padding: 10px 14px;
+    border: 1px solid rgba(0, 240, 255, 0.22);
+    border-radius: 14px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -358,20 +415,22 @@ canvas#gameCanvas {
     font-size: 11px;
     color: #89A2CD;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
+    font-weight: 700;
 }
 
 .stat-val {
     font-family: var(--font-mono);
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 22px;
+    font-weight: 800;
     color: var(--gold);
 }
 
 .controls-hint {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 12px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 20px;
     font-size: 13px;
     color: #B5C9EB;
     display: flex;
@@ -381,12 +440,12 @@ canvas#gameCanvas {
 }
 
 .kbd-badge {
-    background: #182342;
-    border: 1px solid #3A4C78;
+    background: #15203D;
+    border: 1px solid #3A4E7E;
     color: #FFFFFF;
     font-family: var(--font-mono);
     font-weight: bold;
-    padding: 2px 7px;
+    padding: 3px 8px;
     border-radius: 6px;
     box-shadow: 0 2px 0 #0d152b;
 }
@@ -396,14 +455,14 @@ canvas#gameCanvas {
     background: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%);
     color: #041026;
     border: none;
-    border-radius: 30px;
-    padding: 14px 40px;
+    border-radius: 32px;
+    padding: 15px 44px;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
-    box-shadow: 0 6px 25px rgba(0, 201, 255, 0.45);
+    box-shadow: 0 6px 28px rgba(0, 201, 255, 0.48);
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
@@ -412,22 +471,11 @@ canvas#gameCanvas {
 
 .game-btn:hover {
     transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 8px 30px rgba(0, 201, 255, 0.65);
+    box-shadow: 0 8px 34px rgba(0, 201, 255, 0.7);
 }
 
 .game-btn:active {
     transform: translateY(1px) scale(0.97);
-}
-
-.game-btn.secondary {
-    background: var(--surface);
-    color: #FFFFFF;
-    border: 1px solid var(--surface-border);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.game-btn.secondary:hover {
-    border-color: var(--cyan);
 }
 
 .btn-row {
@@ -446,13 +494,13 @@ canvas#gameCanvas {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 160px;
+    height: 170px;
     padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     pointer-events: none;
-    z-index: 20;
+    z-index: 25;
     transition: opacity 0.3s ease;
 }
 
@@ -469,69 +517,77 @@ canvas#gameCanvas {
 
 .touch-actions {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     pointer-events: auto;
 }
 
 .touch-btn {
-    width: 68px;
-    height: 68px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    background: rgba(14, 22, 48, 0.65);
-    border: 2px solid rgba(0, 240, 255, 0.35);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(14, 22, 48, 0.72);
+    border: 2px solid rgba(0, 240, 255, 0.38);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: #FFFFFF;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: bold;
     user-select: none;
     -webkit-user-select: none;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.1);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0, 240, 255, 0.12);
     transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
 }
 
 .touch-btn.active, .touch-btn:active {
-    background: rgba(0, 240, 255, 0.35);
+    background: rgba(0, 240, 255, 0.38);
     border-color: var(--cyan);
     transform: scale(0.92);
-    box-shadow: 0 0 20px var(--cyan-glow);
+    box-shadow: 0 0 24px var(--cyan-glow);
 }
 
 .touch-btn.btn-fix {
-    width: 76px;
-    height: 76px;
-    background: rgba(255, 179, 71, 0.25);
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 179, 71, 0.28);
     border-color: var(--gold);
     color: var(--gold);
 }
 
 .touch-btn.btn-fix.active, .touch-btn.btn-fix:active {
-    background: rgba(255, 179, 71, 0.5);
-    box-shadow: 0 0 24px var(--gold-glow);
+    background: rgba(255, 179, 71, 0.55);
+    box-shadow: 0 0 28px var(--gold-glow);
 }
 
 .touch-btn.btn-jump {
-    width: 76px;
-    height: 76px;
-    background: rgba(0, 255, 157, 0.25);
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 255, 157, 0.28);
     border-color: var(--green);
     color: var(--green);
 }
 
 .touch-btn.btn-jump.active, .touch-btn.btn-jump:active {
-    background: rgba(0, 255, 157, 0.5);
-    box-shadow: 0 0 24px var(--green-glow);
+    background: rgba(0, 255, 157, 0.55);
+    box-shadow: 0 0 28px var(--green-glow);
 }
 
 .touch-sub-lbl {
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     margin-top: -2px;
+    font-weight: 800;
+}
+
+/* Hide touch controls on desktop mouse screens */
+@media (hover: hover) and (pointer: fine) {
+    #touch-controls {
+        display: none;
+    }
 }
 
 /* ==============================================================================
@@ -547,11 +603,11 @@ canvas#gameCanvas {
         gap: 8px;
     }
     .hud-score-val {
-        font-size: 15px;
+        font-size: 16px;
     }
     .hud-timer {
-        font-size: 16px;
-        min-width: 50px;
+        font-size: 17px;
+        min-width: 52px;
     }
     .modal-box {
         padding: 24px 20px;
@@ -563,11 +619,11 @@ canvas#gameCanvas {
         font-size: 13px;
     }
     .touch-btn {
-        width: 60px;
-        height: 60px;
+        width: 62px;
+        height: 62px;
     }
     .touch-btn.btn-fix, .touch-btn.btn-jump {
-        width: 68px;
-        height: 68px;
+        width: 70px;
+        height: 70px;
     }
 }

@@ -6,12 +6,19 @@
     <title>КОСМО: Спасатель Библиотеки 33 — Кибер-Игра</title>
     <meta name="description" content="Помоги роботу Космо починить все сломанные компьютеры в библиотеках Владимира до того, как истечет время!">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="style.css?v=2.0.0">
+    <link rel="stylesheet" href="style.css?v=2.1.0">
 </head>
 <body>
     <div id="game-container">
         <!-- Render Canvas -->
         <canvas id="gameCanvas"></canvas>
+
+        <!-- Ambient Screen Vignette & Scanlines -->
+        <div id="screen-vignette"></div>
+        <div class="crt-scanlines"></div>
+
+        <!-- Off-Screen Hazard Warning Markers -->
+        <div id="hazard-warnings"></div>
 
         <!-- Top HUD -->
         <header id="hud">
@@ -24,16 +31,18 @@
                     </div>
                 </div>
                 <div class="hud-pill">
-                    <span style="color:#89A2CD; font-size:12px;">СЧЁТ</span>
-                    <span class="hud-score-val" id="ui-score">0</span>
+                    <div class="hud-score-wrap">
+                        <span class="hud-score-lbl">СЧЁТ</span>
+                        <span class="hud-score-val" id="ui-score">0</span>
+                    </div>
                 </div>
             </div>
 
             <div class="hud-center">
-                <div class="hud-pill" style="flex-direction:column; gap:2px; padding: 6px 14px;">
+                <div class="hud-pill" style="flex-direction:column; gap:2px; padding: 6px 16px;">
                     <div class="hud-level-name" id="ui-level-name">Уровень 1: Читальный зал ЦГБ</div>
                     <div class="hud-objective">
-                        <span style="font-size:11px; text-transform:uppercase;">Терминалы:</span>
+                        <span style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">Терминалы:</span>
                         <div class="hud-pc-dots" id="ui-pc-dots">
                             <!-- Injected by JS -->
                         </div>
@@ -86,8 +95,8 @@
 
                 <div class="controls-hint">
                     <div><span class="kbd-badge">A</span> <span class="kbd-badge">D</span> или <span class="kbd-badge">◄</span> <span class="kbd-badge">►</span> — Бег</div>
-                    <div><span class="kbd-badge">W</span> или <span class="kbd-badge">▲</span> — Прыжок (х2 двойной!)</div>
-                    <div><span class="kbd-badge">ПРОБЕЛ</span> (у ПК) — Чинка</div>
+                    <div><span class="kbd-badge">W</span> или <span class="kbd-badge">▲</span> — Прыжок (х2 сальто!)</div>
+                    <div><span class="kbd-badge">ПРОБЕЛ</span> (у ПК) — Починка</div>
                 </div>
 
                 <div class="btn-row">
@@ -130,7 +139,7 @@
         <div class="game-modal hidden" id="modal-gameover">
             <div class="modal-box">
                 <img src="../assets/images/mascot/robot_shock.png" alt="Ой" class="modal-mascot-img" onerror="this.src='../vk-miniapp/assets/images/mascot/robot_shock.png'">
-                <div class="modal-title" style="color:#FF3B69;">СВЯЗЬ ПОТЕРЯНА</div>
+                <div class="modal-title" style="color:#FF3366;">СВЯЗЬ ПОТЕРЯНА</div>
                 <div class="modal-subtitle">Закончилось время или батарея Космо разрядилась. Но библиотекари всегда верят в тебя!</div>
 
                 <div class="modal-stats">
@@ -171,7 +180,7 @@
     </div>
 
     <!-- Audio & Game Engine Scripts -->
-    <script src="audio.js?v=2.0.0"></script>
-    <script src="game.js?v=2.0.0"></script>
+    <script src="audio.js?v=2.1.0"></script>
+    <script src="game.js?v=2.1.0"></script>
 </body>
 </html>

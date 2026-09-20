@@ -1,24 +1,29 @@
 /**
- * COSMO: LIBRARY RUNNER & CYBER FIXER — Main Game Engine
- * AAA Browser Platformer for Aurora Library Portal (biblioteka33.ru)
+ * COSMO: LIBRARY RUNNER & CYBER FIXER — AAA Engine v2.1.0
+ * Architecture: Multi-Agent AAA Visual Upgrade
+ * - Game Designer: Hit-stop, Hazard Telegraphing, Juicy Feedback
+ * - Motion Designer: Squash & Stretch, 360° Flip, Lightning Arcs, Ghost Trails
+ * - Artists: Gothic Cathedral Windows, Banker's Lamps with Volumetric Light Cones, Rich Bookshelves
+ * - Web Designer: Cyber-Glassmorphism, Micro-telemetry & Vignette
  */
 
 (function() {
     'use strict';
 
-    // --- GAME CONSTANTS & CONFIG ---
+    // --- CONFIGURATION & GAME CONSTANTS ---
     const CONFIG = {
         GRAVITY: 1450,
         MOVE_SPEED: 380,
         BOOST_SPEED: 580,
         JUMP_FORCE: -620,
         DOUBLE_JUMP_FORCE: -540,
-        FIX_TIME_REQUIRED: 1.6, // seconds of holding fix near PC
+        FIX_TIME_REQUIRED: 1.6,
         INVULNERABLE_DURATION: 1.6,
-        MAX_PARTICLES: 350
+        MAX_PARTICLES: 450,
+        HIT_STOP_DURATION: 0.05 // 50ms freeze frame for impactful juice
     };
 
-    // Mascot images dictionary
+    // Preloaded Mascot Sprites
     const MASCOT_SPRITES = {
         idle: '../assets/images/mascot/robot_idle.png',
         smile: '../assets/images/mascot/robot_smile.png',
@@ -32,31 +37,17 @@
         sad: '../assets/images/mascot/robot_sad.png'
     };
 
-    // Loaded image cache
     const loadedImages = {};
-    let imagesReadyCount = 0;
-    const totalImages = Object.keys(MASCOT_SPRITES).length;
-
-    function preloadMascotImages() {
-        for (const [key, src] of Object.entries(MASCOT_SPRITES)) {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => {
-                loadedImages[key] = img;
-                imagesReadyCount++;
-            };
-            img.onerror = () => {
-                // Fallback will handle missing images gracefully
-                loadedImages[key] = null;
-            };
-        }
+    for (const [key, src] of Object.entries(MASCOT_SPRITES)) {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => { loadedImages[key] = img; };
+        img.onerror = () => { loadedImages[key] = null; };
     }
-    preloadMascotImages();
 
-    // --- CANVAS & VIEWPORT SETUP ---
+    // Canvas & Viewport Setup
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-
     let vw = window.innerWidth;
     let vh = window.innerHeight;
 
@@ -69,7 +60,7 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // --- INPUT CONTROLLER ---
+    // Input Controller
     const input = {
         left: false,
         right: false,
@@ -108,20 +99,20 @@
         if (e.code === 'Space' || e.code === 'KeyE') input.fix = false;
     });
 
-    // Touch controls binding
-    function bindTouchButton(elementId, actionName) {
-        const el = document.getElementById(elementId);
+    // Touch Controls Binding
+    function bindTouch(id, action) {
+        const el = document.getElementById(id);
         if (!el) return;
 
         const start = (e) => {
             e.preventDefault();
             el.classList.add('active');
-            if (actionName === 'jump') {
+            if (action === 'jump') {
                 if (!input.jump) input.jumpPressed = true;
                 input.jump = true;
                 input.up = true;
             } else {
-                input[actionName] = true;
+                input[action] = true;
             }
             if (window.navigator.vibrate) window.navigator.vibrate(12);
         };
@@ -129,11 +120,11 @@
         const end = (e) => {
             e.preventDefault();
             el.classList.remove('active');
-            if (actionName === 'jump') {
+            if (action === 'jump') {
                 input.jump = false;
                 input.up = false;
             } else {
-                input[actionName] = false;
+                input[action] = false;
             }
         };
 
@@ -145,12 +136,12 @@
         el.addEventListener('mouseleave', end);
     }
 
-    bindTouchButton('btn-left', 'left');
-    bindTouchButton('btn-right', 'right');
-    bindTouchButton('btn-jump', 'jump');
-    bindTouchButton('btn-fix', 'fix');
+    bindTouch('btn-left', 'left');
+    bindTouch('btn-right', 'right');
+    bindTouch('btn-jump', 'jump');
+    bindTouch('btn-fix', 'fix');
 
-    // --- PARTICLE SYSTEM ---
+    // --- PARTICLE ENGINE ---
     class Particle {
         constructor() {
             this.active = false;
@@ -163,8 +154,10 @@
             this.alpha = 1;
             this.life = 1;
             this.maxLife = 1;
-            this.shape = 'circle'; // circle, spark, star, square
+            this.shape = 'circle';
             this.gravity = 0;
+            this.rot = 0;
+            this.vRot = 0;
         }
 
         spawn(x, y, vx, vy, color, life, size = 3, shape = 'circle', gravity = 0) {
@@ -179,6 +172,8 @@
             this.size = size;
             this.shape = shape;
             this.gravity = gravity;
+            this.rot = Math.random() * Math.PI * 2;
+            this.vRot = (Math.random() - 0.5) * 8;
             this.alpha = 1;
         }
 
@@ -187,6 +182,7 @@
             this.x += this.vx * dt;
             this.y += this.vy * dt;
             this.vy += this.gravity * dt;
+            this.rot += this.vRot * dt;
             this.life -= dt;
             this.alpha = Math.max(0, this.life / this.maxLife);
             if (this.life <= 0) this.active = false;
@@ -213,10 +209,14 @@
                 ctx.lineTo(drawX, drawY);
                 ctx.stroke();
             } else if (this.shape === 'star') {
+                ctx.translate(drawX, drawY);
+                ctx.rotate(this.rot);
                 ctx.font = `${Math.floor(this.size * 2)}px sans-serif`;
-                ctx.fillText('★', drawX - this.size, drawY + this.size);
-            } else if (this.shape === 'square') {
-                ctx.fillRect(drawX - this.size / 2, drawY - this.size / 2, this.size, this.size);
+                ctx.fillText('★', -this.size / 2, this.size / 2);
+            } else if (this.shape === 'smoke') {
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, this.size * (1 + (1 - this.alpha) * 2), 0, Math.PI * 2);
+                ctx.fill();
             }
             ctx.restore();
         }
@@ -239,7 +239,7 @@
                     Math.sin(angle) * spd,
                     color,
                     life * (0.6 + Math.random() * 0.8),
-                    2 + Math.random() * 3,
+                    2 + Math.random() * 4,
                     shape,
                     gravity
                 );
@@ -249,39 +249,80 @@
         }
     }
 
-    // Floating text notifications (+150, SPEED UP, etc.)
+    // Atmospheric Floating Dust Motes in Light Beams
+    const dustMotes = [];
+    for (let i = 0; i < 40; i++) {
+        dustMotes.push({
+            x: Math.random() * 3000,
+            y: Math.random() * 800,
+            vx: (Math.random() - 0.5) * 20,
+            vy: -10 - Math.random() * 15,
+            size: 1 + Math.random() * 2,
+            alpha: 0.2 + Math.random() * 0.4
+        });
+    }
+
+    function updateAndDrawDustMotes(ctx, camX, camY) {
+        ctx.save();
+        ctx.fillStyle = '#FFEAA7';
+        for (let mote of dustMotes) {
+            mote.x += mote.vx * 0.016;
+            mote.y += mote.vy * 0.016;
+            if (mote.y < 50) mote.y = vh - 60;
+            if (mote.x < 0) mote.x = gameState.worldWidth;
+            if (mote.x > gameState.worldWidth) mote.x = 0;
+
+            const dx = mote.x - camX;
+            const dy = mote.y - camY;
+            if (dx >= -20 && dx <= vw + 20) {
+                ctx.globalAlpha = mote.alpha * (0.6 + Math.sin(Date.now() / 600 + mote.x) * 0.4);
+                ctx.beginPath();
+                ctx.arc(dx, dy, mote.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
+    // Floating Text with Spring Easing
     class FloatingText {
-        constructor(x, y, text, color = '#FFB347', size = 18) {
+        constructor(x, y, text, color = '#FFB347', size = 20) {
             this.x = x;
             this.y = y;
             this.text = text;
             this.color = color;
             this.size = size;
-            this.life = 1.2;
-            this.maxLife = 1.2;
+            this.life = 1.3;
+            this.maxLife = 1.3;
+            this.scale = 0.5;
         }
         update(dt) {
-            this.y -= 45 * dt;
+            this.y -= 50 * dt;
             this.life -= dt;
+            // Spring scale up
+            if (this.scale < 1.0) {
+                this.scale += (1.1 - this.scale) * 16 * dt;
+            }
         }
         draw(ctx, camX, camY) {
             const alpha = Math.max(0, this.life / this.maxLife);
             ctx.save();
             ctx.globalAlpha = alpha;
-            ctx.font = `800 ${this.size}px 'Segoe UI', sans-serif`;
+            ctx.translate(this.x - camX, this.y - camY);
+            ctx.scale(this.scale, this.scale);
+            ctx.font = `900 ${this.size}px 'Segoe UI', sans-serif`;
             ctx.fillStyle = this.color;
             ctx.shadowColor = this.color;
-            ctx.shadowBlur = 10;
-            ctx.fillText(this.text, this.x - camX, this.y - camY);
+            ctx.shadowBlur = 12;
+            ctx.fillText(this.text, 0, 0);
             ctx.restore();
         }
     }
-
     let floatingTexts = [];
 
     // --- GAME ENTITIES ---
 
-    // Platform
+    // Platform (Desk, Bookshelf, Floor)
     class Platform {
         constructor(x, y, w, h, type = 'shelf') {
             this.x = x;
@@ -289,6 +330,7 @@
             this.w = w;
             this.h = h;
             this.type = type; // 'floor', 'shelf', 'desk'
+            this.hasLamp = (type === 'desk');
         }
 
         draw(ctx, camX, camY) {
@@ -296,126 +338,189 @@
             const dy = this.y - camY;
 
             if (this.type === 'floor') {
-                // Parquet floor with warm dark wood
-                ctx.fillStyle = '#141E36';
+                // Polished Dark Parquet Floor
+                ctx.fillStyle = '#10172B';
                 ctx.fillRect(dx, dy, this.w, this.h);
 
-                // Floor neon strip
-                ctx.fillStyle = '#00F0FF';
+                // Floor glow line
+                const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
+                floorGrad.addColorStop(0, '#00F0FF');
+                floorGrad.addColorStop(0.5, '#00FF9D');
+                floorGrad.addColorStop(1, '#00F0FF');
+                ctx.fillStyle = floorGrad;
                 ctx.shadowColor = '#00F0FF';
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 10;
                 ctx.fillRect(dx, dy, this.w, 3);
                 ctx.shadowBlur = 0;
 
-                // Floor plank lines
+                // Parquet plank dividers
                 ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
-                ctx.lineWidth = 1;
-                for (let px = 0; px < this.w; px += 80) {
+                ctx.lineWidth = 1.5;
+                for (let px = 0; px < this.w; px += 90) {
                     ctx.beginPath();
-                    ctx.moveTo(dx + px, dy);
+                    ctx.moveTo(dx + px, dy + 3);
                     ctx.lineTo(dx + px, dy + this.h);
                     ctx.stroke();
                 }
             } else if (this.type === 'desk') {
-                // Polished library desk
-                ctx.fillStyle = '#3D2817';
+                // Polished Mahogany Library Desk
+                ctx.fillStyle = '#2A180E';
                 ctx.fillRect(dx, dy, this.w, this.h);
-                ctx.fillStyle = '#654321';
+                ctx.fillStyle = '#4E2C17';
                 ctx.fillRect(dx, dy, this.w, 5);
 
-                // Desk legs
-                ctx.fillStyle = '#22150C';
-                ctx.fillRect(dx + 15, dy + this.h, 12, 120);
-                ctx.fillRect(dx + this.w - 27, dy + this.h, 12, 120);
+                // Brass Corner Brackets & Rivets
+                ctx.fillStyle = '#D4AF37';
+                ctx.fillRect(dx + 4, dy + 2, 8, 4);
+                ctx.fillRect(dx + this.w - 12, dy + 2, 8, 4);
 
-                // Small desk green lamp on edge
-                ctx.fillStyle = '#27ae60';
-                ctx.beginPath();
-                ctx.arc(dx + 25, dy - 22, 12, Math.PI, 0);
-                ctx.fill();
-                ctx.fillStyle = '#f1c40f';
-                ctx.fillRect(dx + 23, dy - 10, 4, 10);
+                // Desk Carved Legs
+                ctx.fillStyle = '#1A0F09';
+                ctx.fillRect(dx + 16, dy + this.h, 14, 130);
+                ctx.fillRect(dx + this.w - 30, dy + this.h, 14, 130);
+
+                // Classic Emerald Banker's Lamp
+                if (this.hasLamp) {
+                    const lampX = dx + 26;
+                    const lampY = dy - 24;
+
+                    // Brass stand
+                    ctx.strokeStyle = '#D4AF37';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(lampX, dy);
+                    ctx.lineTo(lampX, lampY + 6);
+                    ctx.arc(lampX + 6, lampY + 6, 6, Math.PI, Math.PI * 1.5);
+                    ctx.stroke();
+
+                    // Green glass shade
+                    ctx.fillStyle = '#1B7A43';
+                    ctx.shadowColor = '#2ECC71';
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.arc(lampX + 12, lampY, 14, Math.PI * 0.9, Math.PI * 2.1);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Volumetric Warm Light Cone onto Desk (Screen blend mode)
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    const coneGrad = ctx.createRadialGradient(lampX + 12, lampY + 6, 2, lampX + 12, lampY + 45, 65);
+                    coneGrad.addColorStop(0, 'rgba(255, 230, 150, 0.45)');
+                    coneGrad.addColorStop(0.6, 'rgba(46, 204, 113, 0.22)');
+                    coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = coneGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(lampX + 6, lampY + 4);
+                    ctx.lineTo(lampX - 35, dy + 8);
+                    ctx.lineTo(lampX + 65, dy + 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
             } else {
-                // Bookshelf platform
-                ctx.fillStyle = '#4A2E18';
+                // Grand Wooden Bookshelf Platform
+                ctx.fillStyle = '#362113';
                 ctx.fillRect(dx, dy, this.w, this.h);
-                ctx.fillStyle = '#7A4B27';
+                ctx.fillStyle = '#5A371F';
                 ctx.fillRect(dx, dy, this.w, 4);
 
-                // Decorative books standing on top of platform
-                const bookColors = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6', '#1ABC9C'];
-                let curX = dx + 10;
-                while (curX < dx + this.w - 20) {
-                    const bWidth = 8 + (curX % 7);
-                    const bHeight = 18 + (curX % 15);
-                    const bColor = bookColors[Math.floor((curX * 3) % bookColors.length)];
+                // Richly Detailed Books Standing on Shelf
+                const bookPalette = [
+                    { spine: '#962D3E', foil: '#F4D03F' }, // Crimson + Gold
+                    { spine: '#2471A3', foil: '#EBF5FB' }, // Royal Blue + Silver
+                    { spine: '#196F3D', foil: '#F1C40F' }, // Emerald + Gold
+                    { spine: '#B7950B', foil: '#7D6608' }, // Amber Leather
+                    { spine: '#6C3483', foil: '#F5EEF8' }, // Purple Velvet
+                    { spine: '#D35400', foil: '#EDBB99' }  // Terracotta
+                ];
 
-                    ctx.fillStyle = bColor;
-                    ctx.fillRect(curX, dy - bHeight, bWidth, bHeight);
+                let cx = dx + 10;
+                while (cx < dx + this.w - 18) {
+                    const bW = 8 + ((cx * 5) % 9);
+                    const bH = 22 + ((cx * 7) % 18);
+                    const bData = bookPalette[Math.abs(Math.floor(cx * 0.1)) % bookPalette.length];
 
-                    // Book spine gold line
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
-                    ctx.fillRect(curX + 2, dy - bHeight + 4, bWidth - 4, 2);
+                    // Leaning book effect
+                    const isLeaning = (cx % 75 < 12);
+                    ctx.save();
+                    if (isLeaning) {
+                        ctx.translate(cx, dy);
+                        ctx.rotate(0.12);
+                        ctx.translate(-cx, -dy);
+                    }
 
-                    curX += bWidth + 3;
-                    if (curX % 85 === 0) curX += 20; // small gap for variety
+                    // Spine
+                    ctx.fillStyle = bData.spine;
+                    ctx.fillRect(cx, dy - bH, bW, bH);
+
+                    // Gold leaf embossing lines
+                    ctx.fillStyle = bData.foil;
+                    ctx.fillRect(cx + 2, dy - bH + 4, bW - 4, 2);
+                    ctx.fillRect(cx + 2, dy - bH + 9, bW - 4, 1.5);
+                    ctx.fillRect(cx + 2, dy - 5, bW - 4, 1.5);
+
+                    ctx.restore();
+
+                    cx += bW + 3;
+                    if (cx % 110 === 0) cx += 18; // gap for bookend
                 }
             }
         }
     }
 
-    // Broken Computer / Interactive Terminal
+    // Computer Terminal (3D CRT Monitor, Holographic States)
     class ComputerTerminal {
         constructor(x, y) {
             this.x = x;
-            this.y = y; // platform y
-            this.w = 56;
-            this.h = 48;
+            this.y = y;
+            this.w = 58;
+            this.h = 52;
             this.fixed = false;
-            this.fixProgress = 0; // 0 to 1
+            this.fixProgress = 0;
             this.glitchTimer = 0;
-            this.sparkTimer = 0;
+            this.smokeTimer = 0;
         }
 
         update(dt, player) {
             if (this.fixed) return;
 
-            this.glitchTimer += dt * 8;
-            this.sparkTimer -= dt;
+            this.glitchTimer += dt * 9;
+            this.smokeTimer -= dt;
 
-            // Spontaneous sparks from broken computer
-            if (this.sparkTimer <= 0) {
-                emitParticles(this.x + 28, this.y - 25, 2, '#FF3B69', 80, 0.4, 'spark', 200);
-                this.sparkTimer = 0.5 + Math.random() * 0.8;
+            // Smoking vents on broken computer
+            if (this.smokeTimer <= 0) {
+                emitParticles(this.x + 29, this.y - 48, 1, 'rgba(180, 190, 210, 0.4)', 25, 0.8, 'smoke', -20);
+                this.smokeTimer = 0.4 + Math.random() * 0.4;
             }
 
-            // Check if player is near and holding FIX
+            // Check repair interaction
             const pCenterX = player.x + player.w / 2;
             const cCenterX = this.x + this.w / 2;
             const distance = Math.abs(pCenterX - cCenterX);
             const verticalDist = Math.abs((player.y + player.h) - this.y);
 
-            const isNear = distance < 75 && verticalDist < 35;
+            const isNear = distance < 80 && verticalDist < 35;
 
             if (isNear && input.fix) {
                 player.isFixing = true;
                 player.fixTargetX = cCenterX;
+                player.fixTargetY = this.y - 25;
 
                 this.fixProgress += dt / CONFIG.FIX_TIME_REQUIRED;
 
-                // Sound & sparks
-                if (Math.random() < 0.3) window.gameAudio.playSpark();
+                if (Math.random() < 0.35) window.gameAudio.playSpark();
                 if (Math.random() < 0.25) window.gameAudio.playRepairHum();
 
-                emitParticles(this.x + 28, this.y - 25, 3, '#00F0FF', 120, 0.4, 'spark', 150);
-                emitParticles(player.x + (player.facingRight ? 40 : 0), player.y + 25, 2, '#FFB347', 90, 0.3, 'circle', 100);
+                // Rich repair spark fountain
+                emitParticles(this.x + 29, this.y - 26, 3, '#00F0FF', 140, 0.45, 'spark', 180);
+                emitParticles(this.x + 29, this.y - 26, 2, '#FFB347', 100, 0.35, 'circle', 120);
 
                 if (this.fixProgress >= 1) {
                     this.completeFix(player);
                 }
             } else if (!isNear && this.fixProgress > 0 && this.fixProgress < 1) {
-                // Slowly decay progress if abandoned
-                this.fixProgress = Math.max(0, this.fixProgress - dt * 0.4);
+                this.fixProgress = Math.max(0, this.fixProgress - dt * 0.45);
             }
         }
 
@@ -425,18 +530,21 @@
 
             window.gameAudio.playFixComplete();
 
-            // Burst of emerald and cyan particles
-            emitParticles(this.x + 28, this.y - 25, 45, '#00FF9D', 220, 0.9, 'circle', 80);
-            emitParticles(this.x + 28, this.y - 25, 30, '#00F0FF', 260, 1.1, 'star', 60);
+            // Hit-stop freeze frame for juice!
+            gameState.hitStopTimer = CONFIG.HIT_STOP_DURATION;
+            triggerScreenShake(10);
 
-            // Add score & bonus
+            // Celebration sparks & confetti
+            emitParticles(this.x + 29, this.y - 26, 50, '#00FF9D', 240, 1.0, 'circle', 70);
+            emitParticles(this.x + 29, this.y - 26, 35, '#00F0FF', 280, 1.2, 'star', 50);
+
             const bonus = 150 * gameState.level;
             gameState.score += bonus;
-            gameState.gameTime = Math.min(120, gameState.gameTime + 12); // +12 seconds
+            gameState.gameTime = Math.min(120, gameState.gameTime + 14);
             gameState.fixedCount++;
 
-            floatingTexts.push(new FloatingText(this.x, this.y - 45, `+${bonus} PTS`, '#00FF9D', 22));
-            floatingTexts.push(new FloatingText(this.x + 10, this.y - 70, `+12 SEC!`, '#FFB347', 16));
+            floatingTexts.push(new FloatingText(this.x - 10, this.y - 50, `+${bonus} ОЧКОВ!`, '#00FF9D', 24));
+            floatingTexts.push(new FloatingText(this.x + 5, this.y - 75, `+14 СЕК`, '#FFB347', 17));
 
             checkLevelProgression();
         }
@@ -445,91 +553,111 @@
             const dx = this.x - camX;
             const dy = this.y - camY;
 
-            // Monitor stand & base
-            ctx.fillStyle = '#2C3E50';
-            ctx.fillRect(dx + 23, dy - 12, 10, 12);
-            ctx.fillRect(dx + 14, dy - 4, 28, 4);
-
-            // Monitor bezel
-            ctx.fillStyle = '#1A2536';
+            // Monitor Stand with Swivel Joint
+            ctx.fillStyle = '#1F2937';
+            ctx.fillRect(dx + 24, dy - 14, 10, 14);
+            ctx.fillStyle = '#374151';
             ctx.beginPath();
-            ctx.roundRect(dx, dy - 50, this.w, this.h - 10, 6);
+            ctx.roundRect(dx + 14, dy - 4, 30, 4, 2);
             ctx.fill();
-            ctx.strokeStyle = this.fixed ? '#00FF9D' : (Math.sin(this.glitchTimer) > 0 ? '#FF3B69' : '#881133');
-            ctx.lineWidth = 1.5;
+
+            // CRT Curved Bezel
+            ctx.fillStyle = '#111827';
+            ctx.beginPath();
+            ctx.roundRect(dx, dy - 52, this.w, this.h - 10, 8);
+            ctx.fill();
+
+            // Bezel Glow Border
+            ctx.strokeStyle = this.fixed ? '#00FF9D' : (Math.sin(this.glitchTimer) > 0 ? '#FF3366' : '#991B1B');
+            ctx.lineWidth = 1.8;
             ctx.stroke();
 
-            // Screen content
+            // Cathode Curved Screen Interior
+            const scrX = dx + 5;
+            const scrY = dy - 48;
+            const scrW = this.w - 10;
+            const scrH = this.h - 18;
+
             if (this.fixed) {
-                // Clean cyan-green working screen
-                ctx.fillStyle = '#06291C';
-                ctx.fillRect(dx + 4, dy - 46, this.w - 8, this.h - 18);
+                // Online Emerald Matrix Screen
+                ctx.fillStyle = '#062817';
+                ctx.fillRect(scrX, scrY, scrW, scrH);
 
-                // Online Checkmark & Face
+                // Holographic Screen Glow
                 ctx.fillStyle = '#00FF9D';
+                ctx.font = 'bold 11px monospace';
+                ctx.fillText('ONLINE', scrX + 5, scrY + 14);
                 ctx.font = 'bold 13px sans-serif';
-                ctx.fillText('ONLINE', dx + 8, dy - 32);
-                ctx.font = 'bold 15px sans-serif';
-                ctx.fillText('✔ BD33', dx + 8, dy - 18);
+                ctx.fillText('✔ BD33', scrX + 5, scrY + 28);
+
+                // Power LED Green
+                ctx.fillStyle = '#00FF9D';
+                ctx.beginPath();
+                ctx.arc(dx + this.w - 8, dy - 8, 2.5, 0, Math.PI * 2);
+                ctx.fill();
             } else {
-                // Glitching red broken screen
-                ctx.fillStyle = '#2A060E';
-                ctx.fillRect(dx + 4, dy - 46, this.w - 8, this.h - 18);
+                // Glitching Broken CRT Screen
+                ctx.fillStyle = '#26040B';
+                ctx.fillRect(scrX, scrY, scrW, scrH);
 
-                // Error text or matrix flicker
-                ctx.fillStyle = '#FF3B69';
+                // Matrix Glitch Text
+                ctx.fillStyle = '#FF3366';
                 ctx.font = '10px monospace';
-                const glitchStr = (Math.floor(this.glitchTimer) % 2 === 0) ? '!ERR 404!' : '☠ CRASH ☠';
-                ctx.fillText(glitchStr, dx + 6, dy - 28);
+                const glitchStr = (Math.floor(this.glitchTimer) % 2 === 0) ? 'ERR_404' : 'SYSTEM!';
+                ctx.fillText(glitchStr, scrX + 4, scrY + 16);
 
-                // Small glitch static scanlines
-                ctx.fillStyle = 'rgba(255, 59, 105, 0.4)';
-                const scanY = (dy - 46) + (Math.floor(this.glitchTimer * 10) % 24);
-                ctx.fillRect(dx + 4, scanY, this.w - 8, 2);
+                // Cathode Scanline
+                ctx.fillStyle = 'rgba(255, 51, 102, 0.4)';
+                const scanlineY = scrY + (Math.floor(this.glitchTimer * 12) % scrH);
+                ctx.fillRect(scrX, scanlineY, scrW, 2);
 
-                // Progress Bar when repairing
+                // Power LED Red Flashing
+                ctx.fillStyle = (Math.sin(this.glitchTimer * 2) > 0) ? '#FF3366' : '#550011';
+                ctx.beginPath();
+                ctx.arc(dx + this.w - 8, dy - 8, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Repair Progress Ring / Bar
                 if (this.fixProgress > 0) {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.fillRect(dx - 5, dy - 64, this.w + 10, 8);
+                    ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
+                    ctx.fillRect(dx - 8, dy - 68, this.w + 16, 9);
 
-                    const progGrad = ctx.createLinearGradient(dx - 5, 0, dx + this.w + 5, 0);
+                    const progGrad = ctx.createLinearGradient(dx - 8, 0, dx + this.w + 8, 0);
                     progGrad.addColorStop(0, '#FFB347');
                     progGrad.addColorStop(1, '#00FF9D');
-
                     ctx.fillStyle = progGrad;
-                    ctx.fillRect(dx - 4, dy - 63, (this.w + 8) * this.fixProgress, 6);
+                    ctx.fillRect(dx - 7, dy - 67, (this.w + 14) * this.fixProgress, 7);
 
                     ctx.strokeStyle = '#00F0FF';
                     ctx.lineWidth = 1;
-                    ctx.strokeRect(dx - 5, dy - 64, this.w + 10, 8);
+                    ctx.strokeRect(dx - 8, dy - 68, this.w + 16, 9);
                 } else {
-                    // "FIX ME" prompt hovering above
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-                    ctx.font = 'bold 10px sans-serif';
-                    ctx.fillText('[HOLD SPACE]', dx - 6, dy - 56);
+                    // Floating repair callout
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.font = 'bold 9px sans-serif';
+                    ctx.fillText('[SPACE]', dx + 7, dy - 58);
                 }
             }
         }
     }
 
-    // Hazard: Rolling Book Cart
+    // Hazard: Book Cart (Self-propelled with steam pipes & spinning wheels)
     class CartHazard {
         constructor(x, y, speed, minX, maxX) {
             this.x = x;
             this.y = y;
-            this.w = 54;
-            this.h = 42;
+            this.w = 58;
+            this.h = 44;
             this.vx = speed;
             this.minX = minX;
             this.maxX = maxX;
-            this.wheelAngle = 0;
+            this.wheelRot = 0;
         }
 
         update(dt, player) {
             this.x += this.vx * dt;
-            this.wheelAngle += (this.vx * dt) * 0.15;
+            this.wheelRot += (this.vx * dt) * 0.16;
 
-            // Bounce between limits
             if (this.x < this.minX) {
                 this.x = this.minX;
                 this.vx = Math.abs(this.vx);
@@ -538,7 +666,6 @@
                 this.vx = -Math.abs(this.vx);
             }
 
-            // Player collision
             if (checkAABB(player, this)) {
                 player.takeDamage();
             }
@@ -548,79 +675,77 @@
             const dx = this.x - camX;
             const dy = this.y - camY;
 
-            // Metal cart frame
-            ctx.fillStyle = '#5A6B82';
-            ctx.fillRect(dx + 4, dy + 6, this.w - 8, this.h - 18);
-            ctx.strokeStyle = '#8FA3BF';
+            // Vintage Metal Cart with Brass Detailing
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(dx + 5, dy + 6, this.w - 10, this.h - 18);
+            ctx.strokeStyle = '#94A3B8';
             ctx.lineWidth = 2;
-            ctx.strokeRect(dx + 4, dy + 6, this.w - 8, this.h - 18);
+            ctx.strokeRect(dx + 5, dy + 6, this.w - 10, this.h - 18);
 
-            // Stack of books inside cart
-            ctx.fillStyle = '#C0392B';
-            ctx.fillRect(dx + 8, dy + 10, 18, 14);
-            ctx.fillStyle = '#2980B9';
-            ctx.fillRect(dx + 28, dy + 8, 16, 16);
+            // Stacks of Encyclopedias Inside Cart (Wobbling with speed)
+            const wobble = Math.sin(Date.now() / 80) * 2;
+            ctx.fillStyle = '#B91C1C';
+            ctx.fillRect(dx + 10, dy + 10 + wobble, 18, 14);
+            ctx.fillStyle = '#1D4ED8';
+            ctx.fillRect(dx + 30, dy + 8 - wobble, 18, 16);
 
             // Handlebars
-            ctx.strokeStyle = '#BDC3C7';
+            ctx.strokeStyle = '#D4AF37';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(dx + 4, dy + 10);
-            ctx.lineTo(dx - 4, dy - 4);
-            ctx.moveTo(dx + this.w - 4, dy + 10);
-            ctx.lineTo(dx + this.w + 4, dy - 4);
+            ctx.moveTo(dx + 5, dy + 12);
+            ctx.lineTo(dx - 5, dy - 5);
+            ctx.moveTo(dx + this.w - 5, dy + 12);
+            ctx.lineTo(dx + this.w + 5, dy - 5);
             ctx.stroke();
 
-            // Wheels
-            const drawWheel = (wx, wy) => {
+            // Wheels with Brass Spokes
+            const drawCartWheel = (wx, wy) => {
                 ctx.save();
                 ctx.translate(wx, wy);
-                ctx.rotate(this.wheelAngle);
-                ctx.fillStyle = '#2C3E50';
+                ctx.rotate(this.wheelRot);
+                ctx.fillStyle = '#1E293B';
                 ctx.beginPath();
-                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = '#E74C3C';
+                ctx.strokeStyle = '#D4AF37';
                 ctx.lineWidth = 2;
                 ctx.stroke();
+
                 ctx.beginPath();
-                ctx.moveTo(-6, 0);
-                ctx.lineTo(6, 0);
-                ctx.moveTo(0, -6);
-                ctx.lineTo(0, 6);
+                ctx.moveTo(-7, 0); ctx.lineTo(7, 0);
+                ctx.moveTo(0, -7); ctx.lineTo(0, 7);
                 ctx.stroke();
                 ctx.restore();
             };
 
-            drawWheel(dx + 12, dy + this.h - 6);
-            drawWheel(dx + this.w - 12, dy + this.h - 6);
+            drawCartWheel(dx + 14, dy + this.h - 6);
+            drawCartWheel(dx + this.w - 14, dy + this.h - 6);
         }
     }
 
     // Hazard: Flying Rogue Drone Book
     class FlyingBookHazard {
-        constructor(x, y, speed, rangeY = 60) {
+        constructor(x, y, speed, rangeY = 65) {
             this.startX = x;
             this.startY = y;
             this.x = x;
             this.y = y;
-            this.w = 36;
-            this.h = 24;
+            this.w = 40;
+            this.h = 26;
             this.vx = speed;
             this.rangeY = rangeY;
             this.timer = Math.random() * 10;
         }
 
         update(dt, player) {
-            this.timer += dt * 4;
+            this.timer += dt * 4.5;
             this.x += this.vx * dt;
             this.y = this.startY + Math.sin(this.timer) * this.rangeY;
 
-            // Turn around when traveling too far
-            if (this.x < 100) this.vx = Math.abs(this.vx);
-            if (this.x > gameState.worldWidth - 100) this.vx = -Math.abs(this.vx);
+            if (this.x < 120) this.vx = Math.abs(this.vx);
+            if (this.x > gameState.worldWidth - 120) this.vx = -Math.abs(this.vx);
 
-            // Player collision
             if (checkAABB(player, this)) {
                 player.takeDamage();
             }
@@ -633,23 +758,24 @@
             ctx.save();
             ctx.translate(dx + this.w / 2, dy + this.h / 2);
 
-            const wingFlap = Math.sin(this.timer * 3) * 0.35;
+            const wingFlap = Math.sin(this.timer * 4) * 0.45;
             ctx.rotate(wingFlap);
 
-            // Book spine & cover
-            ctx.fillStyle = '#8E44AD';
-            ctx.fillRect(-16, -10, 32, 20);
+            // Ancient Leather Book Cover
+            ctx.fillStyle = '#581C87';
+            ctx.fillRect(-18, -12, 36, 24);
 
-            // Glowing magical pages
-            ctx.fillStyle = '#F4D03F';
-            ctx.shadowColor = '#F4D03F';
-            ctx.shadowBlur = 8;
-            ctx.fillRect(-13, -7, 26, 14);
+            // Glowing Parchment Wings
+            ctx.fillStyle = '#FEF08A';
+            ctx.shadowColor = '#FDE047';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(-15, -9, 30, 18);
+            ctx.shadowBlur = 0;
 
-            // Red rogue cyber eye on the book cover
-            ctx.fillStyle = '#FF3B69';
+            // Red Cyber Eye
+            ctx.fillStyle = '#EF4444';
             ctx.beginPath();
-            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
@@ -661,8 +787,8 @@
         constructor(x, y, type) {
             this.x = x;
             this.y = y;
-            this.w = 32;
-            this.h = 32;
+            this.w = 34;
+            this.h = 34;
             this.type = type; // 'coffee', 'flash', 'book', 'shield'
             this.startY = y;
             this.timer = Math.random() * 10;
@@ -671,9 +797,8 @@
 
         update(dt, player) {
             if (this.collected) return;
-
-            this.timer += dt * 3.5;
-            this.y = this.startY + Math.sin(this.timer) * 8;
+            this.timer += dt * 3.8;
+            this.y = this.startY + Math.sin(this.timer) * 9;
 
             if (checkAABB(player, this)) {
                 this.collect(player);
@@ -685,11 +810,10 @@
             window.gameAudio.playPowerup(this.type);
 
             if (this.type === 'coffee') {
-                player.speedBoostTimer = 7.0; // 7 seconds
-                floatingTexts.push(new FloatingText(this.x, this.y - 20, '☕ ТУРБО ЭСПРЕССО!', '#FFB347', 20));
-                emitParticles(this.x, this.y, 25, '#FFB347', 180, 0.8, 'star', 50);
+                player.speedBoostTimer = 7.5;
+                floatingTexts.push(new FloatingText(this.x, this.y - 20, '☕ ТУРБО ЭСПРЕССО!', '#FFB347', 22));
+                emitParticles(this.x, this.y, 30, '#FFB347', 200, 0.8, 'star', 40);
             } else if (this.type === 'flash') {
-                // Auto fix nearest broken computer!
                 let nearest = null;
                 let minDist = Infinity;
                 for (let comp of gameState.computers) {
@@ -703,44 +827,42 @@
                 }
                 if (nearest) {
                     nearest.completeFix(player);
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, '💾 АВТО-ФИКС ПК!', '#00F0FF', 20));
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, '💾 АВТО-ФИКС ПК!', '#00F0FF', 22));
                 } else {
-                    gameState.score += 300;
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, '+300 ОЧКОВ!', '#00F0FF', 20));
+                    gameState.score += 350;
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, '+350 ОЧКОВ!', '#00F0FF', 22));
                 }
-                emitParticles(this.x, this.y, 30, '#00F0FF', 200, 0.8, 'spark', 40);
+                emitParticles(this.x, this.y, 35, '#00F0FF', 220, 0.9, 'spark', 40);
             } else if (this.type === 'book') {
-                gameState.gameTime += 18;
-                gameState.score += 200;
-                floatingTexts.push(new FloatingText(this.x, this.y - 20, '📚 +18 СЕКУНД!', '#00FF9D', 20));
-                emitParticles(this.x, this.y, 25, '#00FF9D', 160, 0.8, 'circle', 60);
+                gameState.gameTime += 20;
+                gameState.score += 250;
+                floatingTexts.push(new FloatingText(this.x, this.y - 20, '📚 +20 СЕКУНД!', '#00FF9D', 22));
+                emitParticles(this.x, this.y, 30, '#00FF9D', 180, 0.8, 'circle', 50);
             } else if (this.type === 'shield') {
                 player.hasShield = true;
-                floatingTexts.push(new FloatingText(this.x, this.y - 20, '🛡️ НАНО-ЩИТ!', '#00F0FF', 20));
-                emitParticles(this.x, this.y, 30, '#00F0FF', 180, 0.9, 'circle', 30);
+                floatingTexts.push(new FloatingText(this.x, this.y - 20, '🛡️ НАНО-ЩИТ!', '#00F0FF', 22));
+                emitParticles(this.x, this.y, 35, '#00F0FF', 200, 0.9, 'circle', 30);
             }
         }
 
         draw(ctx, camX, camY) {
             if (this.collected) return;
-
             const dx = this.x - camX;
             const dy = this.y - camY;
 
             ctx.save();
-            ctx.translate(dx + 16, dy + 16);
+            ctx.translate(dx + 17, dy + 17);
 
-            // Glowing ring aura
+            // Pulsing Holographic Ring
             ctx.beginPath();
-            ctx.arc(0, 0, 20 + Math.sin(this.timer * 2) * 2, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 240, 255, 0.12)';
+            ctx.arc(0, 0, 22 + Math.sin(this.timer * 2.5) * 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
             ctx.fill();
-            ctx.strokeStyle = this.type === 'coffee' ? '#FFB347' : '#00F0FF';
-            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = (this.type === 'coffee') ? '#FFB347' : '#00F0FF';
+            ctx.lineWidth = 1.8;
             ctx.stroke();
 
-            // Emoji / Icon
-            ctx.font = '22px sans-serif';
+            ctx.font = '24px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
@@ -754,13 +876,13 @@
         }
     }
 
-    // --- PLAYER (COSMO) ---
+    // --- PLAYER (COSMO) WITH SQUASH & STRETCH, FLIP & GHOST TRAILS ---
     class Player {
         constructor(x, y) {
             this.x = x;
             this.y = y;
-            this.w = 46;
-            this.h = 58;
+            this.w = 48;
+            this.h = 60;
 
             this.vx = 0;
             this.vy = 0;
@@ -775,9 +897,12 @@
 
             this.isFixing = false;
             this.fixTargetX = 0;
+            this.fixTargetY = 0;
 
             this.runAnimTimer = 0;
-            this.squashStretch = 1; // scale Y
+            this.squashStretch = 1.0;
+            this.flipRotation = 0; // for double jump 360° flip
+            this.ghostTrails = []; // speed trail silhouettes
         }
 
         takeDamage() {
@@ -787,20 +912,21 @@
                 this.hasShield = false;
                 this.invulnerableTimer = 1.0;
                 window.gameAudio.playHit();
-                floatingTexts.push(new FloatingText(this.x, this.y - 20, 'ЩИТ РАЗБИТ!', '#00F0FF', 18));
-                emitParticles(this.x + 23, this.y + 29, 30, '#00F0FF', 220, 0.8, 'circle', 50);
+                floatingTexts.push(new FloatingText(this.x, this.y - 20, 'ЩИТ РАЗБИТ!', '#00F0FF', 20));
+                emitParticles(this.x + 24, this.y + 30, 30, '#00F0FF', 220, 0.8, 'circle', 50);
                 return;
             }
 
             this.lives--;
             this.invulnerableTimer = CONFIG.INVULNERABLE_DURATION;
-            this.vy = -380;
-            this.vx = this.facingRight ? -240 : 240;
+            this.vy = -390;
+            this.vx = this.facingRight ? -250 : 250;
 
             window.gameAudio.playHit();
-            triggerScreenShake(16);
+            triggerScreenShake(18);
+            gameState.hitStopTimer = CONFIG.HIT_STOP_DURATION;
 
-            emitParticles(this.x + 23, this.y + 29, 35, '#FF3B69', 240, 0.9, 'spark', 180);
+            emitParticles(this.x + 24, this.y + 30, 40, '#FF3366', 250, 0.9, 'spark', 180);
             updateHUDLives();
 
             if (this.lives <= 0) {
@@ -809,37 +935,53 @@
         }
 
         update(dt) {
-            // Invulnerability countdown
-            if (this.invulnerableTimer > 0) {
-                this.invulnerableTimer -= dt;
-            }
+            if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
 
-            // Speed boost countdown
-            let currentMoveSpeed = CONFIG.MOVE_SPEED;
+            // Speed Boost Handling & Ghost Trail Emitter
+            let currentSpeed = CONFIG.MOVE_SPEED;
             if (this.speedBoostTimer > 0) {
                 this.speedBoostTimer -= dt;
-                currentMoveSpeed = CONFIG.BOOST_SPEED;
-                // Emit golden speed lines
-                if (Math.random() < 0.4) {
-                    emitParticles(this.x + (this.facingRight ? 0 : 46), this.y + 30 + Math.random() * 20, 2, '#FFB347', 60, 0.3, 'circle', 0);
+                currentSpeed = CONFIG.BOOST_SPEED;
+
+                // Record Ghost Trail
+                if (Math.abs(this.vx) > 50) {
+                    this.ghostTrails.push({
+                        x: this.x,
+                        y: this.y,
+                        alpha: 0.5,
+                        facingRight: this.facingRight
+                    });
                 }
             }
 
-            // Horizontal Input & Acceleration
+            // Update Ghost Trails
+            for (let i = this.ghostTrails.length - 1; i >= 0; i--) {
+                this.ghostTrails[i].alpha -= dt * 3.5;
+                if (this.ghostTrails[i].alpha <= 0) this.ghostTrails.splice(i, 1);
+            }
+
+            // Double Jump 360° Flip Animation
+            if (this.flipRotation !== 0) {
+                this.flipRotation += (this.facingRight ? 1 : -1) * 14 * dt;
+                if (Math.abs(this.flipRotation) >= Math.PI * 2) {
+                    this.flipRotation = 0;
+                }
+            }
+
+            // Movement Input
             let moveDir = 0;
             if (input.left) moveDir -= 1;
             if (input.right) moveDir += 1;
 
             if (this.isFixing) {
-                // If actively fixing, slow down / anchor player
-                this.vx *= 0.7;
+                this.vx *= 0.65;
             } else {
                 if (moveDir !== 0) {
-                    this.vx = moveDir * currentMoveSpeed;
+                    this.vx = moveDir * currentSpeed;
                     this.facingRight = moveDir > 0;
-                    this.runAnimTimer += dt * (this.speedBoostTimer > 0 ? 18 : 12);
+                    this.runAnimTimer += dt * (this.speedBoostTimer > 0 ? 19 : 13);
                 } else {
-                    this.vx *= 0.65; // friction
+                    this.vx *= 0.65;
                     if (Math.abs(this.vx) < 5) this.vx = 0;
                     this.runAnimTimer = 0;
                 }
@@ -848,234 +990,218 @@
             // Gravity
             this.vy += CONFIG.GRAVITY * dt;
 
-            // Jumping Logic
+            // Jumping with Squash & Stretch
             if (input.jumpPressed) {
                 input.jumpPressed = false;
                 if (this.grounded) {
                     this.vy = CONFIG.JUMP_FORCE;
                     this.grounded = false;
                     this.canDoubleJump = true;
-                    this.squashStretch = 1.3;
+                    this.squashStretch = 1.35; // Stretch up
                     window.gameAudio.playJump();
-                    emitParticles(this.x + 23, this.y + this.h, 10, 'rgba(255,255,255,0.7)', 90, 0.3, 'circle', 60);
+                    emitParticles(this.x + 24, this.y + this.h, 12, 'rgba(255,255,255,0.75)', 100, 0.35, 'circle', 60);
                 } else if (this.canDoubleJump) {
-                    // Double Jump!
                     this.vy = CONFIG.DOUBLE_JUMP_FORCE;
                     this.canDoubleJump = false;
+                    this.flipRotation = 0.1; // trigger 360° flip
                     this.squashStretch = 1.25;
                     window.gameAudio.playDoubleJump();
-                    emitParticles(this.x + 23, this.y + this.h, 15, '#00F0FF', 140, 0.4, 'spark', 100);
+                    emitParticles(this.x + 24, this.y + this.h, 18, '#00F0FF', 160, 0.45, 'spark', 100);
                 }
             }
 
-            // Variable Jump Height (releasing jump cuts upward velocity)
+            // Variable jump height
             if (!input.jump && this.vy < -150) {
                 this.vy += 1200 * dt;
             }
 
-            // Position Integration
             this.x += this.vx * dt;
             this.y += this.vy * dt;
 
-            // World bounds clamp
-            if (this.x < 0) {
-                this.x = 0;
-                this.vx = 0;
-            } else if (this.x + this.w > gameState.worldWidth) {
-                this.x = gameState.worldWidth - this.w;
-                this.vx = 0;
-            }
+            // Bounds
+            if (this.x < 0) { this.x = 0; this.vx = 0; }
+            else if (this.x + this.w > gameState.worldWidth) { this.x = gameState.worldWidth - this.w; this.vx = 0; }
 
-            // Platform Collision Detection
+            // Platform Collisions
             const wasGrounded = this.grounded;
             this.grounded = false;
 
             for (let plat of gameState.platforms) {
-                // One-way landing collision (falling downward onto platform top)
                 if (
                     this.vy > 0 &&
                     this.y + this.h >= plat.y &&
-                    this.y + this.h - this.vy * dt <= plat.y + 12 &&
-                    this.x + this.w - 8 > plat.x &&
-                    this.x + 8 < plat.x + plat.w
+                    this.y + this.h - this.vy * dt <= plat.y + 14 &&
+                    this.x + this.w - 10 > plat.x &&
+                    this.x + 10 < plat.x + plat.w
                 ) {
                     this.y = plat.y - this.h;
                     this.vy = 0;
                     this.grounded = true;
                     this.canDoubleJump = true;
+                    this.flipRotation = 0;
 
-                    // Landing impact effect
                     if (!wasGrounded) {
-                        this.squashStretch = 0.8; // Squash on impact
+                        this.squashStretch = 0.75; // Squash on impact
                         window.gameAudio.playLand();
-                        emitParticles(this.x + 23, this.y + this.h, 6, 'rgba(255,255,255,0.5)', 70, 0.25, 'circle', 40);
+                        emitParticles(this.x + 24, this.y + this.h, 8, 'rgba(255,255,255,0.5)', 80, 0.25, 'circle', 40);
                     }
                     break;
                 }
             }
 
-            // Floor Clamp (bottom of world)
+            // Floor Clamp
             const floorY = vh - 55;
             if (this.y + this.h >= floorY) {
                 this.y = floorY - this.h;
                 this.vy = 0;
                 this.grounded = true;
                 this.canDoubleJump = true;
+                this.flipRotation = 0;
                 if (!wasGrounded) {
-                    this.squashStretch = 0.8;
+                    this.squashStretch = 0.75;
                     window.gameAudio.playLand();
                 }
             }
 
-            // Smooth squash & stretch recovery back to 1.0
-            this.squashStretch += (1.0 - this.squashStretch) * 12 * dt;
-
-            // Reset fixing flag each frame (will be re-enabled if ComputerTerminal updates it)
+            // Spring recovery of squash & stretch
+            this.squashStretch += (1.0 - this.squashStretch) * 14 * dt;
             this.isFixing = false;
         }
 
         draw(ctx, camX, camY) {
-            // Blinking when invulnerable
-            if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) {
-                return;
-            }
+            if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) return;
 
             const drawX = this.x - camX;
             const drawY = this.y - camY;
             const cx = drawX + this.w / 2;
             const cy = drawY + this.h / 2;
 
+            // 1. Draw Soft Dynamic Platform Shadow
+            ctx.save();
+            ctx.fillStyle = 'rgba(5, 8, 20, 0.55)';
+            const shadowY = drawY + this.h - 2;
+            const shadowScale = Math.max(0.4, 1.0 - Math.abs(this.vy) * 0.001);
+            ctx.beginPath();
+            ctx.ellipse(cx, shadowY, 20 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 2. Draw Ghost Trails (Speed Boost)
+            for (let trail of this.ghostTrails) {
+                ctx.save();
+                ctx.globalAlpha = trail.alpha * 0.4;
+                const tx = trail.x - camX + this.w / 2;
+                const ty = trail.y - camY + this.h / 2;
+                ctx.translate(tx, ty);
+                if (!trail.facingRight) ctx.scale(-1, 1);
+                const spr = loadedImages['cool'] || loadedImages['idle'];
+                if (spr && spr.complete) {
+                    ctx.drawImage(spr, -30, -35, 60, 70);
+                }
+                ctx.restore();
+            }
+
+            // 3. Draw Player Body with Kinematics
             ctx.save();
             ctx.translate(cx, cy);
 
-            // Facing direction flip
-            if (!this.facingRight) {
-                ctx.scale(-1, 1);
-            }
-
-            // Squash & stretch scale
+            if (!this.facingRight) ctx.scale(-1, 1);
+            if (this.flipRotation !== 0) ctx.rotate(this.flipRotation);
             ctx.scale(1 / this.squashStretch, this.squashStretch);
 
-            // Determine mascot sprite based on state
             let spriteKey = 'idle';
-            if (this.isFixing) {
-                spriteKey = 'thinking';
-            } else if (this.speedBoostTimer > 0) {
-                spriteKey = 'cool';
-            } else if (!this.grounded) {
-                spriteKey = 'idea';
-            } else if (Math.abs(this.vx) > 30) {
-                spriteKey = (Math.sin(this.runAnimTimer) > 0) ? 'smile' : 'idle';
-            }
+            if (this.isFixing) spriteKey = 'thinking';
+            else if (this.speedBoostTimer > 0) spriteKey = 'cool';
+            else if (!this.grounded) spriteKey = 'idea';
+            else if (Math.abs(this.vx) > 30) spriteKey = (Math.sin(this.runAnimTimer) > 0) ? 'smile' : 'idle';
 
             const spriteImg = loadedImages[spriteKey];
-
             if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
-                // High-resolution real mascot sprite
-                const spriteW = 58;
-                const spriteH = 68;
-
-                // Subtle bobbing
+                const spriteW = 60;
+                const spriteH = 70;
                 const bobY = this.grounded ? Math.sin(this.runAnimTimer) * 3 : -3;
-
                 ctx.drawImage(spriteImg, -spriteW / 2, -spriteH / 2 + bobY - 4, spriteW, spriteH);
             } else {
-                // Procedural Vector Robot Fallback
                 this.drawProceduralCosmo(ctx);
             }
 
-            // Energy Shield Forcefield
+            // Nano Shield Forcefield
             if (this.hasShield) {
                 ctx.strokeStyle = '#00F0FF';
                 ctx.lineWidth = 2.5;
                 ctx.shadowColor = '#00F0FF';
-                ctx.shadowBlur = 14;
+                ctx.shadowBlur = 15;
                 ctx.beginPath();
-                ctx.arc(0, 0, 36 + Math.sin(Date.now() / 150) * 2, 0, Math.PI * 2);
+                ctx.arc(0, 0, 38 + Math.sin(Date.now() / 140) * 2.5, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
-
             ctx.restore();
 
-            // Draw electric repair arc beam from Cosmo to the computer when fixing
+            // 4. Procedural Multi-Branched Lightning Repair Arc
             if (this.isFixing) {
-                ctx.save();
-                ctx.strokeStyle = '#00F0FF';
-                ctx.shadowColor = '#00F0FF';
-                ctx.shadowBlur = 10;
-                ctx.lineWidth = 2;
-
-                const startX = cx + (this.facingRight ? 18 : -18);
-                const startY = cy - 6;
-                const targetX = this.fixTargetX - camX;
-                const targetY = drawY + 12;
-
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-
-                // Jagged lightning path
-                const steps = 6;
-                for (let i = 1; i < steps; i++) {
-                    const t = i / steps;
-                    const lx = startX + (targetX - startX) * t + (Math.random() - 0.5) * 16;
-                    const ly = startY + (targetY - startY) * t + (Math.random() - 0.5) * 14;
-                    ctx.lineTo(lx, ly);
-                }
-                ctx.lineTo(targetX, targetY);
-                ctx.stroke();
-                ctx.restore();
+                this.drawProceduralLightningArc(ctx, cx + (this.facingRight ? 20 : -20), cy - 6, this.fixTargetX - camX, this.fixTargetY - camY);
             }
         }
 
+        drawProceduralLightningArc(ctx, x1, y1, x2, y2) {
+            ctx.save();
+            // Outer Glow Arc
+            ctx.strokeStyle = '#00F0FF';
+            ctx.shadowColor = '#00F0FF';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 3;
+
+            const drawBolt = (sx, sy, ex, ey, jitter) => {
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                const segs = 7;
+                for (let i = 1; i < segs; i++) {
+                    const t = i / segs;
+                    const lx = sx + (ex - sx) * t + (Math.random() - 0.5) * jitter;
+                    const ly = sy + (ey - sy) * t + (Math.random() - 0.5) * jitter;
+                    ctx.lineTo(lx, ly);
+                }
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+            };
+
+            drawBolt(x1, y1, x2, y2, 18);
+
+            // White-hot inner core
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.shadowBlur = 4;
+            ctx.lineWidth = 1.5;
+            drawBolt(x1, y1, x2, y2, 8);
+
+            ctx.restore();
+        }
+
         drawProceduralCosmo(ctx) {
-            // White body with green accents
             const bounce = this.grounded ? Math.abs(Math.sin(this.runAnimTimer)) * 4 : 0;
-
-            // Body
             ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(0, -6 + bounce, 22, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(0, -6 + bounce, 22, 0, Math.PI * 2); ctx.fill();
 
-            // Emerald chest & ears
             ctx.fillStyle = '#00FF9D';
-            ctx.beginPath();
-            ctx.arc(0, 6 + bounce, 16, 0, Math.PI);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 6 + bounce, 16, 0, Math.PI); ctx.fill();
 
-            // Black visor
             ctx.fillStyle = '#090E1A';
-            ctx.beginPath();
-            ctx.roundRect(-14, -16 + bounce, 28, 18, 5);
-            ctx.fill();
+            ctx.beginPath(); ctx.roundRect(-14, -16 + bounce, 28, 18, 5); ctx.fill();
 
-            // Yellow glowing eyes
             ctx.fillStyle = '#FFD15C';
             ctx.shadowColor = '#FFD15C';
             ctx.shadowBlur = 8;
-            ctx.beginPath();
-            ctx.arc(-6, -8 + bounce, 4, 0, Math.PI * 2);
-            ctx.arc(6, -8 + bounce, 4, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(-6, -8 + bounce, 4, 0, Math.PI * 2); ctx.arc(6, -8 + bounce, 4, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Antenna
-            ctx.strokeStyle = '#9BB0D4';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(0, -28 + bounce);
-            ctx.lineTo(0, -38 + bounce);
-            ctx.stroke();
-
-            ctx.fillStyle = this.isFixing ? '#FF3B69' : '#00F0FF';
-            ctx.beginPath();
-            ctx.arc(0, -40 + bounce, 4, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.strokeStyle = '#9BB0D4'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(0, -28 + bounce); ctx.lineTo(0, -38 + bounce); ctx.stroke();
+            ctx.fillStyle = this.isFixing ? '#FF3366' : '#00F0FF';
+            ctx.beginPath(); ctx.arc(0, -40 + bounce, 4, 0, Math.PI * 2); ctx.fill();
         }
     }
 
-    // --- GAME STATE & LEVEL MANAGER ---
+    // --- GAME STATE MANAGER ---
     const STATE_MENU = 0;
     const STATE_PLAYING = 1;
     const STATE_PAUSED = 2;
@@ -1094,6 +1220,7 @@
         cameraX: 0,
         cameraY: 0,
         screenShake: 0,
+        hitStopTimer: 0,
         player: null,
         platforms: [],
         computers: [],
@@ -1101,7 +1228,7 @@
         powerups: []
     };
 
-    function triggerScreenShake(magnitude = 12) {
+    function triggerScreenShake(magnitude = 14) {
         gameState.screenShake = magnitude;
     }
 
@@ -1114,7 +1241,6 @@
         );
     }
 
-    // Level Generation
     function buildLevel(levelNum) {
         gameState.platforms = [];
         gameState.computers = [];
@@ -1128,7 +1254,6 @@
 
         const floorY = vh - 55;
 
-        // Level Theme Metadata
         const levelNames = [
             'Уровень 1: Читальный зал ЦГБ',
             'Уровень 2: Хранилище «Добролит»',
@@ -1137,68 +1262,60 @@
         ];
         document.getElementById('ui-level-name').innerText = levelNames[Math.min(levelNum - 1, levelNames.length - 1)];
 
-        // 1. Base Floor Platform
+        // Base Floor
         gameState.platforms.push(new Platform(0, floorY, gameState.worldWidth, 60, 'floor'));
 
-        // 2. Study Desks & Bookshelves Platforms
-        const shelfHeights = [floorY - 140, floorY - 260, floorY - 380];
+        // Desks & Shelves
+        const shelfHeights = [floorY - 145, floorY - 275, floorY - 395];
+        let cx = 240;
+        while (cx < gameState.worldWidth - 280) {
+            const pw = 190 + Math.random() * 140;
+            const hIdx = Math.floor(Math.random() * shelfHeights.length);
+            const py = shelfHeights[hIdx];
+            const isDesk = (hIdx === 0 && Math.random() < 0.65);
 
-        let cursorX = 220;
-        while (cursorX < gameState.worldWidth - 280) {
-            const platWidth = 180 + Math.random() * 140;
-            const hIndex = Math.floor(Math.random() * shelfHeights.length);
-            const platY = shelfHeights[hIndex];
-            const isDesk = (hIndex === 0 && Math.random() < 0.6);
+            gameState.platforms.push(new Platform(cx, py, pw, 22, isDesk ? 'desk' : 'shelf'));
 
-            gameState.platforms.push(new Platform(cursorX, platY, platWidth, 20, isDesk ? 'desk' : 'shelf'));
-
-            // Secondary higher shelf above it
-            if (hIndex === 0 && Math.random() < 0.7) {
-                gameState.platforms.push(new Platform(cursorX + 30, shelfHeights[1], platWidth - 60, 18, 'shelf'));
+            if (hIdx === 0 && Math.random() < 0.75) {
+                gameState.platforms.push(new Platform(cx + 30, shelfHeights[1], pw - 60, 20, 'shelf'));
             }
 
-            cursorX += platWidth + 90 + Math.random() * 80;
+            cx += pw + 90 + Math.random() * 90;
         }
 
-        // 3. Place Target Computers on Desks / Platforms
-        // Filter platforms that have enough space
+        // Computers
         const validPlats = gameState.platforms.filter(p => p.type !== 'floor');
-        const shuffledPlats = [...validPlats].sort(() => Math.random() - 0.5);
-
+        const shuffled = [...validPlats].sort(() => Math.random() - 0.5);
         for (let i = 0; i < gameState.targetComputers; i++) {
-            const p = shuffledPlats[i % shuffledPlats.length];
-            const compX = p.x + p.w / 2 - 28;
-            gameState.computers.push(new ComputerTerminal(compX, p.y));
+            const p = shuffled[i % shuffled.length];
+            gameState.computers.push(new ComputerTerminal(p.x + p.w / 2 - 29, p.y));
         }
 
-        // 4. Spawn Hazards
-        // Rolling Carts on the floor
+        // Hazards
         const numCarts = 1 + Math.floor(levelNum * 0.8);
         for (let i = 0; i < numCarts; i++) {
             const segW = gameState.worldWidth / numCarts;
             const minX = i * segW + 150;
             const maxX = (i + 1) * segW - 150;
-            const speed = (130 + levelNum * 25) * (Math.random() < 0.5 ? 1 : -1);
-            gameState.hazards.push(new CartHazard(minX + 50, floorY - 42, speed, minX, maxX));
+            const spd = (130 + levelNum * 25) * (Math.random() < 0.5 ? 1 : -1);
+            gameState.hazards.push(new CartHazard(minX + 50, floorY - 44, spd, minX, maxX));
         }
 
-        // Flying Drone Books for Level 2+
         if (levelNum >= 2) {
-            const numFlying = levelNum;
-            for (let i = 0; i < numFlying; i++) {
-                const fx = 400 + (i * 700) + Math.random() * 200;
-                const fy = floorY - 220 - Math.random() * 120;
-                gameState.hazards.push(new FlyingBookHazard(fx, fy, (140 + levelNum * 20) * (i % 2 === 0 ? 1 : -1)));
+            for (let i = 0; i < levelNum; i++) {
+                const fx = 420 + (i * 700) + Math.random() * 200;
+                const fy = floorY - 230 - Math.random() * 120;
+                gameState.hazards.push(new FlyingBookHazard(fx, fy, (140 + levelNum * 22) * (i % 2 === 0 ? 1 : -1)));
             }
         }
 
-        // 5. Spawn Power-ups
-        const powerupTypes = ['coffee', 'flash', 'book', 'shield'];
+        // Powerups
+        const types = ['coffee', 'flash', 'book', 'shield'];
         for (let i = 0; i < 3 + levelNum; i++) {
-            const type = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+            const t = types[Math.floor(Math.random() * types.length)];
             const px = 300 + Math.random() * (gameState.worldWidth - 600);
             const py = floorY - 180 - Math.random() * 160;
-            gameState.powerups.push(new PowerupItem(px, py, type));
+            gameState.powerups.push(new PowerupItem(px, py, t));
         }
 
         updateHUDObjectives();
@@ -1208,26 +1325,23 @@
         updateHUDObjectives();
 
         if (gameState.fixedCount >= gameState.targetComputers) {
-            // Level Completed!
             gameState.state = STATE_LEVEL_WIN;
             window.gameAudio.playLevelWin();
 
-            // Confetti explosion
-            for (let i = 0; i < 90; i++) {
-                const colors = ['#00F0FF', '#FFB347', '#00FF9D', '#FF3B69', '#E056FD'];
+            for (let i = 0; i < 110; i++) {
+                const colors = ['#00F0FF', '#FFB347', '#00FF9D', '#FF3366', '#E056FD'];
                 emitParticles(
-                    gameState.player.x + 23,
+                    gameState.player.x + 24,
                     gameState.player.y,
                     1,
                     colors[Math.floor(Math.random() * colors.length)],
-                    280,
-                    1.4,
+                    300,
+                    1.5,
                     'star',
-                    120
+                    110
                 );
             }
 
-            // Show level win modal
             document.getElementById('win-level-title').innerText = `СЕКТОР ${gameState.level} ЗАЩИЩЁН!`;
             document.getElementById('win-score').innerText = gameState.score;
             document.getElementById('win-time-bonus').innerText = `+${Math.floor(gameState.gameTime)} СЕК`;
@@ -1256,7 +1370,34 @@
         }
     }
 
-    // --- GAME FLOW (START, PAUSE, WIN, RESTART) ---
+    // Hazard Telegraphing Warnings on Screen Edges
+    function updateHazardWarnings(camX) {
+        const container = document.getElementById('hazard-warnings');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (let h of gameState.hazards) {
+            const screenX = h.x - camX;
+            // Approaching from left off-screen
+            if (screenX < -20 && screenX > -400 && h.vx > 0) {
+                const arrow = document.createElement('div');
+                arrow.className = 'hazard-arrow';
+                arrow.style.left = '16px';
+                arrow.style.top = Math.max(80, Math.min(vh - 100, h.y)) + 'px';
+                arrow.innerText = '►';
+                container.appendChild(arrow);
+            }
+            // Approaching from right off-screen
+            else if (screenX > vw + 20 && screenX < vw + 400 && h.vx < 0) {
+                const arrow = document.createElement('div');
+                arrow.className = 'hazard-arrow';
+                arrow.style.right = '16px';
+                arrow.style.top = Math.max(80, Math.min(vh - 100, h.y)) + 'px';
+                arrow.innerText = '◄';
+                container.appendChild(arrow);
+            }
+        }
+    }
 
     function startGame() {
         window.gameAudio.init();
@@ -1267,7 +1408,7 @@
         gameState.score = 0;
         gameState.state = STATE_PLAYING;
 
-        gameState.player = new Player(120, vh - 200);
+        gameState.player = new Player(140, vh - 200);
         buildLevel(gameState.level);
         updateHUDLives();
 
@@ -1279,11 +1420,11 @@
 
     function nextLevel() {
         gameState.level++;
-        gameState.score += Math.floor(gameState.gameTime) * 10; // Time conversion to score
+        gameState.score += Math.floor(gameState.gameTime) * 10;
         gameState.state = STATE_PLAYING;
 
         document.getElementById('modal-win').classList.add('hidden');
-        gameState.player.x = 120;
+        gameState.player.x = 140;
         gameState.player.y = vh - 200;
         gameState.player.vx = 0;
         gameState.player.vy = 0;
@@ -1321,7 +1462,7 @@
         if (icon) icon.innerText = isMuted ? 'volume_off' : 'volume_up';
     }
 
-    // Modal button bindings
+    // Modal Listeners
     document.getElementById('btn-play-start')?.addEventListener('click', startGame);
     document.getElementById('btn-next-level')?.addEventListener('click', nextLevel);
     document.getElementById('btn-restart')?.addEventListener('click', startGame);
@@ -1329,178 +1470,178 @@
     document.getElementById('btn-pause')?.addEventListener('click', togglePause);
     document.getElementById('btn-mute')?.addEventListener('click', toggleMuteUI);
 
-    // --- MAIN RENDER & PARALLAX BACKGROUND ---
-
+    // --- PARALLAX BACKGROUND ART (GOTHIC WINDOWS & ARCHITECTURE) ---
     function drawParallaxBackground(camX) {
-        // Clear background
-        ctx.fillStyle = '#060A17';
+        ctx.fillStyle = '#050814';
         ctx.fillRect(0, 0, vw, vh);
 
-        // Layer 0: Cosmic Night Sky Through Giant Stained Glass Arch Windows (0.05x speed)
-        const skyX = -(camX * 0.05) % 800;
+        // Layer 0: Cathedral Gothic Windows & Celestial Starry Aurora Sky (0.05x speed)
+        const skyX = -(camX * 0.05) % 900;
         ctx.save();
-        ctx.fillStyle = '#091026';
-        for (let wx = skyX - 800; wx < vw + 800; wx += 420) {
-            // Arched Gothic/Modern Library Window
+        for (let wx = skyX - 900; wx < vw + 900; wx += 480) {
+            // Gothic Window Frame
             ctx.beginPath();
-            ctx.arc(wx + 100, vh - 380, 80, Math.PI, 0);
-            ctx.lineTo(wx + 180, vh - 100);
-            ctx.lineTo(wx + 20, vh - 100);
+            ctx.arc(wx + 120, vh - 420, 95, Math.PI, 0);
+            ctx.lineTo(wx + 215, vh - 90);
+            ctx.lineTo(wx + 25, vh - 90);
             ctx.closePath();
-            ctx.fillStyle = '#0D1738';
+            ctx.fillStyle = '#0A122E';
             ctx.fill();
 
-            // Stars inside window
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.fillRect(wx + 60, vh - 360, 2, 2);
-            ctx.fillRect(wx + 120, vh - 390, 3, 3);
-            ctx.fillRect(wx + 140, vh - 340, 2, 2);
+            // Aurora Borealis Green/Cyan Glow inside window
+            const auroraGrad = ctx.createLinearGradient(wx + 25, vh - 400, wx + 215, vh - 300);
+            auroraGrad.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+            auroraGrad.addColorStop(0.5, 'rgba(0, 255, 157, 0.12)');
+            auroraGrad.addColorStop(1, 'rgba(157, 78, 221, 0.1)');
+            ctx.fillStyle = auroraGrad;
+            ctx.fill();
+
+            // Window Tracery & Mullions
+            ctx.strokeStyle = '#050814';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(wx + 120, vh - 515); ctx.lineTo(wx + 120, vh - 90);
+            ctx.moveTo(wx + 72, vh - 400); ctx.lineTo(wx + 72, vh - 90);
+            ctx.moveTo(wx + 168, vh - 400); ctx.lineTo(wx + 168, vh - 90);
+            ctx.stroke();
+
+            // Stars
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(wx + 75, vh - 420, 2, 2);
+            ctx.fillRect(wx + 155, vh - 440, 2.5, 2.5);
+            ctx.fillRect(wx + 105, vh - 360, 2, 2);
         }
         ctx.restore();
 
-        // Layer 1: Huge Distant Bookshelves (0.25x speed)
-        const shelfX = -(camX * 0.25) % 600;
-        ctx.fillStyle = '#101B36';
-        for (let sx = shelfX - 600; sx < vw + 600; sx += 320) {
-            ctx.fillRect(sx, vh - 480, 260, 430);
-
-            // Subtle book silhouettes
-            ctx.fillStyle = '#17274D';
-            for (let row = 0; row < 5; row++) {
-                ctx.fillRect(sx + 10, vh - 460 + row * 80, 240, 70);
+        // Layer 1: Huge Carved Oak Bookshelves & Pillars (0.22x speed)
+        const shelfX = -(camX * 0.22) % 650;
+        ctx.fillStyle = '#0E1733';
+        for (let sx = shelfX - 650; sx < vw + 650; sx += 340) {
+            ctx.fillRect(sx, vh - 500, 280, 445);
+            // Bookshelf rows
+            ctx.fillStyle = '#142247';
+            for (let r = 0; r < 5; r++) {
+                ctx.fillRect(sx + 10, vh - 480 + r * 85, 260, 72);
             }
-            ctx.fillStyle = '#101B36';
+            ctx.fillStyle = '#0E1733';
         }
 
-        // Layer 2: Midground Library Neon Signs & Branch Banners (0.5x speed)
-        const bannerX = -(camX * 0.5) % 1200;
-        const bannerNames = ['ЦГБ ВЛАДИМИР', 'ФИЛИАЛ №9 ДОБРОЛИТ', 'ФИЛИАЛ №13 КНИГОЛЕНД', 'СИСТЕМА АВРОРА'];
-        ctx.font = 'bold 16px "Segoe UI", sans-serif';
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.25)';
-        for (let bx = bannerX - 1200; bx < vw + 1200; bx += 700) {
-            const idx = Math.abs(Math.floor(bx / 700)) % bannerNames.length;
-            ctx.fillText(`«${bannerNames[idx]}»`, bx + 120, vh - 330);
+        // Layer 2: Midground Library Neon Emblems (0.45x speed)
+        const bannerX = -(camX * 0.45) % 1400;
+        const bannerNames = ['ЦГБ ВЛАДИМИР // АВРОРА', 'ФИЛИАЛ №9 «ДОБРОЛИТ»', 'ФИЛИАЛ №13 «КНИГОЛЕНД»', 'ЦЕНТРАЛЬНЫЙ ОПАК-СЕРВЕР'];
+        ctx.font = 'bold 15px "Segoe UI", sans-serif';
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
+        for (let bx = bannerX - 1400; bx < vw + 1400; bx += 800) {
+            const idx = Math.abs(Math.floor(bx / 800)) % bannerNames.length;
+            ctx.fillText(`⯈ ${bannerNames[idx]} ⯈`, bx + 140, vh - 340);
         }
     }
 
-    // --- GAME LOOP ---
+    // --- MAIN GAME LOOP WITH HIT-STOP JUICE ---
     let lastTimestamp = performance.now();
 
     function gameLoop(currentTimestamp) {
-        const dt = Math.min((currentTimestamp - lastTimestamp) / 1000, 0.05); // cap delta
+        const dt = Math.min((currentTimestamp - lastTimestamp) / 1000, 0.05);
         lastTimestamp = currentTimestamp;
+
+        // Hit-Stop Freeze Frame (Game Feel Juice)
+        if (gameState.hitStopTimer > 0) {
+            gameState.hitStopTimer -= dt;
+            requestAnimationFrame(gameLoop);
+            return;
+        }
 
         // 1. UPDATE
         if (gameState.state === STATE_PLAYING) {
             gameState.gameTime -= dt;
 
-            // Timer display update
+            // Timer & Urgent Screen Vignette
             const timerEl = document.getElementById('ui-timer');
+            const vignetteEl = document.getElementById('screen-vignette');
+
             if (timerEl) {
                 const mins = Math.floor(Math.max(0, gameState.gameTime) / 60);
                 const secs = Math.floor(Math.max(0, gameState.gameTime) % 60);
                 timerEl.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
                 if (gameState.gameTime <= 15) {
                     timerEl.classList.add('urgent');
+                    if (vignetteEl) vignetteEl.classList.add('urgent');
                 } else {
                     timerEl.classList.remove('urgent');
+                    if (vignetteEl) vignetteEl.classList.remove('urgent');
                 }
             }
 
-            if (gameState.gameTime <= 0) {
-                triggerGameOver();
-            }
+            if (gameState.gameTime <= 0) triggerGameOver();
 
-            // Update Player
             gameState.player.update(dt);
 
-            // Update Computers
-            for (let comp of gameState.computers) {
-                comp.update(dt, gameState.player);
-            }
+            for (let comp of gameState.computers) comp.update(dt, gameState.player);
+            for (let hazard of gameState.hazards) hazard.update(dt, gameState.player);
+            for (let item of gameState.powerups) item.update(dt, gameState.player);
 
-            // Update Hazards
-            for (let hazard of gameState.hazards) {
-                hazard.update(dt, gameState.player);
-            }
-
-            // Update Powerups
-            for (let item of gameState.powerups) {
-                item.update(dt, gameState.player);
-            }
-
-            // Update Particles
             for (let p of particlePool) {
                 if (p.active) p.update(dt);
             }
 
-            // Update Floating Texts
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
                 floatingTexts[i].update(dt);
                 if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
             }
 
-            // Camera Tracking (Smooth Lerp)
-            const targetCamX = gameState.player.x - vw * 0.35;
-            gameState.cameraX += (targetCamX - gameState.cameraX) * 8 * dt;
+            // Camera Spring Tracking with Velocity Lead
+            const leadX = gameState.player.vx * 0.22;
+            const targetCamX = gameState.player.x - vw * 0.35 + leadX;
+            gameState.cameraX += (targetCamX - gameState.cameraX) * 9 * dt;
             gameState.cameraX = Math.max(0, Math.min(gameState.cameraX, gameState.worldWidth - vw));
 
-            // Screen Shake Decay
             if (gameState.screenShake > 0) {
                 gameState.screenShake = Math.max(0, gameState.screenShake - dt * 45);
             }
+
+            // Update Off-Screen Hazard Warning Arrows
+            updateHazardWarnings(gameState.cameraX);
         }
 
         // 2. RENDER
         ctx.save();
 
-        // Apply Screen Shake
-        let shakeOffsetX = 0;
-        let shakeOffsetY = 0;
         if (gameState.screenShake > 0) {
-            shakeOffsetX = (Math.random() - 0.5) * gameState.screenShake;
-            shakeOffsetY = (Math.random() - 0.5) * gameState.screenShake;
-            ctx.translate(shakeOffsetX, shakeOffsetY);
+            const shakeX = (Math.random() - 0.5) * gameState.screenShake;
+            const shakeY = (Math.random() - 0.5) * gameState.screenShake;
+            ctx.translate(shakeX, shakeY);
         }
 
-        // Parallax Layers
+        // Parallax Architecture & Celestial Windows
         drawParallaxBackground(gameState.cameraX);
 
         if (gameState.state !== STATE_MENU) {
-            // Draw Platforms
-            for (let plat of gameState.platforms) {
-                plat.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Platforms & Bankers Lamps
+            for (let plat of gameState.platforms) plat.draw(ctx, gameState.cameraX, gameState.cameraY);
 
-            // Draw Computers
-            for (let comp of gameState.computers) {
-                comp.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Computers
+            for (let comp of gameState.computers) comp.draw(ctx, gameState.cameraX, gameState.cameraY);
 
-            // Draw Hazards
-            for (let hazard of gameState.hazards) {
-                hazard.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Hazards
+            for (let hazard of gameState.hazards) hazard.draw(ctx, gameState.cameraX, gameState.cameraY);
 
-            // Draw Powerups
-            for (let item of gameState.powerups) {
-                item.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Powerups
+            for (let item of gameState.powerups) item.draw(ctx, gameState.cameraX, gameState.cameraY);
 
-            // Draw Player
-            if (gameState.player) {
-                gameState.player.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Player (Cosmo)
+            if (gameState.player) gameState.player.draw(ctx, gameState.cameraX, gameState.cameraY);
 
-            // Draw Particles
+            // Particles
             for (let p of particlePool) {
                 if (p.active) p.draw(ctx, gameState.cameraX, gameState.cameraY);
             }
 
-            // Draw Floating Texts
-            for (let ft of floatingTexts) {
-                ft.draw(ctx, gameState.cameraX, gameState.cameraY);
-            }
+            // Floating Dust Motes in Lighting Cones
+            updateAndDrawDustMotes(ctx, gameState.cameraX, gameState.cameraY);
+
+            // Floating Score & Badge Texts
+            for (let ft of floatingTexts) ft.draw(ctx, gameState.cameraX, gameState.cameraY);
         }
 
         ctx.restore();
@@ -1508,10 +1649,8 @@
         requestAnimationFrame(gameLoop);
     }
 
-    // Launch Loop
     requestAnimationFrame(gameLoop);
 
-    // Expose control to window for debug or integration
     window.CosmoGame = {
         start: startGame,
         pause: togglePause
