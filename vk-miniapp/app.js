@@ -2508,6 +2508,18 @@ function initSocialButtons() {
     $('#btn-favorite-more')?.addEventListener('click', addToFavorites);
     $('#btn-share-top')?.addEventListener('click', shareApp);
     $('#btn-share-more')?.addEventListener('click', shareApp);
+
+    $('#btn-play-game')?.addEventListener('click', () => {
+        haptic('light');
+        const gameUrl = 'https://biblioteka33.ru/stat/game/';
+        if (bridgeReady && window.vkBridge) {
+            window.vkBridge.send('VKWebAppOpenUrl', { url: gameUrl }).catch(() => {
+                window.open(gameUrl, '_blank');
+            });
+        } else {
+            window.open(gameUrl, '_blank');
+        }
+    });
 }
 
 async function buildBranchList() {

@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.67.7",
+  "version": "4.68.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-19T20:15:00Z",
-  "release_name": "AURORA 4.67.7 — ИИ-чат: реальные данные из VK-групп филиалов (zero hallucinations), инжект контекста из стены группы за 7 дней"
+  "commit_date": "2026-09-20T17:05:00Z",
+  "release_name": "AURORA 4.68.0 — Интерактивная AAA мини-игра «Космо: Спасатель ПК» (Library Runner & Cyber Fixer) на сайте и в VK Mini App"
 }

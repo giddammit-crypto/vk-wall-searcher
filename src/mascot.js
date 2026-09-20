@@ -645,6 +645,7 @@ const TAB_SPEECH_VARIANTS = {
 // Быстрые чипы для диалога
 const QUICK_CHIPS = [
     { label: '💬 Чат с Космо', action: 'open-chat' },
+    { label: '🎮 Игра «Спасатель ПК»', action: 'open-game' },
     { label: '📊 Кто лидер?', action: 'leader' },
     { label: '🛸 Патруль 30 сек', action: 'patrol' },
     { label: '💡 Совет по контенту', query: 'Дай один короткий совет для роста активности читателей.' },
@@ -1518,6 +1519,8 @@ export class AuroraMascot {
 
                 if (action === 'open-chat') {
                     this.openCosmoChat();
+                } else if (action === 'open-game') {
+                    window.open('game/', '_blank');
                 } else if (action === 'start-search') {
                     this.triggerSearchFromMascot();
                 } else if (action === 'leader') {

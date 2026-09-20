@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>КОСМО: Спасатель Библиотеки 33 — Кибер-Игра</title>
+    <meta name="description" content="Помоги роботу Космо починить все сломанные компьютеры в библиотеках Владимира до того, как истечет время!">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="style.css?v=2.0.0">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Render Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Top HUD -->
+        <header id="hud">
+            <div class="hud-left">
+                <div class="hud-pill">
+                    <div class="hud-lives" id="ui-lives">
+                        <span class="heart-icon"></span>
+                        <span class="heart-icon"></span>
+                        <span class="heart-icon"></span>
+                    </div>
+                </div>
+                <div class="hud-pill">
+                    <span style="color:#89A2CD; font-size:12px;">СЧЁТ</span>
+                    <span class="hud-score-val" id="ui-score">0</span>
+                </div>
+            </div>
+
+            <div class="hud-center">
+                <div class="hud-pill" style="flex-direction:column; gap:2px; padding: 6px 14px;">
+                    <div class="hud-level-name" id="ui-level-name">Уровень 1: Читальный зал ЦГБ</div>
+                    <div class="hud-objective">
+                        <span style="font-size:11px; text-transform:uppercase;">Терминалы:</span>
+                        <div class="hud-pc-dots" id="ui-pc-dots">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-right">
+                <div class="hud-pill">
+                    <span class="hud-timer" id="ui-timer">01:30</span>
+                </div>
+                <button type="button" class="hud-btn" id="btn-mute" title="Вкл / Выкл звук (M)">
+                    <span class="material-symbols-outlined" id="mute-icon">volume_up</span>
+                </button>
+                <button type="button" class="hud-btn" id="btn-pause" title="Пауза (P / Esc)">
+                    <span class="material-symbols-outlined">pause</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Active Buffs Tracker -->
+        <div id="buff-indicator"></div>
+
+        <!-- Mobile Touch Controls -->
+        <div id="touch-controls">
+            <div class="touch-dpad">
+                <div class="touch-btn" id="btn-left">◀</div>
+                <div class="touch-btn" id="btn-right">▶</div>
+            </div>
+            <div class="touch-actions">
+                <div class="touch-btn btn-fix" id="btn-fix">
+                    <span>⚡</span>
+                    <span class="touch-sub-lbl">ЧИНИТЬ</span>
+                </div>
+                <div class="touch-btn btn-jump" id="btn-jump">
+                    <span>▲</span>
+                    <span class="touch-sub-lbl">ПРЫЖОК</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. Start Menu Modal -->
+        <div class="game-modal" id="modal-start">
+            <div class="modal-box">
+                <img src="../assets/images/mascot/robot_smile.png" alt="Космо" class="modal-mascot-img" onerror="this.src='../vk-miniapp/assets/images/mascot/robot_smile.png'">
+                <div class="modal-title">КОСМО: СПАСАТЕЛЬ ПК</div>
+                <div class="modal-subtitle">
+                    В филиалах библиотек Владимира вышли из строя каталожные компьютеры! Доберись до каждого неисправного терминала и почини систему АВРОРА.
+                </div>
+
+                <div class="controls-hint">
+                    <div><span class="kbd-badge">A</span> <span class="kbd-badge">D</span> или <span class="kbd-badge">◄</span> <span class="kbd-badge">►</span> — Бег</div>
+                    <div><span class="kbd-badge">W</span> или <span class="kbd-badge">▲</span> — Прыжок (х2 двойной!)</div>
+                    <div><span class="kbd-badge">ПРОБЕЛ</span> (у ПК) — Чинка</div>
+                </div>
+
+                <div class="btn-row">
+                    <button type="button" class="game-btn" id="btn-play-start">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                        ПОЕХАЛИ!
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Level Complete Modal -->
+        <div class="game-modal hidden" id="modal-win">
+            <div class="modal-box">
+                <img src="../assets/images/mascot/robot_party.png" alt="Победа" class="modal-mascot-img" onerror="this.src='../vk-miniapp/assets/images/mascot/robot_party.png'">
+                <div class="modal-title" id="win-level-title" style="color:#00FF9D;">СЕКТОР ЗАЩИЩЁН!</div>
+                <div class="modal-subtitle">Все компьютеры филиала восстановлены. Читатели снова могут искать редкие книги!</div>
+
+                <div class="modal-stats">
+                    <div class="stat-item">
+                        <span class="stat-lbl">Текущий Счёт</span>
+                        <span class="stat-val" id="win-score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-lbl">Бонус времени</span>
+                        <span class="stat-val" id="win-time-bonus">+0 СЕК</span>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button type="button" class="game-btn" id="btn-next-level">
+                        СЛЕДУЮЩИЙ УРОВЕНЬ
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Game Over Modal -->
+        <div class="game-modal hidden" id="modal-gameover">
+            <div class="modal-box">
+                <img src="../assets/images/mascot/robot_shock.png" alt="Ой" class="modal-mascot-img" onerror="this.src='../vk-miniapp/assets/images/mascot/robot_shock.png'">
+                <div class="modal-title" style="color:#FF3B69;">СВЯЗЬ ПОТЕРЯНА</div>
+                <div class="modal-subtitle">Закончилось время или батарея Космо разрядилась. Но библиотекари всегда верят в тебя!</div>
+
+                <div class="modal-stats">
+                    <div class="stat-item">
+                        <span class="stat-lbl">Итоговый счёт</span>
+                        <span class="stat-val" id="go-final-score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-lbl">Лучший Рекорд</span>
+                        <span class="stat-val" id="go-highscore">0</span>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button type="button" class="game-btn" id="btn-restart">
+                        <span class="material-symbols-outlined">replay</span>
+                        ИГРАТЬ СНОВА
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Pause Modal -->
+        <div class="game-modal hidden" id="modal-pause">
+            <div class="modal-box">
+                <img src="../assets/images/mascot/robot_read.png" alt="Пауза" class="modal-mascot-img" onerror="this.src='../vk-miniapp/assets/images/mascot/robot_read.png'">
+                <div class="modal-title">ПАУЗА</div>
+                <div class="modal-subtitle">Космо читает редкий формуляр. Отдохни и продолжим спасение библиотечной сети!</div>
+
+                <div class="btn-row">
+                    <button type="button" class="game-btn" id="btn-resume">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                        ПРОДОЛЖИТЬ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio & Game Engine Scripts -->
+    <script src="audio.js?v=2.0.0"></script>
+    <script src="game.js?v=2.0.0"></script>
+</body>
+</html>
