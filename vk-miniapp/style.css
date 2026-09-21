@@ -2147,3 +2147,114 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .nfc-submit:disabled { opacity: .45; pointer-events: none; }
 .nfc-submit.is-busy { opacity: .7; pointer-events: none; }
 .nfc-note { margin-top: 12px; text-align: center; }
+
+/* ── Баннер тестового режима NFC-продления ── */
+.nfc-test-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--color-warning-bg);
+    border: 1px solid rgba(245, 192, 64, 0.35);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+.nfc-test-banner .material-symbols-rounded {
+    font-size: 20px;
+    color: var(--color-warning);
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+.nfc-test-banner strong { color: var(--text-primary); }
+.tile-beta-badge {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-on-accent);
+    background: var(--color-warning);
+    border-radius: 999px;
+    padding: 1px 7px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ── Карточка «Данные читателя» и согласие 152-ФЗ ── */
+.nfc-consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.nfc-consent-row input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.nfc-consent-mark {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1.5px solid var(--hairline);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s var(--ease-smooth), border-color .2s var(--ease-smooth), transform .15s var(--ease-spring);
+}
+.nfc-consent-mark .material-symbols-rounded {
+    font-size: 16px;
+    color: var(--text-on-accent);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity .15s ease, transform .2s var(--ease-spring);
+}
+.nfc-consent-row input:checked + .nfc-consent-mark {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    transform: scale(1.05);
+}
+.nfc-consent-row input:checked + .nfc-consent-mark .material-symbols-rounded {
+    opacity: 1;
+    transform: scale(1);
+}
+.nfc-consent-row input:focus-visible + .nfc-consent-mark {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.nfc-consent-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-tertiary);
+}
+.nfc-consent-row.is-invalid .nfc-consent-mark {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+.nfc-consent-details {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+.nfc-consent-details summary {
+    cursor: pointer;
+    color: var(--aurora-cyan);
+    font-weight: 600;
+    font-size: 12px;
+    user-select: none;
+}
+.nfc-consent-details p {
+    margin: 8px 0 0;
+}
+.nfc-manual-row.is-invalid .nfc-manual-input {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px var(--color-danger-bg);
+}

@@ -2687,7 +2687,18 @@ const nfcState = {
     reader: null,    // { source: 'nfc'|'manual', uid, payload, number? }
     book: null,      // { source: 'nfc'|'manual', uid, payload, inventory? }
     scanning: null,  // 'reader' | 'book' | null
+    person: null,    // { name, email } — заполняется в карточке «Данные читателя»
+    consent: false,  // согласие на обработку ПДн по 152-ФЗ
 };
+
+function nfcPersonValid() {
+    if (!nfcState.consent) return false;
+    const name = (nfcState.person && nfcState.person.name || '').trim();
+    // ФИО: минимум фамилия и имя (два слова по 2+ буквы)
+    const nameOk = name.split(/\s+/).filter(w => w.length >= 2).length >= 2;
+    const emailOk = nfcState.person && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nfcState.person.email || '');
+    return nameOk && emailOk;
+}
 
 function nfcSupported() {
     return typeof window.NDEFReader === 'function';
@@ -2801,8 +2812,17 @@ function updateNfcUi() {
             }
         }
     }
+    const personStatus = $('#nfc-person-status');
+    const personCard = $('#nfc-card-person');
+    if (personStatus) {
+        personStatus.textContent = nfcPersonValid()
+            ? '✓ Заполнено, согласие дано'
+            : 'Не заполнены';
+    }
+    if (personCard) personCard.classList.toggle('is-done', nfcPersonValid());
+
     const submit = $('#nfc-submit-btn');
-    if (submit) submit.disabled = !(nfcState.reader && nfcState.book) || submit.dataset.busy === '1';
+    if (submit) submit.disabled = !(nfcState.reader && nfcState.book && nfcPersonValid()) || submit.dataset.busy === '1';
 }
 
 function resetRenew() {
@@ -2831,6 +2851,12 @@ async function submitRenewal() {
                 secret: NFC_RENEW_SECRET,
                 reader: nfcState.reader,
                 book: nfcState.book,
+                person: {
+                    name: nfcState.person.name.trim(),
+                    email: nfcState.person.email.trim(),
+                    consent_152fz: true,
+                    consent_at: new Date().toISOString(),
+                },
                 vk_user: vkUser ? { id: vkUser.id, first_name: vkUser.first_name, last_name: vkUser.last_name } : null,
                 device: { platform: String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || 'unknown') },
             }),
@@ -2838,7 +2864,7 @@ async function submitRenewal() {
         const data = await r.json().catch(() => ({}));
         if (r.ok && data.ok) {
             haptic('notification-success');
-            toast('Продление принято ✓ (' + data.journal_id + ')' + (data.email_sent ? ' Письмо отправлено библиотекарю.' : ' Письмо не отправилось — запись в журнале сохранена.'));
+            toast('Тест: запись создана (' + data.journal_id + '), но книга НЕ продлена — функция в тестовом режиме.' + (data.email_sent ? ' Письмо отправлено библиотекарю.' : ' Письмо не отправилось — запись в журнале сохранена.'));
             resetRenew();
         } else {
             haptic('notification-error');
@@ -2872,6 +2898,20 @@ function initRenew() {
     $('#nfc-book-manual')?.addEventListener('input', (e) => {
         const v = e.target.value.trim();
         nfcState.book = v ? { source: 'manual', uid: '', payload: '', inventory: v } : null;
+        updateNfcUi();
+    });
+    const readPerson = () => {
+        const name = ($('#nfc-person-name')?.value || '').trim();
+        const email = ($('#nfc-person-email')?.value || '').trim();
+        nfcState.person = (name || email) ? { name, email } : null;
+        updateNfcUi();
+    };
+    $('#nfc-person-name')?.addEventListener('input', readPerson);
+    $('#nfc-person-email')?.addEventListener('input', readPerson);
+    $('#nfc-consent-check')?.addEventListener('change', (e) => {
+        nfcState.consent = !!e.target.checked;
+        e.target.closest('.nfc-consent-row')?.classList.remove('is-invalid');
+        haptic('selection');
         updateNfcUi();
     });
     $('#nfc-submit-btn')?.addEventListener('click', submitRenewal);

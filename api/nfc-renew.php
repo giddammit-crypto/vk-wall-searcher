@@ -8,6 +8,7 @@
  *    "secret":  "<nfc_renew_secret из config.php>",
  *    "reader":  { "source": "nfc"|"manual", "uid": "04:A2:...", "payload": "...", "number": "1234" },
  *    "book":    { "source": "nfc"|"manual", "uid": "...", "payload": "...", "inventory": "0012345" },
+ *    "person":  { "name": "Иванов Иван Иванович", "email": "...", "consent_152fz": true, "consent_at": "ISO-8601" },
  *    "vk_user": { "id": 123, "first_name": "...", "last_name": "..." },
  *    "device":  { "platform": "android"|"ios"|"desktop" }
  *  }
@@ -124,6 +125,7 @@ function nfc_clean($v, $maxLen = 300) {
 
 $reader  = is_array($input['reader'] ?? null) ? $input['reader'] : [];
 $book    = is_array($input['book'] ?? null) ? $input['book'] : [];
+$person  = is_array($input['person'] ?? null) ? $input['person'] : [];
 $vkUser  = is_array($input['vk_user'] ?? null) ? $input['vk_user'] : [];
 $device  = is_array($input['device'] ?? null) ? $input['device'] : [];
 
@@ -144,6 +146,28 @@ if ($bookUid === '' && $bookInventory === '' && $bookPayload === '') {
     nfc_out(400, ['ok' => false, 'error' => 'BOOK_REQUIRED']);
 }
 
+// ─── Данные читателя и согласие на обработку ПДн (152-ФЗ) ───────────────────
+// Без явного согласия операцию не принимаем: это фиксируется в журнале как
+// основание обработки (п. 1 ч. 1 ст. 6 ФЗ-152).
+$personName  = nfc_clean($person['name'] ?? '', 120);
+$personEmail = nfc_clean($person['email'] ?? '', 120);
+$consentGiven = !empty($person['consent_152fz']);
+$consentAt = nfc_clean($person['consent_at'] ?? '', 40);
+if ($consentAt === '' && $consentGiven) $consentAt = date('c');
+
+$personNameWords = preg_split('/\s+/', $personName);
+$personNameOk = count(array_filter($personNameWords, function ($w) { return mb_strlen($w, 'UTF-8') >= 2; })) >= 2;
+
+if (!$consentGiven) {
+    nfc_out(400, ['ok' => false, 'error' => 'CONSENT_REQUIRED']);
+}
+if (!$personNameOk) {
+    nfc_out(400, ['ok' => false, 'error' => 'PERSON_NAME_REQUIRED']);
+}
+if ($personEmail === '' || !filter_var($personEmail, FILTER_VALIDATE_EMAIL)) {
+    nfc_out(400, ['ok' => false, 'error' => 'PERSON_EMAIL_REQUIRED']);
+}
+
 $record = [
     'id'       => date('Ymd-His') . '-' . bin2hex(random_bytes(3)),
     'ts'       => $now,
@@ -151,6 +175,12 @@ $record = [
     'ip'       => $ip,
     'reader'   => ['source' => $readerSource, 'uid' => $readerUid, 'payload' => $readerPayload, 'number' => $readerNumber],
     'book'     => ['source' => $bookSource, 'uid' => $bookUid, 'payload' => $bookPayload, 'inventory' => $bookInventory],
+    'person'   => [
+        'name'         => $personName,
+        'email'        => $personEmail,
+        'consent_152fz' => true,
+        'consent_at'   => $consentAt,
+    ],
     'vk_user'  => [
         'id'         => (int)($vkUser['id'] ?? 0),
         'first_name' => nfc_clean($vkUser['first_name'] ?? '', 80),
@@ -203,6 +233,9 @@ $nfcRow('Книга: способ получения', $bookSource === 'nfc' ? '
 $nfcRow('Книга: UID метки', $bookUid);
 $nfcRow('Книга: данные метки', $bookPayload);
 $nfcRow('Книга: инв. номер (введён)', $bookInventory);
+$nfcRow('Читатель: ФИО', $personName);
+$nfcRow('Читатель: e-mail', $personEmail);
+$nfcRow('Согласие 152-ФЗ', 'Дано ' . $consentAt);
 $nfcRow('Устройство', $record['device']['platform']);
 
 $subject = '=?UTF-8?B?' . base64_encode('NFC-продление: ' . $record['id']) . '?=';
