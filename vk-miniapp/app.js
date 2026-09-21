@@ -2673,6 +2673,219 @@ async function init() {
     }
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   ЭКРАН «ПРОДЛЕНИЕ ПО NFC» — Web NDEFReader + ручной фолбэк + отправка на сервер
+   Web NFC доступен только в Chrome/Edge на Android по HTTPS; внутри WebView
+   клиента ВК он отсутствует, поэтому сценарий деградирует до ручного ввода.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+// Тестовый секрет-гейт (спам-заглушка). Реальная авторизация — подпись VK Mini App
+// на стороне сервера; заменить перед продакшеном.
+const NFC_RENEW_SECRET = 'aurora-nfc-test';
+
+const nfcState = {
+    reader: null,    // { source: 'nfc'|'manual', uid, payload, number? }
+    book: null,      // { source: 'nfc'|'manual', uid, payload, inventory? }
+    scanning: null,  // 'reader' | 'book' | null
+};
+
+function nfcSupported() {
+    return typeof window.NDEFReader === 'function';
+}
+
+function nfcDecodeRecord(rec) {
+    try {
+        if (!rec || !rec.data) return '';
+        const bytes = rec.data instanceof Uint8Array ? rec.data : new Uint8Array(rec.data);
+        if (rec.recordType === 'text') {
+            const langLen = bytes[0] & 0x3F;
+            return new TextDecoder('utf-8').decode(bytes.subarray(1 + langLen));
+        }
+        if (rec.recordType === 'url') {
+            const prefixes = ['http://www.', 'https://www.', 'http://', 'https://', 'mailto:', 'ftp://', 'telnet:', 'urn:'];
+            const b0 = bytes[0];
+            const p = b0 < 8 ? prefixes[b0] : (b0 === 0x20 ? 'urn:isbn:' : b0 === 0x21 ? 'urn:issn:' : '');
+            return p + new TextDecoder('utf-8').decode(bytes.subarray(1));
+        }
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch (e) {
+        return '';
+    }
+}
+
+function nfcScanOnce() {
+    if (!nfcSupported()) return Promise.resolve(null);
+    let ndef;
+    try { ndef = new window.NDEFReader(); } catch (e) { return Promise.resolve(null); }
+    return new Promise((resolve) => {
+        let done = false;
+        const finish = (val) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            try { ndef.stop(); } catch (e) {}
+            resolve(val);
+        };
+        ndef.addEventListener('readingevent', (e) => {
+            const payload = (e.records || []).map(nfcDecodeRecord).filter(Boolean).join(' | ');
+            finish({ uid: e.serialNumber || '', payload: payload.slice(0, 300) });
+        });
+        ndef.addEventListener('error', (e) => {
+            console.warn('[NFC] ' + ((e && (e.name || e.message)) || 'unknown'));
+            finish(null);
+        });
+        // Если читатель так и не приложил метку — отменяем скан через 45 секунд
+        const timer = setTimeout(() => finish(null), 45000);
+        // Запуск сканирования обязателен: без scan() readingevent не сработает никогда
+        try {
+            const started = ndef.scan();
+            if (started && typeof started.catch === 'function') {
+                started.catch(() => finish(null));
+            }
+        } catch (e) {
+            finish(null);
+        }
+    });
+}
+
+async function runNfcScan(side) {
+    if (nfcState.scanning) return;
+    if (!nfcSupported()) {
+        toast('NFC недоступен в этом окружении — используйте ручной ввод');
+        haptic('notification-error');
+        return;
+    }
+    nfcState.scanning = side;
+    updateNfcUi();
+    haptic('impact-light');
+    const res = await nfcScanOnce();
+    nfcState.scanning = null;
+    if (res) {
+        nfcState[side] = { source: 'nfc', uid: res.uid, payload: res.payload };
+        haptic('notification-success');
+    } else {
+        haptic('notification-error');
+        toast(side === 'reader' ? 'Билет не прочитан — попробуйте ещё раз или введите номер вручную' : 'Книга не прочитана — попробуйте ещё раз или введите инв. номер');
+    }
+    updateNfcUi();
+}
+
+function updateNfcUi() {
+    for (const side of ['reader', 'book']) {
+        const card = $(`#nfc-card-${side}`);
+        if (!card) continue;
+        const status = $(`#nfc-${side}-status`);
+        const dataEl = $(`#nfc-${side}-data`);
+        const btn = $(`#nfc-scan-${side}`);
+        const scanning = nfcState.scanning === side;
+        const d = nfcState[side];
+        card.classList.toggle('is-scanning', scanning);
+        card.classList.toggle('is-done', !!d && !scanning);
+        if (btn) btn.disabled = !!nfcState.scanning;
+        if (status) {
+            if (scanning) {
+                status.textContent = side === 'reader' ? 'Приложите билет к телефону…' : 'Приложите книгу с NFC-меткой…';
+            } else if (d) {
+                status.textContent = d.source === 'nfc' ? '✓ Отсканировано' : '✓ Введено вручную';
+            } else {
+                status.textContent = side === 'reader' ? 'Не отсканирован' : 'Не отсканирована';
+            }
+        }
+        if (dataEl) {
+            if (d && d.source === 'nfc') {
+                dataEl.classList.remove('hidden');
+                dataEl.innerHTML = `<code>${esc(d.uid)}</code>${d.payload ? ' — ' + esc(d.payload) : ''}`;
+            } else {
+                dataEl.classList.add('hidden');
+                dataEl.textContent = '';
+            }
+        }
+    }
+    const submit = $('#nfc-submit-btn');
+    if (submit) submit.disabled = !(nfcState.reader && nfcState.book) || submit.dataset.busy === '1';
+}
+
+function resetRenew() {
+    nfcState.reader = null;
+    nfcState.book = null;
+    const ri = $('#nfc-reader-manual');
+    const bi = $('#nfc-book-manual');
+    if (ri) ri.value = '';
+    if (bi) bi.value = '';
+    updateNfcUi();
+}
+
+async function submitRenewal() {
+    const submit = $('#nfc-submit-btn');
+    if (!submit || submit.disabled) return;
+    submit.dataset.busy = '1';
+    submit.classList.add('is-busy');
+    const btnText = submit.querySelector('span:last-child');
+    const orig = btnText ? btnText.textContent : '';
+    if (btnText) btnText.textContent = 'Отправляем…';
+    try {
+        const r = await withTimeout(fetch(API.base + '/api/nfc-renew.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret: NFC_RENEW_SECRET,
+                reader: nfcState.reader,
+                book: nfcState.book,
+                vk_user: vkUser ? { id: vkUser.id, first_name: vkUser.first_name, last_name: vkUser.last_name } : null,
+                device: { platform: String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || 'unknown') },
+            }),
+        }), 12000);
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.ok) {
+            haptic('notification-success');
+            toast('Продление принято ✓ (' + data.journal_id + ')' + (data.email_sent ? ' Письмо отправлено библиотекарю.' : ' Письмо не отправилось — запись в журнале сохранена.'));
+            resetRenew();
+        } else {
+            haptic('notification-error');
+            toast('Ошибка сервера: ' + ((data && data.error) || r.status));
+        }
+    } catch (e) {
+        haptic('notification-error');
+        toast('Сбой сети: ' + e.message);
+    } finally {
+        delete submit.dataset.busy;
+        submit.classList.remove('is-busy');
+        if (btnText) btnText.textContent = orig;
+        updateNfcUi();
+    }
+}
+
+function initRenew() {
+    const note = $('#nfc-support-note');
+    if (note) {
+        note.textContent = nfcSupported()
+            ? 'NFC активен: прикладывайте метки к задней панели телефона.'
+            : 'NFC в этом окружении недоступен (нужен Chrome на Android по HTTPS). Продление работает через ручной ввод номера билета и инвентарного номера книги.';
+    }
+    $('#nfc-scan-reader')?.addEventListener('click', () => runNfcScan('reader'));
+    $('#nfc-scan-book')?.addEventListener('click', () => runNfcScan('book'));
+    $('#nfc-reader-manual')?.addEventListener('input', (e) => {
+        const v = e.target.value.trim();
+        nfcState.reader = v ? { source: 'manual', uid: '', payload: '', number: v } : null;
+        updateNfcUi();
+    });
+    $('#nfc-book-manual')?.addEventListener('input', (e) => {
+        const v = e.target.value.trim();
+        nfcState.book = v ? { source: 'manual', uid: '', payload: '', inventory: v } : null;
+        updateNfcUi();
+    });
+    $('#nfc-submit-btn')?.addEventListener('click', submitRenewal);
+    $('#btn-nfc-renew-more')?.addEventListener('click', () => goto('renew'));
+    updateNfcUi();
+
+    // Диплинк: ?screen=renew или #renew (для QR-плакатов и рассылки библиотекарям)
+    const p = new URLSearchParams(location.search);
+    const target = p.get('screen') || (location.hash || '').slice(1);
+    if (target === 'renew') goto('renew', false);
+}
+
+initRenew();
+
 init().catch(e => {
     window.__appErrs.push('init_err: ' + e.message);
 });
