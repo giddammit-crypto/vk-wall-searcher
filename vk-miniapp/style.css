@@ -2258,3 +2258,180 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     border-color: var(--color-danger);
     box-shadow: 0 0 0 3px var(--color-danger-bg);
 }
+
+/* ── Визуальное улучшение экрана продления: адаптивные иконки и шаги ── */
+.nfc-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+}
+.nfc-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    white-space: nowrap;
+    transition: color .25s var(--ease-smooth);
+}
+.nfc-step-num {
+    width: clamp(18px, 5vw, 22px);
+    height: clamp(18px, 5vw, 22px);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    transition: background .25s var(--ease-smooth), border-color .25s, color .25s;
+}
+.nfc-step.is-done { color: var(--color-success); }
+.nfc-step.is-done .nfc-step-num {
+    background: var(--color-success);
+    border-color: transparent;
+    color: #fff;
+}
+.nfc-step-line {
+    flex: 1;
+    min-width: 8px;
+    height: 1px;
+    background: var(--divider);
+}
+/* Иконки карточек масштабируются под ширину экрана */
+.nfc-card-ico {
+    width: clamp(40px, 11.5vw, 48px);
+    height: clamp(40px, 11.5vw, 48px);
+    font-size: clamp(20px, 5.8vw, 26px);
+    line-height: 1;
+    border-radius: clamp(11px, 3.4vw, 14px);
+}
+/* Иконки в кнопках не вылезают за пределы и масштабируются */
+.nfc-scan-btn,
+.nfc-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+}
+.nfc-scan-btn .material-symbols-rounded,
+.nfc-submit .material-symbols-rounded {
+    font-size: clamp(17px, 4.8vw, 21px);
+    line-height: 1;
+    flex: 0 0 auto;
+}
+/* Вторая строка ввода в карточке получает отступ */
+.nfc-card .nfc-manual-row + .nfc-manual-row { margin-top: 8px; }
+/* Иконка баннера — адаптивная */
+.nfc-test-banner .material-symbols-rounded { font-size: clamp(18px, 5vw, 22px); }
+/* Активная кнопка отправки получает фирменный градиент */
+.nfc-submit:not(:disabled) {
+    background: var(--accent-gradient);
+    color: var(--text-on-accent);
+    box-shadow: var(--elev-cta);
+}
+
+/* ── OPAC-карточка книги внутри карточки «Книга» ── */
+.nfc-opac-card {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: rgba(56, 189, 248, 0.06);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--radius-md);
+    transition: border-color .3s var(--ease-smooth), background .3s;
+}
+.nfc-opac-card.is-loading {
+    border-color: var(--aurora-cyan);
+    background: rgba(56, 189, 248, 0.08);
+}
+.nfc-opac-card.is-found {
+    border-color: var(--color-success);
+    background: var(--color-success-bg);
+}
+.nfc-opac-card.is-not-found {
+    border-color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+.nfc-opac-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.nfc-opac-head .material-symbols-rounded {
+    font-size: clamp(16px, 4.2vw, 20px);
+    color: var(--aurora-cyan);
+}
+.nfc-opac-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--aurora-cyan);
+}
+.nfc-opac-card.is-found .nfc-opac-label { color: var(--color-success); }
+.nfc-opac-card.is-not-found .nfc-opac-label { color: var(--color-warning); }
+.nfc-opac-title {
+    font-size: clamp(14px, 3.8vw, 16px);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.35;
+    margin-bottom: 2px;
+}
+.nfc-opac-author {
+    font-size: clamp(12px, 3.2vw, 14px);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.nfc-opac-meta {
+    font-size: clamp(11px, 3vw, 13px);
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+/* Селектор филиала */
+.nfc-branch-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: clamp(12px, 3.2vw, 14px);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.nfc-branch-label .material-symbols-rounded {
+    font-size: clamp(16px, 4.2vw, 20px);
+    color: var(--aurora-purple);
+}
+.nfc-branch-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-md);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238B93B5'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    transition: border-color .2s;
+}
+.nfc-branch-select:focus {
+    border-color: var(--aurora-purple);
+    box-shadow: 0 0 0 3px var(--purple-bg);
+}
+.nfc-branch-select option {
+    background: var(--bg-page);
+    color: var(--text-primary);
+}

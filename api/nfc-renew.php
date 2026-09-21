@@ -9,6 +9,8 @@
  *    "reader":  { "source": "nfc"|"manual", "uid": "04:A2:...", "payload": "...", "number": "1234" },
  *    "book":    { "source": "nfc"|"manual", "uid": "...", "payload": "...", "inventory": "0012345" },
  *    "person":  { "name": "Иванов Иван Иванович", "email": "...", "consent_152fz": true, "consent_at": "ISO-8601" },
+ *    "opac_book": { "title": "...", "author": "...", "year": "...", "shelfmark": "...", "inventory": "..." },
+ *    "branch":  "Ф-5",
  *    "vk_user": { "id": 123, "first_name": "...", "last_name": "..." },
  *    "device":  { "platform": "android"|"ios"|"desktop" }
  *  }
@@ -123,9 +125,10 @@ function nfc_clean($v, $maxLen = 300) {
     return mb_substr(trim($v), 0, $maxLen, 'UTF-8');
 }
 
-$reader  = is_array($input['reader'] ?? null) ? $input['reader'] : [];
-$book    = is_array($input['book'] ?? null) ? $input['book'] : [];
-$person  = is_array($input['person'] ?? null) ? $input['person'] : [];
+$reader   = is_array($input['reader'] ?? null) ? $input['reader'] : [];
+$book     = is_array($input['book'] ?? null) ? $input['book'] : [];
+$person   = is_array($input['person'] ?? null) ? $input['person'] : [];
+$opacBook = is_array($input['opac_book'] ?? null) ? $input['opac_book'] : [];
 $vkUser  = is_array($input['vk_user'] ?? null) ? $input['vk_user'] : [];
 $device  = is_array($input['device'] ?? null) ? $input['device'] : [];
 
@@ -168,6 +171,14 @@ if ($personEmail === '' || !filter_var($personEmail, FILTER_VALIDATE_EMAIL)) {
     nfc_out(400, ['ok' => false, 'error' => 'PERSON_EMAIL_REQUIRED']);
 }
 
+// ─── Данные книги из OPAC и филиал выдачи (заполняются мини-аппом) ──────────
+$opacTitle     = nfc_clean($opacBook['title'] ?? '', 300);
+$opacAuthor    = nfc_clean($opacBook['author'] ?? '', 160);
+$opacYear      = nfc_clean($opacBook['year'] ?? '', 20);
+$opacShelfmark = nfc_clean($opacBook['shelfmark'] ?? ($opacBook['shifr'] ?? ''), 80);
+$opacInventory = nfc_clean($opacBook['inventory'] ?? '', 60);
+$branchCode    = nfc_clean($input['branch'] ?? '', 40);
+
 $record = [
     'id'       => date('Ymd-His') . '-' . bin2hex(random_bytes(3)),
     'ts'       => $now,
@@ -175,6 +186,14 @@ $record = [
     'ip'       => $ip,
     'reader'   => ['source' => $readerSource, 'uid' => $readerUid, 'payload' => $readerPayload, 'number' => $readerNumber],
     'book'     => ['source' => $bookSource, 'uid' => $bookUid, 'payload' => $bookPayload, 'inventory' => $bookInventory],
+    'opac_book' => [
+        'title'     => $opacTitle,
+        'author'    => $opacAuthor,
+        'year'      => $opacYear,
+        'shelfmark' => $opacShelfmark,
+        'inventory' => $opacInventory,
+    ],
+    'branch'   => $branchCode,
     'person'   => [
         'name'         => $personName,
         'email'        => $personEmail,
@@ -233,6 +252,11 @@ $nfcRow('Книга: способ получения', $bookSource === 'nfc' ? '
 $nfcRow('Книга: UID метки', $bookUid);
 $nfcRow('Книга: данные метки', $bookPayload);
 $nfcRow('Книга: инв. номер (введён)', $bookInventory);
+$nfcRow('Книга: название (OPAC)', $opacTitle);
+$nfcRow('Книга: автор (OPAC)', $opacAuthor);
+$nfcRow('Книга: год (OPAC)', $opacYear);
+$nfcRow('Книга: шифр (OPAC)', $opacShelfmark);
+$nfcRow('Филиал выдачи', $branchCode);
 $nfcRow('Читатель: ФИО', $personName);
 $nfcRow('Читатель: e-mail', $personEmail);
 $nfcRow('Согласие 152-ФЗ', 'Дано ' . $consentAt);
