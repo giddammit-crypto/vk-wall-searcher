@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>АВРОРА • Космо</title>
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1.4.4">
+<link rel="stylesheet" href="style.css?v=1.4.5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
@@ -230,10 +230,11 @@
                 <span class="material-symbols-rounded">nfc</span>
                 <span>Сканировать билет</span>
             </button>
-            <div class="nfc-manual-row">
+            <div class="nfc-manual-row" data-icon="badge">
                 <input id="nfc-reader-manual" class="nfc-manual-input" type="text" inputmode="numeric" placeholder="…или введите номер билета вручную" autocomplete="off">
             </div>
             <div class="nfc-data hidden" id="nfc-reader-data"></div>
+
         </div>
 
         <div class="nfc-card" id="nfc-card-book">
@@ -248,7 +249,7 @@
                 <span class="material-symbols-rounded">nfc</span>
                 <span>Сканировать книгу</span>
             </button>
-            <div class="nfc-manual-row">
+            <div class="nfc-manual-row" data-icon="menu_book">
                 <input id="nfc-book-manual" class="nfc-manual-input" type="text" placeholder="…или инвентарный номер книги" autocomplete="off">
             </div>
             <div class="nfc-data hidden" id="nfc-book-data"></div>
@@ -281,10 +282,10 @@
                     <span class="nfc-card-status" id="nfc-person-status">Не заполнены</span>
                 </div>
             </div>
-            <div class="nfc-manual-row">
+            <div class="nfc-manual-row" data-icon="person">
                 <input id="nfc-person-name" class="nfc-manual-input" type="text" placeholder="ФИО полностью (Иванов Иван Иванович)" autocomplete="name">
             </div>
-            <div class="nfc-manual-row">
+            <div class="nfc-manual-row" data-icon="mail">
                 <input id="nfc-person-email" class="nfc-manual-input" type="email" placeholder="E-mail для связи" autocomplete="email">
             </div>
             <label class="nfc-consent-row">
@@ -487,6 +488,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="app.js?v=1.4.4"></script>
+    <script src="app.js?v=1.4.5"></script>
 </body>
 </html>
