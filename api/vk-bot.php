@@ -275,8 +275,14 @@ foreach ($defaultAiKeys as $defK) {
 $validAiKeys = array_values(array_unique($rawAiKeys));
 
 $aiBaseUrl       = isset($config['ai_base_url']) ? rtrim(trim((string)$config['ai_base_url']), '/') : 'https://api.xkiro.com/v1';
-$aiPrimaryModel  = isset($config['ai_model_primary']) ? trim((string)$config['ai_model_primary']) : (isset($config['ai_model']) ? trim((string)$config['ai_model']) : 'qwen/qwen3.8-max:free');
-$aiFallbackModel = isset($config['ai_model_fallback']) ? trim((string)$config['ai_model_fallback']) : 'mistralai/mistral-large-2512';
+$aiPrimaryModel  = !empty($config['ai_model_primary']) 
+    ? trim((string)$config['ai_model_primary']) 
+    : (!empty($config['ai_model']) && strpos($config['ai_model'], 'mistral') === false 
+        ? trim((string)$config['ai_model']) 
+        : 'qwen/qwen3.8-max:free');
+$aiFallbackModel = !empty($config['ai_model_fallback']) 
+    ? trim((string)$config['ai_model_fallback']) 
+    : 'mistralai/mistral-large-2512';
 if ($aiPrimaryModel === '') {
     $aiPrimaryModel = 'qwen/qwen3.8-max:free';
 }
