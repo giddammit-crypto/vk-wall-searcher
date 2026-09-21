@@ -47,7 +47,9 @@ return [
     ],
 
     'ai_base_url'   => 'https://api.xkiro.com/v1',
-    'ai_model'      => 'mistralai/mistral-large-2512',
+    'ai_model'      => 'qwen/qwen3.8-max:free',
+    'ai_model_primary'  => 'qwen/qwen3.8-max:free',
+    'ai_model_fallback' => 'mistralai/mistral-large-2512',
     'ai_max_tokens' => 8192,
     'ai_timeout'    => 180,
 

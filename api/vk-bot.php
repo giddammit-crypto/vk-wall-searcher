@@ -274,10 +274,18 @@ foreach ($defaultAiKeys as $defK) {
 }
 $validAiKeys = array_values(array_unique($rawAiKeys));
 
-$aiBaseUrl  = isset($config['ai_base_url']) ? rtrim(trim((string)$config['ai_base_url']), '/') : 'https://api.xkiro.com/v1';
-$aiModel    = isset($config['ai_model']) ? trim((string)$config['ai_model']) : 'mistralai/mistral-large-2512';
-$aiMaxTok   = isset($config['ai_max_tokens']) ? max(300, (int)$config['ai_max_tokens']) : 2048;
-$aiTimeout  = isset($config['ai_timeout']) ? max(15, (int)$config['ai_timeout']) : 90;
+$aiBaseUrl       = isset($config['ai_base_url']) ? rtrim(trim((string)$config['ai_base_url']), '/') : 'https://api.xkiro.com/v1';
+$aiPrimaryModel  = isset($config['ai_model_primary']) ? trim((string)$config['ai_model_primary']) : (isset($config['ai_model']) ? trim((string)$config['ai_model']) : 'qwen/qwen3.8-max:free');
+$aiFallbackModel = isset($config['ai_model_fallback']) ? trim((string)$config['ai_model_fallback']) : 'mistralai/mistral-large-2512';
+if ($aiPrimaryModel === '') {
+    $aiPrimaryModel = 'qwen/qwen3.8-max:free';
+}
+if ($aiFallbackModel === '') {
+    $aiFallbackModel = 'mistralai/mistral-large-2512';
+}
+$aiModel         = $aiPrimaryModel;
+$aiMaxTok        = isset($config['ai_max_tokens']) ? max(300, (int)$config['ai_max_tokens']) : 2048;
+$aiTimeout       = isset($config['ai_timeout']) ? max(15, (int)$config['ai_timeout']) : 90;
 
 $elevenlabsApiKey = trim((string)($config['elevenlabs_api_key'] ?? ''));
 if ($elevenlabsApiKey === '' || strpos($elevenlabsApiKey, 'ВСТАВЬТЕ') === 0) {
@@ -326,6 +334,8 @@ if ($reqMethod === 'GET' || $reqMethod === 'HEAD') {
             'api_version'          => $apiVersion,
             'ai_configured'        => (count($validAiKeys) > 0),
             'ai_model'             => $aiModel,
+            'ai_model_primary'     => $aiPrimaryModel,
+            'ai_model_fallback'    => $aiFallbackModel,
             'ai_keys_count'        => count($validAiKeys),
             'timestamp'            => time()
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -2978,7 +2988,7 @@ function vk_bot_truncate_btn_label($str, $maxLen = 33)
 /**
  * Универсальный вызов AI-модели с поддержкой ротации ключей и фонового typing в ВК
  */
-function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0)
+function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, $aiBaseUrl, $aiModel, $aiTimeout, $activeKeyIndexFile, $peerId = 0, $communityToken = '', $vkGroupId = 0, $aiFallbackModel = '')
 {
     if (empty($validAiKeys)) return '';
     $activeIdx = 0;
@@ -2990,117 +3000,134 @@ function vk_bot_call_ai_text($messages, $maxTokens, $temperature, $validAiKeys, 
         }
     }
 
-    $payloadArr = [
-        'model'       => $aiModel,
-        'messages'    => $messages,
-        'max_tokens'  => $maxTokens,
-        'temperature' => $temperature
-    ];
-    $payloadJson = json_encode($payloadArr, JSON_UNESCAPED_UNICODE);
+    $modelsToTry = [$aiModel];
+    $fallback = !empty($aiFallbackModel) ? $aiFallbackModel : ($GLOBALS['aiFallbackModel'] ?? 'mistralai/mistral-large-2512');
+    if (!empty($fallback) && strcasecmp($fallback, $aiModel) !== 0) {
+        $modelsToTry[] = $fallback;
+    }
 
-    $attempts = 0;
-    $maxAttempts = count($validAiKeys);
-    $currentIdx = $activeIdx;
     $botTyping = ($peerId > 0 && $communityToken !== '');
     $lastTypingPing = microtime(true);
     $aiResponseText = '';
 
-    while ($attempts < $maxAttempts) {
-        $currentApiKey = $validAiKeys[$currentIdx];
+    foreach ($modelsToTry as $mIdx => $currentModel) {
+        $isPrimary = ($mIdx === 0 && count($modelsToTry) > 1);
+        $payloadArr = [
+            'model'       => $currentModel,
+            'messages'    => $messages,
+            'max_tokens'  => $maxTokens,
+            'temperature' => $temperature
+        ];
+        $payloadJson = json_encode($payloadArr, JSON_UNESCAPED_UNICODE);
 
-        if ($botTyping) {
-            vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-        }
+        $attempts = 0;
+        $maxAttempts = $isPrimary ? min(2, count($validAiKeys)) : count($validAiKeys);
+        $currentIdx = $activeIdx;
+        $effectiveTimeout = $isPrimary ? min($aiTimeout, 30) : $aiTimeout;
 
-        $ch = curl_init($aiBaseUrl . '/chat/completions');
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $payloadJson,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => $aiTimeout,
-            CURLOPT_CONNECTTIMEOUT => 12,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.29.0',
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_NOPROGRESS     => false,
-            CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $vkGroupId, $botTyping) {
-                if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.0) {
-                    $lastTypingPing = microtime(true);
-                    vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-                }
-                return 0;
-            },
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'Authorization: Bearer ' . $currentApiKey
-            ]
-        ]);
-        $resp = curl_exec($ch);
-        $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        while ($attempts < $maxAttempts) {
+            $currentApiKey = $validAiKeys[$currentIdx];
 
-        $json = is_string($resp) ? json_decode($resp, true) : null;
-        $needFailover = ($resp === false || $httpCode === 0 || in_array($httpCode, [429, 401, 402, 403, 500, 502, 503, 504], true));
-        if (!$needFailover && is_array($json)) {
-            $errStr = '';
-            if (isset($json['error'])) {
-                $errStr .= is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE);
+            if ($botTyping) {
+                vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
             }
-            if (isset($json['message'])) {
-                $errStr .= ' ' . (string)$json['message'];
-            }
-            if ($errStr !== '' && preg_match('/quota|rate|limit|insufficient|unauthorized|credit|exceeded|busy/i', $errStr)) {
-                $needFailover = true;
-            }
-        }
 
-        if ($needFailover && count($validAiKeys) > 1 && $attempts < ($maxAttempts - 1)) {
-            $currentIdx = ($currentIdx + 1) % count($validAiKeys);
-            $attempts++;
-            $fh = @fopen($activeKeyIndexFile, 'c+');
-            if ($fh) {
-                if (@flock($fh, LOCK_EX)) {
-                    ftruncate($fh, 0);
-                    rewind($fh);
-                    fwrite($fh, json_encode([
-                        'active_index' => $currentIdx,
-                        'updated_at'   => time(),
-                        'updated_iso'  => date('c')
-                    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                    fflush($fh);
-                    @flock($fh, LOCK_UN);
-                }
-                fclose($fh);
-            }
-            continue;
-        }
-
-        if ($httpCode === 200 && is_array($json) && !empty($json['choices'][0]['message']['content'])) {
-            $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
-            $aiResponseText = vk_bot_enforce_masculine_gender($aiResponseText);
-            if ($currentIdx !== $activeIdx) {
-                $fh = @fopen($activeKeyIndexFile, 'c+');
-                if ($fh) {
-                    if (@flock($fh, LOCK_EX)) {
-                        ftruncate($fh, 0);
-                        rewind($fh);
-                        fwrite($fh, json_encode([
-                            'active_index' => $currentIdx,
-                            'updated_at'   => time(),
-                            'updated_iso'  => date('c')
-                        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                        fflush($fh);
-                        @flock($fh, LOCK_UN);
+            $ch = curl_init($aiBaseUrl . '/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $payloadJson,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => $effectiveTimeout,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 AURORA-Cosmo-VKBot/4.29.0',
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_NOPROGRESS     => false,
+                CURLOPT_PROGRESSFUNCTION => function($res, $dltotal, $dlnow, $ultotal, $ulnow) use (&$lastTypingPing, $peerId, $communityToken, $vkGroupId, $botTyping) {
+                    if ($botTyping && (microtime(true) - $lastTypingPing) >= 3.0) {
+                        $lastTypingPing = microtime(true);
+                        vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
                     }
-                    fclose($fh);
+                    return 0;
+                },
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                    'Authorization: Bearer ' . $currentApiKey
+                ]
+            ]);
+            $resp = curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            curl_close($ch);
+
+            $json = is_string($resp) ? json_decode($resp, true) : null;
+            $needFailover = ($resp === false || $httpCode === 0 || in_array($httpCode, [400, 401, 402, 403, 404, 429, 500, 502, 503, 504], true));
+            if (!$needFailover && is_array($json)) {
+                $errStr = '';
+                if (isset($json['error'])) {
+                    $errStr .= is_string($json['error']) ? $json['error'] : json_encode($json['error'], JSON_UNESCAPED_UNICODE);
+                }
+                if (isset($json['message'])) {
+                    $errStr .= ' ' . (string)$json['message'];
+                }
+                if ($errStr !== '' && preg_match('/quota|rate|limit|insufficient|unauthorized|credit|exceeded|busy|not found|unavailable|overloaded|capacity|provider|timeout|degraded/i', $errStr)) {
+                    $needFailover = true;
                 }
             }
-            break;
-        }
 
-        $attempts++;
-        $currentIdx = ($currentIdx + 1) % count($validAiKeys);
+            if ($needFailover) {
+                if ($isPrimary) {
+                    // Основная модель дала сбой — мгновенно переходим на запасной мистрал!
+                    break;
+                }
+                if (count($validAiKeys) > 1 && $attempts < ($maxAttempts - 1)) {
+                    $currentIdx = ($currentIdx + 1) % count($validAiKeys);
+                    $attempts++;
+                    $fh = @fopen($activeKeyIndexFile, 'c+');
+                    if ($fh) {
+                        if (@flock($fh, LOCK_EX)) {
+                            ftruncate($fh, 0);
+                            rewind($fh);
+                            fwrite($fh, json_encode([
+                                'active_index' => $currentIdx,
+                                'updated_at'   => time(),
+                                'updated_iso'  => date('c')
+                            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                            fflush($fh);
+                            @flock($fh, LOCK_UN);
+                        }
+                        fclose($fh);
+                    }
+                    continue;
+                }
+            }
+
+            if ($httpCode === 200 && is_array($json) && !empty($json['choices'][0]['message']['content'])) {
+                $aiResponseText = trim((string)$json['choices'][0]['message']['content']);
+                $aiResponseText = vk_bot_enforce_masculine_gender($aiResponseText);
+                if ($currentIdx !== $activeIdx) {
+                    $fh = @fopen($activeKeyIndexFile, 'c+');
+                    if ($fh) {
+                        if (@flock($fh, LOCK_EX)) {
+                            ftruncate($fh, 0);
+                            rewind($fh);
+                            fwrite($fh, json_encode([
+                                'active_index' => $currentIdx,
+                                'updated_at'   => time(),
+                                'updated_iso'  => date('c')
+                            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                            fflush($fh);
+                            @flock($fh, LOCK_UN);
+                        }
+                        fclose($fh);
+                    }
+                }
+                break 2;
+            }
+
+            $attempts++;
+            $currentIdx = ($currentIdx + 1) % count($validAiKeys);
+        }
     }
 
     return vk_bot_enforce_masculine_gender($aiResponseText);

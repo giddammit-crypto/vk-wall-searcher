@@ -101,10 +101,18 @@ if (empty($rawKeys)) {
 // Формируем уникальный список доступных ключей [$key1, $key2, $key3, $key4, ...]
 $validKeys = array_values(array_unique($rawKeys));
 
-$aiBaseUrl  = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
-$aiModel    = isset($aiConfig['ai_model'])    ? trim((string)$aiConfig['ai_model'])    : 'mistralai/mistral-large-2512';
-$aiMaxTok   = isset($aiConfig['ai_max_tokens']) ? max(200, (int)$aiConfig['ai_max_tokens']) : 8192;
-$aiTimeout  = isset($aiConfig['ai_timeout'])    ? max(30,  (int)$aiConfig['ai_timeout'])    : 180;
+$aiBaseUrl       = isset($aiConfig['ai_base_url']) ? trim((string)$aiConfig['ai_base_url']) : 'https://api.xkiro.com/v1';
+$aiPrimaryModel  = isset($aiConfig['ai_model_primary']) ? trim((string)$aiConfig['ai_model_primary']) : (isset($aiConfig['ai_model']) ? trim((string)$aiConfig['ai_model']) : 'qwen/qwen3.8-max:free');
+$aiFallbackModel = isset($aiConfig['ai_model_fallback']) ? trim((string)$aiConfig['ai_model_fallback']) : 'mistralai/mistral-large-2512';
+if ($aiPrimaryModel === '') {
+    $aiPrimaryModel = 'qwen/qwen3.8-max:free';
+}
+if ($aiFallbackModel === '') {
+    $aiFallbackModel = 'mistralai/mistral-large-2512';
+}
+$aiModel         = $aiPrimaryModel;
+$aiMaxTok        = isset($aiConfig['ai_max_tokens']) ? max(200, (int)$aiConfig['ai_max_tokens']) : 8192;
+$aiTimeout       = isset($aiConfig['ai_timeout'])    ? max(30,  (int)$aiConfig['ai_timeout'])    : 180;
 
 $aiBaseUrl = rtrim($aiBaseUrl, '/');
 
@@ -251,7 +259,7 @@ function ai_set_active_key_index($activeKeyFile, $newIndex)
  */
 function ai_is_failover_error($httpCode, $responseBody, $json)
 {
-    if (in_array($httpCode, [429, 401, 402, 403], true)) {
+    if (in_array($httpCode, [400, 401, 402, 403, 404, 429, 500, 502, 503, 504], true)) {
         return true;
     }
 
@@ -270,7 +278,11 @@ function ai_is_failover_error($httpCode, $responseBody, $json)
 
     if ($haystack !== '') {
         $lower = ai_mb_strtolower($haystack);
-        $needles = ['quota', 'limit', 'rate', 'insufficient', 'credit', 'unauthorized'];
+        $needles = [
+            'quota', 'limit', 'rate', 'insufficient', 'credit', 'unauthorized',
+            'not found', 'does not exist', 'unknown model', 'unavailable',
+            'overloaded', 'capacity', 'provider', 'temporarily', 'timeout', 'degraded'
+        ];
         foreach ($needles as $needle) {
             if (strpos($lower, $needle) !== false) {
                 return true;
@@ -466,7 +478,9 @@ if ($requestMethod === 'GET') {
         'ai_configured'      => $keysCount > 0,
         'keys_count'         => $keysCount,
         'active_key_index'   => $activeIndex,
-        'model'              => $aiModel,
+        'model'              => $aiPrimaryModel,
+        'model_primary'      => $aiPrimaryModel,
+        'model_fallback'     => $aiFallbackModel,
         'max_tokens'         => $aiMaxTok,
         'config_local_found' => $configLocalFound
     ]);
@@ -568,96 +582,130 @@ $temperature  = isset($data['temperature']) ? (float)$data['temperature'] : 0.4;
 $temperature  = min(max(0.0, $temperature), 1.5);
 
 // ---------------------------------------------------------------------------
-// 3. Запрос к OpenAI-совместимому шлюзу с Zero Downtime failover
+// 3. Запрос к OpenAI-совместимому шлюзу с многоуровневым Failover (Модель + Ключи)
 // ---------------------------------------------------------------------------
-$payload = [
-    'model'       => $aiModel,
-    'messages'    => $clean,
-    'max_tokens'  => $reqMaxTokens,
-    'temperature' => $temperature,
-    'stream'      => false
-];
-if (isset($data['top_p'])) {
-    $payload['top_p'] = min(max(0.0, (float)$data['top_p']), 1.0);
-}
-if (isset($data['frequency_penalty'])) {
-    $payload['frequency_penalty'] = min(max(-2.0, (float)$data['frequency_penalty']), 2.0);
-}
-if (isset($data['presence_penalty'])) {
-    $payload['presence_penalty'] = min(max(-2.0, (float)$data['presence_penalty']), 2.0);
+// 1. Основная модель: qwen/qwen3.8-max:free (или явно запрошенная клиентом)
+// 2. Резервная модель: mistralai/mistral-large-2512 (при любой проблеме основной — тихо и мгновенно)
+$primaryModelToUse = $aiPrimaryModel;
+if (!empty($data['model']) && is_string($data['model'])) {
+    $reqM = trim($data['model']);
+    if ($reqM !== '') {
+        $primaryModelToUse = $reqM;
+    }
 }
 
-$payloadJson  = json_encode($payload, JSON_UNESCAPED_UNICODE);
+$modelsToTry = [$primaryModelToUse];
+if ($aiFallbackModel !== '' && strcasecmp($aiFallbackModel, $primaryModelToUse) !== 0) {
+    $modelsToTry[] = $aiFallbackModel;
+}
+
 $keysCount    = count($validKeys);
 $activeIndex  = ai_get_active_key_index($activeKeyFile, $keysCount);
 $currentIndex = $activeIndex;
-$attempts     = $keysCount;
 
-for ($try = 0; $try < $attempts; $try++) {
-    $currentKey = $validKeys[$currentIndex];
-    list($httpCode, $response, $curlErr) = ai_curl_request(
-        $aiBaseUrl . '/chat/completions',
-        $payloadJson,
-        $currentKey,
-        $aiTimeout
-    );
+$successResponse = null;
+$lastHttpCode    = 502;
+$lastErrorMsg    = 'Не удалось получить ответ от ИИ-шлюза.';
 
-    // Сетевой сбой (DNS, таймаут, обрыв соединения): ответа нет или HTTP-код 0
-    if ($response === false || $httpCode === 0) {
-        $detail = $curlErr !== '' ? $curlErr : 'нет ответа от ИИ-шлюза (HTTP 0)';
-        if ($keysCount > 1 && $try < ($attempts - 1)) {
-            // Немедленно переключаемся на резервный ключ и повторяем
-            $nextIndex = ($currentIndex + 1) % $keysCount;
-            ai_set_active_key_index($activeKeyFile, $nextIndex);
-            $currentIndex = $nextIndex;
-            continue;
-        }
-        ai_error('Сеть: не удалось связаться с ИИ-шлюзом (' . $detail . ').', 502);
+foreach ($modelsToTry as $mIdx => $modelName) {
+    $isPrimaryModel = ($mIdx === 0 && count($modelsToTry) > 1);
+
+    $basePayload = [
+        'model'       => $modelName,
+        'messages'    => $clean,
+        'max_tokens'  => $reqMaxTokens,
+        'temperature' => $temperature,
+        'stream'      => false
+    ];
+    if (isset($data['top_p'])) {
+        $basePayload['top_p'] = min(max(0.0, (float)$data['top_p']), 1.0);
+    }
+    if (isset($data['frequency_penalty'])) {
+        $basePayload['frequency_penalty'] = min(max(-2.0, (float)$data['frequency_penalty']), 2.0);
+    }
+    if (isset($data['presence_penalty'])) {
+        $basePayload['presence_penalty'] = min(max(-2.0, (float)$data['presence_penalty']), 2.0);
     }
 
-    $json = json_decode($response, true);
-    $isJsonArray = is_array($json);
+    $payloadJson = json_encode($basePayload, JSON_UNESCAPED_UNICODE);
 
-    // Если произошла ЛЮБАЯ ошибка (HTTP >= 400, ошибка квоты/лимита/авторизации, ошибка парсинга JSON, пустой ответ)
-    // и у нас есть резервный ключ — немедленно переключаемся на альтернативный ключ и повторяем запрос!
-    $hasError = ($httpCode >= 400 || !$isJsonArray || isset($json['error']) || ai_is_failover_error($httpCode, $response, $json));
+    // Если основная модель зависает, таймаут 30 сек для быстрого бесшовного перехода на резервный мистрал
+    $effectiveTimeout = $isPrimaryModel ? min($aiTimeout, 30) : $aiTimeout;
+    $attemptsForModel = $isPrimaryModel ? min(2, $keysCount) : $keysCount;
 
-    if ($hasError && $keysCount > 1 && $try < ($attempts - 1)) {
-        $nextIndex = ($currentIndex + 1) % $keysCount;
-        ai_set_active_key_index($activeKeyFile, $nextIndex);
-        $currentIndex = $nextIndex;
-        // Повторяем запрос со следующим ключом прямо в этом же HTTP-вызове!
-        continue;
-    }
+    for ($try = 0; $try < $attemptsForModel; $try++) {
+        $currentKey = $validKeys[$currentIndex];
+        list($httpCode, $response, $curlErr) = ai_curl_request(
+            $aiBaseUrl . '/chat/completions',
+            $payloadJson,
+            $currentKey,
+            $effectiveTimeout
+        );
 
-    if (!$isJsonArray) {
-        ai_error('ИИ-шлюз вернул нечитаемый ответ (HTTP ' . $httpCode . ').', 502);
-    }
-
-    if ($httpCode >= 400 || isset($json['error'])) {
-        $msg = isset($json['error']['message']) ? (string)$json['error']['message']
-             : (isset($json['message']) ? (string)$json['message'] : 'Ошибка ИИ-шлюза');
-        ai_error($msg, $httpCode >= 400 ? $httpCode : 502);
-    }
-
-    // Запрос успешен! Если был выполнен переход на альтернативный ключ, сохраняем его индекс
-    if ($currentIndex !== $activeIndex) {
-        ai_set_active_key_index($activeKeyFile, $currentIndex);
-    }
-
-    // Гарантируем строгий мужской род робота Космо в choices
-    if (isset($json['choices']) && is_array($json['choices'])) {
-        foreach ($json['choices'] as &$choice) {
-            if (!empty($choice['message']['content'])) {
-                $choice['message']['content'] = ai_enforce_masculine_gender($choice['message']['content']);
+        // Сетевой сбой (таймаут, DNS, сброс соединения)
+        if ($response === false || $httpCode === 0) {
+            $lastHttpCode = 502;
+            $lastErrorMsg = 'Сеть: не удалось связаться с ИИ-шлюзом (' . ($curlErr !== '' ? $curlErr : 'HTTP 0') . ').';
+            if ($isPrimaryModel) {
+                // Основная модель не ответила по сети/таймауту — немедленно переходим на запасной мистрал!
+                break;
             }
-            if (!empty($choice['text'])) {
-                $choice['text'] = ai_enforce_masculine_gender($choice['text']);
+            if ($keysCount > 1 && $try < ($attemptsForModel - 1)) {
+                $currentIndex = ($currentIndex + 1) % $keysCount;
+                ai_set_active_key_index($activeKeyFile, $currentIndex);
+                continue;
             }
+            break;
         }
-        unset($choice);
-    }
 
-    // Прозрачно возвращаем стандартный ответ chat/completions
-    ai_json_response($json);
+        $json = json_decode($response, true);
+        $isJsonArray = is_array($json);
+        $hasError = ($httpCode >= 400 || !$isJsonArray || isset($json['error']) || ai_is_failover_error($httpCode, $response, $json));
+
+        if ($hasError) {
+            $lastHttpCode = ($httpCode >= 400) ? $httpCode : 502;
+            $lastErrorMsg = isset($json['error']['message']) ? (string)$json['error']['message']
+                          : (isset($json['message']) ? (string)$json['message'] : 'Ошибка ИИ-шлюза');
+
+            if ($isPrimaryModel) {
+                // Любая ошибка основной модели -> МГНОВЕННЫЙ и БЕСШУМНЫЙ переход на резервный мистрал!
+                break;
+            }
+
+            if ($keysCount > 1 && $try < ($attemptsForModel - 1)) {
+                $currentIndex = ($currentIndex + 1) % $keysCount;
+                ai_set_active_key_index($activeKeyFile, $currentIndex);
+                continue;
+            }
+            break;
+        }
+
+        // Успех! Запоминаем активный ключ, если была ротация
+        if ($currentIndex !== $activeIndex) {
+            ai_set_active_key_index($activeKeyFile, $currentIndex);
+        }
+
+        $successResponse = $json;
+        break 2;
+    }
 }
+
+if ($successResponse === null || !is_array($successResponse)) {
+    ai_error($lastErrorMsg, $lastHttpCode);
+}
+
+// Гарантируем строгий мужской род робота Космо в choices
+if (isset($successResponse['choices']) && is_array($successResponse['choices'])) {
+    foreach ($successResponse['choices'] as &$choice) {
+        if (!empty($choice['message']['content'])) {
+            $choice['message']['content'] = ai_enforce_masculine_gender($choice['message']['content']);
+        }
+        if (!empty($choice['text'])) {
+            $choice['text'] = ai_enforce_masculine_gender($choice['text']);
+        }
+    }
+    unset($choice);
+}
+
+// Прозрачно возвращаем стандартный ответ chat/completions
+ai_json_response($successResponse);
