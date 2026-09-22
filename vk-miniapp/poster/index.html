@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+<title>Редактор афиш — АВРОРА</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1.0.0">
+</head>
+<body>
+
+<!-- ─── ЭКРАН 1: ВЫБОР ШАБЛОНА ─────────────────────────────── -->
+<div id="screen-templates" class="screen-templates">
+
+  <header class="tpl-header">
+    <div class="tpl-logo">
+      <span class="material-symbols-rounded logo-star">star</span>
+      <span class="tpl-logo-text">АВРОРА <span class="tpl-logo-sub">• Редактор афиш</span></span>
+    </div>
+    <p class="tpl-hint">Выберите шаблон или начните с чистого листа</p>
+  </header>
+
+  <div class="tpl-grid" id="tpl-grid">
+    <!-- Генерируется через JS -->
+  </div>
+
+</div>
+
+<!-- ─── ЭКРАН 2: РЕДАКТОР ──────────────────────────────────── -->
+<div id="screen-editor" class="screen-editor hidden">
+
+  <!-- Шапка редактора -->
+  <header class="ed-header">
+    <button class="ed-btn ed-btn-back" id="btn-back" title="Вернуться к шаблонам">
+      <span class="material-symbols-rounded">arrow_back</span>
+      <span class="ed-btn-label">Назад</span>
+    </button>
+
+    <div class="ed-header-title">
+      <input class="ed-title-input" id="poster-title" value="Моя афиша" spellcheck="false" maxlength="60" title="Название проекта">
+    </div>
+
+    <div class="ed-header-actions">
+      <button class="ed-btn ed-btn-undo" id="btn-undo" title="Отменить (Ctrl+Z)" disabled>
+        <span class="material-symbols-rounded">undo</span>
+        <span class="ed-btn-label">Отменить</span>
+      </button>
+      <button class="ed-btn ed-btn-redo" id="btn-redo" title="Повторить (Ctrl+Y)" disabled>
+        <span class="material-symbols-rounded">redo</span>
+        <span class="ed-btn-label">Повторить</span>
+      </button>
+      <div class="ed-divider"></div>
+      <button class="ed-btn ed-btn-save" id="btn-save" title="Сохранить черновик">
+        <span class="material-symbols-rounded">save</span>
+        <span class="ed-btn-label">Черновик</span>
+      </button>
+      <button class="ed-btn ed-btn-png" id="btn-export-png" title="Скачать PNG">
+        <span class="material-symbols-rounded">download</span>
+        <span class="ed-btn-label">PNG</span>
+      </button>
+      <button class="ed-btn ed-btn-pdf" id="btn-export-pdf" title="Скачать PDF">
+        <span class="material-symbols-rounded">picture_as_pdf</span>
+        <span class="ed-btn-label">PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Основная рабочая область -->
+  <div class="ed-workspace">
+
+    <!-- Боковая панель инструментов -->
+    <aside class="ed-sidebar" id="ed-sidebar">
+
+      <div class="tool-section">
+        <div class="tool-section-title">Добавить</div>
+        <div class="tool-grid">
+          <button class="tool-btn" id="tool-heading" title="Заголовок">
+            <span class="material-symbols-rounded">title</span>
+            <span>Заголовок</span>
+          </button>
+          <button class="tool-btn" id="tool-subheading" title="Подзаголовок">
+            <span class="material-symbols-rounded">text_fields</span>
+            <span>Подзаголовок</span>
+          </button>
+          <button class="tool-btn" id="tool-text" title="Обычный текст">
+            <span class="material-symbols-rounded">notes</span>
+            <span>Текст</span>
+          </button>
+          <button class="tool-btn" id="tool-photo" title="Загрузить фото">
+            <span class="material-symbols-rounded">add_photo_alternate</span>
+            <span>Фото</span>
+          </button>
+          <button class="tool-btn" id="tool-rect" title="Прямоугольник">
+            <span class="material-symbols-rounded">rectangle</span>
+            <span>Прямоуг.</span>
+          </button>
+          <button class="tool-btn" id="tool-circle" title="Круг / овал">
+            <span class="material-symbols-rounded">circle</span>
+            <span>Круг</span>
+          </button>
+          <button class="tool-btn" id="tool-line" title="Линия">
+            <span class="material-symbols-rounded">horizontal_rule</span>
+            <span>Линия</span>
+          </button>
+          <button class="tool-btn" id="tool-logo" title="Логотип библиотеки">
+            <span class="material-symbols-rounded">local_library</span>
+            <span>Логотип</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="tool-section">
+        <div class="tool-section-title">Фон холста</div>
+        <div class="bg-colors" id="bg-colors">
+          <button class="bg-color-btn" data-color="#131726" style="background:#131726" title="Тёмно-синий"></button>
+          <button class="bg-color-btn" data-color="#0f172a" style="background:#0f172a" title="Ночной"></button>
+          <button class="bg-color-btn" data-color="#1e3a5f" style="background:#1e3a5f" title="Синий"></button>
+          <button class="bg-color-btn" data-color="#4a1942" style="background:#4a1942" title="Фиолетовый"></button>
+          <button class="bg-color-btn" data-color="#1a3a1a" style="background:#1a3a1a" title="Зелёный"></button>
+          <button class="bg-color-btn" data-color="#3a1a1a" style="background:#3a1a1a" title="Тёмно-красный"></button>
+          <button class="bg-color-btn" data-color="#ffffff" style="background:#fff; border:1.5px solid #ccc" title="Белый"></button>
+          <button class="bg-color-btn" data-color="#f8fafc" style="background:#f8fafc; border:1.5px solid #ccc" title="Светло-серый"></button>
+          <button class="bg-color-btn" data-color="#fffbeb" style="background:#fffbeb; border:1.5px solid #ccc" title="Кремовый"></button>
+          <button class="bg-color-btn" data-color="#eff6ff" style="background:#eff6ff; border:1.5px solid #ccc" title="Голубоватый"></button>
+        </div>
+        <div class="bg-gradient-btns">
+          <button class="bg-gradient-btn" data-gradient="dark-aurora" title="Аврора">🌌 Аврора</button>
+          <button class="bg-gradient-btn" data-gradient="sunrise" title="Рассвет">🌅 Рассвет</button>
+          <button class="bg-gradient-btn" data-gradient="ocean" title="Океан">🌊 Океан</button>
+          <button class="bg-gradient-btn" data-gradient="forest" title="Лес">🌿 Лес</button>
+        </div>
+      </div>
+
+      <div class="tool-section">
+        <div class="tool-section-title">Масштаб</div>
+        <div class="zoom-controls">
+          <button class="zoom-btn" id="btn-zoom-out"><span class="material-symbols-rounded">zoom_out</span></button>
+          <span class="zoom-label" id="zoom-label">100%</span>
+          <button class="zoom-btn" id="btn-zoom-in"><span class="material-symbols-rounded">zoom_in</span></button>
+          <button class="zoom-btn" id="btn-zoom-fit" title="По размеру экрана"><span class="material-symbols-rounded">fit_screen</span></button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Холст -->
+    <main class="ed-canvas-wrap" id="canvas-wrap">
+      <div class="canvas-shadow-wrap" id="canvas-shadow">
+        <canvas id="poster-canvas"></canvas>
+      </div>
+    </main>
+
+    <!-- Панель свойств выделенного объекта -->
+    <aside class="ed-props" id="ed-props">
+      <div class="props-empty" id="props-empty">
+        <span class="material-symbols-rounded props-empty-ico">touch_app</span>
+        <p>Выберите объект на холсте, чтобы изменить его свойства</p>
+      </div>
+
+      <!-- Свойства текста -->
+      <div class="props-panel hidden" id="props-text">
+        <div class="prop-section-title">Текст</div>
+
+        <label class="prop-label">Размер шрифта: <span id="font-size-val">36</span> пт</label>
+        <input type="range" class="prop-slider" id="font-size-slider" min="8" max="120" value="36" step="1">
+
+        <label class="prop-label">Стиль</label>
+        <div class="prop-row">
+          <button class="prop-btn" id="btn-bold" title="Жирный"><b>Ж</b></button>
+          <button class="prop-btn" id="btn-italic" title="Курсив"><i>К</i></button>
+          <button class="prop-btn" id="btn-underline" title="Подчёркнутый"><u>П</u></button>
+        </div>
+
+        <label class="prop-label">Выравнивание</label>
+        <div class="prop-row">
+          <button class="prop-btn" id="btn-align-left" title="По левому краю">
+            <span class="material-symbols-rounded">format_align_left</span>
+          </button>
+          <button class="prop-btn" id="btn-align-center" title="По центру">
+            <span class="material-symbols-rounded">format_align_center</span>
+          </button>
+          <button class="prop-btn" id="btn-align-right" title="По правому краю">
+            <span class="material-symbols-rounded">format_align_right</span>
+          </button>
+        </div>
+
+        <label class="prop-label">Шрифт</label>
+        <select class="prop-select" id="font-family-select">
+          <option value="Unbounded">Unbounded (заголовки)</option>
+          <option value="Montserrat">Montserrat (текст)</option>
+          <option value="Georgia">Georgia (классика)</option>
+          <option value="Arial">Arial (простой)</option>
+          <option value="Courier New">Courier New (моно)</option>
+        </select>
+
+        <label class="prop-label">Цвет текста</label>
+        <div class="color-swatches" id="text-color-swatches">
+          <button class="swatch" data-color="#ffffff" style="background:#fff; border:1.5px solid #aaa" title="Белый"></button>
+          <button class="swatch" data-color="#0f172a" style="background:#0f172a" title="Чёрный"></button>
+          <button class="swatch" data-color="#38BDF8" style="background:#38BDF8" title="Cyan"></button>
+          <button class="swatch" data-color="#8A6CFF" style="background:#8A6CFF" title="Purple"></button>
+          <button class="swatch" data-color="#FBBF24" style="background:#FBBF24" title="Gold"></button>
+          <button class="swatch" data-color="#F472B6" style="background:#F472B6" title="Pink"></button>
+          <button class="swatch" data-color="#10B981" style="background:#10B981" title="Green"></button>
+          <button class="swatch" data-color="#F06060" style="background:#F06060" title="Red"></button>
+        </div>
+        <input type="color" class="prop-color-input" id="text-color-picker" value="#ffffff" title="Выбрать цвет">
+      </div>
+
+      <!-- Свойства фигуры -->
+      <div class="props-panel hidden" id="props-shape">
+        <div class="prop-section-title">Фигура</div>
+
+        <label class="prop-label">Заливка</label>
+        <div class="color-swatches" id="fill-color-swatches">
+          <button class="swatch" data-color="transparent" style="background: conic-gradient(#fff 90deg, #f00 90deg 180deg, #fff 180deg 270deg, #f00 270deg)" title="Прозрачный"></button>
+          <button class="swatch" data-color="#ffffff" style="background:#fff; border:1.5px solid #aaa" title="Белый"></button>
+          <button class="swatch" data-color="#0f172a" style="background:#0f172a" title="Чёрный"></button>
+          <button class="swatch" data-color="#38BDF8" style="background:#38BDF8" title="Cyan"></button>
+          <button class="swatch" data-color="#8A6CFF" style="background:#8A6CFF" title="Purple"></button>
+          <button class="swatch" data-color="#FBBF24" style="background:#FBBF24" title="Gold"></button>
+          <button class="swatch" data-color="#F472B6" style="background:#F472B6" title="Pink"></button>
+          <button class="swatch" data-color="#10B981" style="background:#10B981" title="Green"></button>
+        </div>
+        <input type="color" class="prop-color-input" id="fill-color-picker" value="#38BDF8" title="Выбрать цвет заливки">
+
+        <label class="prop-label">Обводка</label>
+        <div class="color-swatches" id="stroke-color-swatches">
+          <button class="swatch" data-color="transparent" style="background: conic-gradient(#fff 90deg, #f00 90deg 180deg, #fff 180deg 270deg, #f00 270deg)" title="Без обводки"></button>
+          <button class="swatch" data-color="#ffffff" style="background:#fff; border:1.5px solid #aaa"></button>
+          <button class="swatch" data-color="#38BDF8" style="background:#38BDF8"></button>
+          <button class="swatch" data-color="#8A6CFF" style="background:#8A6CFF"></button>
+          <button class="swatch" data-color="#FBBF24" style="background:#FBBF24"></button>
+        </div>
+        <input type="color" class="prop-color-input" id="stroke-color-picker" value="#ffffff" title="Выбрать цвет обводки">
+
+        <label class="prop-label">Толщина обводки: <span id="stroke-width-val">0</span></label>
+        <input type="range" class="prop-slider" id="stroke-width-slider" min="0" max="20" value="0" step="1">
+
+        <label class="prop-label">Прозрачность: <span id="opacity-val">100</span>%</label>
+        <input type="range" class="prop-slider" id="opacity-slider" min="10" max="100" value="100" step="5">
+      </div>
+
+      <!-- Общие свойства (объект выбран) -->
+      <div class="props-panel hidden" id="props-common">
+        <div class="prop-section-title">Положение</div>
+        <div class="prop-row">
+          <button class="prop-btn prop-btn-wide" id="btn-bring-front" title="На передний план">
+            <span class="material-symbols-rounded">flip_to_front</span>
+            <span>Вперёд</span>
+          </button>
+          <button class="prop-btn prop-btn-wide" id="btn-send-back" title="На задний план">
+            <span class="material-symbols-rounded">flip_to_back</span>
+            <span>Назад</span>
+          </button>
+        </div>
+        <div class="prop-row">
+          <button class="prop-btn prop-btn-wide" id="btn-center-h" title="По горизонтали">
+            <span class="material-symbols-rounded">align_horizontal_center</span>
+            <span>Центр ↔</span>
+          </button>
+          <button class="prop-btn prop-btn-wide" id="btn-center-v" title="По вертикали">
+            <span class="material-symbols-rounded">align_vertical_center</span>
+            <span>Центр ↕</span>
+          </button>
+        </div>
+        <button class="prop-btn prop-btn-delete" id="btn-delete-obj" title="Удалить объект">
+          <span class="material-symbols-rounded">delete</span>
+          <span>Удалить объект</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ─── МОДАЛЬНОЕ ОКНО: ВЫБОР ЛОГОТИПА ───────────────────── -->
+<div class="modal-backdrop hidden" id="logo-modal-backdrop">
+  <div class="modal" id="logo-modal">
+    <div class="modal-header">
+      <span class="modal-title">Логотипы и изображения</span>
+      <button class="modal-close" id="logo-modal-close">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="logo-grid" id="logo-grid">
+        <!-- Генерируется через JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ТОСТ ────────────────────────────────────────────── -->
+<div class="toast hidden" id="toast"></div>
+
+<!-- Скрытый input для загрузки фото -->
+<input type="file" id="photo-input" accept="image/*" style="display:none">
+
+<!-- ─── СКРИПТЫ ────────────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="editor.js?v=1.0.0"></script>
+</body>
+</html>
