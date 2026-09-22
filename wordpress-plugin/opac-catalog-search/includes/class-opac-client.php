@@ -43,21 +43,21 @@ if (!function_exists('mb_stripos')) {
 if (!class_exists("OpacWPClient")) {
 class OpacWPClient
 {
-    private string $host = 'https://opac.lib33.ru';
-    private string $loginUrl = 'https://opac.lib33.ru/cgiopac/opacg/opac.exe';
-    private string $directUrl = 'https://opac.lib33.ru/cgiopac/opacg/direct.exe';
-    private int $dbId = 62;
-    private string $user = 'SHARE';
-    private string $pass = 'TLBYSQ028';
-    private string $cacheDir;
+    private $host = 'https://opac.lib33.ru';
+    private $loginUrl = 'https://opac.lib33.ru/cgiopac/opacg/opac.exe';
+    private $directUrl = 'https://opac.lib33.ru/cgiopac/opacg/direct.exe';
+    private $dbId = 62;
+    private $user = 'SHARE';
+    private $pass = 'TLBYSQ028';
+    private $cacheDir;
 
-    private ?string $session = null;
-    private ?string $cookie = null;
+    private $session = null;
+    private $cookie = null;
 
     /**
      * Эталонный словарь библиотечных сигл филиалов г. Владимира
      */
-    private static array $siglaDictionary = [
+    private static $siglaDictionary = [
         'аб' => [
             'code'           => 'аб',
             'branch_num'     => 'ЦГБ',
