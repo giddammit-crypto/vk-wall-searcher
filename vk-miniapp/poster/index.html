@@ -22,13 +22,61 @@
       <span class="tpl-brand-icon material-symbols-rounded">auto_awesome</span>
       <div>
         <div class="tpl-brand-name">АВРОРА — Редактор афиш</div>
-        <div class="tpl-brand-sub">Создайте профессиональную афишу, вывеску или объявление за пару минут</div>
+        <div class="tpl-brand-sub">Профессиональные афиши, вывески, объявления и баннеры для библиотек</div>
       </div>
     </div>
   </header>
 
+  <!-- Hero-секция с космическим свечением и быстрыми форматами -->
+  <div class="tpl-hero">
+    <div class="tpl-hero-content">
+      <div class="tpl-hero-badge">✦ ДИЗАЙН-СТУДИЯ «АВРОРА» ✦</div>
+      <h1 class="tpl-hero-title">Создайте идеальную афишу для вашей библиотеки</h1>
+      <p class="tpl-hero-desc">Выберите готовый тематический шаблон с профессиональной типографикой или начните с чистого листа нужного формата</p>
+      
+      <div class="tpl-quick-blanks">
+        <span class="tpl-quick-label">Начать с чистого листа:</span>
+        <div class="tpl-quick-btn-group">
+          <button class="tpl-quick-btn" data-blank="blank_a4_v">
+            <span class="material-symbols-rounded">description</span> A4 вертикаль
+          </button>
+          <button class="tpl-quick-btn" data-blank="blank_a4_h">
+            <span class="material-symbols-rounded">landscape</span> A4 горизонталь
+          </button>
+          <button class="tpl-quick-btn" data-blank="blank_square">
+            <span class="material-symbols-rounded">crop_square</span> Квадрат 1:1 (ВК)
+          </button>
+          <button class="tpl-quick-btn" data-blank="blank_banner">
+            <span class="material-symbols-rounded">panorama</span> Баннер 16:9
+          </button>
+          <button class="tpl-quick-btn" data-blank="blank_story">
+            <span class="material-symbols-rounded">smartphone</span> Сторис 9:16
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="tpl-body">
-    <div class="tpl-section-label">Готовые шаблоны и форматы</div>
+    <!-- Панель фильтров и поиска -->
+    <div class="tpl-toolbar">
+      <div class="tpl-chips" id="tpl-chips">
+        <button class="tpl-chip is-active" data-cat="all">Все форматы</button>
+        <button class="tpl-chip" data-cat="events">Афиши мероприятий</button>
+        <button class="tpl-chip" data-cat="books">Книжные выставки</button>
+        <button class="tpl-chip" data-cat="kids">Детские праздники</button>
+        <button class="tpl-chip" data-cat="notices">Объявления и режим</button>
+        <button class="tpl-chip" data-cat="social">Баннеры соцсетей</button>
+        <button class="tpl-chip" data-cat="blank">Чистые листы</button>
+      </div>
+
+      <div class="tpl-search-wrap">
+        <span class="material-symbols-rounded tpl-search-icon">search</span>
+        <input type="text" class="tpl-search-input" id="tpl-search" placeholder="Поиск по шаблонам..." aria-label="Поиск шаблонов">
+      </div>
+    </div>
+
+    <div class="tpl-section-label" id="tpl-section-title">Коллекция шаблонов</div>
     <div class="tpl-grid" id="tpl-grid">
       <!-- Генерируется JS -->
     </div>
@@ -62,9 +110,17 @@
         <span class="material-symbols-rounded">redo</span>
         <span class="hbtn-label">Повторить</span>
       </button>
+      <button class="hbtn" id="btn-header-duplicate" title="Дублировать объект (Ctrl+D)">
+        <span class="material-symbols-rounded">content_copy</span>
+        <span class="hbtn-label">Копия</span>
+      </button>
     </div>
 
     <div class="ed-header-right">
+      <button class="hbtn" id="btn-print" title="Распечатать афишу (Ctrl+P)">
+        <span class="material-symbols-rounded">print</span>
+        <span class="hbtn-label">Печать</span>
+      </button>
       <button class="hbtn" id="btn-save" title="Сохранить черновик">
         <span class="material-symbols-rounded">save</span>
         <span class="hbtn-label">Черновик</span>
@@ -167,6 +223,10 @@
           <span class="material-symbols-rounded">local_library</span>
           <span>Логотипы</span>
         </button>
+        <button class="tool-btn tool-btn-highlight" id="tool-stickers" title="Библиотечные плашки: Пушкинская карта, 12+, Вход свободный">
+          <span class="material-symbols-rounded">loyalty</span>
+          <span>Плашки и стикеры</span>
+        </button>
         <button class="tool-btn tool-btn-highlight" id="tool-qrcode" title="Генератор QR-кода на сайт, ВК или книгу">
           <span class="material-symbols-rounded">qr_code_2</span>
           <span>QR-код</span>
@@ -179,9 +239,13 @@
         <div class="bg-palette" id="bg-palette"></div>
         <div class="bg-gradients" id="bg-gradients">
           <button class="bg-grad-btn" data-gradient="aurora">🌌 Аврора</button>
+          <button class="bg-grad-btn" data-gradient="space">🚀 Космос</button>
           <button class="bg-grad-btn" data-gradient="ocean">🌊 Океан</button>
-          <button class="bg-grad-btn" data-gradient="forest">🌿 Лес</button>
           <button class="bg-grad-btn" data-gradient="sunset">🌅 Закат</button>
+          <button class="bg-grad-btn" data-gradient="neon">⚡ Неон</button>
+          <button class="bg-grad-btn" data-gradient="forest">🌿 Изумруд</button>
+          <button class="bg-grad-btn" data-gradient="gold">👑 Золото</button>
+          <button class="bg-grad-btn" data-gradient="vintage">📜 Крафт</button>
         </div>
       </div>
 
@@ -205,6 +269,7 @@
       <div class="canvas-frame" id="canvas-frame">
         <canvas id="poster-canvas"></canvas>
       </div>
+      <div class="canvas-format-badge" id="canvas-format-badge">A4 Вертикаль · 595 × 842 пт</div>
     </main>
 
     <!-- ── Правая панель: Свойства + Слои ── -->
@@ -242,11 +307,12 @@
           <label class="prop-label">Размер шрифта: <b id="font-size-val">36</b> пт</label>
           <input type="range" class="prop-range" id="font-size-slider" min="8" max="140" value="36" step="1">
 
-          <label class="prop-label">Начертание</label>
+          <label class="prop-label">Начертание и регистр</label>
           <div class="prop-btn-row">
             <button class="pbtn toggle-btn" id="btn-bold" title="Жирный"><b>Ж</b></button>
             <button class="pbtn toggle-btn" id="btn-italic" title="Курсив"><i>К</i></button>
             <button class="pbtn toggle-btn" id="btn-underline" title="Подчёркнутый"><u>П</u></button>
+            <button class="pbtn toggle-btn" id="btn-uppercase" title="Все заглавные / UPPERCASE"><span>АА</span></button>
           </div>
 
           <label class="prop-label">Выравнивание</label>
@@ -262,6 +328,26 @@
             </button>
           </div>
 
+          <label class="prop-label">Межстрочный интервал: <b id="line-height-val">1.2</b></label>
+          <input type="range" class="prop-range" id="line-height-slider" min="8" max="24" value="12" step="1">
+
+          <label class="prop-label">Межбуквенный интервал (трекинг): <b id="char-spacing-val">0</b></label>
+          <input type="range" class="prop-range" id="char-spacing-slider" min="-20" max="250" value="0" step="5">
+
+          <div class="prop-btn-row" style="margin-top: 4px;">
+            <button class="pbtn glow-btn" id="btn-text-glow" title="Включить неоновое свечение / тень текста">
+              <span class="material-symbols-rounded">auto_awesome</span>
+              <span>Неоновое свечение</span>
+            </button>
+          </div>
+          <div class="glow-options hidden" id="text-glow-options">
+            <label class="prop-label">Радиус свечения: <b id="text-glow-blur-val">15</b> px</label>
+            <input type="range" class="prop-range" id="text-glow-blur-slider" min="2" max="40" value="15">
+            <label class="prop-label">Цвет свечения</label>
+            <div class="color-row" id="text-glow-color-row"></div>
+            <input type="color" class="color-picker" id="text-glow-color-picker" value="#38BDF8" title="Палитра свечения">
+          </div>
+
           <label class="prop-label">Цвет текста</label>
           <div class="color-row" id="text-color-row"></div>
           <input type="color" class="color-picker" id="text-color-picker" value="#ffffff" title="Палитра цвета текста">
@@ -270,6 +356,23 @@
         <!-- Свойства фигуры / контура -->
         <div class="prop-section hidden" id="props-shape">
           <div class="prop-group-title">Настройки фигуры</div>
+
+          <label class="prop-label" id="corner-radius-label">Скругление углов: <b id="corner-radius-val">0</b> px</label>
+          <input type="range" class="prop-range" id="corner-radius-slider" min="0" max="60" value="0">
+
+          <div class="prop-btn-row" style="margin-top: 4px;">
+            <button class="pbtn glow-btn" id="btn-shape-glow" title="Включить неоновое свечение / тень фигуры">
+              <span class="material-symbols-rounded">auto_awesome</span>
+              <span>Свечение / Тень</span>
+            </button>
+          </div>
+          <div class="glow-options hidden" id="shape-glow-options">
+            <label class="prop-label">Радиус свечения: <b id="shape-glow-blur-val">20</b> px</label>
+            <input type="range" class="prop-range" id="shape-glow-blur-slider" min="2" max="50" value="20">
+            <label class="prop-label">Цвет свечения/тени</label>
+            <div class="color-row" id="shape-glow-color-row"></div>
+            <input type="color" class="color-picker" id="shape-glow-color-picker" value="#38BDF8" title="Палитра свечения">
+          </div>
 
           <label class="prop-label">Цвет заливки</label>
           <div class="color-row" id="fill-color-row"></div>
@@ -288,17 +391,45 @@
 
         <!-- Общие действия (для любого выделенного объекта) -->
         <div class="prop-section hidden" id="props-common">
-          <div class="prop-group-title">Положение и слои</div>
+          <div class="prop-group-title">Выравнивание по холсту</div>
           <div class="prop-btn-row">
-            <button class="pbtn pbtn-wide" id="btn-center-h" title="Выровнять строго по горизонтали">
-              <span class="material-symbols-rounded">align_horizontal_center</span>
-              <span>Центр ↔</span>
+            <button class="pbtn" id="btn-align-left-canvas" title="Прижать к левому краю">
+              <span class="material-symbols-rounded">align_horizontal_left</span>
             </button>
-            <button class="pbtn pbtn-wide" id="btn-center-v" title="Выровнять строго по вертикали">
+            <button class="pbtn" id="btn-center-h" title="Выровнять строго по горизонтали">
+              <span class="material-symbols-rounded">align_horizontal_center</span>
+            </button>
+            <button class="pbtn" id="btn-align-right-canvas" title="Прижать к правому краю">
+              <span class="material-symbols-rounded">align_horizontal_right</span>
+            </button>
+            <button class="pbtn" id="btn-align-top-canvas" title="Прижать к верхнему краю">
+              <span class="material-symbols-rounded">align_vertical_top</span>
+            </button>
+            <button class="pbtn" id="btn-center-v" title="Выровнять строго по вертикали">
               <span class="material-symbols-rounded">align_vertical_center</span>
-              <span>Центр ↕</span>
+            </button>
+            <button class="pbtn" id="btn-align-bottom-canvas" title="Прижать к нижнему краю">
+              <span class="material-symbols-rounded">align_vertical_bottom</span>
             </button>
           </div>
+
+          <div class="prop-group-title">Манипуляции</div>
+          <div class="prop-btn-row">
+            <button class="pbtn" id="btn-duplicate" title="Дублировать объект (Ctrl+D)">
+              <span class="material-symbols-rounded">content_copy</span>
+              <span>Копия</span>
+            </button>
+            <button class="pbtn" id="btn-flip-x" title="Отразить зеркально по горизонтали">
+              <span class="material-symbols-rounded">flip</span>
+              <span>Отразить ↔</span>
+            </button>
+            <button class="pbtn" id="btn-flip-y" title="Отразить зеркально по вертикали">
+              <span class="material-symbols-rounded">swap_vert</span>
+              <span>Отразить ↕</span>
+            </button>
+          </div>
+
+          <div class="prop-group-title">Порядок слоёв</div>
           <div class="prop-btn-row">
             <button class="pbtn pbtn-wide" id="btn-bring-front" title="Переместить на самый верхний слой">
               <span class="material-symbols-rounded">flip_to_front</span>
@@ -348,6 +479,28 @@
     </div>
     <div class="modal-body">
       <div class="logo-grid" id="logo-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА: БИБЛИОТЕЧНЫЕ ПЛАШКИ И СТИКЕРЫ
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="badge-modal-overlay">
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <div>
+        <span class="modal-title">Библиотечные плашки и стикеры</span>
+        <div class="modal-sub">Выберите плашку для вставки на афишу (Пушкинская карта, возрастные цензы, вход свободный и др.)</div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="badge-modal-close" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="badge-grid" id="badge-grid">
+        <!-- Генерируется JS -->
+      </div>
     </div>
   </div>
 </div>
