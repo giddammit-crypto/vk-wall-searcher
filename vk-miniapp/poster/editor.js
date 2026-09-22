@@ -867,6 +867,37 @@ function getObjLabel(obj, idx) {
   return map[obj.type] || obj.type;
 }
 
+function renderLayerThumb(obj) {
+  if (obj.type === 'image') {
+    const src = obj._element?.src || (typeof obj.getSrc === 'function' ? obj.getSrc() : null);
+    if (src) {
+      return `<div class="layer-thumb" title="Изображение">
+        <img class="layer-thumb-img" src="${src}" alt="" loading="lazy">
+      </div>`;
+    }
+    return `<div class="layer-thumb"><span class="material-symbols-rounded">image</span></div>`;
+  }
+
+  const icon = LAYER_ICONS[obj.type] || 'layers';
+  let color = 'var(--text-3)';
+
+  if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
+    color = (obj.fill && obj.fill !== 'transparent') ? obj.fill : 'var(--text-1)';
+    return `<div class="layer-thumb" style="background:rgba(255,255,255,0.04)" title="Текст">
+      <span class="material-symbols-rounded" style="color:${color}">title</span>
+    </div>`;
+  }
+
+  if (obj.fill && obj.fill !== 'transparent') {
+    color = obj.fill;
+  } else if (obj.stroke && obj.stroke !== 'transparent') {
+    color = obj.stroke;
+  }
+  return `<div class="layer-thumb" style="background:rgba(255,255,255,0.04)">
+    <span class="material-symbols-rounded" style="color:${color}">${icon}</span>
+  </div>`;
+}
+
 function updateLayersList() {
   const list = $('#layers-list');
   if (!list || !canvas) return;
@@ -885,41 +916,42 @@ function updateLayersList() {
     const isActive  = obj === activeObj;
     const isHidden  = obj.visible === false;
     const isLocked  = !obj.selectable;
-    const icon = LAYER_ICONS[obj.type] || 'layers';
     const label = getObjLabel(obj, realIdx);
 
     return `
     <div class="layer-row ${isActive?'is-active':''} ${isHidden?'is-hidden':''} ${isLocked?'is-locked':''}"
-         data-idx="${realIdx}">
-      <div class="layer-type-icon">
-        <span class="material-symbols-rounded">${icon}</span>
-      </div>
+         data-idx="${realIdx}" draggable="true">
+      <span class="material-symbols-rounded layer-drag-handle" title="Перетащите для изменения порядка слоя">drag_indicator</span>
+      ${renderLayerThumb(obj)}
       <div class="layer-name" title="${label}">${label}</div>
       <div class="layer-order-btns">
-        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять">
+        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять на уровень выше">
           <span class="material-symbols-rounded">keyboard_arrow_up</span>
         </button>
-        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить">
+        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить на уровень ниже">
           <span class="material-symbols-rounded">keyboard_arrow_down</span>
         </button>
       </div>
       <div class="layer-actions">
         <button class="layer-action-btn ${isHidden?'is-off':''}" data-action="vis" data-idx="${realIdx}"
-          title="${isHidden?'Показать':'Скрыть'}">
+          title="${isHidden?'Показать слой':'Скрыть слой'}">
           <span class="material-symbols-rounded">${isHidden?'visibility_off':'visibility'}</span>
         </button>
         <button class="layer-action-btn ${isLocked?'is-off':''}" data-action="lock" data-idx="${realIdx}"
           title="${isLocked?'Разблокировать':'Заблокировать'}">
           <span class="material-symbols-rounded">${isLocked?'lock':'lock_open'}</span>
         </button>
-        <button class="layer-action-btn" data-action="del" data-idx="${realIdx}" title="Удалить">
+        <button class="layer-action-btn" data-action="del" data-idx="${realIdx}" title="Удалить слой">
           <span class="material-symbols-rounded" style="color:#EF4444">delete</span>
         </button>
       </div>
     </div>`;
   }).join('');
 
-  list.querySelectorAll('.layer-row').forEach(row => {
+  const rows = list.querySelectorAll('.layer-row');
+
+  /* Клик для выделения */
+  rows.forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('button')) return;
       const idx = +row.dataset.idx;
@@ -932,6 +964,78 @@ function updateLayersList() {
     });
   });
 
+  /* ── Drag and Drop перетаскивание слоёв ── */
+  let draggedRowIdx = null;
+
+  rows.forEach(row => {
+    row.addEventListener('dragstart', e => {
+      draggedRowIdx = +row.dataset.idx;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedRowIdx);
+      row.classList.add('is-dragging');
+    });
+
+    row.addEventListener('dragend', () => {
+      row.classList.remove('is-dragging');
+      rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+      draggedRowIdx = null;
+    });
+
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = row.getBoundingClientRect();
+      const relY = e.clientY - rect.top;
+      if (relY < rect.height / 2) {
+        row.classList.add('drag-over-top');
+        row.classList.remove('drag-over-bottom');
+      } else {
+        row.classList.add('drag-over-bottom');
+        row.classList.remove('drag-over-top');
+      }
+    });
+
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const isTopHalf = row.classList.contains('drag-over-top');
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+
+      const targetIdx = +row.dataset.idx;
+      if (draggedRowIdx === null || draggedRowIdx === targetIdx) return;
+
+      const currentObjs = canvas.getObjects();
+      const draggedObj = currentObjs[draggedRowIdx];
+      const targetObj = currentObjs[targetIdx];
+      if (!draggedObj || !targetObj) return;
+
+      // Работаем с визуальным порядком (сверху вниз)
+      const visualList = [...currentObjs].reverse();
+      const fromPos = visualList.indexOf(draggedObj);
+      if (fromPos === -1) return;
+
+      visualList.splice(fromPos, 1);
+      const toPos = visualList.indexOf(targetObj);
+      const insertPos = isTopHalf ? toPos : toPos + 1;
+      visualList.splice(insertPos, 0, draggedObj);
+
+      // Применяем новый порядок z-индексов к canvas (снизу вверх)
+      const newCanvasOrder = [...visualList].reverse();
+      newCanvasOrder.forEach((item, zIdx) => {
+        canvas.moveTo(item, zIdx);
+      });
+
+      canvas.renderAll();
+      saveHistory();
+      updateLayersList();
+      toast('Слой перемещён');
+    });
+  });
+
+  /* Кнопки быстрых действий со слоями */
   list.querySelectorAll('button[data-action]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -975,6 +1079,7 @@ function updateLayersList() {
     });
   });
 }
+
 
 /* ══════════════════════════════════════════════════════════════
    ИСТОРИЯ (UNDO/REDO)

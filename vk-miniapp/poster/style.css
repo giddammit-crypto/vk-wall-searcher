@@ -503,29 +503,62 @@ input, select, textarea { font: inherit; }
 }
 
 .layer-row {
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 8px;
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 130ms, border-color 130ms;
+  border: 1.5px solid transparent;
+  cursor: grab;
+  transition: background 130ms, border-color 130ms, opacity 130ms, transform 130ms;
   user-select: none;
 }
+.layer-row:active { cursor: grabbing; }
 .layer-row:hover { background: var(--bg-3); }
 .layer-row.is-active {
   background: rgba(56,189,248,0.10);
-  border-color: rgba(56,189,248,0.3);
+  border-color: rgba(56,189,248,0.35);
 }
 .layer-row.is-hidden { opacity: 0.45; }
 .layer-row.is-locked { opacity: 0.65; }
 
-.layer-type-icon {
-  width: 22px; height: 22px;
-  border-radius: 4px; background: var(--bg-3);
+/* Drag-and-Drop визуальные эффекты */
+.layer-row.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  background: var(--surface-2);
+}
+.layer-row.drag-over-top {
+  border-top: 2px solid var(--cyan) !important;
+}
+.layer-row.drag-over-bottom {
+  border-bottom: 2px solid var(--cyan) !important;
+}
+
+.layer-drag-handle {
+  font-size: 14px !important;
+  color: var(--text-3);
+  cursor: grab;
+  padding: 0 1px;
+  flex-shrink: 0;
+  transition: color 120ms;
+}
+.layer-row:hover .layer-drag-handle { color: var(--text-2); }
+
+/* Мини-превью слоя (изображение или цветная фигура) */
+.layer-thumb {
+  width: 26px; height: 26px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
   display: grid; place-items: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.layer-type-icon .material-symbols-rounded { font-size: 13px !important; color: var(--text-3); }
+.layer-thumb-img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.layer-thumb .material-symbols-rounded { font-size: 14px !important; }
 
 .layer-name {
   flex: 1; min-width: 0;
@@ -545,10 +578,10 @@ input, select, textarea { font: inherit; }
 .layer-action-btn:hover { color: var(--text-1); background: var(--surface-2); }
 .layer-action-btn.is-off { color: var(--text-3); opacity: 0.4; }
 
-/* Стрелки порядка */
+/* Стрелки порядка (быстрое перемещение без перетаскивания) */
 .layer-order-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
 .layer-order-btn {
-  width: 18px; height: 14px;
+  width: 18px; height: 13px;
   display: grid; place-items: center;
   color: var(--text-3); border-radius: 3px;
   transition: color 110ms, background 110ms;
