@@ -7842,3 +7842,55 @@ body.cosmo-stage-open .cosmo-stage-catcher { pointer-events: auto; cursor: point
     .cosmo-stage-stars, .cosmo-stage-beam, .cosmo-stage-ring, .cosmo-stage-skip,
     .cosmo-stage-stars::after { animation: none !important; }
 }
+
+/* ==========================================================================
+   Кнопка переключения маскота Космо в шапке сайта и в меню
+   ========================================================================== */
+.mascot-header-toggle {
+    position: relative;
+    user-select: none;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mascot-header-toggle.is-on {
+    border-color: rgba(0, 240, 255, 0.45) !important;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(0, 255, 157, 0.10)) !important;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.mascot-header-toggle.is-on #mascot-toggle-icon {
+    color: #00f0ff !important;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.65);
+    animation: cosmoAntennaPulse 2.5s ease-in-out infinite;
+}
+
+.mascot-header-toggle.is-on #mascot-toggle-text {
+    color: #f8fafc !important;
+    font-weight: 600;
+}
+
+.mascot-header-toggle.is-off {
+    opacity: 0.82;
+}
+
+.mascot-header-toggle.is-off #mascot-toggle-icon {
+    color: var(--text-muted, #94a3b8);
+}
+
+.mascot-header-toggle.is-off:hover {
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Бейджи в выпадающем меню */
+.game-nav-badge.badge-off {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.game-nav-badge.badge-on {
+    background: linear-gradient(135deg, #00F0FF, #00FF9D) !important;
+    color: #041026 !important;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+}
+

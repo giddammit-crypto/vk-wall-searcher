@@ -12,16 +12,33 @@
 
     // --- CONFIGURATION & GAME CONSTANTS ---
     const CONFIG = {
-        GRAVITY: 1450,
-        MOVE_SPEED: 380,
-        BOOST_SPEED: 580,
-        JUMP_FORCE: -620,
-        DOUBLE_JUMP_FORCE: -540,
+        GRAVITY: 1750,
+        MOVE_SPEED: 420,
+        BOOST_SPEED: 640,
+        JUMP_FORCE: -880,
+        DOUBLE_JUMP_FORCE: -760,
         FIX_TIME_REQUIRED: 1.6,
         INVULNERABLE_DURATION: 1.6,
         MAX_PARTICLES: 450,
         HIT_STOP_DURATION: 0.05 // 50ms freeze frame for impactful juice
     };
+
+    // Preloaded Photorealistic Game Textures
+    const GAME_TEXTURE_URLS = {
+        bg: 'assets/bg_library.jpg',
+        shelf: 'assets/shelf_photoreal.jpg',
+        terminal_broken: 'assets/terminal_broken.jpg',
+        terminal_repaired: 'assets/terminal_repaired.jpg',
+        floor: 'assets/floor_parquet.jpg'
+    };
+
+    const gameTextures = {};
+    for (const [key, src] of Object.entries(GAME_TEXTURE_URLS)) {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => { gameTextures[key] = img; };
+        img.onerror = () => { gameTextures[key] = null; };
+    }
 
     // Preloaded Mascot Sprites
     const MASCOT_SPRITES = {
@@ -338,148 +355,249 @@
             const dy = this.y - camY;
 
             if (this.type === 'floor') {
-                // Polished Dark Parquet Floor
-                ctx.fillStyle = '#10172B';
-                ctx.fillRect(dx, dy, this.w, this.h);
-
-                // Floor glow line
-                const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
-                floorGrad.addColorStop(0, '#00F0FF');
-                floorGrad.addColorStop(0.5, '#00FF9D');
-                floorGrad.addColorStop(1, '#00F0FF');
-                ctx.fillStyle = floorGrad;
-                ctx.shadowColor = '#00F0FF';
-                ctx.shadowBlur = 10;
-                ctx.fillRect(dx, dy, this.w, 3);
-                ctx.shadowBlur = 0;
-
-                // Parquet plank dividers
-                ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
-                ctx.lineWidth = 1.5;
-                for (let px = 0; px < this.w; px += 90) {
+                const tex = gameTextures.floor;
+                if (tex && tex.complete && tex.naturalWidth > 0) {
+                    // Tiled photo-realistic parquet floor
+                    ctx.save();
                     ctx.beginPath();
-                    ctx.moveTo(dx + px, dy + 3);
-                    ctx.lineTo(dx + px, dy + this.h);
-                    ctx.stroke();
-                }
-            } else if (this.type === 'desk') {
-                // Polished Mahogany Library Desk
-                ctx.fillStyle = '#2A180E';
-                ctx.fillRect(dx, dy, this.w, this.h);
-                ctx.fillStyle = '#4E2C17';
-                ctx.fillRect(dx, dy, this.w, 5);
+                    ctx.rect(dx, dy, this.w, this.h);
+                    ctx.clip();
 
-                // Brass Corner Brackets & Rivets
-                ctx.fillStyle = '#D4AF37';
-                ctx.fillRect(dx + 4, dy + 2, 8, 4);
-                ctx.fillRect(dx + this.w - 12, dy + 2, 8, 4);
+                    const tileH = this.h;
+                    const tileW = (tex.naturalWidth / tex.naturalHeight) * tileH;
+                    const offset = ((dx % tileW) + tileW) % tileW;
+                    for (let px = dx - offset; px < dx + this.w; px += tileW) {
+                        ctx.drawImage(tex, px, dy, tileW, tileH);
+                    }
 
-                // Desk Carved Legs
-                ctx.fillStyle = '#1A0F09';
-                ctx.fillRect(dx + 16, dy + this.h, 14, 130);
-                ctx.fillRect(dx + this.w - 30, dy + this.h, 14, 130);
+                    // Cyber overlay gradient for rich contrast
+                    const floorOverlay = ctx.createLinearGradient(0, dy, 0, dy + this.h);
+                    floorOverlay.addColorStop(0, 'rgba(0, 15, 35, 0.25)');
+                    floorOverlay.addColorStop(1, 'rgba(3, 6, 15, 0.7)');
+                    ctx.fillStyle = floorOverlay;
+                    ctx.fillRect(dx, dy, this.w, this.h);
 
-                // Classic Emerald Banker's Lamp
-                if (this.hasLamp) {
-                    const lampX = dx + 26;
-                    const lampY = dy - 24;
+                    // Polished neon cyber floor top glow line
+                    const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
+                    floorGrad.addColorStop(0, '#00F0FF');
+                    floorGrad.addColorStop(0.5, '#00FF9D');
+                    floorGrad.addColorStop(1, '#00F0FF');
+                    ctx.fillStyle = floorGrad;
+                    ctx.shadowColor = '#00F0FF';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(dx, dy, this.w, 3.5);
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                } else {
+                    // Fallback: Polished Dark Parquet Floor
+                    ctx.fillStyle = '#10172B';
+                    ctx.fillRect(dx, dy, this.w, this.h);
 
-                    // Brass stand
-                    ctx.strokeStyle = '#D4AF37';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(lampX, dy);
-                    ctx.lineTo(lampX, lampY + 6);
-                    ctx.arc(lampX + 6, lampY + 6, 6, Math.PI, Math.PI * 1.5);
-                    ctx.stroke();
-
-                    // Green glass shade
-                    ctx.fillStyle = '#1B7A43';
-                    ctx.shadowColor = '#2ECC71';
-                    ctx.shadowBlur = 12;
-                    ctx.beginPath();
-                    ctx.arc(lampX + 12, lampY, 14, Math.PI * 0.9, Math.PI * 2.1);
-                    ctx.fill();
+                    // Floor glow line
+                    const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
+                    floorGrad.addColorStop(0, '#00F0FF');
+                    floorGrad.addColorStop(0.5, '#00FF9D');
+                    floorGrad.addColorStop(1, '#00F0FF');
+                    ctx.fillStyle = floorGrad;
+                    ctx.shadowColor = '#00F0FF';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(dx, dy, this.w, 3);
                     ctx.shadowBlur = 0;
 
-                    // Volumetric Warm Light Cone onto Desk (Screen blend mode)
+                    // Parquet plank dividers
+                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+                    ctx.lineWidth = 1.5;
+                    for (let px = 0; px < this.w; px += 90) {
+                        ctx.beginPath();
+                        ctx.moveTo(dx + px, dy + 3);
+                        ctx.lineTo(dx + px, dy + this.h);
+                        ctx.stroke();
+                    }
+                }
+            } else if (this.type === 'desk') {
+                const shelfTex = gameTextures.shelf;
+                if (shelfTex && shelfTex.complete && shelfTex.naturalWidth > 0) {
+                    // Photo-realistic Desk Platform
                     ctx.save();
-                    ctx.globalCompositeOperation = 'screen';
-                    const coneGrad = ctx.createRadialGradient(lampX + 12, lampY + 6, 2, lampX + 12, lampY + 45, 65);
-                    coneGrad.addColorStop(0, 'rgba(255, 230, 150, 0.45)');
-                    coneGrad.addColorStop(0.6, 'rgba(46, 204, 113, 0.22)');
-                    coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                    ctx.fillStyle = coneGrad;
                     ctx.beginPath();
-                    ctx.moveTo(lampX + 6, lampY + 4);
-                    ctx.lineTo(lampX - 35, dy + 8);
-                    ctx.lineTo(lampX + 65, dy + 8);
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.roundRect(dx, dy, this.w, this.h, [4, 4, 0, 0]);
+                    ctx.clip();
+
+                    const sw = shelfTex.naturalWidth;
+                    const sh = shelfTex.naturalHeight;
+                    ctx.drawImage(shelfTex, 0, sh - 150, sw, 150, dx, dy, this.w, this.h);
+
+                    // Rich varnish overlay
+                    ctx.fillStyle = 'rgba(65, 35, 18, 0.35)';
+                    ctx.fillRect(dx, dy, this.w, this.h);
                     ctx.restore();
+
+                    // Gold Leaf Trim on edge
+                    ctx.fillStyle = '#D4AF37';
+                    ctx.fillRect(dx, dy, this.w, 3);
+
+                    // Brass Corner Brackets & Rivets
+                    ctx.fillStyle = '#D4AF37';
+                    ctx.fillRect(dx + 4, dy + 2, 10, 5);
+                    ctx.fillRect(dx + this.w - 14, dy + 2, 10, 5);
+
+                    // Desk Carved Legs reaching to floor
+                    ctx.fillStyle = '#1A0F09';
+                    ctx.fillRect(dx + 22, dy + this.h, 16, 260);
+                    ctx.fillRect(dx + this.w - 38, dy + this.h, 16, 260);
+
+                    // Classic Emerald Banker's Lamp
+                    if (this.hasLamp) {
+                        this.drawBankersLamp(ctx, dx, dy);
+                    }
+                } else {
+                    // Fallback: Polished Mahogany Library Desk
+                    ctx.fillStyle = '#2A180E';
+                    ctx.fillRect(dx, dy, this.w, this.h);
+                    ctx.fillStyle = '#4E2C17';
+                    ctx.fillRect(dx, dy, this.w, 5);
+
+                    // Brass Corner Brackets & Rivets
+                    ctx.fillStyle = '#D4AF37';
+                    ctx.fillRect(dx + 4, dy + 2, 8, 4);
+                    ctx.fillRect(dx + this.w - 12, dy + 2, 8, 4);
+
+                    // Desk Carved Legs
+                    ctx.fillStyle = '#1A0F09';
+                    ctx.fillRect(dx + 20, dy + this.h, 14, 260);
+                    ctx.fillRect(dx + this.w - 34, dy + this.h, 14, 260);
+
+                    if (this.hasLamp) {
+                        this.drawBankersLamp(ctx, dx, dy);
+                    }
                 }
             } else {
                 // Grand Wooden Bookshelf Platform
-                ctx.fillStyle = '#362113';
-                ctx.fillRect(dx, dy, this.w, this.h);
-                ctx.fillStyle = '#5A371F';
-                ctx.fillRect(dx, dy, this.w, 4);
-
-                // Richly Detailed Books Standing on Shelf
-                const bookPalette = [
-                    { spine: '#962D3E', foil: '#F4D03F' }, // Crimson + Gold
-                    { spine: '#2471A3', foil: '#EBF5FB' }, // Royal Blue + Silver
-                    { spine: '#196F3D', foil: '#F1C40F' }, // Emerald + Gold
-                    { spine: '#B7950B', foil: '#7D6608' }, // Amber Leather
-                    { spine: '#6C3483', foil: '#F5EEF8' }, // Purple Velvet
-                    { spine: '#D35400', foil: '#EDBB99' }  // Terracotta
-                ];
-
-                let cx = dx + 10;
-                while (cx < dx + this.w - 18) {
-                    const bW = 8 + ((cx * 5) % 9);
-                    const bH = 22 + ((cx * 7) % 18);
-                    const bData = bookPalette[Math.abs(Math.floor(cx * 0.1)) % bookPalette.length];
-
-                    // Leaning book effect
-                    const isLeaning = (cx % 75 < 12);
+                const shelfTex = gameTextures.shelf;
+                if (shelfTex && shelfTex.complete && shelfTex.naturalWidth > 0) {
                     ctx.save();
-                    if (isLeaning) {
-                        ctx.translate(cx, dy);
-                        ctx.rotate(0.12);
-                        ctx.translate(-cx, -dy);
-                    }
+                    ctx.beginPath();
+                    ctx.roundRect(dx, dy, this.w, this.h, [4, 4, 0, 0]);
+                    ctx.clip();
 
-                    // Spine
-                    ctx.fillStyle = bData.spine;
-                    ctx.fillRect(cx, dy - bH, bW, bH);
+                    const sw = shelfTex.naturalWidth;
+                    ctx.drawImage(shelfTex, 0, 0, sw, 140, dx, dy, this.w, this.h);
 
-                    // Gold leaf embossing lines
-                    ctx.fillStyle = bData.foil;
-                    ctx.fillRect(cx + 2, dy - bH + 4, bW - 4, 2);
-                    ctx.fillRect(cx + 2, dy - bH + 9, bW - 4, 1.5);
-                    ctx.fillRect(cx + 2, dy - 5, bW - 4, 1.5);
-
+                    ctx.fillStyle = 'rgba(45, 26, 14, 0.4)';
+                    ctx.fillRect(dx, dy, this.w, this.h);
                     ctx.restore();
 
-                    cx += bW + 3;
-                    if (cx % 110 === 0) cx += 18; // gap for bookend
+                    // Shelf edge highlight
+                    ctx.fillStyle = '#8B5A2B';
+                    ctx.fillRect(dx, dy, this.w, 3.5);
+
+                    // Richly Detailed Books Standing on Shelf
+                    this.drawShelfBooks(ctx, dx, dy);
+                } else {
+                    // Fallback: Grand Wooden Bookshelf Platform
+                    ctx.fillStyle = '#362113';
+                    ctx.fillRect(dx, dy, this.w, this.h);
+                    ctx.fillStyle = '#5A371F';
+                    ctx.fillRect(dx, dy, this.w, 4);
+
+                    this.drawShelfBooks(ctx, dx, dy);
                 }
+            }
+        }
+
+        drawBankersLamp(ctx, dx, dy) {
+            const lampX = dx + 36;
+            const lampY = dy - 32;
+
+            // Brass stand
+            ctx.strokeStyle = '#D4AF37';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(lampX, dy);
+            ctx.lineTo(lampX, lampY + 8);
+            ctx.arc(lampX + 8, lampY + 8, 8, Math.PI, Math.PI * 1.5);
+            ctx.stroke();
+
+            // Green glass shade
+            ctx.fillStyle = '#1B7A43';
+            ctx.shadowColor = '#2ECC71';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.arc(lampX + 16, lampY, 18, Math.PI * 0.9, Math.PI * 2.1);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Volumetric Warm Light Cone onto Desk (Screen blend mode)
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const coneGrad = ctx.createRadialGradient(lampX + 16, lampY + 8, 3, lampX + 16, lampY + 60, 95);
+            coneGrad.addColorStop(0, 'rgba(255, 230, 150, 0.5)');
+            coneGrad.addColorStop(0.6, 'rgba(46, 204, 113, 0.25)');
+            coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = coneGrad;
+            ctx.beginPath();
+            ctx.moveTo(lampX + 8, lampY + 5);
+            ctx.lineTo(lampX - 55, dy + 12);
+            ctx.lineTo(lampX + 90, dy + 12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        drawShelfBooks(ctx, dx, dy) {
+            const bookPalette = [
+                { spine: '#962D3E', foil: '#F4D03F' }, // Crimson + Gold
+                { spine: '#2471A3', foil: '#EBF5FB' }, // Royal Blue + Silver
+                { spine: '#196F3D', foil: '#F1C40F' }, // Emerald + Gold
+                { spine: '#B7950B', foil: '#7D6608' }, // Amber Leather
+                { spine: '#6C3483', foil: '#F5EEF8' }, // Purple Velvet
+                { spine: '#D35400', foil: '#EDBB99' }  // Terracotta
+            ];
+
+            let cx = dx + 12;
+            while (cx < dx + this.w - 24) {
+                const bW = 10 + ((cx * 5) % 11);
+                const bH = 26 + ((cx * 7) % 22);
+                const bData = bookPalette[Math.abs(Math.floor(cx * 0.1)) % bookPalette.length];
+
+                const isLeaning = (cx % 90 < 15);
+                ctx.save();
+                if (isLeaning) {
+                    ctx.translate(cx, dy);
+                    ctx.rotate(0.12);
+                    ctx.translate(-cx, -dy);
+                }
+
+                // Spine
+                ctx.fillStyle = bData.spine;
+                ctx.fillRect(cx, dy - bH, bW, bH);
+
+                // Gold leaf embossing lines
+                ctx.fillStyle = bData.foil;
+                ctx.fillRect(cx + 2, dy - bH + 5, bW - 4, 2);
+                ctx.fillRect(cx + 2, dy - bH + 11, bW - 4, 1.5);
+                ctx.fillRect(cx + 2, dy - 6, bW - 4, 1.5);
+
+                ctx.restore();
+
+                cx += bW + 4;
+                if (cx % 140 === 0) cx += 22; // gap for bookend
             }
         }
     }
 
-    // Computer Terminal (3D CRT Monitor, Holographic States)
+    // Computer Terminal (Photorealistic Monoblock, Holographic States)
     class ComputerTerminal {
         constructor(x, y) {
             this.x = x;
             this.y = y;
-            this.w = 58;
-            this.h = 52;
+            this.w = 160;
+            this.h = 140;
             this.fixed = false;
             this.fixProgress = 0;
             this.glitchTimer = 0;
             this.smokeTimer = 0;
+            this.sparkTimer = 0;
         }
 
         update(dt, player) {
@@ -487,34 +605,51 @@
 
             this.glitchTimer += dt * 9;
             this.smokeTimer -= dt;
+            this.sparkTimer -= dt;
 
             // Smoking vents on broken computer
             if (this.smokeTimer <= 0) {
-                emitParticles(this.x + 29, this.y - 48, 1, 'rgba(180, 190, 210, 0.4)', 25, 0.8, 'smoke', -20);
-                this.smokeTimer = 0.4 + Math.random() * 0.4;
+                emitParticles(this.x + this.w / 2, this.y - this.h * 0.75, 1, 'rgba(180, 190, 210, 0.45)', 30, 0.9, 'smoke', -25);
+                this.smokeTimer = 0.35 + Math.random() * 0.35;
+            }
+
+            // Dynamic sparks on broken computer
+            if (this.sparkTimer <= 0) {
+                emitParticles(
+                    this.x + this.w * 0.3 + Math.random() * this.w * 0.4,
+                    this.y - this.h * 0.6 + Math.random() * 20,
+                    2 + Math.floor(Math.random() * 3),
+                    '#FF3366',
+                    130,
+                    0.4,
+                    'spark',
+                    150
+                );
+                this.sparkTimer = 0.5 + Math.random() * 0.7;
             }
 
             // Check repair interaction
             const pCenterX = player.x + player.w / 2;
             const cCenterX = this.x + this.w / 2;
-            const distance = Math.abs(pCenterX - cCenterX);
-            const verticalDist = Math.abs((player.y + player.h) - this.y);
+            const distX = Math.abs(pCenterX - cCenterX);
+            const distY = Math.abs((player.y + player.h) - this.y);
+            const distCenterY = Math.abs((player.y + player.h / 2) - (this.y - this.h / 2));
 
-            const isNear = distance < 80 && verticalDist < 35;
+            const isNear = distX < 190 && (distY < 130 || distCenterY < 130);
 
             if (isNear && input.fix) {
                 player.isFixing = true;
                 player.fixTargetX = cCenterX;
-                player.fixTargetY = this.y - 25;
+                player.fixTargetY = this.y - this.h / 2;
 
                 this.fixProgress += dt / CONFIG.FIX_TIME_REQUIRED;
 
                 if (Math.random() < 0.35) window.gameAudio.playSpark();
                 if (Math.random() < 0.25) window.gameAudio.playRepairHum();
 
-                // Rich repair spark fountain
-                emitParticles(this.x + 29, this.y - 26, 3, '#00F0FF', 140, 0.45, 'spark', 180);
-                emitParticles(this.x + 29, this.y - 26, 2, '#FFB347', 100, 0.35, 'circle', 120);
+                // Rich repair spark fountain at monitor center
+                emitParticles(cCenterX, this.y - this.h / 2, 4, '#00F0FF', 160, 0.5, 'spark', 180);
+                emitParticles(cCenterX, this.y - this.h / 2, 2, '#FFB347', 120, 0.4, 'circle', 130);
 
                 if (this.fixProgress >= 1) {
                     this.completeFix(player);
@@ -532,19 +667,22 @@
 
             // Hit-stop freeze frame for juice!
             gameState.hitStopTimer = CONFIG.HIT_STOP_DURATION;
-            triggerScreenShake(10);
+            triggerScreenShake(12);
+
+            const cCenterX = this.x + this.w / 2;
+            const cCenterY = this.y - this.h / 2;
 
             // Celebration sparks & confetti
-            emitParticles(this.x + 29, this.y - 26, 50, '#00FF9D', 240, 1.0, 'circle', 70);
-            emitParticles(this.x + 29, this.y - 26, 35, '#00F0FF', 280, 1.2, 'star', 50);
+            emitParticles(cCenterX, cCenterY, 60, '#00FF9D', 260, 1.2, 'circle', 80);
+            emitParticles(cCenterX, cCenterY, 40, '#00F0FF', 300, 1.4, 'star', 60);
 
             const bonus = 150 * gameState.level;
             gameState.score += bonus;
             gameState.gameTime = Math.min(120, gameState.gameTime + 14);
             gameState.fixedCount++;
 
-            floatingTexts.push(new FloatingText(this.x - 10, this.y - 50, `+${bonus} ОЧКОВ!`, '#00FF9D', 24));
-            floatingTexts.push(new FloatingText(this.x + 5, this.y - 75, `+14 СЕК`, '#FFB347', 17));
+            floatingTexts.push(new FloatingText(this.x + 20, this.y - this.h - 30, `+${bonus} ОЧКОВ!`, '#00FF9D', 26));
+            floatingTexts.push(new FloatingText(this.x + 35, this.y - this.h - 60, `+14 СЕК`, '#FFB347', 18));
 
             checkLevelProgression();
         }
@@ -553,90 +691,171 @@
             const dx = this.x - camX;
             const dy = this.y - camY;
 
-            // Monitor Stand with Swivel Joint
-            ctx.fillStyle = '#1F2937';
-            ctx.fillRect(dx + 24, dy - 14, 10, 14);
-            ctx.fillStyle = '#374151';
+            // Desk contact soft shadow
+            ctx.save();
+            ctx.fillStyle = 'rgba(5, 8, 20, 0.55)';
             ctx.beginPath();
-            ctx.roundRect(dx + 14, dy - 4, 30, 4, 2);
+            ctx.ellipse(dx + this.w / 2, dy, this.w * 0.42, 7, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
 
-            // CRT Curved Bezel
-            ctx.fillStyle = '#111827';
-            ctx.beginPath();
-            ctx.roundRect(dx, dy - 52, this.w, this.h - 10, 8);
-            ctx.fill();
+            const tex = this.fixed ? gameTextures.terminal_repaired : gameTextures.terminal_broken;
+            const hasTexture = tex && tex.complete && tex.naturalWidth > 0;
 
-            // Bezel Glow Border
-            ctx.strokeStyle = this.fixed ? '#00FF9D' : (Math.sin(this.glitchTimer) > 0 ? '#FF3366' : '#991B1B');
-            ctx.lineWidth = 1.8;
-            ctx.stroke();
+            if (hasTexture) {
+                // Draw photo-realistic terminal monoblock (w: 160, h: 140)
+                ctx.save();
+                if (!this.fixed && Math.sin(this.glitchTimer * 2) > 0.85) {
+                    ctx.translate((Math.random() - 0.5) * 3, 0);
+                }
+                ctx.drawImage(tex, dx, dy - this.h, this.w, this.h);
 
-            // Cathode Curved Screen Interior
-            const scrX = dx + 5;
-            const scrY = dy - 48;
-            const scrW = this.w - 10;
-            const scrH = this.h - 18;
-
-            if (this.fixed) {
-                // Online Emerald Matrix Screen
-                ctx.fillStyle = '#062817';
-                ctx.fillRect(scrX, scrY, scrW, scrH);
-
-                // Holographic Screen Glow
-                ctx.fillStyle = '#00FF9D';
-                ctx.font = 'bold 11px monospace';
-                ctx.fillText('ONLINE', scrX + 5, scrY + 14);
-                ctx.font = 'bold 13px sans-serif';
-                ctx.fillText('✔ BD33', scrX + 5, scrY + 28);
-
-                // Power LED Green
-                ctx.fillStyle = '#00FF9D';
-                ctx.beginPath();
-                ctx.arc(dx + this.w - 8, dy - 8, 2.5, 0, Math.PI * 2);
-                ctx.fill();
+                // Broken state: dynamic screen glitch overlay
+                if (!this.fixed) {
+                    if (Math.sin(this.glitchTimer * 4) > 0.6) {
+                        ctx.fillStyle = 'rgba(255, 51, 102, 0.18)';
+                        ctx.fillRect(dx + 16, dy - this.h + 14, this.w - 32, this.h - 48);
+                    }
+                    const scanY = dy - this.h + 14 + (Math.floor(this.glitchTimer * 24) % (this.h - 52));
+                    ctx.fillStyle = 'rgba(255, 51, 102, 0.45)';
+                    ctx.fillRect(dx + 16, scanY, this.w - 32, 2.5);
+                } else {
+                    // Repaired state: subtle ambient cyber-glow on screen
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    const glowGrad = ctx.createRadialGradient(
+                        dx + this.w / 2, dy - this.h / 2, 10,
+                        dx + this.w / 2, dy - this.h / 2, 70
+                    );
+                    glowGrad.addColorStop(0, 'rgba(0, 255, 157, 0.22)');
+                    glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.fillRect(dx + 10, dy - this.h, this.w - 20, this.h - 20);
+                    ctx.restore();
+                }
+                ctx.restore();
             } else {
-                // Glitching Broken CRT Screen
-                ctx.fillStyle = '#26040B';
-                ctx.fillRect(scrX, scrY, scrW, scrH);
+                // Fallback: procedural high-tech monoblock
+                this.drawProceduralTerminal(ctx, dx, dy);
+            }
 
-                // Matrix Glitch Text
-                ctx.fillStyle = '#FF3366';
-                ctx.font = '10px monospace';
-                const glitchStr = (Math.floor(this.glitchTimer) % 2 === 0) ? 'ERR_404' : 'SYSTEM!';
-                ctx.fillText(glitchStr, scrX + 4, scrY + 16);
-
-                // Cathode Scanline
-                ctx.fillStyle = 'rgba(255, 51, 102, 0.4)';
-                const scanlineY = scrY + (Math.floor(this.glitchTimer * 12) % scrH);
-                ctx.fillRect(scrX, scanlineY, scrW, 2);
-
-                // Power LED Red Flashing
-                ctx.fillStyle = (Math.sin(this.glitchTimer * 2) > 0) ? '#FF3366' : '#550011';
-                ctx.beginPath();
-                ctx.arc(dx + this.w - 8, dy - 8, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Repair Progress Ring / Bar
+            // Holographic Progress Bar or Repair Prompt
+            if (!this.fixed) {
                 if (this.fixProgress > 0) {
-                    ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
-                    ctx.fillRect(dx - 8, dy - 68, this.w + 16, 9);
+                    // Holographic Cyber Progress Bar
+                    ctx.save();
+                    const barW = this.w + 20;
+                    const barH = 12;
+                    const barX = dx - 10;
+                    const barY = dy - this.h - 28;
 
-                    const progGrad = ctx.createLinearGradient(dx - 8, 0, dx + this.w + 8, 0);
+                    // Glowing container
+                    ctx.fillStyle = 'rgba(6, 12, 28, 0.88)';
+                    ctx.beginPath();
+                    ctx.roundRect(barX, barY, barW, barH, 4);
+                    ctx.fill();
+
+                    // Holographic Gradient fill
+                    const progGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
                     progGrad.addColorStop(0, '#FFB347');
+                    progGrad.addColorStop(0.5, '#00F0FF');
                     progGrad.addColorStop(1, '#00FF9D');
                     ctx.fillStyle = progGrad;
-                    ctx.fillRect(dx - 7, dy - 67, (this.w + 14) * this.fixProgress, 7);
+                    ctx.shadowColor = '#00FF9D';
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.roundRect(barX + 2, barY + 2, (barW - 4) * this.fixProgress, barH - 4, 3);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
 
+                    // Cyber Frame
                     ctx.strokeStyle = '#00F0FF';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(dx - 8, dy - 68, this.w + 16, 9);
+                    ctx.lineWidth = 1.4;
+                    ctx.beginPath();
+                    ctx.roundRect(barX, barY, barW, barH, 4);
+                    ctx.stroke();
+
+                    // Percentage text
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 10px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`РЕМОНТ: ${Math.floor(this.fixProgress * 100)}%`, barX + barW / 2, barY - 4);
+                    ctx.restore();
                 } else {
                     // Floating repair callout
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    ctx.font = 'bold 9px sans-serif';
-                    ctx.fillText('[SPACE]', dx + 7, dy - 58);
+                    ctx.save();
+                    const calloutY = dy - this.h - 16 + Math.sin(Date.now() / 250) * 4;
+                    ctx.fillStyle = 'rgba(5, 10, 25, 0.85)';
+                    ctx.beginPath();
+                    ctx.roundRect(dx + this.w / 2 - 46, calloutY - 14, 92, 20, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#00F0FF';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#00F0FF';
+                    ctx.font = 'bold 11px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('[ПРОБЕЛ / E]', dx + this.w / 2, calloutY);
+                    ctx.restore();
                 }
+            } else {
+                // Repaired floating online badge
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 255, 157, 0.85)';
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#00FF9D';
+                ctx.shadowBlur = 10;
+                ctx.fillText('✔ СИСТЕМА АВРОРА ОК', dx + this.w / 2, dy - this.h - 12);
+                ctx.restore();
+            }
+        }
+
+        drawProceduralTerminal(ctx, dx, dy) {
+            // Stand
+            ctx.fillStyle = '#1F2937';
+            ctx.fillRect(dx + this.w / 2 - 14, dy - 28, 28, 28);
+            ctx.fillStyle = '#374151';
+            ctx.beginPath();
+            ctx.roundRect(dx + this.w / 2 - 50, dy - 8, 100, 8, 4);
+            ctx.fill();
+
+            // Monoblock body
+            ctx.fillStyle = '#111827';
+            ctx.beginPath();
+            ctx.roundRect(dx, dy - this.h, this.w, this.h - 24, 10);
+            ctx.fill();
+
+            // Screen Bezel Border
+            ctx.strokeStyle = this.fixed ? '#00FF9D' : (Math.sin(this.glitchTimer) > 0 ? '#FF3366' : '#991B1B');
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Screen
+            const scrX = dx + 12;
+            const scrY = dy - this.h + 12;
+            const scrW = this.w - 24;
+            const scrH = this.h - 48;
+
+            if (this.fixed) {
+                ctx.fillStyle = '#062817';
+                ctx.fillRect(scrX, scrY, scrW, scrH);
+                ctx.fillStyle = '#00FF9D';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText('ONLINE', scrX + 16, scrY + 30);
+                ctx.font = 'bold 13px sans-serif';
+                ctx.fillText('✔ АВРОРА БД', scrX + 16, scrY + 54);
+            } else {
+                ctx.fillStyle = '#26040B';
+                ctx.fillRect(scrX, scrY, scrW, scrH);
+                ctx.fillStyle = '#FF3366';
+                ctx.font = 'bold 15px monospace';
+                const glitchStr = (Math.floor(this.glitchTimer) % 2 === 0) ? 'ERR_404' : 'SYSTEM!';
+                ctx.fillText(glitchStr, scrX + 16, scrY + 32);
+                ctx.fillStyle = 'rgba(255, 51, 102, 0.4)';
+                const scanlineY = scrY + (Math.floor(this.glitchTimer * 16) % scrH);
+                ctx.fillRect(scrX, scanlineY, scrW, 3);
             }
         }
     }
@@ -881,8 +1100,8 @@
         constructor(x, y) {
             this.x = x;
             this.y = y;
-            this.w = 48;
-            this.h = 60;
+            this.w = 192;
+            this.h = 240;
 
             this.vx = 0;
             this.vy = 0;
@@ -908,25 +1127,28 @@
         takeDamage() {
             if (this.invulnerableTimer > 0) return;
 
+            const cx = this.x + this.w / 2;
+            const cy = this.y + this.h / 2;
+
             if (this.hasShield) {
                 this.hasShield = false;
                 this.invulnerableTimer = 1.0;
                 window.gameAudio.playHit();
-                floatingTexts.push(new FloatingText(this.x, this.y - 20, 'ЩИТ РАЗБИТ!', '#00F0FF', 20));
-                emitParticles(this.x + 24, this.y + 30, 30, '#00F0FF', 220, 0.8, 'circle', 50);
+                floatingTexts.push(new FloatingText(cx - 60, this.y - 20, 'ЩИТ РАЗБИТ!', '#00F0FF', 24));
+                emitParticles(cx, cy, 35, '#00F0FF', 240, 0.9, 'circle', 60);
                 return;
             }
 
             this.lives--;
             this.invulnerableTimer = CONFIG.INVULNERABLE_DURATION;
-            this.vy = -390;
-            this.vx = this.facingRight ? -250 : 250;
+            this.vy = -520;
+            this.vx = this.facingRight ? -340 : 340;
 
             window.gameAudio.playHit();
             triggerScreenShake(18);
             gameState.hitStopTimer = CONFIG.HIT_STOP_DURATION;
 
-            emitParticles(this.x + 24, this.y + 30, 40, '#FF3366', 250, 0.9, 'spark', 180);
+            emitParticles(cx, cy, 45, '#FF3366', 280, 1.0, 'spark', 180);
             updateHUDLives();
 
             if (this.lives <= 0) {
@@ -991,6 +1213,9 @@
             this.vy += CONFIG.GRAVITY * dt;
 
             // Jumping with Squash & Stretch
+            const cx = this.x + this.w / 2;
+            const feetY = this.y + this.h;
+
             if (input.jumpPressed) {
                 input.jumpPressed = false;
                 if (this.grounded) {
@@ -999,20 +1224,20 @@
                     this.canDoubleJump = true;
                     this.squashStretch = 1.35; // Stretch up
                     window.gameAudio.playJump();
-                    emitParticles(this.x + 24, this.y + this.h, 12, 'rgba(255,255,255,0.75)', 100, 0.35, 'circle', 60);
+                    emitParticles(cx, feetY, 16, 'rgba(255,255,255,0.75)', 140, 0.4, 'circle', 80);
                 } else if (this.canDoubleJump) {
                     this.vy = CONFIG.DOUBLE_JUMP_FORCE;
                     this.canDoubleJump = false;
                     this.flipRotation = 0.1; // trigger 360° flip
                     this.squashStretch = 1.25;
                     window.gameAudio.playDoubleJump();
-                    emitParticles(this.x + 24, this.y + this.h, 18, '#00F0FF', 160, 0.45, 'spark', 100);
+                    emitParticles(cx, feetY, 24, '#00F0FF', 220, 0.5, 'spark', 140);
                 }
             }
 
             // Variable jump height
-            if (!input.jump && this.vy < -150) {
-                this.vy += 1200 * dt;
+            if (!input.jump && this.vy < -200) {
+                this.vy += 1600 * dt;
             }
 
             this.x += this.vx * dt;
@@ -1030,9 +1255,9 @@
                 if (
                     this.vy > 0 &&
                     this.y + this.h >= plat.y &&
-                    this.y + this.h - this.vy * dt <= plat.y + 14 &&
-                    this.x + this.w - 10 > plat.x &&
-                    this.x + 10 < plat.x + plat.w
+                    this.y + this.h - this.vy * dt <= plat.y + 24 &&
+                    this.x + this.w - 20 > plat.x &&
+                    this.x + 20 < plat.x + plat.w
                 ) {
                     this.y = plat.y - this.h;
                     this.vy = 0;
@@ -1043,7 +1268,7 @@
                     if (!wasGrounded) {
                         this.squashStretch = 0.75; // Squash on impact
                         window.gameAudio.playLand();
-                        emitParticles(this.x + 24, this.y + this.h, 8, 'rgba(255,255,255,0.5)', 80, 0.25, 'circle', 40);
+                        emitParticles(cx, this.y + this.h, 14, 'rgba(255,255,255,0.6)', 120, 0.35, 'circle', 50);
                     }
                     break;
                 }
@@ -1060,6 +1285,7 @@
                 if (!wasGrounded) {
                     this.squashStretch = 0.75;
                     window.gameAudio.playLand();
+                    emitParticles(cx, this.y + this.h, 14, 'rgba(255,255,255,0.6)', 120, 0.35, 'circle', 50);
                 }
             }
 
@@ -1076,32 +1302,32 @@
             const cx = drawX + this.w / 2;
             const cy = drawY + this.h / 2;
 
-            // 1. Draw Soft Dynamic Platform Shadow
+            // 1. Draw Soft Dynamic Platform Shadow (80x20)
             ctx.save();
             ctx.fillStyle = 'rgba(5, 8, 20, 0.55)';
             const shadowY = drawY + this.h - 2;
-            const shadowScale = Math.max(0.4, 1.0 - Math.abs(this.vy) * 0.001);
+            const shadowScale = Math.max(0.4, 1.0 - Math.abs(this.vy) * 0.0008);
             ctx.beginPath();
-            ctx.ellipse(cx, shadowY, 20 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx, shadowY, 80 * shadowScale, 20 * shadowScale, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
-            // 2. Draw Ghost Trails (Speed Boost)
+            // 2. Draw Ghost Trails (Speed Boost) scaled to 240x280
             for (let trail of this.ghostTrails) {
                 ctx.save();
-                ctx.globalAlpha = trail.alpha * 0.4;
+                ctx.globalAlpha = trail.alpha * 0.45;
                 const tx = trail.x - camX + this.w / 2;
                 const ty = trail.y - camY + this.h / 2;
                 ctx.translate(tx, ty);
                 if (!trail.facingRight) ctx.scale(-1, 1);
                 const spr = loadedImages['cool'] || loadedImages['idle'];
-                if (spr && spr.complete) {
-                    ctx.drawImage(spr, -30, -35, 60, 70);
+                if (spr && spr.complete && spr.naturalWidth > 0) {
+                    ctx.drawImage(spr, -120, -140, 240, 280);
                 }
                 ctx.restore();
             }
 
-            // 3. Draw Player Body with Kinematics
+            // 3. Draw Player Body with Kinematics (240x280)
             ctx.save();
             ctx.translate(cx, cy);
 
@@ -1117,68 +1343,109 @@
 
             const spriteImg = loadedImages[spriteKey];
             if (spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
-                const spriteW = 60;
-                const spriteH = 70;
-                const bobY = this.grounded ? Math.sin(this.runAnimTimer) * 3 : -3;
-                ctx.drawImage(spriteImg, -spriteW / 2, -spriteH / 2 + bobY - 4, spriteW, spriteH);
+                const spriteW = 240;
+                const spriteH = 280;
+                const bobY = this.grounded ? Math.sin(this.runAnimTimer) * 8 : -4;
+                ctx.drawImage(spriteImg, -spriteW / 2, -spriteH / 2 + bobY - 6, spriteW, spriteH);
             } else {
                 this.drawProceduralCosmo(ctx);
             }
 
-            // Nano Shield Forcefield
+            // Nano Shield Forcefield (radius 140px)
             if (this.hasShield) {
                 ctx.strokeStyle = '#00F0FF';
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = 4;
                 ctx.shadowColor = '#00F0FF';
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 25;
                 ctx.beginPath();
-                ctx.arc(0, 0, 38 + Math.sin(Date.now() / 140) * 2.5, 0, Math.PI * 2);
+                ctx.arc(0, 0, 140 + Math.sin(Date.now() / 140) * 5, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(0, 255, 157, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 130 + Math.cos(Date.now() / 180) * 4, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
             ctx.restore();
 
-            // 4. Procedural Multi-Branched Lightning Repair Arc
+            // 4. Procedural Multi-Branched Lightning Repair Arc from Cosmo's Hand to Monitor Center
             if (this.isFixing) {
-                this.drawProceduralLightningArc(ctx, cx + (this.facingRight ? 20 : -20), cy - 6, this.fixTargetX - camX, this.fixTargetY - camY);
+                const handX = cx + (this.facingRight ? 75 : -75);
+                const handY = cy + 20;
+                const targetX = this.fixTargetX - camX;
+                const targetY = this.fixTargetY - camY;
+                this.drawProceduralLightningArc(ctx, handX, handY, targetX, targetY);
             }
         }
 
         drawProceduralLightningArc(ctx, x1, y1, x2, y2) {
             ctx.save();
-            // Outer Glow Arc
+
+            // Glowing Hand Plasma Spark
+            ctx.fillStyle = '#00F0FF';
+            ctx.shadowColor = '#00F0FF';
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.arc(x1, y1, 7 + Math.random() * 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Outer Cyan Glow Arc
             ctx.strokeStyle = '#00F0FF';
             ctx.shadowColor = '#00F0FF';
-            ctx.shadowBlur = 14;
-            ctx.lineWidth = 3;
+            ctx.shadowBlur = 16;
+            ctx.lineWidth = 4.5;
 
-            const drawBolt = (sx, sy, ex, ey, jitter) => {
+            const drawBolt = (sx, sy, ex, ey, jitter, branches = false) => {
                 ctx.beginPath();
                 ctx.moveTo(sx, sy);
-                const segs = 7;
+                const segs = 8;
                 for (let i = 1; i < segs; i++) {
                     const t = i / segs;
                     const lx = sx + (ex - sx) * t + (Math.random() - 0.5) * jitter;
                     const ly = sy + (ey - sy) * t + (Math.random() - 0.5) * jitter;
                     ctx.lineTo(lx, ly);
+
+                    if (branches && i === Math.floor(segs / 2) && Math.random() < 0.6) {
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(lx, ly);
+                        const bx = lx + (Math.random() - 0.5) * 40;
+                        const by = ly + (Math.random() - 0.5) * 40;
+                        ctx.lineTo(bx, by);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(lx, ly);
+                    }
                 }
                 ctx.lineTo(ex, ey);
                 ctx.stroke();
             };
 
-            drawBolt(x1, y1, x2, y2, 18);
+            drawBolt(x1, y1, x2, y2, 22, true);
 
             // White-hot inner core
             ctx.strokeStyle = '#FFFFFF';
-            ctx.shadowBlur = 4;
-            ctx.lineWidth = 1.5;
-            drawBolt(x1, y1, x2, y2, 8);
+            ctx.shadowBlur = 6;
+            ctx.lineWidth = 2;
+            drawBolt(x1, y1, x2, y2, 10, false);
+
+            // Target impact glow at monitor center
+            ctx.fillStyle = '#00FF9D';
+            ctx.shadowColor = '#00FF9D';
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.arc(x2, y2, 6 + Math.random() * 5, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.restore();
         }
 
         drawProceduralCosmo(ctx) {
-            const bounce = this.grounded ? Math.abs(Math.sin(this.runAnimTimer)) * 4 : 0;
+            ctx.save();
+            ctx.scale(4, 4);
+            const bounce = this.grounded ? Math.abs(Math.sin(this.runAnimTimer)) * 2 : 0;
             ctx.fillStyle = '#FFFFFF';
             ctx.beginPath(); ctx.arc(0, -6 + bounce, 22, 0, Math.PI * 2); ctx.fill();
 
@@ -1198,6 +1465,7 @@
             ctx.beginPath(); ctx.moveTo(0, -28 + bounce); ctx.lineTo(0, -38 + bounce); ctx.stroke();
             ctx.fillStyle = this.isFixing ? '#FF3366' : '#00F0FF';
             ctx.beginPath(); ctx.arc(0, -40 + bounce, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
         }
     }
 
@@ -1265,30 +1533,34 @@
         // Base Floor
         gameState.platforms.push(new Platform(0, floorY, gameState.worldWidth, 60, 'floor'));
 
-        // Desks & Shelves
-        const shelfHeights = [floorY - 145, floorY - 275, floorY - 395];
-        let cx = 240;
-        while (cx < gameState.worldWidth - 280) {
-            const pw = 190 + Math.random() * 140;
-            const hIdx = Math.floor(Math.random() * shelfHeights.length);
-            const py = shelfHeights[hIdx];
-            const isDesk = (hIdx === 0 && Math.random() < 0.65);
+        const deskY = floorY - 260;
+        const shelfY = floorY - 500;
 
-            gameState.platforms.push(new Platform(cx, py, pw, 22, isDesk ? 'desk' : 'shelf'));
+        // Desks (Lower Tier) & Shelves (Upper Tier)
+        let cx = 180;
+        while (cx < gameState.worldWidth - 360) {
+            const pw = 360 + Math.random() * 200; // 360-560px wide
 
-            if (hIdx === 0 && Math.random() < 0.75) {
-                gameState.platforms.push(new Platform(cx + 30, shelfHeights[1], pw - 60, 20, 'shelf'));
+            // Lower tier desk
+            gameState.platforms.push(new Platform(cx, deskY, pw, 28, 'desk'));
+
+            // Upper tier shelf (high frequency for multi-tier platforming)
+            if (Math.random() < 0.85) {
+                const shelfW = 360 + Math.random() * 200; // 360-560px wide
+                const shelfX = cx + (Math.random() - 0.5) * 100;
+                gameState.platforms.push(new Platform(Math.max(60, shelfX), shelfY, shelfW, 26, 'shelf'));
             }
 
-            cx += pw + 90 + Math.random() * 90;
+            cx += pw + 120 + Math.random() * 100;
         }
 
-        // Computers
-        const validPlats = gameState.platforms.filter(p => p.type !== 'floor');
-        const shuffled = [...validPlats].sort(() => Math.random() - 0.5);
+        // Computers (w: 160, h: 140) centered on desks
+        const deskPlats = gameState.platforms.filter(p => p.type === 'desk');
+        const candidatePlats = deskPlats.length >= gameState.targetComputers ? deskPlats : gameState.platforms.filter(p => p.type !== 'floor');
+        const shuffled = [...candidatePlats].sort(() => Math.random() - 0.5);
         for (let i = 0; i < gameState.targetComputers; i++) {
             const p = shuffled[i % shuffled.length];
-            gameState.computers.push(new ComputerTerminal(p.x + p.w / 2 - 29, p.y));
+            gameState.computers.push(new ComputerTerminal(p.x + p.w / 2 - 80, p.y));
         }
 
         // Hazards
@@ -1304,7 +1576,7 @@
         if (levelNum >= 2) {
             for (let i = 0; i < levelNum; i++) {
                 const fx = 420 + (i * 700) + Math.random() * 200;
-                const fy = floorY - 230 - Math.random() * 120;
+                const fy = floorY - 370 - Math.random() * 90;
                 gameState.hazards.push(new FlyingBookHazard(fx, fy, (140 + levelNum * 22) * (i % 2 === 0 ? 1 : -1)));
             }
         }
@@ -1314,7 +1586,7 @@
         for (let i = 0; i < 3 + levelNum; i++) {
             const t = types[Math.floor(Math.random() * types.length)];
             const px = 300 + Math.random() * (gameState.worldWidth - 600);
-            const py = floorY - 180 - Math.random() * 160;
+            const py = Math.random() < 0.5 ? deskY - 90 : shelfY - 90;
             gameState.powerups.push(new PowerupItem(px, py, t));
         }
 
@@ -1331,8 +1603,8 @@
             for (let i = 0; i < 110; i++) {
                 const colors = ['#00F0FF', '#FFB347', '#00FF9D', '#FF3366', '#E056FD'];
                 emitParticles(
-                    gameState.player.x + 24,
-                    gameState.player.y,
+                    gameState.player.x + gameState.player.w / 2,
+                    gameState.player.y + gameState.player.h / 2,
                     1,
                     colors[Math.floor(Math.random() * colors.length)],
                     300,
@@ -1408,7 +1680,8 @@
         gameState.score = 0;
         gameState.state = STATE_PLAYING;
 
-        gameState.player = new Player(140, vh - 200);
+        const floorY = vh - 55;
+        gameState.player = new Player(140, floorY - 240);
         buildLevel(gameState.level);
         updateHUDLives();
 
@@ -1424,8 +1697,9 @@
         gameState.state = STATE_PLAYING;
 
         document.getElementById('modal-win').classList.add('hidden');
+        const floorY = vh - 55;
         gameState.player.x = 140;
-        gameState.player.y = vh - 200;
+        gameState.player.y = floorY - 240;
         gameState.player.vx = 0;
         gameState.player.vy = 0;
 
@@ -1470,70 +1744,108 @@
     document.getElementById('btn-pause')?.addEventListener('click', togglePause);
     document.getElementById('btn-mute')?.addEventListener('click', toggleMuteUI);
 
-    // --- PARALLAX BACKGROUND ART (GOTHIC WINDOWS & ARCHITECTURE) ---
+    // --- PARALLAX BACKGROUND ART (PHOTOREALISTIC LIBRARY & GOTHIC FALLBACK) ---
     function drawParallaxBackground(camX) {
         ctx.fillStyle = '#050814';
         ctx.fillRect(0, 0, vw, vh);
 
-        // Layer 0: Cathedral Gothic Windows & Celestial Starry Aurora Sky (0.05x speed)
-        const skyX = -(camX * 0.05) % 900;
-        ctx.save();
-        for (let wx = skyX - 900; wx < vw + 900; wx += 480) {
-            // Gothic Window Frame
-            ctx.beginPath();
-            ctx.arc(wx + 120, vh - 420, 95, Math.PI, 0);
-            ctx.lineTo(wx + 215, vh - 90);
-            ctx.lineTo(wx + 25, vh - 90);
-            ctx.closePath();
-            ctx.fillStyle = '#0A122E';
-            ctx.fill();
+        const bgImg = gameTextures.bg;
+        if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+            // Soft smooth parallax scrolling with photo-realistic library background
+            const bgRatio = vh / bgImg.naturalHeight;
+            const bgW = bgImg.naturalWidth * bgRatio;
+            const bgH = vh;
+            const parallaxX = -(camX * 0.16) % bgW;
 
-            // Aurora Borealis Green/Cyan Glow inside window
-            const auroraGrad = ctx.createLinearGradient(wx + 25, vh - 400, wx + 215, vh - 300);
-            auroraGrad.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
-            auroraGrad.addColorStop(0.5, 'rgba(0, 255, 157, 0.12)');
-            auroraGrad.addColorStop(1, 'rgba(157, 78, 221, 0.1)');
-            ctx.fillStyle = auroraGrad;
-            ctx.fill();
-
-            // Window Tracery & Mullions
-            ctx.strokeStyle = '#050814';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(wx + 120, vh - 515); ctx.lineTo(wx + 120, vh - 90);
-            ctx.moveTo(wx + 72, vh - 400); ctx.lineTo(wx + 72, vh - 90);
-            ctx.moveTo(wx + 168, vh - 400); ctx.lineTo(wx + 168, vh - 90);
-            ctx.stroke();
-
-            // Stars
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(wx + 75, vh - 420, 2, 2);
-            ctx.fillRect(wx + 155, vh - 440, 2.5, 2.5);
-            ctx.fillRect(wx + 105, vh - 360, 2, 2);
-        }
-        ctx.restore();
-
-        // Layer 1: Huge Carved Oak Bookshelves & Pillars (0.22x speed)
-        const shelfX = -(camX * 0.22) % 650;
-        ctx.fillStyle = '#0E1733';
-        for (let sx = shelfX - 650; sx < vw + 650; sx += 340) {
-            ctx.fillRect(sx, vh - 500, 280, 445);
-            // Bookshelf rows
-            ctx.fillStyle = '#142247';
-            for (let r = 0; r < 5; r++) {
-                ctx.fillRect(sx + 10, vh - 480 + r * 85, 260, 72);
+            ctx.save();
+            for (let x = parallaxX - bgW; x < vw + bgW; x += bgW) {
+                ctx.drawImage(bgImg, x, 0, bgW, bgH);
             }
-            ctx.fillStyle = '#0E1733';
-        }
 
-        // Layer 2: Midground Library Neon Emblems (0.45x speed)
-        const bannerX = -(camX * 0.45) % 1400;
-        const bannerNames = ['ЦГБ ВЛАДИМИР // АВРОРА', 'ФИЛИАЛ №9 «ДОБРОЛИТ»', 'ФИЛИАЛ №13 «КНИГОЛЕНД»', 'ЦЕНТРАЛЬНЫЙ ОПАК-СЕРВЕР'];
-        ctx.font = 'bold 15px "Segoe UI", sans-serif';
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
-        for (let bx = bannerX - 1400; bx < vw + 1400; bx += 800) {
-            const idx = Math.abs(Math.floor(bx / 800)) % bannerNames.length;
-            ctx.fillText(`⯈ ${bannerNames[idx]} ⯈`, bx + 140, vh - 340);
+            // Atmospheric cyber-library vignette overlay
+            const atmoGrad = ctx.createLinearGradient(0, 0, 0, vh);
+            atmoGrad.addColorStop(0, 'rgba(4, 7, 18, 0.45)');
+            atmoGrad.addColorStop(0.5, 'rgba(4, 7, 18, 0.15)');
+            atmoGrad.addColorStop(1, 'rgba(4, 7, 18, 0.65)');
+            ctx.fillStyle = atmoGrad;
+            ctx.fillRect(0, 0, vw, vh);
+            ctx.restore();
+
+            // Midground Library Neon Emblems (0.35x speed)
+            const bannerX = -(camX * 0.35) % 1500;
+            const bannerNames = [
+                'ЦГБ ВЛАДИМИР // СИСТЕМА АВРОРА',
+                'ФИЛИАЛ №9 «ДОБРОЛИТ»',
+                'ФИЛИАЛ №13 «КНИГОЛЕНД»',
+                'ЦЕНТРАЛЬНЫЙ СЕРВЕРНЫЙ ЗАЛ'
+            ];
+            ctx.font = 'bold 16px "Segoe UI", sans-serif';
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.32)';
+            for (let bx = bannerX - 1500; bx < vw + 1500; bx += 850) {
+                const idx = Math.abs(Math.floor(bx / 850)) % bannerNames.length;
+                ctx.fillText(`⯈ ${bannerNames[idx]} ⯈`, bx + 160, vh - 380);
+            }
+        } else {
+            // Fallback: Cathedral Gothic Windows & Celestial Starry Aurora Sky (0.05x speed)
+            const skyX = -(camX * 0.05) % 900;
+            ctx.save();
+            for (let wx = skyX - 900; wx < vw + 900; wx += 480) {
+                // Gothic Window Frame
+                ctx.beginPath();
+                ctx.arc(wx + 120, vh - 420, 95, Math.PI, 0);
+                ctx.lineTo(wx + 215, vh - 90);
+                ctx.lineTo(wx + 25, vh - 90);
+                ctx.closePath();
+                ctx.fillStyle = '#0A122E';
+                ctx.fill();
+
+                // Aurora Borealis Green/Cyan Glow inside window
+                const auroraGrad = ctx.createLinearGradient(wx + 25, vh - 400, wx + 215, vh - 300);
+                auroraGrad.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+                auroraGrad.addColorStop(0.5, 'rgba(0, 255, 157, 0.12)');
+                auroraGrad.addColorStop(1, 'rgba(157, 78, 221, 0.1)');
+                ctx.fillStyle = auroraGrad;
+                ctx.fill();
+
+                // Window Tracery & Mullions
+                ctx.strokeStyle = '#050814';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(wx + 120, vh - 515); ctx.lineTo(wx + 120, vh - 90);
+                ctx.moveTo(wx + 72, vh - 400); ctx.lineTo(wx + 72, vh - 90);
+                ctx.moveTo(wx + 168, vh - 400); ctx.lineTo(wx + 168, vh - 90);
+                ctx.stroke();
+
+                // Stars
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(wx + 75, vh - 420, 2, 2);
+                ctx.fillRect(wx + 155, vh - 440, 2.5, 2.5);
+                ctx.fillRect(wx + 105, vh - 360, 2, 2);
+            }
+            ctx.restore();
+
+            // Layer 1: Huge Carved Oak Bookshelves & Pillars (0.22x speed)
+            const shelfX = -(camX * 0.22) % 650;
+            ctx.fillStyle = '#0E1733';
+            for (let sx = shelfX - 650; sx < vw + 650; sx += 340) {
+                ctx.fillRect(sx, vh - 500, 280, 445);
+                // Bookshelf rows
+                ctx.fillStyle = '#142247';
+                for (let r = 0; r < 5; r++) {
+                    ctx.fillRect(sx + 10, vh - 480 + r * 85, 260, 72);
+                }
+                ctx.fillStyle = '#0E1733';
+            }
+
+            // Layer 2: Midground Library Neon Emblems (0.45x speed)
+            const bannerX = -(camX * 0.45) % 1400;
+            const bannerNames = ['ЦГБ ВЛАДИМИР // АВРОРА', 'ФИЛИАЛ №9 «ДОБРОЛИТ»', 'ФИЛИАЛ №13 «КНИГОЛЕНД»', 'ЦЕНТРАЛЬНЫЙ ОПАК-СЕРВЕР'];
+            ctx.font = 'bold 15px "Segoe UI", sans-serif';
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
+            for (let bx = bannerX - 1400; bx < vw + 1400; bx += 800) {
+                const idx = Math.abs(Math.floor(bx / 800)) % bannerNames.length;
+                ctx.fillText(`⯈ ${bannerNames[idx]} ⯈`, bx + 140, vh - 340);
+            }
         }
     }
 

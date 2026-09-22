@@ -771,6 +771,15 @@ export class AuroraMascot {
         try {
             this.isWorkMode = localStorage.getItem('aurora_cosmo_work_mode') === '1';
         } catch (e) {}
+
+        // Включение / выключение маскота: по умолчанию выключен ('0')
+        this.isEnabled = false;
+        try {
+            this.isEnabled = localStorage.getItem('aurora_mascot_enabled') === '1';
+        } catch (e) {
+            this.isEnabled = false;
+        }
+
         this.modeToggleBtn = null;
         this.reminderTimers = [];
         this.lastScanTime = null;
@@ -789,7 +798,10 @@ export class AuroraMascot {
      * 1. Инициализация DOM-структуры Космо
      * ------------------------------------------------------------------- */
     init() {
-        if (this.container) return;
+        if (this.container) {
+            this.syncToggleButtons();
+            return;
+        }
 
         // Восстановление закреплённой пользователем базы Космо из localStorage (только на ПК)
         try {
@@ -957,24 +969,33 @@ export class AuroraMascot {
         this.bindAutonomousInteractions();
         this.getLiveScanStats();
         this.updateDynamicChips();
-        this.startAutonomousCycle();
-        this.startProactiveChatter();
-        this.updateParallaxAndMotion();
-        this.resetIdleTimer();
+        this.syncToggleButtons();
 
-        // Приветствие через 1.6 сек с голосовой фразой
-        this.greetingTimer = setTimeout(() => {
-            if (!this.isIn3D && !this.isCollapsed) {
-                this.say(`## Космо на связи! 🚀\nГотов помочь с аналитикой и подсказать **лучших по охватам!**`, 6500, 'smile', 'post_scan_10');
-            }
-        }, 1600);
+        if (!this.isEnabled) {
+            this.container.classList.add('mascot-hidden');
+            this.container.style.display = 'none';
+            this.collapsedPill.classList.remove('is-visible');
+            this.collapsedPill.style.display = 'none';
+        } else {
+            this.startAutonomousCycle();
+            this.startProactiveChatter();
+            this.updateParallaxAndMotion();
+            this.resetIdleTimer();
 
-        // Первый автоматический 30-секундный патруль через 8.5 секунд после загрузки (только на ПК)!
-        this.initialPatrolTimer = setTimeout(() => {
-            if (!this.isMobile() && !this.isIn3D && !this.isCollapsed && !this.isDragging && !this.isPatrolling) {
-                this.startContinuousPatrol(30000);
-            }
-        }, 8500);
+            // Приветствие через 1.6 сек с голосовой фразой
+            this.greetingTimer = setTimeout(() => {
+                if (!this.isIn3D && !this.isCollapsed && this.isEnabled) {
+                    this.say(`## Космо на связи! 🚀\nГотов помочь с аналитикой и подсказать **лучших по охватам!**`, 6500, 'smile', 'post_scan_10');
+                }
+            }, 1600);
+
+            // Первый автоматический 30-секундный патруль через 8.5 секунд после загрузки (только на ПК)!
+            this.initialPatrolTimer = setTimeout(() => {
+                if (!this.isMobile() && !this.isIn3D && !this.isCollapsed && !this.isDragging && !this.isPatrolling && this.isEnabled) {
+                    this.startContinuousPatrol(30000);
+                }
+            }, 8500);
+        }
 
         this.loadProjectKnowledge();
 
@@ -1065,7 +1086,7 @@ export class AuroraMascot {
      * 3. Аудио-движок голоса Бэлы (ElevenLabs)
      * ------------------------------------------------------------------- */
     playVoice(key, isUserAction = false) {
-        if (this.isMuted || !AUDIO_CLIPS[key]) return;
+        if (!this.isEnabled || this.isMuted || !AUDIO_CLIPS[key]) return;
         // Голосовой гейт: частота ×0.5 для фоновых реплик + защита от спама.
         // say() предварительно прогоняет ключ через shouldSpeakVoice и ставит
         // _voiceGatePass, чтобы монетка не бросалась дважды.
@@ -1308,13 +1329,15 @@ export class AuroraMascot {
             }
             // Сайт вернулся; маскот материализуется в родном углу
             setTimeout(() => {
-                this.container.classList.remove('mascot-hidden');
-                this.container.classList.add('is-returning');
-                setTimeout(() => {
-                    this.container.classList.remove('is-returning');
-                    this.setState('idle', 2000);
-                    this.startAutonomousCycle();
-                }, 900);
+                if (this.isEnabled && !this.isCollapsed) {
+                    this.container.classList.remove('mascot-hidden');
+                    this.container.classList.add('is-returning');
+                    setTimeout(() => {
+                        this.container.classList.remove('is-returning');
+                        this.setState('idle', 2000);
+                        this.startAutonomousCycle();
+                    }, 900);
+                }
             }, skipped ? 100 : 500);
         }, skipped ? 350 : 1500);
     }
@@ -1390,6 +1413,28 @@ export class AuroraMascot {
         ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
             window.addEventListener(evt, this.onUserActivity, { passive: true });
         });
+
+        // Кнопки переключения маскота Космо (в шапке, меню и настройках)
+        const handleMascotToggle = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            this.toggleMascot();
+        };
+
+        const toggleBtn = document.getElementById('mascot-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', handleMascotToggle);
+        }
+        const dropdownToggleBtn = document.getElementById('dropdown-mascot-toggle-btn');
+        if (dropdownToggleBtn) {
+            dropdownToggleBtn.addEventListener('click', handleMascotToggle);
+        }
+        const modalToggleBtn = document.getElementById('modal-mascot-toggle-btn');
+        if (modalToggleBtn) {
+            modalToggleBtn.addEventListener('click', handleMascotToggle);
+        }
 
         // Кнопка «Заставка» в шапке: большая презентация возможностей Космо
         const presBtn = document.getElementById('cosmo-presentation-btn');
@@ -1986,7 +2031,7 @@ export class AuroraMascot {
     }
 
     startContinuousPatrol(totalDurationMs = 30000) {
-        if (!this.container || this.isMobile() || this.isIn3D || this.isCollapsed || this.isDragging || this.isReturningHome) return;
+        if (!this.isEnabled || !this.container || this.isMobile() || this.isIn3D || this.isCollapsed || this.isDragging || this.isReturningHome) return;
 
         this.isPatrolling = true;
         const body = this.bodyEl;
@@ -2490,7 +2535,7 @@ export class AuroraMascot {
     }
 
     onTabSwitched(tabId, customContext = null) {
-        if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+        if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
 
         const now = Date.now();
         // Защита от частых кликов: если вкладку переключили быстрее чем через 12 секунд,
@@ -2734,7 +2779,7 @@ export class AuroraMascot {
     }
 
     onBranchFiltered(branchName, branchData = null) {
-        if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+        if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
         const posts = branchData?.postsCount || branchData?.posts || '';
         const views = branchData?.views ? formatViews(branchData.views) : '';
         let text = `## Филиал: ${escapeHtml(branchName)} 🏛️\nПоказываю записи этой библиотеки!`;
@@ -2747,13 +2792,13 @@ export class AuroraMascot {
     }
 
     onBranchFilterCleared() {
-        if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+        if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
         this.say(`## Все филиалы 🏛️✨\nФильтр сброшен, показываю общую ленту всех библиотек Владимира!`, 4500, 'smile', 'post_scan_1');
         this.updateDynamicChips('visual-tab');
     }
 
     onHashtagFiltered(tag, count = null) {
-        if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+        if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
         let text = `## Хэштег #${escapeHtml(tag)} #️⃣\nФильтруем записи с этим тегом!`;
         if (count) text += ` Всего **${count}** постов.`;
         text += ` Меньше лишних тегов — выше читаемость!`;
@@ -2763,7 +2808,7 @@ export class AuroraMascot {
     }
 
     onSortChanged(sortLabel) {
-        if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+        if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
         this.say(`## Сортировка: ${escapeHtml(sortLabel)} 🔃\nПерестроили ленту! Изучаем лидеров в этом разрезе!`, 5500, 'smile', 'critique_16');
         this.setMoodBadge('🔃', 3000);
     }
@@ -2834,6 +2879,7 @@ export class AuroraMascot {
      * 8. АВТОНОМНЫЙ ЦИКЛ 20 АКТИВНОСТЕЙ КОСМО
      * ------------------------------------------------------------------- */
     startAutonomousCycle() {
+        if (!this.isEnabled) return;
         const scheduleNext = () => {
             const delay = 82000 + Math.random() * 56000; // ×1/0.8 от 65+rnd*45 сек
             this.activityCycleTimer = setTimeout(() => {
@@ -3140,7 +3186,15 @@ export class AuroraMascot {
 
         // Глобальные реакции на интерфейс (вкладки, филиалы, теги, пресеты, тема)
         document.addEventListener('click', (e) => {
-            if (this.isSleeping || this.isIn3D || this.isCollapsed) return;
+            const toggleTarget = e.target.closest('#mascot-toggle-btn, #dropdown-mascot-toggle-btn, #modal-mascot-toggle-btn');
+            if (toggleTarget) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleMascot();
+                return;
+            }
+
+            if (!this.isEnabled || this.isSleeping || this.isIn3D || this.isCollapsed) return;
 
             // 1. Клик по кнопке вкладки
             const tabBtn = e.target.closest('.tab-btn');
@@ -3233,6 +3287,7 @@ export class AuroraMascot {
      * 12. Речь и диалоговое облачко (с Markdown и речью Бэлы)
      * ------------------------------------------------------------------- */
     say(text, duration = 6000, spriteMood = 'smile', voiceKey = null, isUserAction = false) {
+        if (!this.isEnabled && !isUserAction) return;
         if (this.isInPresentation) return;
         if (!this.bubbleEl || !this.bubbleTextEl || this.isCollapsed || this.isIn3D) return;
 
@@ -4201,6 +4256,7 @@ export class AuroraMascot {
      * 14. Хуки сканирования стены (9 шуток ожидания, критика и похвала)
      * ------------------------------------------------------------------- */
     onScanStart(query = '') {
+        if (!this.isEnabled) return;
         this.setState('thinking', 15000);
         this.setMoodBadge('🔍', 8000);
         this.usedScanWaitJokes.clear();
@@ -4238,6 +4294,7 @@ export class AuroraMascot {
     }
 
     onScanProgress(percent, count) {
+        if (!this.isEnabled) return;
         // Дополнительные отметки на ключевых рубежах прогресса
         if (percent >= 45 && percent < 55 && !this.usedScanWaitJokes.has('mid_progress')) {
             this.usedScanWaitJokes.add('mid_progress');
@@ -4249,6 +4306,7 @@ export class AuroraMascot {
     }
 
     onScanSuccess(data) {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.lastScanStats = data;
@@ -4297,12 +4355,14 @@ export class AuroraMascot {
     }
 
     onScanComplete(count, topBranch, stats = null) {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.onScanSuccess({ count, topBranch, stats });
     }
 
     onScanEmpty(query = '') {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.lastScanStats = null;
@@ -4320,6 +4380,7 @@ export class AuroraMascot {
     }
 
     onScanCancel() {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.say(
@@ -4334,6 +4395,7 @@ export class AuroraMascot {
     }
 
     onScanError() {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.say(
@@ -4348,6 +4410,7 @@ export class AuroraMascot {
     }
 
     onScanReset() {
+        if (!this.isEnabled) return;
         clearInterval(this.scanBanterTimer);
         this.scanBanterTimer = null;
         this.lastScanStats = null;
@@ -4358,6 +4421,7 @@ export class AuroraMascot {
      * 15. Проактивная жизнь (Критика, сарказм, язвительные подколы и советы)
      * ------------------------------------------------------------------- */
     startProactiveChatter() {
+        if (!this.isEnabled) return;
         clearInterval(this.proactiveTimer);
         this.proactiveTimer = setInterval(() => {
             if (this.isSleeping || this.isIn3D || this.isCollapsed || this.isAiLoading || this.isPerformingActivity || this.isDragging || this.isPatrolling || this.isSpeakingAudio || (this.currentAudio && !this.currentAudio.paused)) return;
@@ -4453,7 +4517,118 @@ export class AuroraMascot {
         this.resetIdleTimer();
     }
 
+    enableMascot() {
+        this.isEnabled = true;
+        try {
+            localStorage.setItem('aurora_mascot_enabled', '1');
+        } catch (e) {}
+
+        if (!this.container) {
+            this.init();
+            return;
+        }
+
+        this.isCollapsed = false;
+        this.container.style.display = '';
+        this.container.classList.remove('mascot-hidden');
+        if (this.collapsedPill) {
+            this.collapsedPill.style.display = '';
+            this.collapsedPill.classList.remove('is-visible');
+        }
+
+        this.startAutonomousCycle();
+        this.startProactiveChatter();
+        this.updateParallaxAndMotion();
+        this.resetIdleTimer();
+        this.syncToggleButtons();
+
+        this.spawnSparkles(12);
+        this.say(`## Космо включён! 🚀✨\nРад встрече! Системы онлайн, готов анализировать посты и помогать!`, 5500, 'smile', 'post_scan_10', true);
+    }
+
+    disableMascot() {
+        this.isEnabled = false;
+        try {
+            localStorage.setItem('aurora_mascot_enabled', '0');
+        } catch (e) {}
+
+        this.stopVoice();
+        if (this.isPatrolling) {
+            this.stopContinuousPatrol(false);
+        }
+        clearInterval(this.proactiveTimer);
+        clearInterval(this.scanBanterTimer);
+        clearTimeout(this.activityCycleTimer);
+        clearTimeout(this.idleTimer);
+        clearTimeout(this.greetingTimer);
+        clearTimeout(this.initialPatrolTimer);
+        clearTimeout(this.speechTimer);
+
+        if (this.container) {
+            this.container.classList.add('mascot-hidden');
+            this.container.style.display = 'none';
+        }
+        if (this.collapsedPill) {
+            this.collapsedPill.classList.remove('is-visible');
+            this.collapsedPill.style.display = 'none';
+        }
+        this.hideBubble();
+        this.syncToggleButtons();
+    }
+
+    toggleMascot() {
+        if (this.isEnabled) {
+            this.disableMascot();
+        } else {
+            this.enableMascot();
+        }
+    }
+
+    syncToggleButtons() {
+        const on = Boolean(this.isEnabled);
+
+        // 1. Кнопка в шапке сайта
+        const headerBtn = document.getElementById('mascot-toggle-btn');
+        if (headerBtn) {
+            headerBtn.classList.toggle('is-on', on);
+            headerBtn.classList.toggle('is-off', !on);
+            headerBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            headerBtn.title = on ? 'Выключить маскота Космо на странице' : 'Включить маскота Космо на странице';
+            const textEl = headerBtn.querySelector('#mascot-toggle-text');
+            if (textEl) textEl.textContent = on ? 'Космо: Вкл' : 'Космо: Выкл';
+        }
+
+        // 2. Пункт в выпадающем меню "Интерактив"
+        const dropBadge = document.getElementById('dropdown-mascot-badge');
+        const dropDesc = document.getElementById('dropdown-mascot-desc');
+        if (dropBadge) {
+            dropBadge.textContent = on ? 'ВКЛ' : 'ВЫКЛ';
+            dropBadge.className = on ? 'game-nav-badge badge-on' : 'game-nav-badge badge-off';
+            dropBadge.style.background = on
+                ? 'linear-gradient(135deg, #00F0FF, #00FF9D)'
+                : 'rgba(255,255,255,0.12)';
+            dropBadge.style.color = on ? '#041026' : 'var(--text-muted, #94a3b8)';
+        }
+        if (dropDesc) {
+            dropDesc.textContent = on
+                ? 'Интерактивный робот-помощник активен'
+                : 'Интерактивный робот-помощник выключен';
+        }
+
+        // 3. Кнопка в модальном окне настроек
+        const modalBtnText = document.getElementById('modal-mascot-toggle-text');
+        const modalBtn = document.getElementById('modal-mascot-toggle-btn');
+        if (modalBtnText) {
+            modalBtnText.textContent = on ? 'Выключить Космо' : 'Включить Космо';
+        }
+        if (modalBtn) {
+            modalBtn.classList.toggle('btn-secondary', on);
+            modalBtn.classList.toggle('btn-primary', !on);
+        }
+    }
+
     collapse() {
+        if (!this.isEnabled) return;
         this.isCollapsed = true;
         // Сворачивание прерывает патрулирование — иначе rAF-цикл зависает без видимого робота
         if (this.isPatrolling) this.stopContinuousPatrol(false);
@@ -4464,6 +4639,7 @@ export class AuroraMascot {
     }
 
     expand() {
+        if (!this.isEnabled) return;
         this.isCollapsed = false;
         this.collapsedPill?.classList.remove('is-visible');
         this.container?.classList.remove('mascot-hidden');
@@ -4481,7 +4657,7 @@ export class AuroraMascot {
             this.collapsedPill?.classList.remove('is-visible');
             this.hideBubble();
         } else {
-            if (!this.isCollapsed) {
+            if (this.isEnabled && !this.isCollapsed) {
                 this.container?.classList.remove('mascot-hidden');
             }
         }
@@ -4519,4 +4695,7 @@ if (typeof window !== 'undefined') {
     window.__MASCOT__ = Mascot;
     window.AuroraMascot = AuroraMascot;
     window.openCosmoChat = (q) => Mascot.openCosmoChat(q);
+    window.toggleCosmoMascot = () => Mascot.toggleMascot();
+    window.enableCosmoMascot = () => Mascot.enableMascot();
+    window.disableCosmoMascot = () => Mascot.disableMascot();
 }

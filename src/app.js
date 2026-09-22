@@ -3514,6 +3514,14 @@ function initApp() {
                 if (videoBtn) videoBtn.click();
                 return;
             }
+
+            // 'm' or 'M' / 'ь' / 'Ь': Toggle Cosmo Mascot on/off
+            if (e.key === 'm' || e.key === 'M' || e.key === 'ь' || e.key === 'Ь') {
+                if (window.Mascot && typeof window.Mascot.toggleMascot === 'function') {
+                    window.Mascot.toggleMascot();
+                    return;
+                }
+            }
         }
     });
 
