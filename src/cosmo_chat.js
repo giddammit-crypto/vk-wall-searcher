@@ -1078,10 +1078,6 @@ export class CosmoChatModal {
                             <span class="material-symbols-outlined">sentiment_satisfied</span>
                             <span class="tool-btn-text">Стикеры</span>
                         </button>
-                        <button type="button" class="cosmo-chat-tool-btn cosmo-chat-opac-btn" data-chat-open-opac title="Электронный каталог книг (OPAC) — открыть каталог">
-                            <span class="material-symbols-outlined">menu_book</span>
-                            <span class="tool-btn-text">Каталог OPAC</span>
-                        </button>
                         <button type="button" class="cosmo-chat-tool-btn" data-chat-export title="Скачать диалог в Markdown">
                             <span class="material-symbols-outlined">download</span>
                             <span class="tool-btn-text">Экспорт</span>

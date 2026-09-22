@@ -2010,6 +2010,22 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     transform: scale(0.97);
 }
 
+.quick-tile.quick-tile-wide {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 14px;
+    padding: 14px 18px;
+}
+
+.quick-tile-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
 /* Карточка дня / Цитата: благородное свечение */
 .quote-card {
     background: linear-gradient(145deg, rgba(30, 38, 62, 0.85) 0%, rgba(18, 23, 38, 0.9) 100%);

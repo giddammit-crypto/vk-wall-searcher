@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>АВРОРА • Космо</title>
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1.4.8">
+<link rel="stylesheet" href="style.css?v=1.4.9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
@@ -53,11 +53,6 @@
                     <span class="quick-title">Новости филиалов</span>
                     <span class="quick-sub">Свежие посты</span>
                 </button>
-                <button class="quick-tile is-paused" data-goto="catalog">
-                    <span class="quick-ico ico-gold"><span class="material-symbols-rounded">pause_circle</span></span>
-                    <span class="quick-title">Найти книгу <em class="tile-paused-badge">ПАУЗА</em></span>
-                    <span class="quick-sub">Техработы на сервере</span>
-                </button>
                 <button class="quick-tile" data-goto="renew">
                     <span class="quick-ico ico-cyan"><span class="material-symbols-rounded">nfc</span></span>
                     <span class="quick-title">Продлить книгу <em class="tile-beta-badge">тест</em></span>
@@ -68,10 +63,12 @@
                     <span class="quick-title">Чат с Космо</span>
                     <span class="quick-sub">Спросить ИИ</span>
                 </button>
-                <button class="quick-tile" data-scroll="quote-card">
+                <button class="quick-tile quick-tile-wide" data-scroll="quote-card">
                     <span class="quick-ico ico-gold"><span class="material-symbols-rounded">auto_stories</span></span>
-                    <span class="quick-title">Книга дня</span>
-                    <span class="quick-sub">Что почитать</span>
+                    <div class="quick-tile-text">
+                        <span class="quick-title">Книга дня</span>
+                        <span class="quick-sub">Что почитать • Рекомендация Космо</span>
+                    </div>
                 </button>
             </div>
         </section>
@@ -473,9 +470,6 @@
         <button class="tab" data-goto="news">
             <span class="material-symbols-rounded">feed</span><span class="tab-label">Новости</span>
         </button>
-        <button class="tab" data-goto="catalog" title="Каталог OPAC (техобслуживание)">
-            <span class="material-symbols-rounded">pause_circle</span><span class="tab-label">Каталог</span>
-        </button>
         <button class="tab" data-goto="renew">
             <span class="material-symbols-rounded">nfc</span><span class="tab-label">Продление</span>
         </button>
@@ -486,6 +480,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="app.js?v=1.4.8"></script>
+    <script src="app.js?v=1.4.9"></script>
 </body>
 </html>
