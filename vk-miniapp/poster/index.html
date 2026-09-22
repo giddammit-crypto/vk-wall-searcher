@@ -6,9 +6,9 @@
 <title>Редактор афиш — АВРОРА</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- 19 шрифтов с полной кириллической поддержкой -->
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,600&family=Jura:wght@600;700&family=Kelly+Slab&family=Lobster&family=Marck+Script&family=Montserrat:wght@400;500;600;700&family=Neucha&family=Oswald:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Podkova:wght@600;700&family=Press+Start+2P&family=Roboto+Slab:wght@500;700&family=Rubik:wght@500;600;700&family=Ruslan+Display&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&subset=cyrillic&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2.1.0">
+<!-- 20+ шрифтов с полной кириллической поддержкой + ofont.ru -->
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,600&family=Dela+Gothic+One&family=Jura:wght@600;700&family=Kelly+Slab&family=Lobster&family=Marck+Script&family=Montserrat:wght@400;500;600;700&family=Neucha&family=Oswald:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Podkova:wght@600;700&family=Press+Start+2P&family=Roboto+Slab:wght@500;700&family=Rubik:wght@500;600;700&family=Ruslan+Display&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&subset=cyrillic&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=2.2.0">
 </head>
 <body>
 
@@ -114,9 +114,25 @@
         <span class="material-symbols-rounded">content_copy</span>
         <span class="hbtn-label">Копия</span>
       </button>
+      <button class="hbtn" id="btn-header-group" title="Сгруппировать (Ctrl+G)" disabled>
+        <span class="material-symbols-rounded">workspaces</span>
+        <span class="hbtn-label">Группа</span>
+      </button>
+      <button class="hbtn" id="btn-header-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
+        <span class="material-symbols-rounded">splitscreen</span>
+        <span class="hbtn-label">Разделить</span>
+      </button>
     </div>
 
     <div class="ed-header-right">
+      <button class="hbtn" id="btn-save-project-json" title="Экспорт проекта (.aurora.json)">
+        <span class="material-symbols-rounded">file_download</span>
+        <span class="hbtn-label">Экспорт</span>
+      </button>
+      <button class="hbtn" id="btn-load-project-json" title="Открыть проект из файла (.aurora.json)">
+        <span class="material-symbols-rounded">file_open</span>
+        <span class="hbtn-label">Импорт</span>
+      </button>
       <button class="hbtn" id="btn-print" title="Распечатать афишу (Ctrl+P)">
         <span class="material-symbols-rounded">print</span>
         <span class="hbtn-label">Печать</span>
@@ -172,6 +188,10 @@
         <button class="tool-btn" id="tool-quote" title="Цитата писателя или фраза">
           <span class="material-symbols-rounded">format_quote</span>
           <span>Цитата</span>
+        </button>
+        <button class="tool-btn tool-btn-highlight" id="btn-open-ofont-modal" title="Каталог и загрузка шрифтов с https://ofont.ru/">
+          <span class="material-symbols-rounded">font_download</span>
+          <span>Шрифты ofont.ru</span>
         </button>
       </div>
 
@@ -275,6 +295,14 @@
     <!-- ── Правая панель: Свойства + Слои ── -->
     <aside class="ed-panel" id="ed-panel">
 
+      <!-- Мобильный заголовок шторки -->
+      <div class="mobile-panel-header">
+        <span class="mobile-panel-title">Свойства и слои</span>
+        <button class="hbtn hbtn-ghost hbtn-icon" id="btn-close-mobile-panel" title="Закрыть панель">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+
       <!-- Табы -->
       <div class="panel-tabs">
         <button class="panel-tab is-active" data-tab="props">
@@ -299,9 +327,14 @@
         <div class="prop-section hidden" id="props-text">
           <div class="prop-group-title">Настройки текста</div>
 
-          <label class="prop-label" for="font-family-select">Шрифт (более 15 стилей)</label>
+          <div class="prop-label-row">
+            <label class="prop-label" for="font-family-select">Шрифт</label>
+            <button class="prop-link-btn" id="btn-ofont-shortcut" title="Каталог и загрузка шрифтов с ofont.ru">
+              <span class="material-symbols-rounded">cloud_upload</span> ofont.ru
+            </button>
+          </div>
           <select class="prop-select" id="font-family-select">
-            <!-- Динамически заполняется списком из 19 кириллических шрифтов -->
+            <!-- Динамически заполняется списком из 20+ кириллических шрифтов и шрифтов ofont.ru -->
           </select>
 
           <label class="prop-label">Размер шрифта: <b id="font-size-val">36</b> пт</label>
@@ -348,7 +381,18 @@
             <input type="color" class="color-picker" id="text-glow-color-picker" value="#38BDF8" title="Палитра свечения">
           </div>
 
-          <label class="prop-label">Цвет текста</label>
+          <!-- Обводка / Контур текста -->
+          <div class="prop-group-subtitle">Контур / Обводка текста</div>
+          <label class="prop-label">Толщина контура: <b id="text-stroke-width-val">0</b> px</label>
+          <input type="range" class="prop-range" id="text-stroke-width-slider" min="0" max="14" value="0" step="0.5">
+
+          <div class="prop-stroke-color-wrap" id="text-stroke-color-wrap">
+            <label class="prop-label">Цвет контура</label>
+            <div class="color-row" id="text-stroke-color-row"></div>
+            <input type="color" class="color-picker" id="text-stroke-color-picker" value="#000000" title="Палитра цвета контура">
+          </div>
+
+          <label class="prop-label" style="margin-top: 6px;">Цвет текста</label>
           <div class="color-row" id="text-color-row"></div>
           <input type="color" class="color-picker" id="text-color-picker" value="#ffffff" title="Палитра цвета текста">
         </div>
@@ -389,6 +433,37 @@
           <input type="range" class="prop-range" id="opacity-slider" min="10" max="100" value="100" step="5">
         </div>
 
+        <!-- Свойства изображения (фото, маскот) -->
+        <div class="prop-section hidden" id="props-image">
+          <div class="prop-group-title">Фильтры изображения</div>
+
+          <label class="prop-label">Яркость: <b id="img-brightness-val">0</b>%</label>
+          <input type="range" class="prop-range" id="img-brightness-slider" min="-100" max="100" value="0" step="5">
+
+          <label class="prop-label">Контраст: <b id="img-contrast-val">0</b>%</label>
+          <input type="range" class="prop-range" id="img-contrast-slider" min="-100" max="100" value="0" step="5">
+
+          <label class="prop-label">Размытие (Blur): <b id="img-blur-val">0</b> px</label>
+          <input type="range" class="prop-range" id="img-blur-slider" min="0" max="25" value="0" step="1">
+
+          <label class="prop-label">Цветовые эффекты</label>
+          <div class="prop-btn-row">
+            <button class="pbtn toggle-btn" id="btn-filter-grayscale" title="Черно-белый фильтр">
+              <span class="material-symbols-rounded">filter_b_and_w</span>
+              <span>Ч/Б</span>
+            </button>
+            <button class="pbtn toggle-btn" id="btn-filter-sepia" title="Винтажная сепия">
+              <span class="material-symbols-rounded">filter_vintage</span>
+              <span>Сепия</span>
+            </button>
+          </div>
+
+          <button class="pbtn pbtn-ghost" id="btn-reset-filters" style="margin-top: 10px;">
+            <span class="material-symbols-rounded">restart_alt</span>
+            <span>Сбросить фильтры</span>
+          </button>
+        </div>
+
         <!-- Общие действия (для любого выделенного объекта) -->
         <div class="prop-section hidden" id="props-common">
           <div class="prop-group-title">Выравнивание по холсту</div>
@@ -410,6 +485,22 @@
             </button>
             <button class="pbtn" id="btn-align-bottom-canvas" title="Прижать к нижнему краю">
               <span class="material-symbols-rounded">align_vertical_bottom</span>
+            </button>
+          </div>
+
+          <div class="prop-group-title">Группировка и блокировка</div>
+          <div class="prop-btn-row">
+            <button class="pbtn" id="btn-group" title="Сгруппировать объекты (Ctrl+G)" disabled>
+              <span class="material-symbols-rounded">workspaces</span>
+              <span>Группа</span>
+            </button>
+            <button class="pbtn" id="btn-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
+              <span class="material-symbols-rounded">splitscreen</span>
+              <span>Разделить</span>
+            </button>
+            <button class="pbtn" id="btn-lock-obj" title="Заблокировать / Разблокировать от сдвига">
+              <span class="material-symbols-rounded" id="lock-icon">lock_open</span>
+              <span id="lock-label">Блок</span>
             </button>
           </div>
 
@@ -568,11 +659,87 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА: ШРИФТЫ С OFONT.RU
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="ofont-modal-overlay">
+  <div class="modal modal-wide ofont-modal">
+    <div class="modal-head">
+      <div>
+        <div class="ofont-head-badge">КАТАЛОГ ШРИФТОВ OFONT.RU</div>
+        <span class="modal-title">Шрифты с ofont.ru для афиш</span>
+        <div class="modal-sub">
+          Скачивайте любые кириллические шрифты на <a href="https://ofont.ru" target="_blank" rel="noopener noreferrer" class="ofont-link">ofont.ru ↗</a> и загружайте файлы (.ttf, .otf, .woff, .woff2). Шрифт сохранится в вашем браузере!
+        </div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="ofont-modal-close" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Разделы ofont.ru -->
+      <div class="ofont-categories-section">
+        <div class="ofont-section-label">Популярные разделы на ofont.ru (откроются в новой вкладке):</div>
+        <div class="ofont-cat-chips">
+          <a href="https://ofont.ru/cat/2" target="_blank" rel="noopener" class="ofont-chip">
+            <span class="material-symbols-rounded">brush</span> Декоративные
+          </a>
+          <a href="https://ofont.ru/cat/3" target="_blank" rel="noopener" class="ofont-chip">
+            <span class="material-symbols-rounded">draw</span> Рукописные
+          </a>
+          <a href="https://ofont.ru/cat/5" target="_blank" rel="noopener" class="ofont-chip">
+            <span class="material-symbols-rounded">history_edu</span> Старославянские / Ретро
+          </a>
+          <a href="https://ofont.ru/cat/4" target="_blank" rel="noopener" class="ofont-chip">
+            <span class="material-symbols-rounded">auto_stories</span> Антиквы (Литературные)
+          </a>
+          <a href="https://ofont.ru/view/6037" target="_blank" rel="noopener" class="ofont-chip ofont-chip-highlight" title="Космический акцидентный шрифт Авроры">
+            <span class="material-symbols-rounded">stars</span> Shoptronic SP
+          </a>
+        </div>
+      </div>
+
+      <!-- Зона Drag & Drop -->
+      <div class="ofont-dropzone" id="ofont-dropzone">
+        <span class="material-symbols-rounded ofont-drop-icon">cloud_upload</span>
+        <div class="ofont-drop-title">Перетащите файл шрифта сюда или нажмите для выбора</div>
+        <div class="ofont-drop-sub">Поддерживаются форматы: .ttf, .otf, .woff, .woff2</div>
+        <input type="file" id="ofont-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none">
+      </div>
+
+      <!-- Поле для имени шрифта -->
+      <div class="ofont-input-row">
+        <div class="ofont-input-group">
+          <label class="prop-label" for="ofont-name-input">Название шрифта в редакторе:</label>
+          <input type="text" class="ofont-text-input" id="ofont-name-input" placeholder="Например: Shoptronic SP или Мой Шрифт">
+        </div>
+        <button class="pbtn pbtn-success" id="btn-ofont-apply-font" disabled>
+          <span class="material-symbols-rounded">check</span>
+          <span>Загрузить и применить</span>
+        </button>
+      </div>
+
+      <!-- Список загруженных шрифтов -->
+      <div class="ofont-stored-section">
+        <div class="ofont-section-label">Сохранённые пользовательские шрифты (IndexedDB):</div>
+        <div class="ofont-stored-list" id="ofont-stored-list">
+          <!-- Заполняется динамически -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- Тост уведомлений -->
 <div class="toast hidden" id="toast"></div>
 
 <!-- Скрытый input загрузки фото -->
 <input type="file" id="photo-input" accept="image/*" style="display:none">
+
+<!-- Скрытый input загрузки проекта -->
+<input type="file" id="project-file-input" accept=".json,.aurora" style="display:none">
 
 <!-- Библиотеки: Canvas, PDF, QR-код -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
@@ -583,6 +750,6 @@ if (typeof QRCode === 'undefined') {
   document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
 }
 </script>
-<script src="editor.js?v=2.1.1"></script>
+<script src="editor.js?v=2.2.0"></script>
 </body>
 </html>

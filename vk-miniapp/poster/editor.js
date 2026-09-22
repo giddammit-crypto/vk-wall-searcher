@@ -13,8 +13,10 @@ const SIZES = {
   story:  { w: 540,  h: 960,  name: 'Сторис 9:16' },
 };
 
-/* ── 19 кириллических шрифтов ──────────────────────────────── */
+/* ── 21+ кириллический шрифт + ofont.ru ────────────────────── */
 const FONTS = [
+  { id: 'Shoptronic SP',      name: 'Shoptronic SP',      desc: 'Космический акцидентный [ofont.ru]' },
+  { id: 'Dela Gothic One',    name: 'Dela Gothic One',    desc: 'Мощный плакатный гротеск [ofont.ru]' },
   { id: 'Unbounded',          name: 'Unbounded',          desc: 'Заголовочный, ультрасовременный' },
   { id: 'Montserrat',        name: 'Montserrat',        desc: 'Универсальный гротеск' },
   { id: 'Cormorant Garamond', name: 'Cormorant Garamond', desc: 'Литературный, благородная антиква' },
@@ -27,7 +29,7 @@ const FONTS = [
   { id: 'Marck Script',       name: 'Marck Script',       desc: 'Каллиграфический рукописный' },
   { id: 'Caveat',             name: 'Caveat',             desc: 'Живой рукописный маркер' },
   { id: 'Roboto Slab',        name: 'Roboto Slab',        desc: 'Книжно-газетный брусковый' },
-  { id: 'Jura',               name: 'Jura',               desc: 'Космический, стиль Космо' },
+  { id: 'Jura',               name: 'Jura',               desc: 'Футуристичный гротеск' },
   { id: 'Neucha',             name: 'Neucha',             desc: 'Крафтовый душевный почерк' },
   { id: 'Press Start 2P',     name: 'Press Start 2P',     desc: 'Ретро 8-bit, квизы и игры' },
   { id: 'Lobster',            name: 'Lobster',            desc: 'Яркий ретро-курсив' },
@@ -95,20 +97,20 @@ const COSMO_ITEMS = [
   { file: 'robot_idea.png',     label: 'Есть идея!',     desc: 'С лампочкой 💡' },
   { file: 'robot_cool.png',     label: 'Крутой Космо',   desc: 'В стильных очках 😎' },
   { file: 'robot_party.png',    label: 'Праздник',       desc: 'С шариками 🎉' },
-  { file: 'robot_smile.png',    label: 'Улыбка',         desc: 'Добрый робот ✨' },
+  { file: 'robot_smile.png',    label: 'Улыбка',         desc: 'Дружелюбный Космо ✨' },
   { file: 'robot_thinking.png', label: 'Размышление',    desc: 'Задумался 🤔' },
   { file: 'robot_love.png',     label: 'С любовью',      desc: 'Сердечко ❤️' },
 ];
 
-/* ── Шаблоны ────────────────────────────────────────────────── */
+/* ── Шаблоны (Культурный библиотечный дизайн без нейрослопа) ── */
 const TEMPLATES = [
-  /* 1. БИБЛИОНОЧЬ / КОСМИЧЕСКИЙ КВЕСТ */
+  /* 1. БИБЛИОНОЧЬ / МАГИЯ КНИГИ */
   {
-    id: 'biblionight_neon',
+    id: 'biblionight_classic',
     size: 'a4_v',
     category: 'events',
-    name: 'Библионочь / Космо-квест',
-    desc: 'Аврора Неон, эффектный футуристичный стиль',
+    name: 'Библионочь: Магия книги',
+    desc: 'Всероссийская культурная акция, глубокий космический стиль',
     fmt: 'A4',
     bg: '#070a1e',
     previewBg: '#070a1e',
@@ -118,11 +120,11 @@ const TEMPLATES = [
         <div>
           <div class="mp-tag" style="color:#38BDF8;">✦ ВСЕРОССИЙСКАЯ АКЦИЯ ✦</div>
           <div class="mp-title mp-glow" style="color:#ffffff; text-shadow:0 0 10px rgba(56,189,248,0.9); font-size:12px;">БИБЛИОНОЧЬ<br><span style="color:#38BDF8;">2025</span></div>
-          <div class="mp-pill" style="border:1px solid #38BDF8; color:#38BDF8; background:rgba(56,189,248,0.15);">КОСМИЧЕСКИЙ КВЕСТ</div>
+          <div class="mp-pill" style="border:1px solid #38BDF8; color:#38BDF8; background:rgba(56,189,248,0.15);">МАГИЯ КНИГИ</div>
         </div>
         <div class="mp-box" style="border:1px solid rgba(192,132,252,0.4); background:rgba(19,23,38,0.9);">
-          <div style="font-size:6.5px; color:#c084fc; font-weight:700;">ТАЙНЫ ВСЕЛЕННОЙ</div>
-          <div style="font-size:5.5px; color:#94a3b8; line-height:1.25; margin-top:2px;">Квесты · Научное шоу · VR · Призы</div>
+          <div style="font-size:6.5px; color:#c084fc; font-weight:700;">ПРОГРАММА ВЕЧЕРА</div>
+          <div style="font-size:5.5px; color:#94a3b8; line-height:1.25; margin-top:2px;">Квесты · Встречи с авторами · Музыка · Чайная</div>
         </div>
         <div>
           <div class="mp-date" style="background:rgba(251,191,36,0.18); color:#FBBF24; border:1px solid #FBBF24;">26 АПРЕЛЯ · 18:00</div>
@@ -134,14 +136,14 @@ const TEMPLATES = [
         </div>
       </div>`,
     objects: [
-      { type:'text', text:'✦ ВСЕРОССИЙСКАЯ АКЦИЯ В БИБЛИОТЕКЕ ✦', left:297, top:45, width:520, fontSize:12, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:120 },
+      { type:'text', text:'✦ ВСЕРОССИЙСКАЯ АКЦИЯ В БИБЛИОТЕКЕ ✦', left:297, top:45, width:520, fontSize:12, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:140 },
       { type:'rect', left:297, top:75, width:515, height:2, fill:'#38BDF8', originX:'center', shadow:'rgba(56,189,248,0.8) 0px 0px 12px' },
       { type:'text', text:'БИБЛИОНОЧЬ\n2025', left:297, top:105, width:520, fontSize:54, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.05, shadow:'rgba(56,189,248,0.85) 0px 0px 24px' },
       { type:'rect', left:297, top:235, width:460, height:38, rx:19, ry:19, fill:'rgba(56,189,248,0.12)', stroke:'#38BDF8', strokeWidth:1.5, originX:'center', originY:'center' },
-      { type:'text', text:'КОСМИЧЕСКИЙ КВЕСТ: ТАЙНЫ ВСЕЛЕННОЙ', left:297, top:225, width:440, fontSize:15, fontFamily:'Unbounded', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center' },
+      { type:'text', text:'МАГИЯ КНИГИ: ТАЙНЫ И ОТКРЫТИЯ', left:297, top:225, width:440, fontSize:15, fontFamily:'Unbounded', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center' },
       { type:'rect', left:297, top:425, width:515, height:270, rx:16, ry:16, fill:'rgba(19,23,38,0.85)', stroke:'rgba(138,108,255,0.4)', strokeWidth:1.5, originX:'center', originY:'center' },
-      { type:'text', text:'В ПРОГРАММЕ БОЛЬШОГО КВЕСТА:', left:297, top:315, width:460, fontSize:16, fontFamily:'Unbounded', fontWeight:'700', fill:'#c084fc', textAlign:'center', originX:'center' },
-      { type:'text', text:'✦ Интерактивный квест по книжным лабиринтам и фондам\n✦ Научно-популярное шоу «Физика космоса»\n✦ Встреча с астрофизиком и VR-погружение к звёздам\n✦ Космический квиз с розыгрышем подарков\n✦ Лаундж-зона, настольные игры и чайная церемония', left:75, top:355, width:445, fontSize:14, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'left', lineHeight:1.7 },
+      { type:'text', text:'В ПРОГРАММЕ БОЛЬШОГО ВЕЧЕРА:', left:297, top:315, width:460, fontSize:16, fontFamily:'Unbounded', fontWeight:'700', fill:'#c084fc', textAlign:'center', originX:'center' },
+      { type:'text', text:'✦ Литературный квест по закрытым фондам книгохранилища\n✦ Музыкально-поэтический перформанс при свечах\n✦ Экскурсия в реставрационную лабораторию редких книг\n✦ Творческая встреча с писателями и автограф-сессия\n✦ Литературная чайная, книжная ярмарка и розыгрыш призов', left:75, top:355, width:445, fontSize:14, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'left', lineHeight:1.7 },
       { type:'rect', left:297, top:610, width:420, height:50, rx:25, ry:25, fill:'rgba(251,191,36,0.15)', stroke:'#FBBF24', strokeWidth:2, originX:'center', originY:'center' },
       { type:'text', text:'26 АПРЕЛЯ 2025  ·  18:00 – 23:00', left:297, top:598, width:400, fontSize:20, fontFamily:'Unbounded', fontWeight:'bold', fill:'#FBBF24', textAlign:'center', originX:'center' },
       { type:'text', text:'★ ВХОД СВОБОДНЫЙ', left:165, top:665, width:170, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', backgroundColor:'#10B981', padding:7, textAlign:'center', originX:'center' },
@@ -152,13 +154,13 @@ const TEMPLATES = [
     ],
   },
 
-  /* 2. ЛИТЕРАТУРНАЯ ГОСТИНАЯ / КНИЖНЫЙ КЛУБ */
+  /* 2. ЛИТЕРАТУРНАЯ ГОСТИНАЯ / СЕРЕБРЯНЫЙ ВЕК */
   {
     id: 'lit_salon_classic',
     size: 'a4_v',
     category: 'books',
     name: 'Литературная гостиная',
-    desc: 'Изысканная классика с золотой рамкой и цитатой',
+    desc: 'Изысканная классика с золотой рамкой и поэтической цитатой',
     fmt: 'A4',
     bg: '#121016',
     previewBg: '#121016',
@@ -168,7 +170,7 @@ const TEMPLATES = [
         <div>
           <div class="mp-ornament" style="color:#FBBF24;">✦ ✦ ✦</div>
           <div class="mp-tag" style="color:#d1d5db;">ГОСТИНАЯ · 2025</div>
-          <div class="mp-title" style="color:#fef3c7; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:13px; margin:2px 0;">Серебряный век:<br>Тайны и судьбы</div>
+          <div class="mp-title" style="color:#fef3c7; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:13px; margin:2px 0;">Серебряный век:<br>Поэзия и судьбы</div>
         </div>
         <div class="mp-quote" style="border-left:1.5px solid #FBBF24; padding-left:3px; color:#cbd5e1; margin:2px auto; max-width:90%;">«И мы сохраним тебя, русская речь...»</div>
         <div>
@@ -185,12 +187,12 @@ const TEMPLATES = [
       { type:'text', text:'✦   ✦   ✦', left:297, top:55, width:300, fontSize:16, fontFamily:'Montserrat', fill:'#FBBF24', textAlign:'center', originX:'center', charSpacing:150 },
       { type:'text', text:'БИБЛИОТЕЧНАЯ ГОСТИНАЯ  ·  СЕЗОН 2025', left:297, top:80, width:480, fontSize:13, fontFamily:'Montserrat', fontWeight:'600', fill:'#d1d5db', textAlign:'center', originX:'center', charSpacing:100 },
       { type:'rect', left:297, top:110, width:240, height:1.5, fill:'#FBBF24', originX:'center' },
-      { type:'text', text:'Серебряный век:\nТайны, поэзия и судьбы', left:297, top:135, width:480, fontSize:44, fontFamily:'Cormorant Garamond', fontStyle:'italic', fontWeight:'bold', fill:'#fef3c7', textAlign:'center', originX:'center', lineHeight:1.15 },
+      { type:'text', text:'Серебряный век:\nПоэзия, судьбы и музыка', left:297, top:135, width:480, fontSize:44, fontFamily:'Cormorant Garamond', fontStyle:'italic', fontWeight:'bold', fill:'#fef3c7', textAlign:'center', originX:'center', lineHeight:1.15 },
       { type:'text', text:'Творческий вечер, посвящённый поэтам Серебряного века', left:297, top:255, width:460, fontSize:18, fontFamily:'Playfair Display', fill:'#cbd5e1', textAlign:'center', originX:'center' },
       { type:'rect', left:297, top:380, width:450, height:130, rx:8, ry:8, fill:'rgba(255,255,255,0.03)', stroke:'rgba(251,191,36,0.3)', strokeWidth:1, originX:'center', originY:'center' },
-      { type:'text', text:'«И мы сохраним тебя, русская речь,\nВеликое русское слово.\nСвободным и чистым тебя пронесём,\nИ внукам дадим, и от плена спасём...»', left:297, top:330, width:420, fontSize:19, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#f1f5f9', textAlign:'center', originX:'center', lineHeight:1.45 },
+      { type:'text', text:'«И мы сохраним тебя, русская речь,\nВеликое русское слово.\nСвободным и чистым тебя пронесём,\nИ внукам дадим, и от плена спасём навеки!»', left:297, top:330, width:420, fontSize:19, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#f1f5f9', textAlign:'center', originX:'center', lineHeight:1.45 },
       { type:'text', text:'— Анна Ахматова', left:297, top:418, width:300, fontSize:14, fontFamily:'Montserrat', fill:'#FBBF24', textAlign:'center', originX:'center' },
-      { type:'text', text:'В программе вечера:\n• Чтение шедевров поэзии под живую музыку\n• Редкие архивные фотографии и письма поэтов\n• Обсуждение за чашкой ароматного кофе', left:297, top:470, width:430, fontSize:16, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'center', originX:'center', lineHeight:1.7 },
+      { type:'text', text:'В программе вечера:\n• Чтение шедевров поэзии под живую музыку (скрипка)\n• Редкие архивные издания, автографы и письма\n• Обсуждение произведений за чашкой ароматного кофе', left:297, top:470, width:430, fontSize:16, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'center', originX:'center', lineHeight:1.7 },
       { type:'rect', left:297, top:615, width:430, height:65, rx:6, ry:6, fill:'rgba(251,191,36,0.1)', stroke:'#FBBF24', strokeWidth:1.5, originX:'center', originY:'center' },
       { type:'text', text:'14 ОКТЯБРЯ в 18:30', left:297, top:595, width:400, fontSize:24, fontFamily:'Unbounded', fontWeight:'bold', fill:'#FBBF24', textAlign:'center', originX:'center' },
       { type:'text', text:'Каминный зал Центральной городской библиотеки', left:297, top:628, width:400, fontSize:13, fontFamily:'Montserrat', fill:'#fef3c7', textAlign:'center', originX:'center' },
@@ -200,31 +202,31 @@ const TEMPLATES = [
     ],
   },
 
-  /* 3. ДЕТСКИЙ ПРАЗДНИК С РОБОТОМ КОСМО */
+  /* 3. ДЕТСКИЙ КЛУБ ЧТЕНИЯ: СКАЗКИ НА ПОДУШКАХ */
   {
-    id: 'kids_cosmo_party',
+    id: 'kids_reading_club',
     size: 'square',
     category: 'kids',
-    name: 'Детский праздник с Космо',
-    desc: 'Яркая праздничная афиша для детей с маскотом',
+    name: 'Детский клуб: Сказки на подушках',
+    desc: 'Уютные семейные чтения и мастерская сказок в детском зале',
     fmt: 'ВК 1:1',
     isSquare: true,
-    bg: '#1e1145',
-    previewBg: '#1e1145',
-    previewAccent: '#ec4899',
+    bg: '#1a1636',
+    previewBg: '#1a1636',
+    previewAccent: '#f472b6',
     previewHtml: `
       <div class="mp-wrap">
         <div>
-          <div class="mp-pill" style="background:#facc15; color:#1e1145; font-size:6.5px;">🎉 ДЕТСКИЙ ПРАЗДНИК</div>
-          <div class="mp-title" style="color:#ffffff; font-size:11px; text-shadow:0 2px 8px rgba(236,72,153,0.8); margin:2px 0;">В ГОСТЯХ У КОСМО!</div>
+          <div class="mp-pill" style="background:#fde047; color:#1e1145; font-size:6px; font-weight:700;">📚 ДЕТСКИЙ КЛУБ ЧТЕНИЯ</div>
+          <div class="mp-title" style="color:#ffffff; font-size:11px; text-shadow:0 2px 8px rgba(244,114,182,0.8); margin:3px 0;">СКАЗКИ НА ПОДУШКАХ</div>
+          <div style="font-size:6px; color:#f472b6; font-weight:600;">Уютные семейные чтения</div>
         </div>
-        <div style="font-size:20px; line-height:1; margin:2px 0;">🤖✨</div>
-        <div class="mp-box" style="background:rgba(255,255,255,0.08); border:1px solid rgba(244,114,182,0.6); padding:2px;">
-          <div style="font-size:6px; color:#fde047; font-weight:700;">КВЕСТ · ИГРЫ · МАСТЕР-КЛАСС</div>
-          <div style="font-size:5.5px; color:#ffffff;">Сладкие призы и фотосессия</div>
+        <div class="mp-box" style="background:rgba(255,255,255,0.08); border:1px solid rgba(244,114,182,0.5); padding:3px;">
+          <div style="font-size:6px; color:#fde047; font-weight:700;">ЧТЕНИЯ · ИГРЫ · ТВОРЧЕСТВО</div>
+          <div style="font-size:5.5px; color:#ffffff; margin-top:1px;">Мастерим сказочных героев из фетра</div>
         </div>
         <div>
-          <div class="mp-date" style="background:#06b6d4; color:#0f172a; font-size:6.5px;">ВС · 12:00 · ДЕТСКИЙ ЗАЛ</div>
+          <div class="mp-date" style="background:#38BDF8; color:#0f172a; font-size:6.5px; font-weight:700;">ВС · 11:30 · ДЕТСКИЙ ЗАЛ</div>
           <div class="mp-badge-row">
             <span class="mp-badge" style="background:#34d399; color:#064e3b;">БЕСПЛАТНО</span>
             <span class="mp-badge" style="background:#ec4899; color:#ffffff;">0+</span>
@@ -232,27 +234,28 @@ const TEMPLATES = [
         </div>
       </div>`,
     objects: [
-      { type:'text', text:'🎉 БОЛЬШОЙ ДЕТСКИЙ ПРАЗДНИК 🎉', left:350, top:35, width:420, fontSize:15, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#1e1145', backgroundColor:'#facc15', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'В ГОСТЯХ\nУ РОБОТА КОСМО!', left:350, top:80, width:640, fontSize:48, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.1, shadow:'rgba(244,114,182,0.6) 0px 4px 20px' },
-      { type:'circle', left:350, top:280, radius:75, fill:'rgba(56,189,248,0.2)', stroke:'#38BDF8', strokeWidth:3, originX:'center', originY:'center' },
-      { type:'text', text:'🤖\nКОСМО\nЖДЁТ ТЕБЯ!', left:350, top:245, width:130, fontSize:15, fontFamily:'Unbounded', fontWeight:'bold', fill:'#fde047', textAlign:'center', originX:'center', lineHeight:1.2 },
-      { type:'rect', left:350, top:435, width:600, height:140, rx:18, ry:18, fill:'rgba(255,255,255,0.07)', stroke:'rgba(244,114,182,0.5)', strokeWidth:2, originX:'center', originY:'center' },
-      { type:'text', text:'⭐ Космический интерактивный квест и загадки\n⭐ Весёлые викторины с роботом Космо\n⭐ Творческий мастер-класс: мастерим ракету\n⭐ Сладкие призы, воздушные шары и фотосессия!', left:350, top:380, width:560, fontSize:17, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#f8fafc', textAlign:'center', originX:'center', lineHeight:1.6 },
-      { type:'rect', left:350, top:545, width:480, height:48, rx:24, ry:24, fill:'#06b6d4', originX:'center', originY:'center' },
-      { type:'text', text:'ВОСКРЕСЕНЬЕ, 12:00  ·  ДЕТСКИЙ ЗАЛ', left:350, top:533, width:460, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#0f172a', textAlign:'center', originX:'center' },
-      { type:'text', text:'★ ВХОД БЕСПЛАТНЫЙ!', left:240, top:600, width:220, fontSize:15, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'ДЛЯ ДЕТЕЙ 5-10 ЛЕТ  ·  0+', left:475, top:600, width:210, fontSize:14, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#ec4899', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'Центральная детская библиотека «АВРОРА»  ·  ул. Мира, 4  ·  тел. 8 (4922) 53-12-34', left:350, top:655, width:640, fontSize:13, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center' },
+      { type:'text', text:'📚 ДЕТСКИЙ КЛУБ СЕМЕЙНОГО ЧТЕНИЯ', left:350, top:35, width:440, fontSize:15, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#1e1145', backgroundColor:'#fde047', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'СКАЗКИ НА ПОДУШКАХ', left:350, top:80, width:640, fontSize:44, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center', shadow:'rgba(244,114,182,0.6) 0px 4px 20px' },
+      { type:'text', text:'Уютные воскресные чтения для малышей и родителей', left:350, top:145, width:580, fontSize:18, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#f472b6', textAlign:'center', originX:'center' },
+      { type:'rect', left:350, top:330, width:620, height:230, rx:18, ry:18, fill:'rgba(255,255,255,0.06)', stroke:'rgba(244,114,182,0.4)', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'В ПРОГРАММЕ ВСТРЕЧИ:', left:350, top:235, width:500, fontSize:18, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#fde047', textAlign:'center', originX:'center' },
+      { type:'text', text:'⭐ Читаем вслух добрые сказки писателей со всего мира\n⭐ Обсуждаем героев, фантазируем и сочиняем продолжение\n⭐ Творческая мастерская: мастерим персонажей сказок своими руками\n⭐ Тёплый травяной чай, мягкие пледы и домашнее печенье', left:350, top:280, width:570, fontSize:16, fontFamily:'Comfortaa', fill:'#f8fafc', textAlign:'left', originX:'center', lineHeight:1.7 },
+      { type:'rect', left:350, top:485, width:500, height:50, rx:25, ry:25, fill:'#38BDF8', originX:'center', originY:'center' },
+      { type:'text', text:'КАЖДОЕ ВОСКРЕСЕНЬЕ В 11:30', left:350, top:470, width:480, fontSize:20, fontFamily:'Unbounded', fontWeight:'bold', fill:'#0f172a', textAlign:'center', originX:'center' },
+      { type:'text', text:'★ ВХОД СВОБОДНЫЙ', left:220, top:545, width:220, fontSize:14, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'ДЛЯ ДЕТЕЙ 4-9 ЛЕТ', left:435, top:545, width:190, fontSize:13, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#ec4899', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'0+', left:570, top:545, width:60, fontSize:14, fontFamily:'Comfortaa', fontWeight:'bold', fill:'#1e1145', backgroundColor:'#fde047', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'Центральная детская библиотека  ·  ул. Мира, 4  ·  тел. 8 (4922) 53-12-34', left:350, top:640, width:640, fontSize:14, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center' },
     ],
   },
 
-  /* 4. КНИГА МЕСЯЦА / РЕКОМЕНДАЦИЯ БИБЛИОТЕКАРЯ */
+  /* 4. КНИЖНАЯ ВЫСТАВКА / НОВЫЕ ПОСТУПЛЕНИЯ */
   {
-    id: 'book_of_the_month',
+    id: 'book_exhibition',
     size: 'a4_v',
     category: 'books',
-    name: 'Книга месяца',
-    desc: 'Стильная журнальная обложка с аннотацией и рецензией',
+    name: 'Книжная выставка / Новинки',
+    desc: 'Журнальная верстка с обзором новинок, фондами и OPAC',
     fmt: 'A4',
     bg: '#0c1222',
     previewBg: '#0c1222',
@@ -260,32 +263,31 @@ const TEMPLATES = [
     previewHtml: `
       <div class="mp-wrap">
         <div>
-          <div class="mp-tag" style="color:#38BDF8; border-bottom:1px solid #38BDF8; padding-bottom:1px;">ВЫБОР БИБЛИОТЕКИ · СЕНТЯБРЬ</div>
-          <div class="mp-title" style="color:#ffffff; font-size:11px; margin:3px 0 2px;">КНИГА МЕСЯЦА</div>
+          <div class="mp-tag" style="color:#38BDF8; border-bottom:1px solid #38BDF8; padding-bottom:1px;">ВЫСТАВКА ФОНДОВ · 2025</div>
+          <div class="mp-title" style="color:#ffffff; font-size:11px; margin:3px 0 2px;">ШЕДЕВРЫ И НОВИНКИ</div>
         </div>
         <div class="mp-book-preview" style="background:#1e293b; border:1px solid #FBBF24;">
-          <span style="font-size:4.5px; color:#FBBF24; font-weight:700;">БЕСТСЕЛЛЕР</span>
-          <span style="font-size:5.5px; color:#ffffff; font-weight:700; margin:1px 0;">Тайна книги</span>
-          <span style="font-size:4px; color:#94a3b8;">А. Иванов</span>
+          <span style="font-size:4.5px; color:#FBBF24; font-weight:700;">РЕДКИЙ ФОНД</span>
+          <span style="font-size:5.5px; color:#ffffff; font-weight:700; margin:1px 0;">Золотая полка</span>
+          <span style="font-size:4px; color:#94a3b8;">Обзор куратора</span>
         </div>
         <div>
-          <div style="font-size:5.5px; color:#cbd5e1; font-style:italic;">«Захватывающий интеллектуальный детектив...»</div>
-          <div class="mp-badge" style="background:#34d399; color:#064e3b; font-size:5.5px; margin-top:3px;">✓ В НАЛИЧИИ В ЦГБ</div>
+          <div style="font-size:5.5px; color:#cbd5e1; font-style:italic;">«Масштабная экспозиция книжных поступлений...»</div>
+          <div class="mp-badge" style="background:#34d399; color:#064e3b; font-size:5.5px; margin-top:3px;">✓ НА АБОНЕМЕНТЕ</div>
         </div>
       </div>`,
     objects: [
-      { type:'text', text:'ВЫБОР БИБЛИОТЕКИ  ·  ВЫПУСК № 9  ·  СЕНТЯБРЬ', left:297, top:42, width:510, fontSize:12, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:140 },
+      { type:'text', text:'ВЫСТАВКА НОВЫХ ПОСТУПЛЕНИЙ  ·  ЧИТАЛЬНЫЙ ЗАЛ', left:297, top:42, width:510, fontSize:12, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:140 },
       { type:'rect', left:297, top:68, width:515, height:2, fill:'#38BDF8', originX:'center' },
-      { type:'text', text:'КНИГА МЕСЯЦА', left:297, top:85, width:515, fontSize:48, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center' },
-      { type:'rect', left:297, top:275, width:200, height:270, rx:8, ry:8, fill:'#1e293b', stroke:'#FBBF24', strokeWidth:2.5, originX:'center', originY:'center', shadow:'rgba(0,0,0,0.6) 0px 10px 25px' },
-      { type:'rect', left:205, top:275, width:14, height:270, fill:'rgba(251,191,36,0.3)', originX:'center', originY:'center' },
-      { type:'text', text:'БЕСТСЕЛЛЕР\n\n«ТАЙНА\nСТАРОГО\nПЕРЕПЛЁТА»\n\nА. ИВАНОВ', left:297, top:190, width:170, fontSize:15, fontFamily:'Playfair Display', fontWeight:'bold', fill:'#FBBF24', textAlign:'center', originX:'center', lineHeight:1.4 },
-      { type:'text', text:'«Тайна старого переплёта»', left:297, top:435, width:510, fontSize:28, fontFamily:'Playfair Display', fontStyle:'italic', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center' },
-      { type:'text', text:'Алексей Иванов', left:297, top:480, width:400, fontSize:18, fontFamily:'Montserrat', fontWeight:'600', fill:'#38BDF8', textAlign:'center', originX:'center' },
-      { type:'rect', left:297, top:585, width:515, height:120, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'rgba(56,189,248,0.3)', strokeWidth:1, originX:'center', originY:'center' },
-      { type:'text', text:'«Захватывающий интеллектуальный детектив о редких манускриптах и тайнах старинных библиотек. Книга держит в напряжении с первой до последней страницы. Настоящий литературный триумф года!»\n— Отдел редкой книги ЦГБ', left:297, top:538, width:480, fontSize:14, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#e2e8f0', textAlign:'center', originX:'center', lineHeight:1.45 },
-      { type:'text', text:'✓ В НАЛИЧИИ НА АБОНЕМЕНТЕ (3 ЭКЗ.)', left:297, top:670, width:380, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'Бронируйте книгу в каталоге OPAC: biblioteka33.ru/catalog\nЖдём вас в Центральной городской библиотеке «АВРОРА»', left:297, top:740, width:500, fontSize:14, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.5 },
+      { type:'text', text:'ШЕДЕВРЫ И НОВИНКИ', left:297, top:85, width:515, fontSize:44, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center' },
+      { type:'rect', left:297, top:270, width:210, height:260, rx:8, ry:8, fill:'#1e293b', stroke:'#FBBF24', strokeWidth:2.5, originX:'center', originY:'center', shadow:'rgba(0,0,0,0.6) 0px 10px 25px' },
+      { type:'rect', left:200, top:270, width:16, height:260, fill:'rgba(251,191,36,0.3)', originX:'center', originY:'center' },
+      { type:'text', text:'ЗОЛОТАЯ ПОЛКА\n\nСОКРОВИЩА\nОТЕЧЕСТВЕННОЙ\nИ МИРОВОЙ\nЛИТЕРАТУРЫ', left:297, top:185, width:170, fontSize:14, fontFamily:'Playfair Display', fontWeight:'bold', fill:'#FBBF24', textAlign:'center', originX:'center', lineHeight:1.4 },
+      { type:'text', text:'«Книги, изменившие мир: от классики до современности»', left:297, top:425, width:510, fontSize:22, fontFamily:'Playfair Display', fontStyle:'italic', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center' },
+      { type:'rect', left:297, top:565, width:515, height:135, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'rgba(56,189,248,0.3)', strokeWidth:1, originX:'center', originY:'center' },
+      { type:'text', text:'«Экспозиция объединяет лучшие литературные новинки года, лауреатов главных книжных премий, редкие подарочные фолианты и иллюстрированные альбомы по искусству. Все издания доступны читателям для работы в зале и на дом.»\n— Научный куратор выставки', left:297, top:515, width:480, fontSize:14, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#e2e8f0', textAlign:'center', originX:'center', lineHeight:1.5 },
+      { type:'text', text:'✓ ДОСТУПНО НА АБОНЕМЕНТЕ И В ЧИТАЛЬНОМ ЗАЛЕ', left:297, top:665, width:420, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'Бронирование книг в каталоге: e-cat.biblioteka33.ru\nЦентральная городская библиотека «АВРОРА»  ·  ул. Б. Московская, 12', left:297, top:745, width:500, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.5 },
     ],
   },
 
@@ -295,7 +297,7 @@ const TEMPLATES = [
     size: 'a4_v',
     category: 'events',
     name: 'Встреча с писателем',
-    desc: 'Солидный плакат с датой, временем и портретной рамкой',
+    desc: 'Солидный плакат с портретной рамкой, био и автограф-сессией',
     fmt: 'A4',
     bg: '#0b1329',
     previewBg: '#0b1329',
@@ -325,7 +327,7 @@ const TEMPLATES = [
       { type:'rect', left:297, top:285, width:210, height:240, rx:12, ry:12, fill:'#1e293b', stroke:'#fcd34d', strokeWidth:2.5, originX:'center', originY:'center', shadow:'rgba(0,0,0,0.5) 0px 8px 24px' },
       { type:'text', text:'[ МЕСТО ДЛЯ ФОТО\nАВТОРА ]', left:297, top:270, width:180, fontSize:13, fontFamily:'Montserrat', fill:'#64748b', textAlign:'center', originX:'center', lineHeight:1.4 },
       { type:'text', text:'ПАВЕЛ БАСИНСКИЙ', left:297, top:430, width:515, fontSize:32, fontFamily:'Playfair Display', fontWeight:'bold', fill:'#fcd34d', textAlign:'center', originX:'center' },
-      { type:'text', text:'Писатель, литературовед, биограф Л. Н. Толстого\nЛауреат национальной литературной премии «Большая книга»', left:297, top:480, width:490, fontSize:15, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center', lineHeight:1.45 },
+      { type:'text', text:'Писатель, литературовед, исследователь русской классики\nЛауреат национальной литературной премии «Большая книга»', left:297, top:480, width:490, fontSize:15, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center', lineHeight:1.45 },
       { type:'rect', left:297, top:580, width:515, height:95, rx:10, ry:10, fill:'rgba(252,211,77,0.08)', stroke:'rgba(252,211,77,0.35)', strokeWidth:1.5, originX:'center', originY:'center' },
       { type:'text', text:'Тема лекции: «Подлинная история Анны Карениной»\nПрезентация новой книги  ·  Ответы на вопросы  ·  Автограф-сессия', left:297, top:550, width:490, fontSize:15, fontFamily:'Cormorant Garamond', fontStyle:'italic', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.5 },
       { type:'text', text:'19 НОЯБРЯ  ·  18:00  ·  КОНФЕРЕНЦ-ЗАЛ ЦГБ', left:297, top:645, width:460, fontSize:17, fontFamily:'Unbounded', fontWeight:'bold', fill:'#0b1329', backgroundColor:'#fcd34d', padding:10, textAlign:'center', originX:'center' },
@@ -336,54 +338,137 @@ const TEMPLATES = [
     ],
   },
 
-  /* 6. ИНТЕЛЛЕКТУАЛЬНЫЙ КВИЗ / ИГРОТЕКА */
+  /* 6. ТВОРЧЕСКИЙ МАСТЕР-КЛАСС / КАЛЛИГРАФИЯ */
   {
-    id: 'quiz_night_retro',
-    size: 'square',
+    id: 'craft_workshop',
+    size: 'a4_v',
     category: 'events',
-    name: 'Библио-Квиз / Игротека',
-    desc: 'Ретро-игровой стиль для молодежи (Press Start 2P)',
-    fmt: 'ВК 1:1',
-    isSquare: true,
-    bg: '#14092b',
-    previewBg: '#14092b',
-    previewAccent: '#f43f5e',
+    name: 'Мастер-класс: Каллиграфия',
+    desc: 'Практикум по рукописному письму и книжному переплету',
+    fmt: 'A4',
+    bg: '#131b2e',
+    previewBg: '#131b2e',
+    previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-wrap">
         <div>
-          <div style="font-family:'Press Start 2P',monospace; font-size:5px; color:#facc15;">▶ LEVEL 1: READY ◀</div>
-          <div class="mp-title" style="color:#ffffff; font-size:12px; text-shadow:0 0 8px #f43f5e; margin:2px 0;">БИБЛИО-КВИЗ</div>
-          <div style="font-size:6px; color:#22d3ee; font-weight:700;">ИГРЫ · КНИГИ · КИНО</div>
+          <div class="mp-tag" style="color:#38BDF8;">АРТ-МАСТЕРСКАЯ</div>
+          <div class="mp-title" style="color:#ffffff; font-size:11px; margin:2px 0;">ИСКУССТВО<br>КАЛЛИГРАФИИ</div>
         </div>
-        <div class="mp-box" style="border:1px solid #f43f5e; background:rgba(244,63,94,0.12); padding:3px;">
-          <div style="font-size:11px;">🎮 🏆 🎁</div>
-          <div style="font-size:5.5px; color:#ffffff; font-weight:600;">6 раундов · команды 2-6 чел.</div>
+        <div class="mp-box" style="border:1px solid rgba(56,189,248,0.4); background:rgba(255,255,255,0.05); padding:3px;">
+          <div style="font-size:6px; color:#fde047; font-weight:700;">ПРАКТИКУМ ДЛЯ ВСЕХ</div>
+          <div style="font-size:5.5px; color:#cbd5e1; margin-top:2px;">Широкое перо · Тушь · Создание закладки</div>
         </div>
         <div>
-          <div class="mp-date" style="background:#facc15; color:#14092b; font-size:6.5px;">ЧЕТВЕРГ · 19:00</div>
+          <div class="mp-date" style="background:#38BDF8; color:#0b1329; font-size:6.5px; font-weight:700;">СБ · 15:00 · АРТ-ЗОНА</div>
           <div class="mp-badge-row">
-            <span class="mp-badge" style="background:#34d399; color:#064e3b;">БЕСПЛАТНО</span>
-            <span class="mp-badge" style="background:#f43f5e; color:#ffffff;">14+</span>
+            <span class="mp-badge" style="background:#10B981; color:#070a1e;">МАТЕРИАЛЫ ВКЛЮЧЕНЫ</span>
+            <span class="mp-badge" style="background:#8A6CFF; color:#ffffff;">12+</span>
           </div>
         </div>
       </div>`,
     objects: [
-      { type:'text', text:'▶ LEVEL 1: READY?  INSERT COIN TO PLAY ◀', left:350, top:40, width:560, fontSize:13, fontFamily:'Press Start 2P', fill:'#facc15', textAlign:'center', originX:'center' },
-      { type:'text', text:'БИБЛИО-КВИЗ', left:350, top:80, width:640, fontSize:52, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', shadow:'rgba(244,63,94,0.8) 0px 0px 24px' },
-      { type:'text', text:'БИТВА ИНТЕЛЛЕКТОВ: КНИГИ, КИНО & ИГРЫ', left:350, top:160, width:600, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#22d3ee', textAlign:'center', originX:'center' },
-      { type:'rect', left:350, top:330, width:620, height:210, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'#f43f5e', strokeWidth:2.5, originX:'center', originY:'center' },
-      { type:'text', text:'ПРАВИЛА И ФИШКИ ИГРЫ:', left:350, top:245, width:540, fontSize:18, fontFamily:'Press Start 2P', fill:'#facc15', textAlign:'center', originX:'center' },
-      { type:'text', text:'👾 Команды от 2 до 6 человек (или найдём команду на месте!)\n🏆 6 раундов по 10 каверзных вопросов на логику и кругозор\n🎁 Книжные подарки, настолки и призы от партнёров\n☕ Чай, печенье и уютная атмосфера молодёжного лофта', left:350, top:300, width:560, fontSize:16, fontFamily:'Montserrat', fontWeight:'500', fill:'#f8fafc', textAlign:'left', originX:'center', lineHeight:1.7 },
-      { type:'rect', left:350, top:485, width:520, height:52, rx:26, ry:26, fill:'#facc15', originX:'center', originY:'center' },
-      { type:'text', text:'КАЖДЫЙ ЧЕТВЕРГ В 19:00', left:350, top:470, width:500, fontSize:22, fontFamily:'Unbounded', fontWeight:'800', fill:'#14092b', textAlign:'center', originX:'center' },
-      { type:'text', text:'★ УЧАСТИЕ БЕСПЛАТНОЕ', left:230, top:545, width:240, fontSize:14, fontFamily:'Unbounded', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'14+', left:405, top:545, width:60, fontSize:15, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#f43f5e', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'МОЛОДЁЖЬ', left:495, top:545, width:110, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#6366f1', padding:8, textAlign:'center', originX:'center' },
-      { type:'text', text:'Молодёжный лофт ЦГБ «АВРОРА»  ·  ул. Б. Московская, 12\nСобери команду и зарегистрируйся в ВК: vk.com/biblioteka33', left:350, top:635, width:640, fontSize:14, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.5 },
+      { type:'text', text:'АРТ-ПРОСТРАНСТВО БИБЛИОТЕКИ  ·  ТВОРЧЕСКИЙ ПРАКТИКУМ', left:297, top:42, width:520, fontSize:12, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:120 },
+      { type:'rect', left:297, top:68, width:515, height:2, fill:'#38BDF8', originX:'center' },
+      { type:'text', text:'ИСКУССТВО\nКАЛЛИГРАФИИ', left:297, top:95, width:515, fontSize:46, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.08 },
+      { type:'text', text:'Древнерусская вязь и основы рукописной книги', left:297, top:215, width:490, fontSize:18, fontFamily:'Playfair Display', fontStyle:'italic', fontWeight:'bold', fill:'#fcd34d', textAlign:'center', originX:'center' },
+      { type:'rect', left:297, top:380, width:515, height:220, rx:14, ry:14, fill:'rgba(255,255,255,0.05)', stroke:'rgba(56,189,248,0.3)', strokeWidth:1.5, originX:'center', originY:'center' },
+      { type:'text', text:'ЧТО ВАС ЖДЁТ НА МАСТЕР-КЛАССЕ:', left:297, top:290, width:470, fontSize:16, fontFamily:'Unbounded', fontWeight:'700', fill:'#38BDF8', textAlign:'center', originX:'center' },
+      { type:'text', text:'✒️ Постановка руки и базовые штрихи ширококонечным пером\n📜 Изучение аутентичных старинных буквиц и заставок\n🎨 Работа с натуральной ореховой тушью и бумагой верже\n📖 Создание собственной каллиграфической закладки для книги', left:297, top:335, width:470, fontSize:15, fontFamily:'Montserrat', fill:'#f8fafc', textAlign:'left', originX:'center', lineHeight:1.7 },
+      { type:'rect', left:297, top:550, width:460, height:50, rx:25, ry:25, fill:'#38BDF8', originX:'center', originY:'center' },
+      { type:'text', text:'СУББОТА, 25 ОКТЯБРЯ В 15:00', left:297, top:538, width:440, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', textAlign:'center', originX:'center' },
+      { type:'text', text:'★ МАТЕРИАЛЫ ВКЛЮЧЕНЫ', left:200, top:620, width:220, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', backgroundColor:'#10B981', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'ПУШКИНСКАЯ КАРТА', left:375, top:620, width:180, fontSize:12, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#e11d48', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'12+', left:475, top:620, width:50, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#8A6CFF', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'Мастерская ЦГБ «АВРОРА»  ·  ул. Б. Московская, 12\nПредварительная запись обязательна: biblioteka33.ru/masterclass', left:297, top:725, width:500, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.5 },
     ],
   },
 
-  /* 7. РЕЖИМ РАБОТЫ В ПРАЗДНИКИ */
+  /* 7. ИНТЕЛЛЕКТУАЛЬНЫЙ КВИЗ / ИГРОТЕКА */
+  {
+    id: 'biblio_quiz',
+    size: 'square',
+    category: 'events',
+    name: 'Библио-Квиз / Турнир',
+    desc: 'Стильный командный турнир эрудитов для молодежи',
+    fmt: 'ВК 1:1',
+    isSquare: true,
+    bg: '#160d2b',
+    previewBg: '#160d2b',
+    previewAccent: '#8A6CFF',
+    previewHtml: `
+      <div class="mp-wrap">
+        <div>
+          <div style="font-size:6px; color:#facc15; font-weight:700;">▶ ТУРНИР ЗНАТОКОВ ◀</div>
+          <div class="mp-title" style="color:#ffffff; font-size:12px; text-shadow:0 0 8px #8A6CFF; margin:2px 0;">БИБЛИО-КВИЗ</div>
+          <div style="font-size:6px; color:#38BDF8; font-weight:700;">КНИГИ · КИНО · ЛОГИКА</div>
+        </div>
+        <div class="mp-box" style="border:1px solid #8A6CFF; background:rgba(138,108,255,0.12); padding:3px;">
+          <div style="font-size:6px; color:#facc15; font-weight:700;">6 РАУНДОВ · ПРИЗЫ</div>
+          <div style="font-size:5.5px; color:#ffffff; font-weight:600;">Команды от 2 до 6 человек</div>
+        </div>
+        <div>
+          <div class="mp-date" style="background:#facc15; color:#14092b; font-size:6.5px; font-weight:700;">ЧЕТВЕРГ · 19:00</div>
+          <div class="mp-badge-row">
+            <span class="mp-badge" style="background:#34d399; color:#064e3b;">БЕСПЛАТНО</span>
+            <span class="mp-badge" style="background:#8A6CFF; color:#ffffff;">14+</span>
+          </div>
+        </div>
+      </div>`,
+    objects: [
+      { type:'text', text:'▶ ИНТЕЛЛЕКТУАЛЬНЫЙ ТУРНИР В БИБЛИОТЕКЕ ◀', left:350, top:40, width:560, fontSize:13, fontFamily:'Montserrat', fontWeight:'bold', fill:'#facc15', textAlign:'center', originX:'center' },
+      { type:'text', text:'БИБЛИО-КВИЗ', left:350, top:80, width:640, fontSize:52, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', shadow:'rgba(138,108,255,0.8) 0px 0px 24px' },
+      { type:'text', text:'БИТВА ЭРУДИТОВ: ЛИТЕРАТУРА, КИНО, НАУКА И МУЗЫКА', left:350, top:160, width:600, fontSize:17, fontFamily:'Unbounded', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center' },
+      { type:'rect', left:350, top:330, width:620, height:210, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'#8A6CFF', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'ПРАВИЛА И ФИШКИ ИГРЫ:', left:350, top:245, width:540, fontSize:17, fontFamily:'Unbounded', fontWeight:'bold', fill:'#facc15', textAlign:'center', originX:'center' },
+      { type:'text', text:'🏆 6 динамичных раундов на эрудицию, логику и скорость\n👥 Команды от 2 до 6 участников (или найдём команду на месте!)\n🎁 Книжные подарки, настольные игры и призы от партнёров\n☕ Чай, печенье и уютная атмосфера молодёжного лофта', left:350, top:295, width:560, fontSize:16, fontFamily:'Montserrat', fontWeight:'500', fill:'#f8fafc', textAlign:'left', originX:'center', lineHeight:1.7 },
+      { type:'rect', left:350, top:485, width:520, height:52, rx:26, ry:26, fill:'#facc15', originX:'center', originY:'center' },
+      { type:'text', text:'КАЖДЫЙ ЧЕТВЕРГ В 19:00', left:350, top:470, width:500, fontSize:22, fontFamily:'Unbounded', fontWeight:'800', fill:'#14092b', textAlign:'center', originX:'center' },
+      { type:'text', text:'★ УЧАСТИЕ БЕСПЛАТНОЕ', left:230, top:545, width:240, fontSize:14, fontFamily:'Unbounded', fontWeight:'bold', fill:'#064e3b', backgroundColor:'#34d399', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'14+', left:405, top:545, width:60, fontSize:15, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#8A6CFF', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'МОЛОДЁЖЬ', left:495, top:545, width:110, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#38BDF8', padding:8, textAlign:'center', originX:'center' },
+      { type:'text', text:'Молодёжный лофт ЦГБ «АВРОРА»  ·  ул. Б. Московская, 12\nРегистрация команд в группе ВК: vk.com/biblioteka33', left:350, top:635, width:640, fontSize:14, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.5 },
+    ],
+  },
+
+  /* 8. КИНОЛЕКТОРИЙ В БИБЛИОТЕКЕ (16:9) */
+  {
+    id: 'cinema_club',
+    size: 'banner',
+    category: 'events',
+    name: 'Кинолекторий: Кино & Книга',
+    desc: 'Шедевры литературы на большом экране с обсуждением',
+    fmt: '16:9',
+    isLandscape: true,
+    bg: '#090d18',
+    previewBg: '#090d18',
+    previewAccent: '#38BDF8',
+    previewHtml: `
+      <div class="mp-wrap" style="flex-direction:row; align-items:center; justify-content:space-between; padding:6px 12px;">
+        <div style="text-align:left; max-width:65%;">
+          <div class="mp-tag" style="color:#38BDF8; font-size:5.5px;">🎬 КИНОЛЕКТОРИЙ В БИБЛИОТЕКЕ</div>
+          <div class="mp-title" style="color:#ffffff; font-size:12px; margin:2px 0;">ШЕДЕВРЫ НА ЭКРАНЕ</div>
+          <div style="font-size:6px; color:#fcd34d; font-style:italic;">«Мастер и Маргарита» · Разбор с киноведом</div>
+        </div>
+        <div style="border:1px solid #38BDF8; border-radius:6px; padding:4px 8px; text-align:center;">
+          <div style="font-size:7px; color:#38BDF8; font-weight:700;">ПТ · 18:30</div>
+          <div class="mp-badge" style="background:#10B981; color:#070a1e; font-size:5px; margin-top:2px;">СВОБОДНЫЙ</div>
+        </div>
+      </div>`,
+    objects: [
+      { type:'text', text:'🎬 КИНОЛЕКТОРИЙ ЦГБ «АВРОРА»  ·  СЕЗОН ЭКРАНИЗАЦИЙ', left:60, top:55, width:600, fontSize:13, fontFamily:'Montserrat', fontWeight:'bold', fill:'#38BDF8', textAlign:'left', charSpacing:120 },
+      { type:'text', text:'ШЕДЕВРЫ ЛИТЕРАТУРЫ НА ЭКРАНЕ', left:60, top:90, width:650, fontSize:42, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'left', shadow:'rgba(56,189,248,0.7) 0px 0px 20px' },
+      { type:'text', text:'Показ и экспертный разбор культовых киноверсий классики', left:60, top:165, width:600, fontSize:18, fontFamily:'Playfair Display', fontStyle:'italic', fill:'#fcd34d', textAlign:'left' },
+      { type:'text', text:'• Вступительное слово и исторический контекст от кинокритика\n• Просмотр фильма на большом экране в высоком разрешении\n• Сравнение книги и экранизации, открытый микрофон и дискуссия', left:60, top:215, width:560, fontSize:15, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'left', lineHeight:1.7 },
+      { type:'rect', left:210, top:360, width:300, height:48, rx:24, ry:24, fill:'#38BDF8', originX:'center', originY:'center' },
+      { type:'text', text:'КАЖДУЮ ПЯТНИЦУ В 18:30', left:210, top:348, width:280, fontSize:16, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', textAlign:'center', originX:'center' },
+      { type:'text', text:'★ ВХОД СВОБОДНЫЙ', left:410, top:360, width:170, fontSize:12, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', backgroundColor:'#10B981', padding:7, textAlign:'center', originX:'center' },
+      { type:'text', text:'12+', left:530, top:360, width:50, fontSize:13, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#8A6CFF', padding:7, textAlign:'center', originX:'center' },
+      { type:'text', text:'Медиатека ЦГБ «АВРОРА»  ·  ул. Б. Московская, 12  ·  тел. 8 (4922) 32-34-56  ·  biblioteka33.ru', left:60, top:450, width:700, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'left' },
+    ],
+  },
+
+  /* 9. РЕЖИМ РАБОТЫ В ПРАЗДНИКИ */
   {
     id: 'holiday_schedule',
     size: 'a4_v',
@@ -425,7 +510,44 @@ const TEMPLATES = [
     ],
   },
 
-  /* 8. БАННЕР СООБЩЕСТВА ВК (16:9) */
+  /* 10. ОФИЦИАЛЬНОЕ ОБЪЯВЛЕНИЕ / САНДЕНЬ */
+  {
+    id: 'library_notice',
+    size: 'a4_v',
+    category: 'notices',
+    name: 'Официальное объявление',
+    desc: 'Строгое объявление дирекции о сандне или переучёте',
+    fmt: 'A4',
+    bg: '#0f172a',
+    previewBg: '#0f172a',
+    previewAccent: '#38BDF8',
+    previewHtml: `
+      <div class="mp-wrap">
+        <div>
+          <div class="mp-tag" style="color:#38BDF8;">ДИРЕКЦИЯ ЦГБ</div>
+          <div class="mp-title" style="color:#ffffff; font-size:10px; margin:3px 0;">ОФИЦИАЛЬНОЕ ОБЪЯВЛЕНИЕ</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:3px; margin:3px 0;">
+          <div style="font-size:6.5px; color:#EF4444; font-weight:700;">САНИТАРНЫЙ ДЕНЬ</div>
+          <div style="font-size:5.5px; color:#94a3b8;">Последняя пятница месяца</div>
+        </div>
+        <div style="font-size:6px; color:#38BDF8;">Библиотека «АВРОРА»</div>
+      </div>`,
+    objects: [
+      { type:'rect',  left:297, top:60, width:515, height:5, fill:'#38BDF8', originX:'center' },
+      { type:'text',  text:'ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА «АВРОРА»', left:297, top:85, fontSize:14, fontFamily:'Montserrat', fill:'#38BDF8', fontWeight:'bold', textAlign:'center', originX:'center', charSpacing:120 },
+      { type:'text',  text:'ОФИЦИАЛЬНОЕ ОБЪЯВЛЕНИЕ', left:297, top:130, fontSize:32, fontFamily:'Unbounded', fill:'#ffffff', fontWeight:'bold', textAlign:'center', originX:'center' },
+      { type:'rect',  left:297, top:340, width:515, height:240, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'rgba(239,68,68,0.5)', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text',  text:'УВАЖАЕМЫЕ ЧИТАТЕЛИ!\n\nПОСЛЕДНЯЯ ПЯТНИЦА МЕЖУЦА —\nСАНИТАРНЫЙ ДЕНЬ\n\nОбслуживание читателей в отделах не производится.\nПриносим извинения за временные неудобства!', left:297, top:250, fontSize:18, fontFamily:'Montserrat', fontWeight:'600', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.7 },
+      { type:'text',  text:'Дата санитарного дня:', left:297, top:490, fontSize:15, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center' },
+      { type:'text',  text:'«___» ____________ 2025 г.', left:297, top:520, fontSize:22, fontFamily:'Unbounded', fill:'#fcd34d', fontWeight:'bold', textAlign:'center', originX:'center' },
+      { type:'text',  text:'🔔 Сдать книги можно круглосуточно через уличный терминал возврата.\nЖдём вас в следующий рабочий день с 10:00!', left:297, top:610, fontSize:15, fontFamily:'Montserrat', fontStyle:'italic', fill:'#10B981', textAlign:'center', originX:'center', lineHeight:1.5 },
+      { type:'text',  text:'Дирекция ЦГБ  ·  Справки: 8 (4922) 32-34-56  ·  biblioteka33.ru', left:297, top:740, fontSize:13, fontFamily:'Montserrat', fill:'#38BDF8', textAlign:'center', originX:'center' },
+      { type:'rect',  left:297, top:770, width:515, height:5, fill:'#38BDF8', originX:'center' },
+    ],
+  },
+
+  /* 11. БАННЕР СООБЩЕСТВА ВК (16:9) */
   {
     id: 'vk_community_banner',
     size: 'banner',
@@ -466,72 +588,7 @@ const TEMPLATES = [
     ],
   },
 
-  /* 9. ОБЪЯВЛЕНИЕ ДЛЯ ЧИТАТЕЛЕЙ (A4) */
-  {
-    id: 'announce_a4',
-    size: 'a4_v',
-    category: 'notices',
-    name: 'Объявление A4',
-    desc: 'Классическое библиотечное объявление',
-    fmt: 'A4',
-    bg: '#0f172a',
-    previewBg: '#0f172a',
-    previewAccent: '#38BDF8',
-    previewHtml: `
-      <div class="mp-wrap">
-        <div>
-          <div class="mp-tag" style="color:#38BDF8;">ИНФОРМАЦИЯ</div>
-          <div class="mp-title" style="color:#ffffff; font-size:10px; margin:3px 0;">УВАЖАЕМЫЕ ЧИТАТЕЛИ!</div>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:4px; margin:4px 0;">
-          <div style="height:5px; background:rgba(255,255,255,0.2); border-radius:2px; width:90%; margin:0 auto;"></div>
-          <div style="height:5px; background:rgba(255,255,255,0.2); border-radius:2px; width:80%; margin:0 auto;"></div>
-          <div style="height:5px; background:rgba(255,255,255,0.2); border-radius:2px; width:70%; margin:0 auto;"></div>
-        </div>
-        <div style="font-size:6px; color:#38BDF8;">Библиотека «АВРОРА»</div>
-      </div>`,
-    objects: [
-      { type:'rect',  left:297, top:70,  width:500, height:5, fill:'#38BDF8', originX:'center' },
-      { type:'text',  text:'УВАЖАЕМЫЕ ЧИТАТЕЛИ!', left:297, top:120, fontSize:28, fontFamily:'Unbounded', fill:'#ffffff', fontWeight:'bold', textAlign:'center', originX:'center' },
-      { type:'text',  text:'Текст объявления.\nДата и время мероприятия.\nМесто проведения.', left:297, top:220, fontSize:18, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.7 },
-      { type:'text',  text:'Библиотека «АВРОРА»  ·  biblioteka33.ru', left:297, top:740, fontSize:13, fontFamily:'Montserrat', fill:'#38BDF8', textAlign:'center', originX:'center' },
-      { type:'rect',  left:297, top:765, width:500, height:4, fill:'#38BDF8', originX:'center' },
-    ],
-  },
-
-  /* 10. ВЫХОДНОЙ / САНДЕНЬ / ЗАКРЫТО */
-  {
-    id: 'closed_notice',
-    size: 'a4_v',
-    category: 'notices',
-    name: 'Закрыто / Санитарный день',
-    desc: 'Экстренное объявление на дверь',
-    fmt: 'A4',
-    bg: '#1a0808',
-    previewBg: '#1a0808',
-    previewAccent: '#EF4444',
-    previewHtml: `
-      <div class="mp-wrap">
-        <div class="mp-tag" style="color:#EF4444;">ВНИМАНИЕ</div>
-        <div>
-          <div class="mp-title" style="color:#EF4444; font-size:12px; margin:2px 0;">НЕ РАБОТАЕМ</div>
-          <div style="font-size:6px; color:#94a3b8;">Санитарный день</div>
-        </div>
-        <div class="mp-date" style="background:rgba(239,68,68,0.2); color:#EF4444; border:1px solid #EF4444; font-size:6px;">«___» _______ 2025</div>
-        <div style="font-size:7px; color:#10B981; font-weight:700;">Ждём вас!</div>
-      </div>`,
-    objects: [
-      { type:'rect',  left:297, top:55,  width:530, height:6, fill:'#EF4444', originX:'center' },
-      { type:'text',  text:'НЕ РАБОТАЕМ', left:297, top:200, fontSize:48, fontFamily:'Unbounded', fill:'#EF4444', fontWeight:'bold', textAlign:'center', originX:'center' },
-      { type:'text',  text:'Причина: Санитарный день', left:297, top:310, fontSize:20, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center' },
-      { type:'text',  text:'Дата:', left:297, top:400, fontSize:18, fontFamily:'Montserrat', fill:'#64748b', textAlign:'center', originX:'center' },
-      { type:'text',  text:'«___» __________ 2025 г.', left:297, top:440, fontSize:24, fontFamily:'Montserrat', fill:'#ffffff', textAlign:'center', originX:'center' },
-      { type:'text',  text:'Ждём вас в следующий рабочий день!', left:297, top:540, fontSize:24, fontFamily:'Unbounded', fill:'#10B981', textAlign:'center', originX:'center' },
-      { type:'rect',  left:297, top:765, width:530, height:6, fill:'#EF4444', originX:'center' },
-    ],
-  },
-
-  /* 11. ВЫВЕСКА БИБЛИОТЕКИ */
+  /* 12. ВЫВЕСКА БИБЛИОТЕКИ */
   {
     id: 'sign_banner',
     size: 'banner',
@@ -558,7 +615,7 @@ const TEMPLATES = [
     ],
   },
 
-  /* 12. ЧИСТЫЙ ЛИСТ A4 ВЕРТИКАЛЬ */
+  /* 13. ЧИСТЫЙ ЛИСТ A4 ВЕРТИКАЛЬ */
   {
     id: 'blank_a4_v',
     size: 'a4_v',
@@ -578,14 +635,14 @@ const TEMPLATES = [
     objects: [],
   },
 
-  /* 13. ЧИСТЫЙ ЛИСТ A4 ГОРИЗОНТАЛЬ */
+  /* 14. ЧИСТЫЙ ЛИСТ A4 ГОРИЗОНТАЛЬ */
   {
     id: 'blank_a4_h',
     size: 'a4_h',
     category: 'blank',
-    name: 'A4 горизонталь',
-    desc: 'Альбомный формат 842 × 595 pt',
-    fmt: 'A4 гориз.',
+    name: 'Чистый лист A4 горизонт',
+    desc: 'Горизонтальный формат 842 × 595 pt',
+    fmt: 'A4',
     isLandscape: true,
     bg: '#ffffff',
     previewBg: '#1e293b',
@@ -594,69 +651,68 @@ const TEMPLATES = [
       <div class="mp-blank">
         <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">A4 альбом</span>
+        <span style="font-size:6px; color:#94a3b8;">A4 горизонт</span>
       </div>`,
     objects: [],
   },
 
-  /* 14. ЧИСТЫЙ КВАДРАТ 1:1 (ВК) */
+  /* 15. ЧИСТЫЙ ЛИСТ КВАДРАТ (ВК) */
   {
     id: 'blank_square',
     size: 'square',
     category: 'blank',
-    name: 'Квадрат 1:1 (ВК)',
-    desc: 'Пост для соцсетей 700 × 700 pt',
-    fmt: '1:1',
+    name: 'Чистый лист Квадрат (ВК)',
+    desc: 'Формат 1:1 для постов ВКонтакте 700 × 700 pt',
+    fmt: 'ВК 1:1',
     isSquare: true,
-    bg: '#131726',
-    previewBg: '#131726',
-    previewAccent: '#8A6CFF',
+    bg: '#ffffff',
+    previewBg: '#1e293b',
+    previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#8A6CFF; opacity:0.8;">crop_square</span>
-        <span style="font-size:7.5px; font-weight:700; color:#8A6CFF; margin-top:3px;">ЧИСТЫЙ КВАДРАТ</span>
-        <span style="font-size:6px; color:#94a3b8;">ВК 1:1</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
+        <span style="font-size:6px; color:#94a3b8;">1:1 (ВК)</span>
       </div>`,
     objects: [],
   },
 
-  /* 15. ЧИСТЫЙ БАННЕР 16:9 */
+  /* 16. ЧИСТЫЙ ЛИСТ БАННЕР 16:9 */
   {
     id: 'blank_banner',
     size: 'banner',
     category: 'blank',
-    name: 'Баннер 16:9',
-    desc: 'Широкий экран 960 × 540 pt',
+    name: 'Чистый лист Баннер 16:9',
+    desc: 'Горизонтальный экранный баннер 960 × 540 pt',
     fmt: '16:9',
     isLandscape: true,
-    bg: '#060918',
-    previewBg: '#060918',
-    previewAccent: '#10B981',
+    bg: '#ffffff',
+    previewBg: '#1e293b',
+    previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#10B981; opacity:0.8;">panorama</span>
-        <span style="font-size:7.5px; font-weight:700; color:#10B981; margin-top:3px;">ЧИСТЫЙ БАННЕР</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
         <span style="font-size:6px; color:#94a3b8;">16:9</span>
       </div>`,
     objects: [],
   },
 
-  /* 16. ЧИСТЫЙ СТОРИС 9:16 */
+  /* 17. ЧИСТЫЙ ЛИСТ СТОРИС 9:16 */
   {
     id: 'blank_story',
     size: 'story',
     category: 'blank',
-    name: 'Сторис 9:16',
-    desc: 'Вертикальный экран 540 × 960 pt',
+    name: 'Чистый лист Сторис 9:16',
+    desc: 'Вертикальный формат для сторис ВК 540 × 960 pt',
     fmt: '9:16',
-    isStory: true,
-    bg: '#090d1a',
-    previewBg: '#090d1a',
-    previewAccent: '#ec4899',
+    bg: '#ffffff',
+    previewBg: '#1e293b',
+    previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#ec4899; opacity:0.8;">smartphone</span>
-        <span style="font-size:7.5px; font-weight:700; color:#ec4899; margin-top:3px;">ЧИСТЫЙ СТОРИС</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
         <span style="font-size:6px; color:#94a3b8;">9:16</span>
       </div>`,
     objects: [],
@@ -706,18 +762,130 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 /* ══════════════════════════════════════════════════════════════
-   ИНИЦИАЛИЗАЦИЯ ШРИФТОВ
+   ШРИФТЫ OFONT.RU И ХРАНИЛИЩЕ INDEXEDDB
    ══════════════════════════════════════════════════════════════ */
+let customFonts = [];
+let pendingFontBuffer = null;
+let pendingFontFileName = '';
+
+const DB_NAME = 'AuroraPosterFontsDB';
+const DB_STORE = 'fonts';
+
+function openFontsDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        db.createObjectStore(DB_STORE, { keyPath: 'name' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveFontToDB(name, fileName, buffer) {
+  try {
+    const db = await openFontsDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      const store = tx.objectStore(DB_STORE);
+      store.put({ name, fileName, buffer, addedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('IDB save error:', e);
+  }
+}
+
+async function getAllFontsFromDB() {
+  try {
+    const db = await openFontsDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const store = tx.objectStore(DB_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('IDB get error:', e);
+    return [];
+  }
+}
+
+async function deleteFontFromDB(name) {
+  try {
+    const db = await openFontsDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      const store = tx.objectStore(DB_STORE);
+      store.delete(name);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.warn('IDB delete error:', e);
+  }
+}
+
+async function registerFontFace(name, buffer) {
+  try {
+    const fontFace = new FontFace(name, buffer);
+    const loadedFont = await fontFace.load();
+    document.fonts.add(loadedFont);
+    return true;
+  } catch (err) {
+    console.error('Ошибка регистрации шрифта:', err);
+    throw err;
+  }
+}
+
+async function loadSavedFonts() {
+  try {
+    const saved = await getAllFontsFromDB();
+    customFonts = [];
+    for (const item of saved) {
+      try {
+        await registerFontFace(item.name, item.buffer);
+        customFonts.push(item);
+      } catch (e) {
+        console.warn('Не удалось загрузить шрифт:', item.name, e);
+      }
+    }
+    buildFontSelect();
+    renderCustomFontsList();
+  } catch (e) {
+    console.warn('Ошибка загрузки шрифтов из DB:', e);
+  }
+}
+
 function buildFontSelect() {
   const sel = $('#font-family-select');
   if (!sel) return;
-  sel.innerHTML = FONTS.map(f => `
+
+  let html = `<optgroup label="⭐ Кириллические шрифты (встроены)">`;
+  html += FONTS.map(f => `
     <option value="${f.id}" style="font-family:'${f.id}',sans-serif;">
       ${f.name} — ${f.desc}
     </option>
   `).join('');
-}
+  html += `</optgroup>`;
 
+  if (customFonts && customFonts.length > 0) {
+    html += `<optgroup label="✨ Загруженные шрифты с ofont.ru">`;
+    html += customFonts.map(f => `
+      <option value="${f.name}" style="font-family:'${f.name}',sans-serif;">
+        ${f.name} [ofont.ru]
+      </option>
+    `).join('');
+    html += `</optgroup>`;
+  }
+
+  sel.innerHTML = html;
+}
 
 async function setFontFamily(fontFamily) {
   const obj = canvas?.getActiveObject();
@@ -731,6 +899,125 @@ async function setFontFamily(fontFamily) {
   canvas.renderAll();
   saveHistory();
   updateLayersList();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   МОДАЛКА И ОБРАБОТКА ШРИФТОВ OFONT.RU
+   ══════════════════════════════════════════════════════════════ */
+function openOfontModal() {
+  $('#ofont-modal-overlay')?.classList.remove('hidden');
+  renderCustomFontsList();
+}
+
+function closeOfontModal() {
+  $('#ofont-modal-overlay')?.classList.add('hidden');
+  pendingFontBuffer = null;
+  pendingFontFileName = '';
+  const nameInput = $('#ofont-name-input');
+  if (nameInput) nameInput.value = '';
+  const btn = $('#btn-ofont-apply-font');
+  if (btn) btn.disabled = true;
+}
+
+function renderCustomFontsList() {
+  const container = $('#ofont-stored-list');
+  if (!container) return;
+  if (!customFonts || customFonts.length === 0) {
+    container.innerHTML = `<div class="ofont-empty-hint">Пока нет загруженных шрифтов. Скачайте файл на ofont.ru и перетащите в область выше.</div>`;
+    return;
+  }
+  container.innerHTML = customFonts.map(f => `
+    <div class="ofont-stored-item">
+      <div class="ofont-item-info">
+        <div class="ofont-item-name" style="font-family:'${f.name}',sans-serif;">${f.name}</div>
+        <div class="ofont-item-meta">${f.fileName || 'шрифт ofont.ru'} · Пример: Библиотека Аврора 2025</div>
+      </div>
+      <div class="ofont-item-actions">
+        <button class="pbtn pbtn-sm pbtn-primary ofont-apply-btn" data-font="${f.name}">Применить</button>
+        <button class="pbtn pbtn-sm pbtn-danger ofont-del-btn" data-font="${f.name}" title="Удалить шрифт">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.ofont-apply-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fname = btn.dataset.font;
+      const sel = $('#font-family-select');
+      if (sel) sel.value = fname;
+      setFontFamily(fname);
+      closeOfontModal();
+      toast(`Применён шрифт: ${fname}`);
+    });
+  });
+
+  container.querySelectorAll('.ofont-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const fname = btn.dataset.font;
+      if (!confirm(`Удалить шрифт «${fname}» из памяти браузера?`)) return;
+      await deleteFontFromDB(fname);
+      customFonts = customFonts.filter(x => x.name !== fname);
+      buildFontSelect();
+      renderCustomFontsList();
+      toast(`Шрифт «${fname}» удалён`);
+    });
+  });
+}
+
+function handleFontFileSelect(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['ttf','otf','woff','woff2'].includes(ext)) {
+    alert('Поддерживаются только форматы шрифтов: .ttf, .otf, .woff, .woff2');
+    return;
+  }
+  const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim();
+  const nameInput = $('#ofont-name-input');
+  if (nameInput) nameInput.value = cleanName;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingFontBuffer = e.target.result;
+    pendingFontFileName = file.name;
+    const btn = $('#btn-ofont-apply-font');
+    if (btn) btn.disabled = false;
+    toast(`Файл «${file.name}» прочитан. Нажмите «Применить и сохранить»`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function applyPendingFont() {
+  const nameInput = $('#ofont-name-input');
+  const name = (nameInput?.value || '').trim() || 'CustomFont';
+  if (!pendingFontBuffer) {
+    toast('Сначала выберите файл шрифта');
+    return;
+  }
+  try {
+    await registerFontFace(name, pendingFontBuffer);
+    await saveFontToDB(name, pendingFontFileName, pendingFontBuffer);
+
+    const existing = customFonts.findIndex(x => x.name === name);
+    const item = { name, fileName: pendingFontFileName, buffer: pendingFontBuffer, addedAt: Date.now() };
+    if (existing >= 0) customFonts[existing] = item;
+    else customFonts.push(item);
+
+    buildFontSelect();
+    renderCustomFontsList();
+
+    const sel = $('#font-family-select');
+    if (sel) sel.value = name;
+    setFontFamily(name);
+
+    pendingFontBuffer = null;
+    pendingFontFileName = '';
+    if (nameInput) nameInput.value = '';
+    const applyBtn = $('#btn-ofont-apply-font');
+    if (applyBtn) applyBtn.disabled = true;
+
+    toast(`Шрифт «${name}» успешно подключен и сохранён!`);
+  } catch (err) {
+    alert('Не удалось зарегистрировать шрифт. Проверьте валидность файла.');
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1000,6 +1287,18 @@ function buildColorRows() {
       saveHistory();
     }
     const cp = $('#shape-glow-color-picker');
+    if (cp) cp.value = c;
+  });
+
+  const STROKE_COLORS = ['#000000', '#ffffff', '#38BDF8', '#8A6CFF', '#F43F5E', '#10B981', '#FBBF24', '#070a1e'];
+  mkSwatches('text-stroke-color-row', STROKE_COLORS, c => {
+    const obj = canvas?.getActiveObject();
+    if (obj) {
+      obj.set('stroke', c);
+      canvas.renderAll();
+      saveHistory();
+    }
+    const cp = $('#text-stroke-color-picker');
     if (cp) cp.value = c;
   });
 }
@@ -1524,18 +1823,216 @@ function printPoster() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ГРУППИРОВКА И РАЗГРУППИРОВКА
+   ══════════════════════════════════════════════════════════════ */
+function groupSelected() {
+  const activeObj = canvas?.getActiveObject();
+  if (!activeObj) return;
+  if (activeObj.type === 'activeSelection') {
+    activeObj.toGroup();
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    onSelection();
+    toast('Объекты сгруппированы 📁');
+  }
+}
+
+function ungroupSelected() {
+  const activeObj = canvas?.getActiveObject();
+  if (!activeObj) return;
+  if (activeObj.type === 'group') {
+    activeObj.toActiveSelection();
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    onSelection();
+    toast('Группа разделена ✂️');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   БЛОКИРОВКА ОБЪЕКТА
+   ══════════════════════════════════════════════════════════════ */
+function toggleLockObject() {
+  const obj = canvas?.getActiveObject();
+  if (!obj) return;
+  const isLocked = !!obj.lockMovementX;
+  const nextLock = !isLocked;
+
+  obj.set({
+    lockMovementX: nextLock,
+    lockMovementY: nextLock,
+    lockScalingX: nextLock,
+    lockScalingY: nextLock,
+    lockRotation: nextLock,
+    hasControls: !nextLock,
+  });
+
+  updateLockBtnUI(nextLock);
+  canvas.renderAll();
+  saveHistory();
+  updateLayersList();
+  toast(nextLock ? 'Объект заблокирован 🔒' : 'Объект разблокирован 🔓');
+}
+
+function updateLockBtnUI(isLocked) {
+  const btn = $('#btn-lock-obj');
+  const icon = $('#lock-icon');
+  const label = $('#lock-label');
+  if (btn) btn.classList.toggle('is-locked', !!isLocked);
+  if (icon) icon.textContent = isLocked ? 'lock' : 'lock_open';
+  if (label) label.textContent = isLocked ? 'Разблок' : 'Блок';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ФИЛЬТРЫ ИЗОБРАЖЕНИЙ
+   ══════════════════════════════════════════════════════════════ */
+function applyImageFilter(obj, filterType, options = {}) {
+  if (!obj || obj.type !== 'image') return;
+  if (!obj.filters) obj.filters = [];
+  obj.__filterValues = obj.__filterValues || { brightness: 0, contrast: 0, blur: 0, grayscale: false, sepia: false };
+
+  obj.filters = obj.filters.filter(f => {
+    if (filterType === 'Brightness' && fabric.Image?.filters?.Brightness) return !(f instanceof fabric.Image.filters.Brightness);
+    if (filterType === 'Contrast'   && fabric.Image?.filters?.Contrast)   return !(f instanceof fabric.Image.filters.Contrast);
+    if (filterType === 'Blur'       && fabric.Image?.filters?.Blur)       return !(f instanceof fabric.Image.filters.Blur);
+    if (filterType === 'Grayscale'  && fabric.Image?.filters?.Grayscale)  return !(f instanceof fabric.Image.filters.Grayscale);
+    if (filterType === 'Sepia'      && fabric.Image?.filters?.Sepia)      return !(f instanceof fabric.Image.filters.Sepia);
+    return true;
+  });
+
+  if (filterType === 'Brightness') {
+    obj.__filterValues.brightness = options.brightness;
+    if (options.brightness !== 0 && fabric.Image?.filters?.Brightness) {
+      obj.filters.push(new fabric.Image.filters.Brightness({ brightness: options.brightness / 100 }));
+    }
+  } else if (filterType === 'Contrast') {
+    obj.__filterValues.contrast = options.contrast;
+    if (options.contrast !== 0 && fabric.Image?.filters?.Contrast) {
+      obj.filters.push(new fabric.Image.filters.Contrast({ contrast: options.contrast / 100 }));
+    }
+  } else if (filterType === 'Blur') {
+    obj.__filterValues.blur = options.blur;
+    if (options.blur > 0 && fabric.Image?.filters?.Blur) {
+      obj.filters.push(new fabric.Image.filters.Blur({ blur: options.blur / 25 }));
+    }
+  } else if (filterType === 'Grayscale') {
+    obj.__filterValues.grayscale = !!options.enabled;
+    if (options.enabled && fabric.Image?.filters?.Grayscale) {
+      obj.filters.push(new fabric.Image.filters.Grayscale());
+    }
+  } else if (filterType === 'Sepia') {
+    obj.__filterValues.sepia = !!options.enabled;
+    if (options.enabled && fabric.Image?.filters?.Sepia) {
+      obj.filters.push(new fabric.Image.filters.Sepia());
+    }
+  }
+
+  obj.applyFilters();
+  canvas.renderAll();
+}
+
+function resetImageFilters() {
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') return;
+  obj.__filterValues = { brightness: 0, contrast: 0, blur: 0, grayscale: false, sepia: false };
+  obj.filters = [];
+  obj.applyFilters();
+  canvas.renderAll();
+  saveHistory();
+  onSelection();
+  toast('Фильтры изображения сброшены');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ЭКСПОРТ И ИМПОРТ ПРОЕКТА (.AURORA.JSON)
+   ══════════════════════════════════════════════════════════════ */
+function exportProjectJSON() {
+  if (!canvas) return;
+  const sizeKey = Object.entries(SIZES).find(([,v]) => v === currentSize)?.[0] || 'a4_v';
+  const data = {
+    auroraVersion: '2.2.0',
+    app: 'Aurora Poster Editor',
+    exportedAt: new Date().toISOString(),
+    title: $('#poster-title')?.value || 'Афиша',
+    sizeKey: sizeKey,
+    size: currentSize,
+    canvas: canvas.toJSON([
+      'selectable','hasControls','editable','visible','evented',
+      'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
+      '__filterValues','__isUppercase','__origText'
+    ])
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeTitle = (data.title || 'afisha').replace(/[\/\\?%*:|"<>]/g, '_');
+  a.download = `${safeTitle}.aurora.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Проект афиши сохранён (.aurora.json) 💾');
+}
+
+function importProjectJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const proj = JSON.parse(e.target.result);
+      if (!proj || !proj.canvas) {
+        alert('Неверный формат файла проекта Aurora');
+        return;
+      }
+      const sizeKey = proj.sizeKey || 'a4_v';
+      currentSize = SIZES[sizeKey] || SIZES.a4_v;
+
+      $('#screen-templates')?.classList.add('hidden');
+      $('#screen-editor')?.classList.remove('hidden');
+
+      initCanvas(currentSize.w, currentSize.h);
+      canvas.loadFromJSON(proj.canvas, () => {
+        canvas.renderAll();
+        fitZoom();
+        saveHistory();
+        updateLayersList();
+        clearProps();
+      });
+
+      if (proj.title && $('#poster-title')) {
+        $('#poster-title').value = proj.title;
+      }
+      startAutosave();
+      toast('Проект успешно загружен! 📂');
+    } catch (err) {
+      alert('Ошибка при чтении файла проекта: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ══════════════════════════════════════════════════════════════
    ПАНЕЛЬ СВОЙСТВ
    ══════════════════════════════════════════════════════════════ */
 function clearProps() {
   $('#props-empty')?.classList.remove('hidden');
   $('#props-text')?.classList.add('hidden');
   $('#props-shape')?.classList.add('hidden');
+  $('#props-image')?.classList.add('hidden');
   $('#props-common')?.classList.add('hidden');
   $('#text-glow-options')?.classList.add('hidden');
   $('#shape-glow-options')?.classList.add('hidden');
+  $('#text-stroke-color-wrap')?.classList.add('hidden');
   $('#btn-text-glow')?.classList.remove('is-active');
   $('#btn-shape-glow')?.classList.remove('is-active');
   $('#btn-uppercase')?.classList.remove('is-active');
+  if ($('#btn-group')) $('#btn-group').disabled = true;
+  if ($('#btn-header-group')) $('#btn-header-group').disabled = true;
+  if ($('#btn-ungroup')) $('#btn-ungroup').disabled = true;
+  if ($('#btn-header-ungroup')) $('#btn-header-ungroup').disabled = true;
+  updateLockBtnUI(false);
   updateLayersList();
 }
 
@@ -1546,11 +2043,24 @@ function onSelection() {
   $('#props-empty')?.classList.add('hidden');
   $('#props-common')?.classList.remove('hidden');
 
-  const isText  = ['textbox','text','i-text'].includes(obj.type);
-  const isShape = ['rect','circle','ellipse','line','polyline','polygon','path'].includes(obj.type);
+  const isText      = ['textbox','text','i-text'].includes(obj.type);
+  const isShape     = ['rect','circle','ellipse','line','polyline','polygon','path'].includes(obj.type);
+  const isImage     = obj.type === 'image';
+  const isSelection = obj.type === 'activeSelection';
+  const isGroup     = obj.type === 'group';
 
   $('#props-text')?.classList.toggle('hidden', !isText);
   $('#props-shape')?.classList.toggle('hidden', !isShape);
+  $('#props-image')?.classList.toggle('hidden', !isImage);
+
+  // Кнопки группировки и разгруппировки
+  if ($('#btn-group')) $('#btn-group').disabled = !isSelection;
+  if ($('#btn-header-group')) $('#btn-header-group').disabled = !isSelection;
+  if ($('#btn-ungroup')) $('#btn-ungroup').disabled = !isGroup;
+  if ($('#btn-header-ungroup')) $('#btn-header-ungroup').disabled = !isGroup;
+
+  // Состояние блокировки
+  updateLockBtnUI(!!obj.lockMovementX);
 
   if (isText) {
     const fs = Math.round(obj.fontSize || 36);
@@ -1597,6 +2107,19 @@ function onSelection() {
       if (tgCp && gColor.startsWith('#')) tgCp.value = gColor;
       syncSwatches('#text-glow-color-row', gColor);
     }
+
+    // Обводка / контур текста
+    const sw = obj.strokeWidth || 0;
+    const swSlider = $('#text-stroke-width-slider');
+    if (swSlider) swSlider.value = sw;
+    const swVal = $('#text-stroke-width-val');
+    if (swVal) swVal.textContent = sw;
+
+    const strokeColor = obj.stroke || '#000000';
+    const scp = $('#text-stroke-color-picker');
+    if (scp && strokeColor.startsWith?.('#')) scp.value = strokeColor;
+    syncSwatches('#text-stroke-color-row', strokeColor);
+    $('#text-stroke-color-wrap')?.classList.toggle('hidden', sw <= 0);
 
     syncSwatches('#text-color-row', obj.fill);
     if (obj.fill?.startsWith?.('#') && $('#text-color-picker')) $('#text-color-picker').value = obj.fill;
@@ -1647,6 +2170,27 @@ function onSelection() {
     syncSwatches('#stroke-color-row', obj.stroke || 'transparent');
     if (obj.fill?.startsWith?.('#') && $('#fill-color-picker')) $('#fill-color-picker').value = obj.fill;
     if (obj.stroke?.startsWith?.('#') && $('#stroke-color-picker')) $('#stroke-color-picker').value = obj.stroke;
+  }
+
+  if (isImage) {
+    const fv = obj.__filterValues || { brightness: 0, contrast: 0, blur: 0, grayscale: false, sepia: false };
+    const bSlider = $('#img-brightness-slider');
+    if (bSlider) bSlider.value = fv.brightness;
+    const bVal = $('#img-brightness-val');
+    if (bVal) bVal.textContent = fv.brightness;
+
+    const cSlider = $('#img-contrast-slider');
+    if (cSlider) cSlider.value = fv.contrast;
+    const cVal = $('#img-contrast-val');
+    if (cVal) cVal.textContent = fv.contrast;
+
+    const blSlider = $('#img-blur-slider');
+    if (blSlider) blSlider.value = fv.blur;
+    const blVal = $('#img-blur-val');
+    if (blVal) blVal.textContent = fv.blur;
+
+    syncToggle('btn-filter-grayscale', !!fv.grayscale);
+    syncToggle('btn-filter-sepia', !!fv.sepia);
   }
 
   updateLayersList();
@@ -1898,7 +2442,7 @@ function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
   if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
-  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented'])));
+  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText'])));
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -1984,7 +2528,7 @@ function startAutosave() {
     if (!canvas) return;
     try {
       localStorage.setItem('aurora_poster_v2', JSON.stringify({
-        canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented']),
+        canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText']),
         title: $('#poster-title').value,
         size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
         at: Date.now(),
@@ -1997,7 +2541,7 @@ function manualSave() {
   if (!canvas) return;
   try {
     localStorage.setItem('aurora_poster_v2', JSON.stringify({
-      canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented']),
+      canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText']),
       title: $('#poster-title').value,
       size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
       at: Date.now(),
@@ -2076,6 +2620,10 @@ function bindEvents() {
     }
   });
 
+  $('#btn-close-mobile-panel')?.addEventListener('click', () => {
+    $('#ed-panel')?.classList.remove('is-mobile-open');
+  });
+
   /* История */
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-redo').addEventListener('click', redo);
@@ -2091,6 +2639,17 @@ function bindEvents() {
       e.preventDefault();
       printPoster();
     }
+    if ((e.ctrlKey||e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы')) {
+      e.preventDefault();
+      manualSave();
+    }
+    if ((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П')) {
+      e.preventDefault();
+      ungroupSelected();
+    } else if ((e.ctrlKey||e.metaKey) && !e.shiftKey && (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П')) {
+      e.preventDefault();
+      groupSelected();
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && canvas) {
       const el = document.activeElement;
       if (['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return;
@@ -2099,12 +2658,30 @@ function bindEvents() {
     }
   });
 
-  /* Экспорт и печать */
+  /* Экспорт, проект и печать */
   $('#btn-save').addEventListener('click', manualSave);
   $('#btn-export-png').addEventListener('click', exportPng);
   $('#btn-export-pdf').addEventListener('click', exportPdf);
   $('#btn-print')?.addEventListener('click', printPoster);
   $('#btn-header-duplicate')?.addEventListener('click', duplicateActiveObject);
+
+  /* Экспорт и импорт проекта (.aurora.json) */
+  $('#btn-save-project-json')?.addEventListener('click', exportProjectJSON);
+  $('#btn-load-project-json')?.addEventListener('click', () => {
+    $('#project-file-input')?.click();
+  });
+  $('#project-file-input')?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (file) importProjectJSON(file);
+    e.target.value = '';
+  });
+
+  /* Группировка и блокировка */
+  $('#btn-group')       ?.addEventListener('click', groupSelected);
+  $('#btn-header-group')?.addEventListener('click', groupSelected);
+  $('#btn-ungroup')       ?.addEventListener('click', ungroupSelected);
+  $('#btn-header-ungroup')?.addEventListener('click', ungroupSelected);
+  $('#btn-lock-obj')      ?.addEventListener('click', toggleLockObject);
 
   /* Инструменты текста */
   $('#tool-heading')   ?.addEventListener('click', () => addText('Заголовок', { fontSize:48, fontFamily:'Unbounded', fontWeight:'bold' }));
@@ -2277,6 +2854,29 @@ function bindEvents() {
   });
   $('#text-glow-color-picker')?.addEventListener('change', () => saveHistory());
 
+  /* Обводка / контур текста */
+  $('#text-stroke-width-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const v = +e.target.value;
+    const valEl = $('#text-stroke-width-val');
+    if (valEl) valEl.textContent = v;
+    $('#text-stroke-color-wrap')?.classList.toggle('hidden', v <= 0);
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      obj.set({ strokeWidth: v, stroke: obj.stroke || '#000000' });
+      canvas.renderAll();
+    }
+  });
+  $('#text-stroke-width-slider')?.addEventListener('change', () => saveHistory());
+
+  $('#text-stroke-color-picker')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      obj.set('stroke', e.target.value);
+      canvas.renderAll();
+    }
+  });
+  $('#text-stroke-color-picker')?.addEventListener('change', () => saveHistory());
+
   $('#text-color-picker').addEventListener('input', e => {
     const obj = canvas?.getActiveObject(); if (obj) { obj.set('fill', e.target.value); canvas.renderAll(); }
   });
@@ -2359,6 +2959,60 @@ function bindEvents() {
   });
   $('#stroke-color-picker').addEventListener('change', () => saveHistory());
 
+  /* ── Фильтры изображения ── */
+  $('#img-brightness-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const v = +e.target.value;
+    const valEl = $('#img-brightness-val');
+    if (valEl) valEl.textContent = v;
+    if (obj && obj.type === 'image') {
+      applyImageFilter(obj, 'Brightness', { brightness: v });
+    }
+  });
+  $('#img-brightness-slider')?.addEventListener('change', () => saveHistory());
+
+  $('#img-contrast-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const v = +e.target.value;
+    const valEl = $('#img-contrast-val');
+    if (valEl) valEl.textContent = v;
+    if (obj && obj.type === 'image') {
+      applyImageFilter(obj, 'Contrast', { contrast: v });
+    }
+  });
+  $('#img-contrast-slider')?.addEventListener('change', () => saveHistory());
+
+  $('#img-blur-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const v = +e.target.value;
+    const valEl = $('#img-blur-val');
+    if (valEl) valEl.textContent = v;
+    if (obj && obj.type === 'image') {
+      applyImageFilter(obj, 'Blur', { blur: v });
+    }
+  });
+  $('#img-blur-slider')?.addEventListener('change', () => saveHistory());
+
+  $('#btn-filter-grayscale')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') return;
+    const cur = !obj.__filterValues?.grayscale;
+    applyImageFilter(obj, 'Grayscale', { enabled: cur });
+    syncToggle('btn-filter-grayscale', cur);
+    saveHistory();
+  });
+
+  $('#btn-filter-sepia')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') return;
+    const cur = !obj.__filterValues?.sepia;
+    applyImageFilter(obj, 'Sepia', { enabled: cur });
+    syncToggle('btn-filter-sepia', cur);
+    saveHistory();
+  });
+
+  $('#btn-reset-filters')?.addEventListener('click', resetImageFilters);
+
   /* ── Общие ── */
   $('#btn-center-h').addEventListener('click', () => {
     const obj = canvas?.getActiveObject(); if (!obj) return;
@@ -2390,6 +3044,36 @@ function bindEvents() {
     if (!confirm('Удалить этот объект?')) return;
     canvas.remove(obj); canvas.discardActiveObject(); canvas.renderAll(); clearProps();
   });
+
+  /* Модалка шрифтов ofont.ru */
+  $('#btn-open-ofont-modal')?.addEventListener('click', openOfontModal);
+  $('#btn-ofont-shortcut')  ?.addEventListener('click', openOfontModal);
+  $('#ofont-modal-close')   ?.addEventListener('click', closeOfontModal);
+  $('#ofont-modal-overlay') ?.addEventListener('click', e => { if (e.target === e.currentTarget) closeOfontModal(); });
+
+  const ofontDrop = $('#ofont-dropzone');
+  if (ofontDrop) {
+    ofontDrop.addEventListener('click', () => $('#ofont-file-input')?.click());
+    ofontDrop.addEventListener('dragover', e => {
+      e.preventDefault();
+      ofontDrop.classList.add('drag-over');
+    });
+    ofontDrop.addEventListener('dragleave', () => ofontDrop.classList.remove('drag-over'));
+    ofontDrop.addEventListener('drop', e => {
+      e.preventDefault();
+      ofontDrop.classList.remove('drag-over');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleFontFileSelect(file);
+    });
+  }
+
+  $('#ofont-file-input')?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (file) handleFontFileSelect(file);
+    e.target.value = '';
+  });
+
+  $('#btn-ofont-apply-font')?.addEventListener('click', applyPendingFont);
 
   /* Модалка логотипов */
   $('#logo-modal-close')?.addEventListener('click', closeLogoModal);
@@ -2430,7 +3114,7 @@ function bindEvents() {
 /* ══════════════════════════════════════════════════════════════
    СТАРТ
    ══════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   buildFontSelect();
   buildTemplates();
   buildBadgeGrid();
@@ -2439,6 +3123,9 @@ document.addEventListener('DOMContentLoaded', () => {
   buildBgPalette();
   buildColorRows();
   bindEvents();
+
+  // Подключение сохранённых шрифтов ofont.ru из IndexedDB
+  await loadSavedFonts();
 
   if (!loadDraft()) {
     toast('Выберите шаблон для начала работы');

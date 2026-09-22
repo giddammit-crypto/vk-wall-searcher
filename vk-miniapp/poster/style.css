@@ -1,8 +1,19 @@
 /* ============================================================
-   АВРОРА — Редактор Афиш  style.css v3.0.0
+   АВРОРА — Редактор Афиш  style.css v3.2.0
    Стиль: Aurora Glassmorphism (Deep Cosmic Theme)
-   Космическая палитра, Backdrop Blur, Эргономика Desktop/Mobile
+   Шрифты: ofont.ru (Shoptronic SP, Dela Gothic One и др.)
    ============================================================ */
+
+/* ── Космический акцидентный шрифт Shoptronic SP (ofont.ru/view/6037) ── */
+@font-face {
+  font-family: 'Shoptronic SP';
+  src: url('../../assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
+       url('../../assets/fonts/ShoptronicSP-Regular.woff') format('woff'),
+       url('../../assets/fonts/ShoptronicSP-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* ── Основная космическая палитра ── */
@@ -2306,9 +2317,291 @@ input, select, textarea {
     gap: 10px;
   }
   .ed-title {
-    max-width: 100px;
+    max-width: 90px;
   }
   .hbtn {
-    padding: 0 6px;
+    padding: 0 5px;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   НОВЫЕ СТИЛИ: ШРИФТЫ OFONT.RU, ФИЛЬТРЫ, КОНТУР, МОБИЛЬНОСТЬ
+   ══════════════════════════════════════════════════════ */
+
+/* Заголовок строки свойств со ссылкой */
+.prop-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.prop-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cyan);
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+.prop-link-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: var(--cyan);
+}
+.prop-link-btn span {
+  font-size: 14px;
+}
+
+/* Подзаголовки групп в инспекторе */
+.prop-group-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+  margin: 12px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prop-group-subtitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Обводка текста */
+.prop-stroke-color-wrap {
+  margin-top: 6px;
+}
+
+/* Состояние заблокированного объекта */
+.pbtn.is-locked {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+}
+
+/* Мобильный заголовок правой шторки */
+.mobile-panel-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--hairline);
+  background: rgba(11, 16, 30, 0.6);
+}
+.mobile-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .mobile-panel-header {
+    display: flex;
+  }
+}
+
+/* ── Стили модалки: Шрифты ofont.ru ── */
+.ofont-modal {
+  max-width: 680px;
+  width: 92vw;
+}
+.ofont-head-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.ofont-link {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ofont-categories-section {
+  margin-bottom: 16px;
+}
+.ofont-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+.ofont-cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ofont-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 180ms ease;
+}
+.ofont-chip:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--cyan);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.ofont-chip span {
+  font-size: 16px;
+}
+.ofont-chip-highlight {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+.ofont-dropzone {
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.04);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  margin-bottom: 16px;
+}
+.ofont-dropzone:hover,
+.ofont-dropzone.is-dragover {
+  border-color: var(--cyan);
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+.ofont-drop-icon {
+  font-size: 38px;
+  color: var(--cyan);
+  margin-bottom: 6px;
+}
+.ofont-drop-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.ofont-drop-sub {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.ofont-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+.ofont-input-group {
+  flex: 1;
+}
+.ofont-text-input {
+  width: 100%;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 180ms ease;
+}
+.ofont-text-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+.ofont-stored-section {
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+}
+.ofont-stored-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.ofont-stored-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.ofont-stored-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.ofont-stored-badge {
+  font-size: 10px;
+  color: var(--cyan);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+.ofont-empty-hint {
+  font-size: 12px;
+  color: var(--text-2);
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ── Адаптивные улучшения шапки на экранах планшетов и мобильных ── */
+@media (max-width: 1080px) {
+  .ed-header-center .hbtn-label,
+  .ed-header-right .hbtn-label {
+    display: none;
+  }
+  .hbtn {
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ed-header {
+    gap: 4px;
+    padding: 0 8px;
+  }
+  .ed-header-center {
+    gap: 3px;
+  }
+  .ed-header-right {
+    gap: 3px;
+  }
+  .ed-title {
+    max-width: 120px;
+    font-size: 12.5px;
+  }
+  .hbtn {
+    height: 32px;
+    padding: 0 6px;
+  }
+  .hbtn span.material-symbols-rounded {
+    font-size: 18px;
+  }
+}
+
