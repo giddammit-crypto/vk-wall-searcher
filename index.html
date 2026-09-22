@@ -2522,14 +2522,22 @@
             const dropdowns = document.querySelectorAll('.nav-dropdown');
             if (!dropdowns.length) return;
 
+            const header = document.querySelector('.app-header');
+
             function closeAll(except = null) {
+                let anyOpen = false;
                 dropdowns.forEach(dd => {
                     if (dd !== except) {
                         dd.classList.remove('open');
                         const trigger = dd.querySelector('.nav-dropdown-trigger');
                         if (trigger) trigger.setAttribute('aria-expanded', 'false');
+                    } else {
+                        anyOpen = true;
                     }
                 });
+                if (header) {
+                    header.classList.toggle('has-open-dropdown', anyOpen);
+                }
             }
 
             dropdowns.forEach(dd => {
@@ -2543,6 +2551,7 @@
                     if (!isOpen) {
                         dd.classList.add('open');
                         trigger.setAttribute('aria-expanded', 'true');
+                        if (header) header.classList.add('has-open-dropdown');
                     }
                 });
 
