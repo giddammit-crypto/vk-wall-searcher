@@ -2225,6 +2225,22 @@ function opac_handle_http_request()
         }
     }
 
+    // ВРЕМЕННАЯ БЛОКИРОВКА ЗАПРОСОВ К OPAC (защита сервера библиотеки от перегрузки/падений)
+    $opacMaintenance = true;
+    if ($opacMaintenance) {
+        if (!$isCli) {
+            http_response_code(503);
+        }
+        echo json_encode([
+            'ok'              => false,
+            'maintenance'     => true,
+            'circuit_breaker' => true,
+            'retry_after'     => 3600,
+            'error'           => 'Поиск по каталогу OPAC временно приостановлен в связи с техническими работами на сервере библиотеки. Запросы заблокированы для предотвращения перегрузки сервера.',
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
+
     $rawInput = $isCli ? '' : file_get_contents('php://input');
     $rawInput = preg_replace('/^\xEF\xBB\xBF/', '', (string)$rawInput);
     $jsonData = json_decode($rawInput, true);

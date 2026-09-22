@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>АВРОРА • Космо</title>
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1.4.7">
+<link rel="stylesheet" href="style.css?v=1.4.8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
@@ -53,10 +53,10 @@
                     <span class="quick-title">Новости филиалов</span>
                     <span class="quick-sub">Свежие посты</span>
                 </button>
-                <button class="quick-tile" data-goto="catalog">
-                    <span class="quick-ico ico-gold"><span class="material-symbols-rounded">search</span></span>
-                    <span class="quick-title">Найти книгу</span>
-                    <span class="quick-sub">OPAC-поиск</span>
+                <button class="quick-tile is-paused" data-goto="catalog">
+                    <span class="quick-ico ico-gold"><span class="material-symbols-rounded">pause_circle</span></span>
+                    <span class="quick-title">Найти книгу <em class="tile-paused-badge">ПАУЗА</em></span>
+                    <span class="quick-sub">Техработы на сервере</span>
                 </button>
                 <button class="quick-tile" data-goto="renew">
                     <span class="quick-ico ico-cyan"><span class="material-symbols-rounded">nfc</span></span>
@@ -156,12 +156,12 @@
     <main class="screen" data-screen="catalog">
         <div class="page-head">
             <h1 class="page-title">Каталог OPAC</h1>
-            <p class="page-sub">Поиск по фондам 18 библиотек Владимира</p>
+            <p class="page-sub" style="color: #f59e0b; font-weight: 600;">⚠️ Временно на техобслуживании (запросы приостановлены)</p>
         </div>
         <div class="search-wrap">
             <span class="material-symbols-rounded search-ico">search</span>
-            <input id="opac-query" class="search-input" type="search" placeholder="Название, автор, инв. номер…" autocomplete="off">
-            <button id="opac-clear" class="search-clear hidden" aria-label="Очистить">
+            <input id="opac-query" class="search-input" type="search" placeholder="Поиск временно приостановлен…" autocomplete="off" disabled="disabled">
+            <button id="opac-clear" class="search-clear hidden" aria-label="Очистить" disabled="disabled">
                 <span class="material-symbols-rounded">cancel</span>
             </button>
         </div>
@@ -170,14 +170,14 @@
         <!-- Крупный приветственный блок Космо (до выдачи результатов) -->
         <div id="catalog-welcome" class="catalog-welcome-box">
             <div class="catalog-cosmo-wrap">
-                <div class="catalog-cosmo-glow"></div>
+                <div class="catalog-cosmo-glow" style="background: radial-gradient(circle, rgba(245, 158, 11, 0.35) 0%, transparent 70%);"></div>
                 <img id="catalog-cosmo-img" class="catalog-cosmo-img" 
                      src="assets/images/mascot/robot_read.png?v=4.67.4" 
                      onerror="this.onerror=null;this.src='https://biblioteka33.ru/stat/assets/images/mascot/robot_read.png?v=4.67.4'" 
-                     alt="Космо-библиотекарь" draggable="false">
+                     alt="Космо на техобслуживании" draggable="false">
             </div>
-            <div class="catalog-welcome-title">Космо готов найти любую книгу!</div>
-            <div class="catalog-welcome-text">Введите название, автора или выберите филиал — я мгновенно проверю фонды 18 библиотек города.</div>
+            <div class="catalog-welcome-title" style="color: #fbbf24;">Каталог OPAC на техобслуживании</div>
+            <div class="catalog-welcome-text">Поиск книг по каталогу временно приостановлен в связи с регламентными техническими работами на сервере библиотеки. Запросы заблокированы для предотвращения перегрузки сервера. Скоро вернёмся!</div>
             <div class="catalog-welcome-hints">
                 <button class="catalog-hint-chip" data-search-hint="Мастер и Маргарита">📖 Мастер и Маргарита</button>
                 <button class="catalog-hint-chip" data-search-hint="Рэй Брэдбери">🚀 Рэй Брэдбери</button>
@@ -473,8 +473,8 @@
         <button class="tab" data-goto="news">
             <span class="material-symbols-rounded">feed</span><span class="tab-label">Новости</span>
         </button>
-        <button class="tab" data-goto="catalog">
-            <span class="material-symbols-rounded">menu_book</span><span class="tab-label">Каталог</span>
+        <button class="tab" data-goto="catalog" title="Каталог OPAC (техобслуживание)">
+            <span class="material-symbols-rounded">pause_circle</span><span class="tab-label">Каталог</span>
         </button>
         <button class="tab" data-goto="renew">
             <span class="material-symbols-rounded">nfc</span><span class="tab-label">Продление</span>
@@ -486,6 +486,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="app.js?v=1.4.5"></script>
+    <script src="app.js?v=1.4.8"></script>
 </body>
 </html>

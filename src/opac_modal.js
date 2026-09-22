@@ -52,6 +52,11 @@ try {
     covKeysToDelete.forEach(k => localStorage.removeItem(k));
 } catch (e) {}
 
+/**
+ * Временный режим технического обслуживания (блокировка запросов к OPAC для защиты сервера)
+ */
+export const OPAC_MAINTENANCE = true;
+
 
 /**
  * Очистка названия для точного поиска обложек
@@ -1020,6 +1025,35 @@ export function initOpacModal() {
     document.body.appendChild(modal);
     opacModalEl = modal;
 
+    if (OPAC_MAINTENANCE) {
+        const inp = modal.querySelector('[data-opac-input]');
+        if (inp) {
+            inp.disabled = true;
+            inp.placeholder = 'Поиск временно приостановлен (технические работы на сервере OPAC)';
+            inp.style.opacity = '0.6';
+            inp.style.cursor = 'not-allowed';
+        }
+        const sBtn = modal.querySelector('[data-opac-search]');
+        if (sBtn) {
+            sBtn.disabled = true;
+            sBtn.style.opacity = '0.5';
+            sBtn.style.cursor = 'not-allowed';
+            sBtn.title = 'Поиск временно приостановлен';
+        }
+        const tags = modal.querySelectorAll('.opac-quick-tag');
+        tags.forEach(t => {
+            t.disabled = true;
+            t.style.opacity = '0.5';
+            t.style.cursor = 'not-allowed';
+        });
+        const branchSel = modal.querySelector('[data-opac-branch-select]');
+        if (branchSel) {
+            branchSel.disabled = true;
+            branchSel.style.opacity = '0.6';
+            branchSel.style.cursor = 'not-allowed';
+        }
+    }
+
     bindModalEvents();
     renderInitialState();
 
@@ -1202,6 +1236,36 @@ function renderInitialState() {
     if (!opacGridEl || !opacStatusEl) return;
 
     if (opacPaginationEl) opacPaginationEl.innerHTML = '';
+
+    if (OPAC_MAINTENANCE) {
+        opacStatusEl.innerHTML = `
+            <div class="opac-status-empty" style="color: #f59e0b; font-weight: 600;">
+                <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 6px;">engineering</span>
+                <span>Техническое обслуживание каталога OPAC</span>
+            </div>
+        `;
+        opacGridEl.innerHTML = `
+            <div class="opac-notice-card" style="border: 1px solid rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); padding: 24px; border-radius: 16px; margin: 12px 0;">
+                <div class="opac-notice-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                    <span class="material-symbols-outlined" style="font-size: 32px;">pause_circle</span>
+                </div>
+                <div class="opac-notice-content">
+                    <h3 class="opac-notice-title" style="color: #fef3c7; font-size: 19px; margin-bottom: 8px;">Поиск по каталогу временно приостановлен</h3>
+                    <p class="opac-notice-desc" style="color: #cbd5e1; line-height: 1.6; font-size: 14px;">
+                        На сервере электронного каталога OPAC-Global проводятся технические регламентные работы.
+                        Для предотвращения перегрузки и сбоев удалённого сервера библиотечной сети поиск временно отключён.
+                    </p>
+                    <div class="opac-notice-meta" style="margin-top: 14px;">
+                        <span class="opac-tip-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 6px 12px; border-radius: 8px; font-size: 13px;">
+                            📞 Справка по фонду ЦГБ: 8(4922) 21-65-63
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
     opacStatusEl.innerHTML = '';
     opacGridEl.innerHTML = `
         <div class="opac-welcome-hero">
@@ -1355,6 +1419,11 @@ function setSearchBtnLoading(loading) {
  * Выполнение асинхронного поиска через API с постраничной пагинацией (CARDS_PER_PAGE = 4)
  */
 async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false) {
+    if (OPAC_MAINTENANCE) {
+        renderInitialState();
+        return;
+    }
+
     if (!query || query.trim().length < 2) {
         if (!query || query.trim().length === 0) {
             renderInitialState();

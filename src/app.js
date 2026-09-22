@@ -3863,10 +3863,14 @@ function initApp() {
     initOpacModal();
     if (elements.opacModalBtn) {
         elements.opacModalBtn.addEventListener('click', () => {
+            showToast('Поиск по каталогу OPAC временно приостановлен (технические работы)', 'engineering', 4000);
             openOpacModal();
         });
     }
-    window.__openOpacModal = (query = '') => openOpacModal(query);
+    window.__openOpacModal = (query = '') => {
+        showToast('Поиск по каталогу OPAC временно приостановлен (технические работы)', 'engineering', 4000);
+        openOpacModal(query);
+    };
 
     // Инициализация модального окна реестра иностранных агентов Минюста РФ
     initInoagentModal();

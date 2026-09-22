@@ -268,6 +268,8 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 .search-input:focus { border-color: rgba(56, 189, 248, 0.6); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14), 0 0 16px rgba(56, 189, 248, 0.15); }
+.search-input:disabled { opacity: 0.6; cursor: not-allowed; border-color: rgba(245, 158, 11, 0.35); background: rgba(20, 24, 38, 0.5); }
+.search-clear:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
 .chips-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; }
 .chips-row::-webkit-scrollbar { display: none; }
@@ -2417,6 +2419,33 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     padding: 1px 7px;
     margin-left: 4px;
     vertical-align: middle;
+}
+
+/* Бейдж «ПАУЗА / ТЕХРАБОТЫ» на плитке */
+.tile-paused-badge {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #0b0f19;
+    background: #f59e0b;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+    border-radius: 999px;
+    padding: 1px 7px;
+    margin-left: 4px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.quick-tile.is-paused {
+    opacity: 0.88;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.quick-tile.is-paused:hover {
+    border-color: rgba(245, 158, 11, 0.65);
+    box-shadow: var(--elev-2), 0 0 16px rgba(245, 158, 11, 0.22);
 }
 
 /* ── Карточка «Данные читателя» и согласие 152-ФЗ ── */

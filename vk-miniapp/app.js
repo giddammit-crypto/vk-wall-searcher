@@ -275,6 +275,9 @@ function goto(screenName, pushHistory = true) {
     if (screenName === 'news' && !newsState.loaded && !newsState.loading) {
         loadBranchNews();
     }
+    if (screenName === 'catalog' && typeof OPAC_MAINTENANCE !== 'undefined' && OPAC_MAINTENANCE) {
+        toast('Каталог OPAC временно на техобслуживании');
+    }
 }
 
 $$('[data-goto]').forEach(el => el.addEventListener('click', () => goto(el.dataset.goto)));
@@ -389,7 +392,8 @@ async function initHome() {
     loadHomeNewsPreview();
 }
 
-/* ── Каталог OPAC ── */
+/* ── Каталог OPAC (ВРЕМЕННО НА ТЕХОБСЛУЖИВАНИИ ДЛЯ ЗАЩИТЫ СЕРВЕРА) ── */
+const OPAC_MAINTENANCE = true;
 const opacState = { query: '', page: 1, branch: '', onlyAvailable: false, totalPages: 1 };
 let searchSeq = 0;
 
@@ -1070,6 +1074,25 @@ $('#book-sheet-backdrop')?.addEventListener('click', (e) => {
 });
 
 async function runSearch() {
+    if (OPAC_MAINTENANCE) {
+        toast('Каталог OPAC временно на техобслуживании');
+        const welcome = $('#catalog-welcome');
+        if (welcome) welcome.classList.remove('hidden');
+        $('#catalog-results').innerHTML = `
+            <div class="empty-state" style="padding: 24px 16px;">
+                <div class="empty-emoji" style="font-size: 38px;">🛠️</div>
+                <div class="empty-title" style="color: #fbbf24; margin-top: 8px;">Технические работы на сервере OPAC</div>
+                <div class="empty-desc" style="color: var(--text-sub); font-size: 13px; line-height: 1.5; margin-top: 6px;">
+                    Поисковые запросы временно приостановлены для защиты сервера библиотеки от перегрузки.
+                </div>
+            </div>
+        `;
+        $('#opac-pager')?.classList.add('hidden');
+        $('#results-meta')?.classList.add('hidden');
+        syncWindowSize();
+        return;
+    }
+
     const q = opacState.query.trim();
     const welcome = $('#catalog-welcome');
     if (!q) {
@@ -1164,7 +1187,15 @@ function initCatalog() {
 
     // Быстрые подсказки-чипы под крупным Космо
     $$('[data-search-hint]').forEach(btn => {
+        if (OPAC_MAINTENANCE) {
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        }
         btn.addEventListener('click', () => {
+            if (OPAC_MAINTENANCE) {
+                toast('Каталог OPAC временно на техобслуживании');
+                return;
+            }
             const hint = btn.dataset.searchHint;
             const input = $('#opac-query');
             if (input) {
@@ -2796,6 +2827,14 @@ async function runNfcScan(side) {
 async function lookupBookInOpac(invNumber) {
     const opacCard = $('#nfc-opac-card');
     if (!opacCard) return;
+    if (typeof OPAC_MAINTENANCE !== 'undefined' && OPAC_MAINTENANCE) {
+        opacCard.classList.remove('hidden', 'is-loading');
+        opacCard.classList.add('is-not-found');
+        $('#nfc-opac-title').textContent = 'Каталог на техобслуживании';
+        $('#nfc-opac-author').textContent = 'Связь с OPAC временно отключена для защиты сервера';
+        $('#nfc-opac-meta').textContent = 'Инв. номер: ' + invNumber;
+        return;
+    }
     nfcState.opacLoading = true;
     opacCard.classList.remove('hidden');
     opacCard.classList.add('is-loading');
