@@ -88,6 +88,12 @@ const STICKERS = [
   { id: 'lectory',      label: 'Лекторий',           text: '🎙️ ЛЕКТОРИЙ',           bg: '#0284c7', color: '#ffffff', font: 'Unbounded', size: 15, desc: 'Лекция и дискуссия с экспертом' },
   { id: 'premiere',     label: 'Премьера / Новинка', text: '✨ ПРЕМЬЕРА',           bg: '#f59e0b', color: '#090d16', font: 'Unbounded', size: 15, desc: 'Новинка или премьерный показ' },
   { id: 'registration', label: 'По регистрации',     text: 'ВХОД ПО РЕГИСТРАЦИИ',   bg: '#2563eb', color: '#ffffff', font: 'Unbounded', size: 13, desc: 'Требуется предварительная запись' },
+  { id: 'stamp_new',     label: 'Новинка фонда',      text: '★ НОВИНКА ФОНДА ★',    bg: '#d97706', color: '#ffffff', font: 'Unbounded', size: 14, desc: 'Новое поступление в библиотеку' },
+  { id: 'stamp_choice',  label: 'Выбор библиотекаря', text: '✦ ВЫБОР БИБЛИОТЕКАРЯ ✦', bg: '#059669', color: '#ffffff', font: 'Unbounded', size: 13, desc: 'Знак особого качества' },
+  { id: 'stamp_hit',     label: 'Хит чтения',         text: '🔥 ХИТ ЧТЕНИЯ',         bg: '#e11d48', color: '#ffffff', font: 'Unbounded', size: 15, desc: 'Самая читаемая книга месяца' },
+  { id: 'stamp_rare',    label: 'Редкий фонд',        text: '🏛️ РЕДКИЙ ФОНД',        bg: '#4c1d95', color: '#ffffff', font: 'Unbounded', size: 14, desc: 'Уникальные раритетные издания' },
+  { id: 'stamp_bestsell',label: 'Бестселлер',         text: '👑 БЕСТСЕЛЛЕР',         bg: '#2563eb', color: '#ffffff', font: 'Unbounded', size: 15, desc: 'Лидер читательских симпатий' },
+  { id: 'stamp_approved',label: 'Одобрено ЦГБ',       text: '✓ ОДОБРЕНО ЦГБ',       bg: '#047857', color: '#ffffff', font: 'Unbounded', size: 14, desc: 'Рекомендовано методическим советом' },
 ];
 
 /* ── Маскоты Космо ──────────────────────────────────────────── */
@@ -752,6 +758,9 @@ const LOGOS = [
 let canvas = null;
 let currentSize = SIZES.a4_v;
 let zoom = 1.0;
+let isGridVisible = false;
+let isSnappingEnabled = true;
+let smartGuides = { x: null, y: null };
 let history = [];
 let historyIdx = -1;
 let savingHistory = false;
@@ -1201,18 +1210,35 @@ function buildCosmoGrid() {
 
 function buildBgPalette() {
   const el = $('#bg-palette');
-  el.innerHTML = PALETTE.map(p => `
+  const mEl = $('#mobile-bg-palette');
+  const swatchesHtml = PALETTE.map(p => `
     <button class="bg-swatch" data-color="${p.hex}" title="${p.name}"
       style="background:${p.hex}; ${p.light ? 'border-color:rgba(0,0,0,0.15);' : ''}">
     </button>
   `).join('');
-  el.addEventListener('click', e => {
-    const btn = e.target.closest('.bg-swatch');
-    if (btn && canvas) {
-      canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
-      saveHistory();
-    }
-  });
+
+  if (el) {
+    el.innerHTML = swatchesHtml;
+    el.addEventListener('click', e => {
+      const btn = e.target.closest('.bg-swatch');
+      if (btn && canvas) {
+        canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
+        saveHistory();
+      }
+    });
+  }
+
+  if (mEl) {
+    mEl.innerHTML = swatchesHtml;
+    mEl.addEventListener('click', e => {
+      const btn = e.target.closest('.bg-swatch');
+      if (btn && canvas) {
+        canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
+        saveHistory();
+        toast('Фон холста обновлён');
+      }
+    });
+  }
 }
 
 function applyGlow(obj, color, blur) {
@@ -1301,6 +1327,18 @@ function buildColorRows() {
     const cp = $('#text-stroke-color-picker');
     if (cp) cp.value = c;
   });
+
+  const BG_PILL_COLORS = ['#e11d48', '#10B981', '#0284c7', '#8A6CFF', '#FBBF24', '#070a1e', '#ffffff', '#4f46e5'];
+  mkSwatches('text-bg-color-row', BG_PILL_COLORS, c => {
+    const obj = canvas?.getActiveObject();
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      obj.set('backgroundColor', c);
+      canvas.renderAll();
+      saveHistory();
+    }
+    const cp = $('#text-bg-color-picker');
+    if (cp) cp.value = c;
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1354,6 +1392,126 @@ function initCanvas(w, h) {
   canvas.on('object:modified',    () => { saveHistory(); updateLayersList(); });
   canvas.on('object:added',       () => updateLayersList());
   canvas.on('object:removed',     () => { saveHistory(); updateLayersList(); });
+
+  // Магнитные направляющие (Smart Snapping)
+  canvas.on('object:moving', e => {
+    if (!isSnappingEnabled) return;
+    const obj = e.target;
+    if (!obj) return;
+    const snapThreshold = 10;
+    const cw = currentSize.w;
+    const ch = currentSize.h;
+    const cx = cw / 2;
+    const cy = ch / 2;
+    const ow = obj.getScaledWidth();
+    const oh = obj.getScaledHeight();
+
+    smartGuides.x = null;
+    smartGuides.y = null;
+
+    // Центр по горизонтали
+    const objCx = obj.left + (ow / 2);
+    if (Math.abs(objCx - cx) < snapThreshold) {
+      obj.set({ left: cx - (ow / 2) });
+      smartGuides.x = cx;
+    }
+
+    // Центр по вертикали
+    const objCy = obj.top + (oh / 2);
+    if (Math.abs(objCy - cy) < snapThreshold) {
+      obj.set({ top: cy - (oh / 2) });
+      smartGuides.y = cy;
+    }
+
+    // Левое и правое поле (24px)
+    const margin = 24;
+    if (Math.abs(obj.left - margin) < snapThreshold) {
+      obj.set({ left: margin });
+      smartGuides.x = margin;
+    } else if (Math.abs((obj.left + ow) - (cw - margin)) < snapThreshold) {
+      obj.set({ left: cw - margin - ow });
+      smartGuides.x = cw - margin;
+    }
+
+    // Верхнее и нижнее поле (24px)
+    if (Math.abs(obj.top - margin) < snapThreshold) {
+      obj.set({ top: margin });
+      smartGuides.y = margin;
+    } else if (Math.abs((obj.top + oh) - (ch - margin)) < snapThreshold) {
+      obj.set({ top: ch - margin - oh });
+      smartGuides.y = ch - margin;
+    }
+  });
+
+  canvas.on('after:render', opt => {
+    const ctx = opt.ctx;
+    if (!ctx) return;
+    if (smartGuides.x !== null) {
+      ctx.save();
+      ctx.strokeStyle = '#ec4899';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(smartGuides.x * zoom, 0);
+      ctx.lineTo(smartGuides.x * zoom, currentSize.h * zoom);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (smartGuides.y !== null) {
+      ctx.save();
+      ctx.strokeStyle = '#ec4899';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, smartGuides.y * zoom);
+      ctx.lineTo(currentSize.w * zoom, smartGuides.y * zoom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  });
+
+  canvas.on('mouse:up', () => {
+    if (smartGuides.x !== null || smartGuides.y !== null) {
+      smartGuides.x = null;
+      smartGuides.y = null;
+      canvas.requestRenderAll();
+    }
+  });
+
+  // Сенсорные жесты: Pinch-to-zoom на смартфонах и планшетах
+  const canvasArea = $('#canvas-area');
+  if (canvasArea && !canvasArea._touchZoomBound) {
+    canvasArea._touchZoomBound = true;
+    let startDist = 0;
+    let startZoom = 1.0;
+
+    canvasArea.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        startDist = Math.hypot(dx, dy);
+        startZoom = zoom;
+      }
+    }, { passive: false });
+
+    canvasArea.addEventListener('touchmove', e => {
+      if (e.touches.length === 2 && startDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const factor = dist / startDist;
+        applyZoom(startZoom * factor);
+      }
+    }, { passive: false });
+
+    canvasArea.addEventListener('touchend', e => {
+      if (e.touches.length < 2) {
+        startDist = 0;
+      }
+    });
+  }
 }
 
 function addTemplateObj(def) {
@@ -1548,6 +1706,148 @@ function addFrame() {
   canvas.renderAll();
   updateLayersList();
   toast('Рамка добавлена');
+}
+
+function addRibbon() {
+  if (!canvas) return;
+  const cx = currentSize.w / 2, cy = currentSize.h / 2;
+  const ribbonPath = 'M 0 0 L 70 0 L 70 110 L 35 85 L 0 110 Z';
+  const r = new fabric.Path(ribbonPath, {
+    left: cx - 35, top: cy - 55, scaleX: 1, scaleY: 1,
+    fill: '#e11d48', stroke: '#be123c', strokeWidth: 1,
+    selectable: true,
+  });
+  canvas.add(r);
+  canvas.setActiveObject(r);
+  canvas.renderAll();
+  updateLayersList();
+  toast('Лента-закладка добавлена');
+}
+
+function addSpeechBubble() {
+  if (!canvas) return;
+  const cx = currentSize.w / 2, cy = currentSize.h / 2;
+  const bubblePath = 'M 20 0 L 140 0 C 150 0, 160 10, 160 20 L 160 80 C 160 90, 150 100, 140 100 L 45 100 L 20 125 L 25 100 L 20 100 C 10 100, 0 90, 0 80 L 0 20 C 0 10, 10 0, 20 0 Z';
+  const b = new fabric.Path(bubblePath, {
+    left: cx - 80, top: cy - 60, scaleX: 1, scaleY: 1,
+    fill: '#8a6cff', stroke: '#7048e8', strokeWidth: 1,
+    selectable: true,
+  });
+  canvas.add(b);
+  canvas.setActiveObject(b);
+  canvas.renderAll();
+  updateLayersList();
+  toast('Облачко добавлено');
+}
+
+function addHexagon() {
+  if (!canvas) return;
+  const cx = currentSize.w / 2, cy = currentSize.h / 2;
+  const hexPath = 'M 50 0 L 93 25 L 93 75 L 50 100 L 7 75 L 7 25 Z';
+  const h = new fabric.Path(hexPath, {
+    left: cx - 50, top: cy - 50, scaleX: 1.2, scaleY: 1.2,
+    fill: '#10b981', stroke: '#059669', strokeWidth: 1,
+    selectable: true,
+  });
+  canvas.add(h);
+  canvas.setActiveObject(h);
+  canvas.renderAll();
+  updateLayersList();
+  toast('Шестиугольник добавлен');
+}
+
+function toggleGrid() {
+  isGridVisible = !isGridVisible;
+  const frame = $('#canvas-frame');
+  const btn = $('#btn-toggle-grid');
+  if (frame) frame.classList.toggle('has-grid', isGridVisible);
+  if (btn) btn.classList.toggle('is-active', isGridVisible);
+  toast(isGridVisible ? 'Сетка включена' : 'Сетка выключена');
+}
+
+function toggleSnapping() {
+  isSnappingEnabled = !isSnappingEnabled;
+  const btn = $('#btn-toggle-snap');
+  if (btn) btn.classList.toggle('is-active', isSnappingEnabled);
+  toast(isSnappingEnabled ? 'Магнитные направляющие включены' : 'Направляющие выключены');
+}
+
+async function pickColorWithEyeDropper(targetProp) {
+  if (!window.EyeDropper) {
+    toast('Инструмент пипетки поддерживается в Chrome/Edge');
+    return;
+  }
+  try {
+    const eyeDropper = new EyeDropper();
+    const result = await eyeDropper.open();
+    if (!result || !result.sRGBHex) return;
+    const color = result.sRGBHex;
+    const obj = canvas?.getActiveObject();
+    if (!obj) {
+      toast(`Выбран цвет: ${color}`);
+      return;
+    }
+
+    if (targetProp === 'text-fill') {
+      obj.set('fill', color);
+      const cp = $('#text-color-picker');
+      if (cp) cp.value = color;
+      syncSwatches('#text-color-row', color);
+    } else if (targetProp === 'text-bg') {
+      obj.set('backgroundColor', color);
+      const cp = $('#text-bg-color-picker');
+      if (cp) cp.value = color;
+      syncSwatches('#text-bg-color-row', color);
+    } else if (targetProp === 'shape-fill') {
+      obj.set('fill', color);
+      const cp = $('#fill-color-picker');
+      if (cp) cp.value = color;
+      syncSwatches('#fill-color-row', color);
+    }
+    canvas.renderAll();
+    saveHistory();
+    toast(`Цвет ${color} применён!`);
+  } catch (err) {
+    // User cancelled eye dropper
+  }
+}
+
+function openMobileDrawer(category) {
+  const drawer = $('#mobile-drawer');
+  const backdrop = $('#mobile-drawer-backdrop');
+  if (!drawer || !backdrop) return;
+
+  $('#ed-panel')?.classList.remove('is-mobile-open');
+
+  const titles = {
+    bg: 'Фон холста',
+    text: 'Добавление текста',
+    shapes: 'Фигуры и графика',
+    media: 'Медиа и библиотека',
+  };
+
+  const titleEl = $('#mobile-drawer-title');
+  if (titleEl) titleEl.textContent = titles[category] || 'Инструменты';
+
+  ['bg', 'text', 'shapes', 'media'].forEach(cat => {
+    const sec = $(`#drawer-sec-${cat}`);
+    if (sec) sec.classList.toggle('hidden', cat !== category);
+  });
+
+  $$('.dock-tab').forEach(tab => {
+    tab.classList.toggle('is-active', tab.dataset.drawer === category);
+  });
+
+  backdrop.classList.remove('hidden');
+  drawer.classList.remove('hidden');
+}
+
+function closeMobileDrawer() {
+  const drawer = $('#mobile-drawer');
+  const backdrop = $('#mobile-drawer-backdrop');
+  if (drawer) drawer.classList.add('hidden');
+  if (backdrop) backdrop.classList.add('hidden');
+  $$('.dock-tab').forEach(tab => tab.classList.remove('is-active'));
 }
 
 function addPhoto(file) {
@@ -2025,9 +2325,11 @@ function clearProps() {
   $('#text-glow-options')?.classList.add('hidden');
   $('#shape-glow-options')?.classList.add('hidden');
   $('#text-stroke-color-wrap')?.classList.add('hidden');
+  $('#text-bg-options')?.classList.add('hidden');
   $('#btn-text-glow')?.classList.remove('is-active');
   $('#btn-shape-glow')?.classList.remove('is-active');
   $('#btn-uppercase')?.classList.remove('is-active');
+  $('#btn-text-bg-toggle')?.classList.remove('is-active');
   if ($('#btn-group')) $('#btn-group').disabled = true;
   if ($('#btn-header-group')) $('#btn-header-group').disabled = true;
   if ($('#btn-ungroup')) $('#btn-ungroup').disabled = true;
@@ -2123,6 +2425,22 @@ function onSelection() {
 
     syncSwatches('#text-color-row', obj.fill);
     if (obj.fill?.startsWith?.('#') && $('#text-color-picker')) $('#text-color-picker').value = obj.fill;
+
+    // Цветная подложка / плашка текста
+    const hasBg = !!obj.backgroundColor && obj.backgroundColor !== 'transparent';
+    syncToggle('btn-text-bg-toggle', hasBg);
+    $('#text-bg-options')?.classList.toggle('hidden', !hasBg);
+    if (hasBg) {
+      const pad = obj.padding !== undefined ? obj.padding : 8;
+      const padSlider = $('#text-bg-padding-slider');
+      if (padSlider) padSlider.value = pad;
+      const padVal = $('#text-bg-padding-val');
+      if (padVal) padVal.textContent = pad;
+      const bgCol = obj.backgroundColor || '#e11d48';
+      const bgCp = $('#text-bg-color-picker');
+      if (bgCp && bgCol.startsWith?.('#')) bgCp.value = bgCol;
+      syncSwatches('#text-bg-color-row', bgCol);
+    }
   }
 
   if (isShape) {
@@ -2504,6 +2822,17 @@ function exportPng() {
   toast('PNG сохранён в папку «Загрузки»');
 }
 
+function exportJpg() {
+  if (!canvas) return;
+  const saved = zoom;
+  applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+  const url = canvas.toDataURL({ format:'jpeg', quality:0.92, multiplier:2 });
+  const a = document.createElement('a');
+  a.href = url; a.download = ($('#poster-title').value || 'Афиша') + '.jpg'; a.click();
+  applyZoom(saved);
+  toast('JPG (высокое качество) сохранён в папку «Загрузки»');
+}
+
 function exportPdf() {
   if (!canvas || !window.jspdf) { toast('PDF модуль загружается…'); return; }
   const { jsPDF } = window.jspdf;
@@ -2661,9 +2990,12 @@ function bindEvents() {
   /* Экспорт, проект и печать */
   $('#btn-save').addEventListener('click', manualSave);
   $('#btn-export-png').addEventListener('click', exportPng);
+  $('#btn-export-jpg')?.addEventListener('click', exportJpg);
   $('#btn-export-pdf').addEventListener('click', exportPdf);
   $('#btn-print')?.addEventListener('click', printPoster);
   $('#btn-header-duplicate')?.addEventListener('click', duplicateActiveObject);
+  $('#btn-toggle-grid')?.addEventListener('click', toggleGrid);
+  $('#btn-toggle-snap')?.addEventListener('click', toggleSnapping);
 
   /* Экспорт и импорт проекта (.aurora.json) */
   $('#btn-save-project-json')?.addEventListener('click', exportProjectJSON);
@@ -2699,6 +3031,9 @@ function bindEvents() {
   $('#tool-arrow')  ?.addEventListener('click', addArrow);
   $('#tool-star')   ?.addEventListener('click', addStar);
   $('#tool-frame')  ?.addEventListener('click', addFrame);
+  $('#tool-ribbon') ?.addEventListener('click', addRibbon);
+  $('#tool-bubble') ?.addEventListener('click', addSpeechBubble);
+  $('#tool-hexagon')?.addEventListener('click', addHexagon);
 
   /* Графика и библиотека */
   $('#tool-photo')   ?.addEventListener('click', () => $('#photo-input').click());
@@ -2881,6 +3216,55 @@ function bindEvents() {
     const obj = canvas?.getActiveObject(); if (obj) { obj.set('fill', e.target.value); canvas.renderAll(); }
   });
   $('#text-color-picker').addEventListener('change', () => saveHistory());
+
+  /* Цветная подложка / плашка текста */
+  $('#btn-text-bg-toggle')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || !['textbox','text','i-text'].includes(obj.type)) return;
+    const isActive = $('#btn-text-bg-toggle').classList.contains('is-active');
+    if (isActive) {
+      obj.set('backgroundColor', null);
+      $('#btn-text-bg-toggle').classList.remove('is-active');
+      $('#text-bg-options')?.classList.add('hidden');
+    } else {
+      const col = $('#text-bg-color-picker')?.value || '#e11d48';
+      const pad = +($('#text-bg-padding-slider')?.value || 8);
+      obj.set({ backgroundColor: col, padding: pad });
+      $('#btn-text-bg-toggle').classList.add('is-active');
+      $('#text-bg-options')?.classList.remove('hidden');
+      syncSwatches('#text-bg-color-row', col);
+    }
+    canvas.renderAll();
+    saveHistory();
+  });
+
+  $('#text-bg-padding-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const val = +e.target.value;
+    const valEl = $('#text-bg-padding-val');
+    if (valEl) valEl.textContent = val;
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      obj.set('padding', val);
+      canvas.renderAll();
+    }
+  });
+  $('#text-bg-padding-slider')?.addEventListener('change', () => saveHistory());
+
+  $('#text-bg-color-picker')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    const val = e.target.value;
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      obj.set('backgroundColor', val);
+      canvas.renderAll();
+      syncSwatches('#text-bg-color-row', val);
+    }
+  });
+  $('#text-bg-color-picker')?.addEventListener('change', () => saveHistory());
+
+  /* Пипетки цвета (EyeDropper) */
+  $('#btn-eyedropper-text')?.addEventListener('click', () => pickColorWithEyeDropper('text-fill'));
+  $('#btn-eyedropper-text-bg')?.addEventListener('click', () => pickColorWithEyeDropper('text-bg'));
+  $('#btn-eyedropper-shape')?.addEventListener('click', () => pickColorWithEyeDropper('shape-fill'));
 
   /* ── Свойства фигур ── */
   $('#corner-radius-slider')?.addEventListener('input', e => {
@@ -3106,6 +3490,47 @@ function bindEvents() {
     });
   });
   $('#btn-add-qr-to-canvas')?.addEventListener('click', addQrCodeToCanvas);
+
+  /* ── Мобильный навигационный док и шторка (Drawer) ── */
+  $('#dock-btn-bg')    ?.addEventListener('click', () => openMobileDrawer('bg'));
+  $('#dock-btn-text')  ?.addEventListener('click', () => openMobileDrawer('text'));
+  $('#dock-btn-shapes')?.addEventListener('click', () => openMobileDrawer('shapes'));
+  $('#dock-btn-media') ?.addEventListener('click', () => openMobileDrawer('media'));
+  $('#dock-btn-props') ?.addEventListener('click', () => {
+    closeMobileDrawer();
+    $('#ed-panel')?.classList.toggle('is-mobile-open');
+  });
+
+  $('#btn-close-mobile-drawer')?.addEventListener('click', closeMobileDrawer);
+  $('#mobile-drawer-backdrop') ?.addEventListener('click', closeMobileDrawer);
+
+  /* Мобильные карточки текста */
+  $('#mtool-heading')   ?.addEventListener('click', () => { addText('Заголовок', { fontSize:48, fontFamily:'Unbounded', fontWeight:'bold' }); closeMobileDrawer(); });
+  $('#mtool-subheading')?.addEventListener('click', () => { addText('Подзаголовок', { fontSize:28, fontFamily:'Montserrat', fontWeight:'600' }); closeMobileDrawer(); });
+  $('#mtool-text')      ?.addEventListener('click', () => { addText('Основной текст объявления или афиши', { fontSize:20, fontFamily:'Montserrat', fill:'#94a3b8' }); closeMobileDrawer(); });
+  $('#mtool-badge')     ?.addEventListener('click', () => { addBadge(); closeMobileDrawer(); });
+  $('#mtool-date')      ?.addEventListener('click', () => { addDateBlock(); closeMobileDrawer(); });
+  $('#mtool-quote')     ?.addEventListener('click', () => { addQuote(); closeMobileDrawer(); });
+  $('#mtool-ofont')     ?.addEventListener('click', () => { closeMobileDrawer(); openOfontModal(); });
+
+  /* Мобильные карточки фигур */
+  $('#mtool-rect')   ?.addEventListener('click', () => { addRect(); closeMobileDrawer(); });
+  $('#mtool-circle') ?.addEventListener('click', () => { addCircle(); closeMobileDrawer(); });
+  $('#mtool-line')   ?.addEventListener('click', () => { addLine(); closeMobileDrawer(); });
+  $('#mtool-dashed') ?.addEventListener('click', () => { addDashedLine(); closeMobileDrawer(); });
+  $('#mtool-arrow')  ?.addEventListener('click', () => { addArrow(); closeMobileDrawer(); });
+  $('#mtool-star')   ?.addEventListener('click', () => { addStar(); closeMobileDrawer(); });
+  $('#mtool-frame')  ?.addEventListener('click', () => { addFrame(); closeMobileDrawer(); });
+  $('#mtool-ribbon') ?.addEventListener('click', () => { addRibbon(); closeMobileDrawer(); });
+  $('#mtool-bubble') ?.addEventListener('click', () => { addSpeechBubble(); closeMobileDrawer(); });
+  $('#mtool-hexagon')?.addEventListener('click', () => { addHexagon(); closeMobileDrawer(); });
+
+  /* Мобильные карточки медиа */
+  $('#mtool-photo')   ?.addEventListener('click', () => { closeMobileDrawer(); $('#photo-input')?.click(); });
+  $('#mtool-cosmo')   ?.addEventListener('click', () => { closeMobileDrawer(); openCosmoModal(); });
+  $('#mtool-logo')    ?.addEventListener('click', () => { closeMobileDrawer(); openLogoModal(); });
+  $('#mtool-stickers')?.addEventListener('click', () => { closeMobileDrawer(); openBadgeModal(); });
+  $('#mtool-qrcode')  ?.addEventListener('click', () => { closeMobileDrawer(); openQrModal(); });
 
   /* Resize */
   window.addEventListener('resize', fitZoom);

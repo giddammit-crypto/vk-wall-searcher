@@ -2205,62 +2205,29 @@ input, select, textarea {
     flex-direction: column;
   }
 
-  /* Нижняя панель инструментов на телефоне */
+  /* На телефонах боковая панель скрывается в пользу нижнего мобильного дока */
   .ed-sidebar {
-    width: 100%;
-    height: 52px;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-right: none;
-    border-top: 1px solid var(--hairline);
-    order: 2;
-    padding: 6px 8px;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-    background: rgba(11, 16, 30, 0.94);
-  }
-
-  .sb-group {
-    display: contents;
-  }
-  .sb-label {
-    display: none;
-  }
-  .tool-btn {
-    flex-shrink: 0;
-    padding: 8px 10px;
-    width: auto;
-    border-radius: var(--radius-sm);
-  }
-  .tool-btn span:last-child {
-    display: none;
-  }
-  .bg-palette,
-  .bg-gradients,
-  .zoom-row {
-    display: none;
+    display: none !important;
   }
 
   /* Область холста */
   .ed-canvas-area {
     order: 1;
-    padding: 16px;
+    padding: 12px 12px calc(64px + env(safe-area-inset-bottom, 0px));
+    touch-action: none;
   }
 
   /* ── Мобильная шторка свойств и слоев (Bottom Sheet) ── */
   .ed-panel {
     display: flex;
     position: fixed;
-    bottom: 52px;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
     height: 64vh;
     height: 64dvh;
     width: 100% !important;
-    z-index: 100;
+    z-index: 200;
     background: rgba(11, 16, 30, 0.95);
     backdrop-filter: var(--glass-blur-heavy);
     -webkit-backdrop-filter: var(--glass-blur-heavy);
@@ -2603,5 +2570,205 @@ input, select, textarea {
   .hbtn span.material-symbols-rounded {
     font-size: 18px;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   СЕТКА ХОЛСТА И СОСТОЯНИЯ КНОПОК
+   ══════════════════════════════════════════════════════ */
+.canvas-frame.has-grid {
+  background-image: 
+    linear-gradient(rgba(56, 189, 248, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.14) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.hbtn.is-active {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════
+   НИЖНИЙ МОБИЛЬНЫЙ НАВИГАЦИОННЫЙ ДОК (MOBILE DOCK)
+   ══════════════════════════════════════════════════════ */
+.mobile-dock {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-dock {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(11, 16, 30, 0.96);
+    backdrop-filter: var(--glass-blur-heavy);
+    -webkit-backdrop-filter: var(--glass-blur-heavy);
+    border-top: 1px solid var(--hairline);
+    z-index: 250;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .dock-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    background: none;
+    border: none;
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 180ms ease;
+    padding: 4px 0;
+  }
+
+  .dock-tab .material-symbols-rounded {
+    font-size: 22px;
+    transition: transform 180ms ease, color 180ms ease;
+  }
+
+  .dock-tab:hover,
+  .dock-tab.is-active {
+    color: var(--cyan);
+  }
+
+  .dock-tab.is-active .material-symbols-rounded {
+    transform: translateY(-2px);
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   МОБИЛЬНЫЙ ВЫДВИЖНОЙ ЯЩИК ИНСТРУМЕНТОВ (DRAWER)
+   ══════════════════════════════════════════════════════ */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 210;
+  transition: opacity 220ms ease;
+}
+
+.mobile-drawer {
+  position: fixed;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  max-height: 70dvh;
+  background: rgba(13, 19, 36, 0.98);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border-top: 2px solid var(--cyan);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.2);
+  z-index: 220;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUpDrawer 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpDrawer {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.mobile-drawer-title {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-0);
+  letter-spacing: 0.02em;
+}
+
+.mobile-drawer-body {
+  padding: 14px 16px 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(70vh - 56px);
+}
+
+.drawer-sec-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.drawer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  color: var(--text-1);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 180ms ease;
+  min-height: 48px;
+}
+
+.drawer-card:active {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: var(--cyan);
+  transform: scale(0.98);
+}
+
+.drawer-card .material-symbols-rounded {
+  font-size: 22px;
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.drawer-card-highlight {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: var(--cyan);
+}
+
+.mobile-bg-palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.mobile-bg-gradients {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 

@@ -110,6 +110,14 @@
         <span class="material-symbols-rounded">redo</span>
         <span class="hbtn-label">Повторить</span>
       </button>
+      <button class="hbtn" id="btn-toggle-grid" title="Включить / выключить сетку верстки">
+        <span class="material-symbols-rounded">grid_on</span>
+        <span class="hbtn-label">Сетка</span>
+      </button>
+      <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка к осям)">
+        <span class="material-symbols-rounded">magnet</span>
+        <span class="hbtn-label">Магнит</span>
+      </button>
       <button class="hbtn" id="btn-header-duplicate" title="Дублировать объект (Ctrl+D)">
         <span class="material-symbols-rounded">content_copy</span>
         <span class="hbtn-label">Копия</span>
@@ -142,8 +150,12 @@
         <span class="hbtn-label">Черновик</span>
       </button>
       <button class="hbtn hbtn-success" id="btn-export-png" title="Скачать в высоком разрешении PNG">
-        <span class="material-symbols-rounded">download</span>
-        <span class="hbtn-label">Скачать PNG</span>
+        <span class="material-symbols-rounded">image</span>
+        <span class="hbtn-label">PNG</span>
+      </button>
+      <button class="hbtn" id="btn-export-jpg" title="Скачать компактный JPEG для постов ВКонтакте">
+        <span class="material-symbols-rounded">photo</span>
+        <span class="hbtn-label">JPG</span>
       </button>
       <button class="hbtn hbtn-accent" id="btn-export-pdf" title="Скачать для печати PDF">
         <span class="material-symbols-rounded">picture_as_pdf</span>
@@ -151,7 +163,7 @@
       </button>
       <!-- Мобильная кнопка переключения правой панели -->
       <button class="hbtn hbtn-mobile-panel" id="btn-toggle-panel" title="Свойства и слои">
-        <span class="material-symbols-rounded">layers</span>
+        <span class="material-symbols-rounded">tune</span>
       </button>
     </div>
   </header>
@@ -225,6 +237,18 @@
         <button class="tool-btn" id="tool-frame" title="Декоративная рамка">
           <span class="material-symbols-rounded">crop_square</span>
           <span>Рамка</span>
+        </button>
+        <button class="tool-btn" id="tool-ribbon" title="Лента-закладка">
+          <span class="material-symbols-rounded">bookmark</span>
+          <span>Закладка</span>
+        </button>
+        <button class="tool-btn" id="tool-bubble" title="Облачко цитаты / реплики">
+          <span class="material-symbols-rounded">chat_bubble</span>
+          <span>Облачко</span>
+        </button>
+        <button class="tool-btn" id="tool-hexagon" title="Шестиугольник">
+          <span class="material-symbols-rounded">hexagon</span>
+          <span>Шестиугольник</span>
         </button>
       </div>
 
@@ -392,7 +416,33 @@
             <input type="color" class="color-picker" id="text-stroke-color-picker" value="#000000" title="Палитра цвета контура">
           </div>
 
-          <label class="prop-label" style="margin-top: 6px;">Цвет текста</label>
+          <!-- Плашка / Подложка текста -->
+          <div class="prop-group-subtitle">Плашка / Подложка текста</div>
+          <div class="prop-btn-row">
+            <button class="pbtn toggle-btn" id="btn-text-bg-toggle" title="Включить цветную подложку под текст">
+              <span class="material-symbols-rounded">format_ink_highlighter</span>
+              <span>Цветная плашка</span>
+            </button>
+          </div>
+          <div class="glow-options hidden" id="text-bg-options">
+            <label class="prop-label">Внутренний отступ (Padding): <b id="text-bg-padding-val">8</b> px</label>
+            <input type="range" class="prop-range" id="text-bg-padding-slider" min="0" max="24" value="8" step="1">
+            <div class="prop-label-row">
+              <label class="prop-label">Цвет плашки</label>
+              <button class="prop-link-btn" id="btn-eyedropper-text-bg" title="Пипетка цвета с экрана">
+                <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
+              </button>
+            </div>
+            <div class="color-row" id="text-bg-color-row"></div>
+            <input type="color" class="color-picker" id="text-bg-color-picker" value="#e11d48" title="Палитра цвета плашки">
+          </div>
+
+          <div class="prop-label-row" style="margin-top: 6px;">
+            <label class="prop-label">Цвет текста</label>
+            <button class="prop-link-btn" id="btn-eyedropper-text" title="Пипетка цвета с экрана">
+              <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
+            </button>
+          </div>
           <div class="color-row" id="text-color-row"></div>
           <input type="color" class="color-picker" id="text-color-picker" value="#ffffff" title="Палитра цвета текста">
         </div>
@@ -418,7 +468,12 @@
             <input type="color" class="color-picker" id="shape-glow-color-picker" value="#38BDF8" title="Палитра свечения">
           </div>
 
-          <label class="prop-label">Цвет заливки</label>
+          <div class="prop-label-row">
+            <label class="prop-label">Цвет заливки</label>
+            <button class="prop-link-btn" id="btn-eyedropper-shape" title="Пипетка цвета с экрана">
+              <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
+            </button>
+          </div>
           <div class="color-row" id="fill-color-row"></div>
           <input type="color" class="color-picker" id="fill-color-picker" value="#38BDF8" title="Палитра цвета заливки">
 
@@ -554,6 +609,165 @@
 
     </aside>
   </div><!-- /ed-body -->
+
+  <!-- ── Мобильный ящик подменю (Drawer Sheet) ── -->
+  <div class="mobile-drawer-backdrop hidden" id="mobile-drawer-backdrop"></div>
+  <div class="mobile-drawer hidden" id="mobile-drawer">
+    <div class="mobile-drawer-header">
+      <div class="mobile-drawer-title" id="mobile-drawer-title">Инструменты</div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="btn-close-mobile-drawer" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="mobile-drawer-body" id="mobile-drawer-body">
+      <!-- Раздел: Фон -->
+      <div class="mobile-drawer-section hidden" id="drawer-sec-bg">
+        <div class="drawer-sec-label">Цвет фона холста</div>
+        <div class="bg-palette mobile-bg-palette" id="mobile-bg-palette"></div>
+        <div class="drawer-sec-label" style="margin-top:14px;">Градиентные фоны</div>
+        <div class="bg-gradients mobile-bg-gradients">
+          <button class="bg-grad-btn" data-gradient="aurora">🌌 Аврора</button>
+          <button class="bg-grad-btn" data-gradient="space">🚀 Космос</button>
+          <button class="bg-grad-btn" data-gradient="ocean">🌊 Океан</button>
+          <button class="bg-grad-btn" data-gradient="sunset">🌅 Закат</button>
+          <button class="bg-grad-btn" data-gradient="neon">⚡ Неон</button>
+          <button class="bg-grad-btn" data-gradient="forest">🌿 Изумруд</button>
+          <button class="bg-grad-btn" data-gradient="gold">👑 Золото</button>
+          <button class="bg-grad-btn" data-gradient="vintage">📜 Крафт</button>
+        </div>
+      </div>
+
+      <!-- Раздел: Текст -->
+      <div class="mobile-drawer-section hidden" id="drawer-sec-text">
+        <div class="drawer-grid">
+          <button class="drawer-card" id="mtool-heading">
+            <span class="material-symbols-rounded">title</span>
+            <span>Заголовок</span>
+          </button>
+          <button class="drawer-card" id="mtool-subheading">
+            <span class="material-symbols-rounded">text_fields</span>
+            <span>Подзаголовок</span>
+          </button>
+          <button class="drawer-card" id="mtool-text">
+            <span class="material-symbols-rounded">notes</span>
+            <span>Обычный текст</span>
+          </button>
+          <button class="drawer-card" id="mtool-badge">
+            <span class="material-symbols-rounded">label</span>
+            <span>Плашка / Бейдж</span>
+          </button>
+          <button class="drawer-card" id="mtool-date">
+            <span class="material-symbols-rounded">calendar_month</span>
+            <span>Дата и время</span>
+          </button>
+          <button class="drawer-card" id="mtool-quote">
+            <span class="material-symbols-rounded">format_quote</span>
+            <span>Цитата</span>
+          </button>
+          <button class="drawer-card drawer-card-highlight" id="mtool-ofont">
+            <span class="material-symbols-rounded">font_download</span>
+            <span>Шрифты ofont.ru</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Раздел: Фигуры -->
+      <div class="mobile-drawer-section hidden" id="drawer-sec-shapes">
+        <div class="drawer-grid">
+          <button class="drawer-card" id="mtool-rect">
+            <span class="material-symbols-rounded">rectangle</span>
+            <span>Прямоугольник</span>
+          </button>
+          <button class="drawer-card" id="mtool-circle">
+            <span class="material-symbols-rounded">circle</span>
+            <span>Круг</span>
+          </button>
+          <button class="drawer-card" id="mtool-line">
+            <span class="material-symbols-rounded">horizontal_rule</span>
+            <span>Линия</span>
+          </button>
+          <button class="drawer-card" id="mtool-dashed">
+            <span class="material-symbols-rounded">more_horiz</span>
+            <span>Пунктир</span>
+          </button>
+          <button class="drawer-card" id="mtool-arrow">
+            <span class="material-symbols-rounded">arrow_right_alt</span>
+            <span>Стрелка</span>
+          </button>
+          <button class="drawer-card" id="mtool-star">
+            <span class="material-symbols-rounded">star</span>
+            <span>Звезда</span>
+          </button>
+          <button class="drawer-card" id="mtool-frame">
+            <span class="material-symbols-rounded">crop_square</span>
+            <span>Рамка</span>
+          </button>
+          <button class="drawer-card" id="mtool-ribbon">
+            <span class="material-symbols-rounded">bookmark</span>
+            <span>Закладка</span>
+          </button>
+          <button class="drawer-card" id="mtool-bubble">
+            <span class="material-symbols-rounded">chat_bubble</span>
+            <span>Цитата-облачко</span>
+          </button>
+          <button class="drawer-card" id="mtool-hexagon">
+            <span class="material-symbols-rounded">hexagon</span>
+            <span>Шестиугольник</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Раздел: Медиа -->
+      <div class="mobile-drawer-section hidden" id="drawer-sec-media">
+        <div class="drawer-grid">
+          <button class="drawer-card" id="mtool-photo">
+            <span class="material-symbols-rounded">add_photo_alternate</span>
+            <span>Фото с устройства</span>
+          </button>
+          <button class="drawer-card" id="mtool-cosmo">
+            <span class="material-symbols-rounded">smart_toy</span>
+            <span>Маскот Космо</span>
+          </button>
+          <button class="drawer-card" id="mtool-logo">
+            <span class="material-symbols-rounded">local_library</span>
+            <span>Логотипы ЦГБ</span>
+          </button>
+          <button class="drawer-card" id="mtool-stickers">
+            <span class="material-symbols-rounded">loyalty</span>
+            <span>Штампы и стикеры</span>
+          </button>
+          <button class="drawer-card" id="mtool-qrcode">
+            <span class="material-symbols-rounded">qr_code_2</span>
+            <span>Генератор QR</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Нижний мобильный навигационный док ── -->
+  <nav class="mobile-dock" id="mobile-dock">
+    <button class="dock-tab" id="dock-btn-bg" data-drawer="bg">
+      <span class="material-symbols-rounded">palette</span>
+      <span>Фон</span>
+    </button>
+    <button class="dock-tab" id="dock-btn-text" data-drawer="text">
+      <span class="material-symbols-rounded">title</span>
+      <span>Текст</span>
+    </button>
+    <button class="dock-tab" id="dock-btn-shapes" data-drawer="shapes">
+      <span class="material-symbols-rounded">category</span>
+      <span>Фигуры</span>
+    </button>
+    <button class="dock-tab" id="dock-btn-media" data-drawer="media">
+      <span class="material-symbols-rounded">photo_library</span>
+      <span>Медиа</span>
+    </button>
+    <button class="dock-tab" id="dock-btn-props">
+      <span class="material-symbols-rounded">tune</span>
+      <span>Свойства</span>
+    </button>
+  </nav>
 
 </div><!-- /screen-editor -->
 
