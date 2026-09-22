@@ -833,6 +833,25 @@ input, select, textarea {
   justify-content: center;
 }
 
+.hbtn-icon-svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  display: inline-block;
+  color: currentColor;
+  transition: transform var(--trans-fast), filter var(--trans-fast);
+}
+
+.hbtn:hover .hbtn-icon-svg {
+  transform: scale(1.08);
+}
+
+.hbtn.is-active .hbtn-icon-svg {
+  color: var(--cyan);
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.55));
+}
+
 /* Кнопки экспорта с неоновым свечением */
 .hbtn-success {
   background: linear-gradient(135deg, #10B981 0%, #059669 100%);
@@ -2567,8 +2586,11 @@ input, select, textarea {
     height: 32px;
     padding: 0 6px;
   }
-  .hbtn span.material-symbols-rounded {
+  .hbtn span.material-symbols-rounded,
+  .hbtn .hbtn-icon-svg {
     font-size: 18px;
+    width: 18px;
+    height: 18px;
   }
 }
 
