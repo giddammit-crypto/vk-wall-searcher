@@ -27,6 +27,8 @@ const getBaseUrl = () => {
 const BASE = getBaseUrl();
 const MASCOT_BASE = 'https://biblioteka33.ru/stat/assets/images/mascot';
 
+const APP_IN_DEVELOPMENT = true;
+
 const API = {
     base: BASE,
     opac: BASE + '/api/opac.php',
@@ -261,6 +263,12 @@ function initiatePhoneCall(rawPhone, branchName = '') {
 
 /* ── Навигация экранов с поддержкой истории и кнопки «Назад» ── */
 function goto(screenName, pushHistory = true) {
+    if (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) {
+        if (screenName !== 'maintenance') {
+            toast('Приложение находится в разработке 🛠️');
+            return;
+        }
+    }
     if (pushHistory && history.state?.screen !== screenName) {
         try {
             history.pushState({ screen: screenName }, '', '#' + screenName);
@@ -287,6 +295,10 @@ $$('[data-scroll]').forEach(el => el.addEventListener('click', () => {
 }));
 
 window.addEventListener('popstate', (e) => {
+    if (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) {
+        goto('maintenance', false);
+        return;
+    }
     // Если открыт полноэкранный просмотр фото — закрываем его
     if (!$('#photo-lightbox')?.classList.contains('hidden')) {
         closePhotoLightbox(false);
@@ -2620,6 +2632,88 @@ async function buildBranchList() {
 
 /* ── Инициализация приложения и подписка на события VK Bridge ── */
 async function init() {
+    initWindowResizeManager();
+
+    if (!window.vkBridge) {
+        if (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) {
+            return;
+        }
+    } else {
+        // Глобальная подписка на входящие события VK Bridge
+        window.vkBridge.subscribe((e) => {
+            if (!e || !e.detail) return;
+            const { type, data } = e.detail;
+
+            if (type === 'VKWebAppUpdateConfig') {
+                // Динамическое переключение темы
+                const scheme = data?.scheme || data?.appearance || '';
+                if (scheme.includes('light')) {
+                    document.documentElement.dataset.theme = 'light';
+                } else if (scheme.includes('dark') || scheme.includes('space_gray')) {
+                    document.documentElement.dataset.theme = 'dark';
+                }
+                // Безопасные отступы (safe area insets)
+                if (data?.insets) {
+                    if (typeof data.insets.top === 'number') {
+                        document.documentElement.style.setProperty('--vk-safe-top', data.insets.top + 'px');
+                    }
+                    if (typeof data.insets.bottom === 'number') {
+                        document.documentElement.style.setProperty('--vk-safe-bottom', data.insets.bottom + 'px');
+                    }
+                }
+            }
+
+            // Физическая / жестовая кнопка «Назад» на устройствах Android
+            if (type === 'VKWebAppBackButtonPressed') {
+                if (!$('#photo-lightbox')?.classList.contains('hidden')) {
+                    closePhotoLightbox();
+                } else if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
+                    closeBookSheet();
+                } else if ($('#stickers-sheet')?.classList.contains('is-open')) {
+                    toggleStickers(false);
+                } else {
+                    const activeScreen = $('.screen.is-active')?.dataset.screen;
+                    const fallbackScreen = (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) ? 'maintenance' : 'home';
+                    if (activeScreen && activeScreen !== fallbackScreen) {
+                        goto(fallbackScreen);
+                    }
+                }
+            }
+        });
+
+        try {
+            await withTimeout(window.vkBridge.send('VKWebAppInit'), 3000);
+            bridgeReady = true;
+
+            // Получение информации о пользователе
+            const user = await bridge('VKWebAppGetUserInfo');
+            if (user && user.first_name) {
+                vkUser = user;
+                const heroTitle = $('#hero-title');
+                if (heroTitle) heroTitle.textContent = `Привет, ${user.first_name}!`;
+                const maintTitle = $('#maint-title');
+                if (maintTitle) maintTitle.textContent = `Привет, ${user.first_name}!`;
+                const maintDesc = $('#maint-desc');
+                if (maintDesc) maintDesc.textContent = `Космо и команда библиотек Владимира готовят для вас масштабное обновление! Совсем скоро здесь откроются поиск книг, продление по NFC и афиша событий.`;
+            }
+
+            // Настройка статус-бара
+            try {
+                await withTimeout(window.vkBridge.send('VKWebAppSetViewSettings', {
+                    status_bar_style: document.documentElement.dataset.theme === 'light' ? 'dark' : 'light',
+                    action_bar_color: '#0d111c',
+                }), 1500);
+            } catch (e) {}
+        } catch (e) {
+            /* Запуск вне платформы ВКонтакте */
+        }
+    }
+
+    // В режиме разработки («заглушка») не запускаем фоновые запросы и парсеры
+    if (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) {
+        return;
+    }
+
     initHome();
     initNews();
     initPhotoLightbox();
@@ -2630,78 +2724,11 @@ async function init() {
     initSocialButtons();
     buildBranchList();
     initSheetSwipeGesture();
-    initWindowResizeManager();
 
     setTimeout(() => {
         const sub = $('#hero-sub');
         if (sub) sub.textContent = 'Сканирую охваты, ищу книги и шучу про SMM. Выбирай действие!';
     }, 4500);
-
-    if (!window.vkBridge) return;
-
-    // Глобальная подписка на входящие события VK Bridge
-    window.vkBridge.subscribe((e) => {
-        if (!e || !e.detail) return;
-        const { type, data } = e.detail;
-
-        if (type === 'VKWebAppUpdateConfig') {
-            // Динамическое переключение темы
-            const scheme = data?.scheme || data?.appearance || '';
-            if (scheme.includes('light')) {
-                document.documentElement.dataset.theme = 'light';
-            } else if (scheme.includes('dark') || scheme.includes('space_gray')) {
-                document.documentElement.dataset.theme = 'dark';
-            }
-            // Безопасные отступы (safe area insets)
-            if (data?.insets) {
-                if (typeof data.insets.top === 'number') {
-                    document.documentElement.style.setProperty('--vk-safe-top', data.insets.top + 'px');
-                }
-                if (typeof data.insets.bottom === 'number') {
-                    document.documentElement.style.setProperty('--vk-safe-bottom', data.insets.bottom + 'px');
-                }
-            }
-        }
-
-        // Физическая / жестовая кнопка «Назад» на устройствах Android
-        if (type === 'VKWebAppBackButtonPressed') {
-            if (!$('#photo-lightbox')?.classList.contains('hidden')) {
-                closePhotoLightbox();
-            } else if (!$('#book-sheet-backdrop')?.classList.contains('hidden')) {
-                closeBookSheet();
-            } else if ($('#stickers-sheet')?.classList.contains('is-open')) {
-                toggleStickers(false);
-            } else {
-                const activeScreen = $('.screen.is-active')?.dataset.screen;
-                if (activeScreen && activeScreen !== 'home') {
-                    goto('home');
-                }
-            }
-        }
-    });
-
-    try {
-        await withTimeout(window.vkBridge.send('VKWebAppInit'), 3000);
-        bridgeReady = true;
-
-        // Получение информации о пользователе
-        const user = await bridge('VKWebAppGetUserInfo');
-        if (user && user.first_name) {
-            vkUser = user;
-            const heroTitle = $('#hero-title');
-            if (heroTitle) heroTitle.textContent = `Привет, ${user.first_name}!`;
-        }
-
-        // Настройка статус-бара
-        try {
-            await withTimeout(window.vkBridge.send('VKWebAppSetViewSettings', {
-                status_bar_style: document.documentElement.dataset.theme === 'light' ? 'dark' : 'light',
-                action_bar_color: '#131726',
-            }), 1500);
-        } catch (e) {}
-    } catch (e) {
-        /* Запуск вне платформы ВКонтакте */
-    }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -3070,6 +3097,7 @@ async function submitRenewal() {
 }
 
 function initRenew() {
+    if (typeof APP_IN_DEVELOPMENT !== 'undefined' && APP_IN_DEVELOPMENT) return;
     const note = $('#nfc-support-note');
     if (note) {
         note.textContent = nfcSupported()

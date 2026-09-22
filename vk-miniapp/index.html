@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>АВРОРА • Космо</title>
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1.4.9">
+<link rel="stylesheet" href="style.css?v=1.5.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
@@ -19,8 +19,123 @@
         <div class="app-blob blob-purple"></div>
     </div>
 
+    <!-- ==========================================================================
+         ЭКРАН-ЗАГЛУШКА: «ПРИЛОЖЕНИЕ В РАЗРАБОТКЕ»
+         ========================================================================== -->
+    <main class="screen is-active maint-screen" data-screen="maintenance">
+        <header class="app-header">
+            <div class="app-logo-badge">
+                <img src="https://biblioteka33.ru/stat/assets/images/app_icon_192.png" alt="Космо" class="logo-icon-img">
+                <span class="app-logo-text">АВРОРА • Космо</span>
+            </div>
+            <div class="header-actions">
+                <span class="maint-status-pill">
+                    <span class="maint-status-dot"></span> В разработке
+                </span>
+            </div>
+        </header>
+
+        <div class="maint-hero">
+            <div class="maint-avatar-wrap">
+                <div class="maint-glow"></div>
+                <img class="maint-cosmo-img" 
+                     src="assets/images/mascot/robot_idea.png?v=4.67.4" 
+                     onerror="this.onerror=null;this.src='https://biblioteka33.ru/stat/assets/images/mascot/robot_idea.png?v=4.67.4'" 
+                     alt="Космо работает над приложением" draggable="false">
+                <div class="maint-badge-float" title="Обновление">
+                    <span class="material-symbols-rounded">construction</span>
+                </div>
+            </div>
+            <h1 class="maint-title" id="maint-title">Приложение в разработке</h1>
+            <p class="maint-desc" id="maint-desc">
+                Команда библиотек Владимира готовит для вас масштабное обновление! Совсем скоро здесь появятся поиск книг, продление по NFC, свежие новости и умный помощник Космо.
+            </p>
+        </div>
+
+        <div class="maint-section-title">
+            <span class="material-symbols-rounded" style="font-size: 16px;">rocket_launch</span>
+            <span>Что появится в обновлении</span>
+        </div>
+
+        <div class="maint-cards">
+            <div class="maint-card">
+                <div class="maint-card-icon icon-cyan">
+                    <span class="material-symbols-rounded">menu_book</span>
+                </div>
+                <div class="maint-card-body">
+                    <div class="maint-card-title">Электронный каталог OPAC</div>
+                    <div class="maint-card-sub">Поиск по фондам 18 библиотек города и проверка наличия</div>
+                </div>
+                <span class="maint-tag">Скоро</span>
+            </div>
+
+            <div class="maint-card">
+                <div class="maint-card-icon icon-purple">
+                    <span class="material-symbols-rounded">nfc</span>
+                </div>
+                <div class="maint-card-body">
+                    <div class="maint-card-title">Продление книг по NFC</div>
+                    <div class="maint-card-sub">Продление срока чтения в один тап через читательский билет</div>
+                </div>
+                <span class="maint-tag">Скоро</span>
+            </div>
+
+            <div class="maint-card">
+                <div class="maint-card-icon icon-gold">
+                    <span class="material-symbols-rounded">feed</span>
+                </div>
+                <div class="maint-card-body">
+                    <div class="maint-card-title">Новости и афиша филиалов</div>
+                    <div class="maint-card-sub">Лента событий, мастер-классы, лекции и книжные клубы</div>
+                </div>
+                <span class="maint-tag">Скоро</span>
+            </div>
+
+            <div class="maint-card">
+                <div class="maint-card-icon icon-pink">
+                    <span class="material-symbols-rounded">smart_toy</span>
+                </div>
+                <div class="maint-card-body">
+                    <div class="maint-card-title">Умный ассистент Космо</div>
+                    <div class="maint-card-sub">Персональные рекомендации литературы и ответы на вопросы</div>
+                </div>
+                <span class="maint-tag">Скоро</span>
+            </div>
+        </div>
+
+        <div class="maint-contact-box">
+            <div class="maint-contact-head">
+                <div class="maint-contact-icon">
+                    <span class="material-symbols-rounded">local_library</span>
+                </div>
+                <div>
+                    <div class="maint-contact-title">Центральная городская библиотека</div>
+                    <div class="maint-contact-subtitle">г. Владимир, Суздальский пр-т, 2</div>
+                </div>
+            </div>
+            <div class="maint-contact-links">
+                <a href="tel:+74922216563" class="maint-btn maint-btn-primary">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">call</span>
+                    <span>21-65-63</span>
+                </a>
+                <a href="https://vk.com/vladcgb" target="_blank" rel="noopener noreferrer" class="maint-btn maint-btn-vk">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">public</span>
+                    <span>Группа ВК</span>
+                </a>
+                <a href="https://biblioteka33.ru" target="_blank" rel="noopener noreferrer" class="maint-btn maint-btn-site">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">language</span>
+                    <span>Официальный сайт biblioteka33.ru</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="maint-footer">
+            <p class="maint-footer-text">МБУК «ЦГБ» г. Владимира • Цифровая экосистема «АВРОРА» 2026</p>
+        </div>
+    </main>
+
     <!-- ЭКРАН: ГЛАВНАЯ -->
-    <main class="screen is-active" data-screen="home">
+    <main class="screen" data-screen="home">
         <header class="app-header">
             <div class="app-logo-badge">
                 <img src="https://biblioteka33.ru/stat/assets/images/app_icon_192.png" alt="Космо" class="logo-icon-img">
@@ -463,7 +578,7 @@
         </div>
     </div>
 
-    <nav class="tab-bar">
+    <nav class="tab-bar hidden">
         <button class="tab is-active" data-goto="home">
             <span class="material-symbols-rounded">home</span><span class="tab-label">Главная</span>
         </button>
@@ -480,6 +595,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="app.js?v=1.4.9"></script>
+    <script src="app.js?v=1.5.0"></script>
 </body>
 </html>
