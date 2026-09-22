@@ -3202,125 +3202,18 @@ ${statsContext}
                 this.mascot.setState('thinking');
             }
             if (typeof this.mascot.setMoodBadge === 'function') {
-                this.mascot.setMoodBadge('🔍', 3500);
+                this.mascot.setMoodBadge('📚', 3000);
             }
         }
 
         try {
-            const url = `${OPAC_API_URL}?action=search&query=${encodeURIComponent(searchQuery)}&cascade=1&length=4`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Ошибка OPAC API: HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            const isInvSearch = /^IN\s+/i.test(searchQuery);
-            const displayQuery = isInvSearch ? searchQuery.replace(/^IN\s+/i, '').trim() : searchQuery;
-
-            if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-                this.hideTypingIndicator();
-                const notFoundMsg = isInvSearch
-                    ? `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по инвентарному номеру **«№${displayQuery}»** книга не найдена.\n\nПожалуйста, перепроверьте цифры номера или попробуйте найти книгу по автору/названию (например: \`/книга Пушкин\` или \`/поиск Капитанская дочка\`).`
-                    : `:cosmo_think: В электронном каталоге ЦГБ г. Владимира по запросу **«${searchQuery}»** ничего не найдено.\n\nПопробуйте изменить формулировку — указать фамилию автора или точное название книги (например: \`/книга Мастер и Маргарита\` или \`/поиск Булгаков\`).`;
-                // Без escapeHtml: parseCosmoMarkdown экранирует сам, иначе двойное
-                // экранирование даёт «&amp;lt;» в чате и в истории для ИИ
-                this.messages.push({ role: 'assistant', content: notFoundMsg });
-                this.appendBotMessage(notFoundMsg);
-                if (this.mascot && typeof this.mascot.setState === 'function') {
-                    this.mascot.setState('thinking');
-                }
-                return;
-            }
-
-            // Для первых найденных книг (до 3) подгружаем точные экземпляры и движение
-            const topBooks = data.items.slice(0, 3);
-            await Promise.allSettled(topBooks.map(async (book) => {
-                if (!book.id) return;
-                try {
-                    const cUrl = `${OPAC_API_URL}?action=copies&idbr=${encodeURIComponent(book.id)}`;
-                    const cRes = await fetch(cUrl, {
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    if (cRes.ok) {
-                        const cData = await cRes.json();
-                        if (cData.ok && Array.isArray(cData.copies)) {
-                            book.copies = cData.copies;
-                        }
-                    }
-                } catch (err) {
-                    console.warn('[CosmoChat] Ошибка получения экземпляров для', book.id, err);
-                }
-            }));
-
-            // Проверяем наличие в филиале №4 (Доброе)
-            let hasInBranch4 = false;
-            let availableTotal = 0;
-            topBooks.forEach(b => {
-                if (Array.isArray(b.copies)) {
-                    b.copies.forEach(c => {
-                        const sigla = (c.subfield_b || '').toLowerCase();
-                        if (c.is_available) availableTotal++;
-                        if (sigla === 'ф4' || sigla === 'ф4д' || c.branch_code === 'Филиал №4' || (c.branch_address && c.branch_address.includes('Егорова'))) {
-                            if (c.is_available) hasInBranch4 = true;
-                        }
-                    });
-                } else if (Array.isArray(b.locations)) {
-                    if (b.locations.some(l => String(l).toLowerCase() === 'ф4' || String(l).toLowerCase() === 'ф4д')) {
-                        hasInBranch4 = true;
-                    }
-                }
-            });
-
-            // Формируем вводное сообщение Космо
-            const totalFound = data.total_found || data.count || topBooks.length;
-            let introText = isInvSearch
-                ? `📚 **Книга по инвентарному номеру №${displayQuery} в каталоге OPAC:**`
-                : `📚 **Результаты поиска в электронном каталоге ЦГБ г. Владимира:**\n\nПо запросу **«${searchQuery}»** найдено **${totalFound}** ${declOfNum(totalFound, ['издание', 'издания', 'изданий'])}.`;
-
-            if (hasInBranch4) {
-                introText += `\n\n🌟 **Отличная новость!** Экземпляр числится в **Филиале №4** (ул. Егорова, д. 10, жилой район *Доброе*)!`;
-            } else if (availableTotal > 0) {
-                introText += `\n\n✅ Книга доступна для выдачи в филиалах нашей библиотечной сети. Подробные данные о наличии:`;
-            } else {
-                introText += `\n\n⏳ На текущий момент этот экземпляр находится на руках у читателей. Уточняйте сроки возврата по телефону филиала:`;
-            }
-
-            const cardsHtml = topBooks.map(b => renderOpacBookCard(b, isInvSearch ? displayQuery : null)).join('\n');
-
+            await new Promise(r => setTimeout(r, 300));
             this.hideTypingIndicator();
-            this.appendBotBookMessage(introText, cardsHtml, topBooks);
-
-            this.messages.push({
-                role: 'assistant',
-                content: `${introText}\n\n[Карточки каталога OPAC для запроса: ${searchQuery}]`
-            });
-
-            if (this.mascot) {
-                if (typeof this.mascot.setState === 'function') {
-                    this.mascot.setState('read');
-                }
-                if (typeof this.mascot.setMoodBadge === 'function') {
-                    this.mascot.setMoodBadge('📖', 4000);
-                }
-                if (this.audioEnabled && typeof this.mascot.playVoice === 'function') {
-                    this.mascot.playVoice('greet_1');
-                }
-            }
-
-        } catch (err) {
-            console.error('[CosmoChat] Ошибка поиска в OPAC:', err);
-            this.hideTypingIndicator();
-            const errorMsg = `:cosmo_shock: Не удалось подключиться к серверу электронного каталога OPAC-Global.\n\nВозможно, технологический шлюз библиотеки сейчас обновляет сессии или временно недоступен. Попробуйте повторить поиск через пару минут!`;
-            this.messages.push({ role: 'assistant', content: errorMsg });
-            this.appendBotMessage(errorMsg);
+            const msg = `:cosmo_think: **Поиск по каталогу OPAC временно отключён**\n\nМодуль электронного каталога находится на плановом техническом обслуживании. Вы можете уточнить наличие издания **«${searchQuery}»** непосредственно у библиотекарей по телефонам филиалов или через группу ВКонтакте! 🏛️✨`;
+            this.messages.push({ role: 'assistant', content: msg });
+            this.appendBotMessage(msg);
             if (this.mascot && typeof this.mascot.setState === 'function') {
-                this.mascot.setState('tired');
+                this.mascot.setState('idle');
             }
         } finally {
             this.isBusy = false;

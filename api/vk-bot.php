@@ -2104,10 +2104,8 @@ function vk_bot_get_admin_help_text($vkGroupId = 0)
           . "• Имена из профилей ВК: подтягивание реальных имён участников (users.get).\n"
           . "• Защита от иноагентов: строжайший запрет на авторов-иноагентов.\n"
           . "• /ino [имя/ФИО] / !ino / /ино — официальная проверка и поиск по Единому реестру иноагентов Минюста РФ (255-ФЗ).\n\n"
-          . "📚 3. КНИГИ И ЭЛЕКТРОННЫЙ КАТАЛОГ (OPAC)\n"
-          . "• /книга [название] / !книга / /поиск [автор/книга] / /opac / /к — поиск книг в каталоге OPAC-Global (база 62) по 18 филиалам Владимира (адреса, шифры, статус «В наличии»).\n"
-          . "  ↳ NLP/голос: «Космо, найди книгу ...», «В каком филиале есть ...», «Есть ли на Егорова ...».\n"
-          . "  ↳ Филиал №4: ул. Егорова, 10, жилой район «Доброе» (не в центре!).\n"
+          . "📚 3. КНИГИ И РЕКОМЕНДАЦИИ\n"
+          . "• Поиск по электронному каталогу OPAC временно отключён на период технического обслуживания.\n"
           . "• Книга дня / Рекомендация — ежедневная книга с аннотацией и цитатой.\n"
           . "• Книга недели / Книжный клуб — книга недели для совместного чтения.\n"
           . "• Голосование / Выбор книги — запуск голосования с кнопками.\n"
@@ -6092,8 +6090,8 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'opac_help'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🔎 Поиск в каталоге'
+                    'payload' => json_encode(['cmd' => 'libraries'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🏛 Библиотеки-филиалы'
                 ],
                 'color' => 'primary'
             ],
@@ -6110,8 +6108,8 @@ $persistentKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'libraries'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🏛 Библиотеки-филиалы'
+                    'payload' => json_encode(['cmd' => 'book_recommend'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '📚 Что почитать?'
                 ],
                 'color' => 'secondary'
             ],
@@ -6242,8 +6240,8 @@ $inlineChatKeyboard = [
             [
                 'action' => [
                     'type'    => 'text',
-                    'payload' => json_encode(['cmd' => 'opac_help'], JSON_UNESCAPED_UNICODE),
-                    'label'   => '🔎 Поиск в каталоге'
+                    'payload' => json_encode(['cmd' => 'libraries'], JSON_UNESCAPED_UNICODE),
+                    'label'   => '🏛 Филиалы'
                 ],
                 'color' => 'secondary'
             ],
@@ -7454,90 +7452,22 @@ if ($cmd === 'opac_page' && !empty($payloadData['q'])) {
 }
 
 if ($parsedBookQuery !== null || $cmd === 'opac_help') {
-    if ($cmd === 'opac_help' || !empty($parsedBookQuery['show_help'])) {
-        $reply = "📖 Робот Космо: Поиск в электронном каталоге библиотек г. Владимира 🤖📚\n\n"
-               . "Я умею мгновенно проверять наличие любой книги по электронному каталогу ЦГБ (база 62) среди всех 18 филиалов города Владимира!\n\n"
-               . "📌 Как пользоваться поиском:\n"
-               . "• /книга [название] — например: /книга Мастер и Маргарита\n"
-               . "• /поиск [автор/книга] — например: /поиск Булгаков или /поиск Капитанская дочка\n"
-               . "• /к [запрос] — быстрый поиск\n\n"
-               . "💬 Вы также можете спросить меня обычными словами или надиктовать голосом:\n"
-               . "• «Космо, найди книгу Война и мир»\n"
-               . "• «В каком филиале есть Гарри Поттер?»\n"
-               . "• «Есть ли в библиотеке на Егорова Капитанская дочка?»\n\n"
-               . "Я выведу список доступных изданий, адреса и телефоны филиалов, а также точные шифры хранения для быстрого получения на абонементе! 🏛️✨";
+    $reply = "📖 Робот Космо: Электронный каталог OPAC 🤖📚\n\n"
+           . "Поиск книг через электронный каталог OPAC-Global в данный момент временно отключён на период планового технического обслуживания.\n\n"
+           . "🏛 Чтобы узнать о наличии нужного издания или забронировать книгу:\n"
+           . "• Обратитесь к библиотекарям филиалов по телефону (команда /филиалы)\n"
+           . "• Напишите нам сообщение прямо сюда в группу — сотрудники ЦГБ с радостью подскажут наличие книги на абонементе!\n\n"
+           . "Следите за новостями библиотек города Владимира! ✨";
 
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
-
-    if (!empty($parsedBookQuery['query'])) {
-        if ($botTyping && $peerId > 0) {
-            vk_bot_set_typing($peerId, $communityToken, $vkGroupId);
-        }
-
-        $page = max(1, (int)($parsedBookQuery['page'] ?? 1));
-        $perPage = 3;
-        $start = ($page - 1) * $perPage;
-
-        // Выполняем поиск через микросервис OPAC
-        $searchRes = null;
-        if (function_exists('opac_search_books')) {
-            $searchRes = opac_search_books($parsedBookQuery['query'], $perPage, $start);
-        } elseif (class_exists('OpacClient')) {
-            $searchRes = OpacClient::getInstance()->findBooks($parsedBookQuery['query'], $perPage, $start);
-        }
-
-        $totalFound = $searchRes['total_found'] ?? ($searchRes['recordsFiltered'] ?? ($searchRes['total'] ?? (is_array($searchRes['items'] ?? null) ? count($searchRes['items']) : 0)));
-        $totalPages = max(1, (int)ceil($totalFound / $perPage));
-        if ($page > $totalPages && $totalPages > 0) {
-            $page = $totalPages;
-        }
-
-        $reply = vk_bot_format_opac_response(
-            $searchRes,
-            $parsedBookQuery['query'],
-            $parsedBookQuery['branch_filter'] ?? null,
-            $callerName,
-            $page,
-            $perPage,
-            $fromId
-        );
-
-        if ($isVoiceQuery && $voiceTranscribedText !== '') {
-            $reply = "🎤 *Распознано голосовое:* «{$voiceTranscribedText}»\n\n" . $reply;
-        }
-
-        // Строим интерактивную клавиатуру пагинации
-        $paginationKeyboard = vk_bot_build_opac_pagination_keyboard(
-            $parsedBookQuery['query'],
-            $page,
-            $totalPages,
-            $parsedBookQuery['branch_filter'] ?? null
-        );
-
-        $outKeyboard = $paginationKeyboard
-            ? json_encode($paginationKeyboard, JSON_UNESCAPED_UNICODE)
-            : ($isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE));
-
-        $hasResults = (!empty($searchRes['ok']) || !empty($searchRes['success'])) && !empty($searchRes['items']);
-        vk_bot_send_message([
-            'peer_id'          => $peerId,
-            'message'          => $reply,
-            'attachment'       => $hasResults ? ($mascotStickers['read'] ?? null) : ($mascotStickers['thinking'] ?? null),
-            'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
-            'keyboard'         => $outKeyboard,
-            'dont_parse_links' => 1
-        ], $communityToken);
-        exit;
-    }
+    vk_bot_send_message([
+        'peer_id'          => $peerId,
+        'message'          => $reply,
+        'attachment'       => $mascotStickers['read'] ?? ($mascotStickers['smile'] ?? null),
+        'random_id'        => (int)(microtime(true) * 1000) + mt_rand(1, 999999),
+        'keyboard'         => $isChat ? json_encode($inlineChatKeyboard, JSON_UNESCAPED_UNICODE) : json_encode($persistentKeyboard, JSON_UNESCAPED_UNICODE),
+        'dont_parse_links' => 1
+    ], $communityToken);
+    exit;
 }
 
 // Нормализованное сообщение без эмодзи для надёжного матчинга команд кнопок
