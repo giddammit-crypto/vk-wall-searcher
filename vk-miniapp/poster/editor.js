@@ -643,60 +643,123 @@ function addCosmoMascot(filename) {
   });
 }
 
-function generateQrDataUrl(text, size = 300) {
+/* ── QR-код: нормализация ссылок и UTF-8 ──────────────────────── */
+function normalizeQrText(str) {
+  let val = (str || '').trim();
+  if (!val) return 'https://biblioteka33.ru';
+  // Если введен домен или vk.com без протокола — добавляем https://
+  if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/.*)?$/i.test(val) || /^vk\.com\/.+/i.test(val)) {
+    val = 'https://' + val;
+  }
+  return val;
+}
+
+function toUtf8(str) {
+  try {
+    return unescape(encodeURIComponent(str));
+  } catch (e) {
+    return str;
+  }
+}
+
+function generateQrDataUrl(text, size = 320) {
   return new Promise((resolve, reject) => {
+    if (typeof QRCode === 'undefined') {
+      reject(new Error('Библиотека QRCode не загружена'));
+      return;
+    }
+
+    const clean = normalizeQrText(text);
+    const utf8Text = toUtf8(clean);
+
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'fixed';
     tempDiv.style.left = '-9999px';
     tempDiv.style.top = '-9999px';
+    tempDiv.style.visibility = 'hidden';
     document.body.appendChild(tempDiv);
+
     try {
+      const qrInnerSize = Math.max(size - 32, 120);
       new QRCode(tempDiv, {
-        text: text || 'https://biblioteka33.ru',
-        width: size,
-        height: size,
+        text: utf8Text,
+        width: qrInnerSize,
+        height: qrInnerSize,
         colorDark: '#000000',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H,
+        correctLevel: QRCode.CorrectLevel.M,
       });
-      setTimeout(() => {
-        const canvasEl = tempDiv.querySelector('canvas');
-        if (canvasEl) {
-          const url = canvasEl.toDataURL('image/png');
-          tempDiv.remove();
-          resolve(url);
+
+      let attempts = 0;
+      const pollTimer = setInterval(() => {
+        attempts++;
+        const rawCanvas = tempDiv.querySelector('canvas');
+        const rawImg = tempDiv.querySelector('img');
+
+        let source = null;
+        if (rawCanvas && rawCanvas.width > 0) {
+          source = rawCanvas;
+        } else if (rawImg && rawImg.complete && rawImg.naturalWidth > 0) {
+          source = rawImg;
+        }
+
+        if (source) {
+          clearInterval(pollTimer);
+          try {
+            // Рисуем на холсте с обязательной белой рамкой (Quiet Zone 16px)
+            // Это гарантирует считывание QR-кода камерой на любых фонах
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = size;
+            finalCanvas.height = size;
+            const ctx = finalCanvas.getContext('2d');
+
+            // Белая подложка (тихая зона)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+
+            const pad = 16;
+            ctx.drawImage(source, pad, pad, size - pad * 2, size - pad * 2);
+
+            const dataUrl = finalCanvas.toDataURL('image/png');
+            tempDiv.remove();
+            resolve(dataUrl);
+          } catch (err) {
+            tempDiv.remove();
+            reject(err);
+          }
           return;
         }
-        const imgEl = tempDiv.querySelector('img');
-        if (imgEl && imgEl.src) {
-          const src = imgEl.src;
+
+        if (attempts > 25) {
+          clearInterval(pollTimer);
           tempDiv.remove();
-          resolve(src);
-          return;
+          reject(new Error('Таймаут генерации QR-кода'));
         }
-        tempDiv.remove();
-        reject(new Error('Не удалось сгенерировать QR-код'));
-      }, 60);
-    } catch(err) {
+      }, 40);
+
+    } catch (err) {
       tempDiv.remove();
       reject(err);
     }
   });
 }
 
+let qrDebounceTimer = null;
 async function renderQrModalPreview(text) {
   const target = $('#qr-render-target');
   if (!target) return;
-  target.innerHTML = '';
   try {
-    const url = await generateQrDataUrl(text || 'https://biblioteka33.ru', 150);
+    const url = await generateQrDataUrl(text || 'https://biblioteka33.ru', 160);
+    target.innerHTML = '';
     const img = document.createElement('img');
     img.src = url;
-    img.style.width = '150px';
-    img.style.height = '150px';
+    img.style.width = '140px';
+    img.style.height = '140px';
+    img.style.display = 'block';
+    img.style.borderRadius = '4px';
     target.appendChild(img);
-  } catch(e) {
-    target.textContent = 'Ошибка QR';
+  } catch (e) {
+    target.innerHTML = '<span style="color:#EF4444;font-size:11px;padding:10px;text-align:center">Ошибка генерации QR</span>';
   }
 }
 
@@ -704,6 +767,7 @@ async function addQrCodeToCanvas() {
   const input = $('#qr-input-text');
   const text = input ? input.value.trim() : 'https://biblioteka33.ru';
   closeQrModal();
+  toast('Создаю QR-код…');
   try {
     const dataUrl = await generateQrDataUrl(text, 400);
     fabric.Image.fromURL(dataUrl, img => {
@@ -718,9 +782,10 @@ async function addQrCodeToCanvas() {
       canvas.setActiveObject(img);
       canvas.renderAll();
       updateLayersList();
+      saveHistory();
       toast('QR-код добавлен на афишу 📱');
     });
-  } catch(e) {
+  } catch (e) {
     toast('Ошибка создания QR-кода');
   }
 }
@@ -1269,7 +1334,12 @@ function bindEvents() {
   /* Модалка QR-кода */
   $('#qrcode-modal-close')?.addEventListener('click', closeQrModal);
   $('#qrcode-modal-overlay')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeQrModal(); });
-  $('#qr-input-text')?.addEventListener('input', e => renderQrModalPreview(e.target.value));
+  $('#qr-input-text')?.addEventListener('input', e => {
+    clearTimeout(qrDebounceTimer);
+    qrDebounceTimer = setTimeout(() => {
+      renderQrModalPreview(e.target.value);
+    }, 150);
+  });
   $$('.qr-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const input = $('#qr-input-text');

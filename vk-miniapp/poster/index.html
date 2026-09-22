@@ -421,10 +421,15 @@
 <!-- Скрытый input загрузки фото -->
 <input type="file" id="photo-input" accept="image/*" style="display:none">
 
-<!-- Внешние библиотеки -->
+<!-- Библиотеки: Canvas, PDF, QR-код -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="editor.js?v=2.1.0"></script>
+<script src="qrcode.min.js?v=2.1.1"></script>
+<script>
+if (typeof QRCode === 'undefined') {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+}
+</script>
+<script src="editor.js?v=2.1.1"></script>
 </body>
 </html>
