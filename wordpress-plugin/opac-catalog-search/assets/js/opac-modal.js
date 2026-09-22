@@ -11,15 +11,78 @@
 (function () {
 'use strict';
 
-var OPAC_CFG = (typeof window !== 'undefined' && window.OpacCatalogConfig) ? window.OpacCatalogConfig : {
-    ajaxUrl: '/wp-admin/admin-ajax.php',
-    assetUrl: '',
-    bannerUrl: '',
-    noCoverImgUrl: '',
-    directUrl: 'http://library.vladimir.ru/rguest_vlad_cgb.htm',
-    enableCovers: true,
-    actions: { search: 'opac_search', copies: 'opac_copies', cover: 'opac_cover', status: 'opac_status' }
-};
+// Автоматическое определение хоста и директории плагина при встраивании на сторонний сайт
+var detectedOrigin = '';
+var detectedAjaxUrl = '/wp-admin/admin-ajax.php';
+var detectedAssetUrl = '';
+
+if (typeof document !== 'undefined') {
+    var curScript = document.currentScript;
+    if (!curScript) {
+        var allScripts = document.querySelectorAll('script[src*="opac-modal.js"], script[src*="opac-catalog"]');
+        if (allScripts.length > 0) {
+            curScript = allScripts[allScripts.length - 1];
+        }
+    }
+    if (curScript && curScript.src) {
+        try {
+            var sUrl = new URL(curScript.src, window.location.href);
+            detectedOrigin = sUrl.origin;
+            var path = sUrl.pathname;
+            var assetsIdx = path.lastIndexOf('/assets/');
+            if (assetsIdx !== -1) {
+                detectedAssetUrl = detectedOrigin + path.substring(0, assetsIdx + 8);
+            }
+            var wpContentIdx = path.indexOf('/wp-content/');
+            if (wpContentIdx !== -1) {
+                var wpRoot = path.substring(0, wpContentIdx);
+                detectedAjaxUrl = detectedOrigin + wpRoot + '/wp-admin/admin-ajax.php';
+            } else if (sUrl.origin !== window.location.origin) {
+                detectedAjaxUrl = detectedOrigin + '/wp-admin/admin-ajax.php';
+            }
+        } catch (e) {}
+    }
+}
+
+function getOpacConfig() {
+    var userCfg = (typeof window !== 'undefined' && window.OpacCatalogConfig) ? window.OpacCatalogConfig : {};
+    var fallbackAjax = (typeof window !== 'undefined' && window.ajaxurl) ? window.ajaxurl : detectedAjaxUrl;
+    var baseAsset = userCfg.assetUrl || detectedAssetUrl || '';
+
+    return {
+        ajaxUrl: userCfg.ajaxUrl || fallbackAjax || '/wp-admin/admin-ajax.php',
+        assetUrl: baseAsset,
+        bannerUrl: userCfg.bannerUrl || (baseAsset ? baseAsset + 'img/catalog_banner.svg' : ''),
+        noCoverImgUrl: userCfg.noCoverImgUrl || (baseAsset ? baseAsset + 'img/robot_shock.png' : ''),
+        directUrl: userCfg.directUrl || 'http://library.vladimir.ru/rguest_vlad_cgb.htm',
+        enableCovers: userCfg.enableCovers !== undefined ? Boolean(userCfg.enableCovers) : true,
+        actions: userCfg.actions || {
+            search: 'opac_search',
+            copies: 'opac_copies',
+            cover: 'opac_cover',
+            status: 'opac_status'
+        }
+    };
+}
+
+var OPAC_CFG = getOpacConfig();
+
+// Автоподключение CSS стилей и иконок при внешнем встраивании (если они не были подключены на странице)
+if (typeof document !== 'undefined') {
+    var initialCfg = getOpacConfig();
+    if (initialCfg.assetUrl && !document.querySelector('link[href*="opac-search.css"]')) {
+        var cssLink = document.createElement('link');
+        cssLink.rel = 'stylesheet';
+        cssLink.href = initialCfg.assetUrl + 'css/opac-search.css';
+        document.head.appendChild(cssLink);
+    }
+    if (!document.querySelector('link[href*="Material+Symbols"]') && !document.querySelector('link[href*="material-symbols"]')) {
+        var matLink = document.createElement('link');
+        matLink.rel = 'stylesheet';
+        matLink.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200';
+        document.head.appendChild(matLink);
+    }
+}
 
 /**
  * Экранирование HTML (порт escapeHtml из branches.js)
@@ -678,6 +741,7 @@ let coverZoomModalEl = null;
 
 function initCoverZoomModal() {
     if (coverZoomModalEl) return;
+    OPAC_CFG = getOpacConfig();
     const modal = document.createElement('div');
     modal.className = 'opac-cover-zoom-modal hidden';
     modal.id = 'opac-cover-zoom-modal';
@@ -918,13 +982,15 @@ function getGenreIcon(genre) {
  * Формирование абсолютного или относительного URL к API
  */
 function resolveApiUrl(endpoint) {
-    return OPAC_CFG.ajaxUrl;
+    var cfg = getOpacConfig();
+    return cfg.ajaxUrl;
 }
 
 /**
  * Инициализация и монтирование DOM-структуры модального окна
  */
 function initOpacModal() {
+    OPAC_CFG = getOpacConfig();
     if (opacModalEl) return opacModalEl;
 
     const existing = document.getElementById('opac-search-modal');
@@ -1473,6 +1539,10 @@ async function executeOpacSearch(query, pageOrRefresh = 1, forceRefresh = false)
             renderCircuitBreakerState(data.error || 'Сервер каталога OPAC временно восстанавливает связь');
             return;
         }
+        if (data && !data.ok) {
+            renderErrorState(data.error || 'Сбой подключения к каталогу OPAC');
+            return;
+        }
 
         // Гарантируем метаданные пагинации в ответе
         data.page = page;
@@ -1730,7 +1800,12 @@ function matchesBranchFilter(copy, filter) {
 function renderSearchResults(data, query) {
     if (!opacGridEl || !opacStatusEl) return;
 
-    if (!data || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+    if (!data || !data.ok) {
+        renderErrorState((data && data.error) ? data.error : 'Не удалось получить ответ от сервера каталога.');
+        return;
+    }
+
+    if (!Array.isArray(data.items) || data.items.length === 0) {
         if (opacPaginationEl) opacPaginationEl.innerHTML = '';
         opacStatusEl.innerHTML = `
             <div class="opac-status-empty">

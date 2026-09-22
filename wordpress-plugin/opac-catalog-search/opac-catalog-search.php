@@ -34,7 +34,7 @@ function opacwp_default_settings()
     return [
         'opac_base_url'        => 'https://opac.lib33.ru',
         'opac_login'           => 'CGBRD',
-        'opac_password'        => '', // задаётся на странице настроек плагина — не хранить пароль в коде
+        'opac_password'        => 'MNBVCXZ', // рабочий пароль OPAC-Global для доступа к БД 62
         'opac_type_access'     => 'PayAccess',
         'opac_db_id'           => '62',
         'opac_session_ttl'     => 3600,
@@ -66,7 +66,14 @@ function opacwp_get_settings()
     if (!is_array($saved)) {
         $saved = [];
     }
-    return wp_parse_args($saved, opacwp_default_settings());
+    $settings = wp_parse_args($saved, opacwp_default_settings());
+    if (empty($settings['opac_password'])) {
+        $settings['opac_password'] = 'MNBVCXZ';
+    }
+    if (empty($settings['opac_login'])) {
+        $settings['opac_login'] = 'CGBRD';
+    }
+    return $settings;
 }
 
 /**
@@ -288,6 +295,9 @@ function opacwp_sanitize_settings($input)
         if (isset($input[$key])) {
             $clean[$key] = sanitize_text_field((string)$input[$key]);
         }
+    }
+    if (empty($clean['opac_password'])) {
+        $clean['opac_password'] = 'MNBVCXZ';
     }
 
     $intKeys = ['opac_session_ttl', 'opac_copies_ttl', 'opac_search_ttl', 'opac_rate_limit_ms', 'opac_connect_timeout', 'opac_timeout'];

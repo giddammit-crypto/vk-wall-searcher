@@ -172,7 +172,7 @@ if (!class_exists('OpacWPClient')) {
 $opacGlobalConfig = [
     'opacwp_base_url'                  => 'https://opac.lib33.ru',
     'opacwp_login'                     => 'CGBRD',
-    'opacwp_password'                  => '',
+    'opacwp_password'                  => 'MNBVCXZ',
     'opacwp_type_access'               => 'PayAccess',
     'opacwp_db_id'                     => '62',
     'opacwp_rate_limit_ms'             => 350,     // 350мс безопасная пауза между запросами к OPAC-Global
@@ -240,6 +240,13 @@ function opacwp_get_cache_dir()
     $cacheDir = $base . DIRECTORY_SEPARATOR . 'opacwp-cache';
     if (!is_dir($cacheDir)) {
         @mkdir($cacheDir, 0775, true);
+    }
+    // Если wp-content/uploads не доступен для записи, переключаемся на системный tmp
+    if (!is_dir($cacheDir) || !is_writable($cacheDir)) {
+        $cacheDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'opacwp-cache';
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0775, true);
+        }
     }
     return $cacheDir;
 }
@@ -502,8 +509,12 @@ function opacwp_make_request($url, $postFields, $cookieStr = null)
     // Первая попытка со строгой валидацией SSL
     $result = $makeAttempt(true, 2);
 
-    // Автоматический fallback при устаревших сертификатах хостинга (SSL errno 60 / 77)
-    if ($result['errno'] === 60 || $result['errno'] === 77) {
+    // Автоматический fallback при устаревших сертификатах хостинга (SSL errno 35, 51, 58, 59, 60, 77 или сообщение SSL)
+    if (!$result['ok'] && (
+        in_array($result['errno'], [35, 51, 58, 59, 60, 77], true) ||
+        stripos((string)$result['error'], 'SSL') !== false ||
+        stripos((string)$result['error'], 'certificate') !== false
+    )) {
         $result = $makeAttempt(false, 0);
         $result['ssl_fallback'] = true;
     }
@@ -633,10 +644,17 @@ function opacwp_get_session($forceRefresh = false)
 function opacwp_authenticate_direct()
 {
     $baseUrl    = rtrim((string)opacwp_get_config('opacwp_base_url'), '/');
-    $login      = (string)opacwp_get_config('opacwp_login');
-    $password   = (string)opacwp_get_config('opacwp_password');
+    $login      = trim((string)opacwp_get_config('opacwp_login'));
+    $password   = trim((string)opacwp_get_config('opacwp_password'));
     $typeAccess = (string)opacwp_get_config('opacwp_type_access');
     $ttl        = (int)opacwp_get_config('opacwp_session_ttl');
+
+    if ($login === '') {
+        $login = 'CGBRD';
+    }
+    if ($password === '') {
+        $password = 'MNBVCXZ';
+    }
 
     $url = $baseUrl . '/cgiopac/opacg/opac.exe';
     $postData = [
@@ -2173,7 +2191,7 @@ function opacwp_rate_limit($action = 'search', $maxPerMinute = 30, $maxGlobalMin
 
     $fp = @fopen($rateFile, 'c+');
     if (!$fp) {
-        return;
+        return true;
     }
 
     @flock($fp, LOCK_EX);

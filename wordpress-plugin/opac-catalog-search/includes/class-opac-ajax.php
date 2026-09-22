@@ -47,12 +47,21 @@ class OPAC_Ajax
     }
 
     /**
-     * Отметка «нет кэширования» для динамических ответов каталога
+     * Отметка «нет кэширования» и CORS заголовки (поддержка встраивания на внешние сайты)
      */
     public static function no_cache_headers()
     {
         nocache_headers();
-        header('Content-Type: application/json; charset=UTF-8');
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        }
+        if (isset($_SERVER['REQUEST_METHOD']) && strtoupper((string)$_SERVER['REQUEST_METHOD']) === 'OPTIONS') {
+            status_header(204);
+            exit;
+        }
     }
 
     /* ======================================================================
