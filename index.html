@@ -471,51 +471,164 @@
                 </div>
             </div>
             <div class="header-actions">
+                <!-- Группа 1: Сервисы -->
+                <div class="nav-dropdown" id="nav-dropdown-services">
+                    <button type="button" class="btn btn-tonal nav-dropdown-trigger" id="trigger-services" aria-expanded="false" aria-haspopup="true" title="Библиотечные сервисы и инструменты">
+                        <span class="material-symbols-outlined icon">hub</span>
+                        <span class="settings-btn-text">Сервисы</span>
+                        <span class="material-symbols-outlined nav-dropdown-arrow">expand_more</span>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-labelledby="trigger-services">
+                        <div class="nav-dropdown-header">Инструменты и сервисы</div>
+                        
+                        <a href="vk-miniapp/poster/" target="_blank" id="poster-editor-header-btn" class="nav-menu-item" role="menuitem" title="Редактор афиш и вывесок — создайте красивую афишу за 5 минут!">
+                            <div class="nav-item-icon-wrap icon-amber">
+                                <span class="material-symbols-outlined icon">palette</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title">Редактор афиш</span>
+                                    <span class="nav-badge badge-new">NEW</span>
+                                </div>
+                                <span class="nav-item-desc">Генератор афиш и объявлений для мероприятий</span>
+                            </div>
+                        </a>
+
+                        <button type="button" id="promo-modal-btn" class="nav-menu-item" role="menuitem" title="Генератор фирменных QR-плакатов и закладок для филиалов">
+                            <div class="nav-item-icon-wrap icon-cyan">
+                                <span class="material-symbols-outlined icon">qr_code_2</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">QR-плакаты</span>
+                                </div>
+                                <span class="nav-item-desc">Фирменные плакаты и закладки для филиалов</span>
+                            </div>
+                        </button>
+
+                        <button type="button" id="league-modal-btn" class="nav-menu-item" role="menuitem" title="Лига филиалов: рейтинг активности, дивизионы и награды от Космо">
+                            <div class="nav-item-icon-wrap icon-purple">
+                                <span class="material-symbols-outlined icon">emoji_events</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Лига филиалов</span>
+                                    <span class="nav-badge badge-purple">ТОП</span>
+                                </div>
+                                <span class="nav-item-desc">Рейтинг активности, дивизионы и награды</span>
+                            </div>
+                        </button>
+
+                        <button type="button" id="inoagent-modal-btn" class="nav-menu-item inoagent-header-btn" role="menuitem" title="Реестр иностранных агентов Минюста РФ (255-ФЗ)">
+                            <div class="nav-item-icon-wrap icon-danger">
+                                <span class="material-symbols-outlined icon">shield_person</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Иноагенты</span>
+                                    <span class="inoagent-nav-badge">МИНЮСТ</span>
+                                </div>
+                                <span class="nav-item-desc">Реестр иностранных агентов (255-ФЗ)</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Группа 2: Интерактив -->
+                <div class="nav-dropdown" id="nav-dropdown-interactive">
+                    <button type="button" class="btn btn-tonal nav-dropdown-trigger" id="trigger-interactive" aria-expanded="false" aria-haspopup="true" title="Интерактивные и 3D-модули">
+                        <span class="material-symbols-outlined icon">rocket_launch</span>
+                        <span class="settings-btn-text">Интерактив</span>
+                        <span class="material-symbols-outlined nav-dropdown-arrow">expand_more</span>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-labelledby="trigger-interactive">
+                        <div class="nav-dropdown-header">Интерактив и космос</div>
+
+                        <button type="button" id="space-3d-btn" class="nav-menu-item space-mode-trigger" role="menuitem" title="Интерактивное космическое 3D-пространство 360°">
+                            <div class="nav-item-icon-wrap icon-cyan">
+                                <span class="material-symbols-outlined icon">orbit</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">3D-Пространство</span>
+                                    <span class="space-badge-pulse">3D</span>
+                                </div>
+                                <span class="nav-item-desc">Интерактивная галактическая сфера 360°</span>
+                            </div>
+                        </button>
+
+                        <a href="game/" target="_blank" id="cosmo-game-header-btn" class="nav-menu-item cosmo-game-header-btn" role="menuitem" title="Мини-игра: Космо бегает по библиотеке и чинит компьютеры!">
+                            <div class="nav-item-icon-wrap icon-emerald">
+                                <span class="material-symbols-outlined icon">sports_esports</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Игра «Космо»</span>
+                                    <span class="game-nav-badge" style="background: linear-gradient(135deg, #00F0FF, #00FF9D); color: #041026; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;">ИГРА</span>
+                                </div>
+                                <span class="nav-item-desc">Космо бегает по библиотеке и чинит ПК</span>
+                            </div>
+                        </a>
+
+                        <button type="button" id="cosmo-presentation-btn" class="nav-menu-item" role="menuitem" title="Заставка: Космо расскажет и покажет, что он умеет">
+                            <div class="nav-item-icon-wrap icon-pink">
+                                <span class="material-symbols-outlined icon">auto_awesome</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Заставка</span>
+                                </div>
+                                <span class="nav-item-desc">Интерактивная презентация возможностей</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Группа 3: Справка -->
+                <div class="nav-dropdown" id="nav-dropdown-help">
+                    <button type="button" class="btn btn-tonal nav-dropdown-trigger" id="trigger-help" aria-expanded="false" aria-haspopup="true" title="Справка и руководства">
+                        <span class="material-symbols-outlined icon">help</span>
+                        <span class="settings-btn-text">Справка</span>
+                        <span class="material-symbols-outlined nav-dropdown-arrow">expand_more</span>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-labelledby="trigger-help">
+                        <div class="nav-dropdown-header">Помощь и обучение</div>
+
+                        <button type="button" id="help-btn" class="nav-menu-item" role="menuitem" title="Справка по сервису">
+                            <div class="nav-item-icon-wrap icon-blue">
+                                <span class="material-symbols-outlined icon">help</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Руководство</span>
+                                </div>
+                                <span class="nav-item-desc">Инструкции по поиску и фильтрам</span>
+                            </div>
+                        </button>
+
+                        <button type="button" id="video-help-btn" class="nav-menu-item" role="menuitem" title="Видео-справка: Космо рассказывает о возможностях AURORA">
+                            <div class="nav-item-icon-wrap icon-purple">
+                                <span class="material-symbols-outlined icon">play_circle</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">Видео-справка</span>
+                                </div>
+                                <span class="nav-item-desc">Обучающие ролики от маскота Космо</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="header-nav-divider" aria-hidden="true"></div>
+
+                <!-- Кнопки прямого доступа -->
                 <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
                     <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">light_mode</span>
                     <span id="theme-toggle-text">Светлая</span>
                 </button>
-                <button type="button" id="promo-modal-btn" class="btn btn-tonal" title="Генератор фирменных QR-плакатов и закладок для филиалов">
-                    <span class="material-symbols-outlined icon">qr_code_2</span>
-                    <span class="settings-btn-text">QR-плакаты</span>
-                </button>
-                <button type="button" id="inoagent-modal-btn" class="btn btn-tonal inoagent-header-btn" title="Реестр иностранных агентов Минюста РФ (255-ФЗ)">
-                    <span class="material-symbols-outlined icon">shield_person</span>
-                    <span class="settings-btn-text">Иноагенты</span>
-                    <span class="inoagent-nav-badge">МИНЮСТ</span>
-                </button>
-                <button type="button" id="league-modal-btn" class="btn btn-tonal" title="Лига филиалов: рейтинг активности, дивизионы и награды от Космо">
-                    <span class="material-symbols-outlined icon">emoji_events</span>
-                    <span class="settings-btn-text">Лига филиалов</span>
-                </button>
-                <a href="game/" target="_blank" id="cosmo-game-header-btn" class="btn btn-tonal cosmo-game-header-btn" title="Мини-игра: Космо бегает по библиотеке и чинит компьютеры!">
-                    <span class="material-symbols-outlined icon">sports_esports</span>
-                    <span class="settings-btn-text">Игра «Космо»</span>
-                    <span class="game-nav-badge" style="background: linear-gradient(135deg, #00F0FF, #00FF9D); color: #041026; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 4px;">ИГРА</span>
-                </a>
-                <a href="vk-miniapp/poster/" target="_blank" id="poster-editor-header-btn" class="btn btn-tonal" title="Редактор афиш и вывесок — создайте красивую афишу за 5 минут!" style="background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(244,114,182,0.15)); border-color: rgba(251,191,36,0.4);">
-                    <span class="material-symbols-outlined icon" style="color:#FBBF24;">palette</span>
-                    <span class="settings-btn-text" style="color:#FBBF24; font-weight:700;">Афиши</span>
-                    <span style="background: linear-gradient(135deg, #FBBF24, #F472B6); color: #0b111e; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 4px;">NEW</span>
-                </a>
-                <button id="help-btn" class="btn btn-tonal" title="Справка по сервису">
-                    <span class="material-symbols-outlined icon">help</span>
-                    <span class="settings-btn-text">Справка</span>
-                </button>
-                <button type="button" id="video-help-btn" class="btn btn-tonal" title="Видео-справка: Космо рассказывает о возможностях AURORA">
-                    <span class="material-symbols-outlined icon">play_circle</span>
-                    <span class="settings-btn-text">Видео-справка</span>
-                </button>
-                <button type="button" id="cosmo-presentation-btn" class="btn btn-tonal" title="Заставка: Космо расскажет и покажет, что он умеет">
-                    <span class="material-symbols-outlined icon">auto_awesome</span>
-                    <span class="settings-btn-text">Заставка</span>
-                </button>
-                <button id="space-3d-btn" class="btn btn-secondary space-mode-trigger" title="Интерактивное космическое 3D-пространство 360°">
-                    <span class="material-symbols-outlined icon">orbit</span>
-                    <span class="settings-btn-text">Пространство</span>
-                    <span class="space-badge-pulse">3D</span>
-                </button>
-                <button id="app-settings-btn" class="btn btn-secondary" title="Настройки приложения: обновления, данные">
+
+                <button type="button" id="app-settings-btn" class="btn btn-secondary" title="Настройки приложения: обновления, данные">
                     <span class="material-symbols-outlined icon">settings</span>
                     <span class="settings-btn-text">Настройки</span>
                     <span id="update-dot" class="update-dot hidden" title="Доступно обновление"></span>
@@ -2398,6 +2511,65 @@
                 }
                 draw();
             }
+        }
+    })();
+    </script>
+
+    <!-- AURORA — Header Navigation Dropdowns Controller -->
+    <script>
+    (function() {
+        function initNavDropdowns() {
+            const dropdowns = document.querySelectorAll('.nav-dropdown');
+            if (!dropdowns.length) return;
+
+            function closeAll(except = null) {
+                dropdowns.forEach(dd => {
+                    if (dd !== except) {
+                        dd.classList.remove('open');
+                        const trigger = dd.querySelector('.nav-dropdown-trigger');
+                        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+
+            dropdowns.forEach(dd => {
+                const trigger = dd.querySelector('.nav-dropdown-trigger');
+                if (!trigger) return;
+
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = dd.classList.contains('open');
+                    closeAll();
+                    if (!isOpen) {
+                        dd.classList.add('open');
+                        trigger.setAttribute('aria-expanded', 'true');
+                    }
+                });
+
+                dd.querySelectorAll('.nav-menu-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        closeAll();
+                    });
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.nav-dropdown')) {
+                    closeAll();
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeAll();
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initNavDropdowns);
+        } else {
+            initNavDropdowns();
         }
     })();
     </script>
