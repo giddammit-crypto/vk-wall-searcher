@@ -2520,19 +2520,6 @@ function initSocialButtons() {
             window.open(gameUrl, '_blank');
         }
     });
-
-    $('#btn-poster-editor')?.addEventListener('click', () => {
-        haptic('light');
-        const posterUrl = 'https://biblioteka33.ru/stat/miniapp/poster/';
-        if (bridgeReady && window.vkBridge) {
-            window.vkBridge.send('VKWebAppOpenUrl', { url: posterUrl }).catch(() => {
-                window.open(posterUrl, '_blank');
-            });
-        } else {
-            window.open(posterUrl, '_blank');
-        }
-        toast('Открываю редактор афиш 🎨');
-    });
 }
 
 async function buildBranchList() {
