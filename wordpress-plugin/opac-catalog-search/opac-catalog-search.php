@@ -5,7 +5,7 @@
  * Description:       Модальное окно поиска по электронному каталогу OPAC-Global (БД 62, ЦГБ г. Владимира): поиск изданий, экземпляры и наличие по 18 филиалам, обложки, фильтры. Встраивается в меню WordPress, шорткодом [opac_catalog] или плавающей кнопкой.
  * Version:           1.0.0
  * Requires at least: 5.8
- * Requires PHP:      7.4
+ * Requires PHP:      7.1
  * Author:            AURORA Core Team
  * License:           MIT
  * Text Domain:       opac-catalog-search
