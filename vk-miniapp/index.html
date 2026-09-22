@@ -264,49 +264,7 @@
         <div id="news-results" class="news-feed-list"></div>
     </main>
 
-    <!-- ЭКРАН: КАТАЛОГ -->
-    <main class="screen" data-screen="catalog">
-        <div class="page-head">
-            <h1 class="page-title">Каталог OPAC</h1>
-            <p class="page-sub" style="color: #f59e0b; font-weight: 600;">⚠️ Временно на техобслуживании (запросы приостановлены)</p>
-        </div>
-        <div class="search-wrap">
-            <span class="material-symbols-rounded search-ico">search</span>
-            <input id="opac-query" class="search-input" type="search" placeholder="Поиск временно приостановлен…" autocomplete="off" disabled="disabled">
-            <button id="opac-clear" class="search-clear hidden" aria-label="Очистить" disabled="disabled">
-                <span class="material-symbols-rounded">cancel</span>
-            </button>
-        </div>
-        <div class="chips-row" id="branch-chips"></div>
-
-        <!-- Крупный приветственный блок Космо (до выдачи результатов) -->
-        <div id="catalog-welcome" class="catalog-welcome-box">
-            <div class="catalog-cosmo-wrap">
-                <div class="catalog-cosmo-glow" style="background: radial-gradient(circle, rgba(245, 158, 11, 0.35) 0%, transparent 70%);"></div>
-                <img id="catalog-cosmo-img" class="catalog-cosmo-img" 
-                     src="assets/images/mascot/robot_read.png?v=4.67.4" 
-                     onerror="this.onerror=null;this.src='https://biblioteka33.ru/stat/assets/images/mascot/robot_read.png?v=4.67.4'" 
-                     alt="Космо на техобслуживании" draggable="false">
-            </div>
-            <div class="catalog-welcome-title" style="color: #fbbf24;">Каталог OPAC на техобслуживании</div>
-            <div class="catalog-welcome-text">Поиск книг по каталогу временно приостановлен в связи с регламентными техническими работами на сервере библиотеки. Запросы заблокированы для предотвращения перегрузки сервера. Скоро вернёмся!</div>
-            <div class="catalog-welcome-hints">
-                <button class="catalog-hint-chip" data-search-hint="Мастер и Маргарита">📖 Мастер и Маргарита</button>
-                <button class="catalog-hint-chip" data-search-hint="Рэй Брэдбери">🚀 Рэй Брэдбери</button>
-                <button class="catalog-hint-chip" data-search-hint="Пушкин">📜 Пушкин</button>
-                <button class="catalog-hint-chip" data-search-hint="Гарри Поттер">⚡ Гарри Поттер</button>
-                <button class="catalog-hint-chip" data-search-hint="Достоевский">🏛️ Достоевский</button>
-            </div>
-        </div>
-
-        <div class="results-meta hidden" id="results-meta"></div>
-        <div id="catalog-results" class="results"></div>
-        <div class="pager hidden" id="opac-pager">
-            <button id="opac-prev" class="pager-btn"><span class="material-symbols-rounded">chevron_left</span></button>
-            <span id="opac-page-label" class="pager-label">1 / 1</span>
-            <button id="opac-next" class="pager-btn"><span class="material-symbols-rounded">chevron_right</span></button>
-        </div>
-    </main>
+    <!-- ЭКРАН: КАТАЛОГ OPAC (заархивирован в archive/opac-vk-miniapp.zip) -->
 
     <!-- ЭКРАН: ПРОДЛЕНИЕ КНИГИ ПО NFC -->
     <main class="screen" data-screen="renew">

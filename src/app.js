@@ -96,11 +96,9 @@ import {
     closePromoModal
 } from './promo.js?v=4.25.4';
 
-import {
-    initOpacModal,
-    openOpacModal,
-    closeOpacModal
-} from './opac_modal.js?v=4.51.0';
+// Модуль OPAC-Global заархивирован в archive/opac-aurora-site.zip
+const openOpacModal = () => { if (typeof showToast === 'function') showToast('Модуль каталога OPAC временно заархивирован', 'engineering', 4000); };
+const closeOpacModal = () => {};
 
 import {
     initInoagentModal,
@@ -3859,18 +3857,8 @@ function initApp() {
     }
     window.__openPromoModal = openPromoModal;
 
-    // Инициализация модального окна электронного каталога OPAC
-    initOpacModal();
-    if (elements.opacModalBtn) {
-        elements.opacModalBtn.addEventListener('click', () => {
-            showToast('Поиск по каталогу OPAC временно приостановлен (технические работы)', 'engineering', 4000);
-            openOpacModal();
-        });
-    }
-    window.__openOpacModal = (query = '') => {
-        showToast('Поиск по каталогу OPAC временно приостановлен (технические работы)', 'engineering', 4000);
-        openOpacModal(query);
-    };
+    // Модальное окно OPAC временно заархивировано (см. archive/opac-aurora-site.zip)
+    window.__openOpacModal = openOpacModal;
 
     // Инициализация модального окна реестра иностранных агентов Минюста РФ
     initInoagentModal();

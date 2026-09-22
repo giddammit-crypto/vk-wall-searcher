@@ -1406,8 +1406,6 @@ export class CosmoChatModal {
                 e.stopPropagation();
                 if (typeof window.__openOpacModal === 'function') {
                     window.__openOpacModal();
-                } else {
-                    import('./opac_modal.js').then(m => m.openOpacModal && m.openOpacModal());
                 }
             });
         });
@@ -1675,8 +1673,6 @@ export class CosmoChatModal {
                 const bookQuery = openOpacBtn.getAttribute('data-open-opac-modal') || '';
                 if (typeof window.__openOpacModal === 'function') {
                     window.__openOpacModal(bookQuery);
-                } else {
-                    import('./opac_modal.js').then(m => m.openOpacModal && m.openOpacModal(bookQuery));
                 }
                 return;
             }
