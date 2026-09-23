@@ -699,6 +699,17 @@ input, select, textarea {
   height: 74%;
 }
 
+.tpl-preview.is-tall {
+  aspect-ratio: 9/16;
+}
+
+.tpl-preview.is-tall .mp-wrap,
+.tpl-preview.is-tall .tpl-preview-inner,
+.tpl-preview.is-tall .mini-poster {
+  width: 92%;
+  height: 96%;
+}
+
 /* Подвал карточки */
 .tpl-card-footer {
   padding: 14px 16px;
