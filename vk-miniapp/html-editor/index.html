@@ -13,6 +13,7 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="visual.css">
 
   <!-- CodeMirror 6 via import map -->
   <script type="importmap">
@@ -55,6 +56,16 @@
       <span class="brand-badge">v2.0</span>
     </div>
     <div id="project-name" class="project-name" title="Нажмите для переименования">Новый проект</div>
+    <div class="mode-switch-group">
+      <button class="mode-btn is-active" id="btn-mode-code" data-mode="code" title="Редактор исходного кода">
+        <span class="material-symbols-rounded">terminal</span>
+        <span>Код</span>
+      </button>
+      <button class="mode-btn" id="btn-mode-visual" data-mode="visual" title="Визуальный WYSIWYG конструктор">
+        <span class="material-symbols-rounded">design_services</span>
+        <span>Визуал</span>
+      </button>
+    </div>
   </div>
 
   <div class="header-center">
@@ -238,6 +249,63 @@
     </div>
   </section>
 </main>
+
+<!-- ═══ WYSIWYG VISUAL EDITOR PANE ════════════════════════════ -->
+<section class="wysiwyg-pane is-hidden" id="wysiwyg-pane">
+  <!-- Left Palette -->
+  <aside class="wysiwyg-palette" id="wysiwyg-palette">
+    <div class="wysiwyg-palette-title">
+      <span class="material-symbols-rounded">widgets</span>
+      <span>Палитра блоков</span>
+    </div>
+    <div id="ve-palette-list"></div>
+  </aside>
+
+  <!-- Center Canvas Wrapper -->
+  <div class="wysiwyg-canvas-wrapper" id="wysiwyg-canvas-wrapper">
+    <div class="wysiwyg-canvas-toolbar">
+      <div class="resp-group">
+        <button class="resp-btn is-active" id="ve-size-desktop" data-vesize="desktop" title="Десктоп (960px)">
+          <span class="material-symbols-rounded">desktop_windows</span>
+        </button>
+        <button class="resp-btn" id="ve-size-tablet" data-vesize="tablet" title="Планшет (768px)">
+          <span class="material-symbols-rounded">tablet_mac</span>
+        </button>
+        <button class="resp-btn" id="ve-size-mobile" data-vesize="mobile" title="Мобильный (375px)">
+          <span class="material-symbols-rounded">smartphone</span>
+        </button>
+      </div>
+
+      <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
+
+      <button class="canvas-tb-btn" id="ve-btn-undo" title="Отменить действие (Ctrl+Z)">
+        <span class="material-symbols-rounded">undo</span>
+        <span>Отмена</span>
+      </button>
+      <button class="canvas-tb-btn" id="ve-btn-redo" title="Повторить действие (Ctrl+Y)">
+        <span class="material-symbols-rounded">redo</span>
+        <span>Повтор</span>
+      </button>
+      <button class="canvas-tb-btn" id="ve-btn-clear" title="Очистить холст">
+        <span class="material-symbols-rounded">delete_sweep</span>
+        <span>Очистить</span>
+      </button>
+
+      <div style="flex: 1;"></div>
+
+      <button class="canvas-tb-btn btn-sync-code" id="ve-btn-apply-code" title="Применить изменения визуального редактора в код HTML">
+        <span class="material-symbols-rounded">sync</span>
+        <span>Применить в код</span>
+      </button>
+    </div>
+
+    <!-- The Canvas Sheet -->
+    <div class="wysiwyg-canvas is-desktop" id="wysiwyg-canvas"></div>
+  </div>
+
+  <!-- Right Properties Panel -->
+  <aside class="wysiwyg-props" id="wysiwyg-props"></aside>
+</section>
 
 <!-- ═══ ANIMATION TIMELINE ═══════════════════════════════════ -->
 <aside class="timeline-panel" id="timeline-panel">

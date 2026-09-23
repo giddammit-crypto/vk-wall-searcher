@@ -45,6 +45,7 @@ import {
   closeBrackets, closeBracketsKeymap
 } from "@codemirror/autocomplete";
 import { lintKeymap } from "@codemirror/lint";
+import { VisualEditor } from "./visual.js";
 
 // ─── 2. Constants & Config ────────────────────────────────────
 const VERSION = "2.0.0";
@@ -263,9 +264,11 @@ console.log('🌌 Aurora Editor готов к работе!');`,
   projectName: "Новый проект",
   zenMode: false,
   consoleOpen: true,
-  timelineOpen: false
+  timelineOpen: false,
+  editorMode: "code"
 };
 
+let visualEditor = null;
 const editors = { html: null, css: null, js: null };
 
 // ─── 5. CodeMirror Setup ──────────────────────────────────────
@@ -1118,15 +1121,61 @@ function importHTML(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const src = e.target.result;
-    // Simple split: extract <style>, <script>, body content
-    const styleMatch = src.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-    const scriptMatch = src.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    if (typeof src !== "string") return;
+
+    // 1. Title -> projectName
+    const titleMatch = src.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (titleMatch && titleMatch[1].trim()) {
+      appState.projectName = titleMatch[1].trim();
+      updateProjectNameDisplay();
+    } else if (file.name) {
+      appState.projectName = file.name.replace(/\.[^/.]+$/, "");
+      updateProjectNameDisplay();
+    }
+
+    // 2. All <style> blocks
+    const styles = [];
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+    let sMatch;
+    while ((sMatch = styleRegex.exec(src)) !== null) {
+      if (sMatch[1].trim()) styles.push(sMatch[1].trim());
+    }
+
+    // 3. All <script> blocks (excluding external src scripts)
+    const scripts = [];
+    const scriptRegex = /<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi;
+    let scMatch;
+    while ((scMatch = scriptRegex.exec(src)) !== null) {
+      if (scMatch[1].trim()) scripts.push(scMatch[1].trim());
+    }
+
+    // 4. Extract body content
+    let bodyContent = "";
     const bodyMatch = src.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    setEditorContent("css", styleMatch ? styleMatch[1].trim() : "");
-    setEditorContent("js", scriptMatch ? scriptMatch[1].trim() : "");
-    setEditorContent("html", bodyMatch ? bodyMatch[1].trim() : src);
+    if (bodyMatch) {
+      bodyContent = bodyMatch[1]
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<script(?![^>]*\bsrc\b)[^>]*>[\s\S]*?<\/script>/gi, "")
+        .trim();
+    } else {
+      bodyContent = src
+        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<script(?![^>]*\bsrc\b)[^>]*>[\s\S]*?<\/script>/gi, "")
+        .trim();
+    }
+
+    setEditorContent("css", styles.join("\n\n"));
+    setEditorContent("js", scripts.join("\n\n"));
+    setEditorContent("html", bodyContent || src);
+
+    // If visual editor is active or initialized, import into visual canvas as well
+    if (visualEditor) {
+      visualEditor.importFromHTML(bodyContent || src);
+    }
+
     runPreview();
-    showToast("📤 Файл импортирован", "success");
+    showToast(`📤 Файл "${file.name}" загружен с диска!`, "success");
   };
   reader.readAsText(file);
 }
@@ -1139,14 +1188,110 @@ function setEditorContent(lang, content) {
   appState[lang] = content || "";
 }
 
-// Undo / Redo — делегируем в активный CodeMirror редактор
+// Undo / Redo — делегируем в активный режим
 function doUndo() {
+  if (appState.editorMode === "visual" && visualEditor) {
+    visualEditor.undo();
+    return;
+  }
   const ed = editors[appState.activeTab];
   if (ed) { undo(ed); ed.focus(); }
 }
 function doRedo() {
+  if (appState.editorMode === "visual" && visualEditor) {
+    visualEditor.redo();
+    return;
+  }
   const ed = editors[appState.activeTab];
   if (ed) { redo(ed); ed.focus(); }
+}
+
+// ─── Mode Switching (Code ↔ Visual) ──────────────────────────
+function switchEditorMode(mode) {
+  if (appState.editorMode === mode) return;
+  appState.editorMode = mode;
+
+  const mainPane = document.querySelector(".editor-main");
+  const wysiwygPane = document.getElementById("wysiwyg-pane");
+  const btnCode = document.getElementById("btn-mode-code");
+  const btnVisual = document.getElementById("btn-mode-visual");
+
+  if (mode === "visual") {
+    if (mainPane) mainPane.style.display = "none";
+    if (wysiwygPane) wysiwygPane.classList.remove("is-hidden");
+    btnCode?.classList.remove("is-active");
+    btnVisual?.classList.add("is-active");
+
+    if (visualEditor) {
+      visualEditor.importFromHTML(appState.html);
+    }
+    showToast("🎨 Визуальный редактор (WYSIWYG)", "info");
+  } else {
+    if (visualEditor) {
+      const generatedHtml = visualEditor.exportToHTML();
+      if (generatedHtml) {
+        setEditorContent("html", generatedHtml);
+        runPreview();
+      }
+    }
+    if (wysiwygPane) wysiwygPane.classList.add("is-hidden");
+    if (mainPane) mainPane.style.display = "";
+    btnVisual?.classList.remove("is-active");
+    btnCode?.classList.add("is-active");
+    showToast("💻 Редактор кода", "info");
+  }
+}
+
+function initVisualEditor() {
+  const paletteEl = document.getElementById("ve-palette-list");
+  const canvasEl  = document.getElementById("wysiwyg-canvas");
+  const propsEl   = document.getElementById("wysiwyg-props");
+
+  if (!paletteEl || !canvasEl || !propsEl) return;
+
+  visualEditor = new VisualEditor({
+    paletteEl,
+    canvasEl,
+    propsEl,
+    onExport: (html) => {
+      setEditorContent("html", html);
+      runPreview();
+      showToast("✅ Изменения применены в код!", "success");
+      switchEditorMode("code");
+    }
+  });
+
+  visualEditor.init();
+
+  // Mode buttons
+  document.getElementById("btn-mode-code")?.addEventListener("click", () => switchEditorMode("code"));
+  document.getElementById("btn-mode-visual")?.addEventListener("click", () => switchEditorMode("visual"));
+
+  // Canvas toolbar
+  document.getElementById("ve-btn-undo")?.addEventListener("click", () => visualEditor.undo());
+  document.getElementById("ve-btn-redo")?.addEventListener("click", () => visualEditor.redo());
+  document.getElementById("ve-btn-clear")?.addEventListener("click", () => {
+    if (confirm("Очистить все блоки с холста?")) {
+      visualEditor.clearCanvas();
+      showToast("Холст очищен", "info");
+    }
+  });
+  document.getElementById("ve-btn-apply-code")?.addEventListener("click", () => {
+    const html = visualEditor.exportToHTML();
+    setEditorContent("html", html);
+    runPreview();
+    showToast("✅ Применено в HTML код!", "success");
+  });
+
+  // Responsive sizes on canvas
+  ["desktop", "tablet", "mobile"].forEach(size => {
+    document.getElementById(`ve-size-${size}`)?.addEventListener("click", e => {
+      document.querySelectorAll("[data-vesize]").forEach(b => b.classList.remove("is-active"));
+      e.currentTarget.classList.add("is-active");
+      canvasEl.classList.remove("is-desktop", "is-tablet", "is-mobile");
+      canvasEl.classList.add(`is-${size}`);
+    });
+  });
 }
 
 function setFontSize(size) {
@@ -1287,16 +1432,24 @@ const SHORTCUTS = [
 function initKeyboard() {
   document.addEventListener("keydown", e => {
     const ctrl = e.ctrlKey || e.metaKey;
-    // Undo / Redo — работаем через глобальный handler для случая когда фокус
-    // находится вне CodeMirror (тулбар, модалки, preview). Когда CM в фокусе —
-    // historyKeymap перехватывает сам, повторного вызова не будет.
+    // Undo / Redo
     if (ctrl && !e.shiftKey && (e.key === "z" || e.key === "я")) {
+      if (appState.editorMode === "visual") {
+        e.preventDefault();
+        doUndo();
+        return;
+      }
       const ae = document.activeElement;
       const inCM = ae?.closest?.(".cm-editor");
       if (!inCM) { e.preventDefault(); doUndo(); }
       return;
     }
     if (ctrl && (e.key === "y" || e.key === "н" || (e.shiftKey && (e.key === "z" || e.key === "я")))) {
+      if (appState.editorMode === "visual") {
+        e.preventDefault();
+        doRedo();
+        return;
+      }
       e.preventDefault(); doRedo(); return;
     }
     if (ctrl && e.key === "s") { e.preventDefault(); saveCurrentProject(); }
@@ -1314,6 +1467,8 @@ function initKeyboard() {
     if (e.altKey && e.key === "1") { e.preventDefault(); switchTab("html"); }
     if (e.altKey && e.key === "2") { e.preventDefault(); switchTab("css"); }
     if (e.altKey && e.key === "3") { e.preventDefault(); switchTab("js"); }
+    if (e.altKey && (e.key === "v" || e.key === "м")) { e.preventDefault(); switchEditorMode("visual"); }
+    if (e.altKey && (e.key === "c" || e.key === "с")) { e.preventDefault(); switchEditorMode("code"); }
   });
 }
 
@@ -1484,12 +1639,18 @@ function bindUI() {
   // Search
   document.getElementById("btn-search")?.addEventListener("click", openSearch);
 
-  // Drag-and-drop HTML files
-  document.addEventListener("dragover", e => e.preventDefault());
+  // Drag-and-drop HTML files from disk
+  document.addEventListener("dragover", e => {
+    if (e.dataTransfer?.types?.includes("Files")) {
+      e.preventDefault();
+    }
+  });
   document.addEventListener("drop", e => {
-    e.preventDefault();
-    const file = e.dataTransfer?.files?.[0];
-    if (file?.name.endsWith(".html")) importHTML(file);
+    if (e.dataTransfer?.files?.length) {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file?.name.match(/\.(html|htm)$/i)) importHTML(file);
+    }
   });
 }
 
@@ -1503,6 +1664,7 @@ export function init() {
   initSplitter();
   initKeyboard();
   bindUI();
+  initVisualEditor();
   buildTimelinePanel();
   buildTemplatesModal();
 
