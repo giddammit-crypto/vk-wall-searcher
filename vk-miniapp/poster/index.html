@@ -78,6 +78,7 @@
         <button class="tpl-chip" data-cat="notices">Объявления и режим</button>
         <button class="tpl-chip" data-cat="social">Баннеры соцсетей</button>
         <button class="tpl-chip" data-cat="blank">Чистые листы</button>
+        <button class="tpl-chip tpl-chip-tilda" data-cat="tilda">🔷 Tilda-сайт</button>
       </div>
 
       <div class="tpl-search-wrap">
@@ -167,6 +168,11 @@
         </svg>
         <span class="hbtn-label">Figma Экспорт</span>
       </button>
+      <button class="hbtn hbtn-tilda" id="btn-tilda-export" title="Экспорт макета для сайта Тильда (HTML-блок, PNG, ZIP)">
+        <span class="material-symbols-rounded">web</span>
+        <span class="hbtn-label">Tilda Экспорт</span>
+      </button>
+
       <button class="hbtn" id="btn-save-project-json" title="Экспорт проекта (.aurora.json)">
         <span class="material-symbols-rounded">file_download</span>
         <span class="hbtn-label">Экспорт</span>
@@ -349,6 +355,10 @@
             <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
           </svg>
           <span>Экспорт Figma</span>
+        </button>
+        <button class="tool-btn tool-btn-tilda" id="tool-tilda-export" title="Экспорт для сайта Tilda (HTML/PNG/ZIP)">
+          <span class="material-symbols-rounded">web</span>
+          <span>Tilda Экспорт</span>
         </button>
       </div>
 
@@ -813,6 +823,10 @@
             <span class="material-symbols-rounded">cloud_upload</span>
             <span>Экспорт Figma</span>
           </button>
+          <button class="drawer-card drawer-card-tilda" id="mtool-tilda-export">
+            <span class="material-symbols-rounded">web</span>
+            <span>Tilda Экспорт</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1020,8 +1034,178 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════
+     МОДАЛКА: ЭКСПОРТ В TILDA
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="tilda-export-modal-overlay">
+  <div class="modal modal-wide tilda-modal">
+    <div class="modal-head">
+      <div class="tilda-head-title-wrap">
+        <div class="tilda-badge">🔷 TILDA PUBLISHING</div>
+        <div class="modal-title">Экспорт для сайта Тильда</div>
+        <div class="modal-sub">
+          Получите готовый HTML-блок, PNG-изображение или ZIP-архив для вставки в конструктор сайтов Тильда.
+        </div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="tilda-export-modal-close" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="tilda-tabs" id="tilda-tabs">
+      <button class="tilda-tab is-active" data-tab="html">
+        <span class="material-symbols-rounded">code</span> HTML-блок
+      </button>
+      <button class="tilda-tab" data-tab="png">
+        <span class="material-symbols-rounded">image</span> PNG-картинка
+      </button>
+      <button class="tilda-tab" data-tab="zip">
+        <span class="material-symbols-rounded">folder_zip</span> ZIP-архив
+      </button>
+      <button class="tilda-tab" data-tab="guide">
+        <span class="material-symbols-rounded">help_outline</span> Как вставить
+      </button>
+    </div>
+
+    <div class="tilda-modal-body">
+
+      <!-- ── Вкладка HTML ──────────────────────────────────── -->
+      <div class="tilda-tab-panel" id="tilda-panel-html">
+        <div class="tilda-section-title">Готовый HTML-код для Zero Block</div>
+        <div class="tilda-section-hint">
+          Вставьте этот код в блок <strong>Zero Block (T123)</strong> на странице Тильды.
+          Все изображения встроены как Base64 — ничего загружать отдельно не нужно.
+        </div>
+        <div class="tilda-code-wrap">
+          <div class="tilda-code-actions">
+            <button class="hbtn hbtn-ghost" id="btn-tilda-gen-html" title="Сгенерировать HTML-код">
+              <span class="material-symbols-rounded">refresh</span> Сгенерировать
+            </button>
+            <button class="hbtn hbtn-accent" id="btn-tilda-copy-html" title="Скопировать HTML-код">
+              <span class="material-symbols-rounded">content_copy</span> Копировать
+            </button>
+          </div>
+          <textarea class="tilda-code-block" id="tilda-html-output" readonly placeholder="Нажмите «Сгенерировать» чтобы получить HTML-код..."></textarea>
+        </div>
+        <div class="tilda-copy-success hidden" id="tilda-copy-success">
+          <span class="material-symbols-rounded">check_circle</span>
+          HTML-код скопирован! Откройте Zero Block в Тильда, нажмите «Вставить HTML» и Ctrl+V.
+        </div>
+      </div>
+
+      <!-- ── Вкладка PNG ──────────────────────────────────── -->
+      <div class="tilda-tab-panel hidden" id="tilda-panel-png">
+        <div class="tilda-section-title">PNG-картинка для блоков Тильды</div>
+        <div class="tilda-section-hint">
+          Скачайте изображение в высоком разрешении для использования в фоновых блоках,
+          блоках с изображением, Cover-секциях и галереях Тильды.
+        </div>
+        <div class="tilda-png-options">
+          <label class="tilda-radio-label">
+            <input type="radio" name="tilda-png-scale" value="1" checked> Оригинальный размер
+          </label>
+          <label class="tilda-radio-label">
+            <input type="radio" name="tilda-png-scale" value="1.5"> ×1.5 (Ретина / Cover Full HD)
+          </label>
+          <label class="tilda-radio-label">
+            <input type="radio" name="tilda-png-scale" value="2"> ×2.0 (Максимальное качество)
+          </label>
+        </div>
+        <div class="tilda-png-preview-wrap">
+          <div class="tilda-png-preview-label" id="tilda-png-size-label">Размер изображения: —</div>
+          <canvas id="tilda-png-preview-canvas" class="tilda-png-preview-canvas" style="display:none"></canvas>
+        </div>
+        <div class="tilda-action-row">
+          <button class="hbtn hbtn-success" id="btn-tilda-download-png" title="Скачать PNG">
+            <span class="material-symbols-rounded">download</span> Скачать PNG
+          </button>
+          <span class="tilda-hint-small">Оптимальный размер для Tilda Cover: 1920×1080 px</span>
+        </div>
+      </div>
+
+      <!-- ── Вкладка ZIP ──────────────────────────────────── -->
+      <div class="tilda-tab-panel hidden" id="tilda-panel-zip">
+        <div class="tilda-section-title">ZIP-архив (HTML + CSS + PNG)</div>
+        <div class="tilda-section-hint">
+          Полный пакет с готовым HTML-файлом, стилями и PNG-изображением.
+          Загрузите файлы на хостинг или в Tilda Files и вставьте ссылку в HTML-блок.
+        </div>
+        <div class="tilda-zip-contents">
+          <div class="tilda-zip-file-row">
+            <span class="material-symbols-rounded" style="color:#38BDF8">html</span>
+            <div>
+              <div class="tilda-zip-file-name">index.html</div>
+              <div class="tilda-zip-file-desc">Самодостаточная HTML-страница с встроенными стилями</div>
+            </div>
+          </div>
+          <div class="tilda-zip-file-row">
+            <span class="material-symbols-rounded" style="color:#FBBF24">css</span>
+            <div>
+              <div class="tilda-zip-file-name">poster.css</div>
+              <div class="tilda-zip-file-desc">Стили блока, адаптивность, шрифты</div>
+            </div>
+          </div>
+          <div class="tilda-zip-file-row">
+            <span class="material-symbols-rounded" style="color:#10B981">image</span>
+            <div>
+              <div class="tilda-zip-file-name">poster.png</div>
+              <div class="tilda-zip-file-desc">PNG-изображение в 2x разрешении</div>
+            </div>
+          </div>
+        </div>
+        <div class="tilda-action-row">
+          <button class="hbtn hbtn-accent" id="btn-tilda-download-zip" title="Скачать ZIP-архив">
+            <span class="material-symbols-rounded">folder_zip</span> Скачать ZIP
+          </button>
+          <span id="tilda-zip-status" class="tilda-zip-status hidden"></span>
+        </div>
+      </div>
+
+      <!-- ── Вкладка Инструкция ───────────────────────────── -->
+      <div class="tilda-tab-panel hidden" id="tilda-panel-guide">
+        <div class="tilda-section-title">Как вставить блок в Тильда</div>
+
+        <div class="tilda-guide-method">
+          <div class="tilda-guide-method-title">
+            <span class="tilda-step-num">А</span> Через Zero Block (HTML-код)
+          </div>
+          <ol class="tilda-steps">
+            <li>На вкладке <strong>HTML-блок</strong> нажмите «Сгенерировать», затем «Копировать»</li>
+            <li>В Тильда откройте нужную страницу → «Добавить блок»</li>
+            <li>Прокрутите вниз до раздела <strong>«Other»</strong> → выберите <strong>«Zero Block (T123)»</strong></li>
+            <li>В Zero Block нажмите кнопку <strong>«&lt;/&gt; HTML»</strong> в верхней панели</li>
+            <li>Вставьте скопированный код (Ctrl+V) и нажмите <strong>«Save»</strong></li>
+            <li>Нажмите <strong>«Publish»</strong> — блок появится на сайте!</li>
+          </ol>
+        </div>
+
+        <div class="tilda-guide-method">
+          <div class="tilda-guide-method-title">
+            <span class="tilda-step-num">Б</span> Через изображение в Cover/Gallery блоке
+          </div>
+          <ol class="tilda-steps">
+            <li>На вкладке <strong>PNG-картинка</strong> скачайте изображение (×1.5 или ×2.0)</li>
+            <li>В Тильда добавьте блок типа <strong>Cover (BS)</strong>, <strong>Gallery</strong> или <strong>Image (TX)</strong></li>
+            <li>В настройках блока загрузите скачанное PNG как фоновое/основное изображение</li>
+            <li>Опубликуйте страницу</li>
+          </ol>
+        </div>
+
+        <div class="tilda-guide-note">
+          <span class="material-symbols-rounded" style="color:#FBBF24; font-size:20px; vertical-align:middle;">lightbulb</span>
+          <strong>Совет:</strong> Для больших Hero-секций лучше использовать PNG (×1.5) как фон.
+          HTML-блок идеален для сложных дизайнов с текстом, кнопками и отдельными элементами.
+        </div>
+      </div>
+
+    </div><!-- /.tilda-modal-body -->
+  </div><!-- /.modal -->
+</div><!-- /#tilda-export-modal-overlay -->
+
+<!-- ═══════════════════════════════════════════════════
      МОДАЛКА: ИМПОРТ ИЗ FIGMA (API)
      ═══════════════════════════════════════════════════ -->
+
 <div class="modal-overlay hidden" id="figma-import-modal-overlay">
   <div class="modal modal-wide figma-modal">
     <div class="modal-head">
@@ -1249,15 +1433,17 @@
 <!-- Скрытый input загрузки проекта -->
 <input type="file" id="project-file-input" accept=".json,.aurora" style="display:none">
 
-<!-- Библиотеки: Canvas, PDF, QR-код -->
+<!-- Библиотеки: Canvas, PDF, QR-код, JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="qrcode.min.js?v=2.1.1"></script>
 <script>
 if (typeof QRCode === 'undefined') {
   document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
 }
 </script>
-<script src="editor.js?v=2.3.0"></script>
+<script src="editor.js?v=2.4.0"></script>
 </body>
 </html>
+

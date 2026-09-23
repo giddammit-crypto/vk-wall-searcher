@@ -6,11 +6,14 @@
 
 /* ── Форматы холста ─────────────────────────────────────────── */
 const SIZES = {
-  a4_v:   { w: 595,  h: 842,  name: 'A4 вертикаль' },
-  a4_h:   { w: 842,  h: 595,  name: 'A4 горизонталь' },
-  square: { w: 700,  h: 700,  name: 'Квадрат (ВК)' },
-  banner: { w: 960,  h: 540,  name: 'Баннер 16:9' },
-  story:  { w: 540,  h: 960,  name: 'Сторис 9:16' },
+  a4_v:        { w: 595,  h: 842,  name: 'A4 вертикаль' },
+  a4_h:        { w: 842,  h: 595,  name: 'A4 горизонталь' },
+  square:      { w: 700,  h: 700,  name: 'Квадрат (ВК)' },
+  banner:      { w: 960,  h: 540,  name: 'Баннер 16:9' },
+  story:       { w: 540,  h: 960,  name: 'Сторис 9:16' },
+  tilda_cover: { w: 1280, h: 720,  name: 'Tilda Cover 16:9' },
+  tilda_hero:  { w: 1280, h: 600,  name: 'Tilda Hero-секция' },
+  tilda_card:  { w: 600,  h: 800,  name: 'Tilda Карточка' },
 };
 
 /* ── 21+ кириллический шрифт + ofont.ru ────────────────────── */
@@ -724,6 +727,144 @@ const TEMPLATES = [
     objects: [],
   },
 ];
+
+/* ──────────────────────── TILDA ШАБЛОНЫ ───────────────────────── */
+/* Отдельный массив, смержированный с TEMPLATES при инициализации    */
+const TILDA_TEMPLATES = [
+  /* T1. COVER-СЕКЦИЯ САЙТА БИБЛИОТЕКИ АВРОРА */
+  {
+    id: 'tilda_cover_aurora',
+    size: 'tilda_cover',
+    category: 'tilda',
+    name: 'Tilda: Обложка сайта Аврора',
+    desc: 'Hero Cover для главной страницы сайта библиотеки, Full HD 16:9',
+    fmt: 'Tilda Cover',
+    isLandscape: true,
+    isTilda: true,
+    bg: '#070a1e',
+    previewBg: '#070a1e',
+    previewAccent: '#38BDF8',
+    previewHtml: `
+      <div class="mp-wrap" style="background:linear-gradient(135deg,#070a1e,#131c3d); padding:4px;">
+        <div>
+          <div class="mp-tag" style="color:#38BDF8; font-size:5.5px; letter-spacing:0.08em;">📖 ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА</div>
+          <div class="mp-title mp-glow" style="color:#fff; font-size:14px; line-height:1.1; margin:2px 0; text-shadow:0 0 12px rgba(56,189,248,0.7);">АВРОРА</div>
+          <div style="font-size:6.5px; color:#94a3b8; margin-bottom:2px;">г. Владимир · biblioteka33.ru</div>
+          <div style="display:flex; gap:3px; justify-content:center;">
+            <span class="mp-badge" style="background:#38BDF8; color:#070a1e; font-size:5px;">КНИГИ</span>
+            <span class="mp-badge" style="background:#8A6CFF; color:#fff; font-size:5px;">СОБЫТИЯ</span>
+            <span class="mp-badge" style="background:#FBBF24; color:#070a1e; font-size:5px;">ОНЛАЙН</span>
+          </div>
+        </div>
+      </div>`,
+    objects: [
+      { type:'rect', left:640, top:360, width:1280, height:720, fill:'#070a1e', originX:'center', originY:'center' },
+      { type:'rect', left:640, top:360, width:1280, height:720, fill:'rgba(0,0,0,0)', originX:'center', originY:'center',
+        gradient:{ type:'linear', coords:{x1:0,y1:0,x2:0,y2:1}, colorStops:[{offset:0,color:'rgba(13,22,57,0.9)'},{offset:1,color:'rgba(7,10,30,0.95)'}] } },
+      { type:'text', text:'📖  ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА', left:640, top:155, width:1160, fontSize:20, fontFamily:'Montserrat', fontWeight:'600', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:220 },
+      { type:'rect', left:640, top:195, width:800, height:2, fill:'#38BDF8', originX:'center', shadow:'rgba(56,189,248,0.8) 0px 0px 20px' },
+      { type:'text', text:'АВРОРА', left:640, top:240, width:1200, fontSize:148, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', letterSpacing:30, shadow:'rgba(56,189,248,0.6) 0px 0px 48px' },
+      { type:'text', text:'Место, где знания встречаются с вдохновением', left:640, top:430, width:950, fontSize:32, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#cbd5e1', textAlign:'center', originX:'center' },
+      { type:'rect', left:640, top:525, width:950, height:1.5, fill:'rgba(56,189,248,0.3)', originX:'center' },
+      { type:'text', text:'г. Владимир · ул. Б. Московская, 12', left:640, top:550, width:700, fontSize:20, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center' },
+      { type:'rect', left:415, top:635, width:240, height:56, rx:28, ry:28, fill:'#38BDF8', originX:'center', originY:'center' },
+      { type:'text', text:'Узнать больше →', left:415, top:623, width:220, fontSize:20, fontFamily:'Unbounded', fontWeight:'bold', fill:'#070a1e', textAlign:'center', originX:'center' },
+      { type:'rect', left:700, top:635, width:260, height:56, rx:28, ry:28, fill:'transparent', stroke:'#38BDF8', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'Каталог онлайн', left:700, top:623, width:240, fontSize:20, fontFamily:'Unbounded', fontWeight:'bold', fill:'#38BDF8', textAlign:'center', originX:'center' },
+      { type:'text', text:'biblioteka33.ru', left:940, top:635, width:220, fontSize:18, fontFamily:'Montserrat', fill:'#64748b', textAlign:'center', originX:'center' },
+    ],
+  },
+
+  /* T2. HERO-СЕКЦИЯ АНОНСА СОБЫТИЯ */
+  {
+    id: 'tilda_event_hero',
+    size: 'tilda_hero',
+    category: 'tilda',
+    name: 'Tilda: Анонс события (Hero)',
+    desc: 'Горизонтальная Hero-секция с анонсом мероприятия для Tilda-сайта',
+    fmt: 'Tilda Hero',
+    isLandscape: true,
+    isTilda: true,
+    bg: '#0c1222',
+    previewBg: '#0c1222',
+    previewAccent: '#F472B6',
+    previewHtml: `
+      <div class="mp-wrap" style="background:#0c1222; flex-direction:row; gap:4px; padding:4px; align-items:center;">
+        <div style="flex:1.3; text-align:left; padding:2px;">
+          <div style="font-size:5px; color:#F472B6; font-weight:700; letter-spacing:0.1em; margin-bottom:1px;">✦ СОБЫТИЕ БИБЛИОТЕКИ</div>
+          <div style="font-size:12px; font-weight:900; color:#fff; line-height:1.1; margin:1px 0;">ЛИТЕРАТУРНАЯ<br>ГОСТИНАЯ</div>
+          <div style="font-size:5.5px; color:#94a3b8; margin-top:1px;">Вечер поэзии Серебряного века</div>
+        </div>
+        <div style="flex:1; background:rgba(244,114,182,0.1); border:1px solid rgba(244,114,182,0.3); border-radius:4px; padding:3px;">
+          <div style="font-size:7px; color:#FBBF24; font-weight:700; text-align:center;">14 ОКТЯБРЯ · 18:30</div>
+          <div style="font-size:5px; color:#cbd5e1; text-align:center; margin-top:1px;">Каминный зал ЦГБ</div>
+          <div style="background:#F472B6; border-radius:3px; padding:2px 4px; margin-top:2px; text-align:center; font-size:5px; font-weight:700; color:#fff;">РЕГИСТРАЦИЯ →</div>
+        </div>
+      </div>`,
+    objects: [
+      { type:'rect', left:640, top:300, width:1280, height:600, fill:'#0c1222', originX:'center', originY:'center' },
+      { type:'rect', left:18, top:300, width:3, height:420, fill:'#F472B6', originX:'left', originY:'center', shadow:'rgba(244,114,182,0.7) 0px 0px 16px' },
+      { type:'text', text:'✦ СОБЫТИЕ БИБЛИОТЕКИ АВРОРА ✦', left:90, top:80, width:680, fontSize:16, fontFamily:'Montserrat', fontWeight:'600', fill:'#F472B6', textAlign:'left', charSpacing:160 },
+      { type:'text', text:'Литературная\nГостиная', left:90, top:125, width:720, fontSize:96, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'left', lineHeight:1.0, shadow:'rgba(244,114,182,0.5) 0px 0px 32px' },
+      { type:'text', text:'Творческий вечер поэзии Серебряного века', left:90, top:345, width:680, fontSize:26, fontFamily:'Cormorant Garamond', fontStyle:'italic', fill:'#cbd5e1', textAlign:'left' },
+      { type:'text', text:'✦ Чтение стихов Блока, Ахматовой, Цветаевой\n✦ Живая музыка (скрипка, рояль)\n✦ Редкие архивные издания и рукописи\n✦ Поэтический конкурс с призами', left:90, top:400, width:640, fontSize:20, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'left', lineHeight:1.7 },
+      { type:'rect', left:950, top:300, width:360, height:560, rx:20, ry:20, fill:'rgba(244,114,182,0.08)', stroke:'rgba(244,114,182,0.3)', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'14 ОКТЯБРЯ', left:950, top:90, width:320, fontSize:44, fontFamily:'Unbounded', fontWeight:'800', fill:'#FBBF24', textAlign:'center', originX:'center' },
+      { type:'text', text:'в 18:30', left:950, top:148, width:320, fontSize:30, fontFamily:'Unbounded', fontWeight:'400', fill:'#FBBF24', textAlign:'center', originX:'center' },
+      { type:'rect', left:950, top:205, width:280, height:1, fill:'rgba(244,114,182,0.4)', originX:'center' },
+      { type:'text', text:'📍 Каминный зал ЦГБ «Аврора»', left:950, top:225, width:300, fontSize:18, fontFamily:'Montserrat', fill:'#e2e8f0', textAlign:'center', originX:'center', lineHeight:1.5 },
+      { type:'text', text:'г. Владимир, ул. Б. Московская, 12', left:950, top:258, width:310, fontSize:16, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center' },
+      { type:'rect', left:950, top:355, width:300, height:64, rx:32, ry:32, fill:'#F472B6', originX:'center', originY:'center' },
+      { type:'text', text:'Записаться →', left:950, top:337, width:280, fontSize:22, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center' },
+      { type:'rect', left:950, top:450, width:300, height:60, rx:30, ry:30, fill:'transparent', stroke:'rgba(244,114,182,0.5)', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'★ Вход свободный', left:950, top:431, width:280, fontSize:20, fontFamily:'Unbounded', fontWeight:'bold', fill:'#F472B6', textAlign:'center', originX:'center' },
+      { type:'text', text:'16+', left:950, top:510, width:80, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#ffffff', backgroundColor:'#7c3aed', padding:8, textAlign:'center', originX:'center' },
+    ],
+  },
+
+  /* T3. КАРТОЧКА КНИГИ / РЕКОМЕНДАЦИЯ */
+  {
+    id: 'tilda_book_card',
+    size: 'tilda_card',
+    category: 'tilda',
+    name: 'Tilda: Карточка книги',
+    desc: 'Вертикальная карточка-рекомендация книги для блога или каталога сайта',
+    fmt: 'Tilda Карточка',
+    isTilda: true,
+    bg: '#0f172a',
+    previewBg: '#0f172a',
+    previewAccent: '#FBBF24',
+    previewHtml: `
+      <div class="mp-wrap" style="background:#0f172a; padding:4px;">
+        <div style="width:100%; height:36%; background:linear-gradient(160deg,#1e293b,#2d1b69); border-radius:4px; margin-bottom:3px; display:flex; align-items:center; justify-content:center;">
+          <span style="font-size:20px;">📕</span>
+        </div>
+        <div style="font-size:5px; color:#FBBF24; font-weight:700; letter-spacing:0.1em; margin-bottom:1px;">✦ ВЫБОР БИБЛИОТЕКАРЯ</div>
+        <div style="font-size:10px; font-weight:800; color:#fff; margin-bottom:1px; line-height:1.1;">Мастер и Маргарита</div>
+        <div style="font-size:5.5px; color:#94a3b8; margin-bottom:2px;">Михаил Булгаков · 1966</div>
+        <div style="font-size:5px; color:#cbd5e1; line-height:1.3;">Один из главных романов русской литературы XX века...</div>
+        <div style="margin-top:3px; background:#FBBF24; border-radius:3px; padding:2px 5px; text-align:center; font-size:5px; font-weight:700; color:#0f172a;">Найти в каталоге</div>
+      </div>`,
+    objects: [
+      { type:'rect', left:300, top:200, width:540, height:350, rx:16, ry:16, fill:'rgba(30,41,59,0.8)', stroke:'rgba(251,191,36,0.3)', strokeWidth:2, originX:'center', originY:'center' },
+      { type:'text', text:'📕', left:300, top:200, width:150, fontSize:90, textAlign:'center', originX:'center', originY:'center' },
+      { type:'text', text:'✦ ВЫБОР БИБЛИОТЕКАРЯ ✦', left:300, top:385, width:500, fontSize:14, fontFamily:'Montserrat', fontWeight:'700', fill:'#FBBF24', textAlign:'center', originX:'center', charSpacing:130 },
+      { type:'rect', left:300, top:412, width:380, height:1.5, fill:'rgba(251,191,36,0.4)', originX:'center' },
+      { type:'text', text:'Мастер\nи Маргарита', left:300, top:435, width:520, fontSize:64, fontFamily:'Cormorant Garamond', fontStyle:'italic', fontWeight:'bold', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.1 },
+      { type:'text', text:'Михаил Булгаков · 1966', left:300, top:570, width:440, fontSize:20, fontFamily:'Montserrat', fontWeight:'600', fill:'#94a3b8', textAlign:'center', originX:'center' },
+      { type:'rect', left:300, top:610, width:440, height:80, rx:10, ry:10, fill:'rgba(251,191,36,0.06)', stroke:'rgba(251,191,36,0.2)', strokeWidth:1, originX:'center', originY:'center' },
+      { type:'text', text:'Один из главных романов русской литературы XX века. Философский роман о добре и зле, свете и тьме, любви и предательстве.', left:300, top:588, width:400, fontSize:16, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center', lineHeight:1.65 },
+      { type:'rect', left:300, top:700, width:340, height:56, rx:28, ry:28, fill:'#FBBF24', originX:'center', originY:'center' },
+      { type:'text', text:'Найти в каталоге →', left:300, top:683, width:320, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#0f172a', textAlign:'center', originX:'center' },
+      { type:'text', text:'biblioteka33.ru/opac', left:300, top:770, width:440, fontSize:15, fontFamily:'Montserrat', fill:'#475569', textAlign:'center', originX:'center' },
+    ],
+  },
+];
+
+/* Объединяем Tilda-шаблоны с основным массивом */
+TEMPLATES.push(...TILDA_TEMPLATES);
+
+
 
 const LOGOS = [
   { label:'АВРОРА',      text:'АВРОРА',            color:'#38BDF8', font:'Unbounded', category:'Бренд' },
@@ -3834,6 +3975,318 @@ function closeFigmaExportModal() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   TILDA EXPORT MODULE — Экспорт для сайта Тильда
+   ══════════════════════════════════════════════════════════════ */
+
+function openTildaExportModal() {
+  const overlay = $('#tilda-export-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  // Обновляем размер PNG при открытии
+  updateTildaPngSizeLabel();
+}
+
+function closeTildaExportModal() {
+  $('#tilda-export-modal-overlay')?.classList.add('hidden');
+}
+
+function switchTildaTab(tabName) {
+  $$('.tilda-tab').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.tab === tabName);
+  });
+  $$('.tilda-tab-panel').forEach(panel => {
+    panel.classList.add('hidden');
+  });
+  $(`#tilda-panel-${tabName}`)?.classList.remove('hidden');
+}
+
+function updateTildaPngSizeLabel() {
+  if (!canvas) return;
+  const scaleInput = document.querySelector('input[name="tilda-png-scale"]:checked');
+  const scale = parseFloat(scaleInput?.value || '1');
+  const w = Math.round(currentSize.w * scale);
+  const h = Math.round(currentSize.h * scale);
+  const label = $('#tilda-png-size-label');
+  if (label) label.textContent = `Размер изображения: ${w} × ${h} px`;
+}
+
+/**
+ * Генерирует HTML-код из холста Fabric.js для Tilda Zero Block.
+ * Каждый объект конвертируется в абсолютно позиционированный div.
+ */
+async function buildTildaHTML() {
+  if (!canvas) return '';
+
+  // Сначала встраиваем все изображения как base64
+  await embedAllImagesToBase64(canvas);
+
+  const w = currentSize.w;
+  const h = currentSize.h;
+  const bg = canvas.backgroundColor || '#0f172a';
+  const objects = canvas.getObjects();
+
+  // Генерируем HTML для каждого объекта
+  const objectsHtml = objects.map(obj => {
+    const left  = (obj.left  || 0) - (obj.width  || 0) * ((obj.scaleX || 1)) * (obj.originX === 'center' ? 0.5 : 0);
+    const top   = (obj.top   || 0) - (obj.height || 0) * ((obj.scaleY || 1)) * (obj.originY === 'center' ? 0.5 : 0);
+    const ow    = (obj.width  || 0) * (obj.scaleX || 1);
+    const oh    = (obj.height || 0) * (obj.scaleY || 1);
+    const angle = obj.angle || 0;
+    const opacity = obj.opacity !== undefined ? obj.opacity : 1;
+    const baseStyle = `position:absolute;left:${left.toFixed(1)}px;top:${top.toFixed(1)}px;width:${ow.toFixed(1)}px;height:${oh.toFixed(1)}px;opacity:${opacity};${angle ? `transform:rotate(${angle}deg);transform-origin:center;` : ''}box-sizing:border-box;`;
+
+    if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+      const fs     = (obj.fontSize || 16) * (obj.scaleX || 1);
+      const ff     = obj.fontFamily || 'inherit';
+      const fw     = obj.fontWeight || 'normal';
+      const fi     = obj.fontStyle  || 'normal';
+      const fill   = obj.fill || '#ffffff';
+      const align  = obj.textAlign || 'left';
+      const lh     = (obj.lineHeight || 1.2);
+      const cs     = obj.charSpacing ? `letter-spacing:${(obj.charSpacing / 1000).toFixed(3)}em;` : '';
+      const bgc    = obj.backgroundColor ? `background-color:${obj.backgroundColor};` : '';
+      const padding = obj.padding ? `padding:${obj.padding}px;` : '';
+      const shadow = obj.shadow ? (() => {
+        const s = obj.shadow;
+        return `text-shadow:${s.offsetX||0}px ${s.offsetY||0}px ${s.blur||0}px ${s.color||'transparent'};`;
+      })() : '';
+      const textHtml = escapeHtml(obj.text || '').replace(/\n/g, '<br>');
+      const style = `${baseStyle}font-size:${fs.toFixed(1)}px;font-family:'${ff}',sans-serif;font-weight:${fw};font-style:${fi};color:${fill};text-align:${align};line-height:${lh};${cs}${bgc}${padding}${shadow}overflow:visible;white-space:pre-wrap;word-break:break-word;`;
+      return `  <div style="${style}">${textHtml}</div>`;
+    }
+
+    if (obj.type === 'rect') {
+      const fill   = (!obj.fill || obj.fill === 'transparent' || obj.fill === 'rgba(0,0,0,0)') ? 'transparent' : obj.fill;
+      const stroke = obj.stroke ? `border:${obj.strokeWidth||1}px solid ${obj.stroke};` : '';
+      const rx     = obj.rx ? `border-radius:${Math.min(obj.rx, ow/2).toFixed(1)}px;` : '';
+      const shadow = obj.shadow ? (() => {
+        const s = obj.shadow;
+        return `box-shadow:${s.offsetX||0}px ${s.offsetY||0}px ${s.blur||0}px ${s.color||'transparent'};`;
+      })() : '';
+      const style = `${baseStyle}background-color:${fill};${stroke}${rx}${shadow}`;
+      return `  <div style="${style}"></div>`;
+    }
+
+    if (obj.type === 'circle') {
+      const fill   = (!obj.fill || obj.fill === 'transparent') ? 'transparent' : obj.fill;
+      const stroke = obj.stroke ? `border:${obj.strokeWidth||1}px solid ${obj.stroke};` : '';
+      const shadow = obj.shadow ? (() => {
+        const s = obj.shadow;
+        return `box-shadow:${s.offsetX||0}px ${s.offsetY||0}px ${s.blur||0}px ${s.color||'transparent'};`;
+      })() : '';
+      const style = `${baseStyle}background-color:${fill};border-radius:50%;${stroke}${shadow}`;
+      return `  <div style="${style}"></div>`;
+    }
+
+    if (obj.type === 'image') {
+      const el = obj._element;
+      const src = el?.src || '';
+      if (!src) return '';
+      const style = `${baseStyle}object-fit:contain;`;
+      return `  <img src="${src}" style="${style}" alt="" loading="lazy">`;
+    }
+
+    if (obj.type === 'triangle') {
+      const fill = obj.fill || '#ffffff';
+      const style = `${baseStyle}width:0;height:0;border-left:${(ow/2).toFixed(1)}px solid transparent;border-right:${(ow/2).toFixed(1)}px solid transparent;border-bottom:${oh.toFixed(1)}px solid ${fill};background:none;`;
+      return `  <div style="${style}"></div>`;
+    }
+
+    return ''; // Остальные типы пропускаем
+  }).filter(Boolean).join('\n');
+
+  // Сборка итогового HTML в формате Tilda Zero Block
+  const html = `<!-- Tilda Zero Block — Аврора Редактор Афиш v2.4.0 -->
+<!-- Вставьте этот код в Zero Block (T123) на странице Тильды -->
+<div class="t-container" style="position:relative;width:100%;max-width:${w}px;height:${h}px;margin:0 auto;background-color:${bg};overflow:hidden;box-sizing:border-box;">
+${objectsHtml}
+</div>`;
+
+  return html;
+}
+
+async function exportTildaGenHtml() {
+  const btn = $('#btn-tilda-gen-html');
+  if (btn) btn.disabled = true;
+  toast('Генерация HTML-кода для Tilda...');
+  try {
+    const html = await buildTildaHTML();
+    const ta = $('#tilda-html-output');
+    if (ta) {
+      ta.value = html;
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 400) + 'px';
+    }
+    toast('HTML-код сгенерирован! Нажмите «Копировать» 🔷');
+  } catch(err) {
+    console.error('Tilda HTML gen error:', err);
+    toast('Ошибка генерации: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function exportTildaCopyHtml() {
+  const ta = $('#tilda-html-output');
+  let html = ta?.value?.trim();
+  if (!html) {
+    // Генерируем автоматически если поле пустое
+    html = await buildTildaHTML();
+    if (ta) ta.value = html;
+  }
+  if (!html) { toast('Сначала нажмите «Сгенерировать»'); return; }
+
+  try {
+    await navigator.clipboard.writeText(html);
+    const successEl = $('#tilda-copy-success');
+    if (successEl) {
+      successEl.classList.remove('hidden');
+      setTimeout(() => successEl.classList.add('hidden'), 5000);
+    }
+    toast('HTML-код скопирован! Вставьте в Zero Block Тильды 🔷');
+  } catch(e) {
+    toast('Не удалось скопировать автоматически. Выделите код и нажмите Ctrl+C.');
+    ta?.select();
+  }
+}
+
+async function exportTildaDownloadPng() {
+  if (!canvas) { toast('Холст не инициализирован'); return; }
+
+  const btn = $('#btn-tilda-download-png');
+  if (btn) btn.disabled = true;
+
+  try {
+    await embedAllImagesToBase64(canvas);
+
+    const scaleInput = document.querySelector('input[name="tilda-png-scale"]:checked');
+    const scale = parseFloat(scaleInput?.value || '1');
+
+    const savedZoom = zoom;
+    applyZoom(1);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+
+    const dataUrl = canvas.toDataURL({
+      format: 'png',
+      multiplier: scale,
+      quality: 1
+    });
+
+    applyZoom(savedZoom);
+
+    const a = document.createElement('a');
+    const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
+    a.download = `${safeTitle}.tilda.png`;
+    a.href = dataUrl;
+    a.click();
+
+    const w = Math.round(currentSize.w * scale);
+    const h = Math.round(currentSize.h * scale);
+    toast(`PNG скачан: ${w}×${h} px — идеально для Tilda 🔷`);
+  } catch(err) {
+    console.error('Tilda PNG error:', err);
+    toast('Ошибка экспорта PNG: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function exportTildaDownloadZip() {
+  if (!canvas) { toast('Холст не инициализирован'); return; }
+
+  const btn = $('#btn-tilda-download-zip');
+  const statusEl = $('#tilda-zip-status');
+
+  if (!window.JSZip) {
+    toast('Библиотека JSZip не загружена. Проверьте подключение к интернету.');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (statusEl) { statusEl.textContent = '⏳ Подготовка архива...'; statusEl.classList.remove('hidden', 'is-error'); }
+
+  try {
+    await embedAllImagesToBase64(canvas);
+
+    const savedZoom = zoom;
+    applyZoom(1);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+
+    // 1. Генерируем HTML
+    const htmlContent = await buildTildaHTML();
+
+    // 2. Генерируем PNG × 2
+    const pngDataUrl = canvas.toDataURL({ format: 'png', multiplier: 2, quality: 1 });
+    const pngBase64  = pngDataUrl.split(',')[1];
+
+    // 3. CSS для блока
+    const w = currentSize.w;
+    const h = currentSize.h;
+    const cssContent = `/* Tilda Block — Аврора Редактор Афиш */
+.t-container {
+  position: relative;
+  width: 100%;
+  max-width: ${w}px;
+  height: ${h}px;
+  margin: 0 auto;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+@media (max-width: ${w}px) {
+  .t-container {
+    height: calc(100vw * ${h} / ${w});
+  }
+  .t-container > * {
+    transform-origin: top left;
+    transform: scale(calc(100vw / ${w}));
+  }
+}`;
+
+    // 4. Полная standalone HTML-страница
+    const standalonePage = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Афиша — biblioteka33.ru</title>
+<link rel="stylesheet" href="poster.css">
+</head>
+<body style="margin:0;padding:0;background:#070a1e;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+${htmlContent}
+</body>
+</html>`;
+
+    applyZoom(savedZoom);
+
+    // 5. Собираем ZIP
+    const zip = new JSZip();
+    zip.file('index.html', standalonePage);
+    zip.file('poster.css',  cssContent);
+    zip.file('poster.png',  pngBase64, { base64: true });
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
+    a.download = `${safeTitle}.tilda.zip`;
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    if (statusEl) { statusEl.textContent = '✓ ZIP скачан! Разместите файлы и вставьте ссылку в Тильду'; }
+    toast('ZIP-архив скачан! 📦 Внутри: index.html + poster.css + poster.png');
+  } catch(err) {
+    console.error('Tilda ZIP error:', err);
+    if (statusEl) { statusEl.textContent = '✗ Ошибка: ' + err.message; statusEl.classList.add('is-error'); }
+    toast('Ошибка создания ZIP: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
    МОДАЛКИ
    ══════════════════════════════════════════════════════════════ */
 function openLogoModal()   { $('#logo-modal-overlay')?.classList.remove('hidden'); }
@@ -4470,6 +4923,26 @@ function bindEvents() {
   $('#btn-figma-api-send')      ?.addEventListener('click', exportFigmaApiSend);
   $('#btn-figma-download-json')  ?.addEventListener('click', exportProjectJSON);
 
+  /* ── Tilda Экспорт ── */
+  $('#btn-tilda-export')           ?.addEventListener('click', openTildaExportModal);
+  $('#tool-tilda-export')          ?.addEventListener('click', openTildaExportModal);
+  $('#tilda-export-modal-close')   ?.addEventListener('click', closeTildaExportModal);
+  $('#tilda-export-modal-overlay') ?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeTildaExportModal();
+  });
+  // Вкладки
+  $$('.tilda-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTildaTab(btn.dataset.tab));
+  });
+  // HTML-вкладка
+  $('#btn-tilda-gen-html')  ?.addEventListener('click', exportTildaGenHtml);
+  $('#btn-tilda-copy-html') ?.addEventListener('click', exportTildaCopyHtml);
+  // PNG-вкладка
+  $('#btn-tilda-download-png')?.addEventListener('click', exportTildaDownloadPng);
+  $$('input[name="tilda-png-scale"]').forEach(r => r.addEventListener('change', updateTildaPngSizeLabel));
+  // ZIP-вкладка
+  $('#btn-tilda-download-zip')?.addEventListener('click', exportTildaDownloadZip);
+
   /* ── Мобильный навигационный док и шторка (Drawer) ── */
   $('#dock-btn-bg')    ?.addEventListener('click', () => openMobileDrawer('bg'));
   $('#dock-btn-text')  ?.addEventListener('click', () => openMobileDrawer('text'));
@@ -4512,6 +4985,7 @@ function bindEvents() {
   $('#mtool-qrcode')  ?.addEventListener('click', () => { closeMobileDrawer(); openQrModal(); });
   $('#mtool-figma-import')?.addEventListener('click', () => { closeMobileDrawer(); openFigmaImportModal(); });
   $('#mtool-figma-export')?.addEventListener('click', () => { closeMobileDrawer(); openFigmaExportModal(); });
+  $('#mtool-tilda-export')?.addEventListener('click', () => { closeMobileDrawer(); openTildaExportModal(); });
 
   /* Resize */
   window.addEventListener('resize', fitZoom);

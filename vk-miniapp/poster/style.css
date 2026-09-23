@@ -3396,3 +3396,353 @@ input, select, textarea {
 }
 
 
+
+/* ════════════════════════════════════════════════════════════════
+   TILDA ИНТЕГРАЦИЯ — Стили модального окна и кнопок
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Чип «Tilda-сайт» в фильтрах шаблонов ─────────────────────── */
+.tpl-chip-tilda {
+  background: linear-gradient(135deg, rgba(37,99,235,0.18) 0%, rgba(99,102,241,0.18) 100%) !important;
+  border-color: rgba(99,102,241,0.5) !important;
+  color: #818cf8 !important;
+}
+.tpl-chip-tilda.is-active,
+.tpl-chip-tilda:hover {
+  background: linear-gradient(135deg, rgba(37,99,235,0.4) 0%, rgba(99,102,241,0.4) 100%) !important;
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Кнопка шапки «Tilda Экспорт» ─────────────────────────────── */
+.hbtn-tilda {
+  background: linear-gradient(135deg, rgba(37,99,235,0.2), rgba(99,102,241,0.2)) !important;
+  border: 1px solid rgba(99,102,241,0.5) !important;
+  color: #818cf8 !important;
+}
+.hbtn-tilda:hover {
+  background: linear-gradient(135deg, rgba(37,99,235,0.4), rgba(99,102,241,0.4)) !important;
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Кнопка сайдбара «Tilda Экспорт» ──────────────────────────── */
+.tool-btn-tilda {
+  background: linear-gradient(135deg, rgba(37,99,235,0.15), rgba(99,102,241,0.15)) !important;
+  border: 1px solid rgba(99,102,241,0.4) !important;
+  color: #818cf8 !important;
+}
+.tool-btn-tilda:hover {
+  background: linear-gradient(135deg, rgba(37,99,235,0.35), rgba(99,102,241,0.35)) !important;
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Карточка мобильного drawer ────────────────────────────────── */
+.drawer-card-tilda {
+  border: 1px solid rgba(99,102,241,0.4) !important;
+  color: #818cf8 !important;
+}
+.drawer-card-tilda:hover {
+  background: rgba(99,102,241,0.15) !important;
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Tilda Badge ───────────────────────────────────────────────── */
+.tilda-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #818cf8;
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.4);
+  margin-bottom: 8px;
+}
+
+/* ── Tilda Modal Layout ────────────────────────────────────────── */
+.tilda-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+}
+.tilda-head-title-wrap {
+  flex: 1;
+}
+.tilda-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px 28px;
+}
+
+/* ── Вкладки ───────────────────────────────────────────────────── */
+.tilda-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.tilda-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+.tilda-tab .material-symbols-rounded {
+  font-size: 18px;
+}
+.tilda-tab:hover {
+  color: #818cf8;
+}
+.tilda-tab.is-active {
+  color: #818cf8;
+  border-bottom-color: #818cf8;
+}
+
+/* ── Панели вкладок ────────────────────────────────────────────── */
+.tilda-tab-panel {
+  display: block;
+}
+.tilda-tab-panel.hidden {
+  display: none;
+}
+.tilda-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+.tilda-section-hint {
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* ── HTML-блок вкладка ─────────────────────────────────────────── */
+.tilda-code-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tilda-code-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tilda-code-block {
+  width: 100%;
+  min-height: 220px;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #a5f3fc;
+  background: rgba(15,23,42,0.9);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 10px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s;
+}
+.tilda-code-block:focus {
+  border-color: #818cf8;
+}
+.tilda-copy-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.35);
+  border-radius: 10px;
+  color: #34d399;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+.tilda-copy-success .material-symbols-rounded {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ── PNG вкладка ───────────────────────────────────────────────── */
+.tilda-png-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.tilda-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.15s, border-color 0.15s;
+}
+.tilda-radio-label:hover {
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.3);
+}
+.tilda-radio-label input[type="radio"] {
+  accent-color: #818cf8;
+}
+.tilda-png-preview-wrap {
+  margin-bottom: 16px;
+}
+.tilda-png-preview-label {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.tilda-png-preview-canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tilda-action-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.tilda-hint-small {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ── ZIP вкладка ───────────────────────────────────────────────── */
+.tilda-zip-contents {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.tilda-zip-file-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.tilda-zip-file-row .material-symbols-rounded {
+  font-size: 28px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.tilda-zip-file-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  font-family: monospace;
+}
+.tilda-zip-file-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.tilda-zip-status {
+  font-size: 13px;
+  color: #34d399;
+  font-weight: 600;
+}
+.tilda-zip-status.is-error {
+  color: #f87171;
+}
+
+/* ── Вкладка «Как вставить» ────────────────────────────────────── */
+.tilda-guide-method {
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+}
+.tilda-guide-method-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 12px;
+}
+.tilda-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3730a3, #6366f1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.tilda-steps {
+  margin: 0;
+  padding-left: 20px;
+}
+.tilda-steps li {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.65;
+  margin-bottom: 6px;
+}
+.tilda-steps li strong {
+  color: var(--text-1);
+}
+.tilda-guide-note {
+  padding: 14px 18px;
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+/* ── Адаптив ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .tilda-modal {
+    padding: 16px !important;
+  }
+  .tilda-tabs {
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+  .tilda-modal-body {
+    padding: 16px;
+  }
+  .tilda-tab {
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+}
+
