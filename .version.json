@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.68.2",
+  "version": "4.69.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-21T01:57:00Z",
-  "release_name": "AURORA 4.68.2 — Основная ИИ-модель qwen/qwen3.8-max:free с бесшовным мгновенным переключением на mistralai/mistral-large-2512"
+  "commit_date": "2026-09-22T22:30:00Z",
+  "release_name": "AURORA 4.69.0 — Двусторонняя интеграция редактора афиш с Figma по REST API: импорт макетов/фреймов со слоями и экспорт в Figma"
 }

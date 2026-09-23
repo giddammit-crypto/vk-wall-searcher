@@ -2912,6 +2912,812 @@ function toast(text) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ИНТЕГРАЦИЯ С FIGMA REST API (ИМПОРТ И ЭКСПОРТ)
+   ══════════════════════════════════════════════════════════════ */
+const FIGMA_STORAGE_KEY = 'aurora_figma_token';
+const FIGMA_DEFAULT_TOKEN = '';
+let figmaCurrentFileKey = null;
+let figmaCurrentDoc = null;
+let figmaSelectedFrameId = null;
+let figmaFramesList = [];
+const figmaLoadedFonts = new Set();
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getStoredFigmaToken() {
+  try {
+    return localStorage.getItem(FIGMA_STORAGE_KEY) || FIGMA_DEFAULT_TOKEN;
+  } catch (e) {
+    return FIGMA_DEFAULT_TOKEN;
+  }
+}
+
+function setStoredFigmaToken(token, remember) {
+  try {
+    if (remember && token) {
+      localStorage.setItem(FIGMA_STORAGE_KEY, token);
+    } else {
+      localStorage.removeItem(FIGMA_STORAGE_KEY);
+    }
+  } catch (e) {}
+}
+
+function parseFigmaUrl(urlOrKey) {
+  if (!urlOrKey) return null;
+  const str = urlOrKey.trim();
+
+  // 1. Проверяем URL вида:
+  // https://www.figma.com/design/AbCdEf12345/Title?node-id=1:2
+  // https://www.figma.com/file/AbCdEf12345/Title?node-id=1-2
+  const urlMatch = str.match(/figma\.com\/(?:design|file|proto)\/([a-zA-Z0-9_-]+)/i);
+  if (urlMatch) {
+    const fileKey = urlMatch[1];
+    let nodeId = null;
+    const nodeMatch = str.match(/[?&]node-id=([^&#]+)/i);
+    if (nodeMatch) {
+      nodeId = decodeURIComponent(nodeMatch[1]).replace(/-/g, ':');
+    }
+    return { fileKey, nodeId };
+  }
+
+  // 2. Если передан прямой ключ файла (alphanumeric, мин. 10 знаков)
+  if (/^[a-zA-Z0-9_-]{10,50}$/.test(str)) {
+    return { fileKey: str, nodeId: null };
+  }
+
+  return null;
+}
+
+async function callFigmaProxy(action, params = {}, method = 'GET', body = null) {
+  const proxyUrl = new URL('../../api/figma-proxy.php', window.location.href);
+  proxyUrl.searchParams.set('action', action);
+
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) {
+      proxyUrl.searchParams.set(k, String(v));
+    }
+  }
+
+  const tokenInput = $('#figma-token-input');
+  const token = (tokenInput?.value || '').trim() || getStoredFigmaToken();
+  if (token) {
+    proxyUrl.searchParams.set('token', token);
+  }
+
+  const headers = {};
+  if (token) headers['X-Figma-Token'] = token;
+
+  const opts = { method, headers };
+  if (body && (method === 'POST' || method === 'PUT')) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+
+  let res;
+  try {
+    res = await fetch(proxyUrl.toString(), opts);
+  } catch (netErr) {
+    throw new Error('Ошибка сети при обращении к серверному шлюзу Figma: ' + netErr.message);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (jsonErr) {
+    throw new Error(`Некорректный ответ сервера Figma (HTTP ${res.status})`);
+  }
+
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || `Ошибка Figma API (HTTP ${res.status})`);
+  }
+
+  return data;
+}
+
+async function verifyFigmaTokenQuiet(token) {
+  const statusEl = $('#figma-token-status');
+  if (!statusEl) return;
+  if (!token) {
+    statusEl.innerHTML = '<span class="figma-status-warn">Токен не введён</span>';
+    return;
+  }
+  try {
+    statusEl.innerHTML = '<span class="figma-status-loading">Проверка токена…</span>';
+    const res = await callFigmaProxy('me', { token });
+    if (res.user) {
+      const u = res.user;
+      statusEl.innerHTML = `<span class="figma-status-ok" title="${escapeHtml(u.email || '')}">✓ ${escapeHtml(u.handle || 'Пользователь')}${u.email ? ' (' + escapeHtml(u.email) + ')' : ''}</span>`;
+    }
+  } catch (e) {
+    statusEl.innerHTML = `<span class="figma-status-err">✗ Ошибка: ${escapeHtml(e.message)}</span>`;
+  }
+}
+
+function showFigmaLoader(text = 'Соединение с Figma API...') {
+  const loader = $('#figma-loader');
+  const textEl = $('#figma-loader-text');
+  if (textEl) textEl.textContent = text;
+  loader?.classList.remove('hidden');
+}
+
+function hideFigmaLoader() {
+  $('#figma-loader')?.classList.add('hidden');
+}
+
+function figmaColorToRgba(fill) {
+  if (!fill || fill.visible === false) return null;
+  if (fill.type !== 'SOLID' || !fill.color) return null;
+  const r = Math.min(255, Math.max(0, Math.round((fill.color.r ?? 0) * 255)));
+  const g = Math.min(255, Math.max(0, Math.round((fill.color.g ?? 0) * 255)));
+  const b = Math.min(255, Math.max(0, Math.round((fill.color.b ?? 0) * 255)));
+  const a = fill.opacity !== undefined ? fill.opacity : (fill.color.a ?? 1);
+  if (a < 0.999) {
+    return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(2))})`;
+  }
+  const toHex = v => v.toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function ensureFontAvailable(fontFamily) {
+  if (!fontFamily) return;
+  const fam = fontFamily.trim();
+  if (!fam || figmaLoadedFonts.has(fam)) return;
+  figmaLoadedFonts.add(fam);
+
+  const localFonts = ['Shoptronic SP', 'Dela Gothic One', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Tahoma'];
+  if (localFonts.includes(fam)) return;
+
+  try {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fam)}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap`;
+    document.head.appendChild(link);
+  } catch (e) {}
+}
+
+function extractFigmaFrames(docNode) {
+  const frames = [];
+  if (!docNode) return frames;
+
+  function traverse(node, pageName) {
+    if (!node || node.visible === false) return;
+    const isFrameLike = ['FRAME', 'COMPONENT', 'SECTION', 'GROUP', 'COMPONENT_SET'].includes(node.type);
+    const box = node.absoluteBoundingBox;
+
+    if (isFrameLike && box && box.width >= 40 && box.height >= 40) {
+      frames.push({
+        id: node.id,
+        name: node.name || 'Frame ' + node.id,
+        type: node.type,
+        pageName: pageName || 'Макет',
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        childrenCount: Array.isArray(node.children) ? node.children.length : 0,
+        rawNode: node
+      });
+      if (node.type !== 'SECTION' && node.type !== 'CANVAS') {
+        return;
+      }
+    }
+
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        traverse(child, node.type === 'CANVAS' ? node.name : pageName);
+      }
+    }
+  }
+
+  traverse(docNode, '');
+  return frames;
+}
+
+function renderFigmaFramesGrid(frames, preselectId = null) {
+  const grid = $('#figma-frames-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  figmaSelectedFrameId = null;
+  const doImportBtn = $('#btn-figma-do-import');
+  if (doImportBtn) doImportBtn.disabled = true;
+
+  frames.forEach((frame, idx) => {
+    const card = document.createElement('div');
+    card.className = 'figma-frame-card';
+    card.dataset.frameId = frame.id;
+    card.innerHTML = `
+      <div class="figma-frame-thumb-wrap" id="figma-thumb-${frame.id.replace(/[:]/g, '-')}">
+        <div class="figma-frame-thumb-empty">
+          <span class="material-symbols-rounded">crop_portrait</span>
+        </div>
+      </div>
+      <div class="figma-frame-card-body">
+        <div class="figma-frame-card-title" title="${escapeHtml(frame.name)}">${escapeHtml(frame.name)}</div>
+        <div class="figma-frame-card-meta">
+          <span>${frame.width} × ${frame.height}</span>
+          <span>${frame.childrenCount} сл.</span>
+        </div>
+        <div class="figma-frame-page-tag">${escapeHtml(frame.pageName)}</div>
+      </div>
+    `;
+
+    card.addEventListener('click', () => selectFigmaFrame(frame.id));
+    grid.appendChild(card);
+
+    if (preselectId && (frame.id === preselectId || frame.id === preselectId.replace('-', ':'))) {
+      selectFigmaFrame(frame.id);
+    } else if (!preselectId && idx === 0) {
+      selectFigmaFrame(frame.id);
+    }
+  });
+}
+
+function selectFigmaFrame(frameId) {
+  figmaSelectedFrameId = frameId;
+  $$('.figma-frame-card').forEach(c => {
+    c.classList.toggle('is-selected', c.dataset.frameId === frameId);
+  });
+  const frame = figmaFramesList.find(f => f.id === frameId);
+  if (frame) {
+    const infoEl = $('#figma-selected-info');
+    if (infoEl) {
+      infoEl.innerHTML = `Выбран макет: <strong>${escapeHtml(frame.name)}</strong> (${frame.width} × ${frame.height} px, ${frame.childrenCount} элементов)`;
+    }
+    const btn = $('#btn-figma-do-import');
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function loadFigmaFramePreviews(fileKey, frames) {
+  if (!frames.length) return;
+  const slice = frames.slice(0, 16);
+  const ids = slice.map(f => f.id).join(',');
+  try {
+    const res = await callFigmaProxy('images', {
+      file_key: fileKey,
+      ids: ids,
+      format: 'png',
+      scale: 0.4
+    });
+    if (res.images) {
+      for (const [id, imgUrl] of Object.entries(res.images)) {
+        if (!imgUrl) continue;
+        const thumbWrap = $(`#figma-thumb-${id.replace(/[:]/g, '-')}`);
+        if (thumbWrap) {
+          const proxied = `../../api/figma-proxy.php?action=image_proxy&url=${encodeURIComponent(imgUrl)}`;
+          thumbWrap.innerHTML = `<img src="${proxied}" class="figma-frame-thumb-img" alt="Превью фрейма" loading="lazy">`;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Не удалось фоном подгрузить миниатюры фреймов:', err);
+  }
+}
+
+async function fetchFigmaDocument() {
+  const urlInput = $('#figma-file-url');
+  const tokenInput = $('#figma-token-input');
+  const saveCheck = $('#figma-save-token');
+  const rawUrl = urlInput?.value.trim();
+  const token = tokenInput?.value.trim() || getStoredFigmaToken();
+
+  if (!rawUrl) {
+    toast('Введите ссылку на макет или ключ файла Figma');
+    urlInput?.focus();
+    return;
+  }
+  if (!token) {
+    toast('Введите Personal Access Token Figma');
+    tokenInput?.focus();
+    return;
+  }
+
+  if (saveCheck && saveCheck.checked) {
+    setStoredFigmaToken(token, true);
+  }
+
+  const parsed = parseFigmaUrl(rawUrl);
+  if (!parsed || !parsed.fileKey) {
+    toast('Не удалось извлечь ключ файла из ссылки Figma. Проверьте формат ссылки.');
+    return;
+  }
+
+  figmaCurrentFileKey = parsed.fileKey;
+
+  showFigmaLoader('Загрузка структуры файла из Figma API...');
+  $('#figma-result-area')?.classList.add('hidden');
+  const fetchBtn = $('#btn-figma-fetch');
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  try {
+    const data = await callFigmaProxy('file', { file_key: figmaCurrentFileKey, depth: 2 });
+    figmaCurrentDoc = data;
+
+    const docName = data.name || 'Документ Figma';
+    const lastModified = data.lastModified ? new Date(data.lastModified).toLocaleDateString('ru-RU') : '';
+    const nameEl = $('#figma-doc-name');
+    if (nameEl) nameEl.textContent = docName;
+    const metaEl = $('#figma-doc-meta');
+    if (metaEl) metaEl.textContent = `${lastModified ? 'Изм: ' + lastModified + ' · ' : ''}Версия ${data.version || 'v1'}`;
+
+    figmaFramesList = extractFigmaFrames(data.document);
+    if (!figmaFramesList.length) {
+      throw new Error('В документе не найдено подходящих фреймов или артбордов. Создайте хотя бы один фрейм в Figma.');
+    }
+
+    renderFigmaFramesGrid(figmaFramesList, parsed.nodeId);
+    $('#figma-result-area')?.classList.remove('hidden');
+
+    loadFigmaFramePreviews(figmaCurrentFileKey, figmaFramesList);
+    toast(`Загружено ${figmaFramesList.length} фреймов из Figma ❖`);
+  } catch (err) {
+    console.error('Figma fetch error:', err);
+    toast('Ошибка Figma: ' + (err.message || 'Не удалось загрузить структуру файла'));
+  } finally {
+    hideFigmaLoader();
+    if (fetchBtn) fetchBtn.disabled = false;
+  }
+}
+
+async function doImportFigmaFrame() {
+  if (!figmaSelectedFrameId || !figmaCurrentFileKey) {
+    toast('Выберите фрейм для импорта');
+    return;
+  }
+  const frameMeta = figmaFramesList.find(f => f.id === figmaSelectedFrameId);
+  if (!frameMeta) {
+    toast('Выбранный фрейм не найден');
+    return;
+  }
+
+  const mode = document.querySelector('input[name="figma-import-mode"]:checked')?.value || 'layers';
+  const importBtn = $('#btn-figma-do-import');
+  if (importBtn) importBtn.disabled = true;
+
+  showFigmaLoader(mode === 'vector' ? 'Рендеринг векторного артборда через Figma API...' : 'Извлечение слоёв и типографики из Figma...');
+
+  try {
+    if (mode === 'vector') {
+      // Режим 1: Высокоточный вектор / Арт (рендеринг в 2x PNG через images API)
+      const res = await callFigmaProxy('images', {
+        file_key: figmaCurrentFileKey,
+        ids: frameMeta.id,
+        scale: 2,
+        format: 'png'
+      });
+      const imgUrl = res.images?.[frameMeta.id];
+      if (!imgUrl) throw new Error('Figma API не вернул изображение для этого фрейма');
+
+      const proxiedUrl = `../../api/figma-proxy.php?action=image_proxy&url=${encodeURIComponent(imgUrl)}`;
+
+      // Переключаемся на редактор
+      $('#screen-templates')?.classList.add('hidden');
+      $('#screen-editor')?.classList.remove('hidden');
+
+      currentSize = {
+        name: frameMeta.name || 'Figma Frame',
+        w: frameMeta.width,
+        h: frameMeta.height
+      };
+      initCanvas(currentSize.w, currentSize.h);
+
+      if ($('#poster-title')) $('#poster-title').value = frameMeta.name;
+
+      await new Promise((resolve, reject) => {
+        fabric.Image.fromURL(proxiedUrl, img => {
+          if (!img) return reject(new Error('Не удалось загрузить изображение фрейма'));
+          img.set({
+            left: 0,
+            top: 0,
+            scaleX: currentSize.w / (img.width || currentSize.w),
+            scaleY: currentSize.h / (img.height || currentSize.h),
+            selectable: true,
+            hasControls: true
+          });
+          canvas.add(img);
+          resolve();
+        }, { crossOrigin: 'anonymous' });
+      });
+
+      canvas.renderAll();
+      fitZoom();
+      saveHistory();
+      updateLayersList();
+      clearProps();
+      startAutosave();
+      closeFigmaImportModal();
+      toast('Артборд Figma успешно импортирован на холст! ❖');
+
+    } else {
+      // Режим 2: Послойный импорт (дерево нод, текст, геометрия)
+      const detail = await callFigmaProxy('nodes', {
+        file_key: figmaCurrentFileKey,
+        ids: frameMeta.id,
+        geometry: 'paths'
+      });
+
+      const frameNode = detail.nodes?.[frameMeta.id]?.document || frameMeta.rawNode;
+      if (!frameNode) throw new Error('Не удалось получить структуру слоёв фрейма');
+
+      const frameBox = frameNode.absoluteBoundingBox || { x: 0, y: 0, width: frameMeta.width, height: frameMeta.height };
+      const fw = Math.round(frameBox.width || frameMeta.width);
+      const fh = Math.round(frameBox.height || frameMeta.height);
+
+      $('#screen-templates')?.classList.add('hidden');
+      $('#screen-editor')?.classList.remove('hidden');
+
+      currentSize = {
+        name: frameNode.name || frameMeta.name || 'Figma Frame',
+        w: fw,
+        h: fh
+      };
+      initCanvas(currentSize.w, currentSize.h);
+
+      // Фоновый цвет фрейма
+      let bgColor = '#ffffff';
+      if (frameNode.backgroundColor) {
+        bgColor = figmaColorToRgba({ type: 'SOLID', color: frameNode.backgroundColor }) || '#ffffff';
+      } else if (Array.isArray(frameNode.fills) && frameNode.fills.length) {
+        bgColor = figmaColorToRgba(frameNode.fills[0]) || '#ffffff';
+      }
+      canvas.setBackgroundColor(bgColor, () => canvas.renderAll());
+
+      if ($('#poster-title')) $('#poster-title').value = frameNode.name || frameMeta.name;
+
+      // Сбор и парсинг дочерних слоёв
+      const fabricObjects = [];
+      const imageNodeIds = [];
+
+      function collectNodes(parent) {
+        if (!parent || !Array.isArray(parent.children)) return;
+        for (const node of parent.children) {
+          if (node.visible === false) continue;
+
+          // Проверяем, есть ли у ноды fill типа IMAGE
+          const hasImageFill = Array.isArray(node.fills) && node.fills.some(f => f.type === 'IMAGE' && f.visible !== false);
+          if (hasImageFill || (node.type === 'VECTOR' && node.absoluteBoundingBox && node.absoluteBoundingBox.width > 60)) {
+            imageNodeIds.push(node.id);
+          }
+
+          if (node.type === 'GROUP' || (node.type === 'FRAME' && (!node.fills || !node.fills.length))) {
+            collectNodes(node);
+          } else {
+            fabricObjects.push(node);
+          }
+        }
+      }
+
+      collectNodes(frameNode);
+
+      // Если есть изображения/векторы — подгружаем их рендеры пачкой
+      let renderedImagesMap = {};
+      if (imageNodeIds.length > 0) {
+        showFigmaLoader(`Отрисовка изображений и графики (${imageNodeIds.length} шт.)...`);
+        try {
+          const imgRes = await callFigmaProxy('images', {
+            file_key: figmaCurrentFileKey,
+            ids: imageNodeIds.slice(0, 30).join(','),
+            format: 'png',
+            scale: 2
+          });
+          if (imgRes.images) renderedImagesMap = imgRes.images;
+        } catch (e) {
+          console.warn('Часть картинок не удалось отрисовать через images API:', e);
+        }
+      }
+
+      let importedCount = 0;
+
+      for (const node of fabricObjects) {
+        const box = node.absoluteBoundingBox;
+        if (!box) continue;
+
+        const left = Math.round(box.x - frameBox.x);
+        const top = Math.round(box.y - frameBox.y);
+        const width = Math.round(box.width);
+        const height = Math.round(box.height);
+
+        // 1. Изображение из рендера
+        if (renderedImagesMap[node.id]) {
+          const pUrl = `../../api/figma-proxy.php?action=image_proxy&url=${encodeURIComponent(renderedImagesMap[node.id])}`;
+          await new Promise(res => {
+            fabric.Image.fromURL(pUrl, img => {
+              if (img) {
+                img.set({
+                  left, top,
+                  scaleX: width / (img.width || width),
+                  scaleY: height / (img.height || height),
+                  opacity: node.opacity !== undefined ? node.opacity : 1
+                });
+                canvas.add(img);
+                importedCount++;
+              }
+              res();
+            }, { crossOrigin: 'anonymous' });
+          });
+          continue;
+        }
+
+        // 2. Текстовый слой
+        if (node.type === 'TEXT') {
+          const textFill = (node.fills && node.fills.find(f => f.type === 'SOLID' && f.visible !== false)) || { color: { r: 0, g: 0, b: 0 } };
+          const color = figmaColorToRgba(textFill) || '#0f172a';
+          const fontSize = Math.round(node.style?.fontSize || 24);
+          const fontFamily = node.style?.fontFamily || 'Montserrat';
+          ensureFontAvailable(fontFamily);
+
+          const alignRaw = (node.style?.textAlignHorizontal || 'LEFT').toLowerCase();
+          const align = alignRaw === 'right' ? 'right' : (alignRaw === 'center' ? 'center' : 'left');
+
+          const tObj = new fabric.Textbox(node.characters || 'Текст', {
+            left, top,
+            width: Math.max(width, 40),
+            fontSize,
+            fontFamily,
+            fontWeight: node.style?.fontWeight ? String(node.style.fontWeight) : 'normal',
+            fontStyle: node.style?.italic ? 'italic' : 'normal',
+            textAlign: align,
+            fill: color,
+            lineHeight: (node.style?.lineHeightPx && fontSize) ? (node.style.lineHeightPx / fontSize) : 1.25,
+            splitByGrapheme: false
+          });
+          canvas.add(tObj);
+          importedCount++;
+          continue;
+        }
+
+        // 3. Прямоугольники и плашки
+        if (node.type === 'RECTANGLE' || node.type === 'FRAME' || node.type === 'COMPONENT') {
+          const fill = (node.fills && node.fills.find(f => f.type === 'SOLID' && f.visible !== false));
+          const stroke = (node.strokes && node.strokes.find(f => f.type === 'SOLID' && f.visible !== false));
+          const rect = new fabric.Rect({
+            left, top,
+            width: Math.max(width, 4),
+            height: Math.max(height, 4),
+            fill: figmaColorToRgba(fill) || 'transparent',
+            stroke: figmaColorToRgba(stroke) || null,
+            strokeWidth: node.strokeWeight || 0,
+            rx: node.cornerRadius || 0,
+            ry: node.cornerRadius || 0,
+            opacity: node.opacity !== undefined ? node.opacity : 1
+          });
+          canvas.add(rect);
+          importedCount++;
+          continue;
+        }
+
+        // 4. Эллипсы и круги
+        if (node.type === 'ELLIPSE') {
+          const fill = (node.fills && node.fills.find(f => f.type === 'SOLID' && f.visible !== false));
+          const stroke = (node.strokes && node.strokes.find(f => f.type === 'SOLID' && f.visible !== false));
+          const circle = new fabric.Circle({
+            left, top,
+            radius: Math.min(width, height) / 2,
+            fill: figmaColorToRgba(fill) || '#38bdf8',
+            stroke: figmaColorToRgba(stroke) || null,
+            strokeWidth: node.strokeWeight || 0,
+            opacity: node.opacity !== undefined ? node.opacity : 1
+          });
+          canvas.add(circle);
+          importedCount++;
+          continue;
+        }
+
+        // 5. Линии
+        if (node.type === 'LINE') {
+          const stroke = (node.strokes && node.strokes.find(f => f.type === 'SOLID' && f.visible !== false));
+          const line = new fabric.Line([left, top, left + width, top + height], {
+            stroke: figmaColorToRgba(stroke) || '#94a3b8',
+            strokeWidth: Math.max(node.strokeWeight || 2, 1),
+            opacity: node.opacity !== undefined ? node.opacity : 1
+          });
+          canvas.add(line);
+          importedCount++;
+          continue;
+        }
+      }
+
+      canvas.renderAll();
+      fitZoom();
+      saveHistory();
+      updateLayersList();
+      clearProps();
+      startAutosave();
+      closeFigmaImportModal();
+      toast(`Импортировано слоёв: ${importedCount} из Figma! 🚀`);
+    }
+  } catch (err) {
+    console.error('Figma import execution error:', err);
+    toast('Ошибка импорта: ' + (err.message || 'Не удалось собрать слои'));
+  } finally {
+    hideFigmaLoader();
+    if (importBtn) importBtn.disabled = false;
+  }
+}
+
+/* ── Экспорт в Figma (Буфер, SVG, API) ── */
+async function exportFigmaClipboard() {
+  if (!canvas) {
+    toast('Холст не инициализирован');
+    return;
+  }
+
+  const savedZoom = zoom;
+  applyZoom(1);
+  canvas.discardActiveObject();
+  canvas.renderAll();
+
+  const svgStr = canvas.toSVG({
+    suppressPreamble: false,
+    width: currentSize.w + 'px',
+    height: currentSize.h + 'px',
+    viewBox: { x: 0, y: 0, width: currentSize.w, height: currentSize.h }
+  });
+
+  applyZoom(savedZoom);
+
+  const htmlPayload = `<!--StartFragment-->${svgStr}<!--EndFragment-->`;
+  let copied = false;
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      const item = new ClipboardItem({
+        'text/html': new Blob([htmlPayload], { type: 'text/html' }),
+        'text/plain': new Blob([svgStr], { type: 'text/plain' })
+      });
+      await navigator.clipboard.write([item]);
+      copied = true;
+    } catch (clipErr) {
+      console.warn('ClipboardItem error, fallback to writeText:', clipErr);
+    }
+  }
+
+  if (!copied && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(svgStr);
+      copied = true;
+    } catch (e) {}
+  }
+
+  if (copied) {
+    const successEl = $('#figma-copy-success');
+    if (successEl) {
+      successEl.classList.remove('hidden');
+      setTimeout(() => successEl.classList.add('hidden'), 5000);
+    }
+    toast('Векторный макет скопирован! Вставьте в Figma через Ctrl+V ✦');
+  } else {
+    toast('Не удалось автоматически скопировать в буфер. Используйте «Скачать Figma SVG».');
+  }
+}
+
+function exportFigmaSvg() {
+  if (!canvas) {
+    toast('Холст не инициализирован');
+    return;
+  }
+
+  const savedZoom = zoom;
+  applyZoom(1);
+  canvas.discardActiveObject();
+  canvas.renderAll();
+
+  const svgStr = canvas.toSVG({
+    suppressPreamble: false,
+    width: currentSize.w + 'px',
+    height: currentSize.h + 'px',
+    viewBox: { x: 0, y: 0, width: currentSize.w, height: currentSize.h }
+  });
+
+  applyZoom(savedZoom);
+
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
+  a.download = `${safeTitle}.figma.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Файл .figma.svg скачан! Перетащите его в Figma 🎨');
+}
+
+async function exportFigmaApiSend() {
+  if (!canvas) {
+    toast('Холст не инициализирован');
+    return;
+  }
+
+  const input = $('#figma-export-file-url');
+  const rawUrl = input?.value.trim() || figmaCurrentFileKey;
+
+  if (!rawUrl) {
+    toast('Укажите ссылку на файл Figma или File Key для публикации');
+    input?.focus();
+    return;
+  }
+
+  const parsed = parseFigmaUrl(rawUrl);
+  if (!parsed || !parsed.fileKey) {
+    toast('Некорректная ссылка на файл Figma');
+    return;
+  }
+
+  const statusEl = $('#figma-api-send-status');
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = '<span class="figma-status-loading">Публикация в Figma API...</span>';
+  }
+
+  const sendBtn = $('#btn-figma-api-send');
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    const title = $('#poster-title')?.value || 'Афиша библиотеки';
+    const objCount = canvas.getObjects().length;
+    const msg = `✦ Макет Афиши из Aurora Poster Editor ✦\nНазвание: ${title}\nРазмер холста: ${currentSize.w} × ${currentSize.h} pt\nКоличество слоёв: ${objCount}\nДата экспорта: ${new Date().toLocaleString('ru-RU')}`;
+
+    await callFigmaProxy('post_comment', {
+      file_key: parsed.fileKey
+    }, 'POST', {
+      message: msg
+    });
+
+    if (statusEl) {
+      statusEl.innerHTML = '<span class="figma-status-ok">✓ Комментарий со спецификацией афиши успешно опубликован в файле Figma!</span>';
+    }
+    toast('Успешно опубликовано в проект Figma по API! 🚀');
+  } catch (err) {
+    console.error('Figma API export error:', err);
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="figma-status-err">✗ Ошибка публикации: ${escapeHtml(err.message)}</span>`;
+    }
+    toast('Ошибка публикации: ' + err.message);
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+function openFigmaImportModal() {
+  const overlay = $('#figma-import-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+
+  const tokenInput = $('#figma-token-input');
+  if (tokenInput && !tokenInput.value) {
+    tokenInput.value = getStoredFigmaToken();
+  }
+  if (tokenInput?.value) {
+    verifyFigmaTokenQuiet(tokenInput.value);
+  }
+}
+
+function closeFigmaImportModal() {
+  $('#figma-import-modal-overlay')?.classList.add('hidden');
+}
+
+function openFigmaExportModal() {
+  const overlay = $('#figma-export-modal-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  $('#figma-copy-success')?.classList.add('hidden');
+  const exportUrl = $('#figma-export-file-url');
+  if (exportUrl && figmaCurrentFileKey && !exportUrl.value) {
+    exportUrl.value = figmaCurrentFileKey;
+  }
+}
+
+function closeFigmaExportModal() {
+  $('#figma-export-modal-overlay')?.classList.add('hidden');
+}
+
+/* ══════════════════════════════════════════════════════════════
    МОДАЛКИ
    ══════════════════════════════════════════════════════════════ */
 function openLogoModal()   { $('#logo-modal-overlay')?.classList.remove('hidden'); }
@@ -3491,6 +4297,63 @@ function bindEvents() {
   });
   $('#btn-add-qr-to-canvas')?.addEventListener('click', addQrCodeToCanvas);
 
+  /* ── Figma API Интеграция (Импорт и Экспорт) ── */
+  $('#btn-tpl-figma-import')    ?.addEventListener('click', openFigmaImportModal);
+  $('#btn-figma-import')        ?.addEventListener('click', openFigmaImportModal);
+  $('#tool-figma-import')       ?.addEventListener('click', openFigmaImportModal);
+  $('#figma-import-modal-close')?.addEventListener('click', closeFigmaImportModal);
+  $('#figma-import-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeFigmaImportModal();
+  });
+
+  $('#btn-figma-paste-url')?.addEventListener('click', async () => {
+    try {
+      if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        const input = $('#figma-file-url');
+        if (input && text) {
+          input.value = text.trim();
+          toast('Ссылка вставлена из буфера');
+        }
+      }
+    } catch (e) {
+      toast('Нажмите Ctrl+V в поле ввода');
+    }
+  });
+
+  $('#btn-figma-token-toggle')?.addEventListener('click', () => {
+    const inp = $('#figma-token-input');
+    if (!inp) return;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  $('#btn-figma-token-help')?.addEventListener('click', () => {
+    $('#figma-token-guide')?.classList.toggle('hidden');
+  });
+
+  $('#figma-token-input')?.addEventListener('change', e => {
+    const t = e.target.value.trim();
+    if ($('#figma-save-token')?.checked) {
+      setStoredFigmaToken(t, true);
+    }
+    verifyFigmaTokenQuiet(t);
+  });
+
+  $('#btn-figma-fetch')?.addEventListener('click', fetchFigmaDocument);
+  $('#btn-figma-do-import')?.addEventListener('click', doImportFigmaFrame);
+
+  $('#btn-figma-export')        ?.addEventListener('click', openFigmaExportModal);
+  $('#tool-figma-export')       ?.addEventListener('click', openFigmaExportModal);
+  $('#figma-export-modal-close')?.addEventListener('click', closeFigmaExportModal);
+  $('#figma-export-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeFigmaExportModal();
+  });
+
+  $('#btn-figma-copy-clipboard')?.addEventListener('click', exportFigmaClipboard);
+  $('#btn-figma-download-svg')  ?.addEventListener('click', exportFigmaSvg);
+  $('#btn-figma-api-send')      ?.addEventListener('click', exportFigmaApiSend);
+  $('#btn-figma-download-json')  ?.addEventListener('click', exportProjectJSON);
+
   /* ── Мобильный навигационный док и шторка (Drawer) ── */
   $('#dock-btn-bg')    ?.addEventListener('click', () => openMobileDrawer('bg'));
   $('#dock-btn-text')  ?.addEventListener('click', () => openMobileDrawer('text'));
@@ -3531,6 +4394,8 @@ function bindEvents() {
   $('#mtool-logo')    ?.addEventListener('click', () => { closeMobileDrawer(); openLogoModal(); });
   $('#mtool-stickers')?.addEventListener('click', () => { closeMobileDrawer(); openBadgeModal(); });
   $('#mtool-qrcode')  ?.addEventListener('click', () => { closeMobileDrawer(); openQrModal(); });
+  $('#mtool-figma-import')?.addEventListener('click', () => { closeMobileDrawer(); openFigmaImportModal(); });
+  $('#mtool-figma-export')?.addEventListener('click', () => { closeMobileDrawer(); openFigmaExportModal(); });
 
   /* Resize */
   window.addEventListener('resize', fitZoom);
