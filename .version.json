@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.74.0",
+  "version": "4.74.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-23T19:35:00Z",
-  "release_name": "AURORA 4.74.0 — Удален поиск по шаблонам в редакторе афиш, AI Dev Hub расширен до 56 рабочих ИИ-инструментов с подфильтрами"
+  "commit_date": "2026-09-23T20:10:00Z",
+  "release_name": "AURORA 4.74.1 — Исправлены кнопки AI Dev Hub: восстановлены 5 вкладок, кнопка закрытия и поиск"
 }

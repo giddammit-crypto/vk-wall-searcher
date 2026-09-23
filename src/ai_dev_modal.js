@@ -92,6 +92,80 @@ export function getAiDevModalHtml() {
                         </p>
                     </div>
                 </div>
+                <button type="button" class="ai-dev-close-btn" data-aidev-close title="Закрыть окно (Esc)">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Строка мгновенного поиска -->
+        <div class="ai-dev-search-bar">
+            <div class="ai-dev-search-input-wrap">
+                <span class="material-symbols-outlined ai-dev-search-icon">search</span>
+                <input
+                    type="text"
+                    class="ai-dev-search-input"
+                    data-aidev-search
+                    placeholder="Быстрый поиск ресурсов, моделей, MCP-серверов, навыков Skills или команд..."
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <button type="button" class="ai-dev-clear-btn hidden" data-aidev-clear title="Очистить поиск">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="ai-dev-search-counter" data-aidev-counter>
+                <span class="material-symbols-outlined" style="font-size: 16px;">explore</span>
+                <span class="counter-text">Все ресурсы активны</span>
+            </div>
+        </div>
+
+        <!-- Навигационные вкладки -->
+        <nav class="ai-dev-tabs-bar" role="tablist" aria-label="Разделы базы знаний">
+            <button type="button" class="ai-dev-tab-btn active" data-tab-target="free-ai" role="tab" aria-selected="true">
+                <span class="material-symbols-outlined">smart_toy</span>
+                <span>Бесплатные ИИ</span>
+                <span class="ai-dev-tab-count" data-tab-count="free-ai">56</span>
+            </button>
+            <button type="button" class="ai-dev-tab-btn" data-tab-target="mcp" role="tab" aria-selected="false">
+                <span class="material-symbols-outlined">bolt</span>
+                <span>MCP Серверы</span>
+                <span class="ai-dev-tab-count" data-tab-count="mcp">11</span>
+            </button>
+            <button type="button" class="ai-dev-tab-btn" data-tab-target="skills" role="tab" aria-selected="false">
+                <span class="material-symbols-outlined">psychology</span>
+                <span>Агентные Skills</span>
+                <span class="ai-dev-tab-count" data-tab-count="skills">8</span>
+            </button>
+            <button type="button" class="ai-dev-tab-btn" data-tab-target="repos" role="tab" aria-selected="false">
+                <span class="material-symbols-outlined">terminal</span>
+                <span>GitHub Репозитории</span>
+                <span class="ai-dev-tab-count" data-tab-count="repos">8</span>
+            </button>
+            <button type="button" class="ai-dev-tab-btn" data-tab-target="guide" role="tab" aria-selected="false">
+                <span class="material-symbols-outlined">rocket_launch</span>
+                <span>Практический гайд</span>
+                <span class="ai-dev-tab-count" data-tab-count="guide">4</span>
+            </button>
+        </nav>
+
+        <!-- Тело со вкладками -->
+        <main class="ai-dev-body">
+            <!-- ========================================================
+                 ВКЛАДКА 1: БЕСПЛАТНЫЕ ИИ (ЧАТЫ И ПЕСОЧНИЦЫ)
+                 ======================================================== -->
+            <section class="ai-dev-tab-panel active" id="tab-free-ai" role="tabpanel" data-tab-panel="free-ai">
+                <div class="ai-dev-intro-banner">
+                    <div class="ai-dev-intro-icon">
+                        <span class="material-symbols-outlined">token</span>
+                    </div>
+                    <div class="ai-dev-intro-content">
+                        <h3 class="ai-dev-intro-title">Топовые бесплатные чаты, арены и песочницы LLM</h3>
+                        <p class="ai-dev-intro-desc">
+                            Подборка лучших сервисов для прямого общения, слепых баттлов моделей, генерации сложного кода и веб-поиска без платных подписок. Используйте для генерации архитектурных решений, прототипирования и парного программирования.
+                        </p>
+                    </div>
+                </div>
 
                 <!-- Быстрые фильтры по направлениям инструментов -->
                 <div class="ai-dev-subchips-bar" data-subfilter-bar>
