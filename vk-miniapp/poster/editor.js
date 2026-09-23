@@ -1274,13 +1274,18 @@ function buildFontSelect() {
 async function setFontFamily(fontFamily) {
   const obj = canvas?.getActiveObject();
   if (!obj) return;
+  // Сначала убеждаемся, что шрифт загружен через <link> в <head>
+  ensureFontAvailable(fontFamily);
   try {
     if (document.fonts) {
-      await document.fonts.load(`32px "${fontFamily}"`);
+      await document.fonts.load(`400 32px "${fontFamily}"`);
+      await document.fonts.load(`700 32px "${fontFamily}"`);
     }
   } catch(e) {}
   obj.set('fontFamily', fontFamily);
-  canvas.renderAll();
+  obj.initDimensions?.();
+  obj.dirty = true;
+  canvas.requestRenderAll();
   saveHistory();
   updateLayersList();
 
@@ -1770,7 +1775,27 @@ function initCanvas(w, h) {
   canvas.on('selection:created',  onSelection);
   canvas.on('selection:updated',  onSelection);
   canvas.on('selection:cleared',  clearProps);
-  canvas.on('object:modified',    () => { saveHistory(); updateLayersList(); });
+  canvas.on('object:modified', e => {
+    // Нормализуем scale текстового объекта: превращаем scaleY→fontSize
+    const obj = e.target;
+    if (obj && ['textbox','text','i-text'].includes(obj.type)) {
+      const sx = obj.scaleX || 1;
+      const sy = obj.scaleY || 1;
+      if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+        const newFs = Math.round((obj.fontSize || 36) * sy);
+        obj.set({ fontSize: Math.max(6, newFs), scaleX: 1, scaleY: 1 });
+        obj.initDimensions?.();
+        obj.dirty = true;
+        const fsSlider = $('#font-size-slider');
+        const fsVal    = $('#font-size-val');
+        if (fsSlider) fsSlider.value = Math.max(6, newFs);
+        if (fsVal)    fsVal.textContent = Math.max(6, newFs);
+        canvas.requestRenderAll();
+      }
+    }
+    saveHistory();
+    updateLayersList();
+  });
   canvas.on('object:added',       () => updateLayersList());
   canvas.on('object:removed',     () => { saveHistory(); updateLayersList(); });
 
@@ -2900,16 +2925,22 @@ function onSelection() {
   updateLockBtnUI(!!obj.lockMovementX);
 
   if (isText) {
-    const fs = Math.round(obj.fontSize || 36);
+    // Реальный визуальный размер = fontSize * scaleY (если текст был растянут за маркер)
+    const fs = Math.round((obj.fontSize || 36) * (obj.scaleY || 1));
     const fsSlider = $('#font-size-slider');
     if (fsSlider) fsSlider.value = fs;
     const fsVal = $('#font-size-val');
     if (fsVal) fsVal.textContent = fs;
 
     if (obj.fontFamily && $('#font-family-select')) {
-      $('#font-family-select').value = obj.fontFamily;
+      // Очищаем кавычки: obj.fontFamily может быть "'Montserrat'" из некоторых шаблонов
+      const cleanFont = obj.fontFamily.replace(/['"]/g, '').trim();
+      $('#font-family-select').value = cleanFont;
     }
-    syncToggle('btn-bold',      obj.fontWeight === 'bold');
+    // Нормализуем: fontWeight может быть 700, '700', 'bold', '800' и т.д.
+    const fw = obj.fontWeight;
+    const isBold = fw === 'bold' || fw === 'Bold' || +fw >= 600;
+    syncToggle('btn-bold',      isBold);
     syncToggle('btn-italic',    obj.fontStyle  === 'italic');
     syncToggle('btn-underline', !!obj.underline);
     syncToggle('btn-uppercase', !!obj.__isUppercase);
@@ -4915,9 +4946,16 @@ function bindEvents() {
 
   /* ── Свойства текста ── */
   $('#font-size-slider').addEventListener('input', e => {
-    const obj = canvas?.getActiveObject(); const v = +e.target.value;
+    const obj = canvas?.getActiveObject();
+    const v = +e.target.value;
     $('#font-size-val').textContent = v;
-    if (obj) { obj.set('fontSize', v); canvas.renderAll(); }
+    if (obj) {
+      // Сбрасываем scale чтобы fontSize работал предсказуемо
+      obj.set({ fontSize: v, scaleX: 1, scaleY: 1 });
+      obj.initDimensions?.();
+      obj.dirty = true;
+      canvas.requestRenderAll();
+    }
   });
   $('#font-size-slider').addEventListener('change', () => saveHistory());
 
@@ -4928,11 +4966,28 @@ function bindEvents() {
   ['bold','italic','underline'].forEach(style => {
     $('#btn-'+style).addEventListener('click', () => {
       const obj = canvas?.getActiveObject(); if (!obj) return;
-      if (style === 'bold')      obj.set('fontWeight', obj.fontWeight==='bold' ? 'normal' : 'bold');
-      if (style === 'italic')    obj.set('fontStyle',  obj.fontStyle==='italic' ? 'normal' : 'italic');
-      if (style === 'underline') obj.set('underline', !obj.underline);
-      canvas.renderAll(); saveHistory();
-      syncToggle('btn-'+style, style==='bold'?obj.fontWeight==='bold':style==='italic'?obj.fontStyle==='italic':obj.underline);
+      if (style === 'bold') {
+        // Нормализуем: fontWeight может быть числом 700/800 или строкой '700'/'bold'
+        const w = obj.fontWeight;
+        const isBold = w === 'bold' || w === 'Bold' || +w >= 600;
+        obj.set('fontWeight', isBold ? 'normal' : 'bold');
+        obj.initDimensions?.();
+        obj.dirty = true;
+        canvas.requestRenderAll();
+        syncToggle('btn-bold', !isBold);
+      } else if (style === 'italic') {
+        obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
+        obj.initDimensions?.();
+        obj.dirty = true;
+        canvas.requestRenderAll();
+        syncToggle('btn-italic', obj.fontStyle === 'italic');
+      } else if (style === 'underline') {
+        obj.set('underline', !obj.underline);
+        obj.dirty = true;
+        canvas.requestRenderAll();
+        syncToggle('btn-underline', obj.underline);
+      }
+      saveHistory();
     });
   });
 
