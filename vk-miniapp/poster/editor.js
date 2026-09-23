@@ -11,9 +11,10 @@ const SIZES = {
   square:      { w: 700,  h: 700,  name: 'Квадрат (ВК)' },
   banner:      { w: 960,  h: 540,  name: 'Баннер 16:9' },
   story:       { w: 540,  h: 960,  name: 'Сторис 9:16' },
-  tilda_cover: { w: 1280, h: 720,  name: 'Tilda Cover 16:9' },
-  tilda_hero:  { w: 1280, h: 600,  name: 'Tilda Hero-секция' },
-  tilda_card:  { w: 600,  h: 800,  name: 'Tilda Карточка' },
+  tilda_cover:   { w: 1280, h: 720,  name: 'Tilda Cover 16:9' },
+  tilda_hero:    { w: 1280, h: 600,  name: 'Tilda Hero-секция' },
+  tilda_card:    { w: 600,  h: 800,  name: 'Tilda Карточка' },
+  tilda_landing: { w: 1200, h: 2400, name: 'Tilda Лендинг (6 блоков)' },
 };
 
 /* ── 21+ кириллический шрифт + ofont.ru ────────────────────── */
@@ -726,11 +727,209 @@ const TEMPLATES = [
       </div>`,
     objects: [],
   },
+
+  /* 18. ЧИСТЫЙ ЛИСТ TILDA ЛЕНДИНГ 1200×2400 */
+  {
+    id: 'blank_tilda_landing',
+    size: 'tilda_landing',
+    category: 'blank',
+    name: 'Чистый Tilda Лендинг',
+    desc: 'Формат веб-страницы 1200 × 2400 px для Zero Blocks',
+    fmt: 'Tilda 1200px',
+    bg: '#070a1e',
+    previewBg: '#070a1e',
+    previewAccent: '#818cf8',
+    previewHtml: `
+      <div class="mp-blank" style="background:#070a1e;">
+        <span class="material-symbols-rounded" style="font-size:22px; color:#818cf8; opacity:0.8;">web</span>
+        <span style="font-size:7.5px; font-weight:700; color:#818cf8; margin-top:3px;">TILDA ЛЕНДИНГ</span>
+        <span style="font-size:6px; color:#94a3b8;">1200 × 2400 px</span>
+      </div>`,
+    objects: [],
+  },
 ];
 
 /* ──────────────────────── TILDA ШАБЛОНЫ ───────────────────────── */
 /* Отдельный массив, смержированный с TEMPLATES при инициализации    */
 const TILDA_TEMPLATES = [
+  /* T0. ПОЛНОЦЕННЫЙ ЛЕНДИНГ ИЗ 6 БЛОКОВ (FIGMA & TILDA READY) */
+  {
+    id: 'tilda_landing_full',
+    size: 'tilda_landing',
+    category: 'tilda',
+    name: 'Tilda: Полный лендинг (6 блоков)',
+    desc: 'Комплексный веб-сайт библиотеки из 6 модульных блоков для Tilda и Figma: Шапка, Hero, 3 карточки услуг, Афиша, Форма записи, Подвал',
+    fmt: 'Tilda Landing',
+    isTilda: true,
+    bg: '#070a1e',
+    previewBg: '#070a1e',
+    previewAccent: '#818cf8',
+    previewHtml: `
+      <div class="mp-wrap" style="background:#070a1e; padding:3px; gap:2px; height:100%; justify-content:space-between; box-sizing:border-box;">
+        <!-- Блок 1: Меню -->
+        <div style="background:#0b1120; border-radius:2px; padding:2px 4px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:5px; font-weight:800; color:#38BDF8;">✦ АВРОРА</span>
+          <span style="font-size:4px; color:#94a3b8;">МЕНЮ · КАТАЛОГ · АФИША</span>
+          <span style="background:#38BDF8; color:#070a1e; font-size:4px; font-weight:700; border-radius:2px; padding:1px 3px;">БИЛЕТ</span>
+        </div>
+        <!-- Блок 2: Hero -->
+        <div style="background:linear-gradient(135deg,#0d163a,#070a1e); border:1px solid rgba(56,189,248,0.3); border-radius:3px; padding:3px; text-align:center;">
+          <div style="font-size:4px; color:#38BDF8; font-weight:700;">✦ ГЛАВНОЕ ПРОСТРАНСТВО ЗНАНИЙ ✦</div>
+          <div style="font-size:7px; font-weight:800; color:#fff; margin:1px 0; line-height:1.1;">СОВРЕМЕННАЯ БИБЛИОТЕКА</div>
+          <div style="font-size:4px; color:#94a3b8;">120 000+ книг · Коворкинг · События</div>
+          <div style="display:flex; justify-content:center; gap:2px; margin-top:2px;">
+            <span style="background:#38BDF8; color:#070a1e; font-size:3.5px; font-weight:700; padding:1px 3px; border-radius:2px;">Записаться</span>
+            <span style="border:1px solid #FBBF24; color:#FBBF24; font-size:3.5px; font-weight:700; padding:1px 3px; border-radius:2px;">Каталог →</span>
+          </div>
+        </div>
+        <!-- Блок 3: 3 карточки -->
+        <div style="display:flex; gap:2px;">
+          <div style="flex:1; background:#111832; border:1px solid rgba(56,189,248,0.2); border-radius:2px; padding:2px; text-align:center;">
+            <div style="font-size:5px;">📚</div>
+            <div style="font-size:3.5px; font-weight:700; color:#fff;">Книжный фонд</div>
+          </div>
+          <div style="flex:1; background:#111832; border:1px solid rgba(251,191,36,0.2); border-radius:2px; padding:2px; text-align:center;">
+            <div style="font-size:5px;">💻</div>
+            <div style="font-size:3.5px; font-weight:700; color:#fff;">Коворкинг</div>
+          </div>
+          <div style="flex:1; background:#111832; border:1px solid rgba(192,132,252,0.2); border-radius:2px; padding:2px; text-align:center;">
+            <div style="font-size:5px;">🎭</div>
+            <div style="font-size:3.5px; font-weight:700; color:#fff;">Лекторий</div>
+          </div>
+        </div>
+        <!-- Блок 4: Афиша -->
+        <div style="background:#0f172a; border-radius:2px; padding:2px 3px;">
+          <div style="font-size:4px; font-weight:700; color:#F472B6;">✦ АФИША СОБЫТИЙ</div>
+          <div style="display:flex; justify-content:space-between; font-size:3.5px; color:#fff; margin-top:1px;">
+            <span>26 АПР · Библионочь 2025</span>
+            <span style="color:#10B981; font-weight:700;">ВХОД СВОБОДНЫЙ</span>
+          </div>
+        </div>
+        <!-- Блок 5: Лид-форма -->
+        <div style="background:rgba(30,41,59,0.8); border:1px solid rgba(56,189,248,0.3); border-radius:2px; padding:2px 4px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:4px; font-weight:700; color:#fff;">Читательский билет онлайн</div>
+            <div style="font-size:3px; color:#94a3b8;">Оформление за 1 минуту</div>
+          </div>
+          <span style="background:#38BDF8; color:#070a1e; font-size:3.5px; font-weight:700; padding:1px 3px; border-radius:2px;">Получить ➔</span>
+        </div>
+        <!-- Блок 6: Подвал -->
+        <div style="background:#050814; border-radius:2px; padding:2px 3px; display:flex; justify-content:space-between; font-size:3px; color:#64748b;">
+          <span>г. Владимир, Б. Московская, 12</span>
+          <span style="color:#818cf8; font-weight:700;">❖ FIGMA & TILDA READY</span>
+        </div>
+      </div>`,
+    objects: [
+      /* ── [БЛОК 1: Header] Навигация и меню ── */
+      { type:'rect', left:600, top:35, width:1200, height:70, fill:'#0a0f24', originX:'center', originY:'center', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Фон меню' },
+      { type:'rect', left:600, top:69, width:1200, height:1, fill:'rgba(255,255,255,0.08)', originX:'center', originY:'center', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Разделитель' },
+      { type:'text', text:'✦ АВРОРА', left:80, top:22, fontSize:22, fontFamily:'Unbounded', fontWeight:'800', fill:'#38BDF8', textAlign:'left', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Логотип АВРОРА' },
+      { type:'text', text:'БИБЛИОТЕКА №33', left:235, top:28, fontSize:11, fontFamily:'Montserrat', fontWeight:'600', fill:'#64748b', textAlign:'left', charSpacing:100, blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Подпись логотипа' },
+      { type:'text', text:'О библиотеке       Мероприятия       Книжный фонд       Коворкинг       Контакты', left:630, top:27, width:600, fontSize:13, fontFamily:'Montserrat', fontWeight:'500', fill:'#cbd5e1', textAlign:'center', originX:'center', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Пункты меню' },
+      { type:'rect', left:1070, top:35, width:180, height:40, rx:20, ry:20, fill:'#38BDF8', originX:'center', originY:'center', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Фон кнопки билета' },
+      { type:'text', text:'Читательский билет', left:1070, top:26, width:170, fontSize:12, fontFamily:'Unbounded', fontWeight:'700', fill:'#070a1e', textAlign:'center', originX:'center', blockId:'block_header', blockTitle:'[Блок 1: Header] Навигация и меню', layerName:'[Шапка] Текст кнопки билета' },
+
+      /* ── [БЛОК 2: Hero] Главная обложка ── */
+      { type:'rect', left:600, top:360, width:1200, height:580, fill:'#070a1e', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Фон секции' },
+      { type:'circle', left:600, top:320, radius:260, fill:'rgba(56,189,248,0.05)', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Неоновое свечение' },
+      { type:'rect', left:600, top:125, width:440, height:32, rx:16, ry:16, fill:'rgba(56,189,248,0.12)', stroke:'#38BDF8', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Рамка тега' },
+      { type:'text', text:'✦ ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА ✦', left:600, top:116, width:420, fontSize:12, fontFamily:'Montserrat', fontWeight:'700', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:160, blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Текст тега' },
+      { type:'text', text:'Пространство знаний,\nвдохновения и живого общения', left:600, top:175, width:1040, fontSize:52, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.12, shadow:'rgba(56,189,248,0.4) 0px 4px 28px', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Главный заголовок' },
+      { type:'text', text:'Более 120 000 книг, современный коворкинг с Wi-Fi, лекторий, редкий фонд и более 400 культурных событий в год для читателей всех возрастов в самом сердце города.', left:600, top:320, width:880, fontSize:17, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Описание' },
+      { type:'rect', left:470, top:415, width:250, height:56, rx:28, ry:28, fill:'#38BDF8', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Кнопка 1 фон' },
+      { type:'text', text:'Записаться в библиотеку →', left:470, top:403, width:240, fontSize:14, fontFamily:'Unbounded', fontWeight:'700', fill:'#070a1e', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Кнопка 1 текст' },
+      { type:'rect', left:740, top:415, width:250, height:56, rx:28, ry:28, fill:'transparent', stroke:'#FBBF24', strokeWidth:2, originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Кнопка 2 фон' },
+      { type:'text', text:'Каталог книг онлайн 📖', left:740, top:403, width:240, fontSize:14, fontFamily:'Unbounded', fontWeight:'700', fill:'#FBBF24', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Кнопка 2 текст' },
+      { type:'rect', left:600, top:540, width:1040, height:90, rx:18, ry:18, fill:'rgba(15,23,42,0.85)', stroke:'rgba(56,189,248,0.25)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Подложка статистики' },
+      { type:'text', text:'120 000+', left:240, top:512, width:200, fontSize:26, fontFamily:'Unbounded', fontWeight:'800', fill:'#38BDF8', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 1 цифра' },
+      { type:'text', text:'книг в фонде', left:240, top:548, width:200, fontSize:12, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 1 текст' },
+      { type:'rect', left:360, top:540, width:1, height:50, fill:'rgba(255,255,255,0.1)', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Разделитель стат 1' },
+      { type:'text', text:'450+', left:480, top:512, width:200, fontSize:26, fontFamily:'Unbounded', fontWeight:'800', fill:'#FBBF24', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 2 цифра' },
+      { type:'text', text:'событий в год', left:480, top:548, width:200, fontSize:12, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 2 текст' },
+      { type:'rect', left:600, top:540, width:1, height:50, fill:'rgba(255,255,255,0.1)', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Разделитель стат 2' },
+      { type:'text', text:'100% БЕСПЛАТНО', left:720, top:515, width:200, fontSize:18, fontFamily:'Unbounded', fontWeight:'800', fill:'#10B981', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 3 цифра' },
+      { type:'text', text:'по читательскому билету', left:720, top:548, width:220, fontSize:12, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 3 текст' },
+      { type:'rect', left:840, top:540, width:1, height:50, fill:'rgba(255,255,255,0.1)', originX:'center', originY:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Разделитель стат 3' },
+      { type:'text', text:'10:00 – 21:00', left:960, top:512, width:200, fontSize:22, fontFamily:'Unbounded', fontWeight:'800', fill:'#c084fc', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 4 цифра' },
+      { type:'text', text:'без перерыва (Вт–Вс)', left:960, top:548, width:200, fontSize:12, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', blockId:'block_hero', blockTitle:'[Блок 2: Hero] Главная обложка', layerName:'[Hero] Стат 4 текст' },
+
+      /* ── [БЛОК 3: Features] 3 карточки услуг ── */
+      { type:'rect', left:600, top:885, width:1200, height:470, fill:'#0a0e22', originX:'center', originY:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Фон секции' },
+      { type:'text', text:'✦ ВОЗМОЖНОСТИ БИБЛИОТЕКИ ✦', left:600, top:685, width:600, fontSize:12, fontFamily:'Montserrat', fontWeight:'700', fill:'#38BDF8', textAlign:'center', originX:'center', charSpacing:140, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Надзаголовок' },
+      { type:'text', text:'Всё для чтения, саморазвития и проектов', left:600, top:710, width:800, fontSize:32, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Заголовок' },
+      // Карточка 1 (Фонд)
+      { type:'rect', left:260, top:920, width:320, height:310, rx:16, ry:16, fill:'#111832', stroke:'rgba(56,189,248,0.25)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 фон' },
+      { type:'text', text:'📚', left:260, top:795, fontSize:44, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 иконка' },
+      { type:'text', text:'Книжный фонд\nи электронный OPAC', left:260, top:855, width:280, fontSize:18, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.25, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 заголовок' },
+      { type:'text', text:'Классика, новинки бестселлеров, научная литература, редкие фолианты и полнотекстовый электронный каталог с поиском онлайн.', left:260, top:920, width:270, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 текст' },
+      { type:'text', text:'120 000+ ЭКЗЕМПЛЯРОВ', left:260, top:1025, width:240, fontSize:10, fontFamily:'Unbounded', fontWeight:'700', fill:'#38BDF8', backgroundColor:'rgba(56,189,248,0.12)', padding:6, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 бейдж' },
+      // Карточка 2 (Коворкинг)
+      { type:'rect', left:600, top:920, width:320, height:310, rx:16, ry:16, fill:'#111832', stroke:'rgba(251,191,36,0.35)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 2 фон' },
+      { type:'text', text:'💻', left:600, top:795, fontSize:44, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 2 иконка' },
+      { type:'text', text:'Коворкинг\nи цифровая зона', left:600, top:855, width:280, fontSize:18, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.25, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 2 заголовок' },
+      { type:'text', text:'Бесплатный скоростной Wi-Fi, розетки у каждого места, тихие залы для учёбы и работы, ПК с доступом к базам НЭБ и Президентской библиотеке.', left:600, top:920, width:270, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 2 текст' },
+      { type:'text', text:'ТИХАЯ ЗОНА С РОЗЕТКАМИ', left:600, top:1025, width:240, fontSize:10, fontFamily:'Unbounded', fontWeight:'700', fill:'#FBBF24', backgroundColor:'rgba(251,191,36,0.12)', padding:6, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 2 бейдж' },
+      // Карточка 3 (Лекторий)
+      { type:'rect', left:940, top:920, width:320, height:310, rx:16, ry:16, fill:'#111832', stroke:'rgba(192,132,252,0.3)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 3 фон' },
+      { type:'text', text:'🎭', left:940, top:795, fontSize:44, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 3 иконка' },
+      { type:'text', text:'Лекторий, клубы\nи мастер-классы', left:940, top:855, width:280, fontSize:18, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.25, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 3 заголовок' },
+      { type:'text', text:'Книжный клуб по четвергам, языковые разговорные встречи, кинопоказы с обсуждением, выставки художников и лекции ученых.', left:940, top:920, width:270, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 3 текст' },
+      { type:'text', text:'ПУШКИНСКАЯ КАРТА 14+', left:940, top:1025, width:240, fontSize:10, fontFamily:'Unbounded', fontWeight:'700', fill:'#c084fc', backgroundColor:'rgba(192,132,252,0.12)', padding:6, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 3 бейдж' },
+
+      /* ── [БЛОК 4: Events] Афиша мероприятий ── */
+      { type:'rect', left:600, top:1370, width:1200, height:500, fill:'#070a1e', originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Фон секции' },
+      { type:'text', text:'✦ КУЛЬТУРНАЯ ПРОГРАММА ✦', left:600, top:1150, width:600, fontSize:12, fontFamily:'Montserrat', fontWeight:'700', fill:'#F472B6', textAlign:'center', originX:'center', charSpacing:140, blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Надзаголовок' },
+      { type:'text', text:'Ближайшие события месяца', left:600, top:1175, width:800, fontSize:32, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Заголовок' },
+      // Событие 1
+      { type:'rect', left:600, top:1295, width:1040, height:110, rx:16, ry:16, fill:'rgba(15,23,42,0.9)', stroke:'rgba(56,189,248,0.3)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Карточка 1 фон' },
+      { type:'rect', left:175, top:1295, width:140, height:80, rx:12, ry:12, fill:'rgba(56,189,248,0.15)', originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Дата 1 подложка' },
+      { type:'text', text:'26 АПРЕЛЯ\n18:00', left:175, top:1275, width:130, fontSize:16, fontFamily:'Unbounded', fontWeight:'800', fill:'#38BDF8', textAlign:'center', originX:'center', lineHeight:1.15, blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Дата 1 текст' },
+      { type:'text', text:'Библионочь 2025: «Магия книги и космос науки»', left:265, top:1262, width:560, fontSize:20, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'left', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Заголовок 1' },
+      { type:'text', text:'Квесты по закрытым фондам, поэтический перформанс, реставрация редких книг, чайная', left:265, top:1300, width:560, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'left', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Описание 1' },
+      { type:'text', text:'ВХОД СВОБОДНЫЙ', left:955, top:1265, width:150, fontSize:11, fontFamily:'Unbounded', fontWeight:'700', fill:'#10B981', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Бейдж 1' },
+      { type:'rect', left:955, top:1315, width:150, height:42, rx:21, ry:21, fill:'#38BDF8', originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Кнопка 1 фон' },
+      { type:'text', text:'Записаться →', left:955, top:1306, width:140, fontSize:12, fontFamily:'Unbounded', fontWeight:'700', fill:'#070a1e', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Кнопка 1 текст' },
+      // Событие 2
+      { type:'rect', left:600, top:1435, width:1040, height:110, rx:16, ry:16, fill:'rgba(15,23,42,0.9)', stroke:'rgba(244,114,182,0.3)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Карточка 2 фон' },
+      { type:'rect', left:175, top:1435, width:140, height:80, rx:12, ry:12, fill:'rgba(244,114,182,0.15)', originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Дата 2 подложка' },
+      { type:'text', text:'14 МАЯ\n19:00', left:175, top:1415, width:130, fontSize:16, fontFamily:'Unbounded', fontWeight:'800', fill:'#F472B6', textAlign:'center', originX:'center', lineHeight:1.15, blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Дата 2 текст' },
+      { type:'text', text:'Литературная гостиная: «Серебряный век: поэзия и судьбы»', left:265, top:1402, width:560, fontSize:20, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'left', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Заголовок 2' },
+      { type:'text', text:'Чтение стихов Ахматовой и Гумилева под скрипку, редкие автографы, обсуждение за кофе', left:265, top:1440, width:560, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'left', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Описание 2' },
+      { type:'text', text:'ПУШКИНСКАЯ КАРТА', left:955, top:1405, width:160, fontSize:11, fontFamily:'Unbounded', fontWeight:'700', fill:'#F472B6', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Бейдж 2' },
+      { type:'rect', left:955, top:1455, width:150, height:42, rx:21, ry:21, fill:'#F472B6', originX:'center', originY:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Кнопка 2 фон' },
+      { type:'text', text:'Записаться →', left:955, top:1446, width:140, fontSize:12, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Кнопка 2 текст' },
+      { type:'text', text:'Смотреть все 18 событий месяца в календаре →', left:600, top:1545, width:500, fontSize:14, fontFamily:'Montserrat', fontWeight:'600', fill:'#38BDF8', textAlign:'center', originX:'center', blockId:'block_events', blockTitle:'[Блок 4: Events] Афиша мероприятий', layerName:'[Events] Ссылка на все события' },
+
+      /* ── [БЛОК 5: CTA] Оформление билета онлайн ── */
+      { type:'rect', left:600, top:1835, width:1200, height:430, fill:'#0a0e22', originX:'center', originY:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Фон секции' },
+      { type:'rect', left:600, top:1835, width:1040, height:350, rx:24, ry:24, fill:'#131b34', stroke:'rgba(56,189,248,0.4)', strokeWidth:2, originX:'center', originY:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Рамка формы' },
+      { type:'text', text:'✦ ОНЛАЙН-РЕГИСТРАЦИЯ ЧИТАТЕЛЯ ✦', left:600, top:1700, width:500, fontSize:12, fontFamily:'Montserrat', fontWeight:'700', fill:'#FBBF24', textAlign:'center', originX:'center', charSpacing:140, blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Тег' },
+      { type:'text', text:'Оформите читательский билет онлайн за 1 минуту', left:600, top:1730, width:880, fontSize:32, fontFamily:'Unbounded', fontWeight:'800', fill:'#ffffff', textAlign:'center', originX:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Заголовок' },
+      { type:'text', text:'Электронный билет даёт доступ ко всем залам библиотеки, бронированию книг через сайт,\nбесплатной подписке ЛитРес Библиотека и участию во всех закрытых мероприятиях.', left:600, top:1785, width:840, fontSize:14, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Описание' },
+      { type:'rect', left:360, top:1880, width:300, height:54, rx:12, ry:12, fill:'#1e293b', stroke:'rgba(255,255,255,0.15)', strokeWidth:1, originX:'center', originY:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Поле Имя' },
+      { type:'text', text:'Иван Иванов', left:235, top:1870, width:260, fontSize:14, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'left', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Текст инпута 1' },
+      { type:'rect', left:680, top:1880, width:300, height:54, rx:12, ry:12, fill:'#1e293b', stroke:'rgba(255,255,255,0.15)', strokeWidth:1, originX:'center', originY:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Поле Телефон' },
+      { type:'text', text:'+7 (999) 000-00-00', left:555, top:1870, width:260, fontSize:14, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'left', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Текст инпута 2' },
+      { type:'rect', left:920, top:1880, width:140, height:54, rx:12, ry:12, fill:'#38BDF8', originX:'center', originY:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Кнопка отправить' },
+      { type:'text', text:'Получить ➔', left:920, top:1870, width:130, fontSize:14, fontFamily:'Unbounded', fontWeight:'700', fill:'#070a1e', textAlign:'center', originX:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Текст кнопки отправить' },
+      { type:'text', text:'Нажимая кнопку, вы соглашаетесь на обработку персональных данных. Билет оформляется бесплатно.', left:600, top:1940, width:700, fontSize:11, fontFamily:'Montserrat', fill:'#64748b', textAlign:'center', originX:'center', blockId:'block_cta', blockTitle:'[Блок 5: CTA] Оформление билета онлайн', layerName:'[CTA] Сноска' },
+
+      /* ── [БЛОК 6: Footer] Контакты и подвал ── */
+      { type:'rect', left:600, top:2225, width:1200, height:350, fill:'#050814', originX:'center', originY:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Фон подвала' },
+      { type:'rect', left:600, top:2051, width:1200, height:1, fill:'rgba(255,255,255,0.08)', originX:'center', originY:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Разделитель' },
+      { type:'text', text:'✦ АВРОРА', left:220, top:2090, width:280, fontSize:24, fontFamily:'Unbounded', fontWeight:'800', fill:'#38BDF8', textAlign:'left', originX:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Логотип' },
+      { type:'text', text:'Центральная городская библиотека г. Владимира.\nСовременный культурно-образовательный центр.', left:220, top:2130, width:280, fontSize:12, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'left', originX:'center', lineHeight:1.6, blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Описание' },
+      { type:'text', text:'АДРЕС И РЕЖИМ', left:530, top:2090, width:260, fontSize:13, fontFamily:'Unbounded', fontWeight:'700', fill:'#FBBF24', textAlign:'left', originX:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Заголовок 2' },
+      { type:'text', text:'г. Владимир, ул. Б. Московская, 12\n\nВт–Вс: 10:00 – 21:00\nПонедельник — выходной', left:530, top:2125, width:260, fontSize:12, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'left', originX:'center', lineHeight:1.6, blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Текст 2' },
+      { type:'text', text:'СВЯЗЬ И СОЦСЕТИ', left:810, top:2090, width:240, fontSize:13, fontFamily:'Unbounded', fontWeight:'700', fill:'#38BDF8', textAlign:'left', originX:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Заголовок 3' },
+      { type:'text', text:'тел. 8 (4922) 32-34-56\nemail: info@biblioteka33.ru\nсайт: biblioteka33.ru\nВКонтакте: vk.com/biblioteka33', left:810, top:2125, width:240, fontSize:12, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'left', originX:'center', lineHeight:1.6, blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Текст 3' },
+      { type:'rect', left:1040, top:2150, width:180, height:80, rx:12, ry:12, fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.1)', strokeWidth:1, originX:'center', originY:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Бейдж фон' },
+      { type:'text', text:'🔷 TILDA READY\n❖ FIGMA READY', left:1040, top:2130, width:170, fontSize:12, fontFamily:'Unbounded', fontWeight:'700', fill:'#818cf8', textAlign:'center', originX:'center', lineHeight:1.4, blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Бейдж текст' },
+      { type:'rect', left:600, top:2310, width:1040, height:1, fill:'rgba(255,255,255,0.06)', originX:'center', originY:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Линия копирайта' },
+      { type:'text', text:'© 2025 МБУК «Центральная городская библиотека». Все права защищены. Экспортируемо в Figma и Tilda Zero Block.', left:600, top:2335, width:900, fontSize:11, fontFamily:'Montserrat', fill:'#475569', textAlign:'center', originX:'center', blockId:'block_footer', blockTitle:'[Блок 6: Footer] Контакты и подвал', layerName:'[Footer] Копирайт' },
+    ],
+  },
+
   /* T1. COVER-СЕКЦИЯ САЙТА БИБЛИОТЕКИ АВРОРА */
   {
     id: 'tilda_cover_aurora',
@@ -757,6 +956,7 @@ const TILDA_TEMPLATES = [
           </div>
         </div>
       </div>`,
+
     objects: [
       { type:'rect', left:640, top:360, width:1280, height:720, fill:'#070a1e', originX:'center', originY:'center' },
       { type:'rect', left:640, top:360, width:1280, height:720, fill:'rgba(0,0,0,0)', originX:'center', originY:'center',
@@ -1666,17 +1866,25 @@ function addTemplateObj(def) {
       d.shadow = new fabric.Shadow(d.shadow);
     }
   }
+  let obj = null;
   switch(type) {
     case 'text': {
-      const t = new fabric.Textbox(d.text || 'Текст', { ...d, editable: true });
-      canvas.add(t); break;
+      obj = new fabric.Textbox(d.text || 'Текст', { ...d, editable: true });
+      break;
     }
-    case 'rect':   canvas.add(new fabric.Rect(d));   break;
-    case 'circle': canvas.add(new fabric.Circle(d)); break;
-    case 'line':   canvas.add(new fabric.Line(d.points || [0,0,100,0], d)); break;
-    case 'path':   canvas.add(new fabric.Path(d.path, d)); break;
+    case 'rect':   obj = new fabric.Rect(d);   break;
+    case 'circle': obj = new fabric.Circle(d); break;
+    case 'line':   obj = new fabric.Line(d.points || [0,0,100,0], d); break;
+    case 'path':   obj = new fabric.Path(d.path, d); break;
+  }
+  if (obj) {
+    if (def.layerName) obj.layerName = def.layerName;
+    if (def.blockTitle) obj.blockTitle = def.blockTitle;
+    if (def.blockId) obj.blockId = def.blockId;
+    canvas.add(obj);
   }
 }
+
 
 /* ══════════════════════════════════════════════════════════════
    ДОБАВЛЕНИЕ ОБЪЕКТОВ
@@ -2671,6 +2879,7 @@ const LAYER_ICONS = {
 };
 
 function getObjLabel(obj, idx) {
+  if (obj.layerName) return obj.layerName;
   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
     const txt = (obj.text || '').replace(/\n/g, ' ').trim();
     return txt.length > 24 ? txt.slice(0, 24) + '…' : txt || 'Текст';
@@ -2679,6 +2888,7 @@ function getObjLabel(obj, idx) {
   const map = { rect:'Прямоугольник / Рамка', circle:'Круг', ellipse:'Эллипс', line:'Линия', group:'Группа', path:'Фигура / Звезда' };
   return map[obj.type] || obj.type;
 }
+
 
 function renderLayerThumb(obj) {
   if (obj.type === 'image') {
@@ -3855,13 +4065,12 @@ async function embedAllImagesToBase64(canvasInst) {
 /**
  * Строит финальный SVG через Fabric toSVG, после того как все изображения
  * уже встроены как base64.
- * Дополнительно вставляет фон холста явным <rect> с правильным цветом.
+ * Дополнительно группирует объекты по блокам (blockTitle) в <g id="..."> группы,
+ * чтобы в Figma макет открывался с идеальной структурой слоёв по блокам!
  */
 function buildFigmaSVG() {
   const w = currentSize.w;
   const h = currentSize.h;
-
-  // Получаем фоновый цвет
   const bg = canvas.backgroundColor || '#ffffff';
 
   let svgStr = canvas.toSVG({
@@ -3869,7 +4078,23 @@ function buildFigmaSVG() {
     width: w + 'px',
     height: h + 'px',
     viewBox: { x: 0, y: 0, width: w, height: h }
+  }, function(markup, obj) {
+    if (!obj) return markup;
+    const layerName = obj.layerName || '';
+    const blockTitle = obj.blockTitle || '';
+    if (layerName) {
+      const safeName = escapeHtml(layerName).replace(/["'<>&]/g, '_');
+      markup = markup.replace(/<([a-zA-Z0-9]+)([^>]*)>/, `<$1 id="${safeName}" data-name="${safeName}"$2>`);
+    }
+    if (blockTitle) {
+      const safeBlock = escapeHtml(blockTitle).replace(/["'<>&]/g, '_');
+      markup = `<!--BLOCK_START:${safeBlock}-->${markup}<!--BLOCK_END:${safeBlock}-->`;
+    }
+    return markup;
   });
+
+  // Группируем последовательные элементы одного блока в <g id="[Блок ...]">
+  svgStr = groupSvgBlocks(svgStr);
 
   // Fabric.js иногда пишет background через CSS, а не через <rect>.
   // Вставляем явный фоновый прямоугольник сразу после открывающего <svg>-тега
@@ -3877,12 +4102,61 @@ function buildFigmaSVG() {
   if (bg && bg !== 'rgba(0,0,0,0)' && bg !== 'transparent') {
     svgStr = svgStr.replace(
       /(<svg[^>]*>)/,
-      `$1<rect x="0" y="0" width="${w}" height="${h}" fill="${escapeHtml(bg)}" />`
+      `$1<rect id="Фон макета" x="0" y="0" width="${w}" height="${h}" fill="${escapeHtml(bg)}" />`
     );
   }
 
   return svgStr;
 }
+
+/**
+ * Объединяет элементы с маркерами <!--BLOCK_START:...--> в логические SVG-группы <g id="...">
+ * для безупречной структуры слоёв и папок в Figma.
+ */
+function groupSvgBlocks(svgStr) {
+  const regex = /<!--BLOCK_START:([^\n>]+)-->([\s\S]*?)<!--BLOCK_END:\1-->/g;
+  let currentBlock = null;
+  let currentElements = [];
+  let result = '';
+
+  const flushBlock = () => {
+    if (currentBlock && currentElements.length) {
+      result += `<g id="${currentBlock}" data-name="${currentBlock}">\n  ${currentElements.join('\n  ')}\n</g>\n`;
+      currentBlock = null;
+      currentElements = [];
+    }
+  };
+
+  const blockMatches = [];
+  let m;
+  while ((m = regex.exec(svgStr)) !== null) {
+    blockMatches.push({ start: m.index, end: regex.lastIndex, block: m[1], content: m[2] });
+  }
+
+  if (!blockMatches.length) return svgStr;
+
+  let cursor = 0;
+  for (let i = 0; i < blockMatches.length; i++) {
+    const bm = blockMatches[i];
+    const gap = svgStr.slice(cursor, bm.start);
+    if (gap.trim().length > 0) {
+      flushBlock();
+      result += gap;
+    }
+    if (currentBlock && currentBlock !== bm.block) {
+      flushBlock();
+    }
+    currentBlock = bm.block;
+    currentElements.push(bm.content.trim());
+    cursor = bm.end;
+  }
+  flushBlock();
+  if (cursor < svgStr.length) {
+    result += svgStr.slice(cursor);
+  }
+  return result;
+}
+
 
 
 async function exportFigmaApiSend() {

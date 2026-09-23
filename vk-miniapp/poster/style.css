@@ -2821,6 +2821,22 @@ input, select, textarea {
   transform: translateY(-2px);
 }
 
+.tpl-quick-btn-tilda {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(99, 102, 241, 0.2)) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  color: #c7d2fe !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.16);
+  font-weight: 600;
+}
+
+.tpl-quick-btn-tilda:hover {
+  border-color: #818cf8 !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(99, 102, 241, 0.35)) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+}
+
+
 /* Кнопки в шапке редактора */
 .hbtn-figma {
   border-color: rgba(162, 89, 255, 0.35) !important;
