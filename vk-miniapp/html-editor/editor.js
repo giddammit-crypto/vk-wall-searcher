@@ -1284,11 +1284,11 @@ function initVisualEditor() {
   });
 
   // Responsive sizes on canvas
-  ["desktop", "tablet", "mobile"].forEach(size => {
+  ["fluid", "desktop", "tablet", "mobile"].forEach(size => {
     document.getElementById(`ve-size-${size}`)?.addEventListener("click", e => {
       document.querySelectorAll("[data-vesize]").forEach(b => b.classList.remove("is-active"));
       e.currentTarget.classList.add("is-active");
-      canvasEl.classList.remove("is-desktop", "is-tablet", "is-mobile");
+      canvasEl.classList.remove("is-desktop", "is-tablet", "is-mobile", "is-fluid");
       canvasEl.classList.add(`is-${size}`);
     });
   });

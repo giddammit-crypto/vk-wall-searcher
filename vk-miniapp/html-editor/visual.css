@@ -140,7 +140,7 @@
 .wysiwyg-canvas-wrapper {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   padding: 32px;
   display: flex;
   flex-direction: column;
@@ -204,10 +204,14 @@
   position: relative;
   padding: 32px;
   box-sizing: border-box;
-  transition: width 0.3s ease;
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
 }
 
 /* ── Canvas Responsive Widths ── */
+.wysiwyg-canvas.is-fluid {
+  max-width: 100%;
+  padding: 32px;
+}
 .wysiwyg-canvas.is-mobile {
   max-width: 375px;
   padding: 16px;
@@ -269,6 +273,8 @@
   border-radius: 6px;
   transition: outline 0.15s ease, transform 0.15s ease;
   outline: 2px solid transparent;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ve-block:hover {
@@ -384,12 +390,94 @@
 .ve-block-content {
   outline: none;
   min-height: 24px;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
 }
 
 .ve-block-content[contenteditable="true"] {
   outline: 2px dashed #3b82f6 !important;
   background: rgba(59, 130, 246, 0.04);
   cursor: text;
+}
+
+/* ── Interactive Block Resizers ── */
+.ve-resize-handle {
+  position: absolute;
+  background: #6366f1;
+  border: 1.5px solid #ffffff;
+  z-index: 40;
+  display: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.ve-block.is-selected .ve-resize-handle {
+  display: block;
+}
+
+/* Right handle (Width) */
+.ve-rh-right {
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+  border-radius: 4px;
+  width: 7px;
+  height: 30px;
+}
+
+/* Bottom handle (Height) */
+.ve-rh-bottom {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  border-radius: 4px;
+  width: 30px;
+  height: 7px;
+}
+
+/* Corner handle (Width & Height) */
+.ve-rh-corner {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.ve-resize-handle:hover {
+  background: #4338ca;
+}
+.ve-rh-right:hover {
+  transform: translateY(-50%) scale(1.25);
+}
+.ve-rh-bottom:hover {
+  transform: translateX(-50%) scale(1.25);
+}
+.ve-rh-corner:hover {
+  transform: scale(1.3);
+}
+
+/* Resize dimension tooltip */
+.ve-resize-badge {
+  position: absolute;
+  top: -30px;
+  right: 0;
+  background: rgba(15, 23, 42, 0.95);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: none;
 }
 
 /* ── Right Properties Panel ─────────────────────────────────── */
