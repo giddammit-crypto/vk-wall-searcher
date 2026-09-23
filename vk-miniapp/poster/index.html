@@ -104,107 +104,140 @@
 <div id="screen-editor" class="screen-editor hidden">
 
   <!-- ── Шапка ── -->
-  <header class="ed-header">
+  <!-- ── Шапка в стиле Figma (Top Toolbar) ── -->
+  <header class="ed-header figma-topbar">
     <div class="ed-header-left">
-      <button class="hbtn hbtn-ghost" id="btn-back" title="К шаблонам">
+      <!-- Кнопка «F» меню / назад в стиле Figma -->
+      <button class="figma-f-btn" id="btn-figma-menu" title="Меню / К шаблонам">
+        <svg class="figma-logo-svg" viewBox="0 0 38 57" width="13" height="19" fill="none" aria-hidden="true">
+          <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
+          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
+          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
+          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
+          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+        </svg>
+      </button>
+
+      <button class="hbtn hbtn-ghost" id="btn-back" title="К каталогу шаблонов">
         <span class="material-symbols-rounded">arrow_back</span>
         <span class="hbtn-label">Шаблоны</span>
       </button>
+
+      <div class="figma-topbar-divider"></div>
+
       <div class="ed-title-wrap">
-        <input class="ed-title" id="poster-title" value="Моя афиша" maxlength="60" spellcheck="false" title="Название макета">
+        <input class="ed-title figma-title-input" id="poster-title" value="Моя афиша" maxlength="60" spellcheck="false" title="Название макета (нажмите для редактирования)">
       </div>
     </div>
 
     <div class="ed-header-center">
+      <!-- Undo / Redo -->
       <button class="hbtn" id="btn-undo" title="Отменить (Ctrl+Z)" disabled>
         <span class="material-symbols-rounded">undo</span>
-        <span class="hbtn-label">Отменить</span>
       </button>
       <button class="hbtn" id="btn-redo" title="Повторить (Ctrl+Y)" disabled>
         <span class="material-symbols-rounded">redo</span>
-        <span class="hbtn-label">Повторить</span>
       </button>
+
+      <div class="figma-topbar-divider"></div>
+
+      <!-- Zoom picker («100%») -->
+      <div class="figma-zoom-group">
+        <button class="hbtn hbtn-zoom" id="btn-zoom-out" title="Уменьшить масштаб (Ctrl -)">
+          <span class="material-symbols-rounded">remove</span>
+        </button>
+        <button class="hbtn figma-zoom-dropdown" id="btn-zoom-fit" title="Масштаб (вписать в экран)">
+          <span id="zoom-label" class="figma-zoom-val">100%</span>
+          <span class="material-symbols-rounded" style="font-size:14px; opacity:0.7">unfold_more</span>
+        </button>
+        <button class="hbtn hbtn-zoom" id="btn-zoom-in" title="Увеличить масштаб (Ctrl +)">
+          <span class="material-symbols-rounded">add</span>
+        </button>
+      </div>
+
+      <div class="figma-topbar-divider"></div>
+
+      <!-- Сетка и Магнит -->
       <button class="hbtn" id="btn-toggle-grid" title="Включить / выключить сетку верстки">
         <span class="material-symbols-rounded">grid_on</span>
         <span class="hbtn-label">Сетка</span>
       </button>
-      <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка к осям)">
-        <svg class="hbtn-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка)">
+        <svg class="hbtn-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M4.5 4.5v6.5a7.5 7.5 0 0 0 15 0V4.5h-4v6.5a3.5 3.5 0 0 1-7 0V4.5H4.5z" fill="currentColor" fill-opacity="0.14"/>
           <line x1="4.5" y1="8" x2="8.5" y2="8"/>
           <line x1="15.5" y1="8" x2="19.5" y2="8"/>
         </svg>
         <span class="hbtn-label">Магнит</span>
       </button>
+
+      <!-- Инструменты быстрого дублирования и группировки -->
       <button class="hbtn" id="btn-header-duplicate" title="Дублировать объект (Ctrl+D)">
         <span class="material-symbols-rounded">content_copy</span>
-        <span class="hbtn-label">Копия</span>
       </button>
       <button class="hbtn" id="btn-header-group" title="Сгруппировать (Ctrl+G)" disabled>
         <span class="material-symbols-rounded">workspaces</span>
-        <span class="hbtn-label">Группа</span>
       </button>
       <button class="hbtn" id="btn-header-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
         <span class="material-symbols-rounded">splitscreen</span>
-        <span class="hbtn-label">Разделить</span>
       </button>
     </div>
 
     <div class="ed-header-right">
-      <button class="hbtn hbtn-figma" id="btn-figma-import" title="Импорт макета из Figma по API">
-        <svg class="hbtn-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="14" height="21" fill="none" aria-hidden="true">
+      <!-- Иконка шеринга и экспорта в Figma -->
+      <button class="hbtn hbtn-figma" id="btn-figma-export" title="Экспорт в Figma (векторный буфер и API)">
+        <svg class="hbtn-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="12" height="18" fill="none" aria-hidden="true">
           <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
           <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
           <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
           <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
           <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
         </svg>
-        <span class="hbtn-label">Figma Импорт</span>
-      </button>
-      <button class="hbtn hbtn-figma" id="btn-figma-export" title="Экспорт макета в Figma (API и буфер)">
-        <svg class="hbtn-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="14" height="21" fill="none" aria-hidden="true">
-          <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-        </svg>
-        <span class="hbtn-label">Figma Экспорт</span>
-      </button>
-      <button class="hbtn hbtn-tilda" id="btn-tilda-export" title="Экспорт макета для сайта Тильда (HTML-блок, PNG, ZIP)">
-        <span class="material-symbols-rounded">web</span>
-        <span class="hbtn-label">Tilda Экспорт</span>
+        <span class="hbtn-label">Поделиться</span>
       </button>
 
-      <button class="hbtn" id="btn-save-project-json" title="Экспорт проекта (.aurora.json)">
-        <span class="material-symbols-rounded">file_download</span>
-        <span class="hbtn-label">Экспорт</span>
-      </button>
-      <button class="hbtn" id="btn-load-project-json" title="Открыть проект из файла (.aurora.json)">
-        <span class="material-symbols-rounded">file_open</span>
+      <!-- Импорт Figma -->
+      <button class="hbtn hbtn-figma" id="btn-figma-import" title="Импорт макета из Figma по API">
+        <span class="material-symbols-rounded">cloud_download</span>
         <span class="hbtn-label">Импорт</span>
       </button>
+
+      <!-- Tilda Экспорт -->
+      <button class="hbtn hbtn-tilda" id="btn-tilda-export" title="Экспорт для сайта Тильда">
+        <span class="material-symbols-rounded">web</span>
+        <span class="hbtn-label">Tilda</span>
+      </button>
+
+      <!-- Иконка печати -->
       <button class="hbtn" id="btn-print" title="Распечатать афишу (Ctrl+P)">
         <span class="material-symbols-rounded">print</span>
         <span class="hbtn-label">Печать</span>
       </button>
+
+      <!-- Черновик -->
       <button class="hbtn" id="btn-save" title="Сохранить черновик">
         <span class="material-symbols-rounded">save</span>
-        <span class="hbtn-label">Черновик</span>
       </button>
-      <button class="hbtn hbtn-success" id="btn-export-png" title="Скачать в высоком разрешении PNG">
-        <span class="material-symbols-rounded">image</span>
-        <span class="hbtn-label">PNG</span>
+
+      <!-- Скрытые кнопки загрузки/сохранения json для совместимости -->
+      <button class="hbtn hidden" id="btn-save-project-json" title="Экспорт проекта"></button>
+      <button class="hbtn hidden" id="btn-load-project-json" title="Импорт проекта"></button>
+
+      <!-- Главная синяя кнопка «Экспорт» в стиле Figma Blue (#0d99ff) -->
+      <button class="hbtn hbtn-figma-primary" id="btn-export-png" title="Скачать в высоком разрешении PNG">
+        <span class="material-symbols-rounded">download</span>
+        <span class="hbtn-label">Экспорт</span>
       </button>
-      <button class="hbtn" id="btn-export-jpg" title="Скачать компактный JPEG для постов ВКонтакте">
-        <span class="material-symbols-rounded">photo</span>
+
+      <!-- Быстрые форматы -->
+      <button class="hbtn hbtn-sm hbtn-subtle" id="btn-export-jpg" title="Скачать компактный JPEG для ВК">
         <span class="hbtn-label">JPG</span>
       </button>
-      <button class="hbtn hbtn-accent" id="btn-export-pdf" title="Скачать для печати PDF">
-        <span class="material-symbols-rounded">picture_as_pdf</span>
+      <button class="hbtn hbtn-sm hbtn-subtle" id="btn-export-pdf" title="Скачать PDF для печати">
         <span class="hbtn-label">PDF</span>
       </button>
-      <!-- Мобильная кнопка переключения правой панели -->
+
+      <!-- Мобильная кнопка инспектора -->
       <button class="hbtn hbtn-mobile-panel" id="btn-toggle-panel" title="Свойства и слои">
         <span class="material-symbols-rounded">tune</span>
       </button>
@@ -214,12 +247,12 @@
   <!-- ── Основная рабочая область ── -->
   <div class="ed-body">
 
-    <!-- ── Боковая панель: Инструменты ── -->
-    <aside class="ed-sidebar" id="ed-sidebar">
+    <!-- ── Боковая панель: Инструменты (Figma Sidebar) ── -->
+    <aside class="ed-sidebar figma-sidebar" id="ed-sidebar">
 
       <!-- Группа 1: Текст -->
       <div class="sb-group">
-        <div class="sb-label">Текст</div>
+        <div class="sb-label">TEXT</div>
         <button class="tool-btn" id="tool-heading" title="Крупный заголовок">
           <span class="material-symbols-rounded">title</span>
           <span>Заголовок</span>
@@ -252,7 +285,7 @@
 
       <!-- Группа 2: Фигуры и разметка -->
       <div class="sb-group">
-        <div class="sb-label">Фигуры и разметка</div>
+        <div class="sb-label">SHAPES</div>
         <button class="tool-btn" id="tool-rect" title="Прямоугольник">
           <span class="material-symbols-rounded">rectangle</span>
           <span>Прямоугольник</span>
@@ -297,7 +330,7 @@
 
       <!-- Группа 3: Графика и библиотека -->
       <div class="sb-group">
-        <div class="sb-label">Графика и библиотека</div>
+        <div class="sb-label">GRAPHICS & ASSETS</div>
         <button class="tool-btn" id="tool-photo" title="Загрузить фото с компьютера">
           <span class="material-symbols-rounded">add_photo_alternate</span>
           <span>Фото с ПК</span>
@@ -322,7 +355,7 @@
 
       <!-- Группа 4: Фон -->
       <div class="sb-group">
-        <div class="sb-label">Фон холста</div>
+        <div class="sb-label">CANVAS BACKGROUND</div>
         <div class="bg-palette" id="bg-palette"></div>
         <div class="bg-gradients" id="bg-gradients">
           <button class="bg-grad-btn" data-gradient="aurora">🌌 Аврора</button>
@@ -338,7 +371,7 @@
 
       <!-- Группа: Figma API -->
       <div class="sb-group">
-        <div class="sb-label">Figma API</div>
+        <div class="sb-label">FIGMA API</div>
         <button class="tool-btn tool-btn-figma" id="tool-figma-import" title="Импорт афиши из Figma по ссылке">
           <svg class="tool-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="16" height="24" fill="none" aria-hidden="true">
             <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
@@ -367,7 +400,7 @@
 
       <!-- Группа 5: Масштаб -->
       <div class="sb-group">
-        <div class="sb-label">Масштаб</div>
+        <div class="sb-label">ZOOM</div>
         <div class="zoom-row">
           <button class="zoom-btn" id="btn-zoom-out" title="Уменьшить"><span class="material-symbols-rounded">remove</span></button>
           <span class="zoom-val" id="zoom-label">100%</span>
@@ -388,193 +421,383 @@
       <div class="canvas-format-badge" id="canvas-format-badge">A4 Вертикаль · 595 × 842 пт</div>
     </main>
 
-    <!-- ── Правая панель: Свойства + Слои ── -->
-    <aside class="ed-panel" id="ed-panel">
+    <!-- ── Правая панель: Figma Design Inspector ── -->
+    <aside class="ed-panel figma-inspector" id="ed-panel">
 
       <!-- Мобильный заголовок шторки -->
       <div class="mobile-panel-header">
-        <span class="mobile-panel-title">Свойства и слои</span>
+        <span class="mobile-panel-title">Figma Inspector</span>
         <button class="hbtn hbtn-ghost hbtn-icon" id="btn-close-mobile-panel" title="Закрыть панель">
           <span class="material-symbols-rounded">close</span>
         </button>
       </div>
 
-      <!-- Табы -->
-      <div class="panel-tabs">
-        <button class="panel-tab is-active" data-tab="props">
-          <span class="material-symbols-rounded">tune</span>
-          Свойства
+      <!-- Вкладки [Design] [Layers] [Settings] -->
+      <div class="panel-tabs figma-tabs">
+        <button class="panel-tab is-active" data-tab="design">
+          Design
         </button>
         <button class="panel-tab" data-tab="layers">
-          <span class="material-symbols-rounded">layers</span>
-          Слои
+          Layers
+        </button>
+        <button class="panel-tab" data-tab="settings">
+          Settings
         </button>
       </div>
 
-      <!-- ── Вкладка: Свойства ── -->
-      <div class="tab-content is-active" id="tab-props">
+      <!-- ── Вкладка: Design (Инспектор дизайна) ── -->
+      <div class="tab-content is-active" id="tab-design">
 
+        <!-- Пустое состояние: Страница / Холст (когда ничего не выбрано) -->
         <div class="props-empty" id="props-empty">
-          <span class="material-symbols-rounded">touch_app</span>
-          <p>Выберите объект на холсте, чтобы настроить его параметры</p>
+          <div class="figma-canvas-info-card">
+            <div class="figma-section-title">PAGE / CANVAS</div>
+            <div class="figma-prop-item">
+              <span class="figma-prop-label">Формат макета</span>
+              <div class="canvas-format-badge" id="canvas-format-badge">A4 Вертикаль · 595 × 842 пт</div>
+            </div>
+            <div class="figma-prop-item" style="margin-top: 10px;">
+              <span class="figma-prop-label">Фон холста</span>
+              <div class="bg-palette figma-quick-bg-palette" id="bg-palette-quick"></div>
+            </div>
+            <div class="figma-empty-hint">
+              <span class="material-symbols-rounded" style="font-size:26px; color:var(--text-3);">touch_app</span>
+              <p>Выберите объект на холсте, чтобы настроить его параметры</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Текстовые свойства -->
-        <div class="prop-section hidden" id="props-text">
-          <div class="prop-group-title">Настройки текста</div>
-
-          <div class="prop-label-row">
-            <label class="prop-label" for="font-family-select">Шрифт</label>
-            <button class="prop-link-btn" id="btn-ofont-shortcut" title="Каталог и загрузка шрифтов с ofont.ru">
-              <span class="material-symbols-rounded">cloud_upload</span> ofont.ru
+        <!-- 1. ALIGNMENT + 2. DIMENSIONS (Общие действия для любого выделенного объекта) -->
+        <div class="prop-section hidden" id="props-common">
+          
+          <!-- Секция: ALIGNMENT -->
+          <div class="figma-section-title">
+            <span>ALIGNMENT</span>
+          </div>
+          <div class="figma-align-toolbar">
+            <button class="figma-icon-btn" id="btn-align-left-canvas" title="По левому краю">
+              <span class="material-symbols-rounded">align_horizontal_left</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-center-h" title="По центру горизонтали">
+              <span class="material-symbols-rounded">align_horizontal_center</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-align-right-canvas" title="По правому краю">
+              <span class="material-symbols-rounded">align_horizontal_right</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-align-top-canvas" title="По верхнему краю">
+              <span class="material-symbols-rounded">align_vertical_top</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-center-v" title="По центру вертикали">
+              <span class="material-symbols-rounded">align_vertical_center</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-align-bottom-canvas" title="По нижнему краю">
+              <span class="material-symbols-rounded">align_vertical_bottom</span>
+            </button>
+            <div class="figma-toolbar-sep"></div>
+            <button class="figma-icon-btn" id="btn-flip-x" title="Отразить горизонтально (Flip H)">
+              <span class="material-symbols-rounded">flip</span>
+            </button>
+            <button class="figma-icon-btn" id="btn-flip-y" title="Отразить вертикально (Flip V)">
+              <span class="material-symbols-rounded">swap_vert</span>
             </button>
           </div>
-          <select class="prop-select" id="font-family-select">
-            <!-- Динамически заполняется списком из 20+ кириллических шрифтов и шрифтов ofont.ru -->
-          </select>
 
-          <label class="prop-label">Размер шрифта: <b id="font-size-val">36</b> пт</label>
+          <!-- Секция: DIMENSIONS (Сетка 2x2: X, Y, W, H, угол 0°, скругление углов) -->
+          <div class="figma-section-title">
+            <span>DIMENSIONS</span>
+          </div>
+          <div class="figma-dim-grid">
+            <div class="figma-input-field" title="Координата X">
+              <span class="figma-input-tag">X</span>
+              <input type="number" id="dim-x" class="figma-input-sm" value="0">
+            </div>
+            <div class="figma-input-field" title="Координата Y">
+              <span class="figma-input-tag">Y</span>
+              <input type="number" id="dim-y" class="figma-input-sm" value="0">
+            </div>
+            <div class="figma-input-field" title="Ширина W">
+              <span class="figma-input-tag">W</span>
+              <input type="number" id="dim-w" class="figma-input-sm" value="100">
+            </div>
+            <div class="figma-input-field" title="Высота H">
+              <span class="figma-input-tag">H</span>
+              <input type="number" id="dim-h" class="figma-input-sm" value="100">
+            </div>
+            <div class="figma-input-field" title="Угол поворота (градусы)">
+              <span class="figma-input-tag">∠</span>
+              <input type="number" id="dim-r" class="figma-input-sm" value="0">
+            </div>
+            <div class="figma-input-field" id="dim-radius-wrap" title="Скругление углов">
+              <span class="figma-input-tag">⌜</span>
+              <input type="number" id="dim-radius" class="figma-input-sm" value="0" min="0" max="100">
+            </div>
+          </div>
+
+          <!-- Быстрые действия со слоем (Копия, Порядок, Блокировка, Группа, Удалить) -->
+          <div class="figma-quick-actions">
+            <button class="pbtn pbtn-sm" id="btn-duplicate" title="Дублировать объект (Ctrl+D)">
+              <span class="material-symbols-rounded">content_copy</span>
+              <span>Копия</span>
+            </button>
+            <button class="pbtn pbtn-sm" id="btn-lock-obj" title="Заблокировать / Разблокировать от сдвига">
+              <span class="material-symbols-rounded" id="lock-icon">lock_open</span>
+              <span id="lock-label">Блок</span>
+            </button>
+            <button class="pbtn pbtn-sm" id="btn-bring-front" title="На передний план">
+              <span class="material-symbols-rounded">flip_to_front</span>
+            </button>
+            <button class="pbtn pbtn-sm" id="btn-send-back" title="На задний план">
+              <span class="material-symbols-rounded">flip_to_back</span>
+            </button>
+            <button class="pbtn pbtn-sm" id="btn-group" title="Сгруппировать (Ctrl+G)" disabled>
+              <span class="material-symbols-rounded">workspaces</span>
+            </button>
+            <button class="pbtn pbtn-sm" id="btn-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
+              <span class="material-symbols-rounded">splitscreen</span>
+            </button>
+            <button class="pbtn pbtn-sm pbtn-danger-icon" id="btn-delete-obj" title="Удалить объект (Delete)">
+              <span class="material-symbols-rounded">delete</span>
+            </button>
+          </div>
+
+        </div><!-- /#props-common -->
+
+        <!-- 3. TYPOGRAPHY (Текстовые свойства) -->
+        <div class="prop-section hidden" id="props-text">
+          <div class="figma-section-title">
+            <span>TYPOGRAPHY</span>
+            <button class="prop-link-btn" id="btn-ofont-shortcut" title="Каталог шрифтов ofont.ru">
+              <span class="material-symbols-rounded" style="font-size:13px;">cloud_upload</span> ofont.ru
+            </button>
+          </div>
+
+          <!-- Селектор шрифта -->
+          <div class="figma-control-group">
+            <label class="figma-sublabel" for="font-family-select">Шрифт</label>
+            <select class="prop-select figma-select" id="font-family-select">
+              <!-- Заполняется динамически -->
+            </select>
+          </div>
+
+          <!-- Начертание и размер -->
+          <div class="figma-typo-row">
+            <div class="figma-input-field figma-input-field-half" title="Размер шрифта">
+              <span class="figma-input-tag">T</span>
+              <span class="figma-input-display-val"><b id="font-size-val">36</b> px</span>
+            </div>
+            <div class="prop-btn-row figma-style-toggles">
+              <button class="pbtn toggle-btn" id="btn-bold" title="Жирный"><b>B</b></button>
+              <button class="pbtn toggle-btn" id="btn-italic" title="Курсив"><i>I</i></button>
+              <button class="pbtn toggle-btn" id="btn-underline" title="Подчёркнутый"><u>U</u></button>
+              <button class="pbtn toggle-btn" id="btn-uppercase" title="Все заглавные / UPPERCASE"><span>TT</span></button>
+            </div>
+          </div>
           <input type="range" class="prop-range" id="font-size-slider" min="8" max="140" value="36" step="1">
 
-          <label class="prop-label">Начертание и регистр</label>
-          <div class="prop-btn-row">
-            <button class="pbtn toggle-btn" id="btn-bold" title="Жирный"><b>Ж</b></button>
-            <button class="pbtn toggle-btn" id="btn-italic" title="Курсив"><i>К</i></button>
-            <button class="pbtn toggle-btn" id="btn-underline" title="Подчёркнутый"><u>П</u></button>
-            <button class="pbtn toggle-btn" id="btn-uppercase" title="Все заглавные / UPPERCASE"><span>АА</span></button>
+          <!-- Выравнивание текста -->
+          <div class="figma-control-group">
+            <label class="figma-sublabel">Выравнивание текста</label>
+            <div class="prop-btn-row">
+              <button class="pbtn toggle-btn" id="btn-align-left" title="По левому краю">
+                <span class="material-symbols-rounded">format_align_left</span>
+              </button>
+              <button class="pbtn toggle-btn" id="btn-align-center" title="По центру">
+                <span class="material-symbols-rounded">format_align_center</span>
+              </button>
+              <button class="pbtn toggle-btn" id="btn-align-right" title="По правому краю">
+                <span class="material-symbols-rounded">format_align_right</span>
+              </button>
+            </div>
           </div>
 
-          <label class="prop-label">Выравнивание</label>
-          <div class="prop-btn-row">
-            <button class="pbtn toggle-btn" id="btn-align-left" title="По левому краю">
-              <span class="material-symbols-rounded">format_align_left</span>
-            </button>
-            <button class="pbtn toggle-btn" id="btn-align-center" title="По центру">
-              <span class="material-symbols-rounded">format_align_center</span>
-            </button>
-            <button class="pbtn toggle-btn" id="btn-align-right" title="По правому краю">
-              <span class="material-symbols-rounded">format_align_right</span>
-            </button>
+          <!-- Межстрочный и межбуквенный интервал -->
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Межстрочный интервал (Line Height)</span>
+              <span class="figma-slider-val"><b id="line-height-val">1.2</b></span>
+            </div>
+            <input type="range" class="prop-range" id="line-height-slider" min="8" max="24" value="12" step="1">
           </div>
 
-          <label class="prop-label">Межстрочный интервал: <b id="line-height-val">1.2</b></label>
-          <input type="range" class="prop-range" id="line-height-slider" min="8" max="24" value="12" step="1">
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Межбуквенный интервал (Tracking)</span>
+              <span class="figma-slider-val"><b id="char-spacing-val">0</b></span>
+            </div>
+            <input type="range" class="prop-range" id="char-spacing-slider" min="-20" max="250" value="0" step="5">
+          </div>
 
-          <label class="prop-label">Межбуквенный интервал (трекинг): <b id="char-spacing-val">0</b></label>
-          <input type="range" class="prop-range" id="char-spacing-slider" min="-20" max="250" value="0" step="5">
+          <!-- Цвет текста (Text Fill) -->
+          <div class="figma-sub-title">ЦВЕТ ТЕКСТА</div>
+          <div class="figma-fill-row">
+            <div class="figma-color-chip" id="text-color-chip" title="Палитра цвета текста">
+              <input type="color" class="color-picker" id="text-color-picker" value="#ffffff">
+            </div>
+            <input type="text" class="figma-hex-val" id="text-hex-val" value="#FFFFFF" spellcheck="false" title="HEX цвет текста">
+            <button class="figma-icon-btn" id="btn-eyedropper-text" title="Пипетка цвета с экрана">
+              <span class="material-symbols-rounded" style="font-size:15px;">colorize</span>
+            </button>
+          </div>
+          <div class="color-row figma-palette-row" id="text-color-row"></div>
 
-          <div class="prop-btn-row" style="margin-top: 4px;">
+          <!-- Неоновое свечение текста -->
+          <div class="figma-control-group" style="margin-top: 6px;">
             <button class="pbtn glow-btn" id="btn-text-glow" title="Включить неоновое свечение / тень текста">
               <span class="material-symbols-rounded">auto_awesome</span>
               <span>Неоновое свечение</span>
             </button>
           </div>
           <div class="glow-options hidden" id="text-glow-options">
-            <label class="prop-label">Радиус свечения: <b id="text-glow-blur-val">15</b> px</label>
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Радиус свечения</span>
+              <span class="figma-slider-val"><b id="text-glow-blur-val">15</b> px</span>
+            </div>
             <input type="range" class="prop-range" id="text-glow-blur-slider" min="2" max="40" value="15">
-            <label class="prop-label">Цвет свечения</label>
-            <div class="color-row" id="text-glow-color-row"></div>
+            <div class="color-row figma-palette-row" id="text-glow-color-row"></div>
             <input type="color" class="color-picker" id="text-glow-color-picker" value="#38BDF8" title="Палитра свечения">
           </div>
 
-          <!-- Обводка / Контур текста -->
-          <div class="prop-group-subtitle">Контур / Обводка текста</div>
-          <label class="prop-label">Толщина контура: <b id="text-stroke-width-val">0</b> px</label>
+          <!-- Контур текста -->
+          <div class="figma-sub-title">КОНТУР ТЕКСТА</div>
+          <div class="figma-slider-head">
+            <span class="figma-sublabel">Толщина контура</span>
+            <span class="figma-slider-val"><b id="text-stroke-width-val">0</b> px</span>
+          </div>
           <input type="range" class="prop-range" id="text-stroke-width-slider" min="0" max="14" value="0" step="0.5">
-
-          <div class="prop-stroke-color-wrap" id="text-stroke-color-wrap">
-            <label class="prop-label">Цвет контура</label>
-            <div class="color-row" id="text-stroke-color-row"></div>
+          <div class="prop-stroke-color-wrap hidden" id="text-stroke-color-wrap">
+            <div class="color-row figma-palette-row" id="text-stroke-color-row"></div>
             <input type="color" class="color-picker" id="text-stroke-color-picker" value="#000000" title="Палитра цвета контура">
           </div>
 
-          <!-- Плашка / Подложка текста -->
-          <div class="prop-group-subtitle">Плашка / Подложка текста</div>
-          <div class="prop-btn-row">
+          <!-- Плашка / подложка текста -->
+          <div class="figma-control-group" style="margin-top: 6px;">
             <button class="pbtn toggle-btn" id="btn-text-bg-toggle" title="Включить цветную подложку под текст">
               <span class="material-symbols-rounded">format_ink_highlighter</span>
               <span>Цветная плашка</span>
             </button>
           </div>
           <div class="glow-options hidden" id="text-bg-options">
-            <label class="prop-label">Внутренний отступ (Padding): <b id="text-bg-padding-val">8</b> px</label>
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Отступ (Padding)</span>
+              <span class="figma-slider-val"><b id="text-bg-padding-val">8</b> px</span>
+            </div>
             <input type="range" class="prop-range" id="text-bg-padding-slider" min="0" max="24" value="8" step="1">
-            <div class="prop-label-row">
-              <label class="prop-label">Цвет плашки</label>
-              <button class="prop-link-btn" id="btn-eyedropper-text-bg" title="Пипетка цвета с экрана">
-                <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
+            <div class="figma-fill-row">
+              <input type="color" class="color-picker" id="text-bg-color-picker" value="#e11d48">
+              <button class="figma-icon-btn" id="btn-eyedropper-text-bg" title="Пипетка цвета с экрана">
+                <span class="material-symbols-rounded" style="font-size:15px;">colorize</span>
               </button>
             </div>
-            <div class="color-row" id="text-bg-color-row"></div>
-            <input type="color" class="color-picker" id="text-bg-color-picker" value="#e11d48" title="Палитра цвета плашки">
+            <div class="color-row figma-palette-row" id="text-bg-color-row"></div>
           </div>
 
-          <div class="prop-label-row" style="margin-top: 6px;">
-            <label class="prop-label">Цвет текста</label>
-            <button class="prop-link-btn" id="btn-eyedropper-text" title="Пипетка цвета с экрана">
-              <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
+        </div><!-- /#props-text -->
+
+        <!-- 4. FILL & STROKE & EFFECTS (Свойства фигуры / контура) -->
+        <div class="prop-section hidden" id="props-shape">
+          
+          <!-- FILL -->
+          <div class="figma-section-title">
+            <span>FILL</span>
+            <button class="figma-icon-btn" id="btn-eyedropper-shape" title="Пипетка цвета с экрана">
+              <span class="material-symbols-rounded" style="font-size:15px;">colorize</span>
             </button>
           </div>
-          <div class="color-row" id="text-color-row"></div>
-          <input type="color" class="color-picker" id="text-color-picker" value="#ffffff" title="Палитра цвета текста">
-        </div>
+          <div class="figma-fill-row">
+            <div class="figma-color-chip" id="fill-color-chip-preview" title="Выбор цвета заливки">
+              <input type="color" class="color-picker" id="fill-color-picker" value="#0d99ff">
+            </div>
+            <input type="text" class="figma-hex-val" id="fill-hex-input" value="#0D99FF" spellcheck="false" title="HEX цвет заливки">
+            <div class="figma-opacity-wrap" title="Прозрачность (Opacity)">
+              <span class="figma-opacity-val"><b id="opacity-val">100</b>%</span>
+            </div>
+          </div>
+          <div class="figma-slider-group">
+            <input type="range" class="prop-range" id="opacity-slider" min="10" max="100" value="100" step="5">
+          </div>
+          <div class="color-row figma-palette-row" id="fill-color-row"></div>
 
-        <!-- Свойства фигуры / контура -->
-        <div class="prop-section hidden" id="props-shape">
-          <div class="prop-group-title">Настройки фигуры</div>
+          <!-- STROKE -->
+          <div class="figma-section-title">
+            <span>STROKE</span>
+          </div>
+          <div class="figma-fill-row">
+            <div class="figma-color-chip" id="stroke-color-chip-preview" title="Выбор цвета обводки">
+              <input type="color" class="color-picker" id="stroke-color-picker" value="#ffffff">
+            </div>
+            <input type="text" class="figma-hex-val" id="stroke-hex-input" value="#FFFFFF" spellcheck="false" title="HEX цвет обводки">
+            <div class="figma-input-field figma-stroke-input-field" title="Толщина обводки">
+              <span class="figma-input-tag">W</span>
+              <input type="number" id="dim-stroke-w" class="figma-input-sm" value="0" min="0" max="40">
+            </div>
+          </div>
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Толщина линии</span>
+              <span class="figma-slider-val"><b id="stroke-width-val">0</b> px</span>
+            </div>
+            <input type="range" class="prop-range" id="stroke-width-slider" min="0" max="24" value="0">
+          </div>
+          <div class="color-row figma-palette-row" id="stroke-color-row"></div>
 
-          <label class="prop-label" id="corner-radius-label">Скругление углов: <b id="corner-radius-val">0</b> px</label>
-          <input type="range" class="prop-range" id="corner-radius-slider" min="0" max="60" value="0">
+          <!-- Скругление углов (для прямоугольников) -->
+          <div id="corner-radius-section">
+            <div class="figma-slider-head" id="corner-radius-label">
+              <span class="figma-sublabel">Скругление углов</span>
+              <span class="figma-slider-val"><b id="corner-radius-val">0</b> px</span>
+            </div>
+            <input type="range" class="prop-range" id="corner-radius-slider" min="0" max="60" value="0">
+          </div>
 
-          <div class="prop-btn-row" style="margin-top: 4px;">
-            <button class="pbtn glow-btn" id="btn-shape-glow" title="Включить неоновое свечение / тень фигуры">
+          <!-- EFFECTS: Glow / Shadow -->
+          <div class="figma-section-title">
+            <span>EFFECTS</span>
+          </div>
+          <div class="figma-control-group">
+            <button class="pbtn glow-btn" id="btn-shape-glow" title="Включить тень / неоновое свечение">
               <span class="material-symbols-rounded">auto_awesome</span>
               <span>Свечение / Тень</span>
             </button>
           </div>
           <div class="glow-options hidden" id="shape-glow-options">
-            <label class="prop-label">Радиус свечения: <b id="shape-glow-blur-val">20</b> px</label>
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Радиус свечения/тени</span>
+              <span class="figma-slider-val"><b id="shape-glow-blur-val">20</b> px</span>
+            </div>
             <input type="range" class="prop-range" id="shape-glow-blur-slider" min="2" max="50" value="20">
-            <label class="prop-label">Цвет свечения/тени</label>
-            <div class="color-row" id="shape-glow-color-row"></div>
+            <div class="color-row figma-palette-row" id="shape-glow-color-row"></div>
             <input type="color" class="color-picker" id="shape-glow-color-picker" value="#38BDF8" title="Палитра свечения">
           </div>
 
-          <div class="prop-label-row">
-            <label class="prop-label">Цвет заливки</label>
-            <button class="prop-link-btn" id="btn-eyedropper-shape" title="Пипетка цвета с экрана">
-              <span class="material-symbols-rounded" style="font-size:13px;">colorize</span> Пипетка
-            </button>
-          </div>
-          <div class="color-row" id="fill-color-row"></div>
-          <input type="color" class="color-picker" id="fill-color-picker" value="#38BDF8" title="Палитра цвета заливки">
+        </div><!-- /#props-shape -->
 
-          <label class="prop-label">Цвет обводки</label>
-          <div class="color-row" id="stroke-color-row"></div>
-          <input type="color" class="color-picker" id="stroke-color-picker" value="#ffffff" title="Палитра цвета обводки">
-
-          <label class="prop-label">Толщина линии / обводки: <b id="stroke-width-val">0</b> px</label>
-          <input type="range" class="prop-range" id="stroke-width-slider" min="0" max="24" value="0">
-
-          <label class="prop-label">Прозрачность: <b id="opacity-val">100</b>%</label>
-          <input type="range" class="prop-range" id="opacity-slider" min="10" max="100" value="100" step="5">
-        </div>
-
-        <!-- Свойства изображения (фото, маскот) -->
+        <!-- 5. IMAGE EFFECTS (Свойства изображения: фото, маскот) -->
         <div class="prop-section hidden" id="props-image">
-          <div class="prop-group-title">Фильтры изображения</div>
-
-          <label class="prop-label">Яркость: <b id="img-brightness-val">0</b>%</label>
-          <input type="range" class="prop-range" id="img-brightness-slider" min="-100" max="100" value="0" step="5">
-
-          <label class="prop-label">Контраст: <b id="img-contrast-val">0</b>%</label>
-          <input type="range" class="prop-range" id="img-contrast-slider" min="-100" max="100" value="0" step="5">
-
-          <label class="prop-label">Размытие (Blur): <b id="img-blur-val">0</b> px</label>
-          <input type="range" class="prop-range" id="img-blur-slider" min="0" max="25" value="0" step="1">
-
-          <label class="prop-label">Цветовые эффекты</label>
-          <div class="prop-btn-row">
+          <div class="figma-section-title">
+            <span>IMAGE EFFECTS</span>
+          </div>
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Яркость</span>
+              <span class="figma-slider-val"><b id="img-brightness-val">0</b>%</span>
+            </div>
+            <input type="range" class="prop-range" id="img-brightness-slider" min="-100" max="100" value="0" step="5">
+          </div>
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Контраст</span>
+              <span class="figma-slider-val"><b id="img-contrast-val">0</b>%</span>
+            </div>
+            <input type="range" class="prop-range" id="img-contrast-slider" min="-100" max="100" value="0" step="5">
+          </div>
+          <div class="figma-slider-group">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Размытие (Blur)</span>
+              <span class="figma-slider-val"><b id="img-blur-val">0</b> px</span>
+            </div>
+            <input type="range" class="prop-range" id="img-blur-slider" min="0" max="25" value="0" step="1">
+          </div>
+          <div class="prop-btn-row" style="margin-top: 6px;">
             <button class="pbtn toggle-btn" id="btn-filter-grayscale" title="Черно-белый фильтр">
               <span class="material-symbols-rounded">filter_b_and_w</span>
               <span>Ч/Б</span>
@@ -584,100 +807,77 @@
               <span>Сепия</span>
             </button>
           </div>
-
-          <button class="pbtn pbtn-ghost" id="btn-reset-filters" style="margin-top: 10px;">
+          <button class="pbtn pbtn-ghost" id="btn-reset-filters" style="margin-top: 8px;">
             <span class="material-symbols-rounded">restart_alt</span>
             <span>Сбросить фильтры</span>
           </button>
-        </div>
+        </div><!-- /#props-image -->
 
-        <!-- Общие действия (для любого выделенного объекта) -->
-        <div class="prop-section hidden" id="props-common">
-          <div class="prop-group-title">Выравнивание по холсту</div>
-          <div class="prop-btn-row">
-            <button class="pbtn" id="btn-align-left-canvas" title="Прижать к левому краю">
-              <span class="material-symbols-rounded">align_horizontal_left</span>
-            </button>
-            <button class="pbtn" id="btn-center-h" title="Выровнять строго по горизонтали">
-              <span class="material-symbols-rounded">align_horizontal_center</span>
-            </button>
-            <button class="pbtn" id="btn-align-right-canvas" title="Прижать к правому краю">
-              <span class="material-symbols-rounded">align_horizontal_right</span>
-            </button>
-            <button class="pbtn" id="btn-align-top-canvas" title="Прижать к верхнему краю">
-              <span class="material-symbols-rounded">align_vertical_top</span>
-            </button>
-            <button class="pbtn" id="btn-center-v" title="Выровнять строго по вертикали">
-              <span class="material-symbols-rounded">align_vertical_center</span>
-            </button>
-            <button class="pbtn" id="btn-align-bottom-canvas" title="Прижать к нижнему краю">
-              <span class="material-symbols-rounded">align_vertical_bottom</span>
-            </button>
+        <!-- 6. EXPORT (Секция экспорта в инспекторе) -->
+        <div class="figma-export-section">
+          <div class="figma-section-title">
+            <span>EXPORT</span>
           </div>
-
-          <div class="prop-group-title">Группировка и блокировка</div>
-          <div class="prop-btn-row">
-            <button class="pbtn" id="btn-group" title="Сгруппировать объекты (Ctrl+G)" disabled>
-              <span class="material-symbols-rounded">workspaces</span>
-              <span>Группа</span>
-            </button>
-            <button class="pbtn" id="btn-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
-              <span class="material-symbols-rounded">splitscreen</span>
-              <span>Разделить</span>
-            </button>
-            <button class="pbtn" id="btn-lock-obj" title="Заблокировать / Разблокировать от сдвига">
-              <span class="material-symbols-rounded" id="lock-icon">lock_open</span>
-              <span id="lock-label">Блок</span>
-            </button>
+          <div class="figma-export-presets">
+            <button class="figma-preset-btn is-active" id="btn-inspector-png" title="Скачать в формате PNG">PNG</button>
+            <button class="figma-preset-btn" id="btn-inspector-jpg" title="Скачать в формате JPG">JPG</button>
+            <button class="figma-preset-btn" id="btn-inspector-pdf" title="Скачать в формате PDF">PDF</button>
+            <button class="figma-preset-btn" id="btn-inspector-svg" title="Скачать векторный SVG для Figma">SVG</button>
           </div>
-
-          <div class="prop-group-title">Манипуляции</div>
-          <div class="prop-btn-row">
-            <button class="pbtn" id="btn-duplicate" title="Дублировать объект (Ctrl+D)">
-              <span class="material-symbols-rounded">content_copy</span>
-              <span>Копия</span>
-            </button>
-            <button class="pbtn" id="btn-flip-x" title="Отразить зеркально по горизонтали">
-              <span class="material-symbols-rounded">flip</span>
-              <span>Отразить ↔</span>
-            </button>
-            <button class="pbtn" id="btn-flip-y" title="Отразить зеркально по вертикали">
-              <span class="material-symbols-rounded">swap_vert</span>
-              <span>Отразить ↕</span>
-            </button>
-          </div>
-
-          <div class="prop-group-title">Порядок слоёв</div>
-          <div class="prop-btn-row">
-            <button class="pbtn pbtn-wide" id="btn-bring-front" title="Переместить на самый верхний слой">
-              <span class="material-symbols-rounded">flip_to_front</span>
-              <span>Вперёд</span>
-            </button>
-            <button class="pbtn pbtn-wide" id="btn-send-back" title="Переместить на задний план">
-              <span class="material-symbols-rounded">flip_to_back</span>
-              <span>Назад</span>
-            </button>
-          </div>
-          <button class="pbtn pbtn-danger" id="btn-delete-obj" title="Удалить выбранный объект">
-            <span class="material-symbols-rounded">delete</span>
-            Удалить объект
+          <button class="figma-main-export-btn" id="btn-inspector-export-png" title="Экспортировать афишу">
+            <span class="material-symbols-rounded">download</span>
+            <span>Экспорт афиши</span>
           </button>
         </div>
 
-      </div><!-- /tab-props -->
+      </div><!-- /#tab-design -->
 
-      <!-- ── Вкладка: Слои ── -->
+      <!-- ── Вкладка: Layers ── -->
       <div class="tab-content hidden" id="tab-layers">
         <div class="layers-header">
-          <span class="layers-hint">Верхний слой отображается спереди</span>
-          <button class="pbtn pbtn-sm" id="btn-layers-refresh" title="Обновить список слоёв">
+          <span class="layers-hint">Иерархия слоёв макета</span>
+          <button class="pbtn pbtn-sm figma-icon-btn" id="btn-layers-refresh" title="Обновить список слоёв">
             <span class="material-symbols-rounded">refresh</span>
           </button>
         </div>
-        <div class="layers-list" id="layers-list">
+        <div class="layers-list figma-layers-tree" id="layers-list">
           <!-- Генерируется JS -->
         </div>
-      </div>
+      </div><!-- /#tab-layers -->
+
+      <!-- ── Вкладка: Settings ── -->
+      <div class="tab-content hidden" id="tab-settings">
+        <div class="figma-section-title">
+          <span>CANVAS FORMAT</span>
+        </div>
+        <div class="figma-settings-format-list">
+          <button class="figma-settings-btn" data-blank="blank_a4_v">A4 Вертикаль (595 × 842)</button>
+          <button class="figma-settings-btn" data-blank="blank_a4_h">A4 Горизонталь (842 × 595)</button>
+          <button class="figma-settings-btn" data-blank="blank_square">Квадрат 1:1 (ВКонтакте)</button>
+          <button class="figma-settings-btn" data-blank="blank_banner">Баннер 16:9</button>
+          <button class="figma-settings-btn" data-blank="blank_story">Сторис 9:16</button>
+          <button class="figma-settings-btn" data-blank="blank_tilda_landing">Tilda Лендинг (1200 × 2400)</button>
+        </div>
+
+        <div class="figma-section-title" style="margin-top:14px;">
+          <span>CANVAS BACKGROUND</span>
+        </div>
+        <div class="bg-palette figma-settings-palette" id="bg-palette-settings"></div>
+
+        <div class="figma-section-title" style="margin-top:14px;">
+          <span>PROJECT FILE</span>
+        </div>
+        <div class="figma-project-actions">
+          <button class="pbtn" id="btn-settings-save-json" title="Сохранить файл .aurora.json">
+            <span class="material-symbols-rounded">file_download</span>
+            <span>Экспорт JSON</span>
+          </button>
+          <button class="pbtn" id="btn-settings-load-json" title="Открыть файл .aurora.json">
+            <span class="material-symbols-rounded">file_open</span>
+            <span>Импорт JSON</span>
+          </button>
+        </div>
+      </div><!-- /#tab-settings -->
 
     </aside>
   </div><!-- /ed-body -->

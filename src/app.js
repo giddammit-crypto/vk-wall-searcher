@@ -107,6 +107,12 @@ import {
 } from './inoagent_modal.js?v=4.62.1';
 
 import {
+    initAiDevModal,
+    openAiDevModal,
+    closeAiDevModal
+} from './ai_dev_modal.js?v=4.69.0';
+
+import {
     initLeagueModal,
     openLeagueModal,
     closeLeagueModal,
@@ -254,6 +260,7 @@ function initApp() {
         promoModalBtn: document.getElementById('promo-modal-btn'),
         opacModalBtn: document.getElementById('opac-modal-btn'),
         inoagentModalBtn: document.getElementById('inoagent-modal-btn'),
+        aiDevModalBtn: document.getElementById('ai-dev-modal-btn'),
         leagueModalBtn: document.getElementById('league-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
@@ -3452,6 +3459,10 @@ function initApp() {
             if (inoagentModal && (inoagentModal.classList.contains('is-open') || !inoagentModal.classList.contains('hidden'))) {
                 closeInoagentModal();
             }
+            const aiDevModal = document.getElementById('ai-dev-modal');
+            if (aiDevModal && (aiDevModal.classList.contains('is-open') || !aiDevModal.classList.contains('hidden'))) {
+                closeAiDevModal();
+            }
             return;
         }
 
@@ -3877,6 +3888,15 @@ function initApp() {
     }
     window.__openInoagentModal = (query = '') => openInoagentModal(query);
 
+    // Инициализация хаба ресурсов для ИИ-разработчиков (AI Dev Hub)
+    initAiDevModal();
+    if (elements.aiDevModalBtn) {
+        elements.aiDevModalBtn.addEventListener('click', () => {
+            openAiDevModal();
+        });
+    }
+    window.__openAiDevModal = (tab = null) => openAiDevModal(tab);
+
     if (elements.leagueModalBtn) {
         elements.leagueModalBtn.addEventListener('click', () => {
             openLeagueModal(state.stats, state.matchedPosts);
@@ -4153,6 +4173,11 @@ function initApp() {
             openLeagueModal(state.stats, state.matchedPosts);
         }, 250);
     }
+    if (_urlP.get('mode') === 'ai-dev' || _urlP.get('mode') === 'ai_dev' || _urlP.get('aidev') === '1') {
+        setTimeout(() => {
+            openAiDevModal(_urlP.get('tab'));
+        }, 250);
+    }
     if (_urlP.get('preview_cosmic') === '1') {
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('hidden');
@@ -4226,6 +4251,8 @@ function initApp() {
         closeOpacModal,
         openInoagentModal,
         closeInoagentModal,
+        openAiDevModal,
+        closeAiDevModal,
         renderRadarSection,
         computeTimingHeatmap,
         renderTimingHeatmapSection,

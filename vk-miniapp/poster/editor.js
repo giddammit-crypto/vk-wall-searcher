@@ -1625,6 +1625,21 @@ function buildBgPalette() {
       }
     });
   }
+
+  // Свотчи фона в инспекторе Figma (Design и Settings)
+  ['#bg-palette-quick', '#bg-palette-settings'].forEach(sel => {
+    const target = $(sel);
+    if (target) {
+      target.innerHTML = swatchesHtml;
+      target.addEventListener('click', e => {
+        const btn = e.target.closest('.bg-swatch');
+        if (btn && canvas) {
+          canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
+          saveHistory();
+        }
+      });
+    }
+  });
 }
 
 function applyGlow(obj, color, blur) {
@@ -1758,23 +1773,28 @@ function initCanvas(w, h) {
     backgroundColor: '#ffffff',
     preserveObjectStacking: true,
     selection: true,
-    selectionColor: 'rgba(56,189,248,0.1)',
-    selectionBorderColor: '#38BDF8',
-    selectionLineWidth: 1,
+    selectionColor: 'rgba(13, 153, 255, 0.15)',
+    selectionBorderColor: '#0d99ff',
+    selectionLineWidth: 1.5,
   });
 
   fabric.Object.prototype.set({
-    borderColor: '#38BDF8',
-    cornerColor: '#38BDF8',
-    cornerSize: 9,
+    borderColor: '#0d99ff',
+    borderScaleFactor: 1.5,
+    cornerColor: '#ffffff',
+    cornerStrokeColor: '#0d99ff',
+    cornerSize: 8,
     transparentCorners: false,
-    cornerStyle: 'circle',
-    padding: 2,
+    cornerStyle: 'rect',
+    padding: 0,
   });
 
   canvas.on('selection:created',  onSelection);
   canvas.on('selection:updated',  onSelection);
   canvas.on('selection:cleared',  clearProps);
+  canvas.on('object:moving',      () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
+  canvas.on('object:scaling',     () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
+  canvas.on('object:rotating',    () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:modified', e => {
     // Нормализуем scale текстового объекта: превращаем scaleY→fontSize
     const obj = e.target;
@@ -3077,7 +3097,57 @@ function onSelection() {
     syncToggle('btn-filter-sepia', !!fv.sepia);
   }
 
+  updateFigmaDimensionsUI(obj);
   updateLayersList();
+}
+
+function updateFigmaDimensionsUI(obj) {
+  if (!obj) return;
+  const dx = $('#dim-x');
+  const dy = $('#dim-y');
+  const dw = $('#dim-w');
+  const dh = $('#dim-h');
+  const dr = $('#dim-r');
+  const drad = $('#dim-radius');
+  const dRadWrap = $('#dim-radius-wrap');
+
+  if (dx) dx.value = Math.round(obj.left || 0);
+  if (dy) dy.value = Math.round(obj.top || 0);
+  if (dw) dw.value = Math.round(obj.getScaledWidth() || 0);
+  if (dh) dh.value = Math.round(obj.getScaledHeight() || 0);
+  if (dr) dr.value = Math.round(obj.angle || 0);
+
+  const isRect = obj.type === 'rect';
+  if (dRadWrap) dRadWrap.classList.toggle('hidden', !isRect);
+  if (drad && isRect) drad.value = Math.round(obj.rx || 0);
+
+  // Sync Fill hex & preview
+  const fillHex = $('#fill-hex-input');
+  if (fillHex && obj.fill && typeof obj.fill === 'string') {
+    fillHex.value = obj.fill.startsWith('#') ? obj.fill.toUpperCase() : obj.fill;
+  }
+  const fillChip = $('#fill-color-chip-preview');
+  if (fillChip && obj.fill) {
+    fillChip.style.backgroundColor = obj.fill;
+  }
+
+  // Sync Stroke hex & preview
+  const strokeHex = $('#stroke-hex-input');
+  if (strokeHex && obj.stroke && typeof obj.stroke === 'string') {
+    strokeHex.value = obj.stroke.startsWith('#') ? obj.stroke.toUpperCase() : obj.stroke;
+  }
+  const strokeChip = $('#stroke-color-chip-preview');
+  if (strokeChip && obj.stroke) {
+    strokeChip.style.backgroundColor = obj.stroke;
+  }
+  const strokeW = $('#dim-stroke-w');
+  if (strokeW) strokeW.value = obj.strokeWidth || 0;
+
+  // Text hex
+  const textHex = $('#text-hex-val');
+  if (textHex && obj.fill && typeof obj.fill === 'string') {
+    textHex.value = obj.fill.startsWith('#') ? obj.fill.toUpperCase() : obj.fill;
+  }
 }
 
 function syncToggle(id, active) { $('#'+id)?.classList.toggle('is-active', !!active); }
@@ -4946,12 +5016,143 @@ function bindEvents() {
       $$('.panel-tab').forEach(t => t.classList.remove('is-active'));
       $$('.tab-content').forEach(t => t.classList.add('hidden'));
       tab.classList.add('is-active');
-      $('#tab-' + tab.dataset.tab).classList.remove('hidden');
+      const targetId = tab.dataset.tab === 'props' ? 'tab-design' : ('tab-' + tab.dataset.tab);
+      const targetEl = $('#' + targetId) || $('#tab-' + tab.dataset.tab);
+      targetEl?.classList.remove('hidden');
       if (tab.dataset.tab === 'layers') updateLayersList();
     });
   });
 
   $('#btn-layers-refresh').addEventListener('click', updateLayersList);
+
+  /* ── Figma Inspector: Dimensions (X, Y, W, H, ∠, ⌜) ── */
+  $('#dim-x')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    obj.set({ left: parseFloat(e.target.value) || 0 });
+    obj.setCoords(); canvas.requestRenderAll();
+  });
+  $('#dim-x')?.addEventListener('change', () => saveHistory());
+
+  $('#dim-y')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    obj.set({ top: parseFloat(e.target.value) || 0 });
+    obj.setCoords(); canvas.requestRenderAll();
+  });
+  $('#dim-y')?.addEventListener('change', () => saveHistory());
+
+  $('#dim-w')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    const val = Math.max(1, parseFloat(e.target.value) || 1);
+    obj.scaleToWidth(val);
+    obj.setCoords(); canvas.requestRenderAll();
+  });
+  $('#dim-w')?.addEventListener('change', () => saveHistory());
+
+  $('#dim-h')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    const val = Math.max(1, parseFloat(e.target.value) || 1);
+    obj.scaleToHeight(val);
+    obj.setCoords(); canvas.requestRenderAll();
+  });
+  $('#dim-h')?.addEventListener('change', () => saveHistory());
+
+  $('#dim-r')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    obj.set({ angle: parseFloat(e.target.value) || 0 });
+    obj.setCoords(); canvas.requestRenderAll();
+  });
+  $('#dim-r')?.addEventListener('change', () => saveHistory());
+
+  $('#dim-radius')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj || obj.type !== 'rect') return;
+    const val = Math.max(0, parseFloat(e.target.value) || 0);
+    obj.set({ rx: val, ry: val });
+    canvas.requestRenderAll();
+  });
+  $('#dim-radius')?.addEventListener('change', () => saveHistory());
+
+  $('#fill-hex-input')?.addEventListener('change', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    let val = e.target.value.trim();
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#[0-9A-Fa-f]{3,8}$/.test(val)) {
+      obj.set({ fill: val });
+      if ($('#fill-color-picker')) $('#fill-color-picker').value = val.slice(0, 7);
+      if ($('#text-color-picker')) $('#text-color-picker').value = val.slice(0, 7);
+      const fillChip = $('#fill-color-chip-preview');
+      if (fillChip) fillChip.style.backgroundColor = val;
+      canvas.requestRenderAll();
+      saveHistory();
+    }
+  });
+
+  $('#stroke-hex-input')?.addEventListener('change', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    let val = e.target.value.trim();
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#[0-9A-Fa-f]{3,8}$/.test(val)) {
+      obj.set({ stroke: val });
+      if ($('#stroke-color-picker')) $('#stroke-color-picker').value = val.slice(0, 7);
+      const strokeChip = $('#stroke-color-chip-preview');
+      if (strokeChip) strokeChip.style.backgroundColor = val;
+      canvas.requestRenderAll();
+      saveHistory();
+    }
+  });
+
+  $('#dim-stroke-w')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    const val = Math.max(0, parseFloat(e.target.value) || 0);
+    obj.set({ strokeWidth: val });
+    if ($('#stroke-width-slider')) $('#stroke-width-slider').value = val;
+    if ($('#stroke-width-val')) $('#stroke-width-val').textContent = val;
+    canvas.requestRenderAll();
+  });
+  $('#dim-stroke-w')?.addEventListener('change', () => saveHistory());
+
+  /* Экспорт пресеты внутри инспектора */
+  $('#btn-inspector-export-png')?.addEventListener('click', exportPng);
+  $('#btn-inspector-png')?.addEventListener('click', () => {
+    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
+    $('#btn-inspector-png')?.classList.add('is-active');
+    exportPng();
+  });
+  $('#btn-inspector-jpg')?.addEventListener('click', () => {
+    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
+    $('#btn-inspector-jpg')?.classList.add('is-active');
+    exportJpg();
+  });
+  $('#btn-inspector-pdf')?.addEventListener('click', () => {
+    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
+    $('#btn-inspector-pdf')?.classList.add('is-active');
+    exportPdf();
+  });
+  $('#btn-inspector-svg')?.addEventListener('click', () => {
+    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
+    $('#btn-inspector-svg')?.classList.add('is-active');
+    const svgStr = buildFigmaSVG();
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ($('#poster-title')?.value || 'poster') + '.svg';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Векторный SVG для Figma скачан!');
+  });
+
+  /* Кнопка «F» в шапке */
+  $('#btn-figma-menu')?.addEventListener('click', () => $('#btn-back')?.click());
+
+  /* Вкладка Settings: форматы макета и экспорт JSON */
+  $$('.figma-settings-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const blankKey = btn.dataset.blank;
+      if (blankKey) loadBlank(blankKey);
+    });
+  });
+  $('#btn-settings-save-json')?.addEventListener('click', exportProjectJSON);
+  $('#btn-settings-load-json')?.addEventListener('click', () => $('#project-file-input')?.click());
 
   /* ── Свойства текста ── */
   $('#font-size-slider').addEventListener('input', e => {

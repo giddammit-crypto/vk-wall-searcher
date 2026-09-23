@@ -16,82 +16,87 @@
 }
 
 :root {
-  /* ── Основная космическая палитра ── */
-  --bg:               #070a14;
-  --bg-2:             #0c1222;
-  --bg-3:             #131c33;
-  --bg-card:          rgba(18, 24, 38, 0.75);
-  --surface-glass:    rgba(18, 24, 38, 0.75);
-  --bg-card-hover:    rgba(26, 36, 58, 0.88);
-  --bg-surface:       rgba(13, 19, 33, 0.78);
-  --bg-input:         rgba(15, 23, 42, 0.65);
-  --surface:          #162035;
-  --surface-2:        #1f2d4a;
+  /* ── Точная цветовая палитра Figma Dark UI ── */
+  --bg:               #1e1e1e; /* Холст (canvas background): #1e1e1e */
+  --bg-2:             #2c2c2c; /* Панели (шапка, левый тулбар, правый инспектор): #2c2c2c */
+  --bg-3:             #383838; /* Ховеры кнопок и элементов: #383838 */
+  --bg-card:          #2c2c2c;
+  --surface-glass:    #2c2c2c;
+  --bg-card-hover:    #383838;
+  --bg-surface:       #2c2c2c;
+  --bg-input:         #1e1e1e; /* Поля ввода, селекты, подложки: #1e1e1e с границей #383838 */
+  --surface:          #2c2c2c;
+  --surface-2:        #383838;
 
-  /* ── Линии и стеклянные границы (Hairlines) ── */
-  --hairline:         rgba(255, 255, 255, 0.08);
-  --hairline-strong:  rgba(255, 255, 255, 0.16);
-  --hairline-glow:    rgba(56, 189, 248, 0.35);
-  --border:           rgba(255, 255, 255, 0.08);
-  --border-focus:     #38BDF8;
-  --border-hover:     rgba(56, 189, 248, 0.35);
+  /* ── Линии и границы (Figma Borders) ── */
+  --hairline:         #383838;
+  --hairline-strong:  #484848;
+  --hairline-glow:    rgba(13, 153, 255, 0.35);
+  --border:           #383838;
+  --border-focus:     #0d99ff; /* Активный акцентный цвет выделения Figma: #0d99ff */
+  --border-hover:     #484848;
 
-  /* ── Текст и контраст ── */
-  --text-1:           #F8FAFC;
-  --text-2:           #94A3B8;
-  --text-3:           #64748B;
-  --text-dim:         #475569;
+  /* ── Текст: #ffffff / #f5f5f5 основной, #b3b3b3 вторичный, #757575 неактивный ── */
+  --text-1:           #ffffff;
+  --text-primary:     #ffffff;
+  --text-2:           #b3b3b3;
+  --text-secondary:   #b3b3b3;
+  --text-3:           #757575;
+  --text-muted:       #757575;
+  --text-dim:         #555555;
 
-  /* ── Фирменные акценты экосистемы «АВРОРА» ── */
-  --cyan:             #38BDF8;
-  --cyan-glow:        rgba(56, 189, 248, 0.25);
-  --cyan-glow-strong: rgba(56, 189, 248, 0.50);
-  --purple:           #8A6CFF;
+  /* ── Figma Blue & акцентные цвета ── */
+  --cyan:             #0d99ff; /* Figma Blue: #0d99ff */
+  --cyan-glow:        rgba(13, 153, 255, 0.25);
+  --cyan-glow-strong: rgba(13, 153, 255, 0.50);
+  --figma-blue:       #0d99ff;
+  --figma-blue-hover: #0b85e0;
+  --figma-blue-active:#0a74c4;
+  --figma-blue-tint:  rgba(13, 153, 255, 0.15);
+  --purple:           #8a6cff;
   --purple-glow:      rgba(138, 108, 255, 0.25);
-  --gold:             #FBBF24;
-  --gold-glow:        rgba(251, 191, 36, 0.25);
-  --emerald:          #10B981;
+  --gold:             #f5a623;
+  --gold-glow:        rgba(245, 166, 35, 0.25);
+  --emerald:          #10b981;
   --emerald-glow:     rgba(16, 185, 129, 0.25);
-  --green:            #10B981;
-  --rose:             #F472B6;
-  --pink:             #F472B6;
-  --red:              #EF4444;
-  --red-glow:         rgba(239, 68, 68, 0.25);
+  --green:            #10b981;
+  --rose:             #f472b6;
+  --pink:             #f472b6;
+  --red:              #f24822; /* Figma Red */
+  --red-glow:         rgba(242, 72, 34, 0.25);
 
-  /* ── Градиенты Aurora ── */
-  --grad-aurora:      linear-gradient(135deg, #38BDF8 0%, #8A6CFF 55%, #F472B6 100%);
-  --grad-cyan-purple: linear-gradient(135deg, #38BDF8 0%, #8A6CFF 100%);
-  --grad-emerald:     linear-gradient(135deg, #10B981 0%, #059669 100%);
-  --grad-card:        linear-gradient(145deg, rgba(24, 34, 56, 0.85) 0%, rgba(13, 18, 30, 0.70) 100%);
-  --grad-hero:        radial-gradient(ellipse at 20% 0%, rgba(56, 189, 248, 0.16) 0%, transparent 55%),
-                      radial-gradient(ellipse at 80% 10%, rgba(138, 108, 255, 0.16) 0%, transparent 55%),
-                      #070a14;
+  /* ── Градиенты ── */
+  --grad-aurora:      linear-gradient(135deg, #0d99ff 0%, #8a6cff 55%, #f472b6 100%);
+  --grad-cyan-purple: linear-gradient(135deg, #0d99ff 0%, #8a6cff 100%);
+  --grad-emerald:     linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --grad-card:        linear-gradient(145deg, #2c2c2c 0%, #222222 100%);
+  --grad-hero:        radial-gradient(ellipse at 50% 0%, rgba(13, 153, 255, 0.08) 0%, transparent 60%), #1e1e1e;
 
-  /* ── Тени и свечение ── */
-  --shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md:        0 8px 24px rgba(0, 0, 0, 0.50);
-  --shadow-lg:        0 16px 48px rgba(0, 0, 0, 0.65);
-  --shadow-glow-cyan: 0 0 24px rgba(56, 189, 248, 0.25);
-  --shadow-glow-purp: 0 0 24px rgba(138, 108, 255, 0.25);
+  /* ── Тени Figma ── */
+  --shadow-sm:        0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md:        0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg:        0 12px 32px rgba(0, 0, 0, 0.60);
+  --shadow-glow-cyan: 0 0 16px rgba(13, 153, 255, 0.25);
+  --shadow-glow-purp: 0 0 16px rgba(138, 108, 255, 0.25);
 
   /* ── Backdrop Blur ── */
-  --glass-blur:       blur(16px);
-  --glass-blur-heavy: blur(24px);
+  --glass-blur:       none;
+  --glass-blur-heavy: none;
 
-  /* ── Размеры и сетка ── */
-  --header-h:         56px;
-  --sidebar-w:        224px;
+  /* ── Размеры и сетка Figma ── */
+  --header-h:         48px;
+  --sidebar-w:        240px;
   --panel-w:          280px;
-  --radius:           12px;
-  --radius-lg:        16px;
-  --radius-sm:        8px;
-  --radius-xs:        6px;
+  --radius:           6px;
+  --radius-lg:        8px;
+  --radius-sm:        4px;
+  --radius-xs:        3px;
   --radius-pill:      9999px;
 
   /* ── Анимации ── */
   --ease:             cubic-bezier(0.16, 1, 0.3, 1);
-  --trans-fast:       140ms cubic-bezier(0.16, 1, 0.3, 1);
-  --trans-smooth:     240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --trans-fast:       100ms ease;
+  --trans-smooth:     180ms ease;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -108,25 +113,17 @@ html, body {
   overflow: hidden;
   background: var(--bg);
   color: var(--text-2);
-  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
-  line-height: 1.45;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Фоновая космическая аура */
+/* Отключаем фоновые космические пятна для строгой эстетики Figma */
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 12% 16%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 88% 82%, rgba(138, 108, 255, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.02) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
+  display: none !important;
 }
 
 button {
@@ -760,21 +757,20 @@ input, select, textarea {
   z-index: 1;
 }
 
-/* ── Шапка редактора (Header Glassmorphism) ── */
+/* ── Шапка редактора в стиле Figma (Top Toolbar) ── */
+.ed-header.figma-topbar,
 .ed-header {
   height: var(--header-h);
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 0 16px;
-  background: rgba(11, 16, 30, 0.88);
-  backdrop-filter: var(--glass-blur-heavy);
-  -webkit-backdrop-filter: var(--glass-blur-heavy);
-  border-bottom: 1px solid var(--hairline);
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
   z-index: 50;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -790,217 +786,59 @@ input, select, textarea {
 .ed-header-right {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
-/* Левая группа: Кнопка «Шаблоны» + название афиши — никогда не схлопывается */
 .ed-header-left {
   flex: 0 0 auto;
-  min-width: auto;
-  gap: 8px;
 }
 
-#btn-back {
-  flex-shrink: 0;
-  white-space: nowrap;
-  font-weight: 600;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--hairline);
-}
-
-#btn-back:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--hairline-strong);
-}
-
-#btn-back .hbtn-label {
-  display: inline;
-}
-
-/* Центральная группа: Компактный тулбар истории и манипуляций (Undo, Redo, Сетка, Магнит, Копия, Группа) */
-.ed-header-center {
-  flex: 0 0 auto;
-  gap: 2px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--hairline);
+/* Кнопка «F» логотипа Figma */
+.figma-f-btn {
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
-  padding: 2px 4px;
-}
-
-.ed-header-center .hbtn {
-  border: none;
+  display: grid;
+  place-items: center;
   background: transparent;
-  height: 32px;
-  width: 34px;
-  min-width: 34px;
-  padding: 0;
-  justify-content: center;
-  border-radius: calc(var(--radius-sm) - 2px);
-}
-
-.ed-header-center .hbtn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: transparent;
-  transform: none;
-}
-
-.ed-header-center .hbtn:active {
-  transform: scale(0.94);
-}
-
-.ed-header-center .hbtn.is-active {
-  background: rgba(56, 189, 248, 0.22);
-  color: var(--cyan);
-}
-
-.ed-header-center .hbtn-label {
-  display: none !important;
-}
-
-/* Правая группа: Экспорт, интеграции, зум */
-.ed-header-right {
-  flex: 0 0 auto;
-  margin-left: auto;
-  gap: 6px;
-}
-
-/* Кнопки в шапке (Header Buttons) */
-.hbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-2);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--hairline);
-  transition: all var(--trans-fast);
-  white-space: nowrap;
+  border: 1px solid transparent;
   cursor: pointer;
+  transition: all var(--trans-fast);
 }
 
-.hbtn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--text-1);
-  border-color: var(--hairline-strong);
-  transform: translateY(-1px);
+.figma-f-btn:hover {
+  background: var(--bg-3);
+  border-color: #444444;
 }
 
-.hbtn:active {
-  transform: scale(0.96);
+.figma-f-btn:active {
+  transform: scale(0.95);
 }
 
-.hbtn:disabled {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.hbtn-ghost {
-  background: transparent;
-  border-color: transparent;
-}
-
-.hbtn-ghost:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: var(--hairline);
-}
-
-.hbtn-icon {
-  padding: 0 8px;
-  width: 36px;
-  justify-content: center;
-}
-
-.hbtn-icon-svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  vertical-align: middle;
-  display: inline-block;
-  color: currentColor;
-  transition: transform var(--trans-fast), filter var(--trans-fast);
-}
-
-.hbtn:hover .hbtn-icon-svg {
-  transform: scale(1.08);
-}
-
-.hbtn.is-active .hbtn-icon-svg {
-  color: var(--cyan);
-  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.55));
-}
-
-/* Кнопки экспорта с неоновым свечением */
-.hbtn-success {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  color: #FFFFFF;
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
-}
-
-.hbtn-success:hover {
-  background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
-  color: #FFFFFF;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45);
-}
-
-.hbtn-accent {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(138, 108, 255, 0.18) 100%);
-  color: #BAE6FD;
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
-}
-
-.hbtn-accent:hover {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.28) 0%, rgba(138, 108, 255, 0.28) 100%);
-  color: #FFFFFF;
-  border-color: var(--cyan);
-  box-shadow: 0 4px 18px rgba(56, 189, 248, 0.35);
-}
-
-.hbtn-mobile-panel {
-  display: none;
-}
-
-.hbtn-label {
-  display: none;
-}
-
-@media (min-width: 1200px) {
-  .ed-header-right .hbtn-label {
-    display: inline;
-  }
-}
-
-.hbtn .material-symbols-rounded {
-  font-size: 20px;
-  width: 20px;
+.figma-topbar-divider {
+  width: 1px;
   height: 20px;
-  line-height: 20px;
-  text-align: center;
+  background: var(--border);
+  margin: 0 4px;
   flex-shrink: 0;
-  overflow: hidden;
 }
 
-/* Поле заголовка афиши */
+/* Название макета в стиле Figma */
 .ed-title-wrap {
   flex: 0 1 180px;
-  min-width: 50px;
-  padding: 0 4px;
+  min-width: 60px;
 }
 
+.ed-title.figma-title-input,
 .ed-title {
   width: 100%;
-  max-width: 180px;
+  max-width: 200px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--text-1);
-  padding: 6px 10px;
-  font-size: 13px;
+  padding: 4px 8px;
+  font-size: 12px;
   font-weight: 600;
   outline: none;
   transition: all var(--trans-fast);
@@ -1011,207 +849,406 @@ input, select, textarea {
 
 .ed-title:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: var(--hairline);
+  border-color: var(--border);
 }
 
 .ed-title:focus {
-  border-color: var(--cyan);
-  background: rgba(18, 28, 48, 0.85);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+  border-color: var(--figma-blue);
+  background: var(--bg-input);
+  box-shadow: 0 0 0 1px var(--figma-blue);
 }
 
-/* Индикатор автосохранения */
-.ed-save-status {
-  font-size: 11px;
-  color: var(--emerald);
+/* Центральная группа тулбара */
+.ed-header-center {
+  flex: 0 0 auto;
+}
+
+/* Zoom Picker в стиле Figma */
+.figma-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hbtn-zoom {
+  width: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+  justify-content: center;
+}
+
+.figma-zoom-dropdown {
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--text-1) !important;
+  gap: 2px !important;
+}
+
+.figma-zoom-val {
+  min-width: 36px;
+  text-align: center;
+}
+
+/* Кнопки в шапке (Header Buttons) */
+.hbtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all var(--trans-fast);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
 }
 
-/* ── Тело редактора ── */
+.hbtn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: transparent;
+}
+
+.hbtn:active {
+  background: #444444;
+  transform: scale(0.97);
+}
+
+.hbtn.is-active {
+  background: var(--figma-blue-tint);
+  color: var(--figma-blue);
+  border-color: rgba(13, 153, 255, 0.35);
+}
+
+.hbtn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.hbtn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.hbtn-ghost:hover {
+  background: var(--bg-3);
+}
+
+.hbtn-icon {
+  padding: 0;
+  width: 28px;
+  min-width: 28px;
+  justify-content: center;
+}
+
+.hbtn-icon-svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  display: inline-block;
+  color: currentColor;
+}
+
+/* Главная синяя кнопка «Экспорт» (Figma Blue #0d99ff) */
+.hbtn-figma-primary {
+  background: var(--figma-blue) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--figma-blue) !important;
+  font-weight: 600 !important;
+  padding: 0 12px !important;
+  height: 28px !important;
+}
+
+.hbtn-figma-primary:hover {
+  background: var(--figma-blue-hover) !important;
+  border-color: var(--figma-blue-hover) !important;
+}
+
+.hbtn-figma-primary:active {
+  background: var(--figma-blue-active) !important;
+  transform: scale(0.97);
+}
+
+.hbtn-figma-primary .material-symbols-rounded {
+  font-size: 16px !important;
+  color: #ffffff !important;
+}
+
+.hbtn-subtle {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.hbtn-subtle:hover {
+  background: var(--bg-3);
+  border-color: var(--hairline-strong);
+  color: var(--text-1);
+}
+
+.hbtn-sm {
+  height: 26px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.hbtn .material-symbols-rounded {
+  font-size: 17px;
+  width: 17px;
+  height: 17px;
+  line-height: 17px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.hbtn-label {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .ed-header-left .hbtn-label,
+  .ed-header-right .hbtn-label {
+    display: inline;
+  }
+}
+/* ══════════════════════════════════════════════════════
+   ТЕЛО РЕДАКТОРА (FIGMA WORKSPACE BODY)
+   ══════════════════════════════════════════════════════ */
 .ed-body {
   flex: 1;
   min-height: 0;
   display: flex;
   overflow: hidden;
   position: relative;
+  background: var(--bg);
 }
 
 /* ══════════════════════════════════════════════════════
-   ЛЕВАЯ ПАНЕЛЬ: ИНСТРУМЕНТЫ (GLASS SIDEBAR)
+   ЛЕВАЯ ПАНЕЛЬ: ИНСТРУМЕНТЫ (FIGMA LEFT SIDEBAR)
    ══════════════════════════════════════════════════════ */
+.ed-sidebar.figma-sidebar,
 .ed-sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: rgba(11, 16, 30, 0.82);
-  backdrop-filter: var(--glass-blur-heavy);
-  -webkit-backdrop-filter: var(--glass-blur-heavy);
-  border-right: 1px solid var(--hairline);
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
   overflow-y: auto;
-  padding: 14px 10px;
+  overflow-x: hidden;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  z-index: 10;
+  gap: 8px;
+  z-index: 20;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 .sb-group {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
+/* 11px uppercase заголовки секций тулбара */
 .sb-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-3);
-  padding: 0 6px;
-  margin-bottom: 6px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
 }
 
 .sb-label::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--border);
+  opacity: 0.6;
 }
 
-/* Кнопка инструмента */
+/* Кнопка инструмента в стиле Figma */
 .tool-btn {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  height: 30px;
+  padding: 0 8px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-2);
   transition: all var(--trans-fast);
   text-align: left;
+  cursor: pointer;
+  user-select: none;
 }
 
 .tool-btn:hover {
-  background: rgba(56, 189, 248, 0.08);
-  color: #F8FAFC;
-  border-color: rgba(56, 189, 248, 0.25);
-  transform: translateX(2px);
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: transparent;
 }
 
 .tool-btn:active {
-  transform: scale(0.97);
+  background: #444444;
+  transform: scale(0.98);
+}
+
+.tool-btn.is-active {
+  background: var(--figma-blue-tint);
+  color: var(--figma-blue);
+  border-color: rgba(13, 153, 255, 0.4);
 }
 
 .tool-btn .material-symbols-rounded {
-  font-size: 19px !important;
-  color: var(--cyan);
-  transition: color var(--trans-fast), transform var(--trans-fast);
+  font-size: 17px !important;
+  color: var(--text-2);
+  transition: color var(--trans-fast);
+  flex-shrink: 0;
 }
 
 .tool-btn:hover .material-symbols-rounded {
-  color: #BAE6FD;
-  transform: scale(1.1);
+  color: var(--text-1);
 }
 
-/* Акцентные кнопки (Космо, QR-код) */
+.tool-btn.is-active .material-symbols-rounded {
+  color: var(--figma-blue);
+}
+
+/* Акцентные кнопки (Шрифты ofont, Космо, Стикеры, QR) */
 .tool-btn-highlight {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(138, 108, 255, 0.08) 100%);
-  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
   color: var(--text-1);
 }
 
 .tool-btn-highlight:hover {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(138, 108, 255, 0.18) 100%);
-  border-color: var(--cyan);
-  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.20);
+  background: var(--bg-3);
+  border-color: #484848;
 }
 
 .tool-btn-highlight .material-symbols-rounded {
-  color: var(--gold);
+  color: var(--figma-blue);
 }
 
-/* Палитра фонов */
+/* Кнопка инструментов Figma API */
+.tool-btn-figma .tool-icon-svg {
+  width: 14px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.tool-btn-tilda .material-symbols-rounded {
+  color: #ff8562;
+}
+
+/* Палитра фонов холста */
 .bg-palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 2px 4px;
-  margin-bottom: 8px;
+  gap: 5px;
+  padding: 2px;
+  margin-bottom: 6px;
 }
 
 .bg-swatch {
-  width: 25px;
-  height: 25px;
-  border-radius: 6px;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: transform var(--trans-fast), border-color var(--trans-fast), box-shadow var(--trans-fast);
+  transition: all var(--trans-fast);
+  position: relative;
+  flex-shrink: 0;
 }
 
 .bg-swatch:hover {
-  transform: scale(1.22);
-  border-color: #FFFFFF;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
+  border-color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
   z-index: 2;
 }
 
+.bg-swatch.is-active {
+  border-color: var(--figma-blue);
+  box-shadow: 0 0 0 1.5px var(--figma-blue);
+  transform: scale(1.08);
+}
+
+/* Градиентные кнопки фона */
 .bg-gradients {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .bg-grad-btn {
   width: 100%;
+  height: 26px;
   text-align: left;
-  padding: 7px 10px;
+  padding: 0 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.03);
-  font-size: 11.5px;
-  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-2);
   transition: all var(--trans-fast);
+  cursor: pointer;
 }
 
 .bg-grad-btn:hover {
-  background: rgba(56, 189, 248, 0.10);
-  border-color: rgba(56, 189, 248, 0.35);
-  color: var(--cyan);
-  transform: translateX(2px);
+  background: var(--bg-3);
+  border-color: #484848;
+  color: var(--text-1);
+}
+
+.bg-grad-btn:active {
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
 }
 
 /* Масштаб холста */
 .zoom-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 3px;
+  gap: 2px;
+  background: var(--bg-input);
+  padding: 2px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
 }
 
 .zoom-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
   border: 1px solid transparent;
   background: transparent;
   display: grid;
   place-items: center;
   color: var(--text-2);
   transition: all var(--trans-fast);
+  cursor: pointer;
 }
 
 .zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-3);
   color: var(--text-1);
 }
 
@@ -1226,13 +1263,16 @@ input, select, textarea {
 .zoom-val {
   flex: 1;
   text-align: center;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-1);
+  font-family: inherit;
+  user-select: none;
 }
 
 /* ══════════════════════════════════════════════════════
-   ОБЛАСТЬ ХОЛСТА (COSMIC ARTBOARD STAGE)
+   ОБЛАСТЬ ХОЛСТА (FIGMA CANVAS BACKGROUND & DOT GRID)
+   Холст: #1e1e1e с легким точечным паттерном сетки
    ══════════════════════════════════════════════════════ */
 .ed-canvas-area {
   flex: 1;
@@ -1243,77 +1283,95 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   padding: 32px;
-  background-color: #060913;
-  background-image:
-    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    radial-gradient(circle at center, rgba(56, 189, 248, 0.03) 0%, transparent 60%);
-  background-size: 24px 24px, 100% 100%;
+  background-color: #1e1e1e;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+  background-position: 0 0;
   position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 .canvas-frame {
   flex-shrink: 0;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.10),
-    0 24px 70px rgba(0, 0, 0, 0.75),
-    0 4px 16px rgba(0, 0, 0, 0.50);
-  border-radius: 4px;
+    0 0 0 1px var(--border),
+    0 16px 48px rgba(0, 0, 0, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.40);
+  border-radius: 2px;
   position: relative;
-  transition: box-shadow var(--trans-smooth);
+  transition: box-shadow var(--trans-fast);
 }
 
 .canvas-frame canvas {
   display: block;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /* Плашка информации о формате холста */
 .canvas-info-badge,
 .canvas-format-badge {
-  margin-top: 14px;
+  margin-top: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  background: rgba(18, 24, 38, 0.75);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--hairline);
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   font-size: 11px;
-  color: var(--text-3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+  color: var(--text-2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   user-select: none;
 }
 
 .canvas-info-badge b,
 .canvas-format-badge b {
-  color: var(--cyan);
+  color: var(--figma-blue);
   font-weight: 600;
 }
 
 /* ══════════════════════════════════════════════════════
-   ПРАВАЯ ПАНЕЛЬ: СВОЙСТВА И СЛОИ (GLASS INSPECTOR)
+   ПРАВАЯ ПАНЕЛЬ: FIGMA DESIGN INSPECTOR (#2c2c2c)
    ══════════════════════════════════════════════════════ */
+.ed-panel.figma-inspector,
 .ed-panel {
   width: var(--panel-w);
   flex-shrink: 0;
-  background: rgba(11, 16, 30, 0.84);
-  backdrop-filter: var(--glass-blur-heavy);
-  -webkit-backdrop-filter: var(--glass-blur-heavy);
-  border-left: 1px solid var(--hairline);
+  background: var(--bg-2);
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 10;
+  z-index: 20;
 }
 
-/* Вкладки Свойства / Слои */
+/* Мобильный заголовок панели (скрыт на десктопе) */
+.mobile-panel-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-2);
+}
+
+.mobile-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+/* Вкладки [Design] [Layers] [Settings] в стиле Figma */
+.panel-tabs.figma-tabs,
 .panel-tabs {
   display: flex;
-  border-bottom: 1px solid var(--hairline);
+  height: 36px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  background: rgba(8, 12, 24, 0.4);
+  background: var(--bg-2);
 }
 
 .panel-tab {
@@ -1321,433 +1379,798 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px 10px;
+  gap: 4px;
+  padding: 0 8px;
+  height: 36px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-3);
   border-bottom: 2px solid transparent;
   transition: all var(--trans-fast);
   cursor: pointer;
+  user-select: none;
 }
 
 .panel-tab:hover {
   color: var(--text-2);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-3);
 }
 
 .panel-tab.is-active {
-  color: var(--cyan);
-  border-color: var(--cyan);
-  background: rgba(56, 189, 248, 0.05);
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  color: var(--text-1);
+  border-bottom-color: var(--figma-blue);
+  background: transparent;
+  font-weight: 600;
 }
 
 .panel-tab .material-symbols-rounded {
-  font-size: 16px !important;
+  font-size: 15px !important;
 }
 
-/* Содержимое вкладок */
+/* Содержимое вкладок инспектора */
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 14px;
+  overflow-x: hidden;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* Пустое состояние инспектора */
-.props-empty {
+/* ── Заголовки секций инспектора (11px uppercase) ── */
+.figma-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 8px 0 4px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 100%;
-  padding: 24px;
-  text-align: center;
-  color: var(--text-3);
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  user-select: none;
 }
 
-.props-empty .material-symbols-rounded {
-  font-size: 42px !important;
-  color: var(--text-3);
-  opacity: 0.6;
+.figma-section-title:first-child,
+.prop-section > .figma-section-title:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
-.props-empty p {
-  font-size: 12px;
-  line-height: 1.5;
+.figma-sub-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-3);
+  margin: 8px 0 4px;
+  user-select: none;
 }
 
-/* ── Секции настроек объекта ── */
+.figma-sublabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  display: block;
+  user-select: none;
+}
+
+/* Секция свойств */
 .prop-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.prop-group-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--hairline);
-  margin-bottom: 2px;
+/* Пустое состояние: свойства страницы / холста */
+.props-empty {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 4px 0;
 }
 
-.prop-label {
+.figma-canvas-info-card {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.figma-prop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.figma-prop-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+
+.figma-empty-hint {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+}
+
+.figma-empty-hint p {
+  color: var(--text-3);
+}
+
+/* ══════════════════════════════════════════════════════
+   1. СЕКЦИЯ: ALIGNMENT (ВЫРАВНИВАНИЕ FIGMA)
+   ══════════════════════════════════════════════════════ */
+.figma-align-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.figma-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.figma-icon-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.figma-icon-btn:active,
+.figma-icon-btn.is-active {
+  background: var(--figma-blue-tint);
+  color: var(--figma-blue);
+}
+
+.figma-icon-btn .material-symbols-rounded {
+  font-size: 17px !important;
+}
+
+.figma-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 1px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════
+   2. СЕКЦИЯ: DIMENSIONS (СЕТКА 2x2: X, Y, W, H, ∠, ⌜)
+   ══════════════════════════════════════════════════════ */
+.figma-dim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.figma-input-field {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+  gap: 6px;
+  transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
+}
+
+.figma-input-field:focus-within {
+  border-color: var(--figma-blue);
+  box-shadow: 0 0 0 1px var(--figma-blue);
+}
+
+.figma-input-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  font-family: -apple-system, BlinkMacSystemFont, monospace, sans-serif;
+  user-select: none;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.figma-input-sm {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-1);
   font-size: 11.5px;
+  font-weight: 500;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+
+.figma-input-sm::-webkit-inner-spin-button,
+.figma-input-sm::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.figma-input-display-val {
+  font-size: 11px;
+  color: var(--text-2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figma-input-display-val b {
+  color: var(--text-1);
   font-weight: 600;
+}
+
+/* Быстрые действия со слоем (Копия, Блок, Порядок, Удалить) */
+.figma-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.figma-quick-actions .pbtn {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 6px;
+  font-size: 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.figma-quick-actions .pbtn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: #484848;
+}
+
+.figma-quick-actions .pbtn:active {
+  border-color: var(--figma-blue);
+}
+
+.figma-quick-actions .pbtn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.pbtn-danger-icon {
+  color: #f87171 !important;
+}
+
+.pbtn-danger-icon:hover {
+  background: rgba(242, 72, 34, 0.15) !important;
+  border-color: var(--red) !important;
+  color: #ffffff !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   3. СЕКЦИЯ: TYPOGRAPHY (ТИПОГРАФИКА FIGMA)
+   ══════════════════════════════════════════════════════ */
+.figma-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-select.figma-select,
+.prop-select {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--trans-fast);
+}
+
+.prop-select.figma-select:focus,
+.prop-select:focus {
+  border-color: var(--figma-blue);
+  box-shadow: 0 0 0 1px var(--figma-blue);
+}
+
+.prop-select option {
+  background: var(--bg-2);
+  color: var(--text-1);
+  padding: 6px;
+}
+
+.figma-typo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.figma-input-field-half {
+  flex: 0 0 84px;
+}
+
+.figma-style-toggles {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.figma-style-toggles .pbtn {
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  width: 28px;
+  flex: 1;
+  font-size: 11.5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.figma-style-toggles .pbtn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.figma-style-toggles .pbtn.is-active {
+  background: var(--figma-blue-tint);
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
+  font-weight: 700;
+}
+
+.prop-btn-row {
+  display: flex;
+  gap: 4px;
+}
+
+.prop-btn-row .pbtn {
+  height: 28px;
+  min-height: 28px;
+  font-size: 11.5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.prop-btn-row .pbtn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.prop-btn-row .pbtn.is-active {
+  background: var(--figma-blue-tint);
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
+}
+
+.figma-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.figma-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.figma-slider-val {
+  font-size: 11px;
   color: var(--text-2);
 }
 
-.prop-label b,
-.prop-label span.prop-val {
-  color: var(--cyan);
-  font-weight: 700;
+.figma-slider-val b {
+  color: var(--text-1);
 }
 
-/* Стилизованный Range Slider */
+/* Range Slider в стиле Figma */
 .prop-range {
   width: 100%;
-  height: 5px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  outline: none;
   cursor: pointer;
   transition: background var(--trans-fast);
-}
-
-.prop-range:hover {
-  background: rgba(255, 255, 255, 0.14);
 }
 
 .prop-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--cyan);
+  background: #ffffff;
+  border: 2px solid var(--figma-blue);
   cursor: pointer;
-  border: 2px solid #FFFFFF;
-  box-shadow: 0 0 10px var(--cyan-glow-strong);
-  transition: transform var(--trans-fast), box-shadow var(--trans-fast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform var(--trans-fast);
 }
 
 .prop-range::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 16px var(--cyan);
+  transform: scale(1.25);
 }
 
 .prop-range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--cyan);
-  border: 2px solid #FFFFFF;
-  box-shadow: 0 0 10px var(--cyan-glow-strong);
+  background: #ffffff;
+  border: 2px solid var(--figma-blue);
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-/* Стилизованный Select для шрифтов */
-.prop-select {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--bg-input);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  color: var(--text-1);
-  outline: none;
-  cursor: pointer;
-  font-size: 12px;
-  transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
-}
-
-/* Фикс: шрифт выбранного элемента НЕ должен менять UI-интерфейс.
-   Явно фиксируем шрифт селектора шрифтов. */
-#font-family-select {
-  font-family: 'Montserrat', system-ui, sans-serif !important;
-}
-
-.prop-select:focus {
-  border-color: var(--cyan);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
-}
-
-.prop-select option {
-  background: #0f172a;
-  color: #F8FAFC;
-  padding: 8px;
-}
-
-/* Кнопки свойств (Жирный, Курсив, Выравнивание) */
-.prop-btn-row {
+/* ══════════════════════════════════════════════════════
+   4. СЕКЦИИ: FILL & STROKE & EFFECTS
+   ══════════════════════════════════════════════════════ */
+.figma-fill-row {
   display: flex;
-  gap: 6px;
-}
-
-.pbtn {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-2);
+  gap: 6px;
+  height: 28px;
+}
+
+.figma-color-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
   cursor: pointer;
-  flex: 1;
-  transition: all var(--trans-fast);
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.pbtn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.figma-color-chip input[type="color"] {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.figma-hex-val {
+  width: 76px;
+  height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   color: var(--text-1);
-  border-color: var(--hairline-strong);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+  font-family: inherit;
+  transition: border-color var(--trans-fast);
 }
 
-.pbtn:active {
-  transform: scale(0.96);
+.figma-hex-val:focus {
+  border-color: var(--figma-blue);
+  box-shadow: 0 0 0 1px var(--figma-blue);
 }
 
-.pbtn.is-active {
-  background: rgba(56, 189, 248, 0.18);
-  color: #FFFFFF;
-  border-color: var(--cyan);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+.figma-opacity-wrap {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-2);
+  user-select: none;
 }
 
-.pbtn-wide {
-  flex-direction: column;
-  gap: 3px;
-  min-height: 48px;
-  font-size: 10px;
+.figma-opacity-val b {
+  color: var(--text-1);
   font-weight: 600;
 }
 
-.pbtn-wide .material-symbols-rounded {
-  font-size: 18px !important;
-  color: var(--cyan);
+.figma-stroke-input-field {
+  width: 68px;
+  flex-shrink: 0;
 }
 
-.pbtn-danger {
-  width: 100%;
-  margin-top: 6px;
-  color: #FCA5A5;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.pbtn-danger:hover {
-  background: rgba(239, 68, 68, 0.20);
-  border-color: var(--red);
-  color: #FFFFFF;
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
-}
-
-.pbtn-sm {
-  min-height: 28px;
-  padding: 0 8px;
-  font-size: 11px;
-}
-
-/* Цветовые свотчи */
-.color-row {
+.figma-palette-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .cswatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid transparent;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: transform var(--trans-fast), border-color var(--trans-fast), box-shadow var(--trans-fast);
+  transition: transform var(--trans-fast), border-color var(--trans-fast);
+  flex-shrink: 0;
 }
 
 .cswatch:hover {
-  transform: scale(1.22);
+  transform: scale(1.2);
+  border-color: #ffffff;
   z-index: 2;
 }
 
 .cswatch.is-active {
-  border-color: #FFFFFF !important;
-  transform: scale(1.12);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1.5px var(--figma-blue);
+  transform: scale(1.1);
 }
 
 .color-picker {
   width: 100%;
-  height: 34px;
+  height: 28px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   background: var(--bg-input);
-  padding: 3px;
+  padding: 2px;
   cursor: pointer;
-  transition: border-color var(--trans-fast);
 }
 
-.color-picker:hover {
-  border-color: var(--hairline-strong);
-}
-
-/* ══════════════════════════════════════════════════════
-   РАСШИРЕННЫЙ ИНСПЕКТОР СВОЙСТВ (GLOW, SHADOW, RADIUS, TRACKING)
-   ══════════════════════════════════════════════════════ */
-.prop-subgroup {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Переключатель свечения / тени (Glow & Shadow) */
-.glow-toggle-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.glow-toggle-btn,
-.glow-btn {
+/* Glow / Shadow переключатели и опции */
+.glow-btn,
+.toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-2);
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.04);
+  padding: 0 8px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   transition: all var(--trans-fast);
   cursor: pointer;
+  width: 100%;
 }
 
-.glow-toggle-btn:hover,
-.glow-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.glow-btn:hover,
+.toggle-btn:hover {
+  background: var(--bg-3);
   color: var(--text-1);
 }
 
-.glow-toggle-btn.is-active,
-.glow-btn.is-active {
-  background: rgba(56, 189, 248, 0.18);
-  border-color: var(--cyan);
-  color: #FFFFFF;
-  box-shadow: 0 0 12px var(--cyan-glow);
+.glow-btn.is-active,
+.toggle-btn.is-active {
+  background: var(--figma-blue-tint);
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
+  font-weight: 600;
 }
 
-/* Контролы регистра текста (Uppercase) */
-.case-btn,
-.btn-case,
-#btn-uppercase {
-  font-family: 'Unbounded', sans-serif;
-  font-size: 11px;
-}
-
-/* Контролы дублирования и отражения */
-#btn-flip-x, #btn-flip-y, #btn-duplicate {
-  font-size: 11px;
+.glow-options {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 /* ══════════════════════════════════════════════════════
-   ПАНЕЛЬ СЛОЁВ (GLASS LAYERS LIST & DRAG-AND-DROP)
+   6. СЕКЦИЯ: EXPORT (ЭКСПОРТ FIGMA)
+   ══════════════════════════════════════════════════════ */
+.figma-export-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.figma-export-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.figma-preset-btn {
+  height: 26px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  user-select: none;
+}
+
+.figma-preset-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: #484848;
+}
+
+.figma-preset-btn.is-active {
+  background: var(--figma-blue-tint);
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
+}
+
+.figma-main-export-btn {
+  width: 100%;
+  height: 32px;
+  background: var(--figma-blue);
+  border: 1px solid var(--figma-blue);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  user-select: none;
+}
+
+.figma-main-export-btn:hover {
+  background: var(--figma-blue-hover);
+  border-color: var(--figma-blue-hover);
+}
+
+.figma-main-export-btn:active {
+  background: var(--figma-blue-active);
+  transform: scale(0.98);
+}
+
+.figma-main-export-btn .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   ВКЛАДКА: LAYERS (ИЕРАРХИЧЕСКОЕ ДЕРЕВО СЛОЕВ FIGMA)
    ══════════════════════════════════════════════════════ */
 .layers-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 2px 8px;
+  padding: 2px 0 6px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 
 .layers-hint {
-  font-size: 10.5px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-3);
 }
 
+.figma-layers-tree,
 .layers-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .layers-empty {
   text-align: center;
-  padding: 32px 14px;
-  font-size: 12px;
+  padding: 24px 12px;
+  font-size: 11.5px;
   color: var(--text-3);
   line-height: 1.5;
 }
 
-/* ── Строка слоя ── */
+/* ── Строка слоя в стиле Figma ── */
 .layer-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.02);
-  cursor: grab;
-  transition: background var(--trans-fast), border-color var(--trans-fast), opacity var(--trans-fast), transform var(--trans-fast);
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--trans-fast);
   user-select: none;
   position: relative;
 }
 
-.layer-row:active {
-  cursor: grabbing;
-}
-
 .layer-row:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--hairline-strong);
+  background: var(--bg-3);
+  color: var(--text-1);
 }
 
-/* Выделенный активный слой */
+/* Выделенный активный слой (Figma Blue) */
 .layer-row.is-active {
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.12);
+  background: var(--figma-blue) !important;
+  color: #ffffff !important;
+  border-color: var(--figma-blue) !important;
 }
 
-.layer-row.is-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 4px;
-  bottom: 4px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan);
+.layer-row.is-active .layer-name {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.layer-row.is-active .material-symbols-rounded {
+  color: #ffffff !important;
+}
+
+.layer-row.is-active .layer-drag-handle {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.layer-row.is-active .layer-action-btn {
+  color: #ffffff !important;
 }
 
 .layer-row.is-hidden {
@@ -1756,52 +2179,49 @@ input, select, textarea {
 
 .layer-row.is-locked {
   opacity: 0.65;
-  background: rgba(251, 191, 36, 0.04);
 }
 
-/* ── Drag-and-Drop визуальные эффекты подсветки ── */
+/* Drag-and-drop подсветка */
 .layer-row.is-dragging {
-  opacity: 0.30;
-  transform: scale(0.97);
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px dashed var(--cyan);
+  opacity: 0.35;
+  background: var(--figma-blue-tint);
+  border: 1px dashed var(--figma-blue);
 }
 
 .layer-row.drag-over-top {
-  border-top: 2px solid var(--cyan) !important;
-  box-shadow: 0 -4px 14px rgba(56, 189, 248, 0.50);
+  border-top: 2px solid var(--figma-blue) !important;
 }
 
 .layer-row.drag-over-bottom {
-  border-bottom: 2px solid var(--cyan) !important;
-  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.50);
+  border-bottom: 2px solid var(--figma-blue) !important;
 }
 
 .layer-drag-handle {
-  font-size: 15px !important;
+  font-size: 14px !important;
   color: var(--text-3);
   cursor: grab;
-  padding: 0 1px;
   flex-shrink: 0;
-  transition: color var(--trans-fast);
 }
 
 .layer-row:hover .layer-drag-handle {
   color: var(--text-2);
 }
 
-/* Мини-превью слоя (Thumbnail) */
 .layer-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid var(--hairline);
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.layer-row.is-active .layer-thumb {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .layer-thumb-img {
@@ -1812,23 +2232,18 @@ input, select, textarea {
 }
 
 .layer-thumb .material-symbols-rounded {
-  font-size: 15px !important;
+  font-size: 13px !important;
 }
 
 .layer-name {
   flex: 1;
   min-width: 0;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.layer-row.is-active .layer-name {
-  color: #FFFFFF;
-  font-weight: 700;
 }
 
 .layer-actions {
@@ -1838,9 +2253,9 @@ input, select, textarea {
 }
 
 .layer-action-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
   display: grid;
   place-items: center;
   color: var(--text-3);
@@ -1848,24 +2263,28 @@ input, select, textarea {
 }
 
 .layer-action-btn .material-symbols-rounded {
-  font-size: 15px !important;
+  font-size: 14px !important;
 }
 
 .layer-action-btn:hover {
   color: var(--text-1);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .layer-action-btn.is-off {
-  color: var(--text-3);
   opacity: 0.35;
+  color: var(--text-3);
 }
 
 .layer-action-btn[data-action="lock"]:not(.is-off) {
   color: var(--gold);
 }
 
-/* Стрелки порядка (Order Buttons) */
+.layer-row:not(:hover):not(.is-active) .layer-actions {
+  opacity: 0.5;
+}
+
+/* Стрелки порядка */
 .layer-order-btns {
   display: flex;
   flex-direction: column;
@@ -1874,22 +2293,84 @@ input, select, textarea {
 }
 
 .layer-order-btn {
-  width: 18px;
-  height: 12px;
+  width: 16px;
+  height: 10px;
   display: grid;
   place-items: center;
   color: var(--text-3);
-  border-radius: 3px;
+  border-radius: 2px;
   transition: all var(--trans-fast);
 }
 
 .layer-order-btn .material-symbols-rounded {
-  font-size: 12px !important;
+  font-size: 11px !important;
 }
 
 .layer-order-btn:hover {
   color: var(--text-1);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ══════════════════════════════════════════════════════
+   ВКЛАДКА: SETTINGS (НАСТРОЙКИ ХОЛСТА И ПРОЕКТА)
+   ══════════════════════════════════════════════════════ */
+.figma-settings-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.figma-settings-btn {
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.figma-settings-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: #484848;
+}
+
+.figma-settings-btn:active {
+  border-color: var(--figma-blue);
+  color: var(--figma-blue);
+}
+
+.figma-project-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.figma-project-actions .pbtn {
+  height: 28px;
+  font-size: 11.5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.figma-project-actions .pbtn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: #484848;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2322,9 +2803,9 @@ input, select, textarea {
   }
   .hbtn-mobile-panel {
     display: inline-flex;
-    background: rgba(56, 189, 248, 0.12);
-    border-color: rgba(56, 189, 248, 0.35);
-    color: var(--cyan);
+    background: var(--figma-blue-tint);
+    border-color: rgba(13, 153, 255, 0.4);
+    color: var(--figma-blue);
   }
 
   /* Раскладка экрана редактора */
@@ -2344,7 +2825,7 @@ input, select, textarea {
     touch-action: none;
   }
 
-  /* ── Мобильная шторка свойств и слоев (Bottom Sheet) ── */
+  /* ── Мобильная шторка свойств и слоев (Bottom Sheet Figma) ── */
   .ed-panel {
     display: flex;
     position: fixed;
@@ -2355,13 +2836,11 @@ input, select, textarea {
     height: 64dvh;
     width: 100% !important;
     z-index: 200;
-    background: rgba(11, 16, 30, 0.95);
-    backdrop-filter: var(--glass-blur-heavy);
-    -webkit-backdrop-filter: var(--glass-blur-heavy);
-    border-top: 2px solid var(--cyan);
+    background: var(--bg-2);
+    border-top: 2px solid var(--figma-blue);
     border-left: none;
-    border-radius: 20px 20px 0 0;
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(56, 189, 248, 0.2);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.75);
     transform: translateY(115%);
     transition: transform 280ms var(--ease);
   }
@@ -2376,6 +2855,10 @@ input, select, textarea {
     border-radius: 999px;
     margin: 8px auto 2px;
     flex-shrink: 0;
+  }
+
+  .mobile-panel-header {
+    display: flex !important;
   }
 
   .ed-panel.is-mobile-open {

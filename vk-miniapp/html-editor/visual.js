@@ -6,25 +6,92 @@
 // ─── Block Palette ────────────────────────────────────────────
 export const BLOCK_PALETTE = [
   // Layout
+  { cat: 'layout', id: 'row-container', icon: 'splitscreen', label: 'Строка (2 слота)',
+    html: `<div class="ve-row-container">
+  <div class="ve-col-slot" data-ve-slot="true" style="flex:1 1 calc(50% - 8px);"></div>
+  <div class="ve-col-slot" data-ve-slot="true" style="flex:1 1 calc(50% - 8px);"></div>
+</div>` },
+  { cat: 'layout', id: 'row-container-3', icon: 'view_week', label: 'Строка (3 слота)',
+    html: `<div class="ve-row-container">
+  <div class="ve-col-slot" data-ve-slot="true" style="flex:1 1 calc(33.333% - 11px);"></div>
+  <div class="ve-col-slot" data-ve-slot="true" style="flex:1 1 calc(33.333% - 11px);"></div>
+  <div class="ve-col-slot" data-ve-slot="true" style="flex:1 1 calc(33.333% - 11px);"></div>
+</div>` },
+  { cat: 'layout', id: 'row-flex', icon: 'view_agenda', label: 'Flex-ряд (адаптивный)',
+    html: `<div class="ve-row-flex" style="display:flex;gap:16px;flex-wrap:wrap;width:100%;box-sizing:border-box;align-items:stretch;justify-content:flex-start;">
+  <div class="ve-col" data-ve-slot="true" style="flex:1 1 calc(50% - 8px);min-width:240px;padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;">
+    <p class="ve-col-placeholder">Колонка 1 (50%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="flex:1 1 calc(50% - 8px);min-width:240px;padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;">
+    <p class="ve-col-placeholder">Колонка 2 (50%)</p>
+  </div>
+</div>` },
+  { cat: 'layout', id: 'row-2col', icon: 'view_column', label: '2 колонки (50/50)',
+    html: `<div class="ve-row-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;box-sizing:border-box;">
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 1 (50%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 2 (50%)</p>
+  </div>
+</div>` },
+  { cat: 'layout', id: 'row-3col', icon: 'grid_on', label: '3 колонки (33%)',
+    html: `<div class="ve-row-3col" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;box-sizing:border-box;">
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 1 (33%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 2 (33%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 3 (33%)</p>
+  </div>
+</div>` },
+  { cat: 'layout', id: 'row-asym-left', icon: 'vertical_split', label: 'Контент + Сайдбар (70/30)',
+    html: `<div class="ve-row-asym-left" style="display:grid;grid-template-columns:7fr 3fr;gap:20px;width:100%;box-sizing:border-box;">
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:100px;">
+    <p class="ve-col-placeholder">Основной контент (70%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f1f5f9;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:100px;">
+    <p class="ve-col-placeholder">Сайдбар (30%)</p>
+  </div>
+</div>` },
+  { cat: 'layout', id: 'row-asym-right', icon: 'vertical_split', label: 'Сайдбар + Контент (30/70)',
+    html: `<div class="ve-row-asym-right" style="display:grid;grid-template-columns:3fr 7fr;gap:20px;width:100%;box-sizing:border-box;">
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f1f5f9;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:100px;">
+    <p class="ve-col-placeholder">Сайдбар (30%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:100px;">
+    <p class="ve-col-placeholder">Основной контент (70%)</p>
+  </div>
+</div>` },
+  { cat: 'layout', id: 'row-4col', icon: 'grid_view', label: '4 колонки (25%)',
+    html: `<div class="ve-row-4col" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:16px;width:100%;box-sizing:border-box;">
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 1 (25%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 2 (25%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 3 (25%)</p>
+  </div>
+  <div class="ve-col" data-ve-slot="true" style="padding:16px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;box-sizing:border-box;min-height:80px;">
+    <p class="ve-col-placeholder">Колонка 4 (25%)</p>
+  </div>
+</div>` },
   { cat: 'layout', id: 'container', icon: 'crop_free', label: 'Контейнер',
     html: `<div class="ve-container" style="max-width:1100px;width:100%;margin:0 auto;padding:24px 16px;box-sizing:border-box;">
-  <!-- Ваш контент -->
+  <div class="ve-col" data-ve-slot="true" style="min-height:80px;border:1.5px dashed #cbd5e1;border-radius:8px;padding:16px;box-sizing:border-box;">
+    <p class="ve-col-placeholder">Контейнер — перетащите сюда блоки</p>
+  </div>
 </div>` },
   { cat: 'layout', id: 'section', icon: 'view_agenda', label: 'Секция',
     html: `<section class="ve-section" style="padding:clamp(32px, 6vw, 60px) 16px;background:#f8f9fa;width:100%;box-sizing:border-box;">
-  <div style="max-width:1100px;width:100%;margin:0 auto;box-sizing:border-box;"><!-- Секция --></div>
+  <div class="ve-col" data-ve-slot="true" style="max-width:1100px;width:100%;margin:0 auto;min-height:80px;border:1.5px dashed #cbd5e1;border-radius:8px;padding:16px;box-sizing:border-box;">
+    <p class="ve-col-placeholder">Секция — перетащите сюда блоки</p>
+  </div>
 </section>` },
-  { cat: 'layout', id: 'row2', icon: 'view_column', label: '2 колонки',
-    html: `<div class="ve-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:20px;padding:16px;width:100%;box-sizing:border-box;">
-  <div style="padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">Колонка 1</div>
-  <div style="padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">Колонка 2</div>
-</div>` },
-  { cat: 'layout', id: 'row3', icon: 'grid_on', label: '3 колонки',
-    html: `<div class="ve-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;padding:16px;width:100%;box-sizing:border-box;">
-  <div style="padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">Колонка 1</div>
-  <div style="padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">Колонка 2</div>
-  <div style="padding:16px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">Колонка 3</div>
-</div>` },
   { cat: 'layout', id: 'spacer', icon: 'height', label: 'Отступ',
     html: `<div class="ve-spacer" style="height:48px;width:100%;"></div>` },
   { cat: 'layout', id: 'divider', icon: 'horizontal_rule', label: 'Разделитель',
@@ -317,9 +384,20 @@ export class VisualEditor {
     canvas.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = this._paletteId ? 'copy' : 'move';
-      const target = this._getDropTarget(e.target);
+      const dropInfo = this._calculateDropTargetAndZone(e);
       this._clearDropHighlight();
-      if (target && target !== canvas) target.classList.add('ve-drop-before');
+      if (dropInfo && dropInfo.target && dropInfo.target !== canvas) {
+        if (dropInfo.zone === 'left') dropInfo.target.classList.add('ve-drop-left');
+        else if (dropInfo.zone === 'right') dropInfo.target.classList.add('ve-drop-right');
+        else if (dropInfo.zone === 'inside') dropInfo.target.classList.add('ve-drop-inside');
+        else if (dropInfo.zone === 'before') {
+          dropInfo.target.classList.add('ve-drop-before');
+          dropInfo.target.classList.add('ve-drop-top');
+        } else if (dropInfo.zone === 'after') {
+          dropInfo.target.classList.add('ve-drop-after');
+          dropInfo.target.classList.add('ve-drop-bottom');
+        }
+      }
     });
 
     canvas.addEventListener('dragleave', e => {
@@ -328,25 +406,42 @@ export class VisualEditor {
 
     canvas.addEventListener('drop', e => {
       e.preventDefault();
+      const dropInfo = this._calculateDropTargetAndZone(e);
       this._clearDropHighlight();
-      const dropTarget = this._getDropTarget(e.target);
 
+      let blockToInsert = null;
       if (this._paletteId) {
-        // From palette
         const def = BLOCK_PALETTE.find(b => b.id === this._paletteId);
-        if (def) this._insertBlock(def, dropTarget);
+        if (def) {
+          blockToInsert = this._createBlockElement(def);
+        }
         this._paletteId = null;
       } else if (this._dragSrc) {
-        // Reorder within canvas
-        const el = this._dragSrc;
-        if (dropTarget && dropTarget !== el) {
-          canvas.insertBefore(el, dropTarget);
-        } else if (!dropTarget) {
-          canvas.appendChild(el);
-        }
-        this._saveHistory();
+        blockToInsert = this._dragSrc;
         this._dragSrc = null;
       }
+
+      if (!blockToInsert) return;
+
+      if (!dropInfo || dropInfo.zone === 'canvas') {
+        const empty = canvas.querySelector('.ve-empty-state');
+        if (empty) canvas.insertBefore(blockToInsert, empty);
+        else canvas.appendChild(blockToInsert);
+      } else if (dropInfo.zone === 'inside') {
+        const col = dropInfo.target;
+        col.querySelectorAll('.ve-col-placeholder').forEach(p => p.remove());
+        col.appendChild(blockToInsert);
+      } else if (dropInfo.zone === 'before') {
+        dropInfo.target.parentNode.insertBefore(blockToInsert, dropInfo.target);
+      } else if (dropInfo.zone === 'after') {
+        dropInfo.target.parentNode.insertBefore(blockToInsert, dropInfo.target.nextSibling);
+      } else if (dropInfo.zone === 'left' || dropInfo.zone === 'right') {
+        this._handleSideDrop(blockToInsert, dropInfo.target, dropInfo.zone);
+      }
+
+      this._updateEmptyState();
+      this._select(blockToInsert);
+      this._saveHistory();
     });
 
     // Click outside → deselect
@@ -355,26 +450,207 @@ export class VisualEditor {
     });
   }
 
+  _calculateDropTargetAndZone(e) {
+    const canvas = this.canvasEl;
+    if (e.target.closest('.ve-resize-handle') || e.target.closest('.ve-resize-badge') || e.target.closest('.ve-block-toolbar')) {
+      return null;
+    }
+
+    const colSlot = e.target.closest('.ve-col, .ve-col-slot, [data-ve-slot="true"]');
+    const block = e.target.closest('.ve-block');
+
+    if (this._dragSrc) {
+      if (block === this._dragSrc) return null;
+      if (block && this._dragSrc.contains(block)) return null;
+      if (colSlot && this._dragSrc.contains(colSlot)) return null;
+    }
+
+    if (block && canvas.contains(block)) {
+      if (colSlot && block.contains(colSlot) && !colSlot.contains(block)) {
+        const childBlock = e.target.closest('.ve-block');
+        if (childBlock && childBlock !== block && colSlot.contains(childBlock)) {
+          return this._calcBlockZone(childBlock, e);
+        }
+        return { target: colSlot, zone: 'inside', block: null, colSlot };
+      }
+
+      if (colSlot && !colSlot.querySelector('.ve-block')) {
+        return { target: colSlot, zone: 'inside', block: null, colSlot };
+      }
+
+      return this._calcBlockZone(block, e);
+    }
+
+    if (colSlot && canvas.contains(colSlot)) {
+      return { target: colSlot, zone: 'inside', block: null, colSlot };
+    }
+
+    return { target: canvas, zone: 'canvas', block: null, colSlot: null };
+  }
+
+  _calcBlockZone(block, e) {
+    const rect = block.getBoundingClientRect();
+    const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / (rect.width || 1)));
+    const relY = Math.max(0, Math.min(1, (e.clientY - rect.top) / (rect.height || 1)));
+
+    const isContainer = block.querySelector('.ve-col, .ve-col-slot, .ve-row-container, .ve-row-flex, .ve-row-2col, .ve-row-3col, .ve-row-4col, .ve-container, .ve-section');
+    if (isContainer && relX >= 0.25 && relX <= 0.75 && relY >= 0.25 && relY <= 0.75) {
+      const col = block.querySelector('.ve-col, .ve-col-slot') || block;
+      return { target: col, zone: 'inside', block, colSlot: col };
+    }
+
+    if (relX < 0.25) {
+      return { target: block, zone: 'left', block, colSlot: null };
+    }
+    if (relX > 0.75) {
+      return { target: block, zone: 'right', block, colSlot: null };
+    }
+    if (relY < 0.5) {
+      return { target: block, zone: 'before', block, colSlot: null };
+    }
+    return { target: block, zone: 'after', block, colSlot: null };
+  }
+
+  _handleSideDrop(newBlock, targetBlock, side) {
+    const parent = targetBlock.parentNode;
+    const isParentFlex = parent && parent !== this.canvasEl && (
+      parent.classList.contains('ve-row-container') ||
+      parent.classList.contains('ve-row-flex') ||
+      parent.classList.contains('ve-col') ||
+      parent.classList.contains('ve-col-slot') ||
+      (parent.style && parent.style.display === 'flex')
+    );
+
+    if (isParentFlex || parent === this.canvasEl) {
+      if (side === 'left') {
+        parent.insertBefore(newBlock, targetBlock);
+      } else {
+        parent.insertBefore(newBlock, targetBlock.nextSibling);
+      }
+
+      const siblingBlocks = Array.from(parent.children).filter(c => c.classList && c.classList.contains('ve-block'));
+      if (siblingBlocks.length === 2) {
+        this.setBlockWidth(siblingBlocks[0], '50');
+        this.setBlockWidth(siblingBlocks[1], '50');
+      } else if (siblingBlocks.length === 3) {
+        siblingBlocks.forEach(b => this.setBlockWidth(b, '33'));
+      } else if (siblingBlocks.length >= 4) {
+        siblingBlocks.forEach(b => this.setBlockWidth(b, '25'));
+      } else {
+        this.setBlockWidth(targetBlock, '50');
+        this.setBlockWidth(newBlock, '50');
+      }
+    } else {
+      const rowDef = BLOCK_PALETTE.find(b => b.id === 'row-container') || BLOCK_PALETTE.find(b => b.id === 'row-flex') || {
+        id: 'row-container',
+        label: 'Контейнер строк',
+        icon: 'splitscreen'
+      };
+
+      const rowBlock = this._createBlockElement(rowDef);
+      const rowFlex = rowBlock.querySelector('.ve-row-container') || rowBlock.querySelector('.ve-row-flex') || rowBlock.querySelector('.ve-block-content');
+      rowFlex.innerHTML = '';
+
+      this.setBlockWidth(targetBlock, '50');
+      this.setBlockWidth(newBlock, '50');
+
+      parent.insertBefore(rowBlock, targetBlock);
+
+      if (side === 'left') {
+        rowFlex.appendChild(newBlock);
+        rowFlex.appendChild(targetBlock);
+      } else {
+        rowFlex.appendChild(targetBlock);
+        rowFlex.appendChild(newBlock);
+      }
+    }
+  }
+
   _getDropTarget(el) {
-    // Walk up to find a direct child of canvas
     while (el && el.parentElement !== this.canvasEl) el = el.parentElement;
     return el;
   }
 
   _clearDropHighlight() {
-    this.canvasEl.querySelectorAll('.ve-drop-before').forEach(el => el.classList.remove('ve-drop-before'));
+    this.canvasEl.querySelectorAll('.ve-drop-before, .ve-drop-after, .ve-drop-top, .ve-drop-bottom, .ve-drop-left, .ve-drop-right, .ve-drop-inside').forEach(el => {
+      el.classList.remove('ve-drop-before', 've-drop-after', 've-drop-top', 've-drop-bottom', 've-drop-left', 've-drop-right', 've-drop-inside');
+    });
   }
 
-  // ── INSERT BLOCK ───────────────────────────────────────────
-  _insertBlock(def, beforeEl = null) {
+  // ── BLOCK CREATION & WIDTH ────────────────────────────────
+  setBlockWidth(wrapper, width) {
+    if (!wrapper) return;
+    let normWidth = '100';
+    if (width === '50%' || width === '50') normWidth = '50';
+    else if (width === '33.33%' || width === '33%' || width === '33') normWidth = '33';
+    else if (width === '25%' || width === '25') normWidth = '25';
+    else if (width === 'auto') normWidth = 'auto';
+
+    wrapper.dataset.width = normWidth;
+    wrapper.dataset.blockWidth = width;
+
+    // Reset inline overrides so CSS rules (.ve-block[data-width="..."]) control width
+    wrapper.style.width = '';
+    wrapper.style.maxWidth = '';
+    wrapper.style.flex = '';
+
+    const content = wrapper.querySelector('.ve-block-content');
+    const target = content ? (content.firstElementChild || content) : null;
+    if (target && target !== content) {
+      target.style.width = '';
+      target.style.maxWidth = '';
+    }
+
+    wrapper.querySelectorAll('.ve-w-btn').forEach(b => {
+      const bW = b.dataset.w || b.dataset.widthVal;
+      b.classList.toggle('is-active', bW === normWidth || bW === width);
+    });
+
+    if (this.selectedBlock === wrapper) {
+      this.propsEl.querySelectorAll('#ve-block-width button').forEach(b => {
+        const bW = b.dataset.w || b.dataset.widthVal;
+        b.classList.toggle('is-active', bW === normWidth || bW === width);
+      });
+    }
+
+    this._saveHistory();
+  }
+
+  _findRowContainer(wrapper) {
+    if (!wrapper) return null;
+    const content = wrapper.querySelector('.ve-block-content');
+    if (content) {
+      const innerRow = content.querySelector('.ve-row-flex, .ve-row-2col, .ve-row-3col, .ve-row-4col, .ve-row-asym-left, .ve-row-asym-right, .ve-row, [style*="display: flex"], [style*="display:flex"], [style*="display: grid"], [style*="display:grid"]');
+      if (innerRow) return innerRow;
+      if (content.firstElementChild && (content.firstElementChild.style.display === 'flex' || content.firstElementChild.style.display === 'grid')) {
+        return content.firstElementChild;
+      }
+    }
+    const parentRow = wrapper.closest('.ve-row-flex, .ve-row-2col, .ve-row-3col, .ve-row-4col, .ve-row-asym-left, .ve-row-asym-right, .ve-row');
+    if (parentRow) return parentRow;
+    if (wrapper.parentElement && (wrapper.parentElement.style.display === 'flex' || wrapper.parentElement.style.display === 'grid')) {
+      return wrapper.parentElement;
+    }
+    return null;
+  }
+
+  _createBlockElement(def) {
     const wrapper = document.createElement('div');
     wrapper.className = 've-block';
     wrapper.dataset.defId = def.id;
+    wrapper.dataset.width = '100';
+    wrapper.dataset.blockWidth = '100%';
     wrapper.setAttribute('draggable', 'true');
     wrapper.innerHTML = `
       <div class="ve-block-toolbar">
         <span class="material-symbols-rounded ve-drag-handle" title="Перетащить">drag_indicator</span>
-        <span class="ve-block-label">${def.label}</span>
+        <span class="ve-block-label">${def.label || 'Блок'}</span>
+        <div class="ve-width-group" title="Ширина блока">
+          <button type="button" class="ve-w-btn is-active" data-w="100" data-width-val="100" title="100% (Вся строка)">100%</button>
+          <button type="button" class="ve-w-btn" data-w="50" data-width-val="50" title="50% (1/2 строки)">50%</button>
+          <button type="button" class="ve-w-btn" data-w="33" data-width-val="33" title="33% (1/3 строки)">33%</button>
+          <button type="button" class="ve-w-btn" data-w="auto" data-width-val="auto" title="Auto (По контенту)">Auto</button>
+        </div>
         <div class="ve-block-actions">
           <button class="ve-act-btn" data-action="up" title="Вверх"><span class="material-symbols-rounded">keyboard_arrow_up</span></button>
           <button class="ve-act-btn" data-action="down" title="Вниз"><span class="material-symbols-rounded">keyboard_arrow_down</span></button>
@@ -389,30 +665,49 @@ export class VisualEditor {
       <div class="ve-resize-badge"></div>`;
 
     this._bindBlockEvents(wrapper, def);
+    return wrapper;
+  }
 
-    if (beforeEl) {
-      this.canvasEl.insertBefore(wrapper, beforeEl);
+  // ── INSERT BLOCK ───────────────────────────────────────────
+  _insertBlock(def, beforeEl = null, targetParent = null) {
+    const wrapper = this._createBlockElement(def);
+    const container = targetParent || this.canvasEl;
+
+    if (beforeEl && beforeEl.parentNode === container) {
+      container.insertBefore(wrapper, beforeEl);
     } else {
-      // Find the empty state placeholder and insert before it or append
-      const empty = this.canvasEl.querySelector('.ve-empty-state');
+      const empty = container.querySelector('.ve-empty-state');
       if (empty) {
-        this.canvasEl.insertBefore(wrapper, empty);
+        container.insertBefore(wrapper, empty);
       } else {
-        this.canvasEl.appendChild(wrapper);
+        container.appendChild(wrapper);
       }
+    }
+
+    if (container.classList && container.classList.contains('ve-col')) {
+      container.querySelectorAll('.ve-col-placeholder').forEach(p => p.remove());
     }
 
     this._updateEmptyState();
     this._select(wrapper, def);
     this._saveHistory();
+    return wrapper;
   }
 
   _bindBlockEvents(wrapper, def) {
     // Select on click
     wrapper.addEventListener('click', e => {
-      if (e.target.closest('.ve-act-btn') || e.target.closest('.ve-resize-handle')) return;
+      if (e.target.closest('.ve-act-btn') || e.target.closest('.ve-resize-handle') || e.target.closest('.ve-w-btn')) return;
       e.stopPropagation();
       this._select(wrapper, def);
+    });
+
+    // Toolbar width buttons
+    wrapper.querySelectorAll('.ve-w-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.setBlockWidth(wrapper, btn.dataset.w || btn.dataset.widthVal);
+      });
     });
 
     // Drag from canvas (reorder)
@@ -437,29 +732,55 @@ export class VisualEditor {
       const btn = e.target.closest('.ve-act-btn');
       if (!btn) return;
       const action = btn.dataset.action;
-      const canvas = this.canvasEl;
+      const parent = wrapper.parentNode;
 
       if (action === 'delete') {
         if (this.selectedBlock === wrapper) this._deselect();
+        const oldParent = wrapper.parentNode;
         wrapper.remove();
+        if (oldParent && oldParent.classList && oldParent.classList.contains('ve-col')) {
+          if (!oldParent.querySelector('.ve-block')) {
+            const ph = document.createElement('p');
+            ph.className = 've-col-placeholder';
+            ph.textContent = 'Колонка (пусто)';
+            oldParent.appendChild(ph);
+          }
+        } else if (oldParent && oldParent.classList && oldParent.classList.contains('ve-row-flex')) {
+          const remaining = oldParent.querySelectorAll('.ve-block');
+          if (remaining.length === 0) {
+            const rowWrapper = oldParent.closest('.ve-block');
+            if (rowWrapper) rowWrapper.remove();
+          } else if (remaining.length === 1) {
+            this.setBlockWidth(remaining[0], '100%');
+          }
+        }
         this._updateEmptyState();
         this._saveHistory();
       } else if (action === 'up') {
         const prev = wrapper.previousElementSibling;
         if (prev && !prev.classList.contains('ve-empty-state')) {
-          canvas.insertBefore(wrapper, prev);
+          parent.insertBefore(wrapper, prev);
           this._saveHistory();
         }
       } else if (action === 'down') {
         const next = wrapper.nextElementSibling;
         if (next && !next.classList.contains('ve-empty-state')) {
-          canvas.insertBefore(next, wrapper);
+          parent.insertBefore(next, wrapper);
           this._saveHistory();
         }
       } else if (action === 'clone') {
-        const cloneDef = BLOCK_PALETTE.find(b => b.id === wrapper.dataset.defId) || def;
-        const afterEl = wrapper.nextElementSibling;
-        this._insertBlock(cloneDef, afterEl);
+        const cloneDef = BLOCK_PALETTE.find(b => b.id === wrapper.dataset.defId) || {
+          id: wrapper.dataset.defId || 'custom',
+          label: wrapper.querySelector('.ve-block-label')?.textContent || 'Копия',
+          html: wrapper.querySelector('.ve-block-content')?.innerHTML || ''
+        };
+        const cloned = this._createBlockElement(cloneDef);
+        if (wrapper.dataset.blockWidth) {
+          this.setBlockWidth(cloned, wrapper.dataset.blockWidth);
+        }
+        parent.insertBefore(cloned, wrapper.nextSibling);
+        this._select(cloned, cloneDef);
+        this._saveHistory();
       }
     });
 
@@ -540,6 +861,12 @@ export class VisualEditor {
       const defId = wrapper.dataset.defId;
       const def = BLOCK_PALETTE.find(b => b.id === defId) || { id: defId, label: defId };
       this._select(wrapper, def);
+
+      wrapper.dataset.blockWidth = 'manual';
+      wrapper.querySelectorAll('.ve-w-btn').forEach(b => b.classList.remove('is-active'));
+      if (this.selectedBlock === wrapper) {
+        this.propsEl.querySelectorAll('#ve-block-width button').forEach(b => b.classList.remove('is-active'));
+      }
 
       // Disable HTML5 drag on block while resizing
       wrapper.setAttribute('draggable', 'false');
@@ -696,6 +1023,11 @@ export class VisualEditor {
     const target = content ? (content.firstElementChild || content) : null;
     const curW = parseInt(target?.style?.maxWidth || wrapper.style.maxWidth) || '';
     const curH = parseInt(target?.style?.minHeight || wrapper.style.minHeight) || '';
+    const curBlockW = wrapper.dataset.blockWidth || '100%';
+
+    const rowEl = this._findRowContainer(wrapper);
+    const curJustify = rowEl ? (rowEl.style.justifyContent || 'flex-start') : 'flex-start';
+    const curGap = rowEl ? (rowEl.style.gap || '16px') : '16px';
 
     const isLeft = wrapper.style.marginLeft === '0px' || (!wrapper.style.marginLeft && wrapper.style.marginRight === 'auto');
     const isCenter = (wrapper.style.marginLeft === 'auto' && wrapper.style.marginRight === 'auto') ||
@@ -703,6 +1035,16 @@ export class VisualEditor {
     const isRight = wrapper.style.marginLeft === 'auto' && wrapper.style.marginRight === '0px';
 
     return `
+      <div class="ve-prop-row">
+        <label>Ширина блока</label>
+        <div class="ve-width-btns" id="ve-block-width">
+          <button data-w="100%" class="${curBlockW === '100%' || !curBlockW ? 'is-active' : ''}">100%</button>
+          <button data-w="50%" class="${curBlockW === '50%' ? 'is-active' : ''}">50%</button>
+          <button data-w="33.33%" class="${curBlockW === '33.33%' ? 'is-active' : ''}">33%</button>
+          <button data-w="25%" class="${curBlockW === '25%' ? 'is-active' : ''}">25%</button>
+          <button data-w="auto" class="${curBlockW === 'auto' ? 'is-active' : ''}">Auto</button>
+        </div>
+      </div>
       <div class="ve-prop-row">
         <label>Макс. ширина (px)</label>
         <input type="number" class="ve-num-input" id="ve-prop-maxwidth" data-prop="maxWidth" value="${curW}" min="60" max="2400" placeholder="100% (auto)">
@@ -717,6 +1059,24 @@ export class VisualEditor {
           <button data-align="left" title="Слева" class="${isLeft && !isCenter ? 'is-active' : ''}"><span class="material-symbols-rounded">align_horizontal_left</span></button>
           <button data-align="center" title="По центру" class="${isCenter ? 'is-active' : ''}"><span class="material-symbols-rounded">align_horizontal_center</span></button>
           <button data-align="right" title="Справа" class="${isRight ? 'is-active' : ''}"><span class="material-symbols-rounded">align_horizontal_right</span></button>
+        </div>
+      </div>
+      <div class="ve-prop-row" style="margin-top:10px;">
+        <label>Строка: выравнивание</label>
+        <div class="ve-align-btns" id="ve-row-justify">
+          <button data-justify="flex-start" title="Start" class="${curJustify === 'flex-start' ? 'is-active' : ''}"><span class="material-symbols-rounded">format_align_left</span></button>
+          <button data-justify="center" title="Center" class="${curJustify === 'center' ? 'is-active' : ''}"><span class="material-symbols-rounded">format_align_center</span></button>
+          <button data-justify="flex-end" title="End" class="${curJustify === 'flex-end' ? 'is-active' : ''}"><span class="material-symbols-rounded">format_align_right</span></button>
+          <button data-justify="space-between" title="Space-Between" class="${curJustify === 'space-between' ? 'is-active' : ''}"><span class="material-symbols-rounded">space_bar</span></button>
+        </div>
+      </div>
+      <div class="ve-prop-row">
+        <label>Строка: отступ (Gap)</label>
+        <div class="ve-width-btns" id="ve-row-gap">
+          <button data-gap="8px" class="${curGap === '8px' ? 'is-active' : ''}">8px</button>
+          <button data-gap="16px" class="${curGap === '16px' || !curGap ? 'is-active' : ''}">16px</button>
+          <button data-gap="24px" class="${curGap === '24px' ? 'is-active' : ''}">24px</button>
+          <button data-gap="32px" class="${curGap === '32px' ? 'is-active' : ''}">32px</button>
         </div>
       </div>
       <div class="ve-prop-row">
@@ -776,6 +1136,41 @@ export class VisualEditor {
     // Export to code
     p.querySelector('#ve-export-code')?.addEventListener('click', () => {
       this.onExport(this.exportToHTML());
+    });
+
+    // Block width buttons
+    p.querySelectorAll('#ve-block-width button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.setBlockWidth(wrapper, btn.dataset.w);
+      });
+    });
+
+    // Row justify buttons
+    p.querySelectorAll('#ve-row-justify button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const justify = btn.dataset.justify;
+        p.querySelectorAll('#ve-row-justify button').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const row = this._findRowContainer(wrapper);
+        if (row) {
+          row.style.justifyContent = justify;
+          this._saveHistory();
+        }
+      });
+    });
+
+    // Row gap buttons
+    p.querySelectorAll('#ve-row-gap button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const gap = btn.dataset.gap;
+        p.querySelectorAll('#ve-row-gap button').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const row = this._findRowContainer(wrapper);
+        if (row) {
+          row.style.gap = gap;
+          this._saveHistory();
+        }
+      });
     });
 
     // Block alignment buttons
@@ -917,17 +1312,126 @@ export class VisualEditor {
       const defId = wrapper.dataset.defId;
       const def = BLOCK_PALETTE.find(b => b.id === defId) || { id: defId, icon: 'widgets', label: defId };
       this._bindBlockEvents(wrapper, def);
+      const w = wrapper.dataset.blockWidth || '100%';
+      wrapper.querySelectorAll('.ve-w-btn').forEach(b => {
+        b.classList.toggle('is-active', b.dataset.w === w);
+      });
     });
   }
 
   // ── EXPORT / IMPORT ────────────────────────────────────────
   exportToHTML() {
-    const parts = [];
-    this.canvasEl.querySelectorAll('.ve-block').forEach(wrapper => {
-      const content = wrapper.querySelector('.ve-block-content');
-      if (content) parts.push(content.innerHTML.trim());
+    const tempContainer = document.createElement('div');
+    Array.from(this.canvasEl.children).forEach(child => {
+      if (!child.classList.contains('ve-empty-state')) {
+        tempContainer.appendChild(child.cloneNode(true));
+      }
     });
-    const bodyContent = parts.join('\n\n');
+
+    // Strip editor UI elements
+    tempContainer.querySelectorAll('.ve-block-toolbar, .ve-resize-handle, .ve-resize-badge, .ve-empty-state, .ve-col-placeholder').forEach(el => el.remove());
+
+    // Recursively unwrap all .ve-block from deepest to root
+    const blocks = Array.from(tempContainer.querySelectorAll('.ve-block')).reverse();
+    blocks.forEach(block => {
+      const content = block.querySelector('.ve-block-content');
+      if (!content) {
+        block.remove();
+        return;
+      }
+
+      const blockWidth = block.dataset.width || block.dataset.blockWidth;
+      const target = content.firstElementChild;
+
+      if (target && content.children.length === 1 && !target.classList.contains('ve-col') && !target.classList.contains('ve-col-slot')) {
+        if (blockWidth && blockWidth !== '100%' && blockWidth !== '100') {
+          if (blockWidth === '50%' || blockWidth === '50') {
+            target.style.width = 'calc(50% - 8px)';
+            target.style.display = 'inline-block';
+            target.style.verticalAlign = 'top';
+            target.style.flex = '1 1 calc(50% - 8px)';
+          } else if (blockWidth === '33.33%' || blockWidth === '33%' || blockWidth === '33') {
+            target.style.width = 'calc(33.333% - 11px)';
+            target.style.display = 'inline-block';
+            target.style.verticalAlign = 'top';
+            target.style.flex = '1 1 calc(33.333% - 11px)';
+          } else if (blockWidth === '25%' || blockWidth === '25') {
+            target.style.width = 'calc(25% - 12px)';
+            target.style.display = 'inline-block';
+            target.style.verticalAlign = 'top';
+            target.style.flex = '1 1 calc(25% - 12px)';
+          } else if (blockWidth === 'auto') {
+            target.style.width = 'auto';
+            target.style.maxWidth = '100%';
+            target.style.display = 'inline-block';
+            target.style.verticalAlign = 'top';
+            target.style.flex = '0 1 auto';
+          }
+          target.style.boxSizing = 'border-box';
+        }
+        if (block.style.maxWidth) target.style.maxWidth = block.style.maxWidth;
+        if (block.style.minHeight) target.style.minHeight = block.style.minHeight;
+        if (block.style.marginLeft) target.style.marginLeft = block.style.marginLeft;
+        if (block.style.marginRight) target.style.marginRight = block.style.marginRight;
+
+        block.replaceWith(target);
+      } else {
+        const wrapperDiv = document.createElement('div');
+        if (blockWidth && blockWidth !== '100%' && blockWidth !== '100') {
+          if (blockWidth === '50%' || blockWidth === '50') wrapperDiv.style.cssText = 'width:calc(50% - 8px);display:inline-block;vertical-align:top;flex:1 1 calc(50% - 8px);box-sizing:border-box;';
+          else if (blockWidth === '33.33%' || blockWidth === '33%' || blockWidth === '33') wrapperDiv.style.cssText = 'width:calc(33.333% - 11px);display:inline-block;vertical-align:top;flex:1 1 calc(33.333% - 11px);box-sizing:border-box;';
+          else if (blockWidth === '25%' || blockWidth === '25') wrapperDiv.style.cssText = 'width:calc(25% - 12px);display:inline-block;vertical-align:top;flex:1 1 calc(25% - 12px);box-sizing:border-box;';
+          else if (blockWidth === 'auto') wrapperDiv.style.cssText = 'width:auto;max-width:100%;display:inline-block;vertical-align:top;flex:0 1 auto;box-sizing:border-box;';
+        }
+        while (content.firstChild) {
+          wrapperDiv.appendChild(content.firstChild);
+        }
+        block.replaceWith(wrapperDiv);
+      }
+    });
+
+    // Remove editor-specific attributes and classes
+    tempContainer.querySelectorAll('[data-ve-slot]').forEach(el => el.removeAttribute('data-ve-slot'));
+    tempContainer.querySelectorAll('[data-def-id]').forEach(el => el.removeAttribute('data-def-id'));
+    tempContainer.querySelectorAll('[data-block-width]').forEach(el => el.removeAttribute('data-block-width'));
+    tempContainer.querySelectorAll('[data-width]').forEach(el => el.removeAttribute('data-width'));
+    tempContainer.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    tempContainer.querySelectorAll('.is-selected, .is-dragging, .ve-drop-before, .ve-drop-after, .ve-drop-top, .ve-drop-bottom, .ve-drop-left, .ve-drop-right, .ve-drop-inside').forEach(el => {
+      el.classList.remove('is-selected', 'is-dragging', 've-drop-before', 've-drop-after', 've-drop-top', 've-drop-bottom', 've-drop-left', 've-drop-right', 've-drop-inside');
+    });
+
+    // Group consecutive top-level partial-width items into a flex row
+    const children = Array.from(tempContainer.children);
+    let i = 0;
+    while (i < children.length) {
+      const child = children[i];
+      const isPartial = child.style && child.style.width && child.style.width.includes('calc(');
+      if (isPartial && !child.classList.contains('ve-row-flex') && !child.classList.contains('ve-row-container') && !child.classList.contains('ve-row-2col')) {
+        const group = [child];
+        let j = i + 1;
+        while (j < children.length) {
+          const next = children[j];
+          if (next.style && next.style.width && next.style.width.includes('calc(')) {
+            group.push(next);
+            j++;
+          } else {
+            break;
+          }
+        }
+        if (group.length > 1) {
+          const rowWrap = document.createElement('div');
+          rowWrap.className = 've-row-flex';
+          rowWrap.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;width:100%;box-sizing:border-box;align-items:stretch;margin:16px 0;';
+          tempContainer.insertBefore(rowWrap, group[0]);
+          group.forEach(item => rowWrap.appendChild(item));
+          i = j;
+          continue;
+        }
+      }
+      i++;
+    }
+
+    const bodyContent = tempContainer.innerHTML.trim();
 
     if (this.docTemplate && this.docTemplate.isFullDoc) {
       const dt = this.docTemplate.hasDocType ? '<!DOCTYPE html>\n' : '';
@@ -1053,6 +1557,69 @@ export class VisualEditor {
     return match ? match[1].trim() : '';
   }
 
+  _detectBlockDef(el) {
+    const tag = el.tagName.toLowerCase();
+    const style = (el.getAttribute('style') || '').toLowerCase();
+    const cls = el.className || '';
+
+    // Check for flex row
+    if (cls.includes('ve-row-flex') || ((style.includes('display: flex') || style.includes('display:flex')) && (style.includes('wrap') || style.includes('row')))) {
+      return { id: 'row-flex', icon: 'view_week', label: 'Flex-ряд (адаптивный)' };
+    }
+
+    // Check for grid rows
+    if (cls.includes('ve-row-2col') || ((style.includes('display: grid') || style.includes('display:grid')) && (style.includes('1fr 1fr') || style.includes('50% 50%')))) {
+      return { id: 'row-2col', icon: 'view_column', label: '2 колонки (50/50)' };
+    }
+    if (cls.includes('ve-row-3col') || ((style.includes('display: grid') || style.includes('display:grid')) && (style.includes('1fr 1fr 1fr') || style.includes('repeat(3')))) {
+      return { id: 'row-3col', icon: 'grid_on', label: '3 колонки (33%)' };
+    }
+    if (cls.includes('ve-row-asym-left') || style.includes('7fr 3fr') || (style.includes('70%') && style.includes('30%'))) {
+      return { id: 'row-asym-left', icon: 'vertical_split', label: 'Контент + Сайдбар (70/30)' };
+    }
+    if (cls.includes('ve-row-asym-right') || style.includes('3fr 7fr') || (style.includes('30%') && style.includes('70%'))) {
+      return { id: 'row-asym-right', icon: 'vertical_split', label: 'Сайдбар + Контент (30/70)' };
+    }
+    if (cls.includes('ve-row-4col') || ((style.includes('display: grid') || style.includes('display:grid')) && (style.includes('repeat(4') || style.includes('1fr 1fr 1fr 1fr')))) {
+      return { id: 'row-4col', icon: 'grid_view', label: '4 колонки (25%)' };
+    }
+    if (cls.includes('ve-container')) {
+      return { id: 'container', icon: 'crop_free', label: 'Контейнер' };
+    }
+    if (tag === 'section' || cls.includes('ve-section')) {
+      return { id: 'section', icon: 'view_agenda', label: 'Секция' };
+    }
+
+    return BLOCK_PALETTE.find(b => {
+      if (tag === 'h1' && b.id === 'h1') return true;
+      if (tag === 'h2' && b.id === 'h2') return true;
+      if (tag === 'h3' && b.id === 'h3') return true;
+      if (tag === 'p' && b.id === 'paragraph') return true;
+      if (tag === 'button' && b.id === 'button') return true;
+      if (tag === 'blockquote' && b.id === 'quote') return true;
+      if (tag === 'ul' && b.id === 'list') return true;
+      if (tag === 'figure' && b.id === 'image') return true;
+      if (tag === 'hr' && b.id === 'divider') return true;
+      if (tag === 'nav' && b.id === 'navbar') return true;
+      if (tag === 'footer' && b.id === 'footer') return true;
+      if (tag === 'form' && b.id === 'form-contact') return true;
+      return false;
+    }) || {
+      id: 'custom-' + tag,
+      icon: tag === 'div' ? 'view_agenda' : 'code',
+      label: tag.toUpperCase() + ' блок'
+    };
+  }
+
+  _detectWidth(el) {
+    const style = (el.getAttribute('style') || '').toLowerCase();
+    if (style.includes('50%')) return '50%';
+    if (style.includes('33%') || style.includes('33.33%')) return '33.33%';
+    if (style.includes('25%')) return '25%';
+    if (style.includes('width: auto') || style.includes('width:auto') || style.includes('display: inline-block') || style.includes('display:inline-block')) return 'auto';
+    return '100%';
+  }
+
   importFromHTML(htmlStr, cssStr = '') {
     this.clearCanvas();
     if (cssStr) {
@@ -1101,38 +1668,33 @@ export class VisualEditor {
 
       if (children.length > 0) {
         children.forEach(child => {
-          const tag = child.tagName.toLowerCase();
-          let def = BLOCK_PALETTE.find(b => {
-            if (tag === 'h1' && b.id === 'h1') return true;
-            if (tag === 'h2' && b.id === 'h2') return true;
-            if (tag === 'h3' && b.id === 'h3') return true;
-            if (tag === 'p' && b.id === 'paragraph') return true;
-            if (tag === 'button' && b.id === 'button') return true;
-            if (tag === 'blockquote' && b.id === 'quote') return true;
-            if (tag === 'ul' && b.id === 'list') return true;
-            if (tag === 'figure' && b.id === 'image') return true;
-            if (tag === 'hr' && b.id === 'divider') return true;
-            if (tag === 'nav' && b.id === 'navbar') return true;
-            if (tag === 'footer' && b.id === 'footer') return true;
-            if (tag === 'form' && b.id === 'form-contact') return true;
-            if (tag === 'section' && b.id === 'section') return true;
-            return false;
-          });
+          const def = this._detectBlockDef(child);
+          const detectedW = this._detectWidth(child);
 
-          if (!def) {
-            def = {
-              id: 'custom-' + tag,
-              icon: tag === 'section' || tag === 'div' ? 'view_agenda' : 'code',
-              label: tag.toUpperCase() + ' блок',
-              html: child.outerHTML
-            };
-          } else {
-            def = {
-              ...def,
-              html: child.outerHTML
-            };
+          const isRow = def.id.startsWith('row-') || child.classList.contains('ve-row-flex') || child.classList.contains('ve-row-2col') || child.classList.contains('ve-row-3col') || child.classList.contains('ve-row-4col') || child.classList.contains('ve-row-asym-left') || child.classList.contains('ve-row-asym-right');
+
+          if (isRow) {
+            Array.from(child.children).forEach(col => {
+              col.classList.add('ve-col');
+              col.setAttribute('data-ve-slot', 'true');
+              if (!col.children.length && !col.textContent.trim()) {
+                const ph = document.createElement('p');
+                ph.className = 've-col-placeholder';
+                ph.textContent = 'Колонка (пусто)';
+                col.appendChild(ph);
+              }
+            });
           }
-          this._insertBlock(def);
+
+          const blockDef = {
+            ...def,
+            html: child.outerHTML
+          };
+
+          const block = this._insertBlock(blockDef);
+          if (detectedW && detectedW !== '100%') {
+            this.setBlockWidth(block, detectedW);
+          }
         });
         this._saveHistory();
         return;

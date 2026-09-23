@@ -222,6 +222,7 @@
     <link rel="stylesheet" href="src/mascot.css?v=4.62.3">
     <link rel="stylesheet" href="src/league.css?v=4.25.4">
     <link rel="stylesheet" href="src/inoagent.css?v=4.62.1">
+    <link rel="stylesheet" href="src/ai_dev.css?v=4.69.0">
     <link rel="stylesheet" href="src/splash_loader.css?v=5.5.0">
 
     <!-- Three.js 3D Engine & GLTF Loader for Cosmo 3D Model -->
@@ -555,6 +556,19 @@
                                     <span class="inoagent-nav-badge">МИНЮСТ</span>
                                 </div>
                                 <span class="nav-item-desc">Реестр иностранных агентов (255-ФЗ)</span>
+                            </div>
+                        </button>
+
+                        <button type="button" id="ai-dev-modal-btn" class="nav-menu-item ai-dev-header-btn" role="menuitem" title="База знаний и ресурсы для ИИ-разработчиков (AI Dev Hub): бесплатные LLM, MCP-серверы, Skills, репозитории и гайды">
+                            <div class="nav-item-icon-wrap icon-ai-dev">
+                                <span class="material-symbols-outlined icon">psychology</span>
+                            </div>
+                            <div class="nav-item-content">
+                                <div class="nav-item-title-row">
+                                    <span class="nav-item-title settings-btn-text">ИИ-Разработчикам</span>
+                                    <span class="ai-dev-nav-badge">AI NEW</span>
+                                </div>
+                                <span class="nav-item-desc">AI Dev Hub: модели, MCP, Skills и гайды</span>
                             </div>
                         </button>
                     </div>
@@ -2102,7 +2116,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.68.0"></script>
+    <script type="module" src="src/app.js?v=4.69.0"></script>
 
     <script>
     /* =============================================================
@@ -2464,6 +2478,9 @@
         });
     })();
     </script>
+
+    <!-- AI Dev Hub Modal Container -->
+    <div id="ai-dev-modal" class="ai-dev-modal-overlay hidden no-print" role="dialog" aria-modal="true" aria-labelledby="ai-dev-modal-title"></div>
 
     <script>
     /* Help Modal */
