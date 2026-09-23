@@ -1283,6 +1283,11 @@ async function setFontFamily(fontFamily) {
   canvas.renderAll();
   saveHistory();
   updateLayersList();
+
+  // Фикс: сбрасываем inline font-family у самого <select>, чтобы
+  // выбранный шрифт афиши не менял шрифт интерфейса редактора.
+  const sel = $('#font-family-select');
+  if (sel) sel.style.fontFamily = "'Montserrat', system-ui, sans-serif";
 }
 
 /* ══════════════════════════════════════════════════════════════

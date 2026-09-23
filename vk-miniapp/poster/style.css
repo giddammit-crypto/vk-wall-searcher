@@ -1479,6 +1479,12 @@ input, select, textarea {
   transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
 }
 
+/* Фикс: шрифт выбранного элемента НЕ должен менять UI-интерфейс.
+   Явно фиксируем шрифт селектора шрифтов. */
+#font-family-select {
+  font-family: 'Montserrat', system-ui, sans-serif !important;
+}
+
 .prop-select:focus {
   border-color: var(--cyan);
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
