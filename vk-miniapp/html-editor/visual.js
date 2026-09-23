@@ -237,6 +237,8 @@ export class VisualEditor {
     this.historyIdx = -1;
     this._dragSrc = null;    // block being dragged within canvas
     this._paletteId = null;  // block id being dragged from palette
+    this.docTemplate = null; // preserves full html document structure (head, doctype, body attrs)
+    this._currentUserCSS = '';
 
     this._buildPalette();
     this._bindCanvas();
@@ -648,6 +650,10 @@ export class VisualEditor {
     this._showEmptyProps();
   }
 
+  deselect() {
+    this._deselect();
+  }
+
   // ── PROPS PANEL ───────────────────────────────────────────
   _buildPropsPanel(wrapper, def) {
     const p = this.propsEl;
@@ -921,17 +927,178 @@ export class VisualEditor {
       const content = wrapper.querySelector('.ve-block-content');
       if (content) parts.push(content.innerHTML.trim());
     });
-    return parts.join('\n\n');
+    const bodyContent = parts.join('\n\n');
+
+    if (this.docTemplate && this.docTemplate.isFullDoc) {
+      const dt = this.docTemplate.hasDocType ? '<!DOCTYPE html>\n' : '';
+      const htmlOpen = `<html${this.docTemplate.htmlAttrs ? ' ' + this.docTemplate.htmlAttrs : ''}>`;
+      const head = this.docTemplate.headContent ? `\n<head>\n  ${this.docTemplate.headContent.trim()}\n</head>` : '';
+      const bodyOpen = `<body${this.docTemplate.bodyAttrs ? ' ' + this.docTemplate.bodyAttrs : ''}>`;
+      return `${dt}${htmlOpen}${head}\n${bodyOpen}\n${bodyContent}\n</body>\n</html>`;
+    }
+
+    return bodyContent;
   }
 
-  importFromHTML(htmlStr) {
+  updateUserStyles(cssText) {
+    this._currentUserCSS = cssText || '';
+    let styleEl = document.getElementById('ve-user-scoped-css');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 've-user-scoped-css';
+      document.head.appendChild(styleEl);
+    }
+
+    if (!cssText || !cssText.trim()) {
+      styleEl.textContent = '';
+      return;
+    }
+
+    const scopedCSS = this._scopeCSS(cssText);
+    styleEl.textContent = scopedCSS;
+  }
+
+  _scopeCSS(cssText) {
+    if (!cssText || !cssText.trim()) return '';
+
+    let sheet;
+    try {
+      sheet = new CSSStyleSheet();
+      sheet.replaceSync(cssText);
+    } catch (e) {
+      const temp = document.createElement('style');
+      temp.textContent = cssText;
+      document.head.appendChild(temp);
+      try {
+        sheet = temp.sheet;
+      } finally {
+        temp.remove();
+      }
+    }
+
+    if (!sheet) return '';
+
+    const processRules = (rules) => {
+      let out = '';
+      for (const rule of rules) {
+        if (rule instanceof CSSStyleRule) {
+          const rawSelectors = rule.selectorText.split(',');
+          const scopedSelectors = rawSelectors.map(sel => {
+            const s = sel.trim();
+            if (s === 'body' || s === 'html' || s === ':root') {
+              return '#wysiwyg-canvas';
+            }
+            if (s.startsWith('body ') || s.startsWith('html ') || s.startsWith(':root ')) {
+              return s.replace(/^(body|html|:root)\s+/, '#wysiwyg-canvas ');
+            }
+            if (s === '*') {
+              return '#wysiwyg-canvas, #wysiwyg-canvas .ve-block-content *';
+            }
+            if (s.startsWith('#wysiwyg-canvas')) {
+              return s;
+            }
+            return `#wysiwyg-canvas .ve-block-content ${s}, #wysiwyg-canvas ${s}:not(.wysiwyg-canvas-toolbar, .wysiwyg-canvas-toolbar *, .ve-block-toolbar, .ve-block-toolbar *, .ve-resize-handle, .ve-resize-badge)`;
+          }).join(', ');
+
+          out += `${scopedSelectors} {\n  ${rule.style.cssText}\n}\n`;
+        } else if (rule instanceof CSSMediaRule) {
+          out += `@media ${rule.conditionText} {\n${processRules(rule.cssRules)}}\n`;
+        } else if (rule instanceof CSSKeyframesRule) {
+          out += `${rule.cssText}\n`;
+        } else if (rule instanceof CSSFontFaceRule) {
+          out += `${rule.cssText}\n`;
+        } else if (rule instanceof CSSImportRule) {
+          out += `${rule.cssText}\n`;
+        } else if (rule instanceof CSSSupportsRule) {
+          out += `@supports ${rule.conditionText} {\n${processRules(rule.cssRules)}}\n`;
+        } else {
+          out += `${rule.cssText}\n`;
+        }
+      }
+      return out;
+    };
+
+    try {
+      return processRules(sheet.cssRules);
+    } catch (err) {
+      console.warn('Error scoping CSS for visual editor:', err);
+      return cssText;
+    }
+  }
+
+  _syncHeadAssets(doc) {
+    let container = document.getElementById('ve-head-assets');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 've-head-assets';
+      document.head.appendChild(container);
+    }
+    container.innerHTML = '';
+
+    if (doc.head) {
+      const links = doc.head.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"], link[rel="dns-prefetch"]');
+      links.forEach(l => {
+        const clone = document.createElement('link');
+        for (const attr of l.attributes) {
+          clone.setAttribute(attr.name, attr.value);
+        }
+        container.appendChild(clone);
+      });
+    }
+  }
+
+  _getAttrsString(htmlStr, tag) {
+    const regex = new RegExp(`<${tag}\\s+([^>]+)>`, 'i');
+    const match = htmlStr.match(regex);
+    return match ? match[1].trim() : '';
+  }
+
+  importFromHTML(htmlStr, cssStr = '') {
     this.clearCanvas();
+    if (cssStr) {
+      this.updateUserStyles(cssStr);
+    }
     if (!htmlStr || !htmlStr.trim()) return;
 
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlStr, 'text/html');
-      const children = Array.from(doc.body.children);
+
+      const hasDocType = /<!DOCTYPE\s+html/i.test(htmlStr);
+      const hasHtmlTag = /<html[^>]*>/i.test(htmlStr);
+      const hasHeadTag = /<head[^>]*>/i.test(htmlStr);
+      const hasBodyTag = /<body[^>]*>/i.test(htmlStr);
+
+      this.docTemplate = {
+        isFullDoc: hasDocType || hasHtmlTag || hasBodyTag,
+        hasDocType,
+        htmlAttrs: this._getAttrsString(htmlStr, 'html'),
+        headContent: doc.head ? doc.head.innerHTML : '',
+        bodyAttrs: this._getAttrsString(htmlStr, 'body'),
+      };
+
+      this._syncHeadAssets(doc);
+
+      if (doc.head) {
+        const headStyles = Array.from(doc.head.querySelectorAll('style')).map(s => s.textContent).join('\n');
+        if (headStyles) {
+          this.updateUserStyles((this._currentUserCSS || '') + '\n' + headStyles);
+        }
+      }
+
+      if (doc.body) {
+        if (doc.body.style.cssText) {
+          this.canvasEl.style.cssText += ';' + doc.body.style.cssText;
+        }
+        if (doc.body.className) {
+          doc.body.classList.forEach(cls => this.canvasEl.classList.add(cls));
+        }
+      }
+
+      const children = Array.from(doc.body.children).filter(child => {
+        return child.tagName.toLowerCase() !== 'style';
+      });
+
       if (children.length > 0) {
         children.forEach(child => {
           const tag = child.tagName.toLowerCase();
@@ -948,13 +1115,14 @@ export class VisualEditor {
             if (tag === 'nav' && b.id === 'navbar') return true;
             if (tag === 'footer' && b.id === 'footer') return true;
             if (tag === 'form' && b.id === 'form-contact') return true;
+            if (tag === 'section' && b.id === 'section') return true;
             return false;
           });
 
           if (!def) {
             def = {
               id: 'custom-' + tag,
-              icon: 'code',
+              icon: tag === 'section' || tag === 'div' ? 'view_agenda' : 'code',
               label: tag.toUpperCase() + ' блок',
               html: child.outerHTML
             };
@@ -985,8 +1153,10 @@ export class VisualEditor {
 
   clearCanvas() {
     this.canvasEl.innerHTML = '';
+    this.canvasEl.style.cssText = '';
     this._deselect();
     this._updateEmptyState();
+    this.docTemplate = null;
     this._saveHistory();
   }
 

@@ -309,6 +309,9 @@ function getExtensions(lang, fontSize, wordWrap) {
       if (update.docChanged) {
         appState[lang] = update.state.doc.toString();
         schedulePreviewUpdate();
+        if (lang === "css" && visualEditor) {
+          visualEditor.updateUserStyles(appState.css);
+        }
         updateStatusBar(lang, update.state);
       } else if (update.selectionSet) {
         updateStatusBar(lang, update.state);
@@ -1186,6 +1189,9 @@ function setEditorContent(lang, content) {
   if (!ed) return;
   ed.dispatch({ changes: { from: 0, to: ed.state.doc.length, insert: content || "" } });
   appState[lang] = content || "";
+  if (lang === "css" && visualEditor) {
+    visualEditor.updateUserStyles(appState.css);
+  }
 }
 
 // Undo / Redo — делегируем в активный режим
@@ -1223,7 +1229,8 @@ function switchEditorMode(mode) {
     btnVisual?.classList.add("is-active");
 
     if (visualEditor) {
-      visualEditor.importFromHTML(appState.html);
+      visualEditor.updateUserStyles(appState.css);
+      visualEditor.importFromHTML(appState.html, appState.css);
     }
     showToast("🎨 Визуальный редактор (WYSIWYG)", "info");
   } else {
@@ -1281,6 +1288,52 @@ function initVisualEditor() {
     setEditorContent("html", html);
     runPreview();
     showToast("✅ Применено в HTML код!", "success");
+  });
+
+  // Preview mode toggle on canvas
+  document.getElementById("ve-btn-preview-mode")?.addEventListener("click", () => {
+    const isPreview = canvasEl.classList.toggle("is-preview-mode");
+    const icon = document.querySelector("#ve-btn-preview-mode .material-symbols-rounded");
+    const label = document.getElementById("ve-preview-label");
+    const btn = document.getElementById("ve-btn-preview-mode");
+    if (isPreview) {
+      btn?.classList.add("is-active");
+      if (icon) icon.textContent = "edit";
+      if (label) label.textContent = "Редактор";
+      visualEditor.deselect();
+      showToast("👁️ Режим чистого предпросмотра", "info");
+    } else {
+      btn?.classList.remove("is-active");
+      if (icon) icon.textContent = "visibility";
+      if (label) label.textContent = "Просмотр";
+      showToast("✏️ Режим редактирования", "info");
+    }
+  });
+
+  // Open full preview in new tab from visual editor
+  document.getElementById("ve-btn-popout")?.addEventListener("click", () => {
+    const currentHtml = visualEditor.exportToHTML();
+    const fullDoc = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+</style>
+<style>${appState.css}</style>
+</head>
+<body>
+${currentHtml.replace(/<\s*html[^>]*>[\s\S]*?<\s*body[^>]*>/i, '').replace(/<\s*\/\s*body\s*>[\s\S]*/i, '')}
+<script>
+${appState.js}
+<\/script>
+</body>
+</html>`;
+    const blob = new Blob([fullDoc], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   });
 
   // Responsive sizes on canvas
