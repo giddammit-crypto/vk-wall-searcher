@@ -3548,85 +3548,201 @@ async function exportFigmaClipboard() {
     return;
   }
 
-  const savedZoom = zoom;
-  applyZoom(1);
-  canvas.discardActiveObject();
-  canvas.renderAll();
+  const btn = $('#btn-figma-copy-clipboard');
+  if (btn) btn.disabled = true;
+  toast('Подготовка изображений для Figma…');
 
-  const svgStr = canvas.toSVG({
-    suppressPreamble: false,
-    width: currentSize.w + 'px',
-    height: currentSize.h + 'px',
-    viewBox: { x: 0, y: 0, width: currentSize.w, height: currentSize.h }
-  });
+  try {
+    await embedAllImagesToBase64(canvas);
 
-  applyZoom(savedZoom);
+    const savedZoom = zoom;
+    applyZoom(1);
+    canvas.discardActiveObject();
+    canvas.renderAll();
 
-  const htmlPayload = `<!--StartFragment-->${svgStr}<!--EndFragment-->`;
-  let copied = false;
+    const svgStr = buildFigmaSVG();
 
-  if (navigator.clipboard && window.ClipboardItem) {
-    try {
-      const item = new ClipboardItem({
-        'text/html': new Blob([htmlPayload], { type: 'text/html' }),
-        'text/plain': new Blob([svgStr], { type: 'text/plain' })
-      });
-      await navigator.clipboard.write([item]);
-      copied = true;
-    } catch (clipErr) {
-      console.warn('ClipboardItem error, fallback to writeText:', clipErr);
+    applyZoom(savedZoom);
+
+    const htmlPayload = `<!--StartFragment-->${svgStr}<!--EndFragment-->`;
+    let copied = false;
+
+    if (navigator.clipboard && window.ClipboardItem) {
+      try {
+        const item = new ClipboardItem({
+          'text/html': new Blob([htmlPayload], { type: 'text/html' }),
+          'text/plain': new Blob([svgStr], { type: 'text/plain' })
+        });
+        await navigator.clipboard.write([item]);
+        copied = true;
+      } catch (clipErr) {
+        console.warn('ClipboardItem error, fallback to writeText:', clipErr);
+      }
     }
-  }
 
-  if (!copied && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(svgStr);
-      copied = true;
-    } catch (e) {}
-  }
-
-  if (copied) {
-    const successEl = $('#figma-copy-success');
-    if (successEl) {
-      successEl.classList.remove('hidden');
-      setTimeout(() => successEl.classList.add('hidden'), 5000);
+    if (!copied && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(svgStr);
+        copied = true;
+      } catch (e) {}
     }
-    toast('Векторный макет скопирован! Вставьте в Figma через Ctrl+V ✦');
-  } else {
-    toast('Не удалось автоматически скопировать в буфер. Используйте «Скачать Figma SVG».');
+
+    if (copied) {
+      const successEl = $('#figma-copy-success');
+      if (successEl) {
+        successEl.classList.remove('hidden');
+        setTimeout(() => successEl.classList.add('hidden'), 5000);
+      }
+      toast('Векторный макет скопирован — все картинки встроены! Ctrl+V в Figma ✦');
+    } else {
+      toast('Не удалось скопировать в буфер. Используйте «Скачать Figma SVG».');
+    }
+  } catch (err) {
+    console.error('Figma clipboard error:', err);
+    toast('Ошибка экспорта: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
-function exportFigmaSvg() {
+async function exportFigmaSvg() {
   if (!canvas) {
     toast('Холст не инициализирован');
     return;
   }
 
-  const savedZoom = zoom;
-  applyZoom(1);
-  canvas.discardActiveObject();
-  canvas.renderAll();
+  const btn = $('#btn-figma-download-svg');
+  if (btn) btn.disabled = true;
+  toast('Встраивание изображений в SVG…');
 
-  const svgStr = canvas.toSVG({
+  try {
+    await embedAllImagesToBase64(canvas);
+
+    const savedZoom = zoom;
+    applyZoom(1);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+
+    const svgStr = buildFigmaSVG();
+
+    applyZoom(savedZoom);
+
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
+    a.download = `${safeTitle}.figma.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Файл .figma.svg скачан — картинки встроены как base64! Перетащите в Figma 🎨');
+  } catch (err) {
+    console.error('Figma SVG export error:', err);
+    toast('Ошибка экспорта: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/**
+ * Конвертирует все fabric.Image на холсте у которых src — внешний URL
+ * в base64 data URI через offscreen canvas.
+ * Это гарантирует, что SVG-экспорт Fabric.js встроит изображения как data URI,
+ * а не как внешние ссылки (которые Figma не может загрузить).
+ */
+async function embedAllImagesToBase64(canvasInst) {
+  const objects = canvasInst.getObjects();
+  const imageObjects = objects.filter(o => o.type === 'image' && o._element);
+
+  await Promise.allSettled(imageObjects.map(img => new Promise(resolve => {
+    const el = img._element;
+    if (!el) return resolve();
+
+    // Если это уже data URL — всё ок, ничего не делаем
+    const currentSrc = el.src || '';
+    if (currentSrc.startsWith('data:')) return resolve();
+
+    // Попытка нарисовать в offscreen canvas и вытащить dataURL
+    try {
+      const oc = document.createElement('canvas');
+      oc.width = el.naturalWidth || el.width || 1;
+      oc.height = el.naturalHeight || el.height || 1;
+      const ctx = oc.getContext('2d');
+      ctx.drawImage(el, 0, 0);
+      const dataUrl = oc.toDataURL('image/png');
+
+      // Загружаем по data URL, чтобы Fabric обновил внутренний _element
+      const newImg = new Image();
+      newImg.onload = () => {
+        img._element = newImg;
+        img._originalElement = newImg;
+        resolve();
+      };
+      newImg.onerror = () => resolve(); // при ошибке — пропускаем
+      newImg.src = dataUrl;
+    } catch (err) {
+      // Canvas tainted — пробуем через proxy-fetch
+      const proxySrc = currentSrc.includes('figma-proxy')
+        ? currentSrc
+        : `../../api/figma-proxy.php?action=image_proxy&url=${encodeURIComponent(currentSrc)}`;
+
+      fetch(proxySrc)
+        .then(r => r.blob())
+        .then(blob => new Promise((res2, rej2) => {
+          const fr = new FileReader();
+          fr.onload = e => res2(e.target.result);
+          fr.onerror = rej2;
+          fr.readAsDataURL(blob);
+        }))
+        .then(dataUrl => {
+          const newImg = new Image();
+          newImg.onload = () => {
+            img._element = newImg;
+            img._originalElement = newImg;
+            resolve();
+          };
+          newImg.onerror = () => resolve();
+          newImg.src = dataUrl;
+        })
+        .catch(() => resolve());
+    }
+  })));
+
+  canvasInst.renderAll();
+}
+
+/**
+ * Строит финальный SVG через Fabric toSVG, после того как все изображения
+ * уже встроены как base64.
+ * Дополнительно вставляет фон холста явным <rect> с правильным цветом.
+ */
+function buildFigmaSVG() {
+  const w = currentSize.w;
+  const h = currentSize.h;
+
+  // Получаем фоновый цвет
+  const bg = canvas.backgroundColor || '#ffffff';
+
+  let svgStr = canvas.toSVG({
     suppressPreamble: false,
-    width: currentSize.w + 'px',
-    height: currentSize.h + 'px',
-    viewBox: { x: 0, y: 0, width: currentSize.w, height: currentSize.h }
+    width: w + 'px',
+    height: h + 'px',
+    viewBox: { x: 0, y: 0, width: w, height: h }
   });
 
-  applyZoom(savedZoom);
+  // Fabric.js иногда пишет background через CSS, а не через <rect>.
+  // Вставляем явный фоновый прямоугольник сразу после открывающего <svg>-тега
+  // чтобы Figma видел его как отдельный слой фона.
+  if (bg && bg !== 'rgba(0,0,0,0)' && bg !== 'transparent') {
+    svgStr = svgStr.replace(
+      /(<svg[^>]*>)/,
+      `$1<rect x="0" y="0" width="${w}" height="${h}" fill="${escapeHtml(bg)}" />`
+    );
+  }
 
-  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
-  a.download = `${safeTitle}.figma.svg`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('Файл .figma.svg скачан! Перетащите его в Figma 🎨');
+  return svgStr;
 }
+
 
 async function exportFigmaApiSend() {
   if (!canvas) {
