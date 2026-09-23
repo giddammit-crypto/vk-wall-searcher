@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Редактор — Аврора</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- CodeMirror 6 via import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@codemirror/state":        "https://esm.sh/@codemirror/state@6",
+      "@codemirror/view":         "https://esm.sh/@codemirror/view@6",
+      "@codemirror/commands":     "https://esm.sh/@codemirror/commands@6",
+      "@codemirror/language":     "https://esm.sh/@codemirror/language@6",
+      "@codemirror/lang-html":    "https://esm.sh/@codemirror/lang-html@6",
+      "@codemirror/lang-css":     "https://esm.sh/@codemirror/lang-css@6",
+      "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6",
+      "@codemirror/search":       "https://esm.sh/@codemirror/search@6",
+      "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6",
+      "@codemirror/lint":         "https://esm.sh/@codemirror/lint@6",
+      "@lezer/highlight":         "https://esm.sh/@lezer/highlight@1",
+      "@lezer/common":            "https://esm.sh/@lezer/common@1",
+      "@lezer/html":              "https://esm.sh/@lezer/html@1",
+      "@lezer/css":               "https://esm.sh/@lezer/css@1",
+      "@lezer/javascript":        "https://esm.sh/@lezer/javascript@1",
+      "style-mod":                "https://esm.sh/style-mod@4",
+      "w3c-keyname":              "https://esm.sh/w3c-keyname@2",
+      "crelt":                    "https://esm.sh/crelt@1",
+      "rope-sequence":            "https://esm.sh/rope-sequence@1"
+    }
+  }
+  </script>
+</head>
+<body class="aurora-editor">
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════ -->
+<header class="editor-header">
+  <div class="header-left">
+    <a href="../../" class="logo-link" title="Вернуться на Аврора">
+      <span class="material-symbols-rounded">arrow_back</span>
+    </a>
+    <div class="editor-brand">
+      <span class="material-symbols-rounded brand-icon">code</span>
+      <span class="brand-name">HTML Редактор</span>
+      <span class="brand-badge">v2.0</span>
+    </div>
+    <div id="project-name" class="project-name" title="Нажмите для переименования">Новый проект</div>
+  </div>
+
+  <div class="header-center">
+    <button class="hdr-btn" id="btn-templates" title="Шаблоны (T)">
+      <span class="material-symbols-rounded">auto_awesome_mosaic</span>
+      <span class="hdr-btn-label">Шаблоны</span>
+    </button>
+    <button class="hdr-btn" id="btn-projects" title="Мои проекты">
+      <span class="material-symbols-rounded">folder_open</span>
+      <span class="hdr-btn-label">Проекты</span>
+    </button>
+    <button class="hdr-btn" id="btn-timeline" title="Анимации (A)">
+      <span class="material-symbols-rounded">animation</span>
+      <span class="hdr-btn-label">Анимации</span>
+    </button>
+    <button class="hdr-btn" id="btn-format" title="Форматировать (Ctrl+Shift+F)">
+      <span class="material-symbols-rounded">format_align_left</span>
+      <span class="hdr-btn-label">Формат</span>
+    </button>
+    <button class="hdr-btn" id="btn-search" title="Поиск (Ctrl+F)">
+      <span class="material-symbols-rounded">search</span>
+    </button>
+    <button class="hdr-btn" id="btn-shortcuts" title="Горячие клавиши (?)">
+      <span class="material-symbols-rounded">keyboard</span>
+    </button>
+  </div>
+
+  <div class="header-right">
+    <!-- Font size -->
+    <div class="font-ctrl">
+      <button class="icon-btn-sm" id="btn-font-dec" title="Уменьшить шрифт (Ctrl+-)">A−</button>
+      <span class="font-size-display" id="sb-font">14px</span>
+      <button class="icon-btn-sm" id="btn-font-inc" title="Увеличить шрифт (Ctrl+=)">A+</button>
+    </div>
+
+    <!-- Layout buttons -->
+    <div class="layout-group">
+      <button class="layout-btn is-active" data-layout="horizontal" title="Горизонтальный layout">
+        <span class="material-symbols-rounded">view_column</span>
+      </button>
+      <button class="layout-btn" data-layout="vertical" title="Вертикальный layout">
+        <span class="material-symbols-rounded">view_agenda</span>
+      </button>
+    </div>
+
+    <!-- Zen, Wrap -->
+    <button class="icon-btn-sm" id="btn-wrap" title="Перенос строк">
+      <span class="material-symbols-rounded">wrap_text</span>
+    </button>
+    <button class="icon-btn-sm" id="btn-zen" title="Zen-режим (F11)">
+      <span class="material-symbols-rounded">fullscreen</span>
+    </button>
+
+    <!-- Import -->
+    <button class="hdr-btn" id="btn-import" title="Открыть .html файл">
+      <span class="material-symbols-rounded">upload_file</span>
+      <span class="hdr-btn-label">Открыть</span>
+    </button>
+    <input type="file" id="import-file" accept=".html,.htm" style="display:none">
+
+    <!-- Save & Export & Run -->
+    <button class="hdr-btn" id="btn-save" title="Сохранить (Ctrl+S)">
+      <span class="material-symbols-rounded">save</span>
+      <span class="hdr-btn-label">Сохранить</span>
+    </button>
+    <button class="hdr-btn" id="btn-save-named" title="Сохранить в список проектов">
+      <span class="material-symbols-rounded">bookmark_add</span>
+    </button>
+    <button class="hdr-btn" id="btn-export" title="Скачать .html">
+      <span class="material-symbols-rounded">download</span>
+      <span class="hdr-btn-label">Экспорт</span>
+    </button>
+    <button class="btn-run" id="btn-run" title="Запустить (Ctrl+Enter)">
+      <span class="material-symbols-rounded">play_arrow</span>
+      Run
+    </button>
+  </div>
+</header>
+
+<!-- ═══ MAIN LAYOUT ══════════════════════════════════════════ -->
+<main class="editor-main" data-layout="horizontal">
+
+  <!-- LEFT PANE: Code Editor -->
+  <section class="editor-pane" id="editor-pane">
+
+    <!-- Tab bar -->
+    <div class="editor-tabs" role="tablist">
+      <button class="editor-tab is-active" data-tab="html" role="tab" aria-selected="true" title="Alt+1">
+        <span class="tab-dot dot-html"></span>
+        <span>HTML</span>
+      </button>
+      <button class="editor-tab" data-tab="css" role="tab" title="Alt+2">
+        <span class="tab-dot dot-css"></span>
+        <span>CSS</span>
+      </button>
+      <button class="editor-tab" data-tab="js" role="tab" title="Alt+3">
+        <span class="tab-dot dot-js"></span>
+        <span>JS</span>
+      </button>
+    </div>
+
+    <!-- CodeMirror containers -->
+    <div class="cm-mount" id="cm-html" role="tabpanel"></div>
+    <div class="cm-mount" id="cm-css" role="tabpanel" style="display:none"></div>
+    <div class="cm-mount" id="cm-js" role="tabpanel" style="display:none"></div>
+
+    <!-- Status bar -->
+    <div class="editor-statusbar">
+      <span id="sb-line">Стр 1:1</span>
+      <span class="sb-sep">·</span>
+      <span id="sb-chars">0 строк</span>
+      <span class="sb-flex"></span>
+      <span class="sb-lang-badge" id="sb-lang">HTML</span>
+    </div>
+  </section>
+
+  <!-- Drag splitter -->
+  <div class="split-handle" id="split-handle" title="Перетащите для изменения размера"></div>
+
+  <!-- RIGHT PANE: Preview + Console -->
+  <section class="preview-pane" id="preview-pane">
+
+    <!-- Preview toolbar -->
+    <div class="preview-toolbar">
+      <div class="resp-group">
+        <button class="resp-btn is-active" data-size="100%" title="Авто">
+          <span class="material-symbols-rounded">devices</span>
+        </button>
+        <button class="resp-btn" data-size="375px" title="Mobile 375px">
+          <span class="material-symbols-rounded">smartphone</span>
+        </button>
+        <button class="resp-btn" data-size="768px" title="Tablet 768px">
+          <span class="material-symbols-rounded">tablet_mac</span>
+        </button>
+        <button class="resp-btn" data-size="1280px" title="Desktop 1280px">
+          <span class="material-symbols-rounded">desktop_windows</span>
+        </button>
+      </div>
+
+      <div class="preview-indicator" id="preview-indicator"></div>
+
+      <div class="preview-actions">
+        <button class="icon-btn-sm" id="btn-open-tab" title="Открыть в новой вкладке">
+          <span class="material-symbols-rounded">open_in_new</span>
+        </button>
+        <button class="icon-btn-sm" id="btn-toggle-console" title="Консоль">
+          <span class="material-symbols-rounded">terminal</span>
+          <span class="console-badge" id="console-badge" style="display:none">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- iframe wrapper -->
+    <div class="preview-wrapper" id="preview-wrapper">
+      <iframe
+        id="preview-frame"
+        title="Live Preview"
+        sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups">
+      </iframe>
+    </div>
+
+    <!-- Console -->
+    <div class="editor-console" id="editor-console">
+      <div class="console-header">
+        <span class="material-symbols-rounded">terminal</span>
+        <span class="console-title-text">Консоль</span>
+        <span class="error-count" id="error-count"></span>
+        <div style="flex:1"></div>
+        <button class="con-btn" id="btn-clear-console" title="Очистить">
+          <span class="material-symbols-rounded">block</span>
+          Очистить
+        </button>
+      </div>
+      <div class="console-output" id="console-output"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ═══ ANIMATION TIMELINE ═══════════════════════════════════ -->
+<aside class="timeline-panel" id="timeline-panel">
+  <div class="timeline-header">
+    <span class="material-symbols-rounded">animation</span>
+    <span class="timeline-title-text">Анимационная библиотека</span>
+    <span class="timeline-hint">Кликните на анимацию — она вставится в CSS</span>
+    <button class="icon-btn-sm" id="btn-close-timeline" title="Закрыть">
+      <span class="material-symbols-rounded">expand_more</span>
+    </button>
+  </div>
+  <div class="timeline-presets" id="timeline-presets">
+    <!-- Built by JS -->
+  </div>
+</aside>
+
+<!-- ═══ MODAL: Templates ══════════════════════════════════════ -->
+<div class="modal-overlay" id="templates-modal">
+  <div class="modal-dialog modal-wide">
+    <div class="modal-header">
+      <span class="material-symbols-rounded">auto_awesome_mosaic</span>
+      <h2>Выберите шаблон</h2>
+      <button class="modal-close" id="btn-close-templates">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="templates-grid" id="templates-grid">
+        <!-- Built by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Projects ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="projects-modal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span class="material-symbols-rounded">folder_open</span>
+      <h2>Мои проекты</h2>
+      <button class="modal-close" id="btn-close-projects">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="projects-list">
+        <!-- Built by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Shortcuts ══════════════════════════════════════ -->
+<div class="modal-overlay" id="shortcuts-modal">
+  <div class="modal-dialog modal-narrow">
+    <div class="modal-header">
+      <span class="material-symbols-rounded">keyboard</span>
+      <h2>Горячие клавиши</h2>
+      <button class="modal-close" id="btn-close-shortcuts">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="shortcuts-list">
+        <!-- Built by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Boot editor -->
+<script type="module">
+  import { init } from './editor.js';
+
+  // Close timeline via dedicated button
+  document.getElementById('btn-close-timeline')?.addEventListener('click', () => {
+    document.getElementById('timeline-panel')?.classList.remove('is-open');
+  });
+
+  // Back button
+  document.querySelector('.logo-link')?.addEventListener('click', (e) => {
+    // navigate back naturally via href
+  });
+
+  init();
+</script>
+</body>
+</html>
