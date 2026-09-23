@@ -261,9 +261,18 @@
     <div id="ve-palette-list"></div>
   </aside>
 
+  <!-- Backdrop overlay for mobile drawers -->
+  <div class="wysiwyg-palette-backdrop" id="wysiwyg-backdrop"></div>
+
   <!-- Center Canvas Wrapper -->
   <div class="wysiwyg-canvas-wrapper" id="wysiwyg-canvas-wrapper">
     <div class="wysiwyg-canvas-toolbar">
+      <!-- Mobile drawer toggle: Blocks Palette -->
+      <button class="canvas-tb-btn ve-mobile-toggle" id="ve-toggle-palette" title="Открыть палитру блоков">
+        <span class="material-symbols-rounded">widgets</span>
+        <span>Блоки</span>
+      </button>
+
       <div class="resp-group">
         <button class="resp-btn is-active" id="ve-size-desktop" data-vesize="desktop" title="Десктоп (960px)">
           <span class="material-symbols-rounded">desktop_windows</span>
@@ -292,6 +301,12 @@
       </button>
 
       <div style="flex: 1;"></div>
+
+      <!-- Mobile drawer toggle: Properties -->
+      <button class="canvas-tb-btn ve-mobile-toggle" id="ve-toggle-props" title="Открыть панель свойств">
+        <span class="material-symbols-rounded">tune</span>
+        <span>Свойства</span>
+      </button>
 
       <button class="canvas-tb-btn btn-sync-code" id="ve-btn-apply-code" title="Применить изменения визуального редактора в код HTML">
         <span class="material-symbols-rounded">sync</span>

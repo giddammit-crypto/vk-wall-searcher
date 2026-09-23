@@ -281,7 +281,7 @@ export class VisualEditor {
       });
     });
 
-    // Palette block drag start
+    // Palette block drag start + click to insert (mobile/touch friendly)
     p.querySelectorAll('.ve-palette-block').forEach(el => {
       el.addEventListener('dragstart', e => {
         this._paletteId = el.dataset.blockId;
@@ -292,6 +292,18 @@ export class VisualEditor {
       el.addEventListener('dragend', () => {
         el.classList.remove('is-dragging');
         this._paletteId = null;
+      });
+      // Click to insert
+      el.addEventListener('click', () => {
+        const blockId = el.dataset.blockId;
+        const def = BLOCK_PALETTE.find(b => b.id === blockId);
+        if (def) {
+          this._insertBlock(def);
+          if (window.innerWidth <= 880) {
+            document.getElementById('wysiwyg-palette')?.classList.remove('is-open');
+            document.getElementById('wysiwyg-backdrop')?.classList.remove('is-open');
+          }
+        }
       });
     });
   }

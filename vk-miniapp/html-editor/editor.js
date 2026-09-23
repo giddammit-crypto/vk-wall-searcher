@@ -1292,6 +1292,37 @@ function initVisualEditor() {
       canvasEl.classList.add(`is-${size}`);
     });
   });
+
+  // Mobile drawers (Palette & Properties)
+  const paletteContainer = document.getElementById("wysiwyg-palette");
+  const propsContainer   = document.getElementById("wysiwyg-props");
+  const backdropEl       = document.getElementById("wysiwyg-backdrop");
+
+  const closeDrawers = () => {
+    paletteContainer?.classList.remove("is-open");
+    propsContainer?.classList.remove("is-open");
+    backdropEl?.classList.remove("is-open");
+  };
+
+  document.getElementById("ve-toggle-palette")?.addEventListener("click", () => {
+    const willOpen = !paletteContainer?.classList.contains("is-open");
+    closeDrawers();
+    if (willOpen) {
+      paletteContainer?.classList.add("is-open");
+      backdropEl?.classList.add("is-open");
+    }
+  });
+
+  document.getElementById("ve-toggle-props")?.addEventListener("click", () => {
+    const willOpen = !propsContainer?.classList.contains("is-open");
+    closeDrawers();
+    if (willOpen) {
+      propsContainer?.classList.add("is-open");
+      backdropEl?.classList.add("is-open");
+    }
+  });
+
+  backdropEl?.addEventListener("click", closeDrawers);
 }
 
 function setFontSize(size) {
