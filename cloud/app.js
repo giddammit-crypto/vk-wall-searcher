@@ -1,6 +1,6 @@
 /**
  * Aurora Cloud 24H — Frontend Application Logic
- * Платформа «Аврора» · Временное хранилище сайтов с TTL 24 часа
+ * Платформа «Аврора» · Временное хранилище любых файлов с TTL 24 часа
  */
 
 (function () {
@@ -9,7 +9,7 @@
   // Константы
   const API_UPLOAD_URL = '../api/cloud-upload.php';
   const STORAGE_KEY = 'aurora_cloud_history_v1';
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250 MB
 
   // DOM Элементы
   const dropzone = document.getElementById('dropzone');
@@ -48,7 +48,7 @@
   const historyList = document.getElementById('history-list');
   const btnClearHistory = document.getElementById('btn-clear-history');
 
-  // Модальное окно вставки кода
+  // Модальное окно вставки текста / кода
   const modalPaste = document.getElementById('modal-paste');
   const btnOpenPasteModal = document.getElementById('btn-open-paste-modal');
   const btnClosePaste = document.getElementById('btn-close-paste');
@@ -132,17 +132,8 @@
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      showToast('Размер файла превышает лимит 50 МБ для 24-часового хранилища', 'error');
+      showToast('Размер файла превышает лимит 250 МБ для 24-часового хранилища', 'error');
       return;
-    }
-
-    const name = file.name.toLowerCase();
-    const isZip = name.endsWith('.zip');
-    const isHtml = name.endsWith('.html') || name.endsWith('.htm');
-
-    if (!isZip && !isHtml) {
-      // Предупреждение, но позволяем загрузить любой единичный веб-файл
-      showToast('Загружается файл ' + file.name + ' (рекомендуются .zip архивы сайтов)', 'info');
     }
 
     uploadFile(file);
@@ -217,7 +208,7 @@
     progressBytes.textContent = formatBytes(loaded) + ' / ' + formatBytes(total);
 
     if (percent >= 100) {
-      progressStatus.textContent = 'Обработка и распаковка сайта...';
+      progressStatus.textContent = 'Обработка и сохранение файла...';
     } else {
       progressStatus.textContent = 'Отправка в защищённое облако...';
     }
@@ -229,25 +220,35 @@
     if (fileInput) fileInput.value = '';
   }
 
+  // ─── Подбор иконки по расширению ───────────────────────────────────────────
+  function getFileIcon(ext) {
+    const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'];
+    const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'];
+    const videoExts = ['mp4', 'webm', 'mkv', 'avi', 'mov'];
+    const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'];
+    const docExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv'];
+    const codeExts = ['html', 'htm', 'css', 'js', 'json', 'xml', 'sql', 'py', 'ts', 'java', 'c', 'cpp'];
+
+    if (archiveExts.includes(ext)) return 'folder_zip';
+    if (imageExts.includes(ext)) return 'image';
+    if (videoExts.includes(ext)) return 'video_file';
+    if (audioExts.includes(ext)) return 'audio_file';
+    if (docExts.includes(ext)) return 'description';
+    if (codeExts.includes(ext)) return 'code';
+    return 'draft';
+  }
+
   // ─── Успешная загрузка (Отображение результата) ──────────────────────────────
   function handleUploadSuccess(data) {
     currentResultData = data;
 
     // Заполнение полей карточки
-    resFilename.textContent = data.filename || data.title || 'Сайт';
+    resFilename.textContent = data.filename || data.title || 'Файл';
     resFilesize.textContent = data.filesize_formatted || formatBytes(data.filesize || 0);
 
     const ext = (data.filename || '').split('.').pop().toLowerCase();
-    if (ext === 'zip') {
-      resBadge.textContent = 'Сайт (ZIP)';
-      resIcon.textContent = 'folder_zip';
-    } else if (ext === 'html' || ext === 'htm') {
-      resBadge.textContent = 'HTML Страница';
-      resIcon.textContent = 'html';
-    } else {
-      resBadge.textContent = 'Файл (' + ext.toUpperCase() + ')';
-      resIcon.textContent = 'draft';
-    }
+    resBadge.textContent = ext ? ext.toUpperCase() : 'ФАЙЛ';
+    resIcon.textContent = getFileIcon(ext);
 
     // Ссылки
     const viewUrl = data.view_url || (window.location.origin + '/cloud/view.php?id=' + data.id);
@@ -259,7 +260,7 @@
     inputDownloadUrl.value = downloadUrl;
     btnDoDownload.href = downloadUrl;
 
-    // Скрывать строку предпросмотра, если это не сайт
+    // Скрывать строку предпросмотра, если файл не имеет предпросмотра
     if (data.preview_url === null && !data.view_url) {
       rowPreview.style.display = 'none';
     } else {
@@ -274,7 +275,7 @@
     generateQrCode(viewUrl);
 
     // Кнопки соцсетей
-    const shareText = encodeURIComponent('Посмотри сайт в Аврора Облаке: ' + (data.title || data.filename) + ' (ссылка активна 24 часа)');
+    const shareText = encodeURIComponent('Файл в Аврора Облаке: ' + (data.title || data.filename) + ' (ссылка активна 24 часа)');
     btnShareTg.href = 'https://t.me/share/url?url=' + encodeURIComponent(viewUrl) + '&text=' + shareText;
     btnShareVk.href = 'https://vk.com/share.php?url=' + encodeURIComponent(viewUrl) + '&title=' + encodeURIComponent(data.title || data.filename);
 
@@ -292,11 +293,11 @@
       download_url: downloadUrl,
       uploaded_at: data.uploaded_at || Math.floor(Date.now() / 1000),
       expires_at: activeExpiresAt,
-      is_site: (ext === 'zip' || ext === 'html' || ext === 'htm')
+      ext: ext
     });
 
     renderHistory();
-    showToast('Сайт успешно опубликован в облаке на 24 часа! 🚀', 'success');
+    showToast('Файл успешно загружен в облако на 24 часа! 🚀', 'success');
   }
 
   // ─── Таймер обратного отсчета 24 часа ────────────────────────────────────────
@@ -358,13 +359,13 @@
     // Fallback через сервис генерации QR-кодов
     const img = document.createElement('img');
     img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=124x124&data=' + encodeURIComponent(url);
-    img.alt = 'QR Код ссылки на сайт';
+    img.alt = 'QR Код ссылки на файл';
     img.style.width = '124px';
     img.style.height = '124px';
     qrContainer.appendChild(img);
   }
 
-  // ─── Модальное окно быстрой вставки HTML ─────────────────────────────────────
+  // ─── Модальное окно быстрой вставки текста или HTML ──────────────────────────
   function setupModalPaste() {
     if (!btnOpenPasteModal || !modalPaste) return;
 
@@ -389,15 +390,15 @@
 
     btnSubmitPaste.addEventListener('click', () => {
       const code = pasteCodeInput.value.trim();
-      const title = pasteTitleInput.value.trim() || 'Мой сайт Аврора';
+      const title = pasteTitleInput.value.trim() || 'Заметка Аврора';
 
       if (!code) {
-        showToast('Пожалуйста, вставьте HTML код сайта', 'warning');
+        showToast('Пожалуйста, введите текст или код для сохранения', 'warning');
         return;
       }
 
       modalPaste.classList.remove('is-open');
-      showProgress(title + '.html', code.length);
+      showProgress(title, code.length);
 
       fetch(API_UPLOAD_URL, {
         method: 'POST',
@@ -416,7 +417,7 @@
           handleUploadSuccess(data);
           pasteCodeInput.value = '';
         } else {
-          showToast(data.error || 'Ошибка публикации кода', 'error');
+          showToast(data.error || 'Ошибка публикации', 'error');
         }
       })
       .catch(err => {
@@ -430,22 +431,22 @@
   function setupActionButtons() {
     if (btnCopyView) {
       btnCopyView.addEventListener('click', () => {
-        copyToClipboard(inputViewUrl.value, 'Ссылка на просмотр сайта скопирована!');
+        copyToClipboard(inputViewUrl.value, 'Ссылка на просмотр скопирована!');
       });
     }
 
     if (btnCopyDownload) {
       btnCopyDownload.addEventListener('click', () => {
-        copyToClipboard(inputDownloadUrl.value, 'Ссылка на скачивание архива скопирована!');
+        copyToClipboard(inputDownloadUrl.value, 'Ссылка на скачивание файла скопирована!');
       });
     }
 
     if (btnCopyAll) {
       btnCopyAll.addEventListener('click', () => {
         if (!currentResultData) return;
-        const text = `🌐 Сайт в Аврора Облаке: ${currentResultData.title || currentResultData.filename}\n` +
+        const text = `📁 Файл в Аврора Облаке: ${currentResultData.title || currentResultData.filename}\n` +
                      `⏱️ Ссылка активна 24 часа\n` +
-                     `🔗 Просмотр: ${inputViewUrl.value}\n` +
+                     `🔗 Предпросмотр: ${inputViewUrl.value}\n` +
                      `📥 Скачать: ${inputDownloadUrl.value}`;
         copyToClipboard(text, 'Полная информация скопирована в буфер!');
       });
@@ -503,7 +504,7 @@
       historyList.innerHTML = `
         <div class="empty-history-box">
           <span class="material-symbols-rounded">cloud_off</span>
-          Вы пока не загружали файлы. Перетащите сайт в область выше!
+          Вы пока не загружали файлы. Перетащите файл в область выше!
         </div>
       `;
       return;
@@ -517,12 +518,14 @@
       const isExpired = remaining <= 0;
       const remainingText = isExpired ? 'Истёк' : formatRemaining(remaining);
       const timerClass = isExpired ? 'history-timer expired' : 'history-timer';
+      const ext = item.ext || (item.filename || '').split('.').pop().toLowerCase();
+      const icon = getFileIcon(ext);
 
       html += `
         <div class="history-card" data-id="${escapeHtml(item.id)}">
           <div class="history-left">
             <div class="history-icon">
-              <span class="material-symbols-rounded">${item.is_site ? 'web' : 'folder_zip'}</span>
+              <span class="material-symbols-rounded">${icon}</span>
             </div>
             <div class="history-meta">
               <div class="history-title" title="${escapeHtml(item.filename)}">${escapeHtml(item.title || item.filename)}</div>
@@ -535,11 +538,11 @@
           </div>
           <div class="history-actions">
             ${!isExpired ? `
-              <a href="${escapeHtml(item.view_url)}" target="_blank" class="btn-icon-action primary" title="Открыть просмотр сайта">
+              <a href="${escapeHtml(item.view_url)}" target="_blank" class="btn-icon-action primary" title="Открыть просмотр">
                 <span class="material-symbols-rounded">visibility</span>
                 <span>Открыть</span>
               </a>
-              <button type="button" class="btn-icon-action btn-hist-copy" data-url="${escapeHtml(item.view_url)}" title="Скопировать ссылку">
+              <button type="button" class="btn-icon-action btn-hist-copy" data-url="${escapeHtml(item.download_url)}" title="Скопировать ссылку на скачивание">
                 <span class="material-symbols-rounded">content_copy</span>
               </button>
             ` : `
@@ -558,7 +561,7 @@
     // Привязываем события для кнопок в истории
     historyList.querySelectorAll('.btn-hist-copy').forEach(btn => {
       btn.addEventListener('click', () => {
-        copyToClipboard(btn.dataset.url, 'Ссылка скопирована!');
+        copyToClipboard(btn.dataset.url, 'Ссылка на скачивание скопирована!');
       });
     });
 

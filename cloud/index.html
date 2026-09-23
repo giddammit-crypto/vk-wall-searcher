@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Аврора Облако — Загрузка сайтов на 24 часа</title>
-  <meta name="description" content="Бесплатное временное облако для публикации и передачи сайтов. Хранение 24 часа, Drag & Drop, мгновенный онлайн-просмотр, генерация ссылки на скачивание и QR-код.">
+  <title>Аврора Облако — Временное хранилище любых файлов на 24 часа</title>
+  <meta name="description" content="Бесплатное временное облако для передачи и хранения любых файлов до 250 МБ. Хранение 24 часа, Drag & Drop, генерация прямой ссылки на скачивание и QR-кода.">
   <meta name="theme-color" content="#060911">
 
   <!-- Google Fonts & Material Symbols -->
@@ -35,9 +35,9 @@
         <div class="brand-meta">
           <div class="brand-title">
             <span class="brand-gradient">Аврора Облако</span>
-            <span class="brand-badge-ttl">24H TTL</span>
+            <span class="brand-badge-ttl">24H · 250 MB</span>
           </div>
-          <span class="brand-subtitle">Временный хостинг и обмен сайтами</span>
+          <span class="brand-subtitle">Временное хранилище любых файлов</span>
         </div>
       </a>
 
@@ -68,14 +68,14 @@
       <div class="hero-text">
         <div class="hero-tag">
           <span class="material-symbols-rounded">schedule</span>
-          <span>Хранение ровно 24 часа</span>
+          <span>Хранение ровно 24 часа &bull; До 250 МБ</span>
         </div>
         <h1 class="hero-title">
-          Публикуйте сайты в один клик с <span>Аврора Облаком</span>
+          Делитесь любыми файлами с <span>Аврора Облаком</span>
         </h1>
         <p class="hero-desc">
-          Перетащите ZIP-архив сайта или HTML-страницу. Сервис мгновенно развернёт живой просмотр, 
-          создаст прямую ссылку на скачивание и QR-код для смартфона. Ровно через 24 часа файл бесследно удалится.
+          Перетащите любой файл, документ, архив, видео, фото или проект до 250 МБ. Сервис мгновенно создаст 
+          прямую ссылку на скачивание и QR-код для смартфона. Ровно через 24 часа файл автоматически удалится без следа.
         </p>
         <div class="hero-pills">
           <div class="hero-pill">
@@ -83,12 +83,12 @@
             <span>24 часа жизни ссылки</span>
           </div>
           <div class="hero-pill">
-            <span class="material-symbols-rounded">rocket_launch</span>
-            <span>Мгновенный просмотр</span>
+            <span class="material-symbols-rounded">storage</span>
+            <span>Файлы до 250 МБ</span>
           </div>
           <div class="hero-pill">
-            <span class="material-symbols-rounded">folder_zip</span>
-            <span>ZIP архивы и HTML</span>
+            <span class="material-symbols-rounded">file_present</span>
+            <span>Любые форматы файлов</span>
           </div>
           <div class="hero-pill">
             <span class="material-symbols-rounded">qr_code_2</span>
@@ -113,34 +113,34 @@
         <div class="drop-icon-wrap">
           <span class="material-symbols-rounded">cloud_upload</span>
         </div>
-        <h2 class="drop-title">Перетащите сюда ZIP-архив сайта или файл</h2>
-        <p class="drop-subtitle">Поддерживаются архивы сайтов (.zip), веб-страницы (.html, .htm) до 50 МБ</p>
+        <h2 class="drop-title">Перетащите любой файл сюда</h2>
+        <p class="drop-subtitle">Поддерживаются любые форматы файлов, архивы, документы, видео, фото до 250 МБ</p>
         
         <div class="drop-actions">
           <button type="button" class="btn-primary" id="btn-browse">
             <span class="material-symbols-rounded">upload_file</span>
-            <span>Выбрать файл сайта</span>
+            <span>Выбрать файл на устройстве</span>
           </button>
           <button type="button" class="btn-secondary" id="btn-open-paste-modal">
             <span class="material-symbols-rounded">edit_note</span>
-            <span>Вставить HTML-код</span>
+            <span>Вставить текст или HTML</span>
           </button>
         </div>
 
-        <input type="file" id="file-input" style="display: none;" accept=".zip,.html,.htm,.tar,.gz,.png,.jpg,.jpeg,.webp,.svg,.css,.js">
+        <input type="file" id="file-input" style="display: none;">
 
         <div class="drop-hints">
           <div class="drop-hint-item">
             <span class="material-symbols-rounded">check_circle</span>
-            <span>ZIP распаковывается автоматически</span>
+            <span>Лимит до 250 МБ на файл</span>
           </div>
           <div class="drop-hint-item">
             <span class="material-symbols-rounded">check_circle</span>
-            <span>Живой просмотр index.html</span>
+            <span>Хранение ровно 24 часа</span>
           </div>
           <div class="drop-hint-item">
             <span class="material-symbols-rounded">check_circle</span>
-            <span>Прямое скачивание оригинала</span>
+            <span>Прямое скачивание и QR-код</span>
           </div>
         </div>
       </div>
@@ -166,12 +166,12 @@
       <div class="result-top-banner">
         <div class="result-file-info">
           <div class="file-type-icon">
-            <span class="material-symbols-rounded" id="res-icon">folder_zip</span>
+            <span class="material-symbols-rounded" id="res-icon">description</span>
           </div>
           <div class="file-details-col">
-            <div class="result-file-name" id="res-filename">mysite.zip</div>
+            <div class="result-file-name" id="res-filename">file.dat</div>
             <div class="result-file-meta">
-              <span class="badge-tag" id="res-badge">Сайт (ZIP)</span>
+              <span class="badge-tag" id="res-badge">Файл</span>
               <span id="res-filesize">2.4 MB</span>
               <span>&bull;</span>
               <span>Загружено только что</span>
@@ -191,14 +191,14 @@
 
       <!-- Ссылки -->
       <div class="result-links-grid">
-        <!-- Ссылка на онлайн-просмотр (если сайт) -->
+        <!-- Ссылка на онлайн-просмотр (если поддерживается) -->
         <div class="link-row-card highlight" id="row-preview">
           <div class="link-label-row">
             <span class="link-title">
               <span class="material-symbols-rounded">visibility</span>
-              <span>Онлайн-просмотр сайта с панелью Аврора</span>
+              <span>Онлайн-просмотр файла с панелью Аврора</span>
             </span>
-            <span class="link-desc">Живой сайт в браузере с таймером</span>
+            <span class="link-desc">Предпросмотр содержимого в браузере с таймером</span>
           </div>
           <div class="link-input-group">
             <input type="text" class="link-input" id="input-view-url" readonly>
@@ -208,19 +208,19 @@
             </button>
             <a href="#" target="_blank" class="btn-icon-action primary" id="btn-open-view">
               <span class="material-symbols-rounded">open_in_new</span>
-              <span>Открыть сайт</span>
+              <span>Открыть</span>
             </a>
           </div>
         </div>
 
-        <!-- Ссылка на прямое скачивание архива -->
+        <!-- Ссылка на прямое скачивание файла -->
         <div class="link-row-card">
           <div class="link-label-row">
             <span class="link-title">
               <span class="material-symbols-rounded">download</span>
               <span>Прямая ссылка на скачивание файла</span>
             </span>
-            <span class="link-desc">Ссылка для скачивания оригинала (24ч)</span>
+            <span class="link-desc">Ссылка для скачивания оригинала (24 часа)</span>
           </div>
           <div class="link-input-group">
             <input type="text" class="link-input" id="input-download-url" readonly>
@@ -268,7 +268,7 @@
           <div class="bottom-action-buttons">
             <button type="button" class="btn-secondary" id="btn-upload-another">
               <span class="material-symbols-rounded">add_circle</span>
-              <span>Загрузить ещё один сайт</span>
+              <span>Загрузить ещё один файл</span>
             </button>
           </div>
         </div>
@@ -292,7 +292,7 @@
         <!-- Наполняется через JavaScript -->
         <div class="empty-history-box">
           <span class="material-symbols-rounded">cloud_off</span>
-          Вы пока не загружали файлы в этой сессии. Загрузите сайт выше!
+          Вы пока не загружали файлы в этой сессии. Загрузите файл выше!
         </div>
       </div>
     </section>
@@ -306,19 +306,17 @@
           </div>
           <div class="faq-q">Почему именно 24 часа?</div>
           <div class="faq-a">
-            24 часа — идеальный срок для отправки прототипа клиенту, тестирования верстки на мобильных устройствах, 
-            сдачи учебного проекта или демонстрации коллегам без засорения серверов устаревшими версиями.
+            24 часа — идеальный срок для быстрой передачи файлов коллегам, клиентам или друзьям. Никакого накопления старого мусора: ссылка действует ровно сутки, а затем файл бесследно стирается.
           </div>
         </div>
 
         <div class="faq-card">
           <div class="faq-card-icon">
-            <span class="material-symbols-rounded">folder_zip</span>
+            <span class="material-symbols-rounded">inventory_2</span>
           </div>
-          <div class="faq-q">Что делать с ZIP-архивами?</div>
+          <div class="faq-q">Какие файлы можно загружать?</div>
           <div class="faq-a">
-            Просто запакуйте папку вашего сайта с `index.html`, картинками, CSS и JS в ZIP-архив. Сервер автоматически 
-            распакует его в изолированную веб-песочницу для онлайн-просмотра в браузере.
+            Абсолютно любые! Архивы ZIP, RAR, 7Z, документы PDF, DOCX, XLSX, видео, аудио, фотографии, установочные пакеты, исходный код и веб-страницы размером до 250 МБ.
           </div>
         </div>
 
@@ -337,13 +335,13 @@
 
   </main>
 
-  <!-- Модальное окно быстрой вставки HTML-кода -->
+  <!-- Модальное окно быстрой вставки текста или HTML -->
   <div class="modal-overlay" id="modal-paste">
     <div class="modal-box">
       <div class="modal-head">
         <div class="modal-title">
           <span class="material-symbols-rounded">edit_note</span>
-          <span>Быстрая публикация HTML-кода</span>
+          <span>Быстрая публикация текста или HTML</span>
         </div>
         <button type="button" class="modal-close-btn" id="btn-close-paste" title="Закрыть">
           <span class="material-symbols-rounded">close</span>
@@ -351,12 +349,12 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label class="form-label" for="paste-title">Название проекта или сайта</label>
-          <input type="text" class="form-input" id="paste-title" placeholder="Например: Мой лендинг" value="Мой сайт Аврора">
+          <label class="form-label" for="paste-title">Название файла или заметки</label>
+          <input type="text" class="form-input" id="paste-title" placeholder="Например: note.txt или page.html" value="Заметка Аврора">
         </div>
         <div class="form-group">
-          <label class="form-label" for="paste-code">HTML код (включая &lt;style&gt; и &lt;script&gt;)</label>
-          <textarea class="form-textarea" id="paste-code" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Привет из Аврора Облака!</h1>&#10;</body>&#10;</html>"></textarea>
+          <label class="form-label" for="paste-code">Содержимое (текст, код, HTML)</label>
+          <textarea class="form-textarea" id="paste-code" placeholder="Вставьте любой текст, заметку или код..."></textarea>
         </div>
       </div>
       <div class="modal-foot">
@@ -376,7 +374,7 @@
   <footer class="cloud-footer">
     <div class="footer-container">
       <div>
-        &copy; 2026 <strong>Платформа «Аврора»</strong> &bull; Облачный сервис временного хранения (24H TTL). 
+        &copy; 2026 <strong>Платформа «Аврора»</strong> &bull; Временное облачное хранилище любых файлов до 250 МБ (24H TTL). 
         Разработка: Амброзиев О.А.
       </div>
       <div class="footer-links">

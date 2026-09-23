@@ -5,7 +5,7 @@
 
 define('AURORA_CLOUD_STORAGE_DIR', dirname(__DIR__) . '/data/cloud');
 define('AURORA_CLOUD_TTL', 86400); // 24 часа в секундах
-define('AURORA_CLOUD_MAX_SIZE', 50 * 1024 * 1024); // 50 МБ
+define('AURORA_CLOUD_MAX_SIZE', 250 * 1024 * 1024); // 250 МБ
 
 /**
  * Инициализирует и возвращает путь к директории облачного хранилища

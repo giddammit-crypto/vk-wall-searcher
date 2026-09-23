@@ -29,7 +29,7 @@ if (!$id || !file_exists($metaFile)) {
     }
 }
 
-$title = $meta['title'] ?? 'Сайт в Аврора Облаке';
+$title = $meta['title'] ?? 'Файл в Аврора Облаке';
 $filename = $meta['filename'] ?? 'site.zip';
 $filesizeFormatted = $meta['filesize_formatted'] ?? '';
 $expiresAt = (int)($meta['expires_at'] ?? (time() + 86400));
@@ -321,11 +321,11 @@ $previewUrl = '../api/cloud-preview.php?id=' . urlencode($id);
   <div style="min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
     <div style="max-width:480px; width:100%; background:rgba(15,23,42,0.9); border:1px solid rgba(239,68,68,0.4); border-radius:20px; padding:36px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
       <span class="material-symbols-rounded" style="font-size:52px; color:#f87171; margin-bottom:12px;">timer_off</span>
-      <h2 style="font-size:20px; font-weight:800; margin-bottom:10px;">Срок хранения сайта истёк</h2>
+      <h2 style="font-size:20px; font-weight:800; margin-bottom:10px;">Срок хранения файла истёк</h2>
       <p style="font-size:14px; color:#94a3b8; line-height:1.6; margin-bottom:24px;">Файлы в Аврора Облаке хранятся ровно 24 часа с момента публикации, после чего автоматически удаляются.</p>
       <a href="index.html" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg, #22d3ee, #6366f1); color:#020617; text-decoration:none; font-weight:700; font-size:14px; padding:12px 24px; border-radius:30px;">
         <span class="material-symbols-rounded">cloud_upload</span>
-        <span>Загрузить новый сайт</span>
+        <span>Загрузить новый файл</span>
       </a>
     </div>
   </div>
@@ -348,14 +348,14 @@ $previewUrl = '../api/cloud-preview.php?id=' . urlencode($id);
     </div>
 
     <div class="bar-center">
-      <div class="timer-pill" id="ttl-pill" title="Время до автоматического удаления сайта">
+      <div class="timer-pill" id="ttl-pill" title="Время до автоматического удаления файла">
         <span class="material-symbols-rounded">timer</span>
         <span id="countdown-text">24:00:00</span>
       </div>
     </div>
 
     <div class="bar-right">
-      <a href="<?= htmlspecialchars($downloadUrl) ?>" class="btn-bar btn-bar-download" title="Скачать файл или архив сайта">
+      <a href="<?= htmlspecialchars($downloadUrl) ?>" class="btn-bar btn-bar-download" title="Скачать исходный файл">
         <span class="material-symbols-rounded">download</span>
         <span>Скачать</span>
       </a>
@@ -363,25 +363,25 @@ $previewUrl = '../api/cloud-preview.php?id=' . urlencode($id);
         <span class="material-symbols-rounded">qr_code_2</span>
         <span>QR-код</span>
       </button>
-      <a href="<?= htmlspecialchars($previewUrl) ?>" target="_blank" class="btn-bar btn-bar-ghost" title="Открыть чистый сайт на весь экран без панели">
+      <a href="<?= htmlspecialchars($previewUrl) ?>" target="_blank" class="btn-bar btn-bar-ghost" title="Открыть файл на весь экран без панели">
         <span class="material-symbols-rounded">open_in_new</span>
       </a>
-      <a href="index.html" class="btn-bar btn-bar-ghost" title="Загрузить свой сайт">
+      <a href="index.html" class="btn-bar btn-bar-ghost" title="Загрузить свой файл">
         <span class="material-symbols-rounded">add</span>
       </a>
     </div>
   </header>
 
-  <!-- Фрейм с сайтом -->
+  <!-- Фрейм с содержимым файла -->
   <main class="preview-frame-container">
-    <iframe src="<?= htmlspecialchars($previewUrl) ?>" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" title="Сайт пользователя"></iframe>
+    <iframe src="<?= htmlspecialchars($previewUrl) ?>" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" title="Файл пользователя"></iframe>
   </main>
 
   <!-- Модалка QR-кода -->
   <div class="qr-modal-backdrop" id="qr-modal">
     <div class="qr-modal-card">
       <button type="button" class="qr-modal-close" id="btn-close-qr"><span class="material-symbols-rounded">close</span></button>
-      <h3 style="font-size: 16px; font-weight:800; margin-bottom: 4px;">Сайт на смартфоне</h3>
+      <h3 style="font-size: 16px; font-weight:800; margin-bottom: 4px;">Файл на смартфоне</h3>
       <p style="font-size: 12px; color: var(--text-muted);">Наведите камеру телефона для перехода</p>
       <div class="qr-box" id="qr-canvas-wrap"></div>
       <button type="button" class="btn-bar btn-bar-ghost" id="btn-copy-link" style="width: 100%; justify-content:center; margin-top:8px;">

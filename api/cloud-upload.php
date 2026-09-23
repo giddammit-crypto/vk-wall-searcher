@@ -143,7 +143,7 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
 
 if ($file['size'] > AURORA_CLOUD_MAX_SIZE) {
     http_response_code(413);
-    echo json_encode(['ok' => false, 'error' => 'Размер файла превышает 50 МБ (максимум для 24-часового облака)']);
+    echo json_encode(['ok' => false, 'error' => 'Размер файла превышает 250 МБ (максимум для 24-часового облака)']);
     exit;
 }
 
