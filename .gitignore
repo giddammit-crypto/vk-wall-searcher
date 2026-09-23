@@ -50,6 +50,10 @@ data/*
 !data/.gitkeep
 !data/subscribers.json
 !data/inoagents.json
+!data/cloud/
+data/cloud/*
+!data/cloud/.gitkeep
+!data/cloud/.htaccess
 
 # Cache (TTS, temporary responses)
 cache/*

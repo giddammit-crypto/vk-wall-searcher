@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Аврора Облако — Загрузка сайтов на 24 часа</title>
+  <meta name="description" content="Бесплатное временное облако для публикации и передачи сайтов. Хранение 24 часа, Drag & Drop, мгновенный онлайн-просмотр, генерация ссылки на скачивание и QR-код.">
+  <meta name="theme-color" content="#060911">
+
+  <!-- Google Fonts & Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Космический неоновый фон -->
+  <div class="cosmic-bg">
+    <div class="cosmic-glow-1"></div>
+    <div class="cosmic-glow-2"></div>
+    <div class="cosmic-glow-3"></div>
+    <div class="cosmic-grid"></div>
+  </div>
+
+  <!-- Верхняя шапка (Header) -->
+  <header class="cloud-header">
+    <div class="header-container">
+      <a href="../index.html" class="brand-wrap" title="На главную платформы «Аврора»">
+        <div class="brand-icon-box">
+          <span class="material-symbols-rounded">cloud_upload</span>
+        </div>
+        <div class="brand-meta">
+          <div class="brand-title">
+            <span class="brand-gradient">Аврора Облако</span>
+            <span class="brand-badge-ttl">24H TTL</span>
+          </div>
+          <span class="brand-subtitle">Временный хостинг и обмен сайтами</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <div class="nav-chip-status" title="Сервер активен, автоматическая ротация 24 часа работает">
+          <span class="status-dot"></span>
+          <span>Облако активно</span>
+        </div>
+
+        <a href="../vk-miniapp/html-editor/" class="nav-link-btn" title="Открыть HTML/CSS/JS Редактор Аврора">
+          <span class="material-symbols-rounded">code</span>
+          <span>HTML Редактор</span>
+        </a>
+
+        <a href="../index.html" class="nav-link-btn" title="Вернуться на главный сайт Аврора">
+          <span class="material-symbols-rounded">arrow_back</span>
+          <span>На Аврору</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Главное содержимое -->
+  <main class="main-wrapper">
+
+    <!-- Hero Секция -->
+    <section class="hero-section">
+      <div class="hero-text">
+        <div class="hero-tag">
+          <span class="material-symbols-rounded">schedule</span>
+          <span>Хранение ровно 24 часа</span>
+        </div>
+        <h1 class="hero-title">
+          Публикуйте сайты в один клик с <span>Аврора Облаком</span>
+        </h1>
+        <p class="hero-desc">
+          Перетащите ZIP-архив сайта или HTML-страницу. Сервис мгновенно развернёт живой просмотр, 
+          создаст прямую ссылку на скачивание и QR-код для смартфона. Ровно через 24 часа файл бесследно удалится.
+        </p>
+        <div class="hero-pills">
+          <div class="hero-pill">
+            <span class="material-symbols-rounded">timer</span>
+            <span>24 часа жизни ссылки</span>
+          </div>
+          <div class="hero-pill">
+            <span class="material-symbols-rounded">rocket_launch</span>
+            <span>Мгновенный просмотр</span>
+          </div>
+          <div class="hero-pill">
+            <span class="material-symbols-rounded">folder_zip</span>
+            <span>ZIP архивы и HTML</span>
+          </div>
+          <div class="hero-pill">
+            <span class="material-symbols-rounded">qr_code_2</span>
+            <span>QR-код для смартфона</span>
+          </div>
+          <div class="hero-pill">
+            <span class="material-symbols-rounded">shield</span>
+            <span>Без регистрации и следов</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-mascot-wrap">
+        <div class="mascot-halo"></div>
+        <img src="../assets/images/mascot/robot_cool.png" alt="Космос Маскот Космо" class="mascot-img">
+      </div>
+    </section>
+
+    <!-- Карточка Загрузки (Upload Dropzone) -->
+    <section class="upload-card" id="upload-card">
+      <div class="dropzone" id="dropzone">
+        <div class="drop-icon-wrap">
+          <span class="material-symbols-rounded">cloud_upload</span>
+        </div>
+        <h2 class="drop-title">Перетащите сюда ZIP-архив сайта или файл</h2>
+        <p class="drop-subtitle">Поддерживаются архивы сайтов (.zip), веб-страницы (.html, .htm) до 50 МБ</p>
+        
+        <div class="drop-actions">
+          <button type="button" class="btn-primary" id="btn-browse">
+            <span class="material-symbols-rounded">upload_file</span>
+            <span>Выбрать файл сайта</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-open-paste-modal">
+            <span class="material-symbols-rounded">edit_note</span>
+            <span>Вставить HTML-код</span>
+          </button>
+        </div>
+
+        <input type="file" id="file-input" style="display: none;" accept=".zip,.html,.htm,.tar,.gz,.png,.jpg,.jpeg,.webp,.svg,.css,.js">
+
+        <div class="drop-hints">
+          <div class="drop-hint-item">
+            <span class="material-symbols-rounded">check_circle</span>
+            <span>ZIP распаковывается автоматически</span>
+          </div>
+          <div class="drop-hint-item">
+            <span class="material-symbols-rounded">check_circle</span>
+            <span>Живой просмотр index.html</span>
+          </div>
+          <div class="drop-hint-item">
+            <span class="material-symbols-rounded">check_circle</span>
+            <span>Прямое скачивание оригинала</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Прогресс загрузки -->
+      <div class="upload-progress-wrap" id="upload-progress">
+        <div class="progress-header">
+          <span class="progress-filename" id="progress-filename">Загрузка файла...</span>
+          <span class="progress-percent" id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="progress-meta">
+          <span id="progress-bytes">0 / 0 MB</span>
+          <span id="progress-status">Отправка в защищённое хранилище...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Карточка Результата (Result Card) -->
+    <section class="result-card" id="result-card">
+      <div class="result-top-banner">
+        <div class="result-file-info">
+          <div class="file-type-icon">
+            <span class="material-symbols-rounded" id="res-icon">folder_zip</span>
+          </div>
+          <div class="file-details-col">
+            <div class="result-file-name" id="res-filename">mysite.zip</div>
+            <div class="result-file-meta">
+              <span class="badge-tag" id="res-badge">Сайт (ZIP)</span>
+              <span id="res-filesize">2.4 MB</span>
+              <span>&bull;</span>
+              <span>Загружено только что</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Таймер обратного отсчета 24H -->
+        <div class="ttl-timer-box" title="Время до автоматического бесследного удаления файла">
+          <span class="material-symbols-rounded timer-icon-pulse">timer</span>
+          <div class="ttl-text-col">
+            <span class="ttl-label">Хранение 24 часа · Осталось</span>
+            <span class="ttl-countdown" id="res-countdown">23:59:59</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ссылки -->
+      <div class="result-links-grid">
+        <!-- Ссылка на онлайн-просмотр (если сайт) -->
+        <div class="link-row-card highlight" id="row-preview">
+          <div class="link-label-row">
+            <span class="link-title">
+              <span class="material-symbols-rounded">visibility</span>
+              <span>Онлайн-просмотр сайта с панелью Аврора</span>
+            </span>
+            <span class="link-desc">Живой сайт в браузере с таймером</span>
+          </div>
+          <div class="link-input-group">
+            <input type="text" class="link-input" id="input-view-url" readonly>
+            <button type="button" class="btn-icon-action" id="btn-copy-view" title="Скопировать ссылку">
+              <span class="material-symbols-rounded">content_copy</span>
+              <span>Копировать</span>
+            </button>
+            <a href="#" target="_blank" class="btn-icon-action primary" id="btn-open-view">
+              <span class="material-symbols-rounded">open_in_new</span>
+              <span>Открыть сайт</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Ссылка на прямое скачивание архива -->
+        <div class="link-row-card">
+          <div class="link-label-row">
+            <span class="link-title">
+              <span class="material-symbols-rounded">download</span>
+              <span>Прямая ссылка на скачивание файла</span>
+            </span>
+            <span class="link-desc">Ссылка для скачивания оригинала (24ч)</span>
+          </div>
+          <div class="link-input-group">
+            <input type="text" class="link-input" id="input-download-url" readonly>
+            <button type="button" class="btn-icon-action" id="btn-copy-download" title="Скопировать ссылку на скачивание">
+              <span class="material-symbols-rounded">content_copy</span>
+              <span>Копировать</span>
+            </button>
+            <a href="#" download class="btn-icon-action" id="btn-do-download">
+              <span class="material-symbols-rounded">file_download</span>
+              <span>Скачать</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Низ карточки: QR-код и поделиться -->
+      <div class="result-bottom-grid">
+        <div class="qr-box-wrap">
+          <div class="qr-container" id="res-qrcode" title="Отсканируйте камерой смартфона"></div>
+          <span class="qr-label">QR для перехода с телефона</span>
+        </div>
+
+        <div class="share-options-col">
+          <div>
+            <div class="share-title">
+              <span class="material-symbols-rounded">share</span>
+              <span>Поделиться ссылкой</span>
+            </div>
+            <div class="share-buttons-row">
+              <a href="#" target="_blank" class="btn-share tg" id="btn-share-tg">
+                <span class="material-symbols-rounded">send</span>
+                <span>Telegram</span>
+              </a>
+              <a href="#" target="_blank" class="btn-share vk" id="btn-share-vk">
+                <span class="material-symbols-rounded">hub</span>
+                <span>ВКонтакте</span>
+              </a>
+              <button type="button" class="btn-share" id="btn-copy-all">
+                <span class="material-symbols-rounded">quick_reference_all</span>
+                <span>Скопировать всё сообщение</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bottom-action-buttons">
+            <button type="button" class="btn-secondary" id="btn-upload-another">
+              <span class="material-symbols-rounded">add_circle</span>
+              <span>Загрузить ещё один сайт</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Секция: Недавние загрузки (История 24H) -->
+    <section class="history-section" id="history-section">
+      <div class="section-head">
+        <h3 class="section-title">
+          <span class="material-symbols-rounded">history</span>
+          <span>Мои загрузки за последние 24 часа</span>
+        </h3>
+        <button type="button" class="btn-clear-history" id="btn-clear-history" title="Очистить локальный список">
+          <span class="material-symbols-rounded">delete_sweep</span>
+          <span>Очистить историю</span>
+        </button>
+      </div>
+
+      <div class="history-list" id="history-list">
+        <!-- Наполняется через JavaScript -->
+        <div class="empty-history-box">
+          <span class="material-symbols-rounded">cloud_off</span>
+          Вы пока не загружали файлы в этой сессии. Загрузите сайт выше!
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ & Преимущества -->
+    <section class="faq-section">
+      <div class="faq-grid">
+        <div class="faq-card">
+          <div class="faq-card-icon">
+            <span class="material-symbols-rounded">hourglass_empty</span>
+          </div>
+          <div class="faq-q">Почему именно 24 часа?</div>
+          <div class="faq-a">
+            24 часа — идеальный срок для отправки прототипа клиенту, тестирования верстки на мобильных устройствах, 
+            сдачи учебного проекта или демонстрации коллегам без засорения серверов устаревшими версиями.
+          </div>
+        </div>
+
+        <div class="faq-card">
+          <div class="faq-card-icon">
+            <span class="material-symbols-rounded">folder_zip</span>
+          </div>
+          <div class="faq-q">Что делать с ZIP-архивами?</div>
+          <div class="faq-a">
+            Просто запакуйте папку вашего сайта с `index.html`, картинками, CSS и JS в ZIP-архив. Сервер автоматически 
+            распакует его в изолированную веб-песочницу для онлайн-просмотра в браузере.
+          </div>
+        </div>
+
+        <div class="faq-card">
+          <div class="faq-card-icon">
+            <span class="material-symbols-rounded">verified_user</span>
+          </div>
+          <div class="faq-q">Безопасность и конфиденциальность</div>
+          <div class="faq-a">
+            Мы не собираем персональные данные и не требуем авторизацию. Серверные PHP-скрипты в загрузках заблокированы, 
+            а по истечении 24 часов хранилище автоматически уничтожает файлы навсегда.
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Модальное окно быстрой вставки HTML-кода -->
+  <div class="modal-overlay" id="modal-paste">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-title">
+          <span class="material-symbols-rounded">edit_note</span>
+          <span>Быстрая публикация HTML-кода</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-paste" title="Закрыть">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="paste-title">Название проекта или сайта</label>
+          <input type="text" class="form-input" id="paste-title" placeholder="Например: Мой лендинг" value="Мой сайт Аврора">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="paste-code">HTML код (включая &lt;style&gt; и &lt;script&gt;)</label>
+          <textarea class="form-textarea" id="paste-code" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Привет из Аврора Облака!</h1>&#10;</body>&#10;</html>"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-secondary" id="btn-cancel-paste">Отмена</button>
+        <button type="button" class="btn-primary" id="btn-submit-paste">
+          <span class="material-symbols-rounded">cloud_upload</span>
+          <span>Опубликовать на 24 часа</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Контейнер всплывающих уведомлений (Toasts) -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Футер -->
+  <footer class="cloud-footer">
+    <div class="footer-container">
+      <div>
+        &copy; 2026 <strong>Платформа «Аврора»</strong> &bull; Облачный сервис временного хранения (24H TTL). 
+        Разработка: Амброзиев О.А.
+      </div>
+      <div class="footer-links">
+        <a href="../vk-miniapp/html-editor/" target="_blank">HTML Редактор</a>
+        <a href="../game/" target="_blank">Игра Космо</a>
+        <a href="../vk-miniapp/poster/" target="_blank">Генератор афиш</a>
+        <a href="../index.html">На главную</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Скрипт QR-кодов и логики приложения -->
+  <script src="qrcode.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1120,6 +1120,84 @@ ${appState.js}
   showToast("📥 HTML-файл скачан!", "success");
 }
 
+let cloudTimerInterval = null;
+
+async function publishToCloud() {
+  const title = appState.projectName || "Сайт Аврора";
+  const bodyContent = appState.html.includes("<body")
+    ? appState.html.replace(/[\s\S]*?<body[^>]*>/i, "").replace(/<\/body>[\s\S]*/i, "").trim()
+    : appState.html;
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escHtml(title)}</title>
+<style>
+${appState.css}
+</style>
+</head>
+<body>
+${bodyContent}
+<script>
+${appState.js}
+<\/script>
+</body>
+</html>`;
+
+  showToast("Отправка проекта в Аврора Облако...", "info");
+
+  try {
+    const res = await fetch("../../api/cloud-upload.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        title: title,
+        html: fullHtml
+      })
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      showToast(data.error || "Ошибка загрузки в облако", "error");
+      return;
+    }
+
+    const resTitleEl = document.getElementById("cloud-res-title");
+    const resMetaEl = document.getElementById("cloud-res-meta");
+    const viewInput = document.getElementById("cloud-view-input");
+    const downloadInput = document.getElementById("cloud-download-input");
+    const openBtn = document.getElementById("btn-open-cloud-view");
+    const timerEl = document.getElementById("cloud-res-timer");
+
+    if (resTitleEl) resTitleEl.textContent = data.title || title;
+    if (resMetaEl) resMetaEl.textContent = `Размер: ${data.filesize_formatted} · Доступен 24 часа`;
+    if (viewInput) viewInput.value = data.view_url;
+    if (downloadInput) downloadInput.value = data.download_url;
+    if (openBtn) openBtn.href = data.view_url;
+
+    const expiresAt = data.expires_at || (Math.floor(Date.now() / 1000) + 86400);
+    if (cloudTimerInterval) clearInterval(cloudTimerInterval);
+    const updateCloudTimer = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const diff = Math.max(0, expiresAt - now);
+      const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+      const s = String(diff % 60).padStart(2, "0");
+      if (timerEl) timerEl.textContent = `${h}:${m}:${s}`;
+    };
+    updateCloudTimer();
+    cloudTimerInterval = setInterval(updateCloudTimer, 1000);
+
+    openModal("cloud-modal");
+    showToast("🚀 Проект успешно опубликован в облаке на 24 часа!", "success");
+
+  } catch (err) {
+    showToast("Ошибка сети при публикации в облако: " + err.message, "error");
+  }
+}
+
 function importHTML(file) {
   const reader = new FileReader();
   reader.onload = e => {
@@ -1638,6 +1716,25 @@ function bindUI() {
 
   // Export
   document.getElementById("btn-export")?.addEventListener("click", exportHTML);
+
+  // Cloud Upload (24H)
+  document.getElementById("btn-cloud-upload")?.addEventListener("click", publishToCloud);
+  document.getElementById("btn-close-cloud")?.addEventListener("click", () => closeModal("cloud-modal"));
+  document.getElementById("btn-close-cloud-btn")?.addEventListener("click", () => closeModal("cloud-modal"));
+  document.getElementById("btn-copy-cloud-view")?.addEventListener("click", () => {
+    const val = document.getElementById("cloud-view-input")?.value;
+    if (val) {
+      navigator.clipboard.writeText(val);
+      showToast("Ссылка на онлайн-просмотр скопирована!", "success");
+    }
+  });
+  document.getElementById("btn-copy-cloud-download")?.addEventListener("click", () => {
+    const val = document.getElementById("cloud-download-input")?.value;
+    if (val) {
+      navigator.clipboard.writeText(val);
+      showToast("Ссылка на скачивание скопирована!", "success");
+    }
+  });
 
   // Import
   const importInput = document.getElementById("import-file");
