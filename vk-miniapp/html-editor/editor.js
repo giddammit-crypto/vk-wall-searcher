@@ -1139,6 +1139,16 @@ function setEditorContent(lang, content) {
   appState[lang] = content || "";
 }
 
+// Undo / Redo — делегируем в активный CodeMirror редактор
+function doUndo() {
+  const ed = editors[appState.activeTab];
+  if (ed) { undo(ed); ed.focus(); }
+}
+function doRedo() {
+  const ed = editors[appState.activeTab];
+  if (ed) { redo(ed); ed.focus(); }
+}
+
 function setFontSize(size) {
   appState.fontSize = Math.max(CONFIG.minFontSize, Math.min(CONFIG.maxFontSize, size));
   const ext = fontSizeComp.reconfigure(
@@ -1276,11 +1286,24 @@ const SHORTCUTS = [
 
 function initKeyboard() {
   document.addEventListener("keydown", e => {
-    if (e.ctrlKey && e.key === "s") { e.preventDefault(); saveCurrentProject(); }
-    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); runPreview(); showToast("▶ Обновлено", "success"); }
-    if (e.ctrlKey && e.shiftKey && e.key === "F") { e.preventDefault(); formatCode(); }
-    if (e.ctrlKey && e.key === "=") { e.preventDefault(); setFontSize(appState.fontSize + 1); }
-    if (e.ctrlKey && e.key === "-") { e.preventDefault(); setFontSize(appState.fontSize - 1); }
+    const ctrl = e.ctrlKey || e.metaKey;
+    // Undo / Redo — работаем через глобальный handler для случая когда фокус
+    // находится вне CodeMirror (тулбар, модалки, preview). Когда CM в фокусе —
+    // historyKeymap перехватывает сам, повторного вызова не будет.
+    if (ctrl && !e.shiftKey && (e.key === "z" || e.key === "я")) {
+      const ae = document.activeElement;
+      const inCM = ae?.closest?.(".cm-editor");
+      if (!inCM) { e.preventDefault(); doUndo(); }
+      return;
+    }
+    if (ctrl && (e.key === "y" || e.key === "н" || (e.shiftKey && (e.key === "z" || e.key === "я")))) {
+      e.preventDefault(); doRedo(); return;
+    }
+    if (ctrl && e.key === "s") { e.preventDefault(); saveCurrentProject(); }
+    if (ctrl && e.key === "Enter") { e.preventDefault(); runPreview(); showToast("▶ Обновлено", "success"); }
+    if (ctrl && e.shiftKey && e.key === "F") { e.preventDefault(); formatCode(); }
+    if (ctrl && e.key === "=") { e.preventDefault(); setFontSize(appState.fontSize + 1); }
+    if (ctrl && e.key === "-") { e.preventDefault(); setFontSize(appState.fontSize - 1); }
     if (e.key === "F11") { e.preventDefault(); toggleZen(); }
     if (e.key === "Escape") {
       if (appState.zenMode) { toggleZen(); return; }
@@ -1419,6 +1442,10 @@ function bindUI() {
 
   // Word wrap
   document.getElementById("btn-wrap")?.addEventListener("click", toggleWordWrap);
+
+  // Undo / Redo кнопки тулбара
+  document.getElementById("btn-undo")?.addEventListener("click", doUndo);
+  document.getElementById("btn-redo")?.addEventListener("click", doRedo);
 
   // Font size
   document.getElementById("btn-font-dec")?.addEventListener("click", () => setFontSize(appState.fontSize - 1));

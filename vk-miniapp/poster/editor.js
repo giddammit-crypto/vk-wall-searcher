@@ -4824,8 +4824,17 @@ function bindEvents() {
   $('#btn-redo').addEventListener('click', redo);
 
   document.addEventListener('keydown', e => {
-    if ((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
-    if ((e.ctrlKey||e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
+    // Не перехватываем Ctrl+Z/Y когда фокус в текстовом поле — там работает нативный undo
+    const ae = document.activeElement;
+    const inInput = ae && (['INPUT','TEXTAREA','SELECT'].includes(ae.tagName) || ae.isContentEditable);
+    if ((e.ctrlKey||e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'я')) {
+      if (inInput) return;
+      e.preventDefault(); undo();
+    }
+    if ((e.ctrlKey||e.metaKey) && (e.key === 'y' || e.key === 'н' || (e.shiftKey && (e.key === 'z' || e.key === 'я')))) {
+      if (inInput) return;
+      e.preventDefault(); redo();
+    }
     if ((e.ctrlKey||e.metaKey) && (e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В')) {
       e.preventDefault();
       duplicateActiveObject();
