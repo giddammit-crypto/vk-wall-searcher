@@ -1187,3 +1187,40 @@ body.ai-dev-modal-open {
         padding: 2px 6px;
     }
 }
+
+/* ── Подфильтры категорий инструментов (Subchips) ── */
+.ai-dev-subchips-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+    padding-bottom: 4px;
+}
+
+.ai-dev-subchip {
+    padding: 7px 15px;
+    border-radius: 9999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ai-dev-text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--ai-dev-border);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.ai-dev-subchip:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--ai-dev-text-main);
+    border-color: rgba(255, 255, 255, 0.22);
+    transform: translateY(-1px);
+}
+
+.ai-dev-subchip.active {
+    background: rgba(0, 240, 255, 0.14);
+    color: var(--ai-dev-cyan);
+    border-color: rgba(0, 240, 255, 0.45);
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.28);
+}

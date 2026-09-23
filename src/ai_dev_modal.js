@@ -23,6 +23,7 @@ let tabPanels = [];
 let emptyStateEl = null;
 let currentActiveTab = 'free-ai';
 let currentSearchQuery = '';
+let currentSubfilter = 'all';
 
 // Вспомогательная функция копирования в буфер обмена
 export async function copyToClipboard(text, triggerBtn = null, successMsg = 'Скопировано в буфер обмена!') {
@@ -91,84 +92,21 @@ export function getAiDevModalHtml() {
                         </p>
                     </div>
                 </div>
-                <button type="button" class="ai-dev-close-btn" data-aidev-close title="Закрыть окно (Esc)">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-        </header>
 
-        <!-- Строка мгновенного поиска -->
-        <div class="ai-dev-search-bar">
-            <div class="ai-dev-search-input-wrap">
-                <span class="material-symbols-outlined ai-dev-search-icon">search</span>
-                <input
-                    type="text"
-                    class="ai-dev-search-input"
-                    data-aidev-search
-                    placeholder="Быстрый поиск ресурсов, моделей, MCP-серверов, навыков Skills или команд..."
-                    autocomplete="off"
-                    spellcheck="false"
-                />
-                <button type="button" class="ai-dev-clear-btn hidden" data-aidev-clear title="Очистить поиск">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-            <div class="ai-dev-search-counter" data-aidev-counter>
-                <span class="material-symbols-outlined" style="font-size: 16px;">explore</span>
-                <span class="counter-text">Все ресурсы активны</span>
-            </div>
-        </div>
-
-        <!-- Навигационные вкладки -->
-        <nav class="ai-dev-tabs-bar" role="tablist" aria-label="Разделы базы знаний">
-            <button type="button" class="ai-dev-tab-btn active" data-tab-target="free-ai" role="tab" aria-selected="true">
-                <span class="material-symbols-outlined">smart_toy</span>
-                <span>Бесплатные ИИ</span>
-                <span class="ai-dev-tab-count" data-tab-count="free-ai">9</span>
-            </button>
-            <button type="button" class="ai-dev-tab-btn" data-tab-target="mcp" role="tab" aria-selected="false">
-                <span class="material-symbols-outlined">bolt</span>
-                <span>MCP Серверы</span>
-                <span class="ai-dev-tab-count" data-tab-count="mcp">11</span>
-            </button>
-            <button type="button" class="ai-dev-tab-btn" data-tab-target="skills" role="tab" aria-selected="false">
-                <span class="material-symbols-outlined">psychology</span>
-                <span>Агентные Skills</span>
-                <span class="ai-dev-tab-count" data-tab-count="skills">8</span>
-            </button>
-            <button type="button" class="ai-dev-tab-btn" data-tab-target="repos" role="tab" aria-selected="false">
-                <span class="material-symbols-outlined">terminal</span>
-                <span>GitHub Репозитории</span>
-                <span class="ai-dev-tab-count" data-tab-count="repos">8</span>
-            </button>
-            <button type="button" class="ai-dev-tab-btn" data-tab-target="guide" role="tab" aria-selected="false">
-                <span class="material-symbols-outlined">rocket_launch</span>
-                <span>Практический гайд</span>
-                <span class="ai-dev-tab-count" data-tab-count="guide">4</span>
-            </button>
-        </nav>
-
-        <!-- Тело со вкладками -->
-        <main class="ai-dev-body">
-            <!-- ========================================================
-                 ВКЛАДКА 1: БЕСПЛАТНЫЕ ИИ (ЧАТЫ И ПЕСОЧНИЦЫ)
-                 ======================================================== -->
-            <section class="ai-dev-tab-panel active" id="tab-free-ai" role="tabpanel" data-tab-panel="free-ai">
-                <div class="ai-dev-intro-banner">
-                    <div class="ai-dev-intro-icon">
-                        <span class="material-symbols-outlined">token</span>
-                    </div>
-                    <div class="ai-dev-intro-content">
-                        <h3 class="ai-dev-intro-title">Топовые бесплатные чаты, арены и песочницы LLM</h3>
-                        <p class="ai-dev-intro-desc">
-                            Подборка лучших сервисов для прямого общения, слепых баттлов моделей, генерации сложного кода и веб-поиска без платных подписок. Используйте для генерации архитектурных решений, прототипирования и парного программирования.
-                        </p>
-                    </div>
+                <!-- Быстрые фильтры по направлениям инструментов -->
+                <div class="ai-dev-subchips-bar" data-subfilter-bar>
+                    <button type="button" class="ai-dev-subchip active" data-subfilter="all">Все ресурсы (56)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="chat">Чат-боты и Reasoning (14)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="api">Быстрый API-инференс (10)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="ide">ИИ-IDE и Кодинг (11)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="local">Локальные LLM (8)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="prompt">Промпты и Рейтинги (8)</button>
+                    <button type="button" class="ai-dev-subchip" data-subfilter="rag">Векторные БД и RAG (5)</button>
                 </div>
 
                 <div class="ai-dev-grid">
                     <!-- LMSYS Chatbot Arena -->
-                    <article class="ai-dev-card" data-keywords="lmsys arena blind battle gpt-4o claude 3.5 gemini deepseek r1 leaderboard elo">
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="lmsys arena blind battle gpt-4o claude 3.5 gemini deepseek r1 leaderboard elo">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-amber">
@@ -179,7 +117,7 @@ export function getAiDevModalHtml() {
                                         <h4 class="ai-dev-card-title">LMSYS Chatbot Arena</h4>
                                         <span class="ai-dev-tag tag-amber">БАТТЛЫ</span>
                                     </div>
-                                    <span class="ai-dev-card-host">arena.ai &bull; chat.lmsys.org</span>
+                                    <span class="ai-dev-card-host">arena.ai • chat.lmsys.org</span>
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
@@ -195,7 +133,7 @@ export function getAiDevModalHtml() {
                         <div class="ai-dev-card-actions">
                             <a href="https://arena.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть Arena.ai</span>
+                                <span>Открыть LMSYS Chatbot Arena</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://arena.ai" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
@@ -204,8 +142,8 @@ export function getAiDevModalHtml() {
                         </div>
                     </article>
 
-                    <!-- Qwen Chat -->
-                    <article class="ai-dev-card" data-keywords="qwen chat alibaba coder 32b 72b max 128k context artifacts code">
+                    <!-- Qwen Chat (Alibaba) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="qwen chat alibaba coder 32b 72b max 128k context artifacts code">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-cyan">
@@ -220,7 +158,7 @@ export function getAiDevModalHtml() {
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Официальный бесплатный веб-чат к флагманским моделям Alibaba Cloud. Включает Qwen 2.5 Coder 32B/72B (одна из сильнейших открытых моделей программирования в мире), контекст до 128k токенов, артефакты и анализ файлов.
+                                Официальный бесплатный веб-чат к флагманским моделям Alibaba Cloud. Включает Qwen 2.5 Coder 32B/72B (одна из сильнейших открытых моделей программирования), контекст до 128k токенов, артефакты и анализ файлов.
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-cyan">Qwen 2.5 Coder</span>
@@ -242,7 +180,7 @@ export function getAiDevModalHtml() {
                     </article>
 
                     <!-- DeepSeek Chat -->
-                    <article class="ai-dev-card" data-keywords="deepseek chat r1 v3 reasoning chain-of-thought cot code open source free">
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="deepseek chat r1 v3 reasoning chain-of-thought cot code open source free">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-blue">
@@ -257,7 +195,7 @@ export function getAiDevModalHtml() {
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Революционный китайский сервис с моделями DeepSeek-V3 и DeepSeek-R1. Открытое рассуждение (Chain-of-Thought) мирового уровня, глубокий архитектурный анализ кода, поиск в реальном интернете и моментальный отклик.
+                                Революционный сервис с моделями DeepSeek-V3 и DeepSeek-R1. Открытое рассуждение (Chain-of-Thought) мирового уровня, глубокий архитектурный анализ кода, поиск в реальном интернете и моментальный отклик.
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-purple">DeepSeek-R1</span>
@@ -269,7 +207,7 @@ export function getAiDevModalHtml() {
                         <div class="ai-dev-card-actions">
                             <a href="https://chat.deepseek.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть DeepSeek</span>
+                                <span>Открыть DeepSeek Chat</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://chat.deepseek.com" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
@@ -279,7 +217,7 @@ export function getAiDevModalHtml() {
                     </article>
 
                     <!-- Z.AI / GLM (Zhipu AI) -->
-                    <article class="ai-dev-card" data-keywords="z.ai glm-4 glm-zero zhipu ai china search artifacts multimodal">
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="z.ai glm-4 glm-zero zhipu ai china search artifacts multimodal">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-purple">
@@ -306,7 +244,7 @@ export function getAiDevModalHtml() {
                         <div class="ai-dev-card-actions">
                             <a href="https://chat.z.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть Z.AI</span>
+                                <span>Открыть Z.AI / GLM</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://chat.z.ai" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
@@ -315,36 +253,74 @@ export function getAiDevModalHtml() {
                         </div>
                     </article>
 
-                    <!-- Hugging Face Chat -->
-                    <article class="ai-dev-card" data-keywords="hugging face chat llama 3.3 mistral command r qwen open source hub">
+                    <!-- Kimi (Moonshot AI) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="kimi moonshot ai 2m context pdf long context reasoning k1.5 documents">
                         <div>
                             <div class="ai-dev-card-header">
-                                <div class="ai-dev-card-icon icon-emerald">
-                                    <span class="material-symbols-outlined">hub</span>
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">auto_stories</span>
                                 </div>
                                 <div class="ai-dev-card-info">
                                     <div class="ai-dev-card-title-row">
-                                        <h4 class="ai-dev-card-title">Hugging Face Chat</h4>
-                                        <span class="ai-dev-tag tag-green">OPEN SOURCE</span>
+                                        <h4 class="ai-dev-card-title">Kimi (Moonshot AI)</h4>
+                                        <span class="ai-dev-tag tag-cyan">2M КОНТЕКСТ</span>
                                     </div>
-                                    <span class="ai-dev-card-host">huggingface.co/chat</span>
+                                    <span class="ai-dev-card-host">kimi.com • kimi.ai</span>
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Бесплатный интерфейс доступа к новейшим открытым моделям сообщества: Meta Llama 3.3 70B, Mistral Large 2, Cohere Command R+, Qwen 2.5. Поддерживает создание пользовательских ассистентов и подключение поиска.
+                                Абсолютный чемпион по удержанию сверхдлинного контекста до 2 000 000 токенов. Позволяет загружать целые репозитории, технические регламенты и толстые PDF со мгновенным поиском фактов и reasoning-моделью Kimi k1.5.
                             </p>
                             <div class="ai-dev-card-badges">
-                                <span class="ai-dev-tag tag-green">Llama 3.3 70B</span>
-                                <span class="ai-dev-tag tag-cyan">Mistral Large</span>
-                                <span class="ai-dev-tag">No Login Needed</span>
+                                <span class="ai-dev-tag tag-cyan">2M Tokens</span>
+                                <span class="ai-dev-tag tag-purple">Kimi k1.5</span>
+                                <span class="ai-dev-tag">Docs & Repos</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
                             </div>
                         </div>
                         <div class="ai-dev-card-actions">
-                            <a href="https://huggingface.co/chat" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                            <a href="https://www.kimi.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть HF Chat</span>
+                                <span>Открыть Kimi</span>
                             </a>
-                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://huggingface.co/chat" title="Скопировать ссылку">
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.kimi.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Le Chat (Mistral AI) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="mistral le chat codestral pixtral mistral large canvas web search france">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">brush</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Le Chat (Mistral AI)</h4>
+                                        <span class="ai-dev-tag tag-amber">CODESTRAL 2501</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">chat.mistral.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Флагманский европейский веб-чат от Mistral AI. Предоставляет свободный доступ к Codestral (ноябрь 2024/2025), Mistral Large 2, Pixtral для зрения, живому веб-поиску и встроенному интерактивному холсту Canvas.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Codestral 2501</span>
+                                <span class="ai-dev-tag tag-cyan">Mistral Large 2</span>
+                                <span class="ai-dev-tag">Canvas Холст</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://chat.mistral.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Le Chat</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://chat.mistral.ai" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
                                 <span>Копировать</span>
                             </button>
@@ -352,33 +328,34 @@ export function getAiDevModalHtml() {
                     </article>
 
                     <!-- Perplexity AI -->
-                    <article class="ai-dev-card" data-keywords="perplexity ai search live citations web academic writing research">
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="perplexity ai search live citations web academic writing research">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-cyan">
-                                    <span class="material-symbols-outlined">travel_explore</span>
+                                    <span class="material-symbols-outlined">search</span>
                                 </div>
                                 <div class="ai-dev-card-info">
                                     <div class="ai-dev-card-title-row">
                                         <h4 class="ai-dev-card-title">Perplexity AI</h4>
-                                        <span class="ai-dev-tag tag-cyan">ПОИСК С ССЫЛКАМИ</span>
+                                        <span class="ai-dev-tag tag-cyan">ИИ ПОИСК</span>
                                     </div>
                                     <span class="ai-dev-card-host">perplexity.ai</span>
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Мощная вопросно-ответная поисковая система с обязательным цитированием первоисточников. Незаменима для поиска актуальной документации, проверки API новых библиотек и решения ошибок компиляции.
+                                Интеллектуальная диалоговая поисковая система нового поколения. Мгновенные ответы на сложные инженерные вопросы со ссылками на первоисточники, GitHub, научные статьи и документацию в реальном времени.
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-cyan">Live Web Search</span>
                                 <span class="ai-dev-tag tag-purple">Citations</span>
-                                <span class="ai-dev-tag">Pro Search</span>
+                                <span class="ai-dev-tag">Academic Mode</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
                             </div>
                         </div>
                         <div class="ai-dev-card-actions">
                             <a href="https://www.perplexity.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть Perplexity</span>
+                                <span>Открыть Perplexity AI</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.perplexity.ai" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
@@ -387,36 +364,259 @@ export function getAiDevModalHtml() {
                         </div>
                     </article>
 
-                    <!-- OpenRouter -->
-                    <article class="ai-dev-card" data-keywords="openrouter api hub free pool gateway deepseek llama mistral">
+                    <!-- Phind for Developers -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="phind search developers programming code stackoverflow github documentation">
                         <div>
                             <div class="ai-dev-card-header">
-                                <div class="ai-dev-card-icon icon-pink">
-                                    <span class="material-symbols-outlined">alt_route</span>
+                                <div class="ai-dev-card-icon icon-blue">
+                                    <span class="material-symbols-outlined">terminal</span>
                                 </div>
                                 <div class="ai-dev-card-info">
                                     <div class="ai-dev-card-title-row">
-                                        <h4 class="ai-dev-card-title">OpenRouter</h4>
-                                        <span class="ai-dev-tag tag-purple">ХАБ API МОДЕЛЕЙ</span>
+                                        <h4 class="ai-dev-card-title">Phind for Developers</h4>
+                                        <span class="ai-dev-tag tag-blue">DEV SEARCH</span>
                                     </div>
-                                    <span class="ai-dev-card-host">openrouter.ai</span>
+                                    <span class="ai-dev-card-host">phind.com</span>
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Универсальный шлюз с единым OpenAI-совместимым API к сотням LLM. Предоставляет постоянный пул бесплатных моделей (:free) без кредитной карты: DeepSeek R1, Llama 3.3 70B, Gemini 2.0 Flash Exp.
+                                Специализированный поисковый движок и чат-ассистент, оптимизированный исключительно для разработчиков. Индексирует свежую документацию библиотек, объясняет стек-трейсы ошибок и генерирует рабочие сниппеты.
                             </p>
                             <div class="ai-dev-card-badges">
-                                <span class="ai-dev-tag tag-purple">Free Tier Pool</span>
-                                <span class="ai-dev-tag tag-cyan">Unified API</span>
-                                <span class="ai-dev-tag">OpenAI Format</span>
+                                <span class="ai-dev-tag tag-blue">Dev Search Engine</span>
+                                <span class="ai-dev-tag tag-cyan">Code Context</span>
+                                <span class="ai-dev-tag">VS Code Extension</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
                             </div>
                         </div>
                         <div class="ai-dev-card-actions">
-                            <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                            <a href="https://www.phind.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть OpenRouter</span>
+                                <span>Открыть Phind for Developers</span>
                             </a>
-                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://openrouter.ai" title="Скопировать ссылку">
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.phind.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Claude.ai (Anthropic) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="claude ai anthropic sonnet 3.5 haiku artifacts coding architecture">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">psychology</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Claude.ai (Anthropic)</h4>
+                                        <span class="ai-dev-tag tag-amber">SONNET 3.5</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">claude.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Официальный веб-интерфейс к Claude 3.5 Sonnet и Haiku от Anthropic. Золотой стандарт качества программного кода, глубокого контекстного понимания, редактирования текстов и интерактивных визуальных артефактов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Claude 3.5 Sonnet</span>
+                                <span class="ai-dev-tag tag-purple">Artifacts</span>
+                                <span class="ai-dev-tag">Project Knowledge</span>
+                                <span class="ai-dev-tag tag-green">Базовый доступ</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Claude.ai</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://claude.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- ChatGPT (OpenAI) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="chatgpt openai gpt-4o o3-mini o1 canvas python reasoning">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">chat</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">ChatGPT (OpenAI)</h4>
+                                        <span class="ai-dev-tag tag-green">GPT-4o & o3</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">chatgpt.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Официальный чат OpenAI. В бесплатном тарифе доступна новейшая модель GPT-4o, reasoning-модель o3-mini для глубоких математических и алгоритмических задач, загрузка файлов и визуальный редактор кода Canvas.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">GPT-4o</span>
+                                <span class="ai-dev-tag tag-purple">o3-mini Reasoning</span>
+                                <span class="ai-dev-tag">Canvas</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть ChatGPT</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://chatgpt.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Microsoft Copilot -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="microsoft copilot gpt-4o bing search designer dall-e free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-blue">
+                                    <span class="material-symbols-outlined">smart_toy</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Microsoft Copilot</h4>
+                                        <span class="ai-dev-tag tag-blue">MICROSOFT</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">copilot.microsoft.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Бесплатный корпоративный ассистент от Microsoft на базе GPT-4o. Включает неограниченный веб-поиск по Bing, генерацию изображений через Designer (DALL-E 3), анализ веб-страниц и плагины без подписки.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-blue">GPT-4o Free</span>
+                                <span class="ai-dev-tag tag-cyan">Bing Search</span>
+                                <span class="ai-dev-tag">Image Gen</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://copilot.microsoft.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Microsoft Copilot</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://copilot.microsoft.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- DuckDuckGo AI Chat -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="duckduckgo ai chat anonymous private no logs claude gpt-4o llama free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">shield</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">DuckDuckGo AI Chat</h4>
+                                        <span class="ai-dev-tag tag-green">100% ПРИВАТНО</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">duckduckgo.com/chat</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Анонимный чат без регистрации, сбора логов и привязки IP. Предоставляет бесплатный доступ к Claude 3 Haiku, GPT-4o mini, Llama 3.3 70B и Mixtral 8x7B с гарантией того, что данные не обучают модели.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">No Signup</span>
+                                <span class="ai-dev-tag tag-cyan">Claude 3 Haiku</span>
+                                <span class="ai-dev-tag tag-purple">Llama 3.3 70B</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://duckduckgo.com/chat" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть DuckDuckGo AI Chat</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://duckduckgo.com/chat" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Яндекс Нейро -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="yandex neuro ya.ru нейро поиск yandexgpt рунет суммаризация">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">travel_explore</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Яндекс Нейро</h4>
+                                        <span class="ai-dev-tag tag-amber">НЕЙРОПОИСК</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">ya.ru</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Объединение поисковой машины Яндекса и языковой модели YandexGPT. Изучает сотни источников в Рунете и мире в реальном времени, объединяя их в один понятный фактологический ответ с гиперссылками.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">YandexGPT</span>
+                                <span class="ai-dev-tag tag-cyan">Живой Рунет</span>
+                                <span class="ai-dev-tag">Источники</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://ya.ru" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Яндекс Нейро</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://ya.ru" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Яндекс 300 (Краткий пересказ) -->
+                    <article class="ai-dev-card" data-subcat="chat" data-keywords="300 ya ru yandex краткий пересказ выжимка статей youtube видео тезисы">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">format_list_bulleted</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Яндекс 300 (Краткий пересказ)</h4>
+                                        <span class="ai-dev-tag tag-amber">ТЕЗИСЫ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">300.ya.ru</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Бесплатный сервис мгновенной выжимки ключевых мыслей из длинных статей, технической документации, англоязычных публикаций и любых видео на YouTube по ссылке или вставленному тексту.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Суммаризация</span>
+                                <span class="ai-dev-tag tag-purple">YouTube видео</span>
+                                <span class="ai-dev-tag">Ключевые тезисы</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://300.ya.ru" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Яндекс 300</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://300.ya.ru" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
                                 <span>Копировать</span>
                             </button>
@@ -424,11 +624,11 @@ export function getAiDevModalHtml() {
                     </article>
 
                     <!-- Google AI Studio -->
-                    <article class="ai-dev-card" data-keywords="google ai studio gemini 2.0 flash pro 2m context multimodal api free">
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="google ai studio gemini 2.0 flash pro 2m context multimodal api free">
                         <div>
                             <div class="ai-dev-card-header">
-                                <div class="ai-dev-card-icon icon-blue">
-                                    <span class="material-symbols-outlined">memory</span>
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">developer_board</span>
                                 </div>
                                 <div class="ai-dev-card-info">
                                     <div class="ai-dev-card-title-row">
@@ -439,18 +639,19 @@ export function getAiDevModalHtml() {
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Официальная веб-песочница Google для разработчиков. Бесплатный доступ к Gemini 2.0 Flash и Pro с гигантским контекстным окном до 2 000 000 токенов (можно загрузить целые репозитории, видео и книги) + бесплатные API ключи.
+                                Официальная веб-студия для экспериментов с Gemini 2.0 Flash, Gemini 1.5 Pro и Thinking-моделями. Включает бесплатный API-ключ с гигантским контекстом до 2 млн токенов, structured JSON и вызовом функций.
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-cyan">Gemini 2.0 Flash</span>
                                 <span class="ai-dev-tag tag-purple">2M Context</span>
-                                <span class="ai-dev-tag tag-green">Free API Keys</span>
+                                <span class="ai-dev-tag">Free API Key</span>
+                                <span class="ai-dev-tag tag-green">Щедрый Free Tier</span>
                             </div>
                         </div>
                         <div class="ai-dev-card-actions">
                             <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть AI Studio</span>
+                                <span>Открыть Google AI Studio</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://aistudio.google.com" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
@@ -459,8 +660,8 @@ export function getAiDevModalHtml() {
                         </div>
                     </article>
 
-                    <!-- Groq Console -->
-                    <article class="ai-dev-card" data-keywords="groq console lpu ultra fast speed inference 500 tokens llama mistral">
+                    <!-- Groq Cloud Console -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="groq console lpu ultra fast speed inference 500 tokens llama mistral deepseek">
                         <div>
                             <div class="ai-dev-card-header">
                                 <div class="ai-dev-card-icon icon-amber">
@@ -475,20 +676,1501 @@ export function getAiDevModalHtml() {
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Сверхбыстрый инференс открытых моделей на специализированных чипах Groq LPU (Language Processing Unit). Мгновенная генерация ответов со скоростью свыше 500 токенов в секунду с бесплатным тарифом API.
+                                Сверхбыстрый инференс открытых моделей на чипах Groq LPU (Language Processing Unit). Мгновенная генерация ответов со скоростью свыше 500 токенов в секунду с бесплатным API-тарифом для Llama 3.3 70B и DeepSeek R1.
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-amber">Ultra Fast LPU</span>
                                 <span class="ai-dev-tag tag-green">Llama 3.3 70B</span>
-                                <span class="ai-dev-tag">Free Tier</span>
+                                <span class="ai-dev-tag">Whisper v3</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
                             </div>
                         </div>
                         <div class="ai-dev-card-actions">
                             <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
                                 <span class="material-symbols-outlined">open_in_new</span>
-                                <span>Открыть Groq</span>
+                                <span>Открыть Groq Cloud Console</span>
                             </a>
                             <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://console.groq.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Cerebras Inference Cloud -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="cerebras cloud wafer scale engine fastest inference lpu llama free api">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">bolt</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Cerebras Inference Cloud</h4>
+                                        <span class="ai-dev-tag tag-purple">2000+ ТОК/СЕК</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">cloud.cerebras.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Мировой рекорд скорости инференса на гигантских чипах Wafer-Scale Engine 3 (WSE-3). Выдает до 2100 токенов/сек для Llama 3.1 8B и 450 токенов/сек для 70B. Бесплатный API ключ для разработчиков.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">2000+ tok/s</span>
+                                <span class="ai-dev-tag tag-cyan">WSE-3 Chip</span>
+                                <span class="ai-dev-tag">Llama 3.1 70B</span>
+                                <span class="ai-dev-tag tag-green">Free API</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://cloud.cerebras.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Cerebras Inference Cloud</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://cloud.cerebras.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- SambaNova Cloud -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="sambanova cloud sn40l qwen 2.5 coder llama 3.3 70b fast free tier">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">memory</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">SambaNova Cloud</h4>
+                                        <span class="ai-dev-tag tag-cyan">SN40L ЧИПЫ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">cloud.sambanova.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Облачный сервис на базе реконфигурируемых процессоров SN40L. Молниеносный инференс Qwen 2.5 Coder 32B, Llama 3.3 70B и DeepSeek-R1 с полным контекстом без урезания. Щедрые бесплатные лимиты.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">SN40L RDU</span>
+                                <span class="ai-dev-tag tag-purple">Qwen 2.5 Coder</span>
+                                <span class="ai-dev-tag">DeepSeek-R1</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://cloud.sambanova.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть SambaNova Cloud</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://cloud.sambanova.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- OpenRouter -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="openrouter api hub free pool gateway deepseek llama mistral routing">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">hub</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">OpenRouter</h4>
+                                        <span class="ai-dev-tag tag-purple">300+ МОДЕЛЕЙ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">openrouter.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Единый шлюз-агрегатор с OpenAI-совместимым API к сотням моделей мира. Содержит постоянно доступный бесплатный пул моделей с суффиксом `:free` (DeepSeek-R1, Llama 3.3, Qwen 2.5, Gemini Flash).
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">Unified API</span>
+                                <span class="ai-dev-tag tag-cyan">:free Pool</span>
+                                <span class="ai-dev-tag">Fallback Routing</span>
+                                <span class="ai-dev-tag tag-green">Free Models</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть OpenRouter</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://openrouter.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Hugging Face Hub -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="hugging face hub transformers datasets spaces open source models weights">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">emoji_emotions</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Hugging Face Hub</h4>
+                                        <span class="ai-dev-tag tag-amber">ГЛАВНЫЙ ХАБ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">huggingface.co</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Главный мировой репозиторий открытых весов, датасетов и нейросетевых приложений (Spaces). Бесплатный Serverless Inference API, запуск демо на CPU/GPU, библиотека Transformers и Hugging Face Chat.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Open Source Hub</span>
+                                <span class="ai-dev-tag tag-cyan">Inference API</span>
+                                <span class="ai-dev-tag">Spaces Demo</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://huggingface.co" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Hugging Face Hub</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://huggingface.co" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Together AI -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="together ai cloud inference lora fine-tuning fast api open models">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">layers</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Together AI</h4>
+                                        <span class="ai-dev-tag tag-cyan">100+ МОДЕЛЕЙ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">together.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Высокоскоростная облачная платформа для инференса и файн-тюнинга открытых моделей (Llama, DeepSeek, FLUX, Mixtral). Предоставляет стартовые бесплатные кредиты при регистрации и сверхнизкие задержки.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">High Speed API</span>
+                                <span class="ai-dev-tag tag-purple">FLUX & Llama</span>
+                                <span class="ai-dev-tag">Fine-tuning</span>
+                                <span class="ai-dev-tag tag-green">Free Balance</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.together.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Together AI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.together.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Fireworks AI -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="fireworks ai fast inference speculative decoding compound lora credits">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">local_fire_department</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Fireworks AI</h4>
+                                        <span class="ai-dev-tag tag-amber">COMPOUND AI</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">fireworks.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Инновационный облачный инференс, оптимизированный для составных ИИ-систем (Compound AI). Поддержка спекулятивного декодирования, LoRA на лету и бесплатный тестовый баланс для разработчиков.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Speculative Engine</span>
+                                <span class="ai-dev-tag tag-purple">LoRA Serving</span>
+                                <span class="ai-dev-tag">Sub-second TTFT</span>
+                                <span class="ai-dev-tag tag-green">Free Credits</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://fireworks.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Fireworks AI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://fireworks.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- SiliconFlow (SiliconCloud) -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="siliconflow siliconcloud deepseek r1 v3 qwen flux china fast free tokens">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">cloud_done</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">SiliconFlow (SiliconCloud)</h4>
+                                        <span class="ai-dev-tag tag-purple">20M ТОКЕНОВ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">cloud.siliconflow.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Один из крупнейших азиатских облачных провайдеров инференса. Полная поддержка DeepSeek-R1, DeepSeek-V3, Qwen 2.5 Coder и генерации картинок FLUX. Дарит миллионы бесплатных токенов при регистрации.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">DeepSeek Official</span>
+                                <span class="ai-dev-tag tag-cyan">20M Free Tokens</span>
+                                <span class="ai-dev-tag">FLUX.1 Speed</span>
+                                <span class="ai-dev-tag tag-green">Free API</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://cloud.siliconflow.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть SiliconFlow</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://cloud.siliconflow.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Glif — AI Workflow Hub -->
+                    <article class="ai-dev-card" data-subcat="api" data-keywords="glif app visual workflows generator ai pipelines multimodal free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">widgets</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Glif — AI Workflow Hub</h4>
+                                        <span class="ai-dev-tag tag-green">PIPELINES</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">glif.app</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Визуальный конструктор и хаб мультимодальных ИИ-пайплайнов. Позволяет связывать текст, FLUX, Stable Diffusion, ComfyUI и скрейперы в готовые веб-микросервисы с бесплатным запуском через веб и API.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">Visual Pipelines</span>
+                                <span class="ai-dev-tag tag-cyan">FLUX & LLM</span>
+                                <span class="ai-dev-tag">API Export</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://glif.app" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Glif — AI Workflow Hub</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://glif.app" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Cursor AI Code Editor -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="cursor ai code editor composer multi-file vscode ai pair programming">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">desktop_windows</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Cursor AI Code Editor</h4>
+                                        <span class="ai-dev-tag tag-cyan">ТОП AI IDE</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">cursor.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Самый признанный в индустрии редактор кода на базе VS Code с глубокой интеграцией ИИ. Режим Composer для редактирования нескольких файлов разом, индексация кодовой базы, умный Tab-автокомплит.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">Composer</span>
+                                <span class="ai-dev-tag tag-purple">Codebase Index</span>
+                                <span class="ai-dev-tag">VS Code Fork</span>
+                                <span class="ai-dev-tag tag-green">Бесплатный план</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.cursor.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Cursor AI Code Editor</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.cursor.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Windsurf Editor (Codeium) -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="windsurf codeium editor agent cascade flows ai autocomplete free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">air</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Windsurf Editor (Codeium)</h4>
+                                        <span class="ai-dev-tag tag-cyan">FLOWS & AGENT</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">codeium.com/windsurf</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Агентная среда разработки нового поколения от команды Codeium. Технологии Flows и Cascade позволяют агенту действовать проактивно, непрерывно анализируя весь контекст репозитория. Бесплатный тариф без ограничений на автодополнение.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">Cascade Agent</span>
+                                <span class="ai-dev-tag tag-purple">Flows Context</span>
+                                <span class="ai-dev-tag">Codeium Engine</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://codeium.com/windsurf" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Windsurf Editor</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://codeium.com/windsurf" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Trae AI IDE (ByteDance) -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="trae ai bytedance ide claude 3.5 sonnet gpt-4o builder mode free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">integration_instructions</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Trae AI IDE (ByteDance)</h4>
+                                        <span class="ai-dev-tag tag-purple">100% БЕСПЛАТНО</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">trae.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Бесплатная адаптивная ИИ-IDE от ByteDance на базе VS Code. Предоставляет бесплатный доступ к Claude 3.5 Sonnet и GPT-4o прямо в редакторе, включает автономный режим Builder для создания проектов с нуля.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">Claude 3.5 Free</span>
+                                <span class="ai-dev-tag tag-cyan">GPT-4o Free</span>
+                                <span class="ai-dev-tag">Builder Mode</span>
+                                <span class="ai-dev-tag tag-green">100% Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.trae.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Trae AI IDE</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.trae.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Zed Editor -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="zed dev editor rust fast 120fps ai assistant ollama claude open source">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">bolt</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Zed Editor</h4>
+                                        <span class="ai-dev-tag tag-amber">RUST 120 FPS</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">zed.dev</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Сверхбыстрый мультиплеерный редактор кода, написанный с нуля на Rust. Нативная поддержка AI Assistant (Anthropic Claude, OpenAI, Ollama, GitHub Copilot), мгновенный запуск и нулевой лаг при вводе.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Rust Core</span>
+                                <span class="ai-dev-tag tag-cyan">Local Ollama</span>
+                                <span class="ai-dev-tag">Multiplayer</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://zed.dev" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Zed Editor</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://zed.dev" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Aider CLI -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="aider chat cli terminal git pair programming autonomous architect python">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">terminal</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Aider CLI</h4>
+                                        <span class="ai-dev-tag tag-green">GIT AGENT</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">aider.chat</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Ведущий опенсорсный терминальный парный программист. Лидирует в бенчмарках SWE-bench, автоматически формирует аккуратные Git-коммиты, поддерживает Architect Mode и работает с любой моделью по API или локально.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">Auto Git Commits</span>
+                                <span class="ai-dev-tag tag-cyan">Architect Mode</span>
+                                <span class="ai-dev-tag">SWE-bench Top</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://aider.chat" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Aider CLI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://aider.chat" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Continue.dev -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="continue dev vscode jetbrains copilot autocomplete ollama open source">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">extension</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Continue.dev</h4>
+                                        <span class="ai-dev-tag tag-cyan">OPEN COPILOT</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">continue.dev</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Открытое расширение для VS Code и JetBrains. Позволяет превратить любую локальную модель из Ollama или LM Studio в полноценный Copilot с автодополнением по Tab, кодовым чатом и быстрым рефакторингом.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">VS Code & JetBrains</span>
+                                <span class="ai-dev-tag tag-purple">Ollama Native</span>
+                                <span class="ai-dev-tag">Zero Telemetry</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.continue.dev" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Continue.dev</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.continue.dev" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Roo Code (Roo-Cline) -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="roo code roo-cline cline vscode autonomous agent mcp architect role">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">smart_toy</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Roo Code (Roo-Cline)</h4>
+                                        <span class="ai-dev-tag tag-purple">AUTONOMOUS</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">roocode.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Популярный автономный агент в виде расширения для VS Code (форк Cline). Поддерживает переключение между ролями (Code, Architect, Ask), подключение протоколов MCP, запуск bash-команд и умный контекст.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">Architect & Code</span>
+                                <span class="ai-dev-tag tag-cyan">MCP Support</span>
+                                <span class="ai-dev-tag">Terminal Exec</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://roocode.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Roo Code</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://roocode.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Bolt.new (StackBlitz) -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="bolt new stackblitz in-browser webcontainers fullstack vite react npm live">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">flash_on</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Bolt.new (StackBlitz)</h4>
+                                        <span class="ai-dev-tag tag-amber">IN-BROWSER DEV</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">bolt.new</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Запуск полностековых веб-приложений (Vite, React, Node.js) прямо в браузере с технологией WebContainers. Агент пишет код, устанавливает npm-пакеты, запускает локальный сервер и дает live preview.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">WebContainers</span>
+                                <span class="ai-dev-tag tag-cyan">Fullstack Node</span>
+                                <span class="ai-dev-tag">Live Preview</span>
+                                <span class="ai-dev-tag tag-green">Бесплатные токены</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://bolt.new" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Bolt.new</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://bolt.new" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- v0.dev by Vercel -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="v0 dev vercel ui generator tailwind react next.js shadcn free credits">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">brush</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">v0.dev by Vercel</h4>
+                                        <span class="ai-dev-tag tag-green">UI GENERATOR</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">v0.dev</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Генератор интерфейсов и компонентов от команды Vercel. Создает чистый код на React, Tailwind CSS и shadcn/ui по текстовому описанию или загруженному дизайн-макету с поддержкой копирования кода в 1 клик.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">shadcn/ui</span>
+                                <span class="ai-dev-tag tag-cyan">Tailwind & React</span>
+                                <span class="ai-dev-tag">Image to Code</span>
+                                <span class="ai-dev-tag tag-green">Ежедневные кредиты</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://v0.dev" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть v0.dev by Vercel</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://v0.dev" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Lovable.dev -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="lovable dev app builder react vite supabase github sync prototype mvp">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-pink">
+                                    <span class="material-symbols-outlined">favorite</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Lovable.dev</h4>
+                                        <span class="ai-dev-tag tag-pink">APP BUILDER</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">lovable.dev</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Платформа визуального создания веб-приложений. Генерирует готовые полнофункциональные проекты на React/Vite с подключением базы Supabase, аутентификацией и двухсторонней синхронизацией с репозиторием GitHub.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-pink">React + Supabase</span>
+                                <span class="ai-dev-tag tag-cyan">GitHub Sync</span>
+                                <span class="ai-dev-tag">Rapid MVP</span>
+                                <span class="ai-dev-tag tag-green">Бесплатный старт</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://lovable.dev" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Lovable.dev</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://lovable.dev" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Replit -->
+                    <article class="ai-dev-card" data-subcat="ide" data-keywords="replit cloud ide python nodejs ai agent deploy postgres hosting">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-blue">
+                                    <span class="material-symbols-outlined">cloud_queue</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Replit</h4>
+                                        <span class="ai-dev-tag tag-blue">CLOUD CODING</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">replit.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Облачная среда программирования со встроенным агентным помощником. Поддерживает запуск Python, Node.js, Go, Rust, хранение секретов в .env, хостинг баз данных PostgreSQL и деплой веб-сервисов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-blue">50+ Languages</span>
+                                <span class="ai-dev-tag tag-cyan">Instant Deploy</span>
+                                <span class="ai-dev-tag">Cloud Postgres</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://replit.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Replit</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://replit.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Ollama -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="ollama local models run gpu cpu llama deepseek qwen mistral open source">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">memory</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Ollama</h4>
+                                        <span class="ai-dev-tag tag-cyan">LOCAL LLM SOTA</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">ollama.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Индустриальный стандарт для локального запуска открытых языковых моделей (Llama 3.3, DeepSeek R1, Qwen 2.5, Mistral) одной командой в терминале. Включает нативный OpenAI-совместимый REST API сервер.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">CLI & Server</span>
+                                <span class="ai-dev-tag tag-purple">GGUF Engine</span>
+                                <span class="ai-dev-tag">GPU Acceleration</span>
+                                <span class="ai-dev-tag tag-green">100% Free</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Ollama</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://ollama.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- LM Studio -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="lm studio lmstudio local gui gguf huggingface server offline free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">desktop_mac</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">LM Studio</h4>
+                                        <span class="ai-dev-tag tag-purple">DESKTOP GUI</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">lmstudio.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Красивое настольное приложение для поиска, скачивания и запуска GGUF-моделей прямо с Hugging Face. Включает встроенный локальный сервер на порту 1234 для подключения к Cursor, Continue и Aider.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">macOS/Win/Linux</span>
+                                <span class="ai-dev-tag tag-cyan">Local API:1234</span>
+                                <span class="ai-dev-tag">Model Discovery</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://lmstudio.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть LM Studio</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://lmstudio.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Jan.ai -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="jan ai open source chatgpt local offline privacy desktop gguf">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">lock</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Jan.ai</h4>
+                                        <span class="ai-dev-tag tag-green">LOCAL CHATGPT</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">jan.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Полностью открытая, приватная и автономная замена ChatGPT для вашего компьютера. 100% офлайн, нулевая телеметрия, настраиваемый движок Cortex C++ и интеграция с локальными расширениями.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">100% Offline</span>
+                                <span class="ai-dev-tag tag-cyan">Zero Telemetry</span>
+                                <span class="ai-dev-tag">Cortex Engine</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://jan.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Jan.ai</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://jan.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Open WebUI -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="open-webui open webui self-hosted chat ui ollama rag pipelines docker">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-blue">
+                                    <span class="material-symbols-outlined">web</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Open WebUI</h4>
+                                        <span class="ai-dev-tag tag-blue">SELF-HOSTED UI</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">openwebui.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Лучший веб-интерфейс для самостоятельного развертывания через Docker. Нативная интеграция с Ollama, загрузка документов для RAG-поиска, веб-поиск, голосовое управление и мультиюзерная авторизация.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-blue">Docker Ready</span>
+                                <span class="ai-dev-tag tag-cyan">Built-in RAG</span>
+                                <span class="ai-dev-tag">Voice & Vision</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://openwebui.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Open WebUI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://openwebui.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- vLLM Production Serving -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="vllm inference serving pagedattention high throughput gpu production open source">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">dns</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">vLLM Production Serving</h4>
+                                        <span class="ai-dev-tag tag-amber">PRODUCTION</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">vllm.ai • docs.vllm.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Высокопроизводительная библиотека сервинга LLM для нагруженных продакшен-систем. Революционный алгоритм PagedAttention обеспечивает максимальную утилизацию видеопамяти и рекордную пропускную способность.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">PagedAttention</span>
+                                <span class="ai-dev-tag tag-purple">Continuous Batching</span>
+                                <span class="ai-dev-tag">Distributed GPU</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://vllm.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть vLLM Production Serving</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://vllm.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- llama.cpp (Georgi Gerganov) -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="llama.cpp gerganov gguf c++ local inference quantization cpu metal">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">terminal</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">llama.cpp (Georgi Gerganov)</h4>
+                                        <span class="ai-dev-tag tag-cyan">C/C++ CORE</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">github.com/ggerganov/llama.cpp</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Фундаментальный открытый проект, позволяющий запускать LLM с квантованием 4-bit/8-bit на обычных процессорах CPU и видеокартах Apple Silicon / NVIDIA. Лежит в основе Ollama, Jan и LM Studio.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">GGUF Format</span>
+                                <span class="ai-dev-tag tag-purple">CPU Inference</span>
+                                <span class="ai-dev-tag">Apple Metal</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://github.com/ggerganov/llama.cpp" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть llama.cpp</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://github.com/ggerganov/llama.cpp" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Text Generation WebUI -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="text generation webui oobabooga exl2 awq gptq gguf gradio lora">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">settings_suggest</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Text Generation WebUI</h4>
+                                        <span class="ai-dev-tag tag-purple">ALL FORMATS</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">github.com/oobabooga/text-generation-webui</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Универсальный «швейцарский нож» (Oobabooga) для запуска весов моделей любых архитектур и квантований (GGUF, EXL2, AWQ, GPTQ, Hqq). Поддерживает загрузку LoRA-адаптеров, кастомные семплеры и плагины.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">EXL2 & AWQ</span>
+                                <span class="ai-dev-tag tag-cyan">LoRA Loader</span>
+                                <span class="ai-dev-tag">Gradio UI</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://github.com/oobabooga/text-generation-webui" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Text Generation WebUI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://github.com/oobabooga/text-generation-webui" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- LocalAI -->
+                    <article class="ai-dev-card" data-subcat="local" data-keywords="localai local ai self-hosted drop-in openai api audio vision tts cpu">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">dns</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">LocalAI</h4>
+                                        <span class="ai-dev-tag tag-green">OPENAI CLONE</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">localai.io</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Свободная self-hosted замена OpenAI API без внешних облаков. Работает без видеокарты, поддерживает генерацию текста, транскрибацию Whisper, генерацию картинок и эмбеддинги для RAG.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">Drop-in API</span>
+                                <span class="ai-dev-tag tag-cyan">Audio & TTS</span>
+                                <span class="ai-dev-tag">No GPU Required</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://localai.io" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть LocalAI</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://localai.io" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- LearnPrompting.org -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="learn prompting guide course prompt engineering few-shot rag agents free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">school</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">LearnPrompting.org</h4>
+                                        <span class="ai-dev-tag tag-cyan">КУРС SOTA</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">learnprompting.org</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Самый полный и авторитетный открытый интерактивный курс по промпт-инжинирингу. Охватывает как базовые техники (Zero-Shot, Few-Shot), так и продвинутый RAG, агентные паттерны и защиту от уязвимостей.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">Open Course</span>
+                                <span class="ai-dev-tag tag-purple">RAG & Agents</span>
+                                <span class="ai-dev-tag">Prompt Security</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://learnprompting.org" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть LearnPrompting.org</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://learnprompting.org" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Anthropic Prompt Library -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="anthropic prompt library claude official system prompts engineering code">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">library_books</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Anthropic Prompt Library</h4>
+                                        <span class="ai-dev-tag tag-amber">ЭТАЛОН</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">docs.anthropic.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Официальная коллекция проверенных промптов от исследователей Anthropic. Готовые рецепты для рефакторинга архитектуры, генерации юнит-тестов, анализа сложного кода и извлечения сущностей из текстов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">Anthropic Official</span>
+                                <span class="ai-dev-tag tag-purple">System Prompts</span>
+                                <span class="ai-dev-tag">Code & Refactor</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://docs.anthropic.com/en/prompt-library/library" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Anthropic Prompt Library</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://docs.anthropic.com/en/prompt-library/library" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- OpenAI Cookbook -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="openai cookbook recipes python function calling embeddings rag fine-tuning">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">menu_book</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">OpenAI Cookbook</h4>
+                                        <span class="ai-dev-tag tag-green">РЕЦЕПТЫ КОДА</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">cookbook.openai.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Официальная книга рецептов с тысячами строк готового рабочего кода на Python. Подробные инструкции по Function Calling, Structured Outputs, RAG, семантическому поиску и файн-тюнингу моделей.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">Python Recipes</span>
+                                <span class="ai-dev-tag tag-cyan">Function Calling</span>
+                                <span class="ai-dev-tag">RAG & Embeddings</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://cookbook.openai.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть OpenAI Cookbook</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://cookbook.openai.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Awesome ChatGPT Prompts -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="awesome chatgpt prompts f awesome-chatgpt-prompts prompt engineering collection roles">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">auto_awesome</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Awesome ChatGPT Prompts</h4>
+                                        <span class="ai-dev-tag tag-purple">115K+ ЗВЕЗД</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">prompts.chat</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Легендарный репозиторий с сотнями готовых системных ролей («Действуй как Senior Fullstack Developer», «Действуй как Linux Terminal», «Действуй как UX Designer») для ChatGPT, Claude и открытых моделей.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">115k+ Stars</span>
+                                <span class="ai-dev-tag tag-cyan">System Roles</span>
+                                <span class="ai-dev-tag">Ready Prompts</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://prompts.chat" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Awesome ChatGPT Prompts</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://prompts.chat" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Artificial Analysis -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="artificial analysis benchmarks llm speed latency price quality leaderboard">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-blue">
+                                    <span class="material-symbols-outlined">analytics</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Artificial Analysis</h4>
+                                        <span class="ai-dev-tag tag-blue">НЕЗАВИСИМЫЕ ЗАМЕРЫ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">artificialanalysis.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Объективный бенчмарк-анализатор всех мировых провайдеров LLM. Интерактивные графики соотношения цены за 1M токенов, скорости генерации (токен/сек), качества моделей (Quality Index) и задержки TTFT.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-blue">Speed Benchmarks</span>
+                                <span class="ai-dev-tag tag-cyan">Price per 1M</span>
+                                <span class="ai-dev-tag">Latency TTFT</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://artificialanalysis.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Artificial Analysis</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://artificialanalysis.ai" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Open LLM Leaderboard (HF) -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="open llm leaderboard hugging face benchmarks mmlu math gsm8k elo evaluation">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">leaderboard</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Open LLM Leaderboard (HF)</h4>
+                                        <span class="ai-dev-tag tag-amber">ГЛОБАЛЬНЫЙ ТОП</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">huggingface.co/spaces/open-llm-leaderboard</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Главный мировой научный рейтинг открытых языковых моделей от команды Hugging Face. Строгая проверка на бенчмарках MMLU-Pro, GSM8k, MATH, GPQA и IFEval с защитой от читерства и подгонки тестов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">MMLU-Pro</span>
+                                <span class="ai-dev-tag tag-purple">MATH & GSM8K</span>
+                                <span class="ai-dev-tag">Hugging Face</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Open LLM Leaderboard</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Futurepedia -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="futurepedia directory ai tools catalog free filters software review">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">explore</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Futurepedia</h4>
+                                        <span class="ai-dev-tag tag-cyan">КАТАЛОГ СЕРВИСОВ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">futurepedia.io</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Крупнейший регулярно обновляемый каталог инструментов искусственного интеллекта. Удобная сортировка по категориям (кодинг, дизайн, текст, аудио, маркетинг) и фильтр исключительно бесплатных инструментов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">10 000+ Tools</span>
+                                <span class="ai-dev-tag tag-purple">Daily Updates</span>
+                                <span class="ai-dev-tag">Pricing Filters</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.futurepedia.io" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Futurepedia</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.futurepedia.io" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- There's An AI For That (TAAFT) -->
+                    <article class="ai-dev-card" data-subcat="prompt" data-keywords="theres an ai for that taaft search ai directory tools tasks catalog">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">travel_explore</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">There's An AI For That (TAAFT)</h4>
+                                        <span class="ai-dev-tag tag-purple">20K+ НЕЙРОСЕТЕЙ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">theresanaiforthat.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Самый масштабный поисковик нейросетей в мире. Позволяет ввести любую прикладную рабочую задачу («автоматизация рефакторинга», «генерация тестов») и получить список проверенных специализированных инструментов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">Task Search</span>
+                                <span class="ai-dev-tag tag-cyan">Timeline AI</span>
+                                <span class="ai-dev-tag">20 000+ AI</span>
+                                <span class="ai-dev-tag tag-green">Бесплатно</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://theresanaiforthat.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть There's An AI For That</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://theresanaiforthat.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Qdrant Cloud -->
+                    <article class="ai-dev-card" data-subcat="rag" data-keywords="qdrant cloud vector database rust rag embeddings similarity search free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-pink">
+                                    <span class="material-symbols-outlined">data_array</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Qdrant Cloud</h4>
+                                        <span class="ai-dev-tag tag-pink">ВЕКТОРНАЯ БД</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">qdrant.tech</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Сверхбыстрая векторная база данных с открытым исходным кодом, написанная на Rust. Предоставляет пожизненный бесплатный кластер в Qdrant Cloud (1GB RAM) для RAG-приложений, семантического и гибридного поиска.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-pink">Rust Powered</span>
+                                <span class="ai-dev-tag tag-cyan">Free 1GB Cluster</span>
+                                <span class="ai-dev-tag">Hybrid Search</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://qdrant.tech" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Qdrant Cloud</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://qdrant.tech" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Pinecone Serverless -->
+                    <article class="ai-dev-card" data-subcat="rag" data-keywords="pinecone serverless vector database rag embeddings low latency free starter">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-cyan">
+                                    <span class="material-symbols-outlined">database</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Pinecone Serverless</h4>
+                                        <span class="ai-dev-tag tag-cyan">SERVERLESS DB</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">pinecone.io</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Лидирующая облачная бессерверная векторная база данных. Включает бесплатный постоянный план Starter для разработчиков с мгновенным масштабированием и субсекундным временем отклика на миллионах векторов.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-cyan">Free Starter Tier</span>
+                                <span class="ai-dev-tag tag-purple">Serverless</span>
+                                <span class="ai-dev-tag">Ultra Low Latency</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.pinecone.io" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Pinecone Serverless</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.pinecone.io" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- Chroma DB -->
+                    <article class="ai-dev-card" data-subcat="rag" data-keywords="chroma trychroma embedded vector database python javascript rag local">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-amber">
+                                    <span class="material-symbols-outlined">storage</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">Chroma DB</h4>
+                                        <span class="ai-dev-tag tag-amber">EMBEDDED DB</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">trychroma.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Легковесная встраиваемая опенсорсная векторная база данных для Python и JavaScript. Разворачивается в 2 строчки кода прямо внутри вашего скрипта без необходимости администрировать внешние серверы.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-amber">In-Memory / SQLite</span>
+                                <span class="ai-dev-tag tag-cyan">Python & JS SDK</span>
+                                <span class="ai-dev-tag">Local First</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.trychroma.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть Chroma DB</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.trychroma.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- LangSmith (LangChain) -->
+                    <article class="ai-dev-card" data-subcat="rag" data-keywords="langsmith langchain tracing debugging llmops agent testing evaluation free">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-purple">
+                                    <span class="material-symbols-outlined">query_stats</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">LangSmith (LangChain)</h4>
+                                        <span class="ai-dev-tag tag-purple">ОТЛАДКА И ТРЕЙСИНГ</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">smith.langchain.com</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Платформа мониторинга и отладки агентных систем от LangChain. Позволяет визуализировать каждый шаг цепочки рассуждений LLM, замерять расход токенов, отслеживать ошибки и тестировать датасеты. Бесплатный Developer-план.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-purple">Agent Tracing</span>
+                                <span class="ai-dev-tag tag-cyan">Prompt Debugger</span>
+                                <span class="ai-dev-tag">LLMOps</span>
+                                <span class="ai-dev-tag tag-green">Free Tier</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://smith.langchain.com" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть LangSmith</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://smith.langchain.com" title="Скопировать ссылку">
+                                <span class="material-symbols-outlined">content_copy</span>
+                                <span>Копировать</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <!-- LlamaIndex -->
+                    <article class="ai-dev-card" data-subcat="rag" data-keywords="llamaindex llama hub rag framework data connectors parsing retrieval agents">
+                        <div>
+                            <div class="ai-dev-card-header">
+                                <div class="ai-dev-card-icon icon-emerald">
+                                    <span class="material-symbols-outlined">account_tree</span>
+                                </div>
+                                <div class="ai-dev-card-info">
+                                    <div class="ai-dev-card-title-row">
+                                        <h4 class="ai-dev-card-title">LlamaIndex</h4>
+                                        <span class="ai-dev-tag tag-green">RAG FRAMEWORK</span>
+                                    </div>
+                                    <span class="ai-dev-card-host">llamaindex.ai</span>
+                                </div>
+                            </div>
+                            <p class="ai-dev-card-desc">
+                                Ведущий фреймворк для обогащения LLM пользовательскими данными. Сотни готовых загрузчиков (LlamaHub) для парсинга PDF, баз данных, Notion, Slack и структурирования сложных индексов для вопросно-ответных систем.
+                            </p>
+                            <div class="ai-dev-card-badges">
+                                <span class="ai-dev-tag tag-green">LlamaHub Connectors</span>
+                                <span class="ai-dev-tag tag-cyan">Advanced RAG</span>
+                                <span class="ai-dev-tag">Python & TS</span>
+                                <span class="ai-dev-tag tag-green">Open Source</span>
+                            </div>
+                        </div>
+                        <div class="ai-dev-card-actions">
+                            <a href="https://www.llamaindex.ai" target="_blank" rel="noopener noreferrer" class="ai-dev-action-btn ai-dev-action-primary">
+                                <span class="material-symbols-outlined">open_in_new</span>
+                                <span>Открыть LlamaIndex</span>
+                            </a>
+                            <button type="button" class="ai-dev-action-btn ai-dev-action-secondary" data-copy-link="https://www.llamaindex.ai" title="Скопировать ссылку">
                                 <span class="material-symbols-outlined">content_copy</span>
                                 <span>Копировать</span>
                             </button>
@@ -1510,6 +3192,12 @@ export function initAiDevModal() {
 export function switchAiDevTab(targetTabId) {
     if (!targetTabId) return;
     currentActiveTab = targetTabId;
+    currentSubfilter = 'all';
+    if (modalOverlayEl) {
+        modalOverlayEl.querySelectorAll('.ai-dev-subchip').forEach(c => {
+            c.classList.toggle('active', c.getAttribute('data-subfilter') === 'all');
+        });
+    }
 
     tabBtns.forEach(btn => {
         const matches = btn.getAttribute('data-tab-target') === targetTabId;
@@ -1549,18 +3237,23 @@ export function applySearchFilter(query = '') {
     allCards.forEach(card => {
         const panel = card.closest('.ai-dev-tab-panel');
         const tabKey = panel ? panel.getAttribute('data-tab-panel') : null;
+        const subcat = card.getAttribute('data-subcat');
+        const matchesSubfilter = !currentSubfilter || currentSubfilter === 'all' || !subcat || subcat === currentSubfilter;
 
         if (!currentSearchQuery) {
-            card.classList.remove('is-hidden');
-            totalVisible++;
-            if (tabKey && countsPerTab[tabKey] !== undefined) countsPerTab[tabKey]++;
-            if (tabKey === currentActiveTab) visibleInActiveTab++;
+            const isVisible = matchesSubfilter;
+            card.classList.toggle('is-hidden', !isVisible);
+            if (isVisible) {
+                totalVisible++;
+                if (tabKey && countsPerTab[tabKey] !== undefined) countsPerTab[tabKey]++;
+                if (tabKey === currentActiveTab) visibleInActiveTab++;
+            }
             return;
         }
 
         const keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
         const textContent = (card.textContent || '').toLowerCase();
-        const isMatch = keywords.includes(currentSearchQuery) || textContent.includes(currentSearchQuery);
+        const isMatch = matchesSubfilter && (keywords.includes(currentSearchQuery) || textContent.includes(currentSearchQuery));
 
         card.classList.toggle('is-hidden', !isMatch);
         if (isMatch) {
@@ -1627,6 +3320,21 @@ function bindModalEvents() {
     modalOverlayEl.addEventListener('click', (e) => {
         if (e.target === modalOverlayEl) {
             closeAiDevModal();
+        }
+    });
+
+    // Фильтрация по подкатегориям (чипам)
+    modalOverlayEl.addEventListener('click', (e) => {
+        const subchip = e.target.closest('[data-subfilter]');
+        if (subchip) {
+            const filterVal = subchip.getAttribute('data-subfilter');
+            const parent = subchip.closest('.ai-dev-subchips-bar');
+            if (parent) {
+                parent.querySelectorAll('.ai-dev-subchip').forEach(c => c.classList.remove('active'));
+                subchip.classList.add('active');
+            }
+            currentSubfilter = filterVal;
+            applySearchFilter(currentSearchQuery);
         }
     });
 

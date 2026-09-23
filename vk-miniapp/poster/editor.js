@@ -1491,14 +1491,7 @@ function buildTemplates() {
     });
   });
 
-  // Поиск по шаблонам
-  const search = $('#tpl-search');
-  if (search) {
-    search.addEventListener('input', e => {
-      tplSearchQuery = e.target.value;
-      renderTemplatesGrid();
-    });
-  }
+
 
   // Кнопки быстрого старта с чистого листа в Hero-секции
   $$('[data-blank]').forEach(btn => {
