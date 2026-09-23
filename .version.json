@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.72.0",
+  "version": "4.73.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-23T05:27:00Z",
-  "release_name": "AURORA 4.72.0 — Чёткое визуальное разделение 6 блоков Tilda-лендинга, полноценная сетка верстки (модульная + 12 колонок Tilda) и примагничивание"
+  "commit_date": "2026-09-23T08:45:00Z",
+  "release_name": "AURORA 4.73.0 — Исправлено наложение кнопок «Шаблоны» и «Отменить», надежная адаптивная flex-раскладка шапки редактора"
 }

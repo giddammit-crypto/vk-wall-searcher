@@ -766,15 +766,23 @@ input, select, textarea {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   padding: 0 16px;
-  background: rgba(11, 16, 30, 0.82);
+  background: rgba(11, 16, 30, 0.88);
   backdrop-filter: var(--glass-blur-heavy);
   -webkit-backdrop-filter: var(--glass-blur-heavy);
   border-bottom: 1px solid var(--hairline);
   z-index: 50;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ed-header::-webkit-scrollbar {
+  display: none;
 }
 
 .ed-header-left,
@@ -782,16 +790,78 @@ input, select, textarea {
 .ed-header-right {
   display: flex;
   align-items: center;
-  gap: 6px;
 }
 
+/* Левая группа: Кнопка «Шаблоны» + название афиши — никогда не схлопывается */
 .ed-header-left {
-  min-width: 0;
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: auto;
+  gap: 8px;
 }
 
-.ed-header-right {
+#btn-back {
   flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 600;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+}
+
+#btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--hairline-strong);
+}
+
+#btn-back .hbtn-label {
+  display: inline;
+}
+
+/* Центральная группа: Компактный тулбар истории и манипуляций (Undo, Redo, Сетка, Магнит, Копия, Группа) */
+.ed-header-center {
+  flex: 0 0 auto;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+}
+
+.ed-header-center .hbtn {
+  border: none;
+  background: transparent;
+  height: 32px;
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  justify-content: center;
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.ed-header-center .hbtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+  transform: none;
+}
+
+.ed-header-center .hbtn:active {
+  transform: scale(0.94);
+}
+
+.ed-header-center .hbtn.is-active {
+  background: rgba(56, 189, 248, 0.22);
+  color: var(--cyan);
+}
+
+.ed-header-center .hbtn-label {
+  display: none !important;
+}
+
+/* Правая группа: Экспорт, интеграции, зум */
+.ed-header-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+  gap: 6px;
 }
 
 /* Кнопки в шапке (Header Buttons) */
@@ -899,31 +969,44 @@ input, select, textarea {
   display: none;
 }
 
-@media (min-width: 880px) {
-  .hbtn-label {
+@media (min-width: 1200px) {
+  .ed-header-right .hbtn-label {
     display: inline;
   }
 }
 
+.hbtn .material-symbols-rounded {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
 /* Поле заголовка афиши */
 .ed-title-wrap {
-  flex: 1;
-  min-width: 0;
-  padding: 0 8px;
+  flex: 0 1 180px;
+  min-width: 50px;
+  padding: 0 4px;
 }
 
 .ed-title {
   width: 100%;
-  max-width: 240px;
+  max-width: 180px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--text-1);
   padding: 6px 10px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   outline: none;
   transition: all var(--trans-fast);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .ed-title:hover {
@@ -2213,14 +2296,22 @@ input, select, textarea {
 
   /* Шапка */
   .ed-header {
-    padding: 0 10px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+  #btn-back .hbtn-label {
+    display: none !important;
+  }
+  .ed-title-wrap {
+    flex: 0 1 100px;
   }
   .ed-title {
-    max-width: 140px;
-    font-size: 12.5px;
+    max-width: 100px;
+    font-size: 12px;
+    padding: 4px 6px;
   }
   .hbtn {
-    padding: 0 8px;
+    padding: 0 6px;
     height: 32px;
   }
   .hbtn-mobile-panel {
@@ -2571,7 +2662,7 @@ input, select, textarea {
 @media (max-width: 1080px) {
   .ed-header-center .hbtn-label,
   .ed-header-right .hbtn-label {
-    display: none;
+    display: none !important;
   }
   .hbtn {
     padding: 0 8px;
@@ -2580,18 +2671,24 @@ input, select, textarea {
 
 @media (max-width: 768px) {
   .ed-header {
-    gap: 4px;
+    gap: 6px;
     padding: 0 8px;
   }
+  .ed-header-left {
+    gap: 6px;
+  }
   .ed-header-center {
-    gap: 3px;
+    gap: 2px;
   }
   .ed-header-right {
-    gap: 3px;
+    gap: 4px;
+  }
+  .ed-title-wrap {
+    flex: 0 1 120px;
   }
   .ed-title {
     max-width: 120px;
-    font-size: 12.5px;
+    font-size: 12px;
   }
   .hbtn {
     height: 32px;
