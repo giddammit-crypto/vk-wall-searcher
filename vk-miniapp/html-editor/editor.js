@@ -1,10 +1,11 @@
 /**
- * editor.js — Главный координатор приложения АВРОРА TILDA
- * Связывает TildaEngine, ZeroBlockEditor, CodeMirror, кастомные шрифты (OFONT.RU) и облачную выгрузку.
+ * editor.js — Главный координатор приложения AURORA WEB
+ * Связывает TildaEngine, ZeroBlockEditor, CodeMirror, кастомные шрифты (OFONT.RU),
+ * свободное перетаскивание элементов на холсте, масштабирование (Zoom) и облачную публикацию.
  */
 
-import { TildaEngine } from './tilda_engine.js?v=5.1.0';
-import { ZeroBlock, ZeroBlockEditor } from './zero_block.js?v=5.1.0';
+import { TildaEngine } from './tilda_engine.js?v=5.2.0';
+import { ZeroBlock, ZeroBlockEditor } from './zero_block.js?v=5.2.0';
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
@@ -16,12 +17,54 @@ let zeroBlockEditor = null;
 let codeEditor = null;
 let currentMode = 'builder'; // builder | zero | code | preview
 
+// ─── Масштабирование холста (Zoom) ─────────────────────────────
+let canvasZoom = 1.0;
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 2.5;
+
+function setCanvasZoom(newZoom) {
+  canvasZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(newZoom.toFixed(2))));
+  const artboard = document.getElementById('tilda-artboard');
+  const zeroMount = document.getElementById('zero-block-canvas-mount');
+  const zoomText = document.getElementById('zoom-level-indicator');
+
+  if (artboard) artboard.style.transform = `scale(${canvasZoom})`;
+  if (zeroMount) zeroMount.style.transform = `scale(${canvasZoom})`;
+  if (zoomText) zoomText.textContent = `${Math.round(canvasZoom * 100)}%`;
+}
+
+function initCanvasZoom() {
+  const workspace = document.getElementById('tilda-center-workspace');
+  if (!workspace) return;
+
+  // Zoom по Ctrl + Wheel
+  workspace.addEventListener('wheel', e => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      setCanvasZoom(canvasZoom + delta);
+    }
+  }, { passive: false });
+
+  // Кнопки зума на плавающей панели
+  document.getElementById('btn-zoom-in')?.addEventListener('click', () => {
+    setCanvasZoom(canvasZoom + 0.1);
+  });
+  document.getElementById('btn-zoom-out')?.addEventListener('click', () => {
+    setCanvasZoom(canvasZoom - 0.1);
+  });
+  document.getElementById('zoom-level-indicator')?.addEventListener('click', () => {
+    setCanvasZoom(1.0);
+    showToast('🔍 Масштаб сброшен на 100%');
+  });
+}
+
 // ─── Хранилище кастомных шрифтов (IndexedDB) ────────────────────
 let customFonts = [];
 let pendingFontBuffer = null;
 let pendingFontFileName = '';
 
-const FONT_DB_NAME = 'AuroraTildaFontsDB';
+const FONT_DB_NAME = 'AuroraWebFontsDB';
 const FONT_STORE = 'custom_fonts';
 
 function openFontDB() {
@@ -89,9 +132,78 @@ async function registerFontFace(name, buffer) {
   }
 }
 
+// ─── Свободное перетаскивание любых элементов на стандартных блоках ───
+function initFreeElementDragOnCanvas() {
+  const artboard = document.getElementById('tilda-artboard');
+  if (!artboard) return;
+
+  let activeEl = null;
+  let startX = 0, startY = 0;
+  let startLeft = 0, startTop = 0;
+  let isDragging = false;
+
+  artboard.addEventListener('mousedown', e => {
+    // Игнорируем экшен-бары и тулбары
+    if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.isContentEditable) return;
+
+    // Находим целевой внутренний элемент блока
+    const target = e.target.closest('h1, h2, h3, h4, p, img, button, .t-feature-card, .t-pricing-card, .t-gallery-item, .t-badge, .t-avatar');
+    if (!target) return;
+
+    const blockWrapper = target.closest('.tilda-block-wrapper');
+    if (!blockWrapper) return;
+
+    // Не перетаскиваем, если был даблклик
+    if (e.detail > 1) return;
+
+    activeEl = target;
+    isDragging = false;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const computed = window.getComputedStyle(activeEl);
+    startLeft = parseInt(computed.left, 10) || 0;
+    startTop = parseInt(computed.top, 10) || 0;
+
+    const onMouseMove = ev => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      if (!isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        isDragging = true;
+        activeEl.style.position = 'relative';
+        activeEl.style.zIndex = '20';
+        activeEl.style.cursor = 'grab';
+        activeEl.style.transition = 'none';
+        activeEl.classList.add('is-element-dragged');
+      }
+
+      if (isDragging) {
+        activeEl.style.left = `${startLeft + dx}px`;
+        activeEl.style.top = `${startTop + dy}px`;
+      }
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      if (isDragging) {
+        activeEl.classList.remove('is-element-dragged');
+        tildaEngine?.saveHistory();
+        showToast('📍 Позиция элемента зафиксирована');
+      }
+      activeEl = null;
+      isDragging = false;
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp, { once: true });
+  });
+}
+
 // ─── Инициализация приложения ──────────────────────────────────
 function init() {
-  // 1. Инициализируем Core Engine
+  // 1. Core Engine
   tildaEngine = new TildaEngine({
     container: document.getElementById('tilda-artboard'),
     layersList: document.getElementById('tilda-layers-list'),
@@ -100,10 +212,16 @@ function init() {
   });
   window.tildaEngine = tildaEngine;
 
-  // 2. Загружаем шрифты из IndexedDB
+  // 2. Custom Fonts
   loadFontsFromDB();
 
-  // 3. Переключатели режимов
+  // 3. Zoom Controls
+  initCanvasZoom();
+
+  // 4. Free Element Dragging
+  initFreeElementDragOnCanvas();
+
+  // 5. Переключатели режимов
   document.querySelectorAll('.mode-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       const mode = btn.dataset.mode;
@@ -111,7 +229,7 @@ function init() {
     });
   });
 
-  // 4. Переключатели брейкпоинтов
+  // 6. Переключатели брейкпоинтов
   document.querySelectorAll('#tilda-bp-group .bp-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#tilda-bp-group .bp-btn').forEach(b => b.classList.remove('is-active'));
@@ -122,7 +240,7 @@ function init() {
     });
   });
 
-  // 5. Вкладки левой панели (Figma Strip)
+  // 7. Вкладки левой панели (Figma Strip) с автоматическим рендером
   document.querySelectorAll('.tilda-vertical-strip .strip-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tilda-vertical-strip .strip-btn').forEach(b => b.classList.remove('is-active'));
@@ -138,34 +256,36 @@ function init() {
       if (activePanel) {
         activePanel.style.display = 'flex';
         activePanel.classList.add('is-active');
+
+        // Вызываем рендер соответствующей вкладки
+        if (tab === 'library') tildaEngine.renderPalette();
+        else if (tab === 'layers') tildaEngine.renderLayersTree();
+        else if (tab === 'pages') tildaEngine.renderPagesList();
+        else if (tab === 'theme') tildaEngine.renderDesignTokensUI();
+        else if (tab === 'store') tildaEngine.renderStoreUI();
+        else if (tab === 'settings') tildaEngine.renderSettingsUI();
       }
     });
   });
 
-  // 6. Undo / Redo
+  // 8. Undo / Redo
   document.getElementById('btn-undo')?.addEventListener('click', () => tildaEngine.undo());
   document.getElementById('btn-redo')?.addEventListener('click', () => tildaEngine.redo());
 
-  // 7. Переименование названия проекта
+  // 9. Переименование названия проекта
   const titleInput = document.getElementById('project-title');
   if (titleInput) {
-    titleInput.value = tildaEngine.project.name || 'Новый сайт Tilda';
+    titleInput.value = tildaEngine.project.name || 'Новый сайт Aurora Web';
     titleInput.addEventListener('input', e => {
       tildaEngine.project.name = e.target.value;
       tildaEngine.saveHistory();
     });
   }
 
-  // 8. Добавление страницы
-  document.getElementById('btn-add-new-page')?.addEventListener('click', () => {
-    const title = prompt('Введите название новой страницы:', 'О компании');
-    if (title) tildaEngine.addPage(title);
-  });
-
-  // 9. Сохранение, экспорт и публикация
+  // 10. Сохранение, экспорт и публикация
   document.getElementById('btn-save-project')?.addEventListener('click', () => {
     tildaEngine.saveProject();
-    showToast('✅ Проект сохранён');
+    showToast('✅ Проект AURORA WEB сохранён');
   });
 
   document.getElementById('btn-export-project')?.addEventListener('click', () => {
@@ -176,7 +296,7 @@ function init() {
     publishSiteToCloud();
   });
 
-  // 10. Плавающий быстрый тулбар
+  // 11. Плавающий быстрый тулбар
   document.getElementById('tool-quick-add-block')?.addEventListener('click', () => {
     document.querySelector('.tilda-vertical-strip .strip-btn[data-tab="library"]')?.click();
   });
@@ -191,16 +311,16 @@ function init() {
     }
   });
 
-  // 11. Zero Block панель инструментов
+  // 12. Zero Block панель инструментов
   bindZeroBlockToolbar();
 
-  // 12. CodeMirror
+  // 13. CodeMirror
   initCodeMirror();
 
-  // 13. Модалка OFONT.RU
-  initOfontModal();
+  // 14. Модалки
+  initModals();
 
-  // 14. Глобальные горячие клавиши (Delete, Backspace, Ctrl+Z, Ctrl+Y, Ctrl+S, Ctrl+D)
+  // 15. Глобальные горячие клавиши (Delete, Backspace, Ctrl+Z, Ctrl+Y, Ctrl+S, Ctrl+D, Ctrl+0)
   document.addEventListener('keydown', e => {
     const ae = document.activeElement;
     const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
@@ -234,6 +354,26 @@ function init() {
       }
     }
 
+    // Сброс масштаба по Ctrl+0
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+      if (inInput) return;
+      e.preventDefault();
+      setCanvasZoom(1.0);
+      showToast('🔍 Масштаб: 100%');
+    }
+
+    // Zoom по Ctrl++ / Ctrl+-
+    if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+      if (inInput) return;
+      e.preventDefault();
+      setCanvasZoom(canvasZoom + 0.1);
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+      if (inInput) return;
+      e.preventDefault();
+      setCanvasZoom(canvasZoom - 0.1);
+    }
+
     // Отмена / Повтор
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'я')) {
       if (inInput) return;
@@ -252,7 +392,7 @@ function init() {
     }
   });
 
-  showToast('🎨 Визуальный конструктор Tilda готов к работе');
+  showToast('🎨 Конструктор AURORA WEB готов к работе');
 }
 
 // ─── Переключение режимов ──────────────────────────────────────
@@ -285,12 +425,16 @@ function switchMode(mode) {
 
 // ─── Zero Block Toolbar ────────────────────────────────────────
 function bindZeroBlockToolbar() {
+  document.getElementById('zb-add-h1')?.addEventListener('click', () => {
+    zeroBlockEditor?.block.addElement('h1', { content: 'Новый заголовок H1' });
+    zeroBlockEditor?.render();
+  });
   document.getElementById('zb-add-text')?.addEventListener('click', () => {
     zeroBlockEditor?.block.addElement('text', { content: 'Новый текстовый блок' });
     zeroBlockEditor?.render();
   });
   document.getElementById('zb-add-btn')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('btn', { content: 'Новая кнопка' });
+    zeroBlockEditor?.block.addElement('btn', { content: 'Кнопка' });
     zeroBlockEditor?.render();
   });
   document.getElementById('zb-add-img')?.addEventListener('click', () => {
@@ -301,6 +445,16 @@ function bindZeroBlockToolbar() {
     zeroBlockEditor?.block.addElement('shape', {});
     zeroBlockEditor?.render();
   });
+  document.getElementById('zb-add-icon')?.addEventListener('click', () => {
+    zeroBlockEditor?.block.addElement('icon', {});
+    zeroBlockEditor?.render();
+  });
+
+  // Alignment
+  document.getElementById('zb-align-left')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('left'));
+  document.getElementById('zb-align-center')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('center'));
+  document.getElementById('zb-align-right')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('right'));
+
   document.getElementById('zb-del-el')?.addEventListener('click', () => {
     zeroBlockEditor?.deleteSelectedElement();
     showToast('🗑️ Элемент удалён');
@@ -308,6 +462,103 @@ function bindZeroBlockToolbar() {
   document.getElementById('zb-btn-apply')?.addEventListener('click', () => {
     showToast('✅ Изменения Zero Block зафиксированы');
     switchMode('builder');
+  });
+}
+
+// ─── Модальные окна ────────────────────────────────────────────
+function initModals() {
+  // 1. Шаблоны страниц
+  const newPageModal = document.getElementById('new-page-modal');
+  let selectedTemplate = 'landing';
+
+  newPageModal?.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('click', () => {
+      newPageModal.querySelectorAll('.template-card').forEach(c => c.classList.remove('is-active'));
+      card.classList.add('is-active');
+      selectedTemplate = card.dataset.template;
+    });
+  });
+
+  document.getElementById('btn-close-new-page-modal')?.addEventListener('click', () => {
+    newPageModal?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-create-page-confirm')?.addEventListener('click', () => {
+    const title = (document.getElementById('np-page-title')?.value || '').trim() || 'Новая страница';
+    const slug = (document.getElementById('np-page-slug')?.value || '').trim() || 'page-' + Date.now();
+    tildaEngine.addPage(title, slug, selectedTemplate);
+    newPageModal?.classList.add('hidden');
+    showToast(`✅ Страница «${title}» создана`);
+  });
+
+  // 2. SEO настройки страницы
+  const pageSeoModal = document.getElementById('page-settings-modal');
+  document.getElementById('btn-close-page-settings')?.addEventListener('click', () => {
+    pageSeoModal?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-save-page-settings')?.addEventListener('click', () => {
+    const pageId = pageSeoModal.dataset.editingPageId;
+    const page = tildaEngine.project.pages.find(p => p.id === pageId);
+    if (page) {
+      page.title = document.getElementById('ps-page-title').value;
+      page.slug = document.getElementById('ps-page-slug').value;
+      page.metaTitle = document.getElementById('ps-meta-title').value;
+      page.metaDesc = document.getElementById('ps-meta-desc').value;
+      tildaEngine.renderPagesList();
+      tildaEngine.saveHistory();
+      showToast('✅ Настройки страницы сохранены');
+    }
+    pageSeoModal?.classList.add('hidden');
+  });
+
+  // 3. Товар магазина
+  const prodModal = document.getElementById('store-product-modal');
+  document.getElementById('btn-close-store-prod')?.addEventListener('click', () => {
+    prodModal?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-save-store-prod')?.addEventListener('click', () => {
+    const editId = prodModal.dataset.editingProdId;
+    const name = (document.getElementById('sp-name').value || '').trim() || 'Новый товар';
+    const price = Number(document.getElementById('sp-price').value) || 0;
+    const oldPrice = Number(document.getElementById('sp-old-price').value) || 0;
+    const sku = (document.getElementById('sp-sku').value || '').trim();
+    const img = (document.getElementById('sp-img').value || '').trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80';
+    const desc = (document.getElementById('sp-desc').value || '').trim();
+
+    const s = tildaEngine.project.store;
+    if (editId) {
+      const p = s.products.find(x => x.id === editId);
+      if (p) {
+        Object.assign(p, { name, price, oldPrice, sku, img, desc });
+      }
+    } else {
+      s.products.push({
+        id: 'prod_' + Date.now(),
+        name, price, oldPrice, sku, img, desc
+      });
+    }
+
+    tildaEngine.renderStoreUI();
+    tildaEngine.saveHistory();
+    prodModal?.classList.add('hidden');
+    showToast('✅ Каталог товаров обновлен');
+  });
+
+  // 4. OFONT.RU Custom Fonts
+  initOfontModal();
+
+  // 5. Cloud Modal
+  document.getElementById('btn-close-cloud')?.addEventListener('click', () => {
+    document.getElementById('cloud-modal')?.classList.add('hidden');
+  });
+  document.getElementById('btn-copy-cloud-url')?.addEventListener('click', () => {
+    const urlInput = document.getElementById('cloud-site-url');
+    if (urlInput) {
+      navigator.clipboard.writeText(urlInput.value);
+      showToast('📋 Ссылка скопирована в буфер обмена');
+    }
   });
 }
 
@@ -357,7 +608,6 @@ function initOfontModal() {
     customFonts.push({ name, fileName: pendingFontFileName, buffer: pendingFontBuffer });
     renderCustomFontsList();
 
-    // Применяем как шрифт заголовков
     tildaEngine.project.globalStyles.fontHeading = name;
     tildaEngine.applyGlobalStyles();
     tildaEngine.renderDesignTokensUI();
@@ -432,7 +682,7 @@ function initCodeMirror() {
   const container = document.getElementById('cm-editor-container');
   if (!container) return;
 
-  const startHtml = tildaEngine?.generateStandaloneHtml() || '<h1>Привет, Tilda!</h1>';
+  const startHtml = tildaEngine?.generateStandaloneHtml() || '<h1>Привет, AURORA WEB!</h1>';
 
   const state = EditorState.create({
     doc: startHtml,
@@ -481,7 +731,7 @@ function syncToPreviewFrame() {
 // ─── Экспорт проекта в ZIP / HTML ─────────────────────────────
 async function exportProjectZip() {
   const fullHtml = tildaEngine.generateStandaloneHtml();
-  const title = tildaEngine.project.name || 'tilda-site';
+  const title = tildaEngine.project.name || 'aurora-web-site';
 
   const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -490,14 +740,14 @@ async function exportProjectZip() {
   a.download = `${title}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ Готовый HTML-файл сайта скачан');
+  showToast('✅ Готовый автономный HTML-файл скачан');
 }
 
 // ─── Облачная публикация ──────────────────────────────────────
 async function publishSiteToCloud() {
   showToast('🚀 Публикация сайта в облаке Аврора...');
   const fullHtml = tildaEngine.generateStandaloneHtml();
-  const title = tildaEngine.project.name || 'Сайт Tilda';
+  const title = tildaEngine.project.name || 'AURORA WEB Site';
 
   try {
     const res = await fetch('/api/cloud-upload.php', {
@@ -528,7 +778,7 @@ async function publishSiteToCloud() {
 function showToast(msg) {
   const toast = document.getElementById('toast');
   if (!toast) return;
-  toast.textContent = msg;
+  toast.innerHTML = msg;
   toast.classList.add('is-show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => toast.classList.remove('is-show'), 3000);

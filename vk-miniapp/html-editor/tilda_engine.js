@@ -1,7 +1,7 @@
 /**
- * tilda_engine.js — Ядро визуального конструктора сайтов Tilda
+ * tilda_engine.js — Ядро визуального конструктора сайтов AURORA WEB
  * Управляет страницами, структурой блоков, инспектором свойств,
- * синхронизацией слоев (Figma-style) и дизайн-токенами сайта.
+ * синхронизацией слоев (Figma-style), магазином товаров и дизайн-токенами сайта.
  */
 
 import { TILDA_CATEGORIES, TILDA_BLOCKS, getBlockById, renderBlockHtml, extractBlockDefaultData } from './tilda_blocks.js';
@@ -38,7 +38,7 @@ export class TildaEngine {
   createDefaultProject() {
     return {
       id: 'proj_' + Date.now(),
-      name: 'Новый сайт Tilda',
+      name: 'Новый сайт Aurora Web',
       activePageId: 'page_home',
       globalStyles: {
         fontHeading: 'Montserrat',
@@ -51,18 +51,65 @@ export class TildaEngine {
         buttonRadius: '8px',
         maxWidth: '1200px'
       },
+      store: {
+        currency: '₽',
+        minOrderSum: 0,
+        fields: {
+          name: true,
+          phone: true,
+          email: true,
+          address: false,
+          comment: true
+        },
+        products: [
+          {
+            id: 'prod_1',
+            name: 'Флагманский курс Aurora Web Pro',
+            price: 14990,
+            oldPrice: 19990,
+            sku: 'AUR-001',
+            img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
+            desc: 'Полный практический курс по разработке сайтов и веб-приложений нового поколения.'
+          },
+          {
+            id: 'prod_2',
+            name: 'Дизайн-система & UI Kit 2026',
+            price: 4990,
+            oldPrice: 7990,
+            sku: 'UI-2026',
+            img: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
+            desc: 'Готовый набор из 200+ компонентов Figma и Tilda для быстрого запуска проектов.'
+          },
+          {
+            id: 'prod_3',
+            name: 'Премиум подписка Cloud 1 Год',
+            price: 9900,
+            oldPrice: 12000,
+            sku: 'CLOUD-1Y',
+            img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+            desc: 'Неограниченный хостинг, кастомные домены и Telegram-уведомления.'
+          }
+        ]
+      },
       settings: {
-        metaTitle: 'Мой новый сайт на Tilda',
-        metaDesc: 'Создано в визуальном редакторе Аврора Tilda',
+        metaTitle: 'Мой новый сайт | AURORA WEB',
+        metaDesc: 'Создано в профессиональном визуальном конструкторе сайтов AURORA WEB',
+        faviconUrl: '',
+        ogImageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
         yandexMetrikaId: '',
+        googleAnalyticsId: '',
         telegramToken: '',
-        telegramChatId: ''
+        telegramChatId: '',
+        headCode: '',
+        bodyCode: ''
       },
       pages: [
         {
           id: 'page_home',
           title: 'Главная страница',
           slug: 'index',
+          metaTitle: 'Главная | AURORA WEB',
+          metaDesc: 'Добро пожаловать на наш сайт',
           blocks: [
             this.createBlockInstance('menu-1'),
             this.createBlockInstance('cover-1'),
@@ -80,10 +127,22 @@ export class TildaEngine {
 
   loadProject() {
     try {
-      const raw = localStorage.getItem('aurora_tilda_current_project');
+      const raw = localStorage.getItem('aurora_web_current_project') || localStorage.getItem('aurora_tilda_current_project');
       if (raw) {
         const p = JSON.parse(raw);
-        if (p && p.pages && p.pages.length > 0) return p;
+        if (p && p.pages && p.pages.length > 0) {
+          if (!p.store) {
+            p.store = {
+              currency: '₽',
+              minOrderSum: 0,
+              fields: { name: true, phone: true, email: true, address: false, comment: true },
+              products: []
+            };
+          }
+          if (!p.settings) p.settings = {};
+          if (!p.globalStyles) p.globalStyles = {};
+          return p;
+        }
       }
     } catch (e) {
       console.warn('Load project error:', e);
@@ -93,6 +152,7 @@ export class TildaEngine {
 
   saveProject() {
     try {
+      localStorage.setItem('aurora_web_current_project', JSON.stringify(this.project));
       localStorage.setItem('aurora_tilda_current_project', JSON.stringify(this.project));
     } catch (e) {
       console.warn('Save project error:', e);
@@ -136,6 +196,8 @@ export class TildaEngine {
     this.renderLayersTree();
     this.renderPagesList();
     this.renderDesignTokensUI();
+    this.renderStoreUI();
+    this.renderSettingsUI();
     this.saveHistory();
   }
 
@@ -183,7 +245,9 @@ export class TildaEngine {
         this.selectBlock(blk.instanceId);
       });
 
-      this.bindInlineEditing(contentEl, blk);
+      if (!blk.isLocked) {
+        this.bindInlineEditing(contentEl, blk);
+      }
       wrapper.appendChild(blkEl);
     });
 
@@ -284,7 +348,6 @@ export class TildaEngine {
       </button>
     `;
     bar.querySelector('button')?.addEventListener('click', () => {
-      // Открываем панель библиотеки блоков и скроллим
       const libBtn = document.querySelector('.tilda-vertical-strip .strip-btn[data-tab="library"]');
       libBtn?.click();
       this._insertIndex = insertIdx;
@@ -397,6 +460,17 @@ export class TildaEngine {
     }
   }
 
+  toggleBlockLock(instanceId) {
+    const page = this.getActivePage();
+    const blk = page.blocks.find(b => b.instanceId === instanceId);
+    if (blk) {
+      blk.isLocked = !blk.isLocked;
+      this.renderArtboard();
+      this.renderLayersTree();
+      this.saveHistory();
+    }
+  }
+
   // ─── 3. Библиотека блоков (Палитра) ───────────────────────────
   renderPalette() {
     if (!this.paletteContainer) return;
@@ -404,10 +478,9 @@ export class TildaEngine {
     let html = `
       <div class="tilda-palette-search-wrap">
         <span class="material-symbols-rounded">search</span>
-        <input type="text" id="tilda-palette-search" placeholder="Поиск блоков (обложка, тарифы, форма)..." />
+        <input type="text" id="tilda-palette-search" placeholder="Поиск блоков (обложка, магазин, тарифы)..." />
       </div>
 
-      <!-- Быстрый выбор категорий -->
       <div class="tilda-category-chips-wrap">
         <button class="tilda-cat-chip ${this.activeCategory === 'all' ? 'is-active' : ''}" data-cat="all">Все (40+)</button>
         ${TILDA_CATEGORIES.map(c => `
@@ -457,7 +530,6 @@ export class TildaEngine {
     html += `</div>`;
     this.paletteContainer.innerHTML = html;
 
-    // Фильтрация по чипам категорий
     this.paletteContainer.querySelectorAll('.tilda-cat-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         this.paletteContainer.querySelectorAll('.tilda-cat-chip').forEach(c => c.classList.remove('is-active'));
@@ -473,7 +545,6 @@ export class TildaEngine {
       });
     });
 
-    // Поиск по блокам
     const searchInput = this.paletteContainer.querySelector('#tilda-palette-search');
     searchInput?.addEventListener('input', e => {
       const q = e.target.value.toLowerCase().trim();
@@ -487,7 +558,6 @@ export class TildaEngine {
       });
     });
 
-    // Добавление блока по клику
     this.paletteContainer.querySelectorAll('.tilda-palette-card').forEach(card => {
       card.addEventListener('click', () => {
         const defId = card.dataset.blockDef;
@@ -507,25 +577,44 @@ export class TildaEngine {
       return;
     }
 
-    let html = '<div class="tilda-layers-container">';
-    page.blocks.forEach(blk => {
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px;">
+        <span style="font-size:11px;color:var(--text-3);font-weight:600;">Всего блоков: ${page.blocks.length}</span>
+        <button class="topbar-action-btn" id="btn-quick-add-layer" style="padding:2px 8px;font-size:11px;">+ Блок</button>
+      </div>
+      <div class="tilda-layers-container">
+    `;
+
+    page.blocks.forEach((blk, idx) => {
       const isSelected = blk.instanceId === this.activeBlockId;
       const def = getBlockById(blk.blockDefId);
       html += `
-        <div class="tilda-layer-item ${isSelected ? 'is-selected' : ''}" data-id="${blk.instanceId}" draggable="true">
-          <div class="layer-drag-handle">
+        <div class="tilda-layer-item ${isSelected ? 'is-selected' : ''} ${blk.isLocked ? 'is-locked' : ''}" data-id="${blk.instanceId}" draggable="true">
+          <div class="layer-drag-handle" title="Перетащить">
             <span class="material-symbols-rounded">drag_indicator</span>
           </div>
-          <div class="layer-icon">
+          <div class="layer-icon-box">
             <span class="material-symbols-rounded">${def?.icon || 'view_agenda'}</span>
           </div>
           <div class="layer-title" title="${blk.name}">${blk.name}</div>
           <div class="layer-actions">
+            <button class="layer-act-btn btn-up" title="Выше" ${idx === 0 ? 'disabled' : ''}>
+              <span class="material-symbols-rounded" style="font-size:14px;">expand_less</span>
+            </button>
+            <button class="layer-act-btn btn-down" title="Ниже" ${idx === page.blocks.length - 1 ? 'disabled' : ''}>
+              <span class="material-symbols-rounded" style="font-size:14px;">expand_more</span>
+            </button>
             <button class="layer-act-btn btn-vis ${blk.isHidden ? 'is-hidden-layer' : ''}" title="${blk.isHidden ? 'Показать' : 'Скрыть'}">
-              <span class="material-symbols-rounded">${blk.isHidden ? 'visibility_off' : 'visibility'}</span>
+              <span class="material-symbols-rounded" style="font-size:15px;">${blk.isHidden ? 'visibility_off' : 'visibility'}</span>
+            </button>
+            <button class="layer-act-btn btn-lock ${blk.isLocked ? 'is-locked-btn' : ''}" title="${blk.isLocked ? 'Разблокировать' : 'Заблокировать'}">
+              <span class="material-symbols-rounded" style="font-size:14px;">${blk.isLocked ? 'lock' : 'lock_open'}</span>
+            </button>
+            <button class="layer-act-btn btn-dup" title="Дублировать (Ctrl+D)">
+              <span class="material-symbols-rounded" style="font-size:14px;">content_copy</span>
             </button>
             <button class="layer-act-btn btn-del" title="Удалить блок" style="color:#f43f5e;">
-              <span class="material-symbols-rounded">delete</span>
+              <span class="material-symbols-rounded" style="font-size:14px;">delete</span>
             </button>
           </div>
         </div>
@@ -535,19 +624,38 @@ export class TildaEngine {
 
     this.layersList.innerHTML = html;
 
+    this.layersList.querySelector('#btn-quick-add-layer')?.addEventListener('click', () => {
+      document.querySelector('.tilda-vertical-strip .strip-btn[data-tab="library"]')?.click();
+    });
+
     this.layersList.querySelectorAll('.tilda-layer-item').forEach(item => {
       item.addEventListener('click', e => {
-        if (e.target.closest('.layer-act-btn')) return;
+        if (e.target.closest('.layer-act-btn') || e.target.closest('.layer-drag-handle')) return;
         this.selectBlock(item.dataset.id);
         const el = document.getElementById(item.dataset.id);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
 
+      item.querySelector('.btn-up')?.addEventListener('click', e => {
+        e.stopPropagation();
+        this.moveBlock(item.dataset.id, -1);
+      });
+      item.querySelector('.btn-down')?.addEventListener('click', e => {
+        e.stopPropagation();
+        this.moveBlock(item.dataset.id, 1);
+      });
       item.querySelector('.btn-vis')?.addEventListener('click', e => {
         e.stopPropagation();
         this.toggleBlockVisibility(item.dataset.id);
       });
-
+      item.querySelector('.btn-lock')?.addEventListener('click', e => {
+        e.stopPropagation();
+        this.toggleBlockLock(item.dataset.id);
+      });
+      item.querySelector('.btn-dup')?.addEventListener('click', e => {
+        e.stopPropagation();
+        this.duplicateBlock(item.dataset.id);
+      });
       item.querySelector('.btn-del')?.addEventListener('click', e => {
         e.stopPropagation();
         this.deleteBlock(item.dataset.id);
@@ -792,11 +900,11 @@ export class TildaEngine {
       <div class="tilda-inspector-header">
         <div class="insp-title">
           <span class="material-symbols-rounded">settings</span>
-          <span>Свойства страницы</span>
+          <span>Параметры страницы</span>
         </div>
       </div>
       <div class="tilda-inspector-body">
-        <div class="insp-section-title">Параметры страницы</div>
+        <div class="insp-section-title">Свойства страницы</div>
         <div class="insp-field">
           <label>Название страницы</label>
           <input type="text" id="page-title-input" value="${escapeHtml(page.title)}" />
@@ -806,8 +914,16 @@ export class TildaEngine {
           <input type="text" id="page-slug-input" value="${escapeHtml(page.slug)}" />
         </div>
         <div class="insp-field">
+          <label>Заголовок вкладки (Meta Title)</label>
+          <input type="text" id="page-metatitle-input" value="${escapeHtml(page.metaTitle || '')}" placeholder="Заголовок в браузере" />
+        </div>
+        <div class="insp-field">
+          <label>Описание (Meta Description)</label>
+          <textarea rows="3" id="page-metadesc-input" placeholder="Краткое описание для поисковиков">${escapeHtml(page.metaDesc || '')}</textarea>
+        </div>
+        <div class="insp-field">
           <label>Блоков на странице</label>
-          <div style="font-size:13px;color:#94a3b8;font-weight:600;">${page.blocks.length} активных блоков</div>
+          <div style="font-size:13px;color:var(--accent);font-weight:700;">${page.blocks.length} активных блоков</div>
         </div>
       </div>
     `;
@@ -819,6 +935,15 @@ export class TildaEngine {
     });
     this.propsPanel.querySelector('#page-slug-input')?.addEventListener('input', e => {
       page.slug = e.target.value;
+      this.renderPagesList();
+      this.saveHistory();
+    });
+    this.propsPanel.querySelector('#page-metatitle-input')?.addEventListener('input', e => {
+      page.metaTitle = e.target.value;
+      this.saveHistory();
+    });
+    this.propsPanel.querySelector('#page-metadesc-input')?.addEventListener('input', e => {
+      page.metaDesc = e.target.value;
       this.saveHistory();
     });
   }
@@ -864,13 +989,29 @@ export class TildaEngine {
     }
   }
 
-  // ─── 6. Дизайн-система и Шрифты ───────────────────────────────
+  // ─── 6. Дизайн-система и Шрифты (Live Preview) ────────────────
   renderDesignTokensUI() {
     const cont = document.getElementById('tilda-theme-panel');
     if (!cont) return;
     const g = this.project.globalStyles;
 
     cont.innerHTML = `
+      <!-- Живое интерактивное превью темы -->
+      <div class="live-theme-preview-card" id="theme-live-preview-box">
+        <div class="live-theme-badge" style="background:rgba(13,153,255,0.15);color:${g.colorAccent};border:1px solid ${g.colorAccent};">
+          Образец стиля
+        </div>
+        <div class="live-theme-heading" style="font-family:'${g.fontHeading}',sans-serif;">
+          Заголовок в ${g.fontHeading}
+        </div>
+        <div class="live-theme-text" style="font-family:'${g.fontBody}',sans-serif;">
+          Основной текст сайта отображается гарнитурой ${g.fontBody}. Стиль адаптируется под любые экраны.
+        </div>
+        <button class="live-theme-btn" style="background:${g.colorAccent};color:#fff;border-radius:${g.buttonRadius};">
+          Главная кнопка
+        </button>
+      </div>
+
       <div class="insp-section-title">Типографика сайта</div>
       <div class="insp-field">
         <label>Шрифт заголовков (H1–H3)</label>
@@ -881,11 +1022,13 @@ export class TildaEngine {
           <option value="Caveat" ${g.fontHeading === 'Caveat' ? 'selected' : ''}>Caveat (Рукописный)</option>
           <option value="Oswald" ${g.fontHeading === 'Oswald' ? 'selected' : ''}>Oswald (Плотный заголовочный)</option>
           <option value="Inter" ${g.fontHeading === 'Inter' ? 'selected' : ''}>Inter (Нейтральный)</option>
+          <option value="Roboto" ${g.fontHeading === 'Roboto' ? 'selected' : ''}>Roboto</option>
+          <option value="Open Sans" ${g.fontHeading === 'Open Sans' ? 'selected' : ''}>Open Sans</option>
         </select>
       </div>
 
       <div class="insp-field">
-        <label>Основной шрифт текста</label>
+        <label>Основной шрифт текста (Body)</label>
         <select id="theme-font-body">
           <option value="Inter" ${g.fontBody === 'Inter' ? 'selected' : ''}>Inter (Рекомендуется)</option>
           <option value="Roboto" ${g.fontBody === 'Roboto' ? 'selected' : ''}>Roboto</option>
@@ -894,13 +1037,12 @@ export class TildaEngine {
         </select>
       </div>
 
-      <!-- Кнопка загрузки кастомных шрифтов -->
-      <button class="topbar-action-btn" id="btn-open-ofont-theme" style="width:100%;margin-top:8px;padding:10px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(13,153,255,0.12);border-color:#0d99ff;color:#0d99ff;">
+      <button class="topbar-action-btn" id="btn-open-ofont-theme" style="width:100%;padding:8px 12px;justify-content:center;background:rgba(13,153,255,0.12);border-color:#0d99ff;color:#0d99ff;margin-bottom:14px;">
         <span class="material-symbols-rounded">font_download</span>
-        <span>+ Загрузить шрифт с ofont.ru (.ttf/.woff)</span>
+        <span>+ Загрузить шрифт ofont.ru (.ttf/.woff)</span>
       </button>
 
-      <div class="insp-section-title" style="margin-top:24px;">Цвета бренда</div>
+      <div class="insp-section-title">Цвета бренда & Кнопки</div>
       <div class="insp-field">
         <label>Основной акцентный цвет</label>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -908,25 +1050,33 @@ export class TildaEngine {
           <input type="text" id="theme-accent-color-txt" value="${g.colorAccent}" style="flex:1;" />
         </div>
       </div>
+
       <div class="insp-field">
         <label>Скругление кнопок</label>
-        <select id="theme-btn-radius">
-          <option value="0px" ${g.buttonRadius === '0px' ? 'selected' : ''}>Прямые углы (0px)</option>
-          <option value="6px" ${g.buttonRadius === '6px' ? 'selected' : ''}>Легкое скругление (6px)</option>
-          <option value="12px" ${g.buttonRadius === '12px' ? 'selected' : ''}>Скругленные (12px)</option>
-          <option value="9999px" ${g.buttonRadius === '9999px' ? 'selected' : ''}>Овальные (Pill)</option>
-        </select>
+        <div class="radius-picker-wrap">
+          <button class="radius-pill-btn ${g.buttonRadius === '0px' ? 'is-active' : ''}" data-radius="0px">0px</button>
+          <button class="radius-pill-btn ${g.buttonRadius === '6px' ? 'is-active' : ''}" data-radius="6px">6px</button>
+          <button class="radius-pill-btn ${g.buttonRadius === '12px' ? 'is-active' : ''}" data-radius="12px">12px</button>
+          <button class="radius-pill-btn ${g.buttonRadius === '9999px' ? 'is-active' : ''}" data-radius="9999px">Pill</button>
+        </div>
       </div>
+
+      <button class="topbar-action-btn btn-primary" id="btn-apply-theme-all" style="width:100%;margin-top:14px;padding:10px;justify-content:center;">
+        <span class="material-symbols-rounded">auto_fix_high</span>
+        <span>Применить стиль ко всем блокам</span>
+      </button>
     `;
 
     cont.querySelector('#theme-font-head')?.addEventListener('change', e => {
       g.fontHeading = e.target.value;
       this.applyGlobalStyles();
+      this.renderDesignTokensUI();
       this.saveHistory();
     });
     cont.querySelector('#theme-font-body')?.addEventListener('change', e => {
       g.fontBody = e.target.value;
       this.applyGlobalStyles();
+      this.renderDesignTokensUI();
       this.saveHistory();
     });
     cont.querySelector('#theme-accent-color')?.addEventListener('input', e => {
@@ -936,13 +1086,34 @@ export class TildaEngine {
       this.applyGlobalStyles();
       this.saveHistory();
     });
-    cont.querySelector('#theme-btn-radius')?.addEventListener('change', e => {
-      g.buttonRadius = e.target.value;
+    cont.querySelector('#theme-accent-color-txt')?.addEventListener('input', e => {
+      g.colorAccent = e.target.value;
+      g.buttonBg = e.target.value;
+      cont.querySelector('#theme-accent-color').value = e.target.value;
       this.applyGlobalStyles();
       this.saveHistory();
     });
+
+    cont.querySelectorAll('.radius-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cont.querySelectorAll('.radius-pill-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        g.buttonRadius = btn.dataset.radius;
+        this.applyGlobalStyles();
+        this.renderDesignTokensUI();
+        this.saveHistory();
+      });
+    });
+
     cont.querySelector('#btn-open-ofont-theme')?.addEventListener('click', () => {
       window.openOfontModal?.();
+    });
+
+    cont.querySelector('#btn-apply-theme-all')?.addEventListener('click', () => {
+      this.applyGlobalStylesToBlocks();
+      this.renderArtboard();
+      this.saveHistory();
+      alert('✨ Стили применены ко всем блокам проекта!');
     });
   }
 
@@ -954,40 +1125,93 @@ export class TildaEngine {
     this.renderArtboard();
   }
 
+  applyGlobalStylesToBlocks() {
+    const g = this.project.globalStyles;
+    this.project.pages.forEach(page => {
+      page.blocks.forEach(blk => {
+        if (!blk.design) blk.design = {};
+        blk.design.btnBg = g.buttonBg;
+        blk.design.btnRadius = g.buttonRadius;
+      });
+    });
+  }
+
+  // ─── 7. Страницы сайта (Pages Manager) ────────────────────────
   renderPagesList() {
     const listEl = document.getElementById('tilda-pages-list');
     if (!listEl) return;
 
-    let html = '';
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--text-3);font-weight:600;">Страниц: ${this.project.pages.length}</span>
+        <button class="topbar-action-btn" id="btn-open-templates-modal" style="padding:4px 8px;font-size:11px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">add</span>
+          <span>+ Шаблоны</span>
+        </button>
+      </div>
+      <div class="tilda-pages-container">
+    `;
+
     this.project.pages.forEach(p => {
       const isActive = p.id === this.project.activePageId;
       html += `
         <div class="tilda-page-item ${isActive ? 'is-active' : ''}" data-page-id="${p.id}">
-          <span class="material-symbols-rounded">article</span>
+          <span class="material-symbols-rounded" style="color:${isActive ? 'var(--accent)' : 'var(--text-3)'};">article</span>
           <div class="page-item-info">
-            <div class="page-item-title">${p.title}</div>
+            <div class="page-item-title-row">
+              <span class="page-item-title">${escapeHtml(p.title)}</span>
+              <span class="page-badge-pill">${p.blocks?.length || 0} бл.</span>
+            </div>
             <div class="page-item-slug">/${p.slug}</div>
           </div>
-          ${this.project.pages.length > 1 ? `
-            <button class="page-del-btn" title="Удалить страницу" data-del-page="${p.id}">
-              <span class="material-symbols-rounded">close</span>
+          <div class="page-actions-group">
+            <button class="page-act-btn btn-page-seo" data-page-seo="${p.id}" title="SEO и настройки страницы">
+              <span class="material-symbols-rounded" style="font-size:15px;">settings</span>
             </button>
-          ` : ''}
+            <button class="page-act-btn btn-page-dup" data-page-dup="${p.id}" title="Дублировать страницу">
+              <span class="material-symbols-rounded" style="font-size:15px;">content_copy</span>
+            </button>
+            ${this.project.pages.length > 1 ? `
+              <button class="page-act-btn btn-del" data-del-page="${p.id}" title="Удалить страницу">
+                <span class="material-symbols-rounded" style="font-size:15px;">delete</span>
+              </button>
+            ` : ''}
+          </div>
         </div>
       `;
     });
+    html += '</div>';
 
     listEl.innerHTML = html;
 
+    listEl.querySelector('#btn-open-templates-modal')?.addEventListener('click', () => {
+      document.getElementById('new-page-modal')?.classList.remove('hidden');
+    });
+
     listEl.querySelectorAll('.tilda-page-item').forEach(item => {
       item.addEventListener('click', e => {
-        if (e.target.closest('.page-del-btn')) return;
+        if (e.target.closest('.page-actions-group')) return;
         this.switchPage(item.dataset.pageId);
       });
     });
 
+    listEl.querySelectorAll('[data-page-seo]').forEach(b => {
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        this.openPageSettingsModal(b.dataset.pageSeo);
+      });
+    });
+
+    listEl.querySelectorAll('[data-page-dup]').forEach(b => {
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        this.duplicatePage(b.dataset.pageDup);
+      });
+    });
+
     listEl.querySelectorAll('[data-del-page]').forEach(b => {
-      b.addEventListener('click', () => {
+      b.addEventListener('click', e => {
+        e.stopPropagation();
         this.deletePage(b.dataset.delPage);
       });
     });
@@ -1002,36 +1226,426 @@ export class TildaEngine {
     this.renderInspector();
   }
 
-  addPage(title = 'Новая страница', slug = '') {
+  addPage(title = 'Новая страница', slug = '', templateType = 'blank') {
+    let blocks = [];
+    if (templateType === 'landing') {
+      blocks = [
+        this.createBlockInstance('menu-1'),
+        this.createBlockInstance('cover-1'),
+        this.createBlockInstance('features-1'),
+        this.createBlockInstance('pricing-1'),
+        this.createBlockInstance('faq-1'),
+        this.createBlockInstance('form-1'),
+        this.createBlockInstance('footer-1')
+      ];
+    } else if (templateType === 'store') {
+      blocks = [
+        this.createBlockInstance('menu-1'),
+        this.createBlockInstance('store-1'),
+        this.createBlockInstance('features-1'),
+        this.createBlockInstance('form-1'),
+        this.createBlockInstance('footer-1')
+      ];
+    } else if (templateType === 'about') {
+      blocks = [
+        this.createBlockInstance('menu-1'),
+        this.createBlockInstance('cover-1'),
+        this.createBlockInstance('about-1'),
+        this.createBlockInstance('testimonials-1'),
+        this.createBlockInstance('footer-1')
+      ];
+    } else if (templateType === 'contacts') {
+      blocks = [
+        this.createBlockInstance('menu-1'),
+        this.createBlockInstance('contacts-1'),
+        this.createBlockInstance('form-1'),
+        this.createBlockInstance('footer-1')
+      ];
+    } else {
+      blocks = [
+        this.createBlockInstance('menu-1'),
+        this.createBlockInstance('cover-1'),
+        this.createBlockInstance('footer-1')
+      ];
+    }
+
     const newPage = {
       id: 'page_' + Date.now(),
       title,
       slug: slug || 'page-' + (this.project.pages.length + 1),
-      blocks: [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('cover-1'),
-        this.createBlockInstance('footer-1')
-      ]
+      metaTitle: `${title} | ${this.project.name}`,
+      metaDesc: '',
+      blocks
     };
+
     this.project.pages.push(newPage);
     this.switchPage(newPage.id);
     this.saveHistory();
   }
 
+  duplicatePage(pageId) {
+    const original = this.project.pages.find(p => p.id === pageId);
+    if (!original) return;
+
+    const clone = JSON.parse(JSON.stringify(original));
+    clone.id = 'page_' + Date.now();
+    clone.title = original.title + ' (Копия)';
+    clone.slug = original.slug + '-copy';
+
+    this.project.pages.push(clone);
+    this.switchPage(clone.id);
+    this.saveHistory();
+  }
+
   deletePage(pageId) {
-    if (this.project.pages.length <= 1) return;
-    if (!confirm('Удалить страницу?')) return;
+    if (this.project.pages.length <= 1) {
+      alert('Нельзя удалить единственную страницу проекта!');
+      return;
+    }
+    if (!confirm('Удалить страницу и все её блоки?')) return;
     this.project.pages = this.project.pages.filter(p => p.id !== pageId);
     if (this.project.activePageId === pageId) {
       this.project.activePageId = this.project.pages[0].id;
     }
-    this.renderPagesList();
-    this.renderArtboard();
-    this.renderLayersTree();
+    this.switchPage(this.project.activePageId);
     this.saveHistory();
   }
 
-  // ─── 7. История (Undo/Redo) ───────────────────────────────────
+  openPageSettingsModal(pageId) {
+    const p = this.project.pages.find(x => x.id === pageId);
+    if (!p) return;
+
+    const modal = document.getElementById('page-settings-modal');
+    if (!modal) return;
+
+    document.getElementById('ps-page-title').value = p.title || '';
+    document.getElementById('ps-page-slug').value = p.slug || '';
+    document.getElementById('ps-meta-title').value = p.metaTitle || '';
+    document.getElementById('ps-meta-desc').value = p.metaDesc || '';
+
+    modal.dataset.editingPageId = pageId;
+    modal.classList.remove('hidden');
+  }
+
+  // ─── 8. Магазин и товары (Store & Cart Manager) ────────────────
+  renderStoreUI() {
+    const cont = document.getElementById('tilda-store-panel');
+    if (!cont) return;
+    const s = this.project.store;
+
+    let html = `
+      <div class="store-stats-card">
+        <div>
+          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:700;">Каталог</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;">${s.products.length} товаров</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:700;">Валюта</div>
+          <div style="font-size:16px;font-weight:800;color:#10b981;">${s.currency}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button class="topbar-action-btn btn-primary" id="btn-add-store-product" style="flex:1;justify-content:center;padding:8px;">
+          <span class="material-symbols-rounded">add</span>
+          <span>+ Добавить товар</span>
+        </button>
+        <button class="topbar-action-btn" id="btn-insert-store-block" style="padding:8px;" title="Вставить блок каталога на страницу">
+          <span class="material-symbols-rounded">storefront</span>
+        </button>
+      </div>
+
+      <div class="insp-section-title">Список товаров (${s.products.length})</div>
+      <div class="store-products-list" id="store-products-container">
+    `;
+
+    if (s.products.length === 0) {
+      html += `<div style="text-align:center;padding:20px;color:var(--text-4);font-size:12px;">В каталоге пока нет товаров. Нажмите «+ Добавить товар».</div>`;
+    } else {
+      s.products.forEach(prod => {
+        html += `
+          <div class="store-product-card" data-prod-id="${prod.id}">
+            <img src="${prod.img || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=100&q=80'}" class="store-product-thumb" alt="${escapeHtml(prod.name)}" />
+            <div class="store-product-info">
+              <div class="store-product-name">${escapeHtml(prod.name)}</div>
+              <div class="store-product-prices">
+                <span class="store-product-price">${Number(prod.price).toLocaleString()} ${s.currency}</span>
+                ${prod.oldPrice ? `<span class="store-product-old-price">${Number(prod.oldPrice).toLocaleString()} ${s.currency}</span>` : ''}
+              </div>
+              <div class="store-product-sku">SKU: ${prod.sku || 'N/A'}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="page-act-btn btn-edit-prod" data-edit-prod="${prod.id}" title="Редактировать">
+                <span class="material-symbols-rounded" style="font-size:14px;">edit</span>
+              </button>
+              <button class="page-act-btn btn-del-prod" data-del-prod="${prod.id}" title="Удалить" style="color:#f43f5e;">
+                <span class="material-symbols-rounded" style="font-size:14px;">delete</span>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    html += `
+      </div>
+
+      <div class="insp-section-title" style="margin-top:18px;">Настройки корзины & Заказа</div>
+      <div class="insp-field">
+        <label>Валюта цен</label>
+        <select id="store-currency-select">
+          <option value="₽" ${s.currency === '₽' ? 'selected' : ''}>₽ — Российский рубль</option>
+          <option value="$" ${s.currency === '$' ? 'selected' : ''}>$ — Доллар США</option>
+          <option value="€" ${s.currency === '€' ? 'selected' : ''}>€ — Евро</option>
+          <option value="₸" ${s.currency === '₸' ? 'selected' : ''}>₸ — Казахстанский тенге</option>
+          <option value="₴" ${s.currency === '₴' ? 'selected' : ''}>₴ — Украинская гривна</option>
+          <option value="Br" ${s.currency === 'Br' ? 'selected' : ''}>Br — Белорусский рубль</option>
+        </select>
+      </div>
+
+      <div class="insp-field">
+        <label>Минимальная сумма заказа</label>
+        <input type="number" id="store-min-order" value="${s.minOrderSum || 0}" placeholder="0" />
+      </div>
+
+      <div class="insp-section-title">Поля в форме оформления</div>
+      <label class="insp-checkbox"><input type="checkbox" id="chk-field-name" ${s.fields.name ? 'checked' : ''} /> Имя покупателя</label>
+      <label class="insp-checkbox"><input type="checkbox" id="chk-field-phone" ${s.fields.phone ? 'checked' : ''} /> Номер телефона</label>
+      <label class="insp-checkbox"><input type="checkbox" id="chk-field-email" ${s.fields.email ? 'checked' : ''} /> Email</label>
+      <label class="insp-checkbox"><input type="checkbox" id="chk-field-address" ${s.fields.address ? 'checked' : ''} /> Адрес доставки</label>
+      <label class="insp-checkbox"><input type="checkbox" id="chk-field-comment" ${s.fields.comment ? 'checked' : ''} /> Комментарий к заказу</label>
+    `;
+
+    cont.innerHTML = html;
+
+    cont.querySelector('#btn-add-store-product')?.addEventListener('click', () => {
+      this.openProductModal();
+    });
+
+    cont.querySelector('#btn-insert-store-block')?.addEventListener('click', () => {
+      this.addBlock('store-1');
+    });
+
+    cont.querySelectorAll('[data-edit-prod]').forEach(b => {
+      b.addEventListener('click', () => {
+        this.openProductModal(b.dataset.editProd);
+      });
+    });
+
+    cont.querySelectorAll('[data-del-prod]').forEach(b => {
+      b.addEventListener('click', () => {
+        const pid = b.dataset.delProd;
+        s.products = s.products.filter(x => x.id !== pid);
+        this.renderStoreUI();
+        this.saveHistory();
+      });
+    });
+
+    cont.querySelector('#store-currency-select')?.addEventListener('change', e => {
+      s.currency = e.target.value;
+      this.renderStoreUI();
+      this.renderArtboard();
+      this.saveHistory();
+    });
+
+    cont.querySelector('#store-min-order')?.addEventListener('input', e => {
+      s.minOrderSum = Number(e.target.value) || 0;
+      this.saveHistory();
+    });
+
+    ['name', 'phone', 'email', 'address', 'comment'].forEach(key => {
+      cont.querySelector(`#chk-field-${key}`)?.addEventListener('change', e => {
+        s.fields[key] = e.target.checked;
+        this.saveHistory();
+      });
+    });
+  }
+
+  openProductModal(prodId = null) {
+    const modal = document.getElementById('store-product-modal');
+    if (!modal) return;
+
+    const s = this.project.store;
+    let prod = prodId ? s.products.find(x => x.id === prodId) : null;
+
+    document.getElementById('sp-modal-title').textContent = prod ? 'Редактировать товар' : 'Добавить новый товар';
+    document.getElementById('sp-name').value = prod ? prod.name : '';
+    document.getElementById('sp-price').value = prod ? prod.price : '';
+    document.getElementById('sp-old-price').value = prod ? (prod.oldPrice || '') : '';
+    document.getElementById('sp-sku').value = prod ? (prod.sku || '') : '';
+    document.getElementById('sp-img').value = prod ? (prod.img || '') : '';
+    document.getElementById('sp-desc').value = prod ? (prod.desc || '') : '';
+
+    modal.dataset.editingProdId = prodId || '';
+    modal.classList.remove('hidden');
+  }
+
+  // ─── 9. Настройки сайта & Webhook (Settings UI) ────────────────
+  renderSettingsUI() {
+    const cont = document.getElementById('tilda-settings-panel');
+    if (!cont) return;
+    const cfg = this.project.settings;
+
+    cont.innerHTML = `
+      <div class="insp-section-title">Главные параметры сайта</div>
+      <div class="insp-field">
+        <label>Название проекта</label>
+        <input type="text" id="cfg-proj-name" value="${escapeHtml(this.project.name || '')}" />
+      </div>
+      <div class="insp-field">
+        <label>Favicon (URL иконки сайта)</label>
+        <input type="text" id="cfg-favicon" value="${escapeHtml(cfg.faviconUrl || '')}" placeholder="https://..." />
+      </div>
+      <div class="insp-field">
+        <label>Meta Title по умолчанию</label>
+        <input type="text" id="cfg-meta-title" value="${escapeHtml(cfg.metaTitle || '')}" />
+      </div>
+      <div class="insp-field">
+        <label>Meta Description</label>
+        <textarea rows="2" id="cfg-meta-desc">${escapeHtml(cfg.metaDesc || '')}</textarea>
+      </div>
+
+      <div class="insp-section-title">Превью в соцсетях (OpenGraph)</div>
+      <div class="insp-field">
+        <label>Изображение для соцсетей (OG Image URL)</label>
+        <input type="text" id="cfg-og-img" value="${escapeHtml(cfg.ogImageUrl || '')}" placeholder="https://..." />
+      </div>
+
+      <div class="social-share-preview-card" id="social-share-preview">
+        <img src="${cfg.ogImageUrl || 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80'}" class="social-share-img" id="og-preview-img" alt="OG Image" />
+        <div class="social-share-body">
+          <div class="social-share-domain">AURORA-WEB.PRO</div>
+          <div class="social-share-title" id="og-preview-title">${escapeHtml(cfg.metaTitle || 'AURORA WEB Site')}</div>
+          <div class="social-share-desc" id="og-preview-desc">${escapeHtml(cfg.metaDesc || 'Создано в визуальном конструкторе сайтов AURORA WEB')}</div>
+        </div>
+      </div>
+
+      <div class="insp-section-title">Аналитика</div>
+      <div class="insp-field">
+        <label>Номер счетчика Яндекс.Метрики</label>
+        <input type="text" id="cfg-metrika" value="${escapeHtml(cfg.yandexMetrikaId || '')}" placeholder="98765432" />
+      </div>
+      <div class="insp-field">
+        <label>Google Analytics 4 ID</label>
+        <input type="text" id="cfg-ga" value="${escapeHtml(cfg.googleAnalyticsId || '')}" placeholder="G-XXXXXXXXXX" />
+      </div>
+
+      <div class="insp-section-title">Прием заявок (Telegram Bot)</div>
+      <div class="insp-field">
+        <label>Telegram Bot Token</label>
+        <input type="text" id="cfg-tg-token" value="${escapeHtml(cfg.telegramToken || '')}" placeholder="123456:ABC-DEF..." />
+      </div>
+      <div class="insp-field">
+        <label>Telegram Chat ID</label>
+        <input type="text" id="cfg-tg-chat" value="${escapeHtml(cfg.telegramChatId || '')}" placeholder="-10012345678" />
+      </div>
+
+      <button class="topbar-action-btn" id="btn-test-tg-lead" style="width:100%;padding:10px;justify-content:center;background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.4);color:#10b981;margin-bottom:14px;">
+        <span class="material-symbols-rounded">send</span>
+        <span>⚡ Проверить отправку лида в Telegram</span>
+      </button>
+
+      <div class="insp-section-title">Вставка своего кода</div>
+      <div class="insp-field">
+        <label>HTML/JS код внутри &lt;head&gt;</label>
+        <textarea rows="3" id="cfg-head-code" placeholder="&lt;script&gt;...&lt;/script&gt;">${escapeHtml(cfg.headCode || '')}</textarea>
+      </div>
+      <div class="insp-field">
+        <label>HTML/JS код перед закрывающим &lt;/body&gt;</label>
+        <textarea rows="3" id="cfg-body-code" placeholder="&lt;script&gt;...&lt;/script&gt;">${escapeHtml(cfg.bodyCode || '')}</textarea>
+      </div>
+    `;
+
+    cont.querySelector('#cfg-proj-name')?.addEventListener('input', e => {
+      this.project.name = e.target.value;
+      const tInput = document.getElementById('project-title');
+      if (tInput) tInput.value = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-favicon')?.addEventListener('input', e => {
+      cfg.faviconUrl = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-meta-title')?.addEventListener('input', e => {
+      cfg.metaTitle = e.target.value;
+      const preview = cont.querySelector('#og-preview-title');
+      if (preview) preview.textContent = e.target.value || 'AURORA WEB Site';
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-meta-desc')?.addEventListener('input', e => {
+      cfg.metaDesc = e.target.value;
+      const preview = cont.querySelector('#og-preview-desc');
+      if (preview) preview.textContent = e.target.value || 'Создано в визуальном конструкторе сайтов AURORA WEB';
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-og-img')?.addEventListener('input', e => {
+      cfg.ogImageUrl = e.target.value;
+      const img = cont.querySelector('#og-preview-img');
+      if (img) img.src = e.target.value || 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80';
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-metrika')?.addEventListener('input', e => {
+      cfg.yandexMetrikaId = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-ga')?.addEventListener('input', e => {
+      cfg.googleAnalyticsId = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-tg-token')?.addEventListener('input', e => {
+      cfg.telegramToken = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-tg-chat')?.addEventListener('input', e => {
+      cfg.telegramChatId = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-head-code')?.addEventListener('input', e => {
+      cfg.headCode = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#cfg-body-code')?.addEventListener('input', e => {
+      cfg.bodyCode = e.target.value;
+      this.saveHistory();
+    });
+
+    cont.querySelector('#btn-test-tg-lead')?.addEventListener('click', async () => {
+      const token = (cfg.telegramToken || '').trim();
+      const chatId = (cfg.telegramChatId || '').trim();
+      if (!token || !chatId) {
+        alert('Пожалуйста, заполните Telegram Bot Token и Chat ID перед отправкой!');
+        return;
+      }
+      try {
+        const text = `🚀 Тестовая заявка от AURORA WEB!\nСайт: ${this.project.name}\nВремя: ${new Date().toLocaleString()}`;
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert('✅ Успешно! Тестовое сообщение доставлено в Telegram.');
+        } else {
+          alert(`❌ Ошибка Telegram: ${data.description || 'Проверьте токен и ID'}`);
+        }
+      } catch (err) {
+        alert(`❌ Ошибка сети: ${err.message}`);
+      }
+    });
+  }
+
+  // ─── 10. История (Undo/Redo) ──────────────────────────────────
   saveHistory() {
     if (this.historyIdx < this.history.length - 1) {
       this.history = this.history.slice(0, this.historyIdx + 1);
@@ -1049,6 +1663,9 @@ export class TildaEngine {
       this.renderArtboard();
       this.renderLayersTree();
       this.renderPagesList();
+      this.renderDesignTokensUI();
+      this.renderStoreUI();
+      this.renderSettingsUI();
       this.renderInspector();
     }
   }
@@ -1060,14 +1677,19 @@ export class TildaEngine {
       this.renderArtboard();
       this.renderLayersTree();
       this.renderPagesList();
+      this.renderDesignTokensUI();
+      this.renderStoreUI();
+      this.renderSettingsUI();
       this.renderInspector();
     }
   }
 
-  // ─── 8. Экспорт чистого автономного HTML ──────────────────────
+  // ─── 11. Экспорт чистого автономного HTML ─────────────────────
   generateStandaloneHtml() {
     const page = this.getActivePage();
     const g = this.project.globalStyles;
+    const s = this.project.settings;
+    const store = this.project.store;
 
     const blocksHtml = page.blocks.map(blk => {
       if (blk.isHidden) return '';
@@ -1076,17 +1698,42 @@ export class TildaEngine {
       return `<section id="${blk.instanceId}" class="tilda-block">\n${renderBlockHtml(def, blk.content, blk.design)}\n</section>`;
     }).filter(Boolean).join('\n\n');
 
+    const metrikaScript = s.yandexMetrikaId ? `
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript" >
+      (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
+      for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+      (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+      ym(${s.yandexMetrikaId}, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/${s.yandexMetrikaId}" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    ` : '';
+
     return `<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(this.project.settings.metaTitle || page.title)}</title>
-  <meta name="description" content="${escapeHtml(this.project.settings.metaDesc || '')}">
+  <title>${escapeHtml(page.metaTitle || s.metaTitle || page.title)}</title>
+  <meta name="description" content="${escapeHtml(page.metaDesc || s.metaDesc || '')}">
+  ${s.faviconUrl ? `<link rel="icon" href="${escapeHtml(s.faviconUrl)}">` : ''}
+  
+  <!-- OpenGraph -->
+  <meta property="og:title" content="${escapeHtml(page.metaTitle || s.metaTitle || page.title)}">
+  <meta property="og:description" content="${escapeHtml(page.metaDesc || s.metaDesc || '')}">
+  <meta property="og:image" content="${escapeHtml(s.ogImageUrl || '')}">
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@400;600;700;800;900&family=Oswald:wght@500;700&family=Playfair+Display:wght@600;800&family=Roboto:wght@400;500;700&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+  
+  ${s.headCode || ''}
+  ${metrikaScript}
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -1109,6 +1756,7 @@ export class TildaEngine {
 </head>
 <body>
 ${blocksHtml}
+${s.bodyCode || ''}
 </body>
 </html>`;
   }
