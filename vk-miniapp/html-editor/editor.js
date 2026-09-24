@@ -1,7 +1,8 @@
 /**
  * editor.js — Главный координатор приложения AURORA WEB
- * Связывает TildaEngine, ZeroBlockEditor, CodeMirror, кастомные шрифты (OFONT.RU),
- * свободное перетаскивание элементов на холсте, масштабирование (Zoom) и облачную публикацию.
+ * Связывает TildaEngine, ZeroBlockEditor, Projects Dashboard (Главная страница проектов),
+ * CodeMirror, кастомные шрифты (OFONT.RU), свободное перетаскивание элементов на холсте,
+ * масштабирование (Zoom), интерактивные анимации и облачную публикацию.
  */
 
 import { TildaEngine } from './tilda_engine.js?v=5.2.0';
@@ -15,7 +16,157 @@ import { html } from "@codemirror/lang-html";
 let tildaEngine = null;
 let zeroBlockEditor = null;
 let codeEditor = null;
-let currentMode = 'builder'; // builder | zero | code | preview
+let currentMode = 'builder'; // dashboard | builder | zero | code | preview
+let activeFilter = 'all';
+let searchFilterQuery = '';
+
+// ─── Хранилище проектов (Projects Storage) ──────────────────────
+const PROJECTS_INDEX_KEY = 'aurora_web_projects_index';
+const CURRENT_PROJECT_ID_KEY = 'aurora_web_current_project_id';
+
+function getProjectsList() {
+  try {
+    const raw = localStorage.getItem(PROJECTS_INDEX_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+  } catch (e) {
+    console.warn('Load projects index error:', e);
+  }
+
+  // Pre-populate 3 realistic, beautiful starter projects
+  const starters = createDefaultStarterProjects();
+  saveProjectsList(starters.map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category || 'landing',
+    pagesCount: p.pages?.length || 1,
+    blocksCount: p.pages?.[0]?.blocks?.length || 6,
+    updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    theme: p.globalStyles || {},
+    heroCover: p.pages?.[0]?.blocks?.[0]?.content?.bgImage || p.pages?.[0]?.blocks?.[1]?.content?.bgImage || ''
+  })));
+
+  starters.forEach(p => {
+    localStorage.setItem(`aurora_web_proj_${p.id}`, JSON.stringify(p));
+  });
+
+  localStorage.setItem(CURRENT_PROJECT_ID_KEY, starters[0].id);
+  localStorage.setItem('aurora_web_current_project', JSON.stringify(starters[0]));
+
+  return JSON.parse(localStorage.getItem(PROJECTS_INDEX_KEY));
+}
+
+function saveProjectsList(list) {
+  try {
+    localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Save projects list error:', e);
+  }
+}
+
+function loadProjectById(id) {
+  try {
+    const raw = localStorage.getItem(`aurora_web_proj_${id}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Load project by ID error:', e);
+  }
+  return null;
+}
+
+function saveFullProject(project) {
+  if (!project || !project.id) return;
+  try {
+    localStorage.setItem(`aurora_web_proj_${project.id}`, JSON.stringify(project));
+    localStorage.setItem('aurora_web_current_project', JSON.stringify(project));
+    localStorage.setItem(CURRENT_PROJECT_ID_KEY, project.id);
+
+    // Update index item
+    const list = getProjectsList();
+    const idx = list.findIndex(p => p.id === project.id);
+    const summary = {
+      id: project.id,
+      name: project.name || 'Сайт Aurora Web',
+      category: project.category || 'landing',
+      pagesCount: project.pages?.length || 1,
+      blocksCount: project.pages?.[0]?.blocks?.length || 0,
+      updatedAt: new Date().toISOString(),
+      createdAt: (idx >= 0 && list[idx].createdAt) ? list[idx].createdAt : new Date().toISOString(),
+      theme: project.globalStyles || {},
+      heroCover: project.pages?.[0]?.blocks?.[0]?.content?.bgImage || project.pages?.[0]?.blocks?.[1]?.content?.bgImage || project.pages?.[0]?.blocks?.[1]?.content?.img || ''
+    };
+
+    if (idx >= 0) {
+      list[idx] = summary;
+    } else {
+      list.unshift(summary);
+    }
+    saveProjectsList(list);
+  } catch (e) {
+    console.warn('Save full project error:', e);
+  }
+}
+
+function createDefaultStarterProjects() {
+  const engine = new TildaEngine({ container: null });
+  const p1 = engine.createDefaultProject();
+  p1.id = 'proj_flagship_landing';
+  p1.name = '🚀 Флагманский Лендинг Aurora Web';
+  p1.category = 'landing';
+
+  const p2 = engine.createDefaultProject();
+  p2.id = 'proj_ecommerce_store';
+  p2.name = '🛍️ Интернет-магазин Электроники & Гаджетов';
+  p2.category = 'store';
+  p2.pages = [
+    {
+      id: 'page_store',
+      title: 'Главный магазин',
+      slug: 'index',
+      metaTitle: 'Каталог товаров | Aurora Shop',
+      metaDesc: 'Купить гаджеты и аксессуары по выгодным ценам',
+      blocks: [
+        engine.createBlockInstance('menu-1'),
+        engine.createBlockInstance('cover-2'),
+        engine.createBlockInstance('store-1'),
+        engine.createBlockInstance('store-single'),
+        engine.createBlockInstance('store-cart'),
+        engine.createBlockInstance('store-order'),
+        engine.createBlockInstance('footer-1')
+      ]
+    }
+  ];
+
+  const p3 = engine.createDefaultProject();
+  p3.id = 'proj_creative_portfolio';
+  p3.name = '🎨 Digital Agency & Creative Studio';
+  p3.category = 'portfolio';
+  p3.globalStyles.colorAccent = '#8b5cf6';
+  p3.globalStyles.fontHeading = 'Unbounded';
+  p3.pages = [
+    {
+      id: 'page_agency',
+      title: 'Портфолио',
+      slug: 'index',
+      metaTitle: 'Aurora Creative Agency',
+      metaDesc: 'Дизайн студия веб-разработки и брендинга',
+      blocks: [
+        engine.createBlockInstance('menu-1'),
+        engine.createBlockInstance('cover-1'),
+        engine.createBlockInstance('about-1'),
+        engine.createBlockInstance('gallery-1'),
+        engine.createBlockInstance('testimonials-1'),
+        engine.createBlockInstance('contacts-1'),
+        engine.createBlockInstance('footer-1')
+      ]
+    }
+  ];
+
+  return [p1, p2, p3];
+}
 
 // ─── Масштабирование холста (Zoom) ─────────────────────────────
 let canvasZoom = 1.0;
@@ -37,7 +188,6 @@ function initCanvasZoom() {
   const workspace = document.getElementById('tilda-center-workspace');
   if (!workspace) return;
 
-  // Zoom по Ctrl + Wheel
   workspace.addEventListener('wheel', e => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -46,7 +196,6 @@ function initCanvasZoom() {
     }
   }, { passive: false });
 
-  // Кнопки зума на плавающей панели
   document.getElementById('btn-zoom-in')?.addEventListener('click', () => {
     setCanvasZoom(canvasZoom + 0.1);
   });
@@ -132,7 +281,7 @@ async function registerFontFace(name, buffer) {
   }
 }
 
-// ─── Свободное перетаскивание любых элементов на стандартных блоках ───
+// ─── Свободное перетаскивание и ресайз элементов на холсте ───────
 function initFreeElementDragOnCanvas() {
   const artboard = document.getElementById('tilda-artboard');
   if (!artboard) return;
@@ -143,17 +292,14 @@ function initFreeElementDragOnCanvas() {
   let isDragging = false;
 
   artboard.addEventListener('mousedown', e => {
-    // Игнорируем экшен-бары и тулбары
-    if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.isContentEditable) return;
+    if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.closest('.block-height-resizer') || e.target.isContentEditable) return;
 
-    // Находим целевой внутренний элемент блока
-    const target = e.target.closest('h1, h2, h3, h4, p, img, button, .t-feature-card, .t-pricing-card, .t-gallery-item, .t-badge, .t-avatar');
+    const target = e.target.closest('.block-custom-element, h1, h2, h3, h4, p, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge');
     if (!target) return;
 
     const blockWrapper = target.closest('.tilda-block-wrapper');
     if (!blockWrapper) return;
 
-    // Не перетаскиваем, если был даблклик
     if (e.detail > 1) return;
 
     activeEl = target;
@@ -172,15 +318,21 @@ function initFreeElementDragOnCanvas() {
       if (!isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
         isDragging = true;
         activeEl.style.position = 'relative';
-        activeEl.style.zIndex = '20';
+        activeEl.style.zIndex = '30';
         activeEl.style.cursor = 'grab';
         activeEl.style.transition = 'none';
         activeEl.classList.add('is-element-dragged');
       }
 
       if (isDragging) {
-        activeEl.style.left = `${startLeft + dx}px`;
-        activeEl.style.top = `${startTop + dy}px`;
+        let newX = startLeft + dx;
+        let newY = startTop + dy;
+        if (tildaEngine?.isGridSnapping) {
+          newX = Math.round(newX / 8) * 8;
+          newY = Math.round(newY / 8) * 8;
+        }
+        activeEl.style.left = `${newX}px`;
+        activeEl.style.top = `${newY}px`;
       }
     };
 
@@ -201,27 +353,277 @@ function initFreeElementDragOnCanvas() {
   });
 }
 
+// ─── Главная страница проектов (Dashboard) ─────────────────────
+function initProjectsDashboard() {
+  const grid = document.getElementById('dashboard-projects-grid');
+  const searchInput = document.getElementById('dashboard-search-input');
+  const filterChips = document.querySelectorAll('#dashboard-filter-chips .dash-chip');
+
+  searchInput?.addEventListener('input', e => {
+    searchFilterQuery = e.target.value.toLowerCase().trim();
+    renderProjectsDashboard();
+  });
+
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      filterChips.forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      activeFilter = chip.dataset.filter;
+      renderProjectsDashboard();
+    });
+  });
+
+  document.getElementById('btn-dash-new-project')?.addEventListener('click', () => {
+    document.getElementById('create-project-modal')?.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-dash-import')?.addEventListener('click', () => {
+    document.getElementById('project-import-file-input')?.click();
+  });
+
+  renderProjectsDashboard();
+}
+
+function renderProjectsDashboard() {
+  const grid = document.getElementById('dashboard-projects-grid');
+  const countAll = document.getElementById('dash-count-all');
+  if (!grid) return;
+
+  const projects = getProjectsList();
+  if (countAll) countAll.textContent = projects.length;
+
+  const filtered = projects.filter(p => {
+    const matchesCat = (activeFilter === 'all') || (p.category === activeFilter);
+    const matchesSearch = !searchFilterQuery || (p.name && p.name.toLowerCase().includes(searchFilterQuery));
+    return matchesCat && matchesSearch;
+  });
+
+  let html = `
+    <!-- Card 1: + Новый проект -->
+    <div class="new-project-dashed-card" id="card-action-create-new">
+      <div class="new-proj-icon-circle">
+        <span class="material-symbols-rounded">add</span>
+      </div>
+      <div class="new-proj-title">+ Создать новый проект</div>
+      <div class="new-proj-desc">С чистого листа или из готового премиум-шаблона</div>
+    </div>
+  `;
+
+  filtered.forEach(p => {
+    const d = new Date(p.updatedAt || Date.now());
+    const dateStr = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const accent = p.theme?.colorAccent || '#0d99ff';
+    const fontHead = p.theme?.fontHeading || 'Montserrat';
+    const heroBg = p.heroCover ? `background-image:url('${p.heroCover}');` : 'background:linear-gradient(135deg,#0a0f1d,#161e31);';
+
+    html += `
+      <div class="project-card" data-proj-id="${p.id}">
+        <!-- Visual Mockup Preview -->
+        <div class="project-preview-mockup">
+          <div class="proj-mini-browser-bar">
+            <div class="proj-mini-dot"></div>
+            <div class="proj-mini-dot"></div>
+            <div class="proj-mini-dot"></div>
+          </div>
+          <div class="proj-mini-hero" style="${heroBg}">
+            <div class="proj-mini-hero-overlay"></div>
+            <div class="proj-mini-hero-content">
+              <span class="proj-mini-badge" style="background:rgba(13,153,255,0.25);color:${accent};border:1px solid ${accent};">AURORA SITE</span>
+              <div class="proj-mini-title" style="font-family:'${fontHead}',sans-serif;color:#fff;">${escapeHtml(p.name)}</div>
+              <div class="proj-mini-sub" style="color:#94a3b8;">Профессиональный веб-сайт</div>
+              <span class="proj-mini-btn" style="background:${accent};">Открыть &rarr;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="project-card-body">
+          <div class="project-title-row">
+            <div class="project-card-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+            <button class="page-act-btn btn-dash-rename" data-rename-id="${p.id}" title="Переименовать проект">
+              <span class="material-symbols-rounded" style="font-size:15px;">edit</span>
+            </button>
+          </div>
+
+          <div class="project-card-stats">
+            <span class="project-stat-pill">${p.pagesCount || 1} стр.</span>
+            <span class="project-stat-pill">${p.blocksCount || 6} блоков</span>
+            <span style="margin-left:auto;font-size:10px;">${dateStr}, ${timeStr}</span>
+          </div>
+
+          <div class="project-card-actions">
+            <button class="topbar-action-btn btn-primary btn-dash-open" data-open-id="${p.id}" style="flex:1;justify-content:center;">
+              <span class="material-symbols-rounded">launch</span>
+              <span>Открыть</span>
+            </button>
+            <button class="topbar-action-btn btn-dash-dup" data-dup-id="${p.id}" title="Дублировать проект">
+              <span class="material-symbols-rounded">content_copy</span>
+            </button>
+            <button class="topbar-action-btn btn-dash-zip" data-zip-id="${p.id}" title="Скачать ZIP">
+              <span class="material-symbols-rounded">download</span>
+            </button>
+            <button class="topbar-action-btn btn-dash-del" data-del-id="${p.id}" title="Удалить проект" style="color:#f43f5e;">
+              <span class="material-symbols-rounded">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  grid.innerHTML = html;
+
+  grid.querySelector('#card-action-create-new')?.addEventListener('click', () => {
+    document.getElementById('create-project-modal')?.classList.remove('hidden');
+  });
+
+  grid.querySelectorAll('.btn-dash-open, .project-preview-mockup').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const card = btn.closest('.project-card');
+      const id = card?.dataset.projId;
+      if (id) openProject(id);
+    });
+  });
+
+  grid.querySelectorAll('.btn-dash-rename').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.renameId;
+      openRenameModal(id);
+    });
+  });
+
+  grid.querySelectorAll('.btn-dash-dup').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      duplicateProject(btn.dataset.dupId);
+    });
+  });
+
+  grid.querySelectorAll('.btn-dash-zip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openProject(btn.dataset.zipId);
+      exportProjectZip();
+    });
+  });
+
+  grid.querySelectorAll('.btn-dash-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteProject(btn.dataset.delId);
+    });
+  });
+}
+
+function openProject(id) {
+  let proj = loadProjectById(id);
+  if (!proj) {
+    showToast('❌ Проект не найден');
+    return;
+  }
+  tildaEngine.project = proj;
+  tildaEngine.init();
+
+  const titleInput = document.getElementById('project-title');
+  if (titleInput) titleInput.value = proj.name || 'Сайт Aurora Web';
+
+  localStorage.setItem(CURRENT_PROJECT_ID_KEY, id);
+  localStorage.setItem('aurora_web_current_project', JSON.stringify(proj));
+
+  switchMode('builder');
+  showToast(`🎉 Проект «${proj.name}» открыт`);
+}
+
+function duplicateProject(id) {
+  const original = loadProjectById(id);
+  if (!original) return;
+
+  const clone = JSON.parse(JSON.stringify(original));
+  clone.id = 'proj_' + Date.now();
+  clone.name = (original.name || 'Сайт') + ' (Копия)';
+
+  saveFullProject(clone);
+  renderProjectsDashboard();
+  showToast(`📋 Проект продублирован`);
+}
+
+function deleteProject(id) {
+  const list = getProjectsList();
+  if (list.length <= 1) {
+    alert('Нельзя удалить единственный проект!');
+    return;
+  }
+  if (!confirm('Вы действительно хотите удалить этот проект?')) return;
+
+  localStorage.removeItem(`aurora_web_proj_${id}`);
+  const updated = list.filter(p => p.id !== id);
+  saveProjectsList(updated);
+
+  if (localStorage.getItem(CURRENT_PROJECT_ID_KEY) === id) {
+    openProject(updated[0].id);
+  }
+
+  renderProjectsDashboard();
+  showToast('🗑️ Проект удалён');
+}
+
+function openRenameModal(id) {
+  const modal = document.getElementById('rename-project-modal');
+  const proj = loadProjectById(id);
+  if (!modal || !proj) return;
+
+  const input = document.getElementById('rename-proj-input');
+  if (input) input.value = proj.name || '';
+
+  modal.dataset.editingProjId = id;
+  modal.classList.remove('hidden');
+  input?.focus();
+}
+
 // ─── Инициализация приложения ──────────────────────────────────
 function init() {
-  // 1. Core Engine
+  // 1. Load Projects List & Current Project
+  getProjectsList();
+  const currentId = localStorage.getItem(CURRENT_PROJECT_ID_KEY);
+  let activeProj = currentId ? loadProjectById(currentId) : null;
+
+  // 2. Core Engine
   tildaEngine = new TildaEngine({
     container: document.getElementById('tilda-artboard'),
     layersList: document.getElementById('tilda-layers-list'),
     propsPanel: document.getElementById('tilda-props-panel'),
     paletteContainer: document.getElementById('tilda-blocks-palette')
   });
+
+  if (activeProj) {
+    tildaEngine.project = activeProj;
+    tildaEngine.init();
+  }
   window.tildaEngine = tildaEngine;
 
-  // 2. Custom Fonts
+  // 3. Custom Fonts
   loadFontsFromDB();
 
-  // 3. Zoom Controls
+  // 4. Zoom Controls
   initCanvasZoom();
 
-  // 4. Free Element Dragging
+  // 5. Free Element Dragging
   initFreeElementDragOnCanvas();
 
-  // 5. Переключатели режимов
+  // 6. Projects Dashboard
+  initProjectsDashboard();
+
+  // 7. Navigation: Topbar Logo & Folder Icon switch to Dashboard
+  document.getElementById('btn-nav-projects')?.addEventListener('click', () => {
+    switchMode('dashboard');
+  });
+  document.getElementById('btn-brand-home')?.addEventListener('click', () => {
+    switchMode('dashboard');
+  });
+
+  // 8. Mode Pills
   document.querySelectorAll('.mode-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       const mode = btn.dataset.mode;
@@ -229,7 +631,7 @@ function init() {
     });
   });
 
-  // 6. Переключатели брейкпоинтов
+  // 9. Breakpoint Switcher
   document.querySelectorAll('#tilda-bp-group .bp-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#tilda-bp-group .bp-btn').forEach(b => b.classList.remove('is-active'));
@@ -240,7 +642,7 @@ function init() {
     });
   });
 
-  // 7. Вкладки левой панели (Figma Strip) с автоматическим рендером
+  // 10. Left Strip Tabs
   document.querySelectorAll('.tilda-vertical-strip .strip-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tilda-vertical-strip .strip-btn').forEach(b => b.classList.remove('is-active'));
@@ -257,7 +659,6 @@ function init() {
         activePanel.style.display = 'flex';
         activePanel.classList.add('is-active');
 
-        // Вызываем рендер соответствующей вкладки
         if (tab === 'library') tildaEngine.renderPalette();
         else if (tab === 'layers') tildaEngine.renderLayersTree();
         else if (tab === 'pages') tildaEngine.renderPagesList();
@@ -268,23 +669,29 @@ function init() {
     });
   });
 
-  // 8. Undo / Redo
+  // 11. Undo / Redo
   document.getElementById('btn-undo')?.addEventListener('click', () => tildaEngine.undo());
   document.getElementById('btn-redo')?.addEventListener('click', () => tildaEngine.redo());
 
-  // 9. Переименование названия проекта
+  // 12. Grid Snapping Toggle
+  document.getElementById('btn-toggle-grid')?.addEventListener('click', () => {
+    const isAct = tildaEngine.toggleGridSnapping();
+    showToast(isAct ? '🧲 Сетка и прилипание включены' : '📴 Сетка выключена');
+  });
+
+  // 13. Project Title Input (In Topbar)
   const titleInput = document.getElementById('project-title');
   if (titleInput) {
     titleInput.value = tildaEngine.project.name || 'Новый сайт Aurora Web';
     titleInput.addEventListener('input', e => {
       tildaEngine.project.name = e.target.value;
-      tildaEngine.saveHistory();
+      saveFullProject(tildaEngine.project);
     });
   }
 
-  // 10. Сохранение, импорт, экспорт и публикация
+  // 14. Save, Import, Export, Cloud
   document.getElementById('btn-save-project')?.addEventListener('click', () => {
-    tildaEngine.saveProject();
+    saveFullProject(tildaEngine.project);
     showToast('✅ Проект AURORA WEB сохранён');
   });
 
@@ -301,9 +708,10 @@ function init() {
       try {
         const json = JSON.parse(ev.target.result);
         if (json && json.pages && json.pages.length > 0) {
-          tildaEngine.project = json;
-          tildaEngine.init();
-          if (titleInput) titleInput.value = json.name || 'Сайт Aurora Web';
+          json.id = 'proj_' + Date.now();
+          saveFullProject(json);
+          openProject(json.id);
+          renderProjectsDashboard();
           showToast(`🎉 Проект «${json.name || 'Сайт'}» успешно импортирован!`);
         } else {
           showToast('❌ Неверный формат файла project.json');
@@ -324,7 +732,7 @@ function init() {
     publishSiteToCloud();
   });
 
-  // 11. Плавающий быстрый тулбар
+  // 15. Quick Floating Toolbar
   document.getElementById('tool-quick-add-block')?.addEventListener('click', () => {
     document.querySelector('.tilda-vertical-strip .strip-btn[data-tab="library"]')?.click();
   });
@@ -339,21 +747,29 @@ function init() {
     }
   });
 
-  // 12. Zero Block панель инструментов
+  // 16. Zero Block Toolbar
   bindZeroBlockToolbar();
 
-  // 13. CodeMirror
+  // 17. CodeMirror
   initCodeMirror();
 
-  // 14. Модалки
+  // 18. Modals
   initModals();
 
-  // 15. Глобальные горячие клавиши (Delete, Backspace, Ctrl+Z, Ctrl+Y, Ctrl+S, Ctrl+D, Ctrl+0)
+  // 19. Global Hotkeys
   document.addEventListener('keydown', e => {
     const ae = document.activeElement;
     const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
 
-    // Удаление выбранного блока или элемента по Del / Backspace
+    // Shift + G: Grid Snapping Toggle
+    if (e.shiftKey && (e.key === 'G' || e.key === 'g' || e.key === 'П' || e.key === 'п')) {
+      if (inInput) return;
+      e.preventDefault();
+      const isAct = tildaEngine.toggleGridSnapping();
+      showToast(isAct ? '🧲 Сетка включена' : '📴 Сетка выключена');
+    }
+
+    // Delete / Backspace
     if ((e.key === 'Delete' || e.key === 'Backspace') && !inInput) {
       e.preventDefault();
       if (currentMode === 'zero') {
@@ -367,7 +783,7 @@ function init() {
       }
     }
 
-    // Дублирование по Ctrl+D
+    // Ctrl + D: Duplicate
     if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В')) {
       if (inInput) return;
       e.preventDefault();
@@ -382,7 +798,7 @@ function init() {
       }
     }
 
-    // Сброс масштаба по Ctrl+0
+    // Ctrl + 0: Reset Zoom
     if ((e.ctrlKey || e.metaKey) && e.key === '0') {
       if (inInput) return;
       e.preventDefault();
@@ -390,7 +806,7 @@ function init() {
       showToast('🔍 Масштаб: 100%');
     }
 
-    // Zoom по Ctrl++ / Ctrl+-
+    // Ctrl + + / Ctrl + -
     if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
       if (inInput) return;
       e.preventDefault();
@@ -402,7 +818,7 @@ function init() {
       setCanvasZoom(canvasZoom - 0.1);
     }
 
-    // Отмена / Повтор
+    // Undo / Redo
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'я')) {
       if (inInput) return;
       e.preventDefault(); tildaEngine.undo();
@@ -412,15 +828,15 @@ function init() {
       e.preventDefault(); tildaEngine.redo();
     }
 
-    // Сохранение
+    // Save
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'ы')) {
       e.preventDefault();
-      tildaEngine.saveProject();
+      saveFullProject(tildaEngine.project);
       showToast('✅ Проект сохранён');
     }
   });
 
-  showToast('🎨 Конструктор AURORA WEB готов к работе');
+  showToast('🎨 AURORA WEB готов к работе');
 }
 
 // ─── Переключение режимов ──────────────────────────────────────
@@ -430,6 +846,37 @@ function switchMode(mode) {
     b.classList.toggle('is-active', b.dataset.mode === mode);
   });
 
+  const leftSidebar = document.querySelector('.tilda-left-wrap');
+  const rightInspector = document.getElementById('tilda-props-panel');
+  const bpGroup = document.getElementById('tilda-bp-group');
+  const quickToolbar = document.getElementById('tilda-floating-toolbar');
+  const zoomPanel = document.getElementById('tilda-zoom-panel');
+
+  if (mode === 'dashboard') {
+    if (leftSidebar) leftSidebar.style.display = 'none';
+    if (rightInspector) rightInspector.style.display = 'none';
+    if (bpGroup) bpGroup.style.display = 'none';
+    if (quickToolbar) quickToolbar.style.display = 'none';
+    if (zoomPanel) zoomPanel.style.display = 'none';
+
+    document.getElementById('view-dashboard').style.display = 'block';
+    document.getElementById('view-builder').style.display = 'none';
+    document.getElementById('view-zero').style.display = 'none';
+    document.getElementById('view-code').style.display = 'none';
+    document.getElementById('view-preview').style.display = 'none';
+
+    renderProjectsDashboard();
+    return;
+  }
+
+  // Restore editor panes
+  if (leftSidebar) leftSidebar.style.display = 'flex';
+  if (rightInspector) rightInspector.style.display = 'flex';
+  if (bpGroup) bpGroup.style.display = 'flex';
+  if (quickToolbar) quickToolbar.style.display = 'flex';
+  if (zoomPanel) zoomPanel.style.display = 'flex';
+
+  document.getElementById('view-dashboard').style.display = 'none';
   document.getElementById('view-builder').style.display = mode === 'builder' ? 'flex' : 'none';
   document.getElementById('view-zero').style.display = mode === 'zero' ? 'flex' : 'none';
   document.getElementById('view-code').style.display = mode === 'code' ? 'flex' : 'none';
@@ -478,7 +925,6 @@ function bindZeroBlockToolbar() {
     zeroBlockEditor?.render();
   });
 
-  // Alignment
   document.getElementById('zb-align-left')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('left'));
   document.getElementById('zb-align-center')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('center'));
   document.getElementById('zb-align-right')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('right'));
@@ -495,15 +941,100 @@ function bindZeroBlockToolbar() {
 
 // ─── Модальные окна ────────────────────────────────────────────
 function initModals() {
-  // 1. Шаблоны страниц
+  // 1. Создание нового проекта
+  const createProjModal = document.getElementById('create-project-modal');
+  let selectedProjTemplate = 'landing';
+
+  createProjModal?.querySelectorAll('.proj-template-card').forEach(card => {
+    card.addEventListener('click', () => {
+      createProjModal.querySelectorAll('.proj-template-card').forEach(c => {
+        c.classList.remove('is-active');
+        c.style.borderColor = '#1e293f';
+      });
+      card.classList.add('is-active');
+      card.style.borderColor = '#0d99ff';
+      selectedProjTemplate = card.dataset.projTemplate;
+    });
+  });
+
+  document.getElementById('btn-close-create-proj-modal')?.addEventListener('click', () => {
+    createProjModal?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-confirm-create-proj')?.addEventListener('click', () => {
+    const name = (document.getElementById('new-proj-name-input')?.value || '').trim() || 'Новый сайт Aurora Web';
+    const newProj = tildaEngine.createDefaultProject();
+    newProj.id = 'proj_' + Date.now();
+    newProj.name = name;
+    newProj.category = selectedProjTemplate;
+
+    if (selectedProjTemplate === 'store') {
+      newProj.pages[0].blocks = [
+        tildaEngine.createBlockInstance('menu-1'),
+        tildaEngine.createBlockInstance('cover-2'),
+        tildaEngine.createBlockInstance('store-1'),
+        tildaEngine.createBlockInstance('store-single'),
+        tildaEngine.createBlockInstance('store-cart'),
+        tildaEngine.createBlockInstance('footer-1')
+      ];
+    } else if (selectedProjTemplate === 'portfolio') {
+      newProj.pages[0].blocks = [
+        tildaEngine.createBlockInstance('menu-1'),
+        tildaEngine.createBlockInstance('cover-1'),
+        tildaEngine.createBlockInstance('about-1'),
+        tildaEngine.createBlockInstance('gallery-1'),
+        tildaEngine.createBlockInstance('testimonials-1'),
+        tildaEngine.createBlockInstance('contacts-1'),
+        tildaEngine.createBlockInstance('footer-1')
+      ];
+    } else if (selectedProjTemplate === 'blank') {
+      newProj.pages[0].blocks = [
+        tildaEngine.createBlockInstance('menu-1'),
+        tildaEngine.createBlockInstance('cover-1'),
+        tildaEngine.createBlockInstance('footer-1')
+      ];
+    }
+
+    saveFullProject(newProj);
+    createProjModal?.classList.add('hidden');
+    openProject(newProj.id);
+  });
+
+  // 2. Переименование проекта
+  const renameModal = document.getElementById('rename-project-modal');
+  document.getElementById('btn-close-rename-proj-modal')?.addEventListener('click', () => {
+    renameModal?.classList.add('hidden');
+  });
+
+  document.getElementById('btn-confirm-rename-proj')?.addEventListener('click', () => {
+    const id = renameModal.dataset.editingProjId;
+    const newName = (document.getElementById('rename-proj-input')?.value || '').trim();
+    if (id && newName) {
+      const proj = loadProjectById(id);
+      if (proj) {
+        proj.name = newName;
+        saveFullProject(proj);
+        if (tildaEngine.project.id === id) {
+          tildaEngine.project.name = newName;
+          const titleInput = document.getElementById('project-title');
+          if (titleInput) titleInput.value = newName;
+        }
+        renderProjectsDashboard();
+        showToast('✅ Проект переименован');
+      }
+    }
+    renameModal?.classList.add('hidden');
+  });
+
+  // 3. Шаблоны страниц
   const newPageModal = document.getElementById('new-page-modal');
-  let selectedTemplate = 'landing';
+  let selectedPageTemplate = 'landing';
 
   newPageModal?.querySelectorAll('.template-card').forEach(card => {
     card.addEventListener('click', () => {
       newPageModal.querySelectorAll('.template-card').forEach(c => c.classList.remove('is-active'));
       card.classList.add('is-active');
-      selectedTemplate = card.dataset.template;
+      selectedPageTemplate = card.dataset.template;
     });
   });
 
@@ -514,12 +1045,12 @@ function initModals() {
   document.getElementById('btn-create-page-confirm')?.addEventListener('click', () => {
     const title = (document.getElementById('np-page-title')?.value || '').trim() || 'Новая страница';
     const slug = (document.getElementById('np-page-slug')?.value || '').trim() || 'page-' + Date.now();
-    tildaEngine.addPage(title, slug, selectedTemplate);
+    tildaEngine.addPage(title, slug, selectedPageTemplate);
     newPageModal?.classList.add('hidden');
     showToast(`✅ Страница «${title}» создана`);
   });
 
-  // 2. SEO настройки страницы
+  // 4. SEO настройки страницы
   const pageSeoModal = document.getElementById('page-settings-modal');
   document.getElementById('btn-close-page-settings')?.addEventListener('click', () => {
     pageSeoModal?.classList.add('hidden');
@@ -535,12 +1066,13 @@ function initModals() {
       page.metaDesc = document.getElementById('ps-meta-desc').value;
       tildaEngine.renderPagesList();
       tildaEngine.saveHistory();
+      saveFullProject(tildaEngine.project);
       showToast('✅ Настройки страницы сохранены');
     }
     pageSeoModal?.classList.add('hidden');
   });
 
-  // 3. Товар магазина
+  // 5. Товар магазина
   const prodModal = document.getElementById('store-product-modal');
   document.getElementById('btn-close-store-prod')?.addEventListener('click', () => {
     prodModal?.classList.add('hidden');
@@ -570,14 +1102,18 @@ function initModals() {
 
     tildaEngine.renderStoreUI();
     tildaEngine.saveHistory();
+    saveFullProject(tildaEngine.project);
     prodModal?.classList.add('hidden');
     showToast('✅ Каталог товаров обновлен');
   });
 
-  // 4. OFONT.RU Custom Fonts
+  // 6. Замена изображений (Живая замена фото)
+  initImageReplaceModal();
+
+  // 7. OFONT.RU Custom Fonts
   initOfontModal();
 
-  // 5. Cloud Modal
+  // 8. Cloud Modal
   document.getElementById('btn-close-cloud')?.addEventListener('click', () => {
     document.getElementById('cloud-modal')?.classList.add('hidden');
   });
@@ -588,6 +1124,102 @@ function initModals() {
       showToast('📋 Ссылка скопирована в буфер обмена');
     }
   });
+}
+
+// ─── Модалка замены изображений (Unsplash + File + URL) ──────────
+function initImageReplaceModal() {
+  const modal = document.getElementById('image-replace-modal');
+  const closeBtn = document.getElementById('btn-close-img-modal');
+  const tabs = modal?.querySelectorAll('.img-tab-btn');
+  const dropzone = document.getElementById('img-dropzone');
+  const fileInput = document.getElementById('img-file-input');
+  const urlInput = document.getElementById('img-url-input');
+  const applyUrlBtn = document.getElementById('btn-apply-img-url');
+  const galleryGrid = document.getElementById('unsplash-gallery-grid');
+
+  let onSelectCallback = null;
+
+  window.openImageReplaceModal = (cb) => {
+    onSelectCallback = cb;
+    modal?.classList.remove('hidden');
+    populateUnsplashGallery();
+  };
+
+  closeBtn?.addEventListener('click', () => modal?.classList.add('hidden'));
+
+  tabs?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => {
+        b.classList.remove('is-active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-3)';
+      });
+      btn.classList.add('is-active');
+      btn.style.background = 'rgba(255,255,255,0.08)';
+      btn.style.color = '#fff';
+
+      const tab = btn.dataset.imgTab;
+      document.querySelectorAll('.img-tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById(`img-tab-${tab}`)?.classList.remove('hidden');
+    });
+  });
+
+  dropzone?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      onSelectCallback?.(ev.target.result);
+      modal?.classList.add('hidden');
+      showToast('🖼️ Изображение загружено с ПК');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  applyUrlBtn?.addEventListener('click', () => {
+    const val = (urlInput?.value || '').trim();
+    if (val) {
+      onSelectCallback?.(val);
+      modal?.classList.add('hidden');
+      showToast('🖼️ Ссылка на изображение применена');
+    }
+  });
+
+  function populateUnsplashGallery() {
+    if (!galleryGrid) return;
+    const photos = [
+      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80'
+    ];
+
+    galleryGrid.innerHTML = photos.map(url => `
+      <div class="gallery-photo-thumb" style="border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:16/10;background:#1e293b;border:1px solid #334155;transition:transform 0.15s,border-color 0.15s;">
+        <img src="${url}" style="width:100%;height:100%;object-fit:cover;" alt="Unsplash" />
+      </div>
+    `).join('');
+
+    galleryGrid.querySelectorAll('.gallery-photo-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => {
+        const img = thumb.querySelector('img');
+        if (img?.src) {
+          onSelectCallback?.(img.src);
+          modal?.classList.add('hidden');
+          showToast('🖼️ Фото из Unsplash установлено');
+        }
+      });
+    });
+  }
 }
 
 // ─── Модалка OFONT.RU ──────────────────────────────────────────
@@ -881,10 +1513,19 @@ function showToast(msg) {
   showToast._t = setTimeout(() => toast.classList.remove('is-show'), 3000);
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
 }
 
-export { init, switchMode, tildaEngine };
+export { init, switchMode, openProject, tildaEngine };

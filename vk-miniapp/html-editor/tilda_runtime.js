@@ -26,10 +26,24 @@
       anchor.addEventListener('click', e => {
         const href = anchor.getAttribute('href');
         if (!href || href === '#') return;
-        const target = document.querySelector(href);
+
+        if (href === '#cart') {
+          e.preventDefault();
+          window.TildaRuntime?.openCartModal?.();
+          return;
+        }
+
+        const cleanId = href.replace(/^#/, '');
+        let target = document.getElementById(cleanId) || document.querySelector(`[data-anchor="${cleanId}"]`);
+        if (!target) {
+          try {
+            target = document.querySelector(href);
+          } catch(err) {}
+        }
+
         if (target) {
           e.preventDefault();
-          const headerHeight = document.querySelector('.tilda-header')?.offsetHeight || 70;
+          const headerHeight = document.querySelector('.tilda-header, header')?.offsetHeight || 70;
           const top = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
           window.scrollTo({ top, behavior: 'smooth' });
 
@@ -400,21 +414,54 @@
   };
   window.TildaCart = Cart;
 
-  // 7. Scroll Animations (IntersectionObserver)
+  // 7. Scroll Animations (IntersectionObserver & Live Preview)
   function initScrollAnimations() {
     const animatedElements = document.querySelectorAll('[data-tilda-anim], .tilda-animate-on-scroll');
     if (animatedElements.length === 0) return;
 
+    animatedElements.forEach(el => {
+      const animType = el.getAttribute('data-tilda-anim');
+      if (!animType || animType === 'none') return;
+
+      const delay = el.getAttribute('data-anim-delay');
+      const duration = el.getAttribute('data-anim-duration');
+      if (delay) el.style.transitionDelay = `${delay}s`;
+      if (duration) el.style.transitionDuration = `${duration}s`;
+    });
+
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('tilda-animated-in');
-          obs.unobserve(entry.target);
+          const el = entry.target;
+          const animType = el.getAttribute('data-tilda-anim');
+          if (animType && animType !== 'none') {
+            el.classList.add('tilda-animated-in');
+            if (animType === 'bounce') {
+              el.classList.add('anim-bounce');
+            }
+          }
+          obs.unobserve(el);
         }
       });
-    }, { threshold: 0.15 });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
-    animatedElements.forEach(el => observer.observe(el));
+    animatedElements.forEach(el => {
+      const animType = el.getAttribute('data-tilda-anim');
+      if (animType && animType !== 'none') {
+        observer.observe(el);
+      }
+    });
+  }
+
+  function triggerAnimation(el) {
+    if (!el) return;
+    const animType = el.getAttribute('data-tilda-anim') || 'fade-in';
+    el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+    void el.offsetWidth; // Trigger reflow
+    el.classList.add(`anim-${animType}`);
+    setTimeout(() => {
+      el.classList.add('tilda-animated-in');
+    }, 50);
   }
 
   // Toast Helper
@@ -449,5 +496,5 @@
     initAll();
   }
 
-  window.TildaRuntime = { init: initAll, Cart };
+  window.TildaRuntime = { init: initAll, Cart, triggerAnimation };
 })();

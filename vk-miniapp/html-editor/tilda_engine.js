@@ -27,12 +27,35 @@ export class TildaEngine {
     this.activeBlockId = null;
     this.activeCategory = 'all';
     this.activeInspectorTab = 'content'; // content | design | anim | resp
+    this.isGridSnapping = localStorage.getItem('aurora_grid_snapping') !== 'false';
 
     this.project = this.loadProject() || this.createDefaultProject();
     this.history = [];
     this.historyIdx = -1;
 
     this.init();
+  }
+
+  toggleGridSnapping() {
+    this.isGridSnapping = !this.isGridSnapping;
+    localStorage.setItem('aurora_grid_snapping', this.isGridSnapping ? 'true' : 'false');
+    this.updateGridSnappingUI();
+    this.renderArtboard();
+    return this.isGridSnapping;
+  }
+
+  updateGridSnappingUI() {
+    const isAct = this.isGridSnapping;
+    document.querySelectorAll('#btn-toggle-grid, #tool-toggle-grid, #btn-zoom-grid').forEach(btn => {
+      btn.classList.toggle('is-active', isAct);
+    });
+    const artboard = document.getElementById('tilda-artboard');
+    if (artboard) artboard.classList.toggle('has-grid-overlay', isAct);
+  }
+
+  snapCoord(val, step = 8) {
+    if (!this.isGridSnapping) return Math.round(val);
+    return Math.round(val / step) * step;
   }
 
   createDefaultProject() {
@@ -159,11 +182,27 @@ export class TildaEngine {
     }
   }
 
+  getPageAnchorsList() {
+    const page = this.getActivePage();
+    if (!page) return [];
+    const list = [];
+    page.blocks.forEach((b, i) => {
+      const anchor = b.anchor || b.instanceId;
+      const def = getBlockById(b.blockDefId);
+      list.push({
+        value: '#' + anchor,
+        label: `${i + 1}. [${def?.name || b.name}] #${anchor}`
+      });
+    });
+    return list;
+  }
+
   createBlockInstance(blockDefId) {
     const def = getBlockById(blockDefId) || TILDA_BLOCKS[0];
     const defaultData = extractBlockDefaultData(def);
     return {
       instanceId: 'blk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      anchor: '',
       blockDefId: def.id,
       name: def.name,
       cat: def.cat || def.category || 'cover',
@@ -198,6 +237,7 @@ export class TildaEngine {
     this.renderDesignTokensUI();
     this.renderStoreUI();
     this.renderSettingsUI();
+    this.initFloatingTextToolbar();
     this.saveHistory();
   }
 
@@ -209,9 +249,23 @@ export class TildaEngine {
 
     this.container.innerHTML = '';
     const wrapper = document.createElement('div');
-    wrapper.className = `tilda-page-canvas is-${this.activeBreakpoint}`;
+    wrapper.className = `tilda-page-canvas is-${this.activeBreakpoint} ${this.isGridSnapping ? 'has-grid-overlay' : ''}`;
     wrapper.style.width = '100%';
     wrapper.style.maxWidth = this.getBreakpointWidth();
+    wrapper.style.position = 'relative';
+
+    // 12-Column Grid Lines Overlay if snapping is enabled
+    if (this.isGridSnapping) {
+      const gridOverlay = document.createElement('div');
+      gridOverlay.className = 'tilda-canvas-grid-overlay';
+      gridOverlay.style.cssText = 'position:absolute;inset:0;display:grid;grid-template-columns:repeat(12, 1fr);gap:20px;padding:0 24px;pointer-events:none;z-index:90;opacity:0.04;';
+      for (let i = 0; i < 12; i++) {
+        const col = document.createElement('div');
+        col.style.cssText = 'background:#0d99ff;height:100%;';
+        gridOverlay.appendChild(col);
+      }
+      wrapper.appendChild(gridOverlay);
+    }
 
     page.blocks.forEach((blk, idx) => {
       if (blk.isHidden) return;
@@ -222,8 +276,9 @@ export class TildaEngine {
       // Контейнер блока
       const blkEl = document.createElement('section');
       blkEl.className = `tilda-block-wrapper ${blk.instanceId === this.activeBlockId ? 'is-selected' : ''}`;
-      blkEl.id = blk.instanceId;
+      blkEl.id = blk.anchor || blk.instanceId;
       blkEl.dataset.blockId = blk.instanceId;
+      if (blk.anchor) blkEl.dataset.anchor = blk.anchor;
 
       this.applyBlockStyles(blkEl, blk);
       blkEl.appendChild(this.createBlockActionBar(blk, idx));
@@ -239,9 +294,16 @@ export class TildaEngine {
       }
       blkEl.appendChild(contentEl);
 
+      // Resizer высоты блока снизу
+      const heightResizer = document.createElement('div');
+      heightResizer.className = 'block-height-resizer';
+      heightResizer.title = 'Потяните для изменения высоты блока';
+      this.bindBlockHeightResize(heightResizer, blk, blkEl);
+      blkEl.appendChild(heightResizer);
+
       // Клик для выбора блока
       blkEl.addEventListener('click', e => {
-        if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar')) return;
+        if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.closest('.block-height-resizer')) return;
         this.selectBlock(blk.instanceId);
       });
 
@@ -270,30 +332,121 @@ export class TildaEngine {
 
   applyBlockStyles(el, blk) {
     const d = blk.design || {};
-    if (d.bgColor) el.style.backgroundColor = d.bgColor;
+    const bg = d.bgColor || d.background || '';
+    if (bg) {
+      el.style.backgroundColor = bg;
+      const innerBlock = el.querySelector('.t-block') || el.querySelector('.tilda-block-inner');
+      if (innerBlock) {
+        innerBlock.style.backgroundColor = bg;
+        innerBlock.style.background = bg;
+      }
+    }
     if (d.bgImage) {
       el.style.backgroundImage = `url(${d.bgImage})`;
       el.style.backgroundSize = 'cover';
       el.style.backgroundPosition = 'center';
+      const innerBlock = el.querySelector('.t-block');
+      if (innerBlock) {
+        innerBlock.style.backgroundImage = `url(${d.bgImage})`;
+        innerBlock.style.backgroundSize = 'cover';
+        innerBlock.style.backgroundPosition = 'center';
+      }
     }
-    if (d.paddingTop) el.style.paddingTop = d.paddingTop;
-    if (d.paddingBottom) el.style.paddingBottom = d.paddingBottom;
-    if (d.textColor) el.style.color = d.textColor;
+    if (d.paddingTop) {
+      el.style.paddingTop = d.paddingTop;
+      const innerBlock = el.querySelector('.t-block');
+      if (innerBlock) innerBlock.style.paddingTop = d.paddingTop;
+    }
+    if (d.paddingBottom) {
+      el.style.paddingBottom = d.paddingBottom;
+      const innerBlock = el.querySelector('.t-block');
+      if (innerBlock) innerBlock.style.paddingBottom = d.paddingBottom;
+    }
+    if (d.textColor) {
+      el.style.color = d.textColor;
+      const innerBlock = el.querySelector('.t-block') || el.querySelector('.tilda-block-inner');
+      if (innerBlock) {
+        innerBlock.style.color = d.textColor;
+        innerBlock.querySelectorAll('h1, h2, h3, h4, h5, h6, p, blockquote, .t-feature-title, .t-card-name, .t-feature-desc').forEach(textEl => {
+          textEl.style.color = d.textColor;
+        });
+      }
+    }
+    if (d.accentColor) {
+      const innerBlock = el.querySelector('.t-block') || el.querySelector('.tilda-block-inner');
+      if (innerBlock) {
+        innerBlock.querySelectorAll('.t-btn, button[type="submit"], .t-card-btn').forEach(btn => {
+          btn.style.backgroundColor = d.accentColor;
+        });
+      }
+    }
+
+    // Scroll Animation Configuration
+    if (blk.animation && blk.animation.type && blk.animation.type !== 'none') {
+      el.dataset.tildaAnim = blk.animation.type;
+      el.dataset.animDelay = blk.animation.delay || 0;
+      el.dataset.animDuration = blk.animation.duration || 0.7;
+      el.style.transitionDelay = `${blk.animation.delay || 0}s`;
+      el.style.transitionDuration = `${blk.animation.duration || 0.7}s`;
+      el.classList.add('tilda-animated-in');
+    } else {
+      delete el.dataset.tildaAnim;
+      el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+    }
+  }
+
+  bindBlockHeightResize(handle, blk, blkEl) {
+    handle.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = blkEl.offsetHeight;
+
+      const onMouseMove = ev => {
+        const dy = ev.clientY - startY;
+        let newH = startH + dy;
+        if (this.isGridSnapping) newH = this.snapCoord(newH, 10);
+        newH = Math.max(120, newH);
+
+        blk.design.height = `${newH}px`;
+        blk.design.paddingBottom = `${Math.max(20, Math.round(newH / 6))}px`;
+        blkEl.style.minHeight = `${newH}px`;
+        const innerBlock = blkEl.querySelector('.t-block');
+        if (innerBlock) innerBlock.style.minHeight = `${newH}px`;
+      };
+
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        this.saveHistory();
+        this.renderInspector();
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp, { once: true });
+    });
   }
 
   createBlockActionBar(blk, idx) {
     const bar = document.createElement('div');
     bar.className = 'tilda-block-action-bar';
     bar.innerHTML = `
-      <div class="blk-action-title">${blk.name}</div>
+      <div class="blk-action-title">
+        <span>${escapeHtml(blk.name)}</span>
+        ${blk.anchor ? `<span class="blk-anchor-badge" title="Якорная ссылка на блок">#${escapeHtml(blk.anchor)}</span>` : ''}
+      </div>
       <div class="blk-action-btns">
-        <button class="blk-btn btn-content" title="Редактировать контент">
+        <button class="blk-btn btn-content" title="Редактировать контент и ссылки">
           <span class="material-symbols-rounded">edit_note</span>
           <span>Контент</span>
         </button>
         <button class="blk-btn btn-settings" title="Настройки дизайна">
           <span class="material-symbols-rounded">tune</span>
           <span>Настройки</span>
+        </button>
+        <button class="blk-btn btn-zero" title="Конвертировать в Zero Block" style="color:#0d99ff;">
+          <span class="material-symbols-rounded">bolt</span>
+          <span>В Zero</span>
         </button>
         <button class="blk-btn btn-up" title="Переместить выше" ${idx === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">arrow_upward</span>
@@ -318,6 +471,10 @@ export class TildaEngine {
       e.stopPropagation();
       this.selectBlock(blk.instanceId, 'design');
     });
+    bar.querySelector('.btn-zero')?.addEventListener('click', e => {
+      e.stopPropagation();
+      this.convertToZeroBlock(blk.instanceId);
+    });
     bar.querySelector('.btn-up')?.addEventListener('click', e => {
       e.stopPropagation();
       this.moveBlock(blk.instanceId, -1);
@@ -338,6 +495,65 @@ export class TildaEngine {
     return bar;
   }
 
+  convertToZeroBlock(instanceId) {
+    const page = this.getActivePage();
+    const blk = page.blocks.find(b => b.instanceId === instanceId);
+    if (!blk) return;
+
+    const elements = [];
+    let curY = 60;
+
+    if (blk.content.title) {
+      elements.push({
+        id: 'zb_el_' + Math.random().toString(36).substr(2, 6),
+        type: 'h1',
+        props: { x: 60, y: curY, width: 560, height: 80, content: blk.content.title, fontSize: 36, fontWeight: '800', color: blk.design.textColor || '#ffffff', fontFamily: 'Montserrat' }
+      });
+      curY += 90;
+    }
+    if (blk.content.subtitle || blk.content.text) {
+      elements.push({
+        id: 'zb_el_' + Math.random().toString(36).substr(2, 6),
+        type: 'text',
+        props: { x: 60, y: curY, width: 520, height: 70, content: blk.content.subtitle || blk.content.text, fontSize: 16, color: '#94a3b8', fontFamily: 'Inter' }
+      });
+      curY += 80;
+    }
+    if (blk.content.btnText) {
+      elements.push({
+        id: 'zb_el_' + Math.random().toString(36).substr(2, 6),
+        type: 'btn',
+        props: { x: 60, y: curY, width: 220, height: 48, content: blk.content.btnText, bgColor: blk.design.accentColor || '#0d99ff', color: '#ffffff', borderRadius: '8px', fontSize: 15, fontWeight: '700', fontFamily: 'Montserrat' }
+      });
+    }
+    if (blk.content.img || blk.content.bgImage) {
+      elements.push({
+        id: 'zb_el_' + Math.random().toString(36).substr(2, 6),
+        type: 'img',
+        props: { x: 620, y: 60, width: 480, height: 320, borderRadius: '16px', content: blk.content.img || blk.content.bgImage }
+      });
+    }
+
+    if (elements.length === 0) {
+      elements.push({
+        id: 'zb_el_' + Math.random().toString(36).substr(2, 6),
+        type: 'h1',
+        props: { x: 80, y: 80, width: 500, height: 60, content: blk.name, fontSize: 32, fontWeight: '800', color: '#ffffff', fontFamily: 'Montserrat' }
+      });
+    }
+
+    blk.isZero = true;
+    blk.blockDefId = 'zero-1';
+    blk.name = 'Zero: ' + blk.name;
+    blk.content = { elements };
+    blk.design = { height: Math.max(540, curY + 120), background: blk.design.bgColor || '#070a13' };
+
+    this.saveHistory();
+    this.renderArtboard();
+    this.renderLayersTree();
+    this.selectBlock(blk.instanceId);
+  }
+
   createAddBlockBar(insertIdx, isBottom = false) {
     const bar = document.createElement('div');
     bar.className = 'tilda-add-block-bar' + (isBottom ? ' is-bottom' : '');
@@ -356,7 +572,7 @@ export class TildaEngine {
   }
 
   bindInlineEditing(contentEl, blk) {
-    const editables = contentEl.querySelectorAll('h1, h2, h3, h4, p, a, button, span, blockquote');
+    const editables = contentEl.querySelectorAll('h1, h2, h3, h4, p, a, button, span, blockquote, li');
     editables.forEach(el => {
       el.addEventListener('dblclick', e => {
         e.stopPropagation();
@@ -372,6 +588,13 @@ export class TildaEngine {
         };
         el.addEventListener('blur', onBlur);
       });
+
+      if (el.tagName === 'A') {
+        el.addEventListener('click', e => {
+          e.preventDefault();
+          this.showLinkEditorForElement(el);
+        });
+      }
     });
   }
 
@@ -793,9 +1016,92 @@ export class TildaEngine {
     this.bindInspectorInputs(blk);
   }
 
+  addCustomElementToBlock(blockId, type) {
+    const page = this.getActivePage();
+    const blk = page.blocks.find(b => b.instanceId === blockId);
+    if (!blk) return;
+
+    if (!blk.content) blk.content = {};
+    if (!blk.content.customElements) blk.content.customElements = [];
+
+    const newEl = {
+      id: 'cust_el_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      type,
+      props: {
+        x: 60,
+        y: 40 + blk.content.customElements.length * 50,
+        width: type === 'h1' ? 400 : (type === 'btn' ? 200 : (type === 'img' ? 300 : 260)),
+        height: type === 'btn' ? 48 : (type === 'img' ? 200 : (type === 'h1' ? 60 : 44)),
+        content: type === 'h1' ? 'Новый заголовок' : (type === 'btn' ? 'Кнопка действия' : (type === 'img' ? 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&q=80' : (type === 'shape' ? '' : 'Новый текстовый блок'))),
+        color: '#ffffff',
+        bgColor: type === 'btn' ? '#0d99ff' : (type === 'shape' ? 'rgba(13,153,255,0.2)' : 'transparent'),
+        fontSize: type === 'h1' ? 28 : (type === 'btn' ? 15 : 16),
+        fontWeight: type === 'h1' ? '800' : (type === 'btn' ? '700' : '400'),
+        borderRadius: type === 'btn' ? '8px' : (type === 'img' ? '12px' : '6px'),
+        borderColor: '#0d99ff',
+        borderWidth: type === 'shape' ? '1.5px' : '0px',
+        url: '#',
+        icon: 'star'
+      }
+    };
+
+    blk.content.customElements.push(newEl);
+    this.updateBlockDOM(blk);
+    this.saveHistory();
+    this.renderInspector();
+  }
+
+  removeCustomElementFromBlock(blockId, elementId) {
+    const page = this.getActivePage();
+    const blk = page.blocks.find(b => b.instanceId === blockId);
+    if (!blk || !blk.content?.customElements) return;
+
+    blk.content.customElements = blk.content.customElements.filter(e => e.id !== elementId);
+    this.updateBlockDOM(blk);
+    this.saveHistory();
+    this.renderInspector();
+  }
+
   renderContentFields(blk, def) {
     const c = blk.content || {};
-    let html = '<div class="insp-section-title">Тексты и элементы</div>';
+    let html = `
+      <div class="insp-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>+ Добавить элемент в блок</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;margin-bottom:18px;">
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="h1" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить заголовок">+ Заголовок</button>
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="text" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить текст">+ Текст</button>
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="btn" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить кнопку">+ Кнопка</button>
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="img" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить фото">+ Фото</button>
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="shape" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить фигуру">+ Фигура</button>
+        <button class="topbar-action-btn btn-add-cust-el" data-add-type="icon" style="justify-content:center;padding:6px;font-size:11px;" title="Добавить иконку">+ Иконка</button>
+      </div>
+
+      <!-- Блочный якорь (Anchor ID) -->
+      <div class="insp-section-title">🔗 Якорь блока (#id для меню и кнопок)</div>
+      <div class="insp-field">
+        <label>ID якоря (например: about, features, pricing, contacts)</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div class="anchor-prefix-box">#</div>
+          <input type="text" id="insp-block-anchor-input" value="${escapeHtml(blk.anchor || '')}" placeholder="about, order, store..." style="flex:1;" />
+          <button class="topbar-action-btn" id="btn-copy-block-anchor" title="Скопировать якорную ссылку"><span class="material-symbols-rounded">content_copy</span></button>
+        </div>
+        <div class="anchor-presets-chips">
+          <span class="anchor-preset-chip" data-anchor-val="hero">#hero</span>
+          <span class="anchor-preset-chip" data-anchor-val="about">#about</span>
+          <span class="anchor-preset-chip" data-anchor-val="features">#features</span>
+          <span class="anchor-preset-chip" data-anchor-val="services">#services</span>
+          <span class="anchor-preset-chip" data-anchor-val="pricing">#pricing</span>
+          <span class="anchor-preset-chip" data-anchor-val="reviews">#reviews</span>
+          <span class="anchor-preset-chip" data-anchor-val="faq">#faq</span>
+          <span class="anchor-preset-chip" data-anchor-val="contacts">#contacts</span>
+          <span class="anchor-preset-chip" data-anchor-val="order">#order</span>
+          <span class="anchor-preset-chip" data-anchor-val="catalog">#catalog</span>
+        </div>
+      </div>
+
+      <div class="insp-section-title" style="margin-top:16px;">Содержимое блока</div>
+    `;
 
     if (c.title !== undefined) {
       html += `
@@ -829,7 +1135,27 @@ export class TildaEngine {
         </div>
         <div class="insp-field">
           <label>Ссылка кнопки (URL или #якорь)</label>
-          <input type="text" data-content-key="btnUrl" value="${escapeHtml(c.btnUrl || '#')}" />
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" data-content-key="btnUrl" id="insp-btn-url-input" value="${escapeHtml(c.btnUrl || '#')}" placeholder="#about или https://..." style="flex:1;" />
+            <button class="topbar-action-btn" id="btn-clear-btn-url" title="Очистить / удалить ссылку"><span class="material-symbols-rounded" style="color:#f43f5e;">link_off</span></button>
+          </div>
+          <div style="margin-top:6px;">
+            <label style="font-size:11px;color:var(--text-3);margin-bottom:3px;display:block;">🎯 Выбрать якорь на странице:</label>
+            <select id="insp-anchor-selector" class="anchor-selector-dropdown">
+              <option value="">-- Выберите якорь страницы --</option>
+              ${this.getPageAnchorsList().map(a => `<option value="${a.value}">${a.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="link-quick-types-row">
+            <button type="button" class="link-quick-chip" data-quick-url="https://t.me/">💬 TG</button>
+            <button type="button" class="link-quick-chip" data-quick-url="tel:+79990000000">📞 Телефон</button>
+            <button type="button" class="link-quick-chip" data-quick-url="mailto:info@site.ru">✉️ Email</button>
+            <button type="button" class="link-quick-chip" data-quick-url="#order">📝 Заказ</button>
+            <button type="button" class="link-quick-chip" data-quick-url="#cart">🛍️ Корзина</button>
+          </div>
+          <label class="insp-checkbox" style="margin-top:8px;">
+            <input type="checkbox" data-content-key="btnTargetBlank" ${c.btnTargetBlank ? 'checked' : ''} /> Открывать в новой вкладке (target="_blank")
+          </label>
         </div>
       `;
     }
@@ -839,9 +1165,28 @@ export class TildaEngine {
       html += `
         <div class="insp-field">
           <label>Изображение (URL)</label>
-          <input type="text" data-content-key="${key}" value="${escapeHtml(imgVal)}" placeholder="https://..." />
+          <div style="display:flex;gap:6px;">
+            <input type="text" data-content-key="${key}" value="${escapeHtml(imgVal)}" placeholder="https://..." style="flex:1;" />
+            <button class="topbar-action-btn btn-replace-photo-trigger" data-target-key="${key}" title="Заменить фото"><span class="material-symbols-rounded">image</span></button>
+          </div>
         </div>
       `;
+    }
+
+    if (c.customElements && c.customElements.length > 0) {
+      html += `
+        <div class="insp-section-title" style="margin-top:16px;">Добавленные элементы (${c.customElements.length})</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+      `;
+      c.customElements.forEach((el, idx) => {
+        html += `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-dark-0);border:1px solid var(--border);border-radius:6px;">
+            <div style="font-size:12px;font-weight:600;color:#fff;">${el.type.toUpperCase()}: ${escapeHtml(el.props.content || 'Элемент ' + (idx + 1))}</div>
+            <button class="page-act-btn btn-del-cust-el" data-el-id="${el.id}" style="color:#f43f5e;" title="Удалить элемент"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></button>
+          </div>
+        `;
+      });
+      html += `</div>`;
     }
 
     return html;
@@ -850,21 +1195,43 @@ export class TildaEngine {
   renderDesignFields(blk, def) {
     const d = blk.design || {};
     return `
-      <div class="insp-section-title">Фон и оформление</div>
+      <div class="insp-section-title">Цвет фона блока</div>
       <div class="insp-field">
         <label>Цвет фона</label>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="color" data-design-key="bgColor" value="${d.bgColor || '#0f172a'}" />
-          <input type="text" data-design-key="bgColor" value="${d.bgColor || '#0f172a'}" style="flex:1;" />
+          <input type="color" data-design-key="bgColor" id="insp-bg-color-picker" value="${d.bgColor || d.background || '#0f172a'}" />
+          <input type="text" data-design-key="bgColor" id="insp-bg-color-text" value="${d.bgColor || d.background || '#0f172a'}" style="flex:1;" />
+        </div>
+        <div class="color-presets-row">
+          <span class="color-swatch-chip" style="background:#070a13;" data-palette-target="bgColor" data-color="#070a13" title="Ночной #070a13"></span>
+          <span class="color-swatch-chip" style="background:#0f172a;" data-palette-target="bgColor" data-color="#0f172a" title="Сланец #0f172a"></span>
+          <span class="color-swatch-chip" style="background:#000000;" data-palette-target="bgColor" data-color="#000000" title="Черный #000000"></span>
+          <span class="color-swatch-chip" style="background:#ffffff;" data-palette-target="bgColor" data-color="#ffffff" title="Белый #ffffff"></span>
+          <span class="color-swatch-chip" style="background:#0d99ff;" data-palette-target="bgColor" data-color="#0d99ff" title="Неон синий #0d99ff"></span>
+          <span class="color-swatch-chip" style="background:#8b5cf6;" data-palette-target="bgColor" data-color="#8b5cf6" title="Фиолетовый #8b5cf6"></span>
+          <span class="color-swatch-chip" style="background:#10b981;" data-palette-target="bgColor" data-color="#10b981" title="Изумруд #10b981"></span>
+          <span class="color-swatch-chip" style="background:#f43f5e;" data-palette-target="bgColor" data-color="#f43f5e" title="Роза #f43f5e"></span>
         </div>
       </div>
+
+      <div class="insp-section-title">Цвет текста блока</div>
       <div class="insp-field">
         <label>Цвет текста</label>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="color" data-design-key="textColor" value="${d.textColor || '#ffffff'}" />
-          <input type="text" data-design-key="textColor" value="${d.textColor || '#ffffff'}" style="flex:1;" />
+          <input type="color" data-design-key="textColor" id="insp-text-color-picker" value="${d.textColor || '#ffffff'}" />
+          <input type="text" data-design-key="textColor" id="insp-text-color-text" value="${d.textColor || '#ffffff'}" style="flex:1;" />
+        </div>
+        <div class="color-presets-row">
+          <span class="color-swatch-chip" style="background:#ffffff;" data-palette-target="textColor" data-color="#ffffff" title="Белый #ffffff"></span>
+          <span class="color-swatch-chip" style="background:#cbd5e1;" data-palette-target="textColor" data-color="#cbd5e1" title="Светло-серый #cbd5e1"></span>
+          <span class="color-swatch-chip" style="background:#94a3b8;" data-palette-target="textColor" data-color="#94a3b8" title="Серый #94a3b8"></span>
+          <span class="color-swatch-chip" style="background:#000000;" data-palette-target="textColor" data-color="#000000" title="Черный #000000"></span>
+          <span class="color-swatch-chip" style="background:#0d99ff;" data-palette-target="textColor" data-color="#0d99ff" title="Синий #0d99ff"></span>
+          <span class="color-swatch-chip" style="background:#f59e0b;" data-palette-target="textColor" data-color="#f59e0b" title="Золотой #f59e0b"></span>
         </div>
       </div>
+
+      <div class="insp-section-title">Отступы блока</div>
       <div class="insp-row-2">
         <div class="insp-field">
           <label>Отступ сверху</label>
@@ -879,18 +1246,37 @@ export class TildaEngine {
   }
 
   renderAnimationFields(blk) {
-    const a = blk.animation || {};
+    const a = blk.animation || { type: 'none', delay: 0, duration: 0.7 };
     return `
-      <div class="insp-section-title">Анимация при скролле</div>
+      <div class="insp-section-title">Анимация появления при скролле</div>
       <div class="insp-field">
-        <label>Тип появления</label>
-        <select data-anim-key="type">
+        <label>Эффект появления</label>
+        <select data-anim-key="type" id="insp-anim-type-select">
           <option value="none" ${a.type === 'none' ? 'selected' : ''}>Без анимации</option>
-          <option value="fade-in" ${a.type === 'fade-in' ? 'selected' : ''}>Плавное появление (Fade In)</option>
-          <option value="slide-up" ${a.type === 'slide-up' ? 'selected' : ''}>Всплытие снизу (Slide Up)</option>
-          <option value="zoom-in" ${a.type === 'zoom-in' ? 'selected' : ''}>Увеличение (Zoom In)</option>
+          <option value="fade-in" ${a.type === 'fade-in' ? 'selected' : ''}>✨ Плавное появление (Fade In)</option>
+          <option value="slide-up" ${a.type === 'slide-up' ? 'selected' : ''}>⬆ Всплытие снизу (Slide Up)</option>
+          <option value="slide-down" ${a.type === 'slide-down' ? 'selected' : ''}>⬇ Появление сверху (Slide Down)</option>
+          <option value="slide-left" ${a.type === 'slide-left' ? 'selected' : ''}>⬅ Сдвиг справа налево (Slide Left)</option>
+          <option value="slide-right" ${a.type === 'slide-right' ? 'selected' : ''}>➡ Сдвиг слева направо (Slide Right)</option>
+          <option value="zoom-in" ${a.type === 'zoom-in' ? 'selected' : ''}>🔍 Увеличение (Zoom In)</option>
+          <option value="flip-up" ${a.type === 'flip-up' ? 'selected' : ''}>🔄 3D Поворот (Flip Up)</option>
+          <option value="bounce" ${a.type === 'bounce' ? 'selected' : ''}>🏀 Пружинистое появление (Bounce)</option>
         </select>
       </div>
+      <div class="insp-row-2">
+        <div class="insp-field">
+          <label>Задержка (сек)</label>
+          <input type="number" step="0.1" min="0" max="3" data-anim-key="delay" value="${a.delay || 0}" />
+        </div>
+        <div class="insp-field">
+          <label>Длительность (сек)</label>
+          <input type="number" step="0.1" min="0.2" max="3" data-anim-key="duration" value="${a.duration || 0.7}" />
+        </div>
+      </div>
+      <button class="topbar-action-btn btn-primary" id="btn-test-block-anim" style="width:100%;margin-top:12px;padding:12px;justify-content:center;">
+        <span class="material-symbols-rounded">play_arrow</span>
+        <span>▶ Проверить анимацию на холсте</span>
+      </button>
     `;
   }
 
@@ -949,31 +1335,182 @@ export class TildaEngine {
   }
 
   bindInspectorInputs(blk) {
+    // 1. Content Inputs
     this.propsPanel.querySelectorAll('[data-content-key]').forEach(input => {
-      input.addEventListener('input', e => {
+      const eventName = (input.type === 'checkbox') ? 'change' : 'input';
+      input.addEventListener(eventName, () => {
         const key = input.dataset.contentKey;
-        blk.content[key] = input.value;
+        blk.content[key] = (input.type === 'checkbox') ? input.checked : input.value;
         this.updateBlockDOM(blk);
         this.saveHistory();
       });
     });
 
+    // 1.1 Anchor ID Input & Presets
+    const anchorInput = this.propsPanel.querySelector('#insp-block-anchor-input');
+    anchorInput?.addEventListener('input', e => {
+      blk.anchor = e.target.value.trim().replace(/^#+/, '');
+      const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+      if (el) {
+        el.id = blk.anchor || blk.instanceId;
+        el.dataset.anchor = blk.anchor || '';
+        const badge = el.querySelector('.blk-anchor-badge');
+        if (badge) {
+          badge.textContent = blk.anchor ? `#${blk.anchor}` : '';
+          badge.style.display = blk.anchor ? 'inline-flex' : 'none';
+        }
+      }
+      this.renderLayersTree();
+      this.saveHistory();
+    });
+
+    this.propsPanel.querySelectorAll('.anchor-preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const val = chip.dataset.anchorVal;
+        blk.anchor = val;
+        if (anchorInput) anchorInput.value = val;
+        const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+        if (el) {
+          el.id = blk.anchor || blk.instanceId;
+          el.dataset.anchor = blk.anchor || '';
+        }
+        this.saveHistory();
+        this.renderArtboard();
+        this.renderLayersTree();
+      });
+    });
+
+    this.propsPanel.querySelector('#btn-copy-block-anchor')?.addEventListener('click', () => {
+      const anchorVal = blk.anchor ? `#${blk.anchor}` : `#${blk.instanceId}`;
+      navigator.clipboard?.writeText(anchorVal);
+      alert(`Якорная ссылка скопирована в буфер обмена: ${anchorVal}`);
+    });
+
+    // 1.2 Anchor Selector for Button Link
+    const anchorSelector = this.propsPanel.querySelector('#insp-anchor-selector');
+    const btnUrlInput = this.propsPanel.querySelector('#insp-btn-url-input');
+    anchorSelector?.addEventListener('change', () => {
+      if (anchorSelector.value) {
+        blk.content.btnUrl = anchorSelector.value;
+        if (btnUrlInput) btnUrlInput.value = anchorSelector.value;
+        this.updateBlockDOM(blk);
+        this.saveHistory();
+      }
+    });
+
+    // 1.3 Quick Link Chips
+    this.propsPanel.querySelectorAll('.link-quick-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const qUrl = chip.dataset.quickUrl;
+        blk.content.btnUrl = qUrl;
+        if (btnUrlInput) btnUrlInput.value = qUrl;
+        this.updateBlockDOM(blk);
+        this.saveHistory();
+      });
+    });
+
+    // 1.4 Clear Link Button
+    this.propsPanel.querySelector('#btn-clear-btn-url')?.addEventListener('click', () => {
+      blk.content.btnUrl = '#';
+      if (btnUrlInput) btnUrlInput.value = '#';
+      this.updateBlockDOM(blk);
+      this.saveHistory();
+    });
+
+    // 2. Add Custom Element to Block
+    this.propsPanel.querySelectorAll('.btn-add-cust-el').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.addType;
+        this.addCustomElementToBlock(blk.instanceId, type);
+      });
+    });
+
+    // 3. Delete Custom Element
+    this.propsPanel.querySelectorAll('.btn-del-cust-el').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const elId = btn.dataset.elId;
+        this.removeCustomElementFromBlock(blk.instanceId, elId);
+      });
+    });
+
+    // 4. Design Inputs (Colors & Paddings)
     this.propsPanel.querySelectorAll('[data-design-key]').forEach(input => {
-      input.addEventListener('input', e => {
+      input.addEventListener('input', () => {
         const key = input.dataset.designKey;
         blk.design[key] = input.value;
-        const el = document.getElementById(blk.instanceId);
+
+        // Keep color picker and text input in sync
+        this.propsPanel.querySelectorAll(`[data-design-key="${key}"]`).forEach(other => {
+          if (other !== input) other.value = input.value;
+        });
+
+        const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
         if (el) this.applyBlockStyles(el, blk);
         this.updateBlockDOM(blk);
         this.saveHistory();
       });
     });
 
-    this.propsPanel.querySelectorAll('[data-anim-key]').forEach(select => {
-      select.addEventListener('change', e => {
-        const key = select.dataset.animKey;
-        blk.animation[key] = select.value;
+    // 5. Palette Preset Swatches
+    this.propsPanel.querySelectorAll('[data-palette-target]').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const targetKey = swatch.dataset.paletteTarget;
+        const color = swatch.dataset.color;
+        blk.design[targetKey] = color;
+
+        this.propsPanel.querySelectorAll(`[data-design-key="${targetKey}"]`).forEach(inp => {
+          inp.value = color;
+        });
+
+        const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+        if (el) this.applyBlockStyles(el, blk);
+        this.updateBlockDOM(blk);
         this.saveHistory();
+      });
+    });
+
+    // 6. Animation Inputs
+    this.propsPanel.querySelectorAll('[data-anim-key]').forEach(input => {
+      const eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+      input.addEventListener(eventName, () => {
+        const key = input.dataset.animKey;
+        if (!blk.animation) blk.animation = { type: 'none', delay: 0, duration: 0.7 };
+        blk.animation[key] = input.value;
+
+        const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+        if (el) this.applyBlockStyles(el, blk);
+        this.saveHistory();
+      });
+    });
+
+    // 7. Live Animation Test Button
+    this.propsPanel.querySelector('#btn-test-block-anim')?.addEventListener('click', () => {
+      const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+      if (el) {
+        const animType = blk.animation?.type || 'fade-in';
+        if (animType === 'none') {
+          alert('Выберите тип анимации из выпадающего списка выше!');
+          return;
+        }
+        el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+        void el.offsetWidth; // force DOM reflow
+        el.classList.add(`anim-${animType}`);
+        setTimeout(() => {
+          el.classList.add('tilda-animated-in');
+        }, 50);
+      }
+    });
+
+    // 8. Replace Image Modal Trigger
+    this.propsPanel.querySelectorAll('.btn-replace-photo-trigger').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.targetKey;
+        window.openImageReplaceModal?.((newUrl) => {
+          blk.content[key] = newUrl;
+          this.updateBlockDOM(blk);
+          this.saveHistory();
+          this.renderInspector();
+        });
       });
     });
   }
@@ -986,6 +1523,7 @@ export class TildaEngine {
     if (inner && def) {
       inner.innerHTML = renderBlockHtml(def, blk.content, blk.design);
       this.bindInlineEditing(inner, blk);
+      this.applyBlockStyles(el, blk);
     }
   }
 
@@ -1695,7 +2233,12 @@ export class TildaEngine {
       if (blk.isHidden) return '';
       const def = getBlockById(blk.blockDefId);
       if (!def) return '';
-      return `<section id="${blk.instanceId}" class="tilda-block">\n${renderBlockHtml(def, blk.content, blk.design)}\n</section>`;
+      const animAttr = (blk.animation && blk.animation.type && blk.animation.type !== 'none')
+        ? ` data-tilda-anim="${blk.animation.type}" data-anim-delay="${blk.animation.delay || 0}" data-anim-duration="${blk.animation.duration || 0.7}"`
+        : '';
+      const anchorAttr = blk.anchor ? ` data-anchor="${escapeHtml(blk.anchor)}"` : '';
+      const blockId = blk.anchor || blk.instanceId;
+      return `<section id="${blockId}" class="tilda-block"${anchorAttr}${animAttr}>\n${renderBlockHtml(def, blk.content, blk.design)}\n</section>`;
     }).filter(Boolean).join('\n\n');
 
     const metrikaScript = s.yandexMetrikaId ? `
@@ -1750,14 +2293,84 @@ export class TildaEngine {
     img { max-width: 100%; height: auto; display: block; }
     a { color: inherit; text-decoration: none; }
     .t-container { width: 100%; max-width: ${g.maxWidth}; margin: 0 auto; box-sizing: border-box; padding: 0 20px; }
+    .tilda-block { width: 100%; position: relative; overflow: hidden; }
+
+    /* Animations Engine */
+    @keyframes auroraFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes auroraSlideUp { from { opacity: 0; transform: translateY(45px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes auroraSlideDown { from { opacity: 0; transform: translateY(-45px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes auroraSlideLeft { from { opacity: 0; transform: translateX(55px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes auroraSlideRight { from { opacity: 0; transform: translateX(-55px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes auroraZoomIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+    @keyframes auroraFlipUp { from { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); } to { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); } }
+    @keyframes auroraBounce { 0% { opacity: 0; transform: scale(0.6) translateY(40px); } 60% { opacity: 1; transform: scale(1.05) translateY(-8px); } 80% { transform: scale(0.98) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+    .anim-fade-in { animation: auroraFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-slide-up { animation: auroraSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-slide-down { animation: auroraSlideDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-slide-left { animation: auroraSlideLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-slide-right { animation: auroraSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-zoom-in { animation: auroraZoomIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-flip-up { animation: auroraFlipUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-bounce { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    [data-tilda-anim] {
+      transition-property: opacity, transform;
+      transition-duration: 0.7s;
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    [data-tilda-anim="fade-in"] { opacity: 0; }
+    [data-tilda-anim="fade-in"].tilda-animated-in { opacity: 1; }
+    [data-tilda-anim="slide-up"] { opacity: 0; transform: translateY(45px); }
+    [data-tilda-anim="slide-up"].tilda-animated-in { opacity: 1; transform: translateY(0); }
+    [data-tilda-anim="slide-down"] { opacity: 0; transform: translateY(-45px); }
+    [data-tilda-anim="slide-down"].tilda-animated-in { opacity: 1; transform: translateY(0); }
+    [data-tilda-anim="slide-left"] { opacity: 0; transform: translateX(60px); }
+    [data-tilda-anim="slide-left"].tilda-animated-in { opacity: 1; transform: translateX(0); }
+    [data-tilda-anim="slide-right"] { opacity: 0; transform: translateX(-60px); }
+    [data-tilda-anim="slide-right"].tilda-animated-in { opacity: 1; transform: translateX(0); }
+    [data-tilda-anim="zoom-in"] { opacity: 0; transform: scale(0.88); }
+    [data-tilda-anim="zoom-in"].tilda-animated-in { opacity: 1; transform: scale(1); }
+    [data-tilda-anim="flip-up"] { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); }
+    [data-tilda-anim="flip-up"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+    [data-tilda-anim="bounce"] { opacity: 0; transform: scale(0.7); }
+    [data-tilda-anim="bounce"].tilda-animated-in { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
     @media (max-width: 768px) {
+      .t-container { padding: 0 16px; }
       .t-nav-links { display: none !important; }
     }
   </style>
 </head>
 <body>
 ${blocksHtml}
-${isZip ? '<script src="js/runtime.js"></script>' : ''}
+${isZip ? '<script src="js/runtime.js"></script>' : `
+<script>
+(function() {
+  const animatedElements = document.querySelectorAll('[data-tilda-anim]');
+  if (animatedElements.length > 0) {
+    animatedElements.forEach(el => {
+      const delay = el.getAttribute('data-anim-delay');
+      const duration = el.getAttribute('data-anim-duration');
+      if (delay) el.style.transitionDelay = delay + 's';
+      if (duration) el.style.transitionDuration = duration + 's';
+    });
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          el.classList.add('tilda-animated-in');
+          if (el.getAttribute('data-tilda-anim') === 'bounce') el.classList.add('anim-bounce');
+          obs.unobserve(el);
+        }
+      });
+    }, { threshold: 0.08 });
+    animatedElements.forEach(el => observer.observe(el));
+  }
+})();
+</script>
+`}
 ${s.bodyCode || ''}
 </body>
 </html>`;
@@ -1842,18 +2455,330 @@ button { font-family: inherit; }
   overflow: hidden;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* Animations Engine */
+@keyframes auroraFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes auroraSlideUp { from { opacity: 0; transform: translateY(45px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes auroraSlideDown { from { opacity: 0; transform: translateY(-45px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes auroraSlideLeft { from { opacity: 0; transform: translateX(55px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes auroraSlideRight { from { opacity: 0; transform: translateX(-55px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes auroraZoomIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes auroraFlipUp { from { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); } to { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); } }
+@keyframes auroraBounce { 0% { opacity: 0; transform: scale(0.6) translateY(40px); } 60% { opacity: 1; transform: scale(1.05) translateY(-8px); } 80% { transform: scale(0.98) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
 
-.anim-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-fade-in { animation: auroraFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-slide-up { animation: auroraSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-slide-down { animation: auroraSlideDown 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-slide-left { animation: auroraSlideLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-slide-right { animation: auroraSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-zoom-in { animation: auroraZoomIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-flip-up { animation: auroraFlipUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-bounce { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+[data-tilda-anim] {
+  transition-property: opacity, transform;
+  transition-duration: 0.7s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+[data-tilda-anim="fade-in"] { opacity: 0; }
+[data-tilda-anim="fade-in"].tilda-animated-in { opacity: 1; }
+[data-tilda-anim="slide-up"] { opacity: 0; transform: translateY(45px); }
+[data-tilda-anim="slide-up"].tilda-animated-in { opacity: 1; transform: translateY(0); }
+[data-tilda-anim="slide-down"] { opacity: 0; transform: translateY(-45px); }
+[data-tilda-anim="slide-down"].tilda-animated-in { opacity: 1; transform: translateY(0); }
+[data-tilda-anim="slide-left"] { opacity: 0; transform: translateX(60px); }
+[data-tilda-anim="slide-left"].tilda-animated-in { opacity: 1; transform: translateX(0); }
+[data-tilda-anim="slide-right"] { opacity: 0; transform: translateX(-60px); }
+[data-tilda-anim="slide-right"].tilda-animated-in { opacity: 1; transform: translateX(0); }
+[data-tilda-anim="zoom-in"] { opacity: 0; transform: scale(0.88); }
+[data-tilda-anim="zoom-in"].tilda-animated-in { opacity: 1; transform: scale(1); }
+[data-tilda-anim="flip-up"] { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); }
+[data-tilda-anim="flip-up"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+[data-tilda-anim="bounce"] { opacity: 0; transform: scale(0.7); }
+[data-tilda-anim="bounce"].tilda-animated-in { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 @media (max-width: 768px) {
   .t-container { padding: 0 16px; }
   .t-nav-links { display: none !important; }
 }
 `;
+  }
+
+  showLinkEditorForElement(linkEl) {
+    this.initFloatingTextToolbar();
+    const toolbar = document.getElementById('aurora-text-link-toolbar');
+    const popover = toolbar?.querySelector('#floating-link-popover');
+    const urlInput = toolbar?.querySelector('#floating-link-url-input');
+    const anchorSelect = toolbar?.querySelector('#floating-link-anchor-select');
+    const blankChk = toolbar?.querySelector('#chk-floating-link-blank');
+    if (!toolbar || !popover) return;
+
+    if (anchorSelect) {
+      anchorSelect.innerHTML = '<option value="">-- Выбрать якорь страницы --</option>' +
+        this.getPageAnchorsList().map(a => `<option value="${a.value}">${a.label}</option>`).join('');
+    }
+
+    if (urlInput) urlInput.value = linkEl.getAttribute('href') || '';
+    if (blankChk) blankChk.checked = linkEl.getAttribute('target') === '_blank';
+
+    const rect = linkEl.getBoundingClientRect();
+    toolbar.style.display = 'flex';
+    popover.style.display = 'flex';
+    const tbW = 320;
+    const left = Math.max(10, Math.min(window.innerWidth - tbW - 20, rect.left + rect.width / 2 - tbW / 2));
+    const top = Math.max(10, rect.top - 70);
+    toolbar.style.left = `${left}px`;
+    toolbar.style.top = `${top}px`;
+    urlInput?.focus();
+  }
+
+  initFloatingTextToolbar() {
+    if (document.getElementById('aurora-text-link-toolbar')) return;
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'aurora-text-link-toolbar';
+    toolbar.className = 'aurora-floating-text-toolbar';
+    toolbar.style.display = 'none';
+
+    toolbar.innerHTML = `
+      <div class="text-format-group">
+        <button class="text-tool-btn" id="btn-text-bold" type="button" title="Жирный (Ctrl+B)"><b>B</b></button>
+        <button class="text-tool-btn" id="btn-text-italic" type="button" title="Курсив (Ctrl+I)"><i>I</i></button>
+        <button class="text-tool-btn" id="btn-text-underline" type="button" title="Подчеркнутый (Ctrl+U)"><u>U</u></button>
+        <button class="text-tool-btn" id="btn-text-strike" type="button" title="Зачеркнутый"><s>S</s></button>
+        <div class="text-tool-divider"></div>
+        <button class="text-tool-btn" id="btn-text-link" type="button" title="Добавить / изменить ссылку (🔗)">
+          <span class="material-symbols-rounded" style="font-size:16px;">link</span>
+        </button>
+        <button class="text-tool-btn" id="btn-text-unlink" type="button" title="Удалить ссылку">
+          <span class="material-symbols-rounded" style="font-size:16px;color:#f43f5e;">link_off</span>
+        </button>
+        <div class="text-tool-divider"></div>
+        <div class="text-tool-color-wrap" title="Цвет текста">
+          <input type="color" id="input-text-color-picker" value="#0d99ff" />
+          <span class="material-symbols-rounded" style="font-size:16px;">format_color_text</span>
+        </div>
+        <button class="text-tool-btn" id="btn-text-clean" type="button" title="Очистить форматирование">
+          <span class="material-symbols-rounded" style="font-size:16px;">format_clear</span>
+        </button>
+      </div>
+
+      <div class="floating-link-popover" id="floating-link-popover" style="display:none;">
+        <div class="link-popover-row">
+          <span class="material-symbols-rounded" style="font-size:16px;color:#0d99ff;">link</span>
+          <input type="text" id="floating-link-url-input" placeholder="https://... или #якорь" />
+          <button class="link-popover-btn btn-primary" id="btn-apply-floating-link" type="button">Применить</button>
+          <button class="link-popover-btn btn-danger" id="btn-delete-floating-link" type="button" title="Удалить ссылку">✕</button>
+        </div>
+        <div class="link-popover-anchors-row">
+          <label>Якорь:</label>
+          <select id="floating-link-anchor-select" class="floating-anchor-dropdown">
+            <option value="">-- Выбрать якорь страницы --</option>
+          </select>
+        </div>
+        <div class="link-popover-options">
+          <label class="insp-checkbox">
+            <input type="checkbox" id="chk-floating-link-blank" /> Открывать в новой вкладке (target="_blank")
+          </label>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(toolbar);
+
+    let savedRange = null;
+
+    const updateSavedRange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+      }
+    };
+
+    const restoreSavedRange = () => {
+      if (savedRange) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+      }
+    };
+
+    // Format buttons
+    toolbar.querySelector('#btn-text-bold')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.execCommand('bold', false, null);
+      this.saveHistory();
+    });
+    toolbar.querySelector('#btn-text-italic')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.execCommand('italic', false, null);
+      this.saveHistory();
+    });
+    toolbar.querySelector('#btn-text-underline')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.execCommand('underline', false, null);
+      this.saveHistory();
+    });
+    toolbar.querySelector('#btn-text-strike')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.execCommand('strikeThrough', false, null);
+      this.saveHistory();
+    });
+    toolbar.querySelector('#btn-text-clean')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.execCommand('removeFormat', false, null);
+      this.saveHistory();
+    });
+
+    toolbar.querySelector('#input-text-color-picker')?.addEventListener('input', e => {
+      restoreSavedRange();
+      document.execCommand('foreColor', false, e.target.value);
+      this.saveHistory();
+    });
+
+    // Link popover toggling
+    const linkBtn = toolbar.querySelector('#btn-text-link');
+    const popover = toolbar.querySelector('#floating-link-popover');
+    const urlInput = toolbar.querySelector('#floating-link-url-input');
+    const anchorSelect = toolbar.querySelector('#floating-link-anchor-select');
+    const blankChk = toolbar.querySelector('#chk-floating-link-blank');
+
+    linkBtn?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      updateSavedRange();
+      const isVisible = popover.style.display !== 'none';
+      if (isVisible) {
+        popover.style.display = 'none';
+      } else {
+        popover.style.display = 'flex';
+        if (anchorSelect) {
+          anchorSelect.innerHTML = '<option value="">-- Выбрать якорь страницы --</option>' +
+            this.getPageAnchorsList().map(a => `<option value="${a.value}">${a.label}</option>`).join('');
+        }
+
+        let existingLink = null;
+        if (savedRange) {
+          const parentA = savedRange.commonAncestorContainer?.parentElement?.closest('a') || (savedRange.startContainer?.closest ? savedRange.startContainer.closest('a') : null);
+          if (parentA) existingLink = parentA;
+        }
+        if (existingLink) {
+          urlInput.value = existingLink.getAttribute('href') || '';
+          blankChk.checked = existingLink.getAttribute('target') === '_blank';
+        } else {
+          urlInput.value = '';
+          blankChk.checked = false;
+        }
+        urlInput.focus();
+      }
+    });
+
+    anchorSelect?.addEventListener('change', () => {
+      if (anchorSelect.value) {
+        urlInput.value = anchorSelect.value;
+      }
+    });
+
+    // Apply link
+    toolbar.querySelector('#btn-apply-floating-link')?.addEventListener('click', e => {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) return;
+      restoreSavedRange();
+
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        let existingA = range.commonAncestorContainer?.parentElement?.closest('a');
+
+        if (existingA) {
+          existingA.setAttribute('href', url);
+          if (blankChk.checked) {
+            existingA.setAttribute('target', '_blank');
+            existingA.setAttribute('rel', 'noopener noreferrer');
+          } else {
+            existingA.removeAttribute('target');
+            existingA.removeAttribute('rel');
+          }
+        } else {
+          document.execCommand('createLink', false, url);
+          if (blankChk.checked && range.commonAncestorContainer) {
+            const parent = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+            const newLinks = parent?.querySelectorAll(`a[href="${url}"]`);
+            newLinks?.forEach(a => {
+              a.setAttribute('target', '_blank');
+              a.setAttribute('rel', 'noopener noreferrer');
+              a.classList.add('t-inline-link');
+            });
+          }
+        }
+        this.saveHistory();
+      }
+      popover.style.display = 'none';
+      toolbar.style.display = 'none';
+    });
+
+    // Delete link
+    const unlinkAction = () => {
+      restoreSavedRange();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const parentA = range.commonAncestorContainer?.parentElement?.closest('a') || (range.startContainer?.parentElement?.closest('a'));
+        if (parentA) {
+          const parent = parentA.parentNode;
+          while (parentA.firstChild) parent.insertBefore(parentA.firstChild, parentA);
+          parent.removeChild(parentA);
+        } else {
+          document.execCommand('unlink', false, null);
+        }
+        this.saveHistory();
+      }
+      popover.style.display = 'none';
+      toolbar.style.display = 'none';
+    };
+
+    toolbar.querySelector('#btn-text-unlink')?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      unlinkAction();
+    });
+    toolbar.querySelector('#btn-delete-floating-link')?.addEventListener('click', e => {
+      e.preventDefault();
+      unlinkAction();
+    });
+
+    // Handle selection on document
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        if (popover.style.display === 'none') {
+          toolbar.style.display = 'none';
+        }
+        return;
+      }
+
+      const range = sel.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      const el = container.nodeType === 1 ? container : container.parentElement;
+
+      const artboard = document.getElementById('tilda-artboard');
+      if (!artboard || !artboard.contains(el)) {
+        toolbar.style.display = 'none';
+        return;
+      }
+
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        toolbar.style.display = 'none';
+        return;
+      }
+
+      updateSavedRange();
+      toolbar.style.display = 'flex';
+      const tbW = toolbar.offsetWidth || 240;
+      const left = Math.max(10, Math.min(window.innerWidth - tbW - 20, rect.left + rect.width / 2 - tbW / 2));
+      const top = Math.max(10, rect.top - 46);
+      toolbar.style.left = `${left}px`;
+      toolbar.style.top = `${top}px`;
+    });
   }
 }

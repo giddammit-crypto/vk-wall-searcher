@@ -632,9 +632,9 @@ export const TILDA_BLOCKS = [
     name: 'Колончатый футер с ссылками и копирайтом',
     icon: 'call_to_action',
     defaultContent: {
-      brand: 'АВРОРА TILDA',
+      brand: 'АВРОРА WEB',
       tagline: 'Платформа визуального проектирования сайтов',
-      copyright: '© 2026 Аврора Tilda. Все права защищены.'
+      copyright: '© 2026 Aurora Web. Все права защищены.'
     },
     defaultDesign: {
       bgColor: '#070a13',
@@ -660,8 +660,647 @@ export const TILDA_BLOCKS = [
       </footer>
     `
   },
+  {
+    id: 'footer-2',
+    cat: 'footer',
+    category: 'footer',
+    name: 'Минималистичный темный футер с соцсетями',
+    icon: 'horizontal_rule',
+    defaultContent: {
+      copyright: '© 2026 Aurora Web Inc. Сделано с любовью.',
+      socials: [
+        { name: 'VK', url: '#' },
+        { name: 'Telegram', url: '#' },
+        { name: 'GitHub', url: '#' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      textColor: '#64748b',
+      padding: '36px 24px'
+    },
+    html: (c, d) => `
+      <footer class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};border-top:1px solid #1e293b;">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+          <div style="font-size:13px;">${c.copyright}</div>
+          <div style="display:flex;gap:16px;">
+            ${(c.socials || []).map(s => `<a href="${s.url}" style="color:#94a3b8;text-decoration:none;font-size:13px;font-weight:600;">${s.name}</a>`).join('')}
+          </div>
+        </div>
+      </footer>
+    `
+  },
 
-  // ─── 11. ZERO BLOCK ──────────────────────────────────────────
+  // ─── 11. ГАЛЕРЕИ И МЕДИА (GALLERY) ────────────────────────────
+  {
+    id: 'gallery-1',
+    cat: 'gallery',
+    category: 'gallery',
+    name: 'Сетка фотографий 3x2 с зумом (Лайтбокс)',
+    icon: 'grid_view',
+    defaultContent: {
+      title: 'Галерея наших проектов',
+      subtitle: 'Нажмите на любое фото для просмотра в высоком разрешении',
+      images: [
+        { src: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&q=80', caption: 'IT Проект 1' },
+        { src: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80', caption: 'Команда 2' },
+        { src: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&q=80', caption: 'Дизайн 3' },
+        { src: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80', caption: 'Офис 4' },
+        { src: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80', caption: 'Аналитика 5' },
+        { src: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&q=80', caption: 'Библиотека 6' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#ffffff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block t-gallery" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1200px;margin:0 auto;text-align:center;">
+          <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:10px;">${c.title}</h2>
+          <p style="font-size:15px;color:#94a3b8;margin-bottom:40px;">${c.subtitle}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:20px;">
+            ${(c.images || []).map(img => `
+              <div style="height:240px;border-radius:12px;overflow:hidden;position:relative;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);">
+                <img src="${img.src}" data-tilda-lightbox style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;" alt="${img.caption || ''}" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 12. ОТЗЫВЫ (TESTIMONIALS) ────────────────────────────────
+  {
+    id: 'testimonials-1',
+    cat: 'testimonials',
+    category: 'testimonials',
+    name: '3 карточки отзывов клиентов с фото и рейтингом',
+    icon: 'forum',
+    defaultContent: {
+      title: 'Что говорят наши клиенты',
+      subtitle: 'Реальные истории успеха и отзывы о сотрудничестве с нами',
+      items: [
+        {
+          name: 'Алексей Смирнов',
+          role: 'CEO ТехноПром',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+          text: 'Благодаря конструктору мы запустили новый лендинг всего за 2 дня и увеличили конверсию заявок на 45%!',
+          rating: 5
+        },
+        {
+          name: 'Елена Кузнецова',
+          role: 'Маркетолог Студии',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&q=80',
+          text: 'Zero Block дает потрясающую свободу кастомизации. Интерфейс быстрый, удобный и невероятно продуманный.',
+          rating: 5
+        },
+        {
+          name: 'Дмитрий Волков',
+          role: 'Основатель EdTech',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+          text: 'Интеграция с Telegram и корзиной товаров закрывает 100% потребностей нашего интернет-магазина.',
+          rating: 5
+        }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      textColor: '#ffffff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;">
+          <div style="text-align:center;margin-bottom:50px;">
+            <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:10px;">${c.title}</h2>
+            <p style="font-size:15px;color:#94a3b8;">${c.subtitle}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:24px;">
+            ${(c.items || []).map(item => `
+              <div style="background:#131c2e;border:1px solid #233047;border-radius:16px;padding:32px 24px;display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                  <div style="color:#f59e0b;font-size:18px;margin-bottom:14px;letter-spacing:2px;">★★★★★</div>
+                  <p style="font-size:15px;line-height:1.7;color:#cbd5e1;font-style:italic;margin-bottom:24px;">«${item.text}»</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;">
+                  <img src="${item.avatar}" alt="${item.name}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;" />
+                  <div>
+                    <div style="font-weight:700;font-size:15px;color:#fff;">${item.name}</div>
+                    <div style="font-size:12px;color:#64748b;">${item.role}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 13. КОНТАКТЫ (CONTACTS) ──────────────────────────────────
+  {
+    id: 'contacts-1',
+    cat: 'contacts',
+    category: 'contacts',
+    name: 'Контакты: Адрес, телефон, email и режим работы',
+    icon: 'location_on',
+    defaultContent: {
+      title: 'Свяжитесь с нами',
+      subtitle: 'Мы всегда рады новым проектам и сотрудничеству',
+      phone: '+7 (495) 123-45-67',
+      email: 'hello@auroraweb.ru',
+      address: 'Москва, Пресненская наб., д. 12, Башня Федерация',
+      hours: 'Пн-Пт: 09:00 - 20:00, Сб-Вс: 10:00 - 18:00'
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};" id="contacts">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;">
+          <div style="text-align:center;margin-bottom:50px;">
+            <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:10px;">${c.title}</h2>
+            <p style="font-size:15px;color:#94a3b8;">${c.subtitle}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:20px;">
+            <div style="background:#1e293b;padding:28px;border-radius:14px;border:1px solid #334155;text-align:center;">
+              <span class="material-symbols-rounded" style="font-size:36px;color:${d.accentColor};margin-bottom:12px;">call</span>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Телефон</div>
+              <a href="tel:${c.phone}" style="font-weight:700;font-size:16px;color:#fff;text-decoration:none;">${c.phone}</a>
+            </div>
+            <div style="background:#1e293b;padding:28px;border-radius:14px;border:1px solid #334155;text-align:center;">
+              <span class="material-symbols-rounded" style="font-size:36px;color:#10b981;margin-bottom:12px;">mail</span>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Электронная почта</div>
+              <a href="mailto:${c.email}" style="font-weight:700;font-size:16px;color:#fff;text-decoration:none;">${c.email}</a>
+            </div>
+            <div style="background:#1e293b;padding:28px;border-radius:14px;border:1px solid #334155;text-align:center;">
+              <span class="material-symbols-rounded" style="font-size:36px;color:#f59e0b;margin-bottom:12px;">location_on</span>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Адрес офиса</div>
+              <div style="font-weight:700;font-size:14px;color:#fff;line-height:1.4;">${c.address}</div>
+            </div>
+            <div style="background:#1e293b;padding:28px;border-radius:14px;border:1px solid #334155;text-align:center;">
+              <span class="material-symbols-rounded" style="font-size:36px;color:#8b5cf6;margin-bottom:12px;">schedule</span>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Режим работы</div>
+              <div style="font-weight:700;font-size:14px;color:#fff;line-height:1.4;">${c.hours}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 14. МАГАЗИН И ТОВАРЫ (STORE & CART) ──────────────────────
+  {
+    id: 'store-1',
+    cat: 'store',
+    category: 'store',
+    name: 'Витрина каталога товаров (ST300)',
+    icon: 'storefront',
+    defaultContent: {
+      title: 'Популярные товары и услуги',
+      subtitle: 'Выбирайте лучшие решения и оформляйте заказ онлайн в 1 клик',
+      products: [
+        {
+          id: 'prod_101',
+          name: 'Флагманский курс Aurora Web Pro',
+          price: 14990,
+          oldPrice: 19990,
+          badge: 'ХИТ',
+          img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&q=80',
+          desc: 'Полный практический курс по созданию современных адаптивных сайтов.'
+        },
+        {
+          id: 'prod_102',
+          name: 'Дизайн-система & UI Kit 2026',
+          price: 4990,
+          oldPrice: 7990,
+          badge: 'NEW',
+          img: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&q=80',
+          desc: 'Готовый набор компонентов Figma и Aurora Web для быстрого старта.'
+        },
+        {
+          id: 'prod_103',
+          name: 'Премиум подписка Cloud 1 Год',
+          price: 9900,
+          oldPrice: 12000,
+          badge: '-25%',
+          img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80',
+          desc: 'Неограниченный хостинг, кастомные домены и мгновенная публикация.'
+        }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block t-store-catalog" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};" id="catalog">
+        <div class="t-container" style="max-width:1200px;margin:0 auto;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;margin-bottom:40px;">
+            <div>
+              <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:8px;">${c.title}</h2>
+              <p style="font-size:15px;color:#94a3b8;">${c.subtitle}</p>
+            </div>
+            <!-- Cart floating badge trigger -->
+            <button class="t-btn" data-tilda-cart-trigger style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#182234;border:1px solid #283548;color:#fff;border-radius:10px;font-weight:700;cursor:pointer;">
+              <span class="material-symbols-rounded" style="color:#0d99ff;">shopping_cart</span>
+              <span>Корзина</span>
+              <span class="tilda-cart-badge-count" data-tilda-cart-count style="display:none;">0</span>
+            </button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:24px;">
+            ${(c.products || []).map(p => `
+              <div class="tilda-product-card" data-product-card style="background:#121826;border:1px solid #233047;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+                ${p.badge ? `<div style="position:absolute;top:14px;left:14px;background:#0d99ff;color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;z-index:10;">${p.badge}</div>` : ''}
+                <div style="height:210px;overflow:hidden;position:relative;background:#090d16;">
+                  <img src="${p.img}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
+                </div>
+                <div style="padding:24px;display:flex;flex-direction:column;flex:1;justify-content:space-between;">
+                  <div>
+                    <h3 data-product-name style="font-size:1.15rem;font-weight:700;margin-bottom:8px;line-height:1.4;color:#fff;">${p.name}</h3>
+                    <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:20px;">${p.desc}</p>
+                  </div>
+                  <div>
+                    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:16px;">
+                      <span data-product-price style="font-size:1.6rem;font-weight:900;color:#10b981;">${p.price} ₽</span>
+                      ${p.oldPrice ? `<span style="font-size:14px;color:#64748b;text-decoration:line-through;">${p.oldPrice} ₽</span>` : ''}
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                      <button data-tilda-cart-add data-product-id="${p.id}" data-product-name="${p.name}" data-product-price="${p.price}" data-product-img="${p.img}" style="flex:1;padding:12px;background:#0d99ff;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">shopping_cart</span>
+                        <span>В корзину</span>
+                      </button>
+                      <button data-tilda-cart-trigger style="padding:12px 14px;background:#1e293b;border:1px solid #334155;color:#fff;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;" title="Открыть корзину">
+                        <span class="material-symbols-rounded" style="font-size:18px;">visibility</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'store-cart',
+    cat: 'store',
+    category: 'store',
+    name: 'Виджет корзины покупателя (ST100)',
+    icon: 'shopping_bag',
+    defaultContent: {
+      title: 'Корзина покупателя',
+      btnText: 'Оформить заказ',
+      emptyText: 'Ваша корзина пуста'
+    },
+    defaultDesign: {
+      bgColor: '#121826',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '40px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block t-cart-block-widget" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};border:1px dashed #233047;border-radius:16px;margin:20px auto;max-width:1100px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:48px;height:48px;background:rgba(13,153,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;color:${d.accentColor};">
+              <span class="material-symbols-rounded" style="font-size:26px;">shopping_cart</span>
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:16px;color:#fff;">${c.title}</div>
+              <div style="font-size:13px;color:#94a3b8;">В корзине: <b data-tilda-cart-count style="color:#0d99ff;">0</b> товаров</div>
+            </div>
+          </div>
+          <button data-tilda-cart-trigger style="padding:12px 28px;background:${d.accentColor};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 20px rgba(13,153,255,0.35);">
+            <span class="material-symbols-rounded">shopping_bag</span>
+            <span>${c.btnText}</span>
+          </button>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'store-single',
+    cat: 'store',
+    category: 'store',
+    name: 'Флагманский товар с опциями (ST200)',
+    icon: 'local_offer',
+    defaultContent: {
+      badge: 'ТОП ПРОДАЖ',
+      title: 'Профессиональный монитор Aurora Vision 4K',
+      sku: 'AV-4K-2026',
+      price: 49990,
+      oldPrice: 59990,
+      desc: 'Премиальный IPS-дисплей 32 дюйма с цветопередачей 99% DCI-P3, частотой 144 Гц и разъемом Thunderbolt 4 для дизайнеров и профессионалов.',
+      img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80',
+      specs: [
+        { label: 'Диагональ', val: '32 дюйма 4K UHD' },
+        { label: 'Матрица', val: 'IPS Nano Color' },
+        { label: 'Частота', val: '144 Hz FreeSync' },
+        { label: 'Гарантия', val: '24 месяца' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:50px;align-items:center;">
+          <div style="border-radius:20px;overflow:hidden;border:1px solid #233047;background:#121826;box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+            <img src="${c.img}" alt="${c.title}" style="width:100%;height:auto;display:block;" />
+          </div>
+          <div>
+            <div style="display:inline-block;padding:4px 12px;background:rgba(13,153,255,0.15);border:1px solid rgba(13,153,255,0.3);border-radius:6px;font-size:11px;font-weight:700;color:${d.accentColor};margin-bottom:12px;">${c.badge}</div>
+            <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:8px;line-height:1.2;">${c.title}</h1>
+            <div style="font-size:12px;color:#64748b;margin-bottom:16px;">Артикул: ${c.sku}</div>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7;margin-bottom:24px;">${c.desc}</p>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;background:#121826;padding:16px;border-radius:12px;border:1px solid #1e293b;">
+              ${(c.specs || []).map(s => `
+                <div>
+                  <div style="font-size:11px;color:#64748b;">${s.label}</div>
+                  <div style="font-weight:700;font-size:13px;color:#fff;">${s.val}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:24px;">
+              <span style="font-size:2.6rem;font-weight:900;color:#10b981;">${c.price} ₽</span>
+              ${c.oldPrice ? `<span style="font-size:18px;color:#64748b;text-decoration:line-through;">${c.oldPrice} ₽</span>` : ''}
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <button data-tilda-cart-add data-product-id="${c.sku || 'AV-4K'}" data-product-name="${c.title}" data-product-price="${c.price}" data-product-img="${c.img}" style="flex:1;min-width:200px;padding:16px 28px;background:${d.accentColor};color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 25px rgba(13,153,255,0.4);">
+                <span class="material-symbols-rounded">shopping_cart</span>
+                <span>Добавить в корзину</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 15. МЕДИА И ВИДЕО (MEDIA) ──────────────────────────────
+  {
+    id: 'media-1',
+    cat: 'media',
+    category: 'media',
+    name: 'Видео-презентация с постером и кнопкой Play',
+    icon: 'smart_display',
+    defaultContent: {
+      title: 'Посмотрите как работает Aurora Web',
+      subtitle: 'Короткий 2-минутный обзор ключевых возможностей платформы',
+      poster: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=1200&q=80',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#ffffff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1000px;margin:0 auto;text-align:center;">
+          <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:8px;">${c.title}</h2>
+          <p style="font-size:15px;color:#94a3b8;margin-bottom:36px;">${c.subtitle}</p>
+          <div style="position:relative;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);box-shadow:0 25px 50px rgba(0,0,0,0.6);aspect-ratio:16/9;background-image:url('${c.poster}');background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);"></div>
+            <a href="${c.videoUrl}" target="_blank" style="position:relative;z-index:2;width:72px;height:72px;border-radius:50%;background:#0d99ff;color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 0 40px rgba(13,153,255,0.8);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+              <span class="material-symbols-rounded" style="font-size:36px;margin-left:4px;">play_arrow</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'store-order',
+    cat: 'store',
+    category: 'store',
+    name: 'Форма заказа и доставки товаров (ST400)',
+    icon: 'local_shipping',
+    defaultContent: {
+      title: 'Оформление заказа',
+      subtitle: 'Заполните данные для доставки и выберите удобный способ оплаты',
+      btnText: 'Подтвердить и оплатить'
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};" id="order-checkout">
+        <div class="t-container" style="max-width:800px;margin:0 auto;">
+          <div style="text-align:center;margin-bottom:36px;">
+            <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:8px;">${c.title}</h2>
+            <p style="font-size:15px;color:#94a3b8;">${c.subtitle}</p>
+          </div>
+          <form class="tilda-form" data-tilda-form style="background:#131c2e;border:1px solid #233047;border-radius:18px;padding:36px 32px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:#cbd5e1;margin-bottom:6px;">Имя получателя *</label>
+                <input type="text" name="name" required placeholder="Иван Иванов" style="width:100%;padding:12px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#fff;outline:none;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:#cbd5e1;margin-bottom:6px;">Телефон *</label>
+                <input type="tel" name="phone" required placeholder="+7 (999) 000-00-00" style="width:100%;padding:12px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#fff;outline:none;" />
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#cbd5e1;margin-bottom:6px;">Адрес доставки</label>
+              <input type="text" name="address" placeholder="г. Москва, ул. Ленина, д. 10, кв. 25" style="width:100%;padding:12px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#fff;outline:none;" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#cbd5e1;margin-bottom:6px;">Способ доставки</label>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;">
+                <label style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="radio" name="delivery" value="courier" checked />
+                  <span style="font-size:13px;font-weight:600;">Курьер (350 ₽)</span>
+                </label>
+                <label style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="radio" name="delivery" value="sdek" />
+                  <span style="font-size:13px;font-weight:600;">СДЭК (250 ₽)</span>
+                </label>
+                <label style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="radio" name="delivery" value="pickup" />
+                  <span style="font-size:13px;font-weight:600;">Самовывоз (0 ₽)</span>
+                </label>
+              </div>
+            </div>
+            <button type="submit" style="width:100%;padding:16px;background:${d.accentColor};color:#fff;font-weight:800;font-size:16px;border:none;border-radius:10px;cursor:pointer;margin-top:10px;box-shadow:0 10px 25px rgba(13,153,255,0.4);">${c.btnText}</button>
+          </form>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 16. ДОПОЛНИТЕЛЬНЫЕ МОДУЛИ ─────────────────────────────
+  {
+    id: 'menu-2',
+    cat: 'menu',
+    category: 'menu',
+    name: 'Плавающая шапка с корзиной и поиском',
+    icon: 'tab',
+    defaultContent: {
+      brand: 'AURORA SHOP',
+      phone: '+7 (800) 555-35-35',
+      btnText: 'Личный кабинет'
+    },
+    defaultDesign: {
+      bgColor: 'rgba(15, 23, 42, 0.9)',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff'
+    },
+    html: (c, d) => `
+      <header class="t-block" style="background:${d.bgColor};backdrop-filter:blur(10px);color:${d.textColor};border-bottom:1px solid rgba(255,255,255,0.1);padding:14px 24px;position:sticky;top:0;z-index:900;">
+        <div class="t-container" style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <div style="font-weight:900;font-size:18px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="color:${d.accentColor};">store</span>
+            <span>${c.brand}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px;">
+            <a href="tel:${c.phone}" style="color:#cbd5e1;font-weight:600;font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:${d.accentColor};">phone</span>
+              <span>${c.phone}</span>
+            </a>
+            <button data-tilda-cart-trigger style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">
+              <span class="material-symbols-rounded" style="font-size:18px;color:${d.accentColor};">shopping_cart</span>
+              <span data-tilda-cart-count class="tilda-cart-badge-count" style="display:none;">0</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    `
+  },
+  {
+    id: 'gallery-2',
+    cat: 'gallery',
+    category: 'gallery',
+    name: 'Слайдер изображений с точками навигации',
+    icon: 'view_carousel',
+    defaultContent: {
+      slides: [
+        { src: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&q=80', title: 'Современный цифровой офис' },
+        { src: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80', title: 'Творческая команда разработчиков' },
+        { src: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=1200&q=80', title: 'Аналитика и планирование' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      padding: '70px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;position:relative;" data-tilda-slider>
+          <div style="overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,0.1);position:relative;height:440px;">
+            <div class="tilda-slider-track" style="display:flex;height:100%;transition:transform 0.4s ease;">
+              ${(c.slides || []).map(s => `
+                <div class="tilda-slide" style="flex:0 0 100%;height:100%;position:relative;background-image:url('${s.src}');background-size:cover;background-position:center;">
+                  <div style="position:absolute;bottom:0;inset-inline:0;padding:30px;background:linear-gradient(to top, rgba(0,0,0,0.8), transparent);color:#fff;font-weight:700;font-size:18px;">${s.title}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;" data-slider-dots></div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'pricing-2',
+    cat: 'pricing',
+    category: 'pricing',
+    name: 'Таблица сравнения функций тарифов',
+    icon: 'table_chart',
+    defaultContent: {
+      title: 'Сравнение возможностей тарифов',
+      features: [
+        { name: 'Количество страниц', basic: 'До 3', pro: 'Безлимит', corp: 'Безлимит' },
+        { name: 'Zero Block редактор', basic: '—', pro: '✓', corp: '✓' },
+        { name: 'Корзина и оплата заказов', basic: '—', pro: '✓', corp: '✓' },
+        { name: 'Экспорт исходного кода ZIP', basic: '—', pro: '✓', corp: '✓' },
+        { name: 'Приоритетная поддержка', basic: 'Email', pro: 'Telegram', corp: '24/7 Выделенный менеджер' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      padding: '80px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1000px;margin:0 auto;">
+          <h2 style="font-size:2.2rem;font-weight:800;text-align:center;margin-bottom:40px;">${c.title}</h2>
+          <div style="background:#131c2e;border:1px solid #233047;border-radius:16px;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;text-align:left;font-size:14px;">
+              <thead>
+                <tr style="background:#1e293b;border-bottom:1px solid #334155;">
+                  <th style="padding:16px 20px;color:#94a3b8;font-weight:700;">Функция</th>
+                  <th style="padding:16px 20px;font-weight:700;color:#fff;">Базовый</th>
+                  <th style="padding:16px 20px;font-weight:700;color:#0d99ff;">PRO</th>
+                  <th style="padding:16px 20px;font-weight:700;color:#10b981;">Корпоративный</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(c.features || []).map((f, i) => `
+                  <tr style="border-bottom:1px solid #1f293d;background:${i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'};">
+                    <td style="padding:14px 20px;font-weight:600;color:#cbd5e1;">${f.name}</td>
+                    <td style="padding:14px 20px;color:#94a3b8;">${f.basic}</td>
+                    <td style="padding:14px 20px;color:#fff;font-weight:700;">${f.pro}</td>
+                    <td style="padding:14px 20px;color:#fff;font-weight:700;">${f.corp}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'contacts-2',
+    cat: 'contacts',
+    category: 'contacts',
+    name: 'Карта офиса с плавающим окном контактов',
+    icon: 'map',
+    defaultContent: {
+      address: 'г. Москва, Пресненская наб., 12',
+      phone: '+7 (495) 123-45-67',
+      email: 'info@auroraweb.ru'
+    },
+    defaultDesign: {
+      height: '420px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="position:relative;height:${d.height};background:#070a13;overflow:hidden;">
+        <iframe src="https://yandex.ru/map-widget/v1/?um=constructor%3Asample&amp;source=constructor" width="100%" height="100%" frameborder="0" style="filter:invert(90%) hue-rotate(180deg);opacity:0.85;"></iframe>
+        <div style="position:absolute;top:30px;left:30px;background:rgba(18,24,38,0.92);backdrop-filter:blur(8px);border:1px solid #233047;border-radius:14px;padding:24px;max-width:320px;color:#fff;box-shadow:0 15px 35px rgba(0,0,0,0.5);">
+          <div style="font-weight:800;font-size:16px;margin-bottom:10px;">Главный офис</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:12px;">📍 ${c.address}</div>
+          <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;">📞 <a href="tel:${c.phone}" style="color:#0d99ff;text-decoration:none;font-weight:600;">${c.phone}</a></div>
+          <div style="font-size:13px;color:#94a3b8;">✉️ <a href="mailto:${c.email}" style="color:#0d99ff;text-decoration:none;font-weight:600;">${c.email}</a></div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 17. ZERO BLOCK ──────────────────────────────────────────
   {
     id: 'zero-1',
     cat: 'zero',
@@ -669,17 +1308,48 @@ export const TILDA_BLOCKS = [
     isZero: true,
     name: 'Свободный Zero Block',
     icon: 'bolt',
-    defaultContent: {},
-    defaultDesign: { height: 600, background: '#070a13' },
-    html: (c, d) => `
-      <div class="t-block t-zero-block-rendered" style="min-height:${d.height || 600}px;background:${d.background || '#070a13'};position:relative;display:flex;align-items:center;justify-content:center;">
-        <div style="text-align:center;color:#64748b;padding:40px;">
-          <span class="material-symbols-rounded" style="font-size:48px;color:#0d99ff;margin-bottom:12px;">bolt</span>
-          <div style="font-size:18px;font-weight:700;color:#fff;">Свободный холст Zero Block</div>
-          <div style="font-size:13px;margin-top:6px;">Нажмите кнопку «Редактировать Zero Block» в панели свойств справа для свободного расположения элементов.</div>
+    defaultContent: {
+      elements: [
+        { id: 'zb_el_1', type: 'h1', props: { x: 80, y: 80, width: 560, height: 90, content: 'Свободный креативный Zero Block', fontSize: 36, fontWeight: '800', color: '#ffffff', fontFamily: 'Montserrat' } },
+        { id: 'zb_el_2', type: 'text', props: { x: 80, y: 190, width: 480, height: 80, content: 'Размещайте любые элементы в произвольных точках холста, изменяйте размер 8-точечным ресайзом и вращайте на 360°.', fontSize: 16, color: '#94a3b8', fontFamily: 'Inter' } },
+        { id: 'zb_el_3', type: 'btn', props: { x: 80, y: 290, width: 200, height: 48, content: 'Кнопка действия', bgColor: '#0d99ff', color: '#ffffff', borderRadius: '8px', fontSize: 15, fontWeight: '700', fontFamily: 'Montserrat' } },
+        { id: 'zb_el_4', type: 'img', props: { x: 620, y: 80, width: 460, height: 320, borderRadius: '16px', content: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&q=80' } }
+      ]
+    },
+    defaultDesign: { height: 560, background: '#070a13' },
+    html: (c, d) => {
+      const els = c.elements || [];
+      let elsMarkup = '';
+      els.forEach(el => {
+        const p = el.props || {};
+        let inner = '';
+        if (el.type === 'img') {
+          inner = `<img src="${p.content || ''}" style="width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius || '0px'};pointer-events:none;" alt="" />`;
+        } else if (el.type === 'shape') {
+          inner = `<div style="width:100%;height:100%;border-radius:${p.borderRadius || '0px'};background:${p.bgColor || 'rgba(13,153,255,0.2)'};border:${p.borderWidth || '1px'} solid ${p.borderColor || '#0d99ff'};"></div>`;
+        } else if (el.type === 'btn') {
+          inner = `<div class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor || '#0d99ff'};color:${p.color || '#fff'};border-radius:${p.borderRadius || '8px'};font-size:${p.fontSize || 15}px;font-weight:${p.fontWeight || '700'};font-family:'${p.fontFamily || 'Montserrat'}',sans-serif;user-select:none;">${p.content || 'Кнопка'}</div>`;
+        } else if (el.type === 'icon') {
+          inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.color || '#0d99ff'};font-size:${p.fontSize || 32}px;"><span class="material-symbols-rounded" style="font-size:inherit;">${p.icon || 'star'}</span></div>`;
+        } else {
+          inner = `<div style="font-size:${p.fontSize || 16}px;font-weight:${p.fontWeight || '500'};color:${p.color || '#fff'};line-height:1.3;text-align:${p.textAlign || 'left'};font-family:'${p.fontFamily || 'Inter'}',sans-serif;word-break:break-word;">${p.content || ''}</div>`;
+        }
+
+        elsMarkup += `
+          <div class="zero-canvas-element" data-zb-el-id="${el.id}" style="position:absolute;left:${p.x || 0}px;top:${p.y || 0}px;width:${p.width || 200}px;height:${p.height || 50}px;transform:rotate(${p.rotation || 0}deg);z-index:${p.zIndex || 1};box-sizing:border-box;cursor:move;">
+            ${inner}
+          </div>
+        `;
+      });
+
+      return `
+        <div class="t-block t-zero-block" style="position:relative;width:100%;min-height:${d.height || 560}px;height:${d.height || 560}px;background:${d.background || '#070a13'};overflow:hidden;">
+          <div class="t-zero-container" style="position:relative;width:100%;max-width:1200px;height:100%;margin:0 auto;">
+            ${elsMarkup}
+          </div>
         </div>
-      </div>
-    `
+      `;
+    }
   }
 ];
 
@@ -695,7 +1365,44 @@ export function renderBlockHtml(block, contentData, designData) {
   if (!block || typeof block.html !== 'function') return '';
   const mergedContent = { ...block.defaultContent, ...contentData };
   const mergedDesign = { ...block.defaultDesign, ...designData };
-  return block.html(mergedContent, mergedDesign);
+  
+  if (mergedDesign.bgColor && !mergedDesign.background) mergedDesign.background = mergedDesign.bgColor;
+  if (mergedDesign.background && !mergedDesign.bgColor) mergedDesign.bgColor = mergedDesign.background;
+
+  let baseHtml = block.html(mergedContent, mergedDesign);
+
+  // If standard block has custom appended elements (from detailed element editing)
+  if (!block.isZero && mergedContent.customElements && mergedContent.customElements.length > 0) {
+    let extraElementsMarkup = '';
+    mergedContent.customElements.forEach(el => {
+      const p = el.props || {};
+      let inner = '';
+      if (el.type === 'img') {
+        inner = `<img src="${p.content || ''}" style="width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius || '8px'};pointer-events:none;" alt="" />`;
+      } else if (el.type === 'shape') {
+        inner = `<div style="width:100%;height:100%;border-radius:${p.borderRadius || '8px'};background:${p.bgColor || 'rgba(13,153,255,0.2)'};border:${p.borderWidth || '1px'} solid ${p.borderColor || '#0d99ff'};"></div>`;
+      } else if (el.type === 'btn') {
+        inner = `<a href="${p.url || '#'}" class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor || '#0d99ff'};color:${p.color || '#fff'};border-radius:${p.borderRadius || '8px'};font-size:${p.fontSize || 15}px;font-weight:${p.fontWeight || '700'};font-family:'${p.fontFamily || 'Montserrat'}',sans-serif;text-decoration:none;user-select:none;">${p.content || 'Кнопка'}</a>`;
+      } else if (el.type === 'icon') {
+        inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.color || '#0d99ff'};font-size:${p.fontSize || 32}px;"><span class="material-symbols-rounded" style="font-size:inherit;">${p.icon || 'star'}</span></div>`;
+      } else {
+        inner = `<div style="font-size:${p.fontSize || 16}px;font-weight:${p.fontWeight || '500'};color:${p.color || '#fff'};line-height:1.4;text-align:${p.textAlign || 'left'};font-family:'${p.fontFamily || 'Inter'}',sans-serif;word-break:break-word;">${p.content || ''}</div>`;
+      }
+
+      extraElementsMarkup += `
+        <div class="block-custom-element" data-custom-el-id="${el.id}" style="position:absolute;left:${p.x || 60}px;top:${p.y || 40}px;width:${p.width || 220}px;height:${p.height || 50}px;transform:rotate(${p.rotation || 0}deg);z-index:${p.zIndex || 10};box-sizing:border-box;cursor:move;">
+          ${inner}
+        </div>
+      `;
+    });
+
+    const lastClosing = baseHtml.lastIndexOf('</div>');
+    if (lastClosing !== -1) {
+      baseHtml = baseHtml.substring(0, lastClosing) + `<div class="block-custom-elements-container" style="position:relative;width:100%;max-width:1200px;margin:0 auto;height:0;">${extraElementsMarkup}</div>` + baseHtml.substring(lastClosing);
+    }
+  }
+
+  return baseHtml;
 }
 
 export function extractBlockDefaultData(block) {
