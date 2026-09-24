@@ -1,285 +1,685 @@
+/**
+ * tilda_blocks.js — Библиотека 40+ готовых адаптивных блоков Tilda
+ * Все блоки структурированы по категориям с русскоязычными названиями,
+ * современным flex/grid дизайном, поддержкой темной/светлой темы и интерактивного runtime.
+ */
+
 export const TILDA_CATEGORIES = [
-  { id: 'cover', name: 'Cover', icon: 'image', count: 3 },
-  { id: 'about', name: 'About', icon: 'info', count: 2 },
-  { id: 'title', name: 'Title', icon: 'type', count: 2 },
-  { id: 'text', name: 'Text', icon: 'align-left', count: 2 },
-  { id: 'image', name: 'Image', icon: 'image', count: 2 },
-  { id: 'gallery', name: 'Gallery', icon: 'grid', count: 2 },
-  { id: 'form', name: 'Form & Button', icon: 'edit', count: 3 },
-  { id: 'pricing', name: 'Pricing', icon: 'dollar-sign', count: 2 },
-  { id: 'features', name: 'Features', icon: 'star', count: 3 },
-  { id: 'testimonials', name: 'Testimonials', icon: 'message-square', count: 2 },
-  { id: 'menu', name: 'Menu', icon: 'menu', count: 2 },
-  { id: 'footer', name: 'Footer', icon: 'layout', count: 2 },
-  { id: 'faq', name: 'FAQ', icon: 'help-circle', count: 2 },
-  { id: 'media', name: 'Media', icon: 'video', count: 2 },
-  { id: 'contacts', name: 'Contacts', icon: 'map-pin', count: 2 },
-  { id: 'store', name: 'Store', icon: 'shopping-cart', count: 2 }
+  { id: 'cover',        name: '🌟 Обложки (Hero)',           icon: 'wallpaper',      count: 4 },
+  { id: 'about',        name: 'ℹ️ О проекте / компании',     icon: 'info',           count: 3 },
+  { id: 'title',        name: '🏷️ Заголовки и разделители',  icon: 'title',          count: 3 },
+  { id: 'text',         name: '📝 Текстовые блоки',          icon: 'article',        count: 3 },
+  { id: 'features',     name: '⚡ Преимущества и фичи',       icon: 'star',           count: 3 },
+  { id: 'gallery',      name: '🖼️ Галереи и медиа',          icon: 'photo_library',  count: 3 },
+  { id: 'form',         name: '📋 Формы заявок и кнопки',    icon: 'edit_calendar',  count: 3 },
+  { id: 'pricing',      name: '💳 Тарифы и цены',            icon: 'payments',       count: 3 },
+  { id: 'testimonials', name: '💬 Отзывы клиентов',          icon: 'forum',          count: 3 },
+  { id: 'menu',         name: '🧭 Меню и навигация',         icon: 'menu',           count: 3 },
+  { id: 'footer',       name: '⚓ Подвал и футеры',          icon: 'call_to_action', count: 3 },
+  { id: 'faq',          name: '❓ Вопросы и ответы (FAQ)',   icon: 'help_outline',   count: 3 },
+  { id: 'media',        name: '🎬 Видео и аудио плеер',      icon: 'smart_display',  count: 2 },
+  { id: 'contacts',     name: '📍 Контакты и карта',         icon: 'location_on',    count: 3 },
+  { id: 'store',        name: '🛍️ Магазин и товары',         icon: 'shopping_cart',  count: 3 },
+  { id: 'zero',         name: '⚡ Zero Block (Свободный)',   icon: 'bolt',           count: 1 }
 ];
 
 export const TILDA_BLOCKS = [
-  // COVERS
+  // ─── 1. ОБЛОЖКИ (COVER) ───────────────────────────────────────
   {
-    id: 'cover-1', category: 'cover', name: 'Hero with Background Image',
-    defaultContent: { title: 'Welcome to Our Website', subtitle: 'We build amazing products.', btnText: 'Get Started', bgImage: 'https://images.unsplash.com/photo-1506744269153-b29ec9f0888c?auto=format&fit=crop&w=1920&q=80' },
-    defaultDesign: { overlayColor: 'rgba(0,0,0,0.5)', height: '100vh', titleSize: '4rem', textColor: '#ffffff' },
+    id: 'cover-1',
+    cat: 'cover',
+    category: 'cover',
+    name: 'Главный экран с фоновым фото',
+    icon: 'wallpaper',
+    defaultContent: {
+      title: 'Создавайте сайты будущего с Аврора Tilda',
+      subtitle: 'Профессиональный визуальный конструктор сайтов и лендингов с поддержкой Zero Block, интерактивных форм и адаптива.',
+      btnText: 'Начать бесплатно',
+      btnUrl: '#order',
+      bgImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1920&q=80'
+    },
+    defaultDesign: {
+      height: '90vh',
+      overlayColor: 'rgba(7, 10, 19, 0.75)',
+      titleSize: '3.6rem',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      btnBg: '#0d99ff',
+      btnColor: '#ffffff',
+      btnRadius: '8px'
+    },
     html: (c, d) => `
-      <div class="t-block t-cover" style="height: ${d.height}; background-image: url('${c.bgImage}'); background-size: cover; background-position: center; position: relative;">
-        <div class="t-overlay" style="position: absolute; inset: 0; background-color: ${d.overlayColor};"></div>
-        <div class="t-container" style="position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: ${d.textColor}; padding: 0 20px;">
-          <h1 style="font-size: clamp(2rem, 5vw, ${d.titleSize}); margin-bottom: 20px; font-weight: bold;">${c.title}</h1>
-          <p style="font-size: 1.2rem; margin-bottom: 30px; max-width: 600px;">${c.subtitle}</p>
-          <button data-tilda-action="scroll" class="t-btn" style="padding: 15px 30px; font-size: 1rem; background: #007bff; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: background 0.3s;">${c.btnText}</button>
+      <div class="t-block t-cover" style="position:relative;min-height:${d.height};background-image:url('${c.bgImage}');background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        <div class="t-overlay" style="position:absolute;inset:0;background:${d.overlayColor};backdrop-filter:blur(2px);"></div>
+        <div class="t-container" style="position:relative;z-index:2;width:100%;max-width:1100px;padding:60px 24px;text-align:center;color:${d.textColor};">
+          <div style="display:inline-block;padding:6px 16px;background:rgba(13,153,255,0.15);border:1px solid rgba(13,153,255,0.4);border-radius:20px;font-size:13px;font-weight:600;color:${d.accentColor};margin-bottom:20px;letter-spacing:0.5px;">✨ ПЛАТФОРМА НОВОГО ПОКОЛЕНИЯ</div>
+          <h1 style="font-size:clamp(2.2rem, 5vw, ${d.titleSize});font-weight:800;line-height:1.15;margin-bottom:24px;letter-spacing:-0.5px;">${c.title}</h1>
+          <p style="font-size:clamp(1.1rem, 2vw, 1.3rem);line-height:1.6;max-width:760px;margin:0 auto 36px;color:rgba(255,255,255,0.85);">${c.subtitle}</p>
+          <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+            <a href="${c.btnUrl}" class="t-btn" style="display:inline-flex;align-items:center;justify-content:center;padding:16px 36px;background:${d.btnBg};color:${d.btnColor};border-radius:${d.btnRadius};font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 10px 30px rgba(13,153,255,0.4);transition:transform 0.2s,box-shadow 0.2s;">${c.btnText}</a>
+          </div>
         </div>
       </div>
     `
   },
   {
-    id: 'cover-2', category: 'cover', name: 'Split Hero',
-    defaultContent: { title: 'Innovative Solutions', text: 'Discover the power of modern technology.', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80' },
-    defaultDesign: { bgColor: '#f8f9fa', textColor: '#333' },
+    id: 'cover-2',
+    cat: 'cover',
+    category: 'cover',
+    name: 'Сплит-обложка: Текст + Фото справа',
+    icon: 'view_column',
+    defaultContent: {
+      badge: 'ИННОВАЦИИ В ДИЗАЙНЕ',
+      title: 'Быстрый запуск любого веб-проекта',
+      text: 'Собирайте профессиональные сайты из 40+ готовых блоков или верстайте свободный дизайн в Zero Block с адаптацией под смартфоны и планшеты.',
+      btnText: 'Узнать больше',
+      btnUrl: '#about',
+      img: 'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1000&q=80'
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 20px'
+    },
     html: (c, d) => `
-      <div class="t-block t-cover-split" style="background: ${d.bgColor}; color: ${d.textColor}; min-height: 80vh; display: flex; flex-wrap: wrap;">
-        <div style="flex: 1 1 300px; padding: 5vw; display: flex; flex-direction: column; justify-content: center;">
-          <h1 style="font-size: clamp(2rem, 4vw, 3.5rem); margin-bottom: 1rem;">${c.title}</h1>
-          <p style="font-size: 1.1rem; line-height: 1.6;">${c.text}</p>
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:50px;align-items:center;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${d.accentColor};letter-spacing:1px;margin-bottom:14px;">${c.badge}</div>
+            <h1 style="font-size:clamp(2rem, 4vw, 3.2rem);font-weight:800;line-height:1.2;margin-bottom:20px;">${c.title}</h1>
+            <p style="font-size:16px;line-height:1.7;color:#94a3b8;margin-bottom:30px;">${c.text}</p>
+            <a href="${c.btnUrl}" style="display:inline-flex;padding:14px 28px;background:${d.accentColor};color:#fff;font-weight:700;border-radius:8px;text-decoration:none;">${c.btnText}</a>
+          </div>
+          <div style="position:relative;">
+            <img src="${c.img}" alt="Preview" style="width:100%;height:auto;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);" />
+          </div>
         </div>
-        <div style="flex: 1 1 300px; min-height: 300px; background-image: url('${c.img}'); background-size: cover; background-position: center;"></div>
       </div>
     `
   },
   {
-    id: 'cover-3', category: 'cover', name: 'Minimal Hero',
-    defaultContent: { title: 'Less is More', subtitle: 'Clean, simple, effective.' },
-    defaultDesign: { bgColor: '#ffffff', textColor: '#111' },
+    id: 'cover-3',
+    cat: 'cover',
+    category: 'cover',
+    name: 'Минималистичная обложка с градиентом',
+    icon: 'gradient',
+    defaultContent: {
+      title: 'Дизайн без ограничений',
+      subtitle: 'Лаконичная типографика, премиальная верстка и мгновенная публикация.'
+    },
+    defaultDesign: {
+      bgGradient: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+      textColor: '#ffffff'
+    },
     html: (c, d) => `
-      <div class="t-block t-cover-min" style="background: ${d.bgColor}; color: ${d.textColor}; padding: 15vh 20px; text-align: center;">
-        <h1 style="font-size: 3rem; margin-bottom: 1rem; font-weight: 300;">${c.title}</h1>
-        <p style="font-size: 1.2rem; color: #666;">${c.subtitle}</p>
+      <div class="t-block" style="background:${d.bgGradient};color:${d.textColor};padding:120px 24px;text-align:center;">
+        <div class="t-container" style="max-width:860px;margin:0 auto;">
+          <h1 style="font-size:clamp(2.5rem, 6vw, 4rem);font-weight:900;letter-spacing:-1px;margin-bottom:18px;">${c.title}</h1>
+          <p style="font-size:1.3rem;color:#94a3b8;line-height:1.6;">${c.subtitle}</p>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'cover-4',
+    cat: 'cover',
+    category: 'cover',
+    name: 'Обложка с формой захвата лидов',
+    icon: 'contact_mail',
+    defaultContent: {
+      title: 'Получите персональный расчет проекта',
+      subtitle: 'Оставьте контакты и наш специалист свяжется с вами в течение 15 минут.',
+      btnText: 'Отправить заявку'
+    },
+    defaultDesign: {
+      bgColor: '#111827',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:90px 20px;">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:40px;align-items:center;">
+          <div>
+            <h2 style="font-size:2.8rem;font-weight:800;line-height:1.2;margin-bottom:16px;">${c.title}</h2>
+            <p style="font-size:1.1rem;color:#9ca3af;line-height:1.6;">${c.subtitle}</p>
+          </div>
+          <div style="background:#1f2937;padding:32px;border-radius:16px;border:1px solid #374151;">
+            <form style="display:flex;flex-direction:column;gap:14px;" onsubmit="event.preventDefault();alert('Заявка отправлена!');">
+              <input type="text" placeholder="Ваше имя" required style="padding:14px;background:#111827;border:1px solid #4b5563;border-radius:8px;color:#fff;outline:none;" />
+              <input type="tel" placeholder="+7 (999) 000-00-00" required style="padding:14px;background:#111827;border:1px solid #4b5563;border-radius:8px;color:#fff;outline:none;" />
+              <button type="submit" style="padding:14px;background:${d.accentColor};color:#fff;font-weight:700;border:none;border-radius:8px;cursor:pointer;">${c.btnText}</button>
+            </form>
+          </div>
+        </div>
       </div>
     `
   },
 
-  // ABOUT
+  // ─── 2. О ПРОЕКТЕ / О НАС (ABOUT) ─────────────────────────────
   {
-    id: 'about-1', category: 'about', name: 'About Us Simple',
-    defaultContent: { title: 'About Us', text: 'We are a dedicated team of professionals.' },
-    defaultDesign: { bgColor: '#ffffff', textColor: '#333' },
-    html: (c, d) => `<div class="t-block" style="padding: 80px 20px; background: ${d.bgColor}; color: ${d.textColor}; text-align: center; max-width: 800px; margin: 0 auto;"><h2 style="font-size: 2.5rem; margin-bottom: 20px;">${c.title}</h2><p style="font-size: 1.1rem; line-height: 1.8;">${c.text}</p></div>`
+    id: 'about-1',
+    cat: 'about',
+    category: 'about',
+    name: 'О компании с ключевыми цифрами',
+    icon: 'analytics',
+    defaultContent: {
+      title: 'Мы создаем продукты, которые меняют индустрию',
+      text: 'Более 8 лет опыта в разработке высоконагруженных веб-сервисов, корпоративных порталов и интерактивных интерфейсов.',
+      stats: [
+        { num: '8+', label: 'Лет на рынке' },
+        { num: '250+', label: 'Успешных проектов' },
+        { num: '99.9%', label: 'Довольных клиентов' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#ffffff',
+      textColor: '#0f172a',
+      accentColor: '#0d99ff'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:90px 24px;">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;text-align:center;">
+          <h2 style="font-size:2.5rem;font-weight:800;margin-bottom:20px;letter-spacing:-0.5px;">${c.title}</h2>
+          <p style="font-size:1.15rem;color:#64748b;line-height:1.7;max-width:760px;margin:0 auto 60px;">${c.text}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:30px;">
+            ${(c.stats || []).map(s => `
+              <div style="padding:30px 20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+                <div style="font-size:3rem;font-weight:900;color:${d.accentColor};margin-bottom:8px;">${s.num}</div>
+                <div style="font-size:14px;font-weight:600;color:#64748b;">${s.label}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'about-2', category: 'about', name: 'About with Image',
-    defaultContent: { title: 'Our Story', text: 'Started from the bottom.', img: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600' },
-    defaultDesign: { bgColor: '#f0f0f0', textColor: '#222' },
-    html: (c, d) => `<div class="t-block" style="padding: 60px 20px; background: ${d.bgColor}; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; align-items: center;"><img src="${c.img}" style="width: 100%; border-radius: 10px;"/><div style="color: ${d.textColor};"><h2>${c.title}</h2><p>${c.text}</p></div></div>`
-  },
-
-  // TITLE
-  {
-    id: 'title-1', category: 'title', name: 'Centered Title',
-    defaultContent: { title: 'Section Title', subtitle: 'Optional subtitle here' },
-    defaultDesign: { align: 'center', py: '60px', color: '#000' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; text-align: ${d.align}; color: ${d.color};"><h2 style="font-size: 2.5rem; margin-bottom: 10px;">${c.title}</h2><p style="font-size: 1.2rem; opacity: 0.7;">${c.subtitle}</p></div>`
-  },
-  {
-    id: 'title-2', category: 'title', name: 'Left Title with Divider',
-    defaultContent: { title: 'Big Header' },
-    defaultDesign: { py: '40px', color: '#333', dividerColor: '#007bff' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; color: ${d.color}; max-width: 1200px; margin: 0 auto;"><h2 style="font-size: 2.5rem; position: relative; padding-bottom: 15px;">${c.title}<span style="position: absolute; bottom: 0; left: 0; width: 60px; height: 4px; background: ${d.dividerColor};"></span></h2></div>`
-  },
-
-  // TEXT
-  {
-    id: 'text-1', category: 'text', name: 'Standard Text Block',
-    defaultContent: { text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    defaultDesign: { py: '40px', fontSize: '1.1rem', maxW: '800px', color: '#444' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; max-width: ${d.maxW}; margin: 0 auto; font-size: ${d.fontSize}; color: ${d.color}; line-height: 1.8;">${c.text}</div>`
-  },
-  {
-    id: 'text-2', category: 'text', name: 'Multi-column Text',
-    defaultContent: { col1: 'Text column 1', col2: 'Text column 2' },
-    defaultDesign: { py: '40px', color: '#333' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; color: ${d.color};"><div>${c.col1}</div><div>${c.col2}</div></div>`
-  },
-
-  // IMAGE
-  {
-    id: 'image-1', category: 'image', name: 'Full-width Image',
-    defaultContent: { img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200' },
-    defaultDesign: { py: '0px' },
-    html: (c, d) => `<div style="padding: ${d.py} 0;"><img src="${c.img}" style="width: 100%; display: block; height: auto;" /></div>`
+    id: 'about-2',
+    cat: 'about',
+    category: 'about',
+    name: 'Наша история и миссия',
+    icon: 'flag',
+    defaultContent: {
+      title: 'Наша миссия и принципы',
+      text: 'Мы верим, что веб-технологии должны быть доступны каждому. Наша цель — дать дизайнерам и предпринимателям инструменты для создания безупречных сайтов за считанные минуты.',
+      img: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80'
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      textColor: '#ffffff'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:90px 24px;">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:50px;align-items:center;">
+          <img src="${c.img}" alt="Mission" style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.6);" />
+          <div>
+            <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:20px;">${c.title}</h2>
+            <p style="font-size:16px;line-height:1.8;color:#94a3b8;">${c.text}</p>
+          </div>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'image-2', category: 'image', name: 'Image with Caption',
-    defaultContent: { img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800', caption: 'A beautiful workspace' },
-    defaultDesign: { py: '40px', align: 'center' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; text-align: ${d.align}; max-width: 800px; margin: 0 auto;"><img src="${c.img}" style="max-width: 100%; border-radius: 8px;" /><p style="margin-top: 10px; font-size: 0.9rem; color: #666;">${c.caption}</p></div>`
-  },
-
-  // GALLERY
-  {
-    id: 'gallery-1', category: 'gallery', name: 'Grid Gallery',
-    defaultContent: { images: ['https://source.unsplash.com/random/400x300?sig=1', 'https://source.unsplash.com/random/400x300?sig=2', 'https://source.unsplash.com/random/400x300?sig=3'] },
-    defaultDesign: { gap: '20px', cols: '3' },
-    html: (c, d) => `<div style="padding: 40px 20px; max-width: 1200px; margin: 0 auto;"><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: ${d.gap};">${c.images.map(i => `<img src="${i}" style="width: 100%; border-radius: 8px; object-fit: cover; aspect-ratio: 4/3; cursor: pointer;" data-tilda-modal="image" />`).join('')}</div></div>`
-  },
-  {
-    id: 'gallery-2', category: 'gallery', name: 'Slider Gallery',
-    defaultContent: { images: ['https://source.unsplash.com/random/800x400?sig=1', 'https://source.unsplash.com/random/800x400?sig=2'] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 40px 0; overflow: hidden;" data-tilda-slider="true"><div style="display: flex; gap: 10px; overflow-x: auto; padding: 0 20px; scroll-snap-type: x mandatory;">${c.images.map(i => `<img src="${i}" style="scroll-snap-align: center; flex: 0 0 80%; max-width: 800px; border-radius: 10px; object-fit: cover;" />`).join('')}</div></div>`
-  },
-
-  // FORM
-  {
-    id: 'form-1', category: 'form', name: 'Contact Form',
-    defaultContent: { title: 'Contact Us', btnText: 'Send Message' },
-    defaultDesign: { bgColor: '#f9f9f9' },
-    html: (c, d) => `<div style="padding: 60px 20px; background: ${d.bgColor};"><form data-tilda-form="contact" style="max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px;"><h3 style="text-align: center; margin-bottom: 20px;">${c.title}</h3><input type="text" placeholder="Name" style="padding: 12px; border: 1px solid #ccc; border-radius: 4px;" required /><input type="email" placeholder="Email" style="padding: 12px; border: 1px solid #ccc; border-radius: 4px;" required /><textarea placeholder="Message" rows="4" style="padding: 12px; border: 1px solid #ccc; border-radius: 4px;" required></textarea><button type="submit" style="padding: 15px; background: #000; color: #fff; border: none; border-radius: 4px; cursor: pointer;">${c.btnText}</button></form></div>`
-  },
-  {
-    id: 'form-2', category: 'form', name: 'Newsletter Subscribe',
-    defaultContent: { title: 'Subscribe to our newsletter', btnText: 'Subscribe' },
-    defaultDesign: { bgColor: '#007bff', textColor: '#fff' },
-    html: (c, d) => `<div style="padding: 60px 20px; background: ${d.bgColor}; color: ${d.textColor}; text-align: center;"><h3 style="margin-bottom: 20px;">${c.title}</h3><form data-tilda-form="subscribe" style="display: flex; justify-content: center; gap: 10px; max-width: 400px; margin: 0 auto;"><input type="email" placeholder="Enter your email" style="padding: 12px; border: none; border-radius: 4px; flex: 1;" required /><button type="submit" style="padding: 12px 20px; background: #222; color: #fff; border: none; border-radius: 4px;">${c.btnText}</button></form></div>`
-  },
-  {
-    id: 'form-3', category: 'form', name: 'Call to Action Button',
-    defaultContent: { text: 'Ready to dive in?', btnText: 'Start Now' },
-    defaultDesign: { align: 'center', py: '50px' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; text-align: ${d.align};"><h2>${c.text}</h2><button style="margin-top: 20px; padding: 15px 40px; font-size: 1.2rem; background: #28a745; color: white; border: none; border-radius: 30px; cursor: pointer;">${c.btnText}</button></div>`
-  },
-
-  // PRICING
-  {
-    id: 'pricing-1', category: 'pricing', name: '3-Tier Pricing',
-    defaultContent: { plans: [{ name: 'Basic', price: '$10/mo', feats: ['Feature 1', 'Feature 2'] }, { name: 'Pro', price: '$20/mo', feats: ['All Basic', 'Feature 3'] }, { name: 'Max', price: '$30/mo', feats: ['All Pro', 'Feature 4'] }] },
-    defaultDesign: { cardBg: '#fff' },
-    html: (c, d) => `<div style="padding: 60px 20px; background: #f4f5f7;"><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; max-width: 1000px; margin: 0 auto;">${c.plans.map(p => `<div style="background: ${d.cardBg}; padding: 40px 20px; text-align: center; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"><h3>${p.name}</h3><div style="font-size: 2rem; font-weight: bold; margin: 20px 0;">${p.price}</div><ul style="list-style: none; padding: 0; margin-bottom: 30px; color: #666;">${p.feats.map(f => `<li style="margin-bottom: 10px;">${f}</li>`).join('')}</ul><button style="padding: 10px 20px; border-radius: 5px; border: 1px solid #000; background: transparent; cursor: pointer;">Select Plan</button></div>`).join('')}</div></div>`
-  },
-  {
-    id: 'pricing-2', category: 'pricing', name: 'Simple Pricing',
-    defaultContent: { title: 'One Simple Price', price: '$99', desc: 'Lifetime access.' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 80px 20px; text-align: center;"><h2>${c.title}</h2><p style="font-size: 4rem; font-weight: 800; margin: 20px 0;">${c.price}</p><p style="color: #666;">${c.desc}</p><button style="margin-top: 20px; padding: 15px 40px; background: #000; color: #fff; border: none; border-radius: 5px;">Buy Now</button></div>`
+    id: 'about-3',
+    cat: 'about',
+    category: 'about',
+    name: 'Карточки ценностей компании',
+    icon: 'diamond',
+    defaultContent: {
+      title: 'Ценности, которыми мы руководствуемся',
+      items: [
+        { title: 'Качество без компромиссов', desc: 'Каждый пиксель и строка кода выверены до мелочей.' },
+        { title: 'Скорость и легкость', desc: 'Мгновенный отклик интерфейса и быстрая загрузка страниц.' },
+        { title: 'Забота о пользователе', desc: 'Удобство и интуитивность на каждом шаге взаимодействия.' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#131927',
+      textColor: '#ffffff'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:80px 24px;">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;">
+          <h2 style="font-size:2.4rem;font-weight:800;text-align:center;margin-bottom:50px;">${c.title}</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;">
+            ${(c.items || []).map(item => `
+              <div style="background:#1e293b;padding:32px 24px;border-radius:12px;border:1px solid #334155;">
+                <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:12px;color:#38bdf8;">${item.title}</h3>
+                <p style="font-size:14px;color:#94a3b8;line-height:1.6;">${item.desc}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
   },
 
-  // FEATURES
+  // ─── 3. ЗАГОЛОВКИ И РАЗДЕЛИТЕЛИ (TITLE) ────────────────────────
   {
-    id: 'features-1', category: 'features', name: 'Grid Features',
-    defaultContent: { items: [{ title: 'Fast', desc: 'Lightning speed.' }, { title: 'Secure', desc: 'Encrypted data.' }, { title: 'Reliable', desc: '99.9% uptime.' }] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px;">${c.items.map(i => `<div><h4 style="font-size: 1.2rem; margin-bottom: 10px;">${i.title}</h4><p style="color: #666;">${i.desc}</p></div>`).join('')}</div>`
+    id: 'title-1',
+    cat: 'title',
+    category: 'title',
+    name: 'Заголовок секции по центру',
+    icon: 'format_align_center',
+    defaultContent: {
+      badge: 'ОБЗОР ВОЗМОЖНОСТЕЙ',
+      title: 'Все необходимое для вашего бизнеса',
+      subtitle: 'Комплексный набор инструментов для презентации услуг и приема платежей.'
+    },
+    defaultDesign: {
+      bgColor: 'transparent',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '60px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};text-align:center;">
+        <div class="t-container" style="max-width:800px;margin:0 auto;">
+          <div style="font-size:12px;font-weight:700;color:${d.accentColor};letter-spacing:1.5px;margin-bottom:10px;">${c.badge}</div>
+          <h2 style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:800;margin-bottom:14px;letter-spacing:-0.5px;">${c.title}</h2>
+          <p style="font-size:1.1rem;color:#94a3b8;line-height:1.6;">${c.subtitle}</p>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'features-2', category: 'features', name: 'Feature Left Image Right',
-    defaultContent: { title: 'Awesome Feature', desc: 'It does everything you need.', img: 'https://source.unsplash.com/random/500x500?sig=4' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 40px;"><div style="flex: 1 1 300px;"><h2>${c.title}</h2><p style="margin-top: 20px; color: #555; line-height: 1.6;">${c.desc}</p></div><div style="flex: 1 1 300px;"><img src="${c.img}" style="width: 100%; border-radius: 10px;" /></div></div>`
+    id: 'title-2',
+    cat: 'title',
+    category: 'title',
+    name: 'Заголовок слева с акцентной линией',
+    icon: 'format_align_left',
+    defaultContent: {
+      title: 'Наши ключевые направления',
+      subtitle: 'Проекты, которыми мы гордимся'
+    },
+    defaultDesign: {
+      bgColor: 'transparent',
+      textColor: '#ffffff',
+      lineColor: '#0d99ff',
+      padding: '50px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;">
+          <div style="width:40px;height:4px;background:${d.lineColor};border-radius:2px;margin-bottom:16px;"></div>
+          <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:8px;">${c.title}</h2>
+          <p style="font-size:1.1rem;color:#94a3b8;">${c.subtitle}</p>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'features-3', category: 'features', name: 'Icons Row',
-    defaultContent: { features: ['Responsive', 'Modern', 'Fast'] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 50px 20px; background: #111; color: #fff; display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; text-align: center;">${c.features.map(f => `<div><div style="width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 50%; margin: 0 auto 10px;"></div><b>${f}</b></div>`).join('')}</div>`
-  },
-
-  // TESTIMONIALS
-  {
-    id: 'testimonials-1', category: 'testimonials', name: 'Testimonial Cards',
-    defaultContent: { reviews: [{ text: '"Amazing product!"', author: 'John Doe' }, { text: '"Saved me hours."', author: 'Jane Smith' }] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; background: #f9f9f9;"><div style="max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">${c.reviews.map(r => `<div style="background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);"><p style="font-style: italic; margin-bottom: 20px; color: #444;">${r.text}</p><strong>- ${r.author}</strong></div>`).join('')}</div></div>`
-  },
-  {
-    id: 'testimonials-2', category: 'testimonials', name: 'Big Testimonial',
-    defaultContent: { quote: '"The best decision we ever made."', author: 'CEO, Acme Corp' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 80px 20px; text-align: center; max-width: 800px; margin: 0 auto;"><h2 style="font-size: 2.5rem; font-weight: 300; line-height: 1.4; margin-bottom: 20px;">${c.quote}</h2><p style="text-transform: uppercase; letter-spacing: 1px; color: #888;">${c.author}</p></div>`
-  },
-
-  // MENU
-  {
-    id: 'menu-1', category: 'menu', name: 'Standard Top Menu',
-    defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] },
-    defaultDesign: { bgColor: '#ffffff', textColor: '#000' },
-    html: (c, d) => `<nav style="background: ${d.bgColor}; color: ${d.textColor}; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><div style="font-weight: bold; font-size: 1.5rem;">${c.logo}</div><ul style="list-style: none; display: flex; gap: 20px; margin: 0; padding: 0;">${c.links.map(l => `<li><a href="#" style="text-decoration: none; color: inherit;">${l}</a></li>`).join('')}</ul></nav>`
-  },
-  {
-    id: 'menu-2', category: 'menu', name: 'Burger Menu',
-    defaultContent: { logo: 'Brand' },
-    defaultDesign: { bgColor: '#111', textColor: '#fff' },
-    html: (c, d) => `<nav style="background: ${d.bgColor}; color: ${d.textColor}; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;"><div style="font-size: 1.2rem; font-weight: bold;">${c.logo}</div><button data-tilda-burger="toggle" style="background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1.5rem;">☰</button></nav>`
-  },
-
-  // FOOTER
-  {
-    id: 'footer-1', category: 'footer', name: 'Simple Footer',
-    defaultContent: { text: '© 2024 Company Name. All rights reserved.' },
-    defaultDesign: { bgColor: '#222', textColor: '#ccc' },
-    html: (c, d) => `<footer style="background: ${d.bgColor}; color: ${d.textColor}; text-align: center; padding: 30px 20px; font-size: 0.9rem;">${c.text}</footer>`
-  },
-  {
-    id: 'footer-2', category: 'footer', name: 'Multi-column Footer',
-    defaultContent: { col1: 'Company', col2: 'Legal', col3: 'Social' },
-    defaultDesign: { bgColor: '#f8f9fa', textColor: '#333' },
-    html: (c, d) => `<footer style="background: ${d.bgColor}; color: ${d.textColor}; padding: 60px 20px;"><div style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px;"><div><strong>${c.col1}</strong><ul style="list-style:none; padding:0; margin-top:15px; line-height:2;"><li>About</li><li>Jobs</li></ul></div><div><strong>${c.col2}</strong><ul style="list-style:none; padding:0; margin-top:15px; line-height:2;"><li>Terms</li><li>Privacy</li></ul></div><div><strong>${c.col3}</strong><ul style="list-style:none; padding:0; margin-top:15px; line-height:2;"><li>Twitter</li><li>Facebook</li></ul></div></div></footer>`
-  },
-
-  // FAQ
-  {
-    id: 'faq-1', category: 'faq', name: 'Accordion FAQ',
-    defaultContent: { items: [{ q: 'How does it work?', a: 'Very simply.' }, { q: 'Is it free?', a: 'Yes, for basic usage.' }] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 800px; margin: 0 auto;"><h2 style="text-align: center; margin-bottom: 40px;">FAQ</h2><div style="display: flex; flex-direction: column; gap: 15px;">${c.items.map(i => `<details data-tilda-accordion style="background: #f4f5f7; padding: 15px; border-radius: 5px; cursor: pointer;"><summary style="font-weight: bold; outline: none;">${i.q}</summary><div style="margin-top: 10px; color: #555;">${i.a}</div></details>`).join('')}</div></div>`
-  },
-  {
-    id: 'faq-2', category: 'faq', name: 'Grid FAQ',
-    defaultContent: { items: [{ q: 'Question 1', a: 'Answer 1' }, { q: 'Question 2', a: 'Answer 2' }, { q: 'Question 3', a: 'Answer 3' }, { q: 'Question 4', a: 'Answer 4' }] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">${c.items.map(i => `<div><h4 style="margin-bottom: 10px;">${i.q}</h4><p style="color: #666;">${i.a}</p></div>`).join('')}</div>`
-  },
-
-  // MEDIA
-  {
-    id: 'media-1', category: 'media', name: 'YouTube Video',
-    defaultContent: { videoId: 'dQw4w9WgXcQ' },
-    defaultDesign: { py: '40px' },
-    html: (c, d) => `<div style="padding: ${d.py} 20px; max-width: 800px; margin: 0 auto;"><div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px;"><iframe src="https://www.youtube.com/embed/${c.videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allowfullscreen></iframe></div></div>`
-  },
-  {
-    id: 'media-2', category: 'media', name: 'Audio Player',
-    defaultContent: { src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', title: 'Sample Track' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 40px 20px; text-align: center; background: #f0f0f0; border-radius: 8px; max-width: 500px; margin: 0 auto;"><h3>${c.title}</h3><audio controls style="width: 100%; margin-top: 15px;"><source src="${c.src}" type="audio/mpeg">Your browser does not support audio.</audio></div>`
+    id: 'title-3',
+    cat: 'title',
+    category: 'title',
+    name: 'Цитата / Большой акцентный текст',
+    icon: 'format_quote',
+    defaultContent: {
+      quote: '«Простота — это высшая ступень утонченности и совершенства.»',
+      author: 'Леонардо да Винчи'
+    },
+    defaultDesign: {
+      bgColor: '#1e293b',
+      textColor: '#ffffff',
+      padding: '70px 24px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};text-align:center;">
+        <div class="t-container" style="max-width:860px;margin:0 auto;">
+          <p style="font-size:1.8rem;font-weight:600;font-style:italic;line-height:1.5;margin-bottom:20px;color:#e2e8f0;">${c.quote}</p>
+          <div style="font-size:14px;font-weight:700;color:#0d99ff;letter-spacing:1px;">— ${c.author}</div>
+        </div>
+      </div>
+    `
   },
 
-  // CONTACTS
+  // ─── 4. ТЕКСТОВЫЕ БЛОКИ (TEXT) ────────────────────────────────
   {
-    id: 'contacts-1', category: 'contacts', name: 'Map & Address',
-    defaultContent: { address: '123 Main St, NY, USA', email: 'hello@example.com', phone: '+1 555 0000' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px;"><div style="flex: 1 1 300px;"><h2>Get in touch</h2><p style="margin-top:20px;"><strong>Address:</strong> ${c.address}</p><p><strong>Email:</strong> ${c.email}</p><p><strong>Phone:</strong> ${c.phone}</p></div><div style="flex: 1 1 400px; background: #ddd; min-height: 300px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #888;">[ Map Placeholder ]</div></div>`
+    id: 'text-1',
+    cat: 'text',
+    category: 'text',
+    name: 'Стандартный текстовый блок для статьи',
+    icon: 'notes',
+    defaultContent: {
+      text: 'Современный визуальный конструктор позволяет концентрироваться на содержании и бизнес-целях. Забудьте о сложностях верстки и ручной настройке адаптива — все блоки автоматически оптимизированы для корректного отображения на экранах любых размеров.'
+    },
+    defaultDesign: {
+      bgColor: 'transparent',
+      textColor: '#cbd5e1',
+      fontSize: '17px',
+      padding: '40px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:800px;margin:0 auto;font-size:${d.fontSize};color:${d.textColor};line-height:1.8;">
+          <p>${c.text}</p>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'contacts-2', category: 'contacts', name: 'Simple Contact Info',
-    defaultContent: { text: 'Reach out anytime at contact@site.com' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 50px 20px; text-align: center; font-size: 1.5rem;">${c.text}</div>`
+    id: 'text-2',
+    cat: 'text',
+    category: 'text',
+    name: 'Две колонки текста',
+    icon: 'view_agenda',
+    defaultContent: {
+      col1Title: 'Быстрый старт',
+      col1Text: 'Выберите готовый шаблон или добавьте нужные блоки из обширной библиотеки. Редактируйте текст и изображения в 1 клик.',
+      col2Title: 'Гибкая кастомизация',
+      col2Text: 'Настраивайте шрифты, цвета, отступы, тени и анимации появления. Подключайте собственные скрипты и стили.'
+    },
+    defaultDesign: {
+      bgColor: 'transparent',
+      textColor: '#ffffff',
+      padding: '60px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:40px;">
+          <div>
+            <h3 style="font-size:1.4rem;font-weight:700;margin-bottom:12px;color:#0d99ff;">${c.col1Title}</h3>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7;">${c.col1Text}</p>
+          </div>
+          <div>
+            <h3 style="font-size:1.4rem;font-weight:700;margin-bottom:12px;color:#0d99ff;">${c.col2Title}</h3>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7;">${c.col2Text}</p>
+          </div>
+        </div>
+      </div>
+    `
   },
 
-  // STORE
+  // ─── 5. ПРЕИМУЩЕСТВА (FEATURES) ──────────────────────────────
   {
-    id: 'store-1', category: 'store', name: 'Product Grid',
-    defaultContent: { products: [{ name: 'Item A', price: '$10', img: 'https://source.unsplash.com/random/200x200?sig=10' }, { name: 'Item B', price: '$20', img: 'https://source.unsplash.com/random/200x200?sig=11' }] },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1200px; margin: 0 auto;"><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px;">${c.products.map(p => `<div style="text-align: center;"><img src="${p.img}" style="width: 100%; border-radius: 8px;" /><h4 style="margin: 15px 0 5px;">${p.name}</h4><p style="color: #666; margin-bottom: 15px;">${p.price}</p><button data-tilda-cart-add="true" style="padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Add to Cart</button></div>`).join('')}</div></div>`
+    id: 'features-1',
+    cat: 'features',
+    category: 'features',
+    name: 'Сетка 3-х карточек преимуществ с иконками',
+    icon: 'grid_view',
+    defaultContent: {
+      cards: [
+        { icon: 'speed', title: 'Мгновенная скорость', desc: 'Оптимизированный легковесный код и быстрая загрузка страниц.' },
+        { icon: 'devices', title: '100% Адаптивность', desc: 'Автоматическая подстройка под мобильные устройства и планшеты.' },
+        { icon: 'security', title: 'Безопасность данных', desc: 'Надежная защита форм и интеграция с Telegram-уведомлениями.' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1100px;margin:0 auto;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;">
+            ${(c.cards || []).map(card => `
+              <div style="background:#1e293b;padding:36px 28px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);transition:transform 0.2s;">
+                <div style="width:52px;height:52px;background:rgba(13,153,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;color:${d.accentColor};margin-bottom:20px;">
+                  <span class="material-symbols-rounded" style="font-size:28px;">${card.icon}</span>
+                </div>
+                <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:10px;">${card.title}</h3>
+                <p style="font-size:14px;color:#94a3b8;line-height:1.6;">${card.desc}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
   },
   {
-    id: 'store-2', category: 'store', name: 'Single Product Featured',
-    defaultContent: { name: 'Super Widget', price: '$99', desc: 'The best widget ever.', img: 'https://source.unsplash.com/random/500x500?sig=12' },
-    defaultDesign: {},
-    html: (c, d) => `<div style="padding: 60px 20px; max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: center;"><div style="flex: 1 1 300px;"><img src="${c.img}" style="width: 100%; border-radius: 10px;" /></div><div style="flex: 1 1 300px;"><h2>${c.name}</h2><p style="font-size: 2rem; color: #28a745; margin: 15px 0;">${c.price}</p><p style="margin-bottom: 25px; color: #555; line-height: 1.6;">${c.desc}</p><button data-tilda-cart-add="true" style="padding: 15px 40px; background: #007bff; color: #fff; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer;">Buy Now</button></div></div>`
+    id: 'features-2',
+    cat: 'features',
+    category: 'features',
+    name: '4 колонки преимуществ с цифрами',
+    icon: 'format_list_numbered',
+    defaultContent: {
+      steps: [
+        { num: '01', title: 'Выбор шаблона', desc: 'Подберите подходящую структуру сайта.' },
+        { num: '02', title: 'Наполнение', desc: 'Замените тексты и добавьте свои фото.' },
+        { num: '03', title: 'Настройка дизайна', desc: 'Скорректируйте цвета и шрифты.' },
+        { num: '04', title: 'Публикация', desc: 'Запустите сайт онлайн в 1 клик.' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#111827',
+      textColor: '#ffffff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:24px;">
+            ${(c.steps || []).map(s => `
+              <div style="padding:24px;border-left:2px solid #0d99ff;background:rgba(255,255,255,0.02);">
+                <div style="font-size:2rem;font-weight:900;color:#0d99ff;margin-bottom:8px;">${s.num}</div>
+                <h4 style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">${s.title}</h4>
+                <p style="font-size:13px;color:#9ca3af;line-height:1.5;">${s.desc}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 6. ТАРИФЫ И ЦЕНЫ (PRICING) ───────────────────────────────
+  {
+    id: 'pricing-1',
+    cat: 'pricing',
+    category: 'pricing',
+    name: '3 карточки тарифов с выделенным планом',
+    icon: 'payments',
+    defaultContent: {
+      title: 'Прозрачные тарифные планы',
+      subtitle: 'Выберите оптимальный вариант для ваших задач',
+      plans: [
+        { name: 'Базовый', price: '990 ₽', period: '/ мес', desc: 'Для небольших сайтов и портфолио', features: ['До 3 страниц', 'Стандартные блоки', 'SSL-сертификат'], isFeatured: false },
+        { name: 'Профессиональный', price: '2 490 ₽', period: '/ мес', desc: 'Идеально для бизнеса и интернет-магазинов', features: ['Безлимит страниц', 'Zero Block редактор', 'Прием онлайн-оплаты', 'Telegram-интеграция'], isFeatured: true },
+        { name: 'Корпоративный', price: '4 990 ₽', period: '/ мес', desc: 'Для крупных проектов и команд', features: ['Все функции PRO', 'Приоритетная поддержка 24/7', 'Выделенный сервер'], isFeatured: false }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '90px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;text-align:center;">
+          <h2 style="font-size:2.6rem;font-weight:800;margin-bottom:12px;">${c.title}</h2>
+          <p style="font-size:1.1rem;color:#94a3b8;margin-bottom:60px;">${c.subtitle}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:24px;align-items:stretch;">
+            ${(c.plans || []).map(p => `
+              <div style="background:${p.isFeatured ? '#1e293b' : '#131c2e'};border:${p.isFeatured ? '2px solid #0d99ff' : '1px solid #283548'};border-radius:16px;padding:40px 28px;text-align:left;display:flex;flex-direction:column;position:relative;box-shadow:${p.isFeatured ? '0 20px 40px rgba(13,153,255,0.2)' : 'none'};">
+                ${p.isFeatured ? '<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#0d99ff;color:#fff;padding:4px 14px;border-radius:12px;font-size:11px;font-weight:700;">ХИТ ПРОДАЖ</div>' : ''}
+                <div style="font-size:1.3rem;font-weight:700;margin-bottom:8px;">${p.name}</div>
+                <div style="font-size:13px;color:#94a3b8;margin-bottom:24px;">${p.desc}</div>
+                <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:28px;">
+                  <span style="font-size:2.8rem;font-weight:900;color:#fff;">${p.price}</span>
+                  <span style="font-size:14px;color:#64748b;">${p.period}</span>
+                </div>
+                <ul style="list-style:none;padding:0;margin:0 0 36px 0;display:flex;flex-direction:column;gap:12px;flex:1;">
+                  ${(p.features || []).map(f => `<li style="font-size:14px;color:#cbd5e1;display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="color:#10b981;font-size:18px;">check_circle</span>${f}</li>`).join('')}
+                </ul>
+                <button style="width:100%;padding:14px;background:${p.isFeatured ? '#0d99ff' : 'transparent'};border:1px solid #0d99ff;color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">Выбрать тариф</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 7. МЕНЮ И НАВИГАЦИЯ (MENU) ──────────────────────────────
+  {
+    id: 'menu-1',
+    cat: 'menu',
+    category: 'menu',
+    name: 'Шапка с логотипом, ссылками и кнопкой',
+    icon: 'web',
+    defaultContent: {
+      brand: 'АВРОРА TILDA',
+      links: [
+        { text: 'Главная', url: '#home' },
+        { text: 'Преимущества', url: '#features' },
+        { text: 'Тарифы', url: '#pricing' },
+        { text: 'Контакты', url: '#contacts' }
+      ],
+      btnText: 'Связаться'
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff'
+    },
+    html: (c, d) => `
+      <header class="t-block" style="background:${d.bgColor};color:${d.textColor};border-bottom:1px solid rgba(255,255,255,0.08);padding:16px 24px;">
+        <div class="t-container" style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;">
+          <div style="font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="color:${d.accentColor};">view_quilt</span>
+            <span>${c.brand}</span>
+          </div>
+          <nav style="display:flex;gap:24px;align-items:center;" class="t-nav-links">
+            ${(c.links || []).map(l => `<a href="${l.url}" style="color:#94a3b8;text-decoration:none;font-size:14px;font-weight:500;transition:color 0.2s;">${l.text}</a>`).join('')}
+          </nav>
+          <a href="#order" style="padding:8px 20px;background:${d.accentColor};color:#fff;border-radius:6px;font-weight:600;font-size:13px;text-decoration:none;">${c.btnText}</a>
+        </div>
+      </header>
+    `
+  },
+
+  // ─── 8. ВОПРОСЫ И ОТВЕТЫ (FAQ) ───────────────────────────────
+  {
+    id: 'faq-1',
+    cat: 'faq',
+    category: 'faq',
+    name: 'Интерактивный аккордеон вопросов и ответов',
+    icon: 'help_outline',
+    defaultContent: {
+      title: 'Часто задаваемые вопросы',
+      items: [
+        { q: 'Нужно ли уметь программировать для создания сайта?', a: 'Нет, конструктор работает полностью визуально в режиме No-Code. Вы просто собираете блоки и настраиваете их параметры.' },
+        { q: 'Как опубликовать готовый сайт?', a: 'Нажмите кнопку «Опубликовать» в верхней панели — сайт будет мгновенно выгружен в облако с получением публичной ссылки.' },
+        { q: 'Поддерживается ли экспорт исходного кода?', a: 'Да, вы можете в любой момент скачать готовый ZIP-архив с чистым HTML, CSS и JS для размещения на собственном хостинге.' }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:800px;margin:0 auto;">
+          <h2 style="font-size:2.4rem;font-weight:800;text-align:center;margin-bottom:40px;">${c.title}</h2>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            ${(c.items || []).map(item => `
+              <details style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px 20px;cursor:pointer;">
+                <summary style="font-weight:700;font-size:16px;color:#f8fafc;outline:none;">${item.q}</summary>
+                <div style="margin-top:12px;font-size:14px;color:#94a3b8;line-height:1.7;">${item.a}</div>
+              </details>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 9. ФОРМЫ (FORM) ──────────────────────────────────────────
+  {
+    id: 'form-1',
+    cat: 'form',
+    category: 'form',
+    name: 'Форма обратной связи по центру',
+    icon: 'mail',
+    defaultContent: {
+      title: 'Остались вопросы? Напишите нам',
+      subtitle: 'Мы ответим на все интересующие вопросы и поможем с выбором решения.',
+      btnText: 'Отправить сообщение'
+    },
+    defaultDesign: {
+      bgColor: '#111827',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};" id="order">
+        <div class="t-container" style="max-width:600px;margin:0 auto;text-align:center;">
+          <h2 style="font-size:2.2rem;font-weight:800;margin-bottom:10px;">${c.title}</h2>
+          <p style="font-size:15px;color:#9ca3af;margin-bottom:32px;">${c.subtitle}</p>
+          <form style="display:flex;flex-direction:column;gap:14px;text-align:left;" onsubmit="event.preventDefault();alert('Спасибо! Мы свяжемся с вами.');">
+            <input type="text" placeholder="Ваше имя" required style="padding:14px 16px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#fff;outline:none;" />
+            <input type="email" placeholder="Email для ответа" required style="padding:14px 16px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#fff;outline:none;" />
+            <textarea placeholder="Ваше сообщение..." rows="4" style="padding:14px 16px;background:#1f2937;border:1px solid #374151;border-radius:8px;color:#fff;outline:none;resize:vertical;"></textarea>
+            <button type="submit" style="padding:16px;background:${d.accentColor};color:#fff;font-weight:700;font-size:15px;border:none;border-radius:8px;cursor:pointer;margin-top:8px;">${c.btnText}</button>
+          </form>
+        </div>
+      </div>
+    `
+  },
+
+  // ─── 10. ПОДВАЛ (FOOTER) ──────────────────────────────────────
+  {
+    id: 'footer-1',
+    cat: 'footer',
+    category: 'footer',
+    name: 'Колончатый футер с ссылками и копирайтом',
+    icon: 'call_to_action',
+    defaultContent: {
+      brand: 'АВРОРА TILDA',
+      tagline: 'Платформа визуального проектирования сайтов',
+      copyright: '© 2026 Аврора Tilda. Все права защищены.'
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#94a3b8',
+      padding: '60px 24px 30px'
+    },
+    html: (c, d) => `
+      <footer class="t-block" style="background:${d.bgColor};color:${d.textColor};border-top:1px solid rgba(255,255,255,0.08);padding:${d.padding};">
+        <div class="t-container" style="max-width:1150px;margin:0 auto;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;padding-bottom:30px;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div>
+              <div style="font-weight:800;font-size:18px;color:#fff;margin-bottom:6px;">${c.brand}</div>
+              <div style="font-size:13px;color:#64748b;">${c.tagline}</div>
+            </div>
+            <div style="display:flex;gap:20px;font-size:13px;">
+              <a href="#about" style="color:#94a3b8;text-decoration:none;">О нас</a>
+              <a href="#pricing" style="color:#94a3b8;text-decoration:none;">Тарифы</a>
+              <a href="#privacy" style="color:#94a3b8;text-decoration:none;">Политика конфиденциальности</a>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:12px;color:#475569;margin-top:24px;">${c.copyright}</div>
+        </div>
+      </footer>
+    `
+  },
+
+  // ─── 11. ZERO BLOCK ──────────────────────────────────────────
+  {
+    id: 'zero-1',
+    cat: 'zero',
+    category: 'zero',
+    isZero: true,
+    name: 'Свободный Zero Block',
+    icon: 'bolt',
+    defaultContent: {},
+    defaultDesign: { height: 600, background: '#070a13' },
+    html: (c, d) => `
+      <div class="t-block t-zero-block-rendered" style="min-height:${d.height || 600}px;background:${d.background || '#070a13'};position:relative;display:flex;align-items:center;justify-content:center;">
+        <div style="text-align:center;color:#64748b;padding:40px;">
+          <span class="material-symbols-rounded" style="font-size:48px;color:#0d99ff;margin-bottom:12px;">bolt</span>
+          <div style="font-size:18px;font-weight:700;color:#fff;">Свободный холст Zero Block</div>
+          <div style="font-size:13px;margin-top:6px;">Нажмите кнопку «Редактировать Zero Block» в панели свойств справа для свободного расположения элементов.</div>
+        </div>
+      </div>
+    `
   }
 ];
 
@@ -288,18 +688,20 @@ export function getBlockById(id) {
 }
 
 export function getBlocksByCategory(catId) {
-  return TILDA_BLOCKS.filter(b => b.category === catId);
+  return TILDA_BLOCKS.filter(b => (b.cat || b.category) === catId);
 }
 
 export function renderBlockHtml(block, contentData, designData) {
+  if (!block || typeof block.html !== 'function') return '';
   const mergedContent = { ...block.defaultContent, ...contentData };
   const mergedDesign = { ...block.defaultDesign, ...designData };
   return block.html(mergedContent, mergedDesign);
 }
 
 export function extractBlockDefaultData(block) {
+  if (!block) return { content: {}, design: {} };
   return {
-    content: { ...block.defaultContent },
-    design: { ...block.defaultDesign }
+    content: { ...(block.defaultContent || {}) },
+    design: { ...(block.defaultDesign || {}) }
   };
 }

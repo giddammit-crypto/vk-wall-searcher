@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Open+Sans:wght@400;600;700&family=Oswald:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Roboto:wght@400;500;700&family=Unbounded:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
 
-  <link rel="stylesheet" href="style.css?v=5.0.0">
+  <link rel="stylesheet" href="style.css?v=5.1.0">
 
   <!-- CodeMirror 6 import map -->
   <script type="importmap">
@@ -105,11 +105,11 @@
   </div>
 
   <div class="topbar-right">
-    <button class="topbar-action-btn" id="btn-open-projects" title="Мои сохраненные сайты">
-      <span class="material-symbols-rounded">folder_open</span>
-      <span>Проекты</span>
+    <button class="topbar-action-btn" id="btn-open-ofont" title="Загрузить шрифты ofont.ru">
+      <span class="material-symbols-rounded">font_download</span>
+      <span>Шрифты</span>
     </button>
-    <button class="topbar-action-btn" id="btn-save-project" title="Сохранить черновик (Ctrl+S)">
+    <button class="topbar-action-btn" id="btn-save-project" title="Сохранить проект (Ctrl+S)">
       <span class="material-symbols-rounded">save</span>
       <span>Сохранить</span>
     </button>
@@ -131,7 +131,7 @@
   <aside class="tilda-left-wrap">
     <!-- Vertical Figma Icon Strip -->
     <div class="tilda-vertical-strip" id="tilda-vertical-strip">
-      <button class="strip-btn is-active" data-tab="library" title="Библиотека блоков (35+ категорий Tilda)">
+      <button class="strip-btn is-active" data-tab="library" title="Библиотека блоков (40+ категорий Tilda)">
         <span class="material-symbols-rounded">widgets</span>
       </button>
       <button class="strip-btn" data-tab="layers" title="Слои и структура страницы">
@@ -164,7 +164,7 @@
       <!-- 2. Layers Tree Panel -->
       <div class="panel-tab-content" id="panel-tab-layers" style="display:none;">
         <div class="panel-header">
-          <span>Структура страницы</span>
+          <span>Структура страницы (Слои)</span>
         </div>
         <div class="panel-body" id="tilda-layers-list"></div>
       </div>
@@ -181,7 +181,7 @@
       <!-- 4. Theme & Design System Panel -->
       <div class="panel-tab-content" id="panel-tab-theme" style="display:none;">
         <div class="panel-header">
-          <span>Дизайн-система</span>
+          <span>Шрифты и Дизайн-система</span>
         </div>
         <div class="panel-body" id="tilda-theme-panel"></div>
       </div>
@@ -193,7 +193,7 @@
         </div>
         <div class="panel-body" id="tilda-store-panel">
           <div style="font-size:12px;color:#94a3b8;line-height:1.6;">
-            Добавляйте блоки из категории <b>«Магазин и каталог»</b> для автоматического подключения интерактивной корзины и приема заказов.
+            Добавляйте блоки из категории <b>«Магазин и товары»</b> для автоматического подключения интерактивной корзины и приема заказов.
           </div>
         </div>
       </div>
@@ -225,6 +225,14 @@
 
   <!-- CENTER WORKSPACE -->
   <section class="tilda-center-workspace" id="tilda-center-workspace">
+    <!-- Floating Quick Toolbar -->
+    <div class="tilda-floating-toolbar" id="tilda-floating-toolbar">
+      <button class="tool-btn" id="tool-quick-add-block" title="Добавить блок"><span class="material-symbols-rounded">add</span> Блок</button>
+      <button class="tool-btn" id="tool-quick-zero" title="Перейти в Zero Block"><span class="material-symbols-rounded">bolt</span> Zero</button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="tool-quick-del" title="Удалить выбранный блок/элемент (Del)" style="color:#f43f5e;"><span class="material-symbols-rounded">delete</span> Удалить</button>
+    </div>
+
     <!-- View 1: Tilda Blocks Artboard -->
     <div id="view-builder" style="width:100%;display:flex;justify-content:center;">
       <div id="tilda-artboard" style="width:100%;display:flex;justify-content:center;"></div>
@@ -239,6 +247,7 @@
         <button class="topbar-action-btn" id="zb-add-img"><span class="material-symbols-rounded">image</span> + Фото</button>
         <button class="topbar-action-btn" id="zb-add-shape"><span class="material-symbols-rounded">crop_square</span> + Фигура</button>
         <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+        <button class="topbar-action-btn" id="zb-del-el" style="color:#f43f5e;" title="Удалить элемент (Del)"><span class="material-symbols-rounded">delete</span> Удалить</button>
         <button class="topbar-action-btn" id="zb-btn-apply" style="background:var(--accent);color:#fff;"><span class="material-symbols-rounded">check</span> Применить</button>
       </div>
       <div id="zero-block-canvas-mount" style="width:100%;"></div>
@@ -248,8 +257,6 @@
     <div id="view-code" style="display:none;width:100%;max-width:1400px;height:calc(100vh - 120px);background:var(--bg-dark-1);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-direction:column;">
       <div style="display:flex;background:var(--bg-dark-0);border-bottom:1px solid var(--border);padding:4px 8px;gap:4px;">
         <button class="mode-pill is-active" id="code-tab-html">index.html</button>
-        <button class="mode-pill" id="code-tab-css">style.css</button>
-        <button class="mode-pill" id="code-tab-js">script.js</button>
         <div style="flex:1;"></div>
         <button class="topbar-action-btn" id="btn-code-run"><span class="material-symbols-rounded">play_arrow</span> Run</button>
       </div>
@@ -267,6 +274,43 @@
 </main>
 
 <!-- ═══ 3. MODALS ════════════════════════════════════════════════ -->
+
+<!-- Modal: OFONT.RU Custom Fonts Uploader -->
+<div class="modal-overlay hidden" id="ofont-modal-overlay">
+  <div class="modal-dialog" style="max-width:540px;">
+    <div class="modal-header">
+      <span style="display:flex;align-items:center;gap:8px;font-weight:700;color:#fff;">
+        <span class="material-symbols-rounded" style="color:#0d99ff;">font_download</span>
+        <span>Шрифты ofont.ru & Файлы шрифтов</span>
+      </span>
+      <button class="modal-close" id="ofont-modal-close"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
+        Загрузите файл шрифта <b>.ttf, .otf, .woff, .woff2</b> (скачанный с <a href="https://ofont.ru" target="_blank" style="color:#0d99ff;text-decoration:underline;">ofont.ru</a> или вашего ПК). Шрифт сохранится в вашем браузере.
+      </div>
+
+      <div id="ofont-dropzone" style="border:2px dashed #334155;border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:#0d1117;transition:border-color 0.2s;">
+        <span class="material-symbols-rounded" style="font-size:36px;color:#0d99ff;margin-bottom:8px;">upload_file</span>
+        <div style="font-weight:600;font-size:13px;color:#fff;">Перетащите файл шрифта сюда или нажмите для выбора</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px;">Поддерживаются форматы TTF, OTF, WOFF, WOFF2</div>
+        <input type="file" id="ofont-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none;" />
+      </div>
+
+      <div class="insp-field">
+        <label>Название шрифта в проекте</label>
+        <input type="text" id="ofont-name-input" placeholder="Например: Bebas Neue Cyrillic" />
+      </div>
+
+      <button class="topbar-action-btn btn-primary" id="btn-ofont-apply-font" style="width:100%;padding:12px;justify-content:center;" disabled>
+        <span>Применить и сохранить шрифт</span>
+      </button>
+
+      <div class="insp-section-title" style="margin-top:10px;">Загруженные кастомные шрифты:</div>
+      <div id="ofont-stored-list" style="display:flex;flex-direction:column;gap:8px;max-height:160px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Cloud 24H Upload -->
 <div class="modal-overlay hidden" id="cloud-modal">
@@ -299,6 +343,6 @@
 <div class="tilda-toast" id="toast"></div>
 
 <!-- Main Script Module -->
-<script type="module" src="editor.js?v=5.0.0"></script>
+<script type="module" src="editor.js?v=5.1.0"></script>
 </body>
 </html>
