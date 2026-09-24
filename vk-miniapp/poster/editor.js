@@ -2838,7 +2838,7 @@ function exportProjectJSON() {
     canvas: canvas.toJSON([
       'selectable','hasControls','editable','visible','evented',
       'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
-      '__filterValues','__isUppercase','__origText'
+      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset'
     ])
   };
   const jsonStr = JSON.stringify(data, null, 2);
@@ -3406,7 +3406,7 @@ function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
   if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
-  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText'])));
+  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset'])));
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -3460,103 +3460,260 @@ function fitZoom() {
 let currentExportResolution = '2k';
 let isExportHdrEnabled = true;
 let currentHdrPreset = 'cinematic';
+let isExportRunning = false;
+
+function setExportResolution(res, notify = false) {
+  currentExportResolution = (res || '2k').toLowerCase();
+
+  // Синхронизация кнопок в инспекторе
+  $$('#export-res-group .figma-preset-btn').forEach(b => {
+    b.classList.toggle('is-active', (b.dataset.res || '').toLowerCase() === currentExportResolution);
+  });
+
+  // Синхронизация чипов в модальном окне
+  $$('#enhancer-res-selector .enhancer-res-chip').forEach(c => {
+    c.classList.toggle('is-active', (c.dataset.res || '').toLowerCase() === currentExportResolution);
+  });
+
+  updateEnhancerMetaResolution();
+
+  if (notify && canvas && window.PosterEnhancer) {
+    const scaleInfo = window.PosterEnhancer.calculateExportScale(canvas.getWidth(), canvas.getHeight(), currentExportResolution);
+    if (scaleInfo) {
+      toast(`Разрешение экспорта: ${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px (${scaleInfo.targetName})`);
+    }
+  }
+}
+
+function setExportHdr(enabled, notify = false) {
+  isExportHdrEnabled = !!enabled;
+
+  const chk = $('#chk-export-hdr');
+  if (chk) chk.checked = isExportHdrEnabled;
+
+  const tgl = $('#enh-toggle-hdr');
+  if (tgl) tgl.checked = isExportHdrEnabled;
+
+  const slidersList = $('#enhancer-sliders-list');
+  const presetsWrap = $('.enhancer-presets-wrap');
+  if (slidersList) {
+    slidersList.style.opacity = isExportHdrEnabled ? '1' : '0.4';
+    slidersList.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
+  }
+  if (presetsWrap) {
+    presetsWrap.style.opacity = isExportHdrEnabled ? '1' : '0.4';
+    presetsWrap.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
+  }
+
+  if (notify) {
+    toast(`HDR режим: ${isExportHdrEnabled ? 'ВКЛ' : 'ВЫКЛ'}`);
+  }
+}
+
+function showExportLoader(title, initialStatus = 'Подготовка холста...', initialPercent = 10) {
+  // 1. В модальном окне Enhancer
+  const modalLoader = $('#enhancer-loader-wrap');
+  const modalStatus = $('#enhancer-loader-status');
+  const modalBar = $('#enhancer-progress-bar-fill');
+  if (modalLoader) {
+    modalLoader.classList.remove('hidden');
+    if (modalStatus) modalStatus.textContent = `${initialStatus} (${initialPercent}%)`;
+    if (modalBar) modalBar.style.width = `${initialPercent}%`;
+  }
+
+  // 2. В глобальном плавающем лоадере (если модалка закрыта)
+  const isModalOpen = !$('#enhancer-modal-overlay')?.classList.contains('hidden');
+  const globalLoader = $('#global-export-loader');
+  const globalTitle = $('#global-loader-title');
+  const globalBadge = $('#global-loader-badge');
+  const globalStatus = $('#global-loader-status');
+  const globalBar = $('#global-loader-progress-bar');
+
+  if (globalLoader && !isModalOpen) {
+    globalLoader.classList.remove('hidden');
+    if (globalTitle) globalTitle.textContent = title;
+    if (globalBadge) {
+      const resLabel = currentExportResolution.toUpperCase();
+      globalBadge.textContent = isExportHdrEnabled ? `${resLabel} HDR` : resLabel;
+    }
+    if (globalStatus) globalStatus.textContent = `${initialStatus} (${initialPercent}%)`;
+    if (globalBar) globalBar.style.width = `${initialPercent}%`;
+  }
+}
+
+function updateExportProgress(percent, status) {
+  const p = Math.max(0, Math.min(100, Math.round(percent)));
+  const modalStatus = $('#enhancer-loader-status');
+  const modalBar = $('#enhancer-progress-bar-fill');
+  if (modalStatus) modalStatus.textContent = `${status} (${p}%)`;
+  if (modalBar) modalBar.style.width = `${p}%`;
+
+  const globalStatus = $('#global-loader-status');
+  const globalBar = $('#global-loader-progress-bar');
+  if (globalStatus) globalStatus.textContent = `${status} (${p}%)`;
+  if (globalBar) globalBar.style.width = `${p}%`;
+}
+
+function hideExportLoader(successMsg) {
+  const modalLoader = $('#enhancer-loader-wrap');
+  const modalStatus = $('#enhancer-loader-status');
+  const modalBar = $('#enhancer-progress-bar-fill');
+  const globalLoader = $('#global-export-loader');
+  const globalStatus = $('#global-loader-status');
+  const globalBar = $('#global-loader-progress-bar');
+
+  if (modalBar) modalBar.style.width = '100%';
+  if (modalStatus) modalStatus.textContent = successMsg ? `${successMsg} (100%)` : 'Готово (100%)!';
+  if (globalBar) globalBar.style.width = '100%';
+  if (globalStatus) globalStatus.textContent = successMsg ? `${successMsg} (100%)` : 'Готово (100%)!';
+
+  setTimeout(() => {
+    modalLoader?.classList.add('hidden');
+    if (modalBar) modalBar.style.width = '0%';
+    globalLoader?.classList.add('hidden');
+    if (globalBar) globalBar.style.width = '0%';
+  }, 1200);
+}
 
 async function exportPng() {
-  if (!canvas) return;
+  if (!canvas || isExportRunning) return;
+  isExportRunning = true;
   const enhancer = window.PosterEnhancer;
   const filename = $('#poster-title')?.value?.trim() || 'Афиша';
-  if (enhancer && typeof enhancer.exportPoster === 'function') {
-    try {
-      const resName = currentExportResolution.toUpperCase();
-      toast(`Генерация Ultra-PNG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+  const resName = currentExportResolution.toUpperCase();
+  const formatTitle = `Ultra-PNG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
+
+  showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
+
+  try {
+    if (enhancer && typeof enhancer.exportPoster === 'function') {
       await enhancer.exportPoster(canvas, {
         resolution: currentExportResolution,
         format: 'png',
         hdr: getEnhancerHdrConfig(),
-        filename: filename
+        filename: filename,
+        onProgress: (p, msg) => updateExportProgress(p, msg)
       });
+      hideExportLoader(`Ultra-PNG (${resName}) успешно сохранён`);
       toast(`Ultra-PNG (${resName}) успешно сохранён в «Загрузки»`);
       return;
-    } catch (err) {
-      console.warn('PosterEnhancer PNG export error, fallback to legacy:', err);
     }
-  }
 
-  // Fallback
-  const saved = zoom;
-  applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
-  const url = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
-  const a = document.createElement('a');
-  a.href = url; a.download = filename + '.png'; a.click();
-  applyZoom(saved);
-  toast('PNG сохранён в папку «Загрузки»');
+    // Fallback
+    const saved = zoom;
+    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    updateExportProgress(60, 'Рендеринг холста...');
+    await new Promise(r => setTimeout(r, 20));
+    const url = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
+    const a = document.createElement('a');
+    a.href = url; a.download = filename + '.png'; a.click();
+    applyZoom(saved);
+    hideExportLoader('PNG сохранён');
+    toast('PNG сохранён в папку «Загрузки»');
+  } catch (err) {
+    console.error('Export PNG error:', err);
+    hideExportLoader();
+    toast(`Ошибка экспорта: ${err.message}`);
+  } finally {
+    isExportRunning = false;
+  }
 }
 
 async function exportJpg() {
-  if (!canvas) return;
+  if (!canvas || isExportRunning) return;
+  isExportRunning = true;
   const enhancer = window.PosterEnhancer;
   const filename = $('#poster-title')?.value?.trim() || 'Афиша';
-  if (enhancer && typeof enhancer.exportPoster === 'function') {
-    try {
-      const resName = currentExportResolution.toUpperCase();
-      toast(`Генерация HDR-JPG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+  const resName = currentExportResolution.toUpperCase();
+  const formatTitle = `HDR-JPG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
+
+  showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
+
+  try {
+    if (enhancer && typeof enhancer.exportPoster === 'function') {
       await enhancer.exportPoster(canvas, {
         resolution: currentExportResolution,
         format: 'jpg',
         quality: 0.98,
         hdr: getEnhancerHdrConfig(),
-        filename: filename
+        filename: filename,
+        onProgress: (p, msg) => updateExportProgress(p, msg)
       });
+      hideExportLoader(`HDR-JPG (${resName}) успешно сохранён`);
       toast(`HDR-JPG (${resName}) успешно сохранён в «Загрузки»`);
       return;
-    } catch (err) {
-      console.warn('PosterEnhancer JPG export error, fallback to legacy:', err);
     }
-  }
 
-  // Fallback
-  const saved = zoom;
-  applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
-  const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier:2 });
-  const a = document.createElement('a');
-  a.href = url; a.download = filename + '.jpg'; a.click();
-  applyZoom(saved);
-  toast('JPG (высокое качество) сохранён в папку «Загрузки»');
+    // Fallback
+    const saved = zoom;
+    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    updateExportProgress(60, 'Рендеринг холста...');
+    await new Promise(r => setTimeout(r, 20));
+    const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier:2 });
+    const a = document.createElement('a');
+    a.href = url; a.download = filename + '.jpg'; a.click();
+    applyZoom(saved);
+    hideExportLoader('JPG сохранён');
+    toast('JPG (высокое качество) сохранён в папку «Загрузки»');
+  } catch (err) {
+    console.error('Export JPG error:', err);
+    hideExportLoader();
+    toast(`Ошибка экспорта: ${err.message}`);
+  } finally {
+    isExportRunning = false;
+  }
 }
 
 async function exportPdf() {
-  if (!canvas) return;
+  if (!canvas || isExportRunning) return;
+  isExportRunning = true;
   const enhancer = window.PosterEnhancer;
   const filename = $('#poster-title')?.value?.trim() || 'Афиша';
-  if (enhancer && typeof enhancer.exportPoster === 'function') {
-    try {
-      const resName = currentExportResolution.toUpperCase();
-      toast(`Генерация Print-PDF (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+  const resName = currentExportResolution.toUpperCase();
+  const formatTitle = `Print-PDF (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
+
+  showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
+
+  try {
+    if (enhancer && typeof enhancer.exportPoster === 'function') {
       await enhancer.exportPoster(canvas, {
         resolution: currentExportResolution,
         format: 'pdf',
         hdr: getEnhancerHdrConfig(),
-        filename: filename
+        filename: filename,
+        onProgress: (p, msg) => updateExportProgress(p, msg)
       });
+      hideExportLoader(`Print-PDF (${resName}) готов к печати`);
       toast(`Print-PDF (${resName}) готов к печати 300 DPI`);
       return;
-    } catch (err) {
-      console.warn('PosterEnhancer PDF export error, fallback to legacy:', err);
     }
-  }
 
-  // Fallback
-  if (!window.jspdf) { toast('PDF модуль загружается…'); return; }
-  const { jsPDF } = window.jspdf;
-  const saved = zoom;
-  applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
-  const url = canvas.toDataURL({ format:'png', quality:1 });
-  const isH = currentSize.w > currentSize.h;
-  const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
-  pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
-  pdf.save(filename + '.pdf');
-  applyZoom(saved);
-  toast('PDF готов к печати');
+    // Fallback
+    if (!window.jspdf) {
+      hideExportLoader();
+      toast('PDF модуль загружается…');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const saved = zoom;
+    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    updateExportProgress(60, 'Рендеринг PDF страниц...');
+    await new Promise(r => setTimeout(r, 20));
+    const url = canvas.toDataURL({ format:'png', quality:1 });
+    const isH = currentSize.w > currentSize.h;
+    const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
+    pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
+    pdf.save(filename + '.pdf');
+    applyZoom(saved);
+    hideExportLoader('PDF готов');
+    toast('PDF готов к печати');
+  } catch (err) {
+    console.error('Export PDF error:', err);
+    hideExportLoader();
+    toast(`Ошибка экспорта: ${err.message}`);
+  } finally {
+    isExportRunning = false;
+  }
 }
 
 function openHdrCompareModal() {
@@ -3629,6 +3786,16 @@ function openEnhancerModal() {
 
   overlay.classList.remove('hidden');
   initEnhancerControls();
+
+  // Синхронизация текущего состояния редактора в модалку
+  setExportResolution(currentExportResolution);
+  setExportHdr(isExportHdrEnabled);
+
+  // Синхронизация активного пресета
+  $$('.enhancer-presets-row .enhancer-preset-btn').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.preset === currentHdrPreset);
+  });
+
   updateEnhancerMetaResolution();
   renderEnhancerSplitPreview();
 }
@@ -3771,27 +3938,14 @@ function initEnhancerControls() {
   // Выбор целевого разрешения (чипы 1K, 2K, 4K, 8K, Оригинал)
   $$('#enhancer-res-selector .enhancer-res-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      $$('#enhancer-res-selector .enhancer-res-chip').forEach(c => c.classList.remove('is-active'));
-      chip.classList.add('is-active');
-      currentExportResolution = chip.dataset.res || '4k';
-      updateEnhancerMetaResolution();
+      setExportResolution(chip.dataset.res || '4k', true);
       debounceEnhancerPreview();
     });
   });
 
   // Тумблер HDR
   $('#enh-toggle-hdr')?.addEventListener('change', (e) => {
-    isExportHdrEnabled = e.target.checked;
-    const slidersList = $('#enhancer-sliders-list');
-    const presetsWrap = $('.enhancer-presets-wrap');
-    if (slidersList) {
-      slidersList.style.opacity = isExportHdrEnabled ? '1' : '0.4';
-      slidersList.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
-    }
-    if (presetsWrap) {
-      presetsWrap.style.opacity = isExportHdrEnabled ? '1' : '0.4';
-      presetsWrap.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
-    }
+    setExportHdr(e.target.checked, true);
     debounceEnhancerPreview();
   });
 
@@ -3803,6 +3957,7 @@ function initEnhancerControls() {
     slider.addEventListener('input', () => {
       const v = slider.value;
       valEl.textContent = `${v > 0 ? '+' : ''}${v}%`;
+      $$('.enhancer-presets-row .enhancer-preset-btn').forEach(b => b.classList.remove('is-active'));
       debounceEnhancerPreview();
     });
   };
@@ -3843,48 +3998,10 @@ function initEnhancerControls() {
     });
   });
 
-  // Экспортные кнопки с космическим лоадером и прогресс-баром
-  const runExportWithLoader = async (exportFn, formatName) => {
-    const loader = $('#enhancer-loader-wrap');
-    const statusEl = $('#enhancer-loader-status');
-    const barEl = $('#enhancer-progress-bar-fill');
-
-    if (loader) loader.classList.remove('hidden');
-    if (statusEl) statusEl.textContent = `Обработка холста: ${currentExportResolution.toUpperCase()} HDR (25%)...`;
-    if (barEl) barEl.style.width = '30%';
-
-    try {
-      const p1 = setTimeout(() => {
-        if (barEl) barEl.style.width = '65%';
-        if (statusEl) statusEl.textContent = `Суперсэмплинг и тоноотображение (65%)...`;
-      }, 150);
-
-      const p2 = setTimeout(() => {
-        if (barEl) barEl.style.width = '85%';
-        if (statusEl) statusEl.textContent = `Сборка ${formatName} (85%)...`;
-      }, 350);
-
-      await exportFn();
-
-      clearTimeout(p1);
-      clearTimeout(p2);
-
-      if (barEl) barEl.style.width = '100%';
-      if (statusEl) statusEl.textContent = `${formatName} успешно сохранён (100%)!`;
-
-      setTimeout(() => {
-        if (loader) loader.classList.add('hidden');
-        if (barEl) barEl.style.width = '0%';
-      }, 1400);
-    } catch (err) {
-      if (loader) loader.classList.add('hidden');
-      toast(`Ошибка экспорта: ${err.message}`);
-    }
-  };
-
-  $('#btn-enh-export-png')?.addEventListener('click', () => runExportWithLoader(exportPng, 'Ultra-PNG'));
-  $('#btn-enh-export-jpg')?.addEventListener('click', () => runExportWithLoader(exportJpg, 'HDR-JPG'));
-  $('#btn-enh-export-pdf')?.addEventListener('click', () => runExportWithLoader(exportPdf, 'PDF 300 DPI'));
+  // Экспортные кнопки внутри модального окна
+  $('#btn-enh-export-png')?.addEventListener('click', () => exportPng());
+  $('#btn-enh-export-jpg')?.addEventListener('click', () => exportJpg());
+  $('#btn-enh-export-pdf')?.addEventListener('click', () => exportPdf());
 
   // Кнопка полноэкранного просмотра превью
   $('#btn-enh-fullscreen')?.addEventListener('click', () => {
@@ -3902,9 +4019,13 @@ function initEnhancerControls() {
     const canvases = $$('#enhancer-split-viewport canvas');
     const isZoomed = canvases[0]?.style.transform === 'scale(1.4)';
     canvases.forEach(c => c.style.transform = isZoomed ? 'scale(1)' : 'scale(1.4)');
+    $('#btn-enh-zoom-100')?.classList.toggle('is-active', !isZoomed);
+    $('#btn-enh-zoom-fit')?.classList.toggle('is-active', isZoomed);
   });
   $('#btn-enh-zoom-fit')?.addEventListener('click', () => {
     $$('#enhancer-split-viewport canvas').forEach(c => c.style.transform = 'scale(1)');
+    $('#btn-enh-zoom-fit')?.classList.add('is-active');
+    $('#btn-enh-zoom-100')?.classList.remove('is-active');
   });
 }
 
@@ -3918,7 +4039,7 @@ function startAutosave() {
     if (!canvas) return;
     try {
       localStorage.setItem('aurora_poster_v2', JSON.stringify({
-        canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText']),
+        canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset']),
         title: $('#poster-title').value,
         size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
         at: Date.now(),
@@ -3931,7 +4052,7 @@ function manualSave() {
   if (!canvas) return;
   try {
     localStorage.setItem('aurora_poster_v2', JSON.stringify({
-      canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText']),
+      canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset']),
       title: $('#poster-title').value,
       size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
       at: Date.now(),
@@ -5534,25 +5655,28 @@ function bindEvents() {
   $('#dim-stroke-w')?.addEventListener('change', () => saveHistory());
 
   /* Экспорт пресеты внутри инспектора */
+  const formatButtons = ['#btn-inspector-png', '#btn-inspector-jpg', '#btn-inspector-pdf', '#btn-inspector-svg'];
+  const setActiveFormatBtn = (activeId) => {
+    formatButtons.forEach(id => {
+      $(id)?.classList.toggle('is-active', id === activeId);
+    });
+  };
+
   $('#btn-inspector-export-png')?.addEventListener('click', exportPng);
   $('#btn-inspector-png')?.addEventListener('click', () => {
-    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
-    $('#btn-inspector-png')?.classList.add('is-active');
+    setActiveFormatBtn('#btn-inspector-png');
     exportPng();
   });
   $('#btn-inspector-jpg')?.addEventListener('click', () => {
-    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
-    $('#btn-inspector-jpg')?.classList.add('is-active');
+    setActiveFormatBtn('#btn-inspector-jpg');
     exportJpg();
   });
   $('#btn-inspector-pdf')?.addEventListener('click', () => {
-    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
-    $('#btn-inspector-pdf')?.classList.add('is-active');
+    setActiveFormatBtn('#btn-inspector-pdf');
     exportPdf();
   });
   $('#btn-inspector-svg')?.addEventListener('click', () => {
-    $$('.figma-preset-btn').forEach(b => b.classList.remove('is-active'));
-    $('#btn-inspector-svg')?.classList.add('is-active');
+    setActiveFormatBtn('#btn-inspector-svg');
     const svgStr = buildFigmaSVG();
     const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -5567,19 +5691,12 @@ function bindEvents() {
   /* Выбор целевого разрешения экспорта (1K, 2K, 4K, 8K) */
   $$('#export-res-group .figma-preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('#export-res-group .figma-preset-btn').forEach(b => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      currentExportResolution = btn.dataset.res || '2k';
-      const scaleInfo = window.PosterEnhancer ? window.PosterEnhancer.calculateExportScale(canvas.getWidth(), canvas.getHeight(), currentExportResolution) : null;
-      if (scaleInfo) {
-        toast(`Разрешение экспорта: ${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px (${scaleInfo.targetName})`);
-      }
+      setExportResolution(btn.dataset.res || '2k', true);
     });
   });
 
   $('#chk-export-hdr')?.addEventListener('change', e => {
-    isExportHdrEnabled = e.target.checked;
-    toast(`HDR режим: ${isExportHdrEnabled ? 'ВКЛ' : 'ВЫКЛ'}`);
+    setExportHdr(e.target.checked, true);
   });
 
   /* Вызов модального окна Ultra-HD & HDR Enhancer */
@@ -5609,7 +5726,7 @@ function bindEvents() {
   });
   $('#btn-hdr-modal-export')?.addEventListener('click', async () => {
     closeHdrCompareModal();
-    currentExportResolution = '4k';
+    setExportResolution('4k', true);
     await exportPng();
   });
 
@@ -5648,6 +5765,13 @@ function bindEvents() {
   $('#btn-figma-menu')?.addEventListener('click', () => $('#btn-back')?.click());
 
   /* Вкладка Settings: форматы макета и экспорт JSON */
+  function loadBlank(blankKey) {
+    if (!blankKey) return;
+    const targetId = blankKey.startsWith('blank_') ? blankKey : `blank_${blankKey}`;
+    const t = TEMPLATES.find(x => x.id === targetId || x.id === blankKey) || TEMPLATES.find(x => x.id === 'blank_a4_v');
+    if (t) loadTemplate(t);
+  }
+
   $$('.figma-settings-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const blankKey = btn.dataset.blank;

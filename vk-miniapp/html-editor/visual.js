@@ -290,6 +290,26 @@ export const CATEGORIES = [
   { id: 'anim',       label: 'Анимации',   icon: 'animation' },
 ];
 
+// ─── 16 Шрифтов с поддержкой Google Fonts ──────────────────────
+export const TYPO_FONTS = [
+  { name: 'Inter', category: 'Google Sans', google: 'Inter:wght@300;400;500;600;700;800;900' },
+  { name: 'Roboto', category: 'Google Sans', google: 'Roboto:wght@300;400;500;700;900' },
+  { name: 'Montserrat', category: 'Google Sans', google: 'Montserrat:wght@300;400;500;600;700;800;900' },
+  { name: 'Open Sans', category: 'Google Sans', google: 'Open+Sans:wght@300;400;600;700;800' },
+  { name: 'Playfair Display', category: 'Google Serif', google: 'Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700' },
+  { name: 'Oswald', category: 'Google Display', google: 'Oswald:wght@300;400;500;600;700' },
+  { name: 'Merriweather', category: 'Google Serif', google: 'Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400' },
+  { name: 'JetBrains Mono', category: 'Google Mono', google: 'JetBrains+Mono:wght@300;400;500;700' },
+  { name: 'Caveat', category: 'Google Cursive', google: 'Caveat:wght@400;600;700' },
+  { name: 'Fira Code', category: 'Google Mono', google: 'Fira+Code:wght@300;400;500;600;700' },
+  { name: 'Georgia', category: 'System Serif' },
+  { name: 'Arial', category: 'System Sans' },
+  { name: 'Times New Roman', category: 'System Serif' },
+  { name: 'Courier New', category: 'System Mono' },
+  { name: 'Impact', category: 'System Display' },
+  { name: 'Comic Sans MS', category: 'System Cursive' }
+];
+
 // ─── Visual Editor Class ──────────────────────────────────────
 export class VisualEditor {
   constructor({ paletteEl, canvasEl, propsEl, onExport }) {
@@ -299,6 +319,7 @@ export class VisualEditor {
     this.onExport  = onExport || (() => {});
 
     this.selectedBlock = null;
+    this.selectedElement = null; // Deep target selection (вложенный элемент)
     this.blocks = [];        // [{id, el, blockDef}]
     this.history = [];
     this.historyIdx = -1;
@@ -306,9 +327,14 @@ export class VisualEditor {
     this._paletteId = null;  // block id being dragged from palette
     this.docTemplate = null; // preserves full html document structure (head, doctype, body attrs)
     this._currentUserCSS = '';
+    this._floatingToolbar = null;
+    this._contextMenu = null;
 
     this._buildPalette();
     this._bindCanvas();
+    this._initFloatingToolbar();
+    this._initContextMenu();
+    this._bindKeyboardShortcuts();
   }
 
   // ── PALETTE ───────────────────────────────────────────────
@@ -458,6 +484,45 @@ export class VisualEditor {
     // Click outside → deselect
     canvas.addEventListener('click', e => {
       if (e.target === canvas) this._deselect();
+    });
+
+    // Hover highlighting on inner elements
+    canvas.addEventListener('mouseover', e => {
+      const block = e.target.closest('.ve-block');
+      if (!block) return;
+      const content = block.querySelector('.ve-block-content');
+      if (content && content.contains(e.target) && e.target !== content && !e.target.classList.contains('ve-element-badge') && !e.target.closest('.ve-element-badge')) {
+        canvas.querySelectorAll('.ve-hovered-element').forEach(el => {
+          if (el !== e.target) el.classList.remove('ve-hovered-element');
+        });
+        e.target.classList.add('ve-hovered-element');
+      }
+    });
+
+    canvas.addEventListener('mouseout', e => {
+      if (e.target.classList.contains('ve-hovered-element')) {
+        e.target.classList.remove('ve-hovered-element');
+      }
+    });
+
+    // Right-click Context Menu
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const block = e.target.closest('.ve-block');
+      if (!block) {
+        this._hideContextMenu();
+        return;
+      }
+      const content = block.querySelector('.ve-block-content');
+      let targetEl = e.target;
+      if (targetEl.closest('.ve-block-toolbar') || targetEl.closest('.ve-resize-handle') || targetEl.closest('.ve-w-btn')) {
+        this._select(block);
+      } else if (content && content.contains(targetEl) && targetEl !== content && !targetEl.classList.contains('ve-element-badge') && !targetEl.closest('.ve-element-badge')) {
+        this.selectElement(targetEl, block);
+      } else {
+        this._select(block);
+      }
+      this._showContextMenu(e.clientX, e.clientY);
     });
   }
 
@@ -706,11 +771,16 @@ export class VisualEditor {
   }
 
   _bindBlockEvents(wrapper, def) {
-    // Select on click
+    // Select on click (deep target selection)
     wrapper.addEventListener('click', e => {
-      if (e.target.closest('.ve-act-btn') || e.target.closest('.ve-resize-handle') || e.target.closest('.ve-w-btn')) return;
+      if (e.target.closest('.ve-act-btn') || e.target.closest('.ve-resize-handle') || e.target.closest('.ve-w-btn') || e.target.closest('.ve-element-badge')) return;
       e.stopPropagation();
-      this._select(wrapper, def);
+      const content = wrapper.querySelector('.ve-block-content');
+      if (content && content.contains(e.target) && e.target !== content) {
+        this.selectElement(e.target, wrapper);
+      } else {
+        this._select(wrapper, def);
+      }
     });
 
     // Toolbar width buttons
@@ -746,27 +816,7 @@ export class VisualEditor {
       const parent = wrapper.parentNode;
 
       if (action === 'delete') {
-        if (this.selectedBlock === wrapper) this._deselect();
-        const oldParent = wrapper.parentNode;
-        wrapper.remove();
-        if (oldParent && oldParent.classList && oldParent.classList.contains('ve-col')) {
-          if (!oldParent.querySelector('.ve-block')) {
-            const ph = document.createElement('p');
-            ph.className = 've-col-placeholder';
-            ph.textContent = 'Колонка (пусто)';
-            oldParent.appendChild(ph);
-          }
-        } else if (oldParent && oldParent.classList && oldParent.classList.contains('ve-row-flex')) {
-          const remaining = oldParent.querySelectorAll('.ve-block');
-          if (remaining.length === 0) {
-            const rowWrapper = oldParent.closest('.ve-block');
-            if (rowWrapper) rowWrapper.remove();
-          } else if (remaining.length === 1) {
-            this.setBlockWidth(remaining[0], '100%');
-          }
-        }
-        this._updateEmptyState();
-        this._saveHistory();
+        this.deleteBlock(wrapper);
       } else if (action === 'up') {
         const prev = wrapper.previousElementSibling;
         if (prev && !prev.classList.contains('ve-empty-state')) {
@@ -985,18 +1035,155 @@ export class VisualEditor {
     rhCorner.onpointerdown = e => startResize(e, 'corner');
   }
 
-  // ── SELECTION ─────────────────────────────────────────────
+  // ── DYNAMIC GOOGLE FONT LOADER ───────────────────────────
+  loadGoogleFont(fontName) {
+    if (!fontName) return;
+    const clean = fontName.replace(/['"]/g, '').trim();
+    const fDef = TYPO_FONTS.find(f => f.name.toLowerCase() === clean.toLowerCase());
+    if (!fDef || !fDef.google) return;
+
+    const id = 've-font-' + clean.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    if (document.getElementById(id)) return;
+
+    if (!document.getElementById('ve-gf-pre-1')) {
+      const p1 = document.createElement('link');
+      p1.id = 've-gf-pre-1';
+      p1.rel = 'preconnect';
+      p1.href = 'https://fonts.googleapis.com';
+      document.head.appendChild(p1);
+    }
+    if (!document.getElementById('ve-gf-pre-2')) {
+      const p2 = document.createElement('link');
+      p2.id = 've-gf-pre-2';
+      p2.rel = 'preconnect';
+      p2.href = 'https://fonts.gstatic.com';
+      p2.crossOrigin = 'anonymous';
+      document.head.appendChild(p2);
+    }
+
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fDef.google}&display=swap`;
+    document.head.appendChild(link);
+  }
+
+  // ── SELECTION & DOM HIERARCHY ─────────────────────────────
+  selectElement(el, blockWrapper) {
+    if (!el) {
+      this._deselect();
+      return;
+    }
+
+    if (el.classList && el.classList.contains('ve-block')) {
+      const def = BLOCK_PALETTE.find(b => b.id === el.dataset.defId);
+      this._select(el, def);
+      return;
+    }
+
+    blockWrapper = blockWrapper || el.closest('.ve-block');
+    if (!blockWrapper) return;
+
+    // Clear previous element selections
+    this.canvasEl.querySelectorAll('.ve-selected-element').forEach(item => {
+      item.classList.remove('ve-selected-element');
+    });
+    this.canvasEl.querySelectorAll('.ve-element-badge').forEach(b => b.remove());
+
+    if (this.selectedBlock && this.selectedBlock !== blockWrapper) {
+      this.selectedBlock.classList.remove('is-selected');
+    }
+    this.selectedBlock = blockWrapper;
+    blockWrapper.classList.add('is-selected');
+
+    this.selectedElement = el;
+    el.classList.add('ve-selected-element');
+
+    // Create element badge
+    const badge = document.createElement('div');
+    badge.className = 've-element-badge';
+    badge.contentEditable = 'false';
+    const tagName = el.tagName.toLowerCase();
+
+    const rect = el.getBoundingClientRect();
+    const canvasRect = this.canvasEl.getBoundingClientRect();
+    if (rect.top - canvasRect.top < 32) {
+      badge.classList.add('ve-badge-bottom');
+    }
+
+    badge.innerHTML = `
+      <span class="ve-elem-tag"><span class="material-symbols-rounded">code</span>${tagName}</span>
+      <button class="ve-elem-parent-btn" type="button" title="Выбрать родительский элемент (Esc)"><span class="material-symbols-rounded">arrow_upward</span></button>
+      <button class="ve-elem-del-btn" type="button" title="Удалить элемент (Del)"><span class="material-symbols-rounded">close</span></button>
+    `;
+
+    badge.querySelector('.ve-elem-parent-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.selectParent();
+    });
+
+    badge.querySelector('.ve-elem-del-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.deleteSelected();
+    });
+
+    const isVoid = ['img', 'input', 'hr', 'br', 'textarea', 'select'].includes(tagName);
+    if (!isVoid) {
+      if (window.getComputedStyle(el).position === 'static') {
+        el.style.position = 'relative';
+      }
+      el.appendChild(badge);
+    } else if (el.parentElement) {
+      if (window.getComputedStyle(el.parentElement).position === 'static') {
+        el.parentElement.style.position = 'relative';
+      }
+      el.parentElement.appendChild(badge);
+      badge.style.position = 'absolute';
+      badge.style.top = `${el.offsetTop - 27}px`;
+      badge.style.left = `${el.offsetLeft}px`;
+    }
+
+    // Preload font if Google font detected
+    const compStyle = window.getComputedStyle(el);
+    if (compStyle.fontFamily) {
+      const firstFont = compStyle.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+      this.loadGoogleFont(firstFont);
+    }
+
+    const def = BLOCK_PALETTE.find(b => b.id === blockWrapper.dataset.defId) || { id: blockWrapper.dataset.defId, label: 'Блок' };
+    this._buildPropsPanel(blockWrapper, def, el);
+    this._showFloatingToolbar(el);
+  }
+
   _select(wrapper, def) {
-    if (this.selectedBlock) this.selectedBlock.classList.remove('is-selected');
+    if (!wrapper) return;
+    this.canvasEl.querySelectorAll('.ve-selected-element').forEach(el => el.classList.remove('ve-selected-element'));
+    this.canvasEl.querySelectorAll('.ve-element-badge').forEach(b => b.remove());
+
+    if (this.selectedBlock && this.selectedBlock !== wrapper) {
+      this.selectedBlock.classList.remove('is-selected');
+    }
     this.selectedBlock = wrapper;
+    this.selectedElement = wrapper;
     wrapper.classList.add('is-selected');
-    const d = BLOCK_PALETTE.find(b => b.id === wrapper.dataset.defId) || def;
-    this._buildPropsPanel(wrapper, d);
+
+    const d = BLOCK_PALETTE.find(b => b.id === wrapper.dataset.defId) || def || { id: wrapper.dataset.defId, label: 'Блок' };
+    const content = wrapper.querySelector('.ve-block-content');
+    const targetEl = content ? (content.firstElementChild || content) : wrapper;
+    this._buildPropsPanel(wrapper, d, targetEl);
+    this._hideFloatingToolbar();
   }
 
   _deselect() {
     if (this.selectedBlock) this.selectedBlock.classList.remove('is-selected');
     this.selectedBlock = null;
+    this.selectedElement = null;
+    this.canvasEl.querySelectorAll('.ve-selected-element').forEach(el => el.classList.remove('ve-selected-element'));
+    this.canvasEl.querySelectorAll('.ve-element-badge').forEach(b => b.remove());
+    this._hideFloatingToolbar();
+    this._hideContextMenu();
     this._showEmptyProps();
   }
 
@@ -1004,10 +1191,196 @@ export class VisualEditor {
     this._deselect();
   }
 
+  selectParent() {
+    if (!this.selectedElement || !this.selectedBlock) return;
+    if (this.selectedElement === this.selectedBlock) return;
+
+    const content = this.selectedBlock.querySelector('.ve-block-content');
+    if (!content || this.selectedElement === content) {
+      this._select(this.selectedBlock);
+      return;
+    }
+
+    const parent = this.selectedElement.parentElement;
+    if (parent && parent !== content && content.contains(parent)) {
+      this.selectElement(parent, this.selectedBlock);
+    } else {
+      this._select(this.selectedBlock);
+    }
+  }
+
+  deleteSelected() {
+    if (this.selectedElement && this.selectedBlock && this.selectedElement !== this.selectedBlock) {
+      const content = this.selectedBlock.querySelector('.ve-block-content');
+      if (content && content.contains(this.selectedElement) && this.selectedElement !== content) {
+        const elToDelete = this.selectedElement;
+        const parent = elToDelete.parentElement;
+
+        elToDelete.querySelectorAll('.ve-element-badge').forEach(b => b.remove());
+        const badge = parent?.querySelector(':scope > .ve-element-badge');
+        if (badge) badge.remove();
+
+        elToDelete.remove();
+
+        if (parent && (parent.classList.contains('ve-col') || parent.classList.contains('ve-col-slot') || parent.dataset.veSlot === 'true')) {
+          if (!parent.querySelector('.ve-block') && !parent.firstElementChild && !parent.textContent.trim()) {
+            const ph = document.createElement('p');
+            ph.className = 've-col-placeholder';
+            ph.textContent = 'Колонка (пусто)';
+            parent.appendChild(ph);
+          }
+        }
+
+        if (content && !content.firstElementChild && !content.textContent.trim()) {
+          this.deleteBlock(this.selectedBlock);
+          return;
+        }
+
+        if (parent && parent !== content && content.contains(parent)) {
+          this.selectElement(parent, this.selectedBlock);
+        } else {
+          this._select(this.selectedBlock);
+        }
+
+        this._saveHistory();
+        this._updateCanvasDims();
+        return;
+      }
+    }
+
+    if (this.selectedBlock) {
+      this.deleteBlock(this.selectedBlock);
+    }
+  }
+
+  deleteBlock(wrapper) {
+    if (!wrapper) return;
+    if (this.selectedBlock === wrapper) this._deselect();
+    const oldParent = wrapper.parentNode;
+    wrapper.remove();
+
+    if (oldParent && oldParent.classList && oldParent.classList.contains('ve-col')) {
+      if (!oldParent.querySelector('.ve-block') && !oldParent.firstElementChild) {
+        const ph = document.createElement('p');
+        ph.className = 've-col-placeholder';
+        ph.textContent = 'Колонка (пусто)';
+        oldParent.appendChild(ph);
+      }
+    } else if (oldParent && oldParent.classList && oldParent.classList.contains('ve-row-flex')) {
+      const remaining = oldParent.querySelectorAll('.ve-block');
+      if (remaining.length === 0) {
+        const rowWrapper = oldParent.closest('.ve-block');
+        if (rowWrapper) rowWrapper.remove();
+      } else if (remaining.length === 1) {
+        this.setBlockWidth(remaining[0], '100%');
+      }
+    }
+
+    this._updateEmptyState();
+    this._saveHistory();
+    this._updateCanvasDims();
+  }
+
+  duplicateSelected() {
+    if (this.selectedElement && this.selectedBlock && this.selectedElement !== this.selectedBlock) {
+      const content = this.selectedBlock.querySelector('.ve-block-content');
+      if (content && content.contains(this.selectedElement) && this.selectedElement !== content) {
+        const clone = this.selectedElement.cloneNode(true);
+        clone.querySelectorAll('.ve-selected-element, .ve-hovered-element, .ve-element-badge').forEach(b => b.remove());
+        clone.classList.remove('ve-selected-element', 've-hovered-element');
+        this.selectedElement.parentNode.insertBefore(clone, this.selectedElement.nextSibling);
+        this.selectElement(clone, this.selectedBlock);
+        this._saveHistory();
+        this._updateCanvasDims();
+        return;
+      }
+    }
+
+    if (this.selectedBlock) {
+      const parent = this.selectedBlock.parentNode;
+      const cloneDef = BLOCK_PALETTE.find(b => b.id === this.selectedBlock.dataset.defId) || {
+        id: this.selectedBlock.dataset.defId || 'custom',
+        label: this.selectedBlock.querySelector('.ve-block-label')?.textContent || 'Копия',
+        html: this.selectedBlock.querySelector('.ve-block-content')?.innerHTML || ''
+      };
+      const cloned = this._createBlockElement(cloneDef);
+      if (this.selectedBlock.dataset.blockWidth) {
+        this.setBlockWidth(cloned, this.selectedBlock.dataset.blockWidth);
+      }
+      parent.insertBefore(cloned, this.selectedBlock.nextSibling);
+      this._select(cloned, cloneDef);
+      this._saveHistory();
+      this._updateCanvasDims();
+    }
+  }
+
+  // ── BREADCRUMBS ───────────────────────────────────────────
+  _buildBreadcrumbsHTML(targetEl, blockWrapper, def, chain) {
+    if (!blockWrapper) return '';
+    const content = blockWrapper.querySelector('.ve-block-content');
+    const blockLabel = def?.label || blockWrapper.querySelector('.ve-block-label')?.textContent || 'Блок';
+    const blockIcon = def?.icon || 'widgets';
+
+    let html = `
+      <div class="ve-breadcrumbs">
+        <div class="ve-breadcrumbs-head">
+          <span class="ve-breadcrumbs-title">
+            <span class="material-symbols-rounded">account_tree</span>
+            Иерархия DOM
+          </span>
+          <button class="ve-elem-parent-btn" id="ve-crumb-select-parent" type="button" title="Выбрать родительский элемент (Esc)">
+            <span class="material-symbols-rounded">arrow_upward</span>
+          </button>
+        </div>
+        <div class="ve-breadcrumbs-list">
+          <div class="ve-crumb ${(!targetEl || targetEl === blockWrapper || targetEl === content) ? 'is-active' : ''}" data-crumb-type="block" title="Выбрать блок">
+            <span class="material-symbols-rounded">${blockIcon}</span>
+            <span>${blockLabel}</span>
+          </div>`;
+
+    chain.forEach((node, idx) => {
+      const isLast = idx === chain.length - 1;
+      const tag = node.tagName.toLowerCase();
+      let extra = '';
+      if (node.id) extra = '#' + node.id;
+      else if (node.className && typeof node.className === 'string') {
+        const cls = node.className.replace(/ve-selected-element|ve-hovered-element/g, '').trim().split(/\s+/)[0];
+        if (cls) extra = '.' + cls;
+      }
+      const label = `${tag}${extra ? ` ${extra}` : ''}`;
+
+      html += `
+        <span class="ve-crumb-sep"><span class="material-symbols-rounded">chevron_right</span></span>
+        <div class="ve-crumb ${isLast ? 'is-active' : ''}" data-crumb-idx="${idx}" title="Выбрать &lt;${tag}&gt;">
+          <span class="material-symbols-rounded">code</span>
+          <span>${label}</span>
+          <span class="ve-crumb-del" data-crumb-del-idx="${idx}" title="Удалить &lt;${tag}&gt;">
+            <span class="material-symbols-rounded">close</span>
+          </span>
+        </div>`;
+    });
+
+    html += `
+        </div>
+      </div>`;
+    return html;
+  }
+
   // ── PROPS PANEL ───────────────────────────────────────────
-  _buildPropsPanel(wrapper, def) {
+  _buildPropsPanel(wrapper, def, targetEl = null) {
     const p = this.propsEl;
     const content = wrapper.querySelector('.ve-block-content');
+    const elemToInspect = targetEl || (content ? (content.firstElementChild || content) : wrapper);
+
+    const chain = [];
+    let cur = elemToInspect;
+    while (cur && cur !== wrapper && cur !== this.canvasEl) {
+      if (cur !== content) {
+        chain.unshift(cur);
+      }
+      cur = cur.parentElement;
+    }
+    this._currentCrumbChain = chain;
 
     p.innerHTML = `
       <div class="ve-props-header">
@@ -1018,20 +1391,37 @@ export class VisualEditor {
         </button>
       </div>
 
+      ${this._buildBreadcrumbsHTML(elemToInspect, wrapper, def, chain)}
+
+      <div class="ve-props-section" style="padding-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="ve-crumb" id="ve-quick-parent" title="Выбрать родительский элемент (Esc)">
+          <span class="material-symbols-rounded">arrow_upward</span>
+          <span>Родитель</span>
+        </button>
+        <button type="button" class="ve-crumb" id="ve-quick-clone" title="Дублировать (Ctrl+D)">
+          <span class="material-symbols-rounded">content_copy</span>
+          <span>Копия</span>
+        </button>
+        <button type="button" class="ve-crumb ve-crumb-del" id="ve-quick-delete" title="Удалить элемент (Del)" style="margin-left:auto;color:#f87171;">
+          <span class="material-symbols-rounded">delete</span>
+          <span>Удалить</span>
+        </button>
+      </div>
+
       <div class="ve-props-section">
         <div class="ve-props-label">Внутренний HTML</div>
-        <textarea class="ve-props-raw" id="ve-raw-html" rows="6">${content.innerHTML.trim()}</textarea>
+        <textarea class="ve-props-raw" id="ve-raw-html" rows="5">${(elemToInspect !== wrapper && elemToInspect !== content) ? elemToInspect.outerHTML.trim() : content.innerHTML.trim()}</textarea>
         <button class="ve-props-apply-btn" id="ve-apply-raw">Применить HTML</button>
       </div>
 
       <div class="ve-props-section">
-        <div class="ve-props-label">Стили блока</div>
-        ${this._buildStyleProps(wrapper)}
+        <div class="ve-props-label">Типография & Текст</div>
+        ${this._buildTypoProps(elemToInspect)}
       </div>
 
       <div class="ve-props-section">
-        <div class="ve-props-label">Типография</div>
-        ${this._buildTypoProps(content)}
+        <div class="ve-props-label">Стили и геометрия блока</div>
+        ${this._buildStyleProps(wrapper, elemToInspect)}
       </div>
 
       <div class="ve-props-section ve-props-actions">
@@ -1041,12 +1431,12 @@ export class VisualEditor {
         </button>
       </div>`;
 
-    this._bindPropsEvents(wrapper, content);
+    this._bindPropsEvents(wrapper, content, elemToInspect);
   }
 
-  _buildStyleProps(wrapper) {
+  _buildStyleProps(wrapper, elemToInspect = null) {
     const content = wrapper.querySelector('.ve-block-content');
-    const target = content ? (content.firstElementChild || content) : null;
+    const target = elemToInspect || (content ? (content.firstElementChild || content) : null);
     const curW = parseInt(target?.style?.maxWidth || wrapper.style.maxWidth) || '';
     const curH = parseInt(target?.style?.minHeight || wrapper.style.minHeight) || '';
     const curBlockW = wrapper.dataset.blockWidth || '100%';
@@ -1131,26 +1521,176 @@ export class VisualEditor {
       </div>`;
   }
 
-  _buildTypoProps(content) {
-    const firstEl = content.querySelector('h1,h2,h3,h4,p,span,div,li,a') || content;
+  _buildTypoProps(targetEl) {
+    if (!targetEl) return '';
+    const comp = window.getComputedStyle(targetEl);
+    const curFontFamily = (targetEl.style.fontFamily || comp.fontFamily || 'Inter').replace(/['"]/g, '').split(',')[0].trim();
+    const curWeight = targetEl.style.fontWeight || comp.fontWeight || '400';
+    const curSize = parseInt(targetEl.style.fontSize || comp.fontSize) || 16;
+    const curLineHeight = targetEl.style.lineHeight || comp.lineHeight || '';
+    const curLetterSpacing = targetEl.style.letterSpacing || comp.letterSpacing || '';
+    const curAlign = targetEl.style.textAlign || comp.textAlign || 'left';
+    const curTransform = targetEl.style.textTransform || comp.textTransform || 'none';
+    const curColor = this._colorToHex(targetEl.style.color || comp.color) || '#000000';
+    const curBg = this._colorToHex(targetEl.style.backgroundColor || comp.backgroundColor) || '';
+    const curShadow = targetEl.style.textShadow || comp.textShadow || 'none';
+    const isBold = parseInt(curWeight) >= 600 || curWeight === 'bold';
+    const isItalic = (targetEl.style.fontStyle || comp.fontStyle) === 'italic';
+    const textDecor = targetEl.style.textDecoration || comp.textDecoration || '';
+    const isUnderline = textDecor.includes('underline');
+    const isStrike = textDecor.includes('line-through');
+
     return `
-      <div class="ve-prop-row">
-        <label>Размер шрифта</label>
-        <input type="number" class="ve-num-input" data-styleprop="fontSize" data-unit="px" value="${parseInt(firstEl.style.fontSize) || ''}" min="8" max="200" placeholder="px">
-      </div>
-      <div class="ve-prop-row">
-        <label>Выравнивание</label>
-        <div class="ve-align-btns" data-styleprop="textAlign">
-          <button data-val="left" title="Лево"><span class="material-symbols-rounded">format_align_left</span></button>
-          <button data-val="center" title="Центр"><span class="material-symbols-rounded">format_align_center</span></button>
-          <button data-val="right" title="Право"><span class="material-symbols-rounded">format_align_right</span></button>
+      <div class="ve-props-typography">
+        <div class="ve-prop-row">
+          <label>Шрифт (${TYPO_FONTS.length})</label>
+          <div class="ve-font-dropdown" id="ve-typo-font-dd">
+            <button type="button" class="ve-font-dropdown-toggle" id="ve-typo-font-toggle">
+              <span id="ve-typo-cur-font" style="font-family:'${curFontFamily}',sans-serif;">${curFontFamily}</span>
+              <span class="material-symbols-rounded">expand_more</span>
+            </button>
+            <div class="ve-font-menu is-hidden" id="ve-typo-font-menu">
+              ${TYPO_FONTS.map(f => `
+                <div class="ve-font-option ${f.name.toLowerCase() === curFontFamily.toLowerCase() ? 'is-active' : ''}" data-font="${f.name}">
+                  <span class="ve-font-preview" style="font-family:'${f.name}',sans-serif;">${f.name}</span>
+                  <span class="ve-font-tag">${f.category}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Начертание (Weight)</label>
+          <div class="ve-weight-chips" id="ve-typo-weights">
+            ${[
+              { w: '300', label: '300' },
+              { w: '400', label: '400' },
+              { w: '500', label: '500' },
+              { w: '600', label: '600' },
+              { w: '700', label: '700' },
+              { w: '800', label: '800' },
+              { w: '900', label: '900' }
+            ].map(item => `
+              <button type="button" class="ve-weight-chip ${String(curWeight) === item.w ? 'is-active' : ''}" data-weight="${item.w}">${item.label}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Форматирование</label>
+          <div class="ve-format-segmented" id="ve-typo-format">
+            <button type="button" class="ve-format-seg-btn ${isBold ? 'is-active' : ''}" data-fmt="bold" title="Жирный (Bold)">
+              <strong>B</strong>
+            </button>
+            <button type="button" class="ve-format-seg-btn ${isItalic ? 'is-active' : ''}" data-fmt="italic" title="Курсив (Italic)">
+              <em>I</em>
+            </button>
+            <button type="button" class="ve-format-seg-btn ${isUnderline ? 'is-active' : ''}" data-fmt="underline" title="Подчёркнутый (Underline)">
+              <u>U</u>
+            </button>
+            <button type="button" class="ve-format-seg-btn ${isStrike ? 'is-active' : ''}" data-fmt="strike" title="Зачёркнутый (Strikethrough)">
+              <s>S</s>
+            </button>
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Размер текста</label>
+          <div class="ve-font-size-row">
+            <input type="number" class="ve-num-input" id="ve-typo-size-input" value="${curSize}" min="8" max="200" placeholder="16">
+            <div class="ve-align-btns">
+              <button type="button" id="ve-typo-size-dec" title="-1px"><span class="material-symbols-rounded">remove</span></button>
+              <button type="button" id="ve-typo-size-inc" title="+1px"><span class="material-symbols-rounded">add</span></button>
+            </div>
+          </div>
+          <div class="ve-size-presets" id="ve-typo-size-presets">
+            ${[12, 14, 16, 18, 20, 24, 32, 48, 64].map(s => `
+              <button type="button" class="ve-size-chip ${curSize === s ? 'is-active' : ''}" data-size="${s}">${s}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="ve-spacing-group">
+          <div class="ve-spacing-item">
+            <span class="ve-spacing-label">
+              <span class="material-symbols-rounded">format_line_spacing</span>
+              Высота строки
+            </span>
+            <input type="text" class="ve-num-input" id="ve-typo-lh" value="${targetEl.style.lineHeight || ''}" placeholder="1.4 (или 24px)">
+          </div>
+          <div class="ve-spacing-item">
+            <span class="ve-spacing-label">
+              <span class="material-symbols-rounded">space_bar</span>
+              Интервал букв
+            </span>
+            <input type="text" class="ve-num-input" id="ve-typo-ls" value="${targetEl.style.letterSpacing || ''}" placeholder="0px (или 1px)">
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Выравнивание текста</label>
+          <div class="ve-align-btns" id="ve-typo-align">
+            <button type="button" data-align="left" class="${curAlign === 'left' ? 'is-active' : ''}" title="Слева"><span class="material-symbols-rounded">format_align_left</span></button>
+            <button type="button" data-align="center" class="${curAlign === 'center' ? 'is-active' : ''}" title="По центру"><span class="material-symbols-rounded">format_align_center</span></button>
+            <button type="button" data-align="right" class="${curAlign === 'right' ? 'is-active' : ''}" title="Справа"><span class="material-symbols-rounded">format_align_right</span></button>
+            <button type="button" data-align="justify" class="${curAlign === 'justify' ? 'is-active' : ''}" title="По ширине"><span class="material-symbols-rounded">format_align_justify</span></button>
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Регистр символов</label>
+          <div class="ve-transform-group" id="ve-typo-transform">
+            <button type="button" class="ve-transform-btn ${curTransform === 'none' ? 'is-active' : ''}" data-transform="none">Aa</button>
+            <button type="button" class="ve-transform-btn ${curTransform === 'uppercase' ? 'is-active' : ''}" data-transform="uppercase">AA</button>
+            <button type="button" class="ve-transform-btn ${curTransform === 'lowercase' ? 'is-active' : ''}" data-transform="lowercase">aa</button>
+            <button type="button" class="ve-transform-btn ${curTransform === 'capitalize' ? 'is-active' : ''}" data-transform="capitalize">aB</button>
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Цвет текста</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" class="ve-color-pick" id="ve-typo-color" value="${curColor}">
+            <span style="font-size:12px;font-family:monospace;color:#94a3b8;" id="ve-typo-color-hex">${curColor}</span>
+          </div>
+          <div class="ve-color-swatches" id="ve-typo-color-swatches">
+            ${['#ffffff', '#000000', '#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#94a3b8'].map(c => `
+              <div class="ve-swatch ${curColor.toLowerCase() === c.toLowerCase() ? 'is-active' : ''}" data-color="${c}" style="background:${c};" title="${c}"></div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Маркер / Цвет фона текста</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" class="ve-color-pick" id="ve-typo-bg" value="${curBg || '#fef08a'}">
+            <button type="button" class="ve-act-btn" id="ve-typo-bg-clear" title="Сбросить фон" style="margin-left:auto;font-size:11px;padding:3px 8px;height:auto;border-radius:4px;">Сброс</button>
+          </div>
+          <div class="ve-color-swatches" id="ve-typo-bg-swatches">
+            ${['transparent', '#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#ddd6fe'].map(c => `
+              <div class="ve-swatch ${c === 'transparent' ? 'is-transparent' : ''}" data-bgcolor="${c}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#555 0% 25%, #333 0% 50%) 50% / 8px 8px' : c};" title="${c}"></div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="ve-prop-row">
+          <label>Тень текста</label>
+          <div class="ve-shadow-presets" id="ve-typo-shadows">
+            <button type="button" class="ve-shadow-btn ${curShadow === 'none' ? 'is-active' : ''}" data-shadow="none">Нет</button>
+            <button type="button" class="ve-shadow-btn" data-shadow="0 2px 4px rgba(0,0,0,0.4)">Мягкая</button>
+            <button type="button" class="ve-shadow-btn" data-shadow="2px 2px 0px rgba(0,0,0,0.8)">Резкая</button>
+            <button type="button" class="ve-shadow-btn" data-shadow="0 0 12px rgba(99,102,241,0.8)">Свечение</button>
+            <button type="button" class="ve-shadow-btn" data-shadow="1px 1px 0 #334155, 2px 2px 0 #1e293b, 3px 3px 0 #0f172a">3D</button>
+            <button type="button" class="ve-shadow-btn" data-shadow="-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000">Контур</button>
+          </div>
         </div>
       </div>`;
   }
 
-  _bindPropsEvents(wrapper, content) {
+  _bindPropsEvents(wrapper, content, elemToInspect) {
     const p = this.propsEl;
-    const target = content.firstElementChild || content;
+    const target = elemToInspect || (content ? (content.firstElementChild || content) : wrapper);
 
     // Close / Collapse props panel
     p.querySelector('#ve-close-props')?.addEventListener('click', () => {
@@ -1165,16 +1705,259 @@ export class VisualEditor {
       }
     });
 
+    // Breadcrumb clicks
+    p.querySelectorAll('.ve-crumb[data-crumb-type="block"]').forEach(crumb => {
+      crumb.addEventListener('click', () => {
+        this._select(wrapper);
+      });
+    });
+
+    p.querySelectorAll('.ve-crumb[data-crumb-idx]').forEach(crumb => {
+      crumb.addEventListener('click', (e) => {
+        if (e.target.closest('.ve-crumb-del')) return;
+        const idx = parseInt(crumb.dataset.crumbIdx, 10);
+        if (!isNaN(idx) && this._currentCrumbChain && this._currentCrumbChain[idx]) {
+          this.selectElement(this._currentCrumbChain[idx], wrapper);
+        }
+      });
+    });
+
+    p.querySelectorAll('.ve-crumb-del[data-crumb-del-idx]').forEach(delBtn => {
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(delBtn.dataset.crumbDelIdx, 10);
+        if (!isNaN(idx) && this._currentCrumbChain && this._currentCrumbChain[idx]) {
+          this.selectedElement = this._currentCrumbChain[idx];
+          this.deleteSelected();
+        }
+      });
+    });
+
+    p.querySelector('#ve-crumb-select-parent')?.addEventListener('click', () => {
+      this.selectParent();
+    });
+
+    // Quick Action buttons
+    p.querySelector('#ve-quick-parent')?.addEventListener('click', () => {
+      this.selectParent();
+    });
+    p.querySelector('#ve-quick-clone')?.addEventListener('click', () => {
+      this.duplicateSelected();
+    });
+    p.querySelector('#ve-quick-delete')?.addEventListener('click', () => {
+      this.deleteSelected();
+    });
+
     // Apply raw HTML
     p.querySelector('#ve-apply-raw')?.addEventListener('click', () => {
       const newHtml = p.querySelector('#ve-raw-html').value;
-      content.innerHTML = newHtml;
+      if (target && target !== wrapper && target !== content) {
+        target.outerHTML = newHtml;
+      } else {
+        content.innerHTML = newHtml;
+      }
       this._saveHistory();
     });
 
     // Export to code
     p.querySelector('#ve-export-code')?.addEventListener('click', () => {
       this.onExport(this.exportToHTML());
+    });
+
+    // Typography: Font dropdown toggle & select
+    const typoFontToggle = p.querySelector('#ve-typo-font-toggle');
+    const typoFontMenu = p.querySelector('#ve-typo-font-menu');
+    typoFontToggle?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      typoFontMenu?.classList.toggle('is-hidden');
+    });
+
+    typoFontMenu?.querySelectorAll('.ve-font-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fontName = opt.dataset.font;
+        typoFontMenu.classList.add('is-hidden');
+        if (target && fontName) {
+          this.loadGoogleFont(fontName);
+          target.style.fontFamily = `'${fontName}', sans-serif`;
+          const curFontSpan = p.querySelector('#ve-typo-cur-font');
+          if (curFontSpan) {
+            curFontSpan.textContent = fontName;
+            curFontSpan.style.fontFamily = `'${fontName}', sans-serif`;
+          }
+          if (this._floatingToolbar) {
+            const ftFont = this._floatingToolbar.querySelector('.ve-ft-font-name');
+            if (ftFont) ftFont.textContent = fontName;
+          }
+          this._saveHistory();
+        }
+      });
+    });
+
+    // Typography: Weight chips
+    p.querySelectorAll('#ve-typo-weights .ve-weight-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const w = chip.dataset.weight;
+        p.querySelectorAll('#ve-typo-weights .ve-weight-chip').forEach(c => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        if (target) {
+          target.style.fontWeight = w;
+          this._saveHistory();
+        }
+      });
+    });
+
+    // Typography: B / I / U / S Segmented buttons
+    p.querySelectorAll('#ve-typo-format .ve-format-seg-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!target) return;
+        const fmt = btn.dataset.fmt;
+        const isActive = btn.classList.contains('is-active');
+
+        if (fmt === 'bold') {
+          target.style.fontWeight = isActive ? '400' : '700';
+          btn.classList.toggle('is-active', !isActive);
+          p.querySelectorAll('#ve-typo-weights .ve-weight-chip').forEach(c => {
+            c.classList.toggle('is-active', c.dataset.weight === (isActive ? '400' : '700'));
+          });
+          this._floatingToolbar?.querySelector('#ve-ft-bold')?.classList.toggle('is-active', !isActive);
+        } else if (fmt === 'italic') {
+          target.style.fontStyle = isActive ? 'normal' : 'italic';
+          btn.classList.toggle('is-active', !isActive);
+          this._floatingToolbar?.querySelector('#ve-ft-italic')?.classList.toggle('is-active', !isActive);
+        } else if (fmt === 'underline') {
+          const cur = target.style.textDecoration || '';
+          target.style.textDecoration = isActive ? cur.replace(/underline/g, '').trim() || 'none' : `${cur} underline`.trim();
+          btn.classList.toggle('is-active', !isActive);
+          this._floatingToolbar?.querySelector('#ve-ft-underline')?.classList.toggle('is-active', !isActive);
+        } else if (fmt === 'strike') {
+          const cur = target.style.textDecoration || '';
+          target.style.textDecoration = isActive ? cur.replace(/line-through/g, '').trim() || 'none' : `${cur} line-through`.trim();
+          btn.classList.toggle('is-active', !isActive);
+          this._floatingToolbar?.querySelector('#ve-ft-strike')?.classList.toggle('is-active', !isActive);
+        }
+        this._saveHistory();
+      });
+    });
+
+    // Typography: Font Size input, -/+, presets
+    const sizeInput = p.querySelector('#ve-typo-size-input');
+    const updateSize = (sz) => {
+      if (!target) return;
+      sz = Math.max(8, Math.min(200, sz));
+      if (sizeInput) sizeInput.value = sz;
+      target.style.fontSize = `${sz}px`;
+      p.querySelectorAll('#ve-typo-size-presets .ve-size-chip').forEach(c => {
+        c.classList.toggle('is-active', parseInt(c.dataset.size) === sz);
+      });
+      if (this._floatingToolbar) {
+        const ftSize = this._floatingToolbar.querySelector('#ve-ft-size-val');
+        if (ftSize) ftSize.value = sz;
+      }
+      this._saveHistory();
+    };
+
+    sizeInput?.addEventListener('input', () => updateSize(parseInt(sizeInput.value) || 16));
+    p.querySelector('#ve-typo-size-dec')?.addEventListener('click', () => updateSize((parseInt(sizeInput?.value) || 16) - 1));
+    p.querySelector('#ve-typo-size-inc')?.addEventListener('click', () => updateSize((parseInt(sizeInput?.value) || 16) + 1));
+    p.querySelectorAll('#ve-typo-size-presets .ve-size-chip').forEach(chip => {
+      chip.addEventListener('click', () => updateSize(parseInt(chip.dataset.size) || 16));
+    });
+
+    // Typography: Line height & Letter spacing
+    p.querySelector('#ve-typo-lh')?.addEventListener('input', (e) => {
+      if (!target) return;
+      target.style.lineHeight = e.target.value;
+    });
+    p.querySelector('#ve-typo-lh')?.addEventListener('change', () => this._saveHistory());
+
+    p.querySelector('#ve-typo-ls')?.addEventListener('input', (e) => {
+      if (!target) return;
+      target.style.letterSpacing = e.target.value;
+    });
+    p.querySelector('#ve-typo-ls')?.addEventListener('change', () => this._saveHistory());
+
+    // Typography: Text Align
+    p.querySelectorAll('#ve-typo-align button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!target) return;
+        target.style.textAlign = btn.dataset.align;
+        p.querySelectorAll('#ve-typo-align button').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        this._saveHistory();
+      });
+    });
+
+    // Typography: Text Transform
+    p.querySelectorAll('#ve-typo-transform button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!target) return;
+        target.style.textTransform = btn.dataset.transform;
+        p.querySelectorAll('#ve-typo-transform button').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        this._saveHistory();
+      });
+    });
+
+    // Typography: Color picker & swatches
+    const typoCol = p.querySelector('#ve-typo-color');
+    const typoColHex = p.querySelector('#ve-typo-color-hex');
+    const updateTextColor = (col) => {
+      if (!target) return;
+      target.style.color = col;
+      if (typoCol) typoCol.value = col;
+      if (typoColHex) typoColHex.textContent = col;
+      p.querySelectorAll('#ve-typo-color-swatches .ve-swatch').forEach(s => {
+        s.classList.toggle('is-active', s.dataset.color.toLowerCase() === col.toLowerCase());
+      });
+      if (this._floatingToolbar) {
+        const dot = this._floatingToolbar.querySelector('#ve-ft-color-dot');
+        if (dot) {
+          dot.style.background = col;
+          dot.style.boxShadow = `0 0 6px ${col}`;
+        }
+      }
+      this._saveHistory();
+    };
+    typoCol?.addEventListener('input', () => updateTextColor(typoCol.value));
+    p.querySelectorAll('#ve-typo-color-swatches .ve-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => updateTextColor(swatch.dataset.color));
+    });
+
+    // Typography: Highlight (background) & swatches
+    const typoBg = p.querySelector('#ve-typo-bg');
+    const updateBgColor = (col) => {
+      if (!target) return;
+      if (col === 'transparent') {
+        target.style.backgroundColor = '';
+      } else {
+        target.style.backgroundColor = col;
+        if (typoBg) typoBg.value = col;
+      }
+      p.querySelectorAll('#ve-typo-bg-swatches .ve-swatch').forEach(s => {
+        s.classList.toggle('is-active', s.dataset.bgcolor.toLowerCase() === col.toLowerCase());
+      });
+      if (this._floatingToolbar) {
+        const line = this._floatingToolbar.querySelector('#ve-ft-highlight-line');
+        if (line) line.style.background = col === 'transparent' ? 'transparent' : col;
+      }
+      this._saveHistory();
+    };
+    typoBg?.addEventListener('input', () => updateBgColor(typoBg.value));
+    p.querySelector('#ve-typo-bg-clear')?.addEventListener('click', () => updateBgColor('transparent'));
+    p.querySelectorAll('#ve-typo-bg-swatches .ve-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => updateBgColor(swatch.dataset.bgcolor));
+    });
+
+    // Typography: Text Shadow presets
+    p.querySelectorAll('#ve-typo-shadows .ve-shadow-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!target) return;
+        target.style.textShadow = btn.dataset.shadow;
+        p.querySelectorAll('#ve-typo-shadows .ve-shadow-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        this._saveHistory();
+      });
     });
 
     // Block width buttons
@@ -1236,7 +2019,7 @@ export class VisualEditor {
     });
 
     // Color pickers — apply to target and content
-    p.querySelectorAll('.ve-color-pick').forEach(input => {
+    p.querySelectorAll('.ve-color-pick[data-prop]').forEach(input => {
       input.addEventListener('input', () => {
         const prop = input.dataset.prop;
         if (target) target.style[prop] = input.value;
@@ -1273,36 +2056,507 @@ export class VisualEditor {
         this._saveHistory();
       });
     });
-
-    // Typography inputs — apply to first matching child element
-    p.querySelectorAll('.ve-num-input[data-styleprop]').forEach(input => {
-      input.addEventListener('input', () => {
-        const unit = input.dataset.unit || '';
-        const val = input.value ? input.value + unit : '';
-        const typoTarget = content.querySelector('h1,h2,h3,h4,p,span,a') || content;
-        typoTarget.style[input.dataset.styleprop] = val;
-      });
-      input.addEventListener('change', () => this._saveHistory());
-    });
-
-    // Text align buttons
-    p.querySelectorAll('.ve-align-btns[data-styleprop="textAlign"] button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const typoTarget = content.querySelector('h1,h2,h3,h4,p,span,a,div') || content;
-        typoTarget.style.textAlign = btn.dataset.val;
-        p.querySelectorAll('.ve-align-btns[data-styleprop="textAlign"] button').forEach(b => b.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        this._saveHistory();
-      });
-    });
   }
 
   _showEmptyProps() {
     this.propsEl.innerHTML = `
       <div class="ve-props-empty">
         <span class="material-symbols-rounded">touch_app</span>
-        <p>Выберите блок на холсте для редактирования его свойств</p>
+        <p>Выберите блок или элемент на холсте для редактирования свойств</p>
       </div>`;
+  }
+
+  // ── FLOATING INLINE TOOLBAR ───────────────────────────────
+  _initFloatingToolbar() {
+    if (this._floatingToolbar) return;
+    let ft = document.getElementById('ve-floating-toolbar');
+    if (!ft) {
+      ft = document.createElement('div');
+      ft.id = 've-floating-toolbar';
+      document.body.appendChild(ft);
+    }
+    ft.className = 've-floating-toolbar is-hidden';
+    ft.innerHTML = `
+      <button type="button" class="ve-ft-btn ve-ft-font-btn" id="ve-ft-font-toggle" title="Шрифт">
+        <span class="material-symbols-rounded">text_format</span>
+        <span class="ve-ft-font-name">Inter</span>
+        <span class="material-symbols-rounded" style="font-size:12px;">expand_more</span>
+      </button>
+      <div class="ve-font-menu is-hidden" id="ve-ft-font-menu">
+        ${TYPO_FONTS.map(f => `
+          <div class="ve-font-option" data-font="${f.name}">
+            <span class="ve-font-preview" style="font-family:'${f.name}',sans-serif;">${f.name}</span>
+            <span class="ve-font-tag">${f.category}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="ve-ft-divider"></div>
+      <div class="ve-ft-size-group">
+        <button type="button" class="ve-ft-size-step" id="ve-ft-size-minus" title="Уменьшить шрифт"><span class="material-symbols-rounded">remove</span></button>
+        <input type="text" class="ve-ft-size-val" id="ve-ft-size-val" value="16" title="Размер (px)">
+        <button type="button" class="ve-ft-size-step" id="ve-ft-size-plus" title="Увеличить шрифт"><span class="material-symbols-rounded">add</span></button>
+      </div>
+      <div class="ve-ft-divider"></div>
+      <button type="button" class="ve-ft-btn" id="ve-ft-bold" title="Жирный (Bold)"><strong>B</strong></button>
+      <button type="button" class="ve-ft-btn" id="ve-ft-italic" title="Курсив (Italic)"><em>I</em></button>
+      <button type="button" class="ve-ft-btn" id="ve-ft-underline" title="Подчёркнутый (Underline)"><u>U</u></button>
+      <button type="button" class="ve-ft-btn" id="ve-ft-strike" title="Зачёркнутый (Strikethrough)"><s>S</s></button>
+      <div class="ve-ft-divider"></div>
+      <button type="button" class="ve-ft-btn ve-ft-color-btn" id="ve-ft-color-btn" title="Цвет текста">
+        <span class="material-symbols-rounded">format_color_text</span>
+        <span class="ve-ft-color-dot" id="ve-ft-color-dot"></span>
+        <input type="color" id="ve-ft-color-input" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;">
+      </button>
+      <button type="button" class="ve-ft-btn ve-ft-highlight-btn" id="ve-ft-highlight-btn" title="Цвет выделения / фон">
+        <span class="material-symbols-rounded">ink_highlighter</span>
+        <span class="ve-ft-highlight-line" id="ve-ft-highlight-line"></span>
+        <input type="color" id="ve-ft-highlight-input" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;">
+      </button>
+      <div class="ve-ft-divider"></div>
+      <button type="button" class="ve-ft-btn ve-ft-parent-btn" id="ve-ft-parent" title="Выбрать родительский элемент (Esc)">
+        <span class="material-symbols-rounded">arrow_upward</span>
+      </button>
+      <button type="button" class="ve-ft-btn ve-ft-del-btn" id="ve-ft-delete" title="Удалить элемент (Del)">
+        <span class="material-symbols-rounded">delete</span>
+      </button>
+    `;
+    document.body.appendChild(ft);
+    this._floatingToolbar = ft;
+    this._bindFloatingToolbarEvents();
+  }
+
+  _bindFloatingToolbarEvents() {
+    const ft = this._floatingToolbar;
+    if (!ft) return;
+
+    // Font Toggle & Menu
+    const fontToggle = ft.querySelector('#ve-ft-font-toggle');
+    const fontMenu = ft.querySelector('#ve-ft-font-menu');
+    fontToggle?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fontMenu?.classList.toggle('is-hidden');
+    });
+
+    fontMenu?.querySelectorAll('.ve-font-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fontName = opt.dataset.font;
+        fontMenu.classList.add('is-hidden');
+        if (this.selectedElement && fontName) {
+          this.loadGoogleFont(fontName);
+          this.selectedElement.style.fontFamily = `'${fontName}', sans-serif`;
+          const fontNameEl = ft.querySelector('.ve-ft-font-name');
+          if (fontNameEl) fontNameEl.textContent = fontName;
+
+          const typoCurFont = this.propsEl.querySelector('#ve-typo-cur-font');
+          if (typoCurFont) {
+            typoCurFont.textContent = fontName;
+            typoCurFont.style.fontFamily = `'${fontName}', sans-serif`;
+          }
+          this._saveHistory();
+        }
+      });
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('#ve-ft-font-toggle') && !e.target.closest('#ve-ft-font-menu')) {
+        fontMenu?.classList.add('is-hidden');
+      }
+    });
+
+    // Font size - / + / input
+    const sizeVal = ft.querySelector('#ve-ft-size-val');
+    ft.querySelector('#ve-ft-size-minus')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      let sz = parseInt(sizeVal.value) || 16;
+      sz = Math.max(8, sz - 1);
+      sizeVal.value = sz;
+      this.selectedElement.style.fontSize = `${sz}px`;
+      const pSize = this.propsEl.querySelector('#ve-typo-size-input');
+      if (pSize) pSize.value = sz;
+      this._saveHistory();
+    });
+
+    ft.querySelector('#ve-ft-size-plus')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      let sz = parseInt(sizeVal.value) || 16;
+      sz = Math.min(200, sz + 1);
+      sizeVal.value = sz;
+      this.selectedElement.style.fontSize = `${sz}px`;
+      const pSize = this.propsEl.querySelector('#ve-typo-size-input');
+      if (pSize) pSize.value = sz;
+      this._saveHistory();
+    });
+
+    sizeVal?.addEventListener('change', () => {
+      if (!this.selectedElement) return;
+      const sz = Math.max(8, Math.min(200, parseInt(sizeVal.value) || 16));
+      sizeVal.value = sz;
+      this.selectedElement.style.fontSize = `${sz}px`;
+      const pSize = this.propsEl.querySelector('#ve-typo-size-input');
+      if (pSize) pSize.value = sz;
+      this._saveHistory();
+    });
+
+    // B / I / U / S
+    ft.querySelector('#ve-ft-bold')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      const cur = window.getComputedStyle(this.selectedElement).fontWeight;
+      const isBold = parseInt(cur) >= 600 || cur === 'bold';
+      this.selectedElement.style.fontWeight = isBold ? '400' : '700';
+      ft.querySelector('#ve-ft-bold').classList.toggle('is-active', !isBold);
+      const segBtn = this.propsEl.querySelector('.ve-format-seg-btn[data-fmt="bold"]');
+      if (segBtn) segBtn.classList.toggle('is-active', !isBold);
+      this._saveHistory();
+    });
+
+    ft.querySelector('#ve-ft-italic')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      const cur = window.getComputedStyle(this.selectedElement).fontStyle;
+      const isItalic = cur === 'italic';
+      this.selectedElement.style.fontStyle = isItalic ? 'normal' : 'italic';
+      ft.querySelector('#ve-ft-italic').classList.toggle('is-active', !isItalic);
+      const segBtn = this.propsEl.querySelector('.ve-format-seg-btn[data-fmt="italic"]');
+      if (segBtn) segBtn.classList.toggle('is-active', !isItalic);
+      this._saveHistory();
+    });
+
+    ft.querySelector('#ve-ft-underline')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      const cur = window.getComputedStyle(this.selectedElement).textDecoration;
+      const isU = cur.includes('underline');
+      this.selectedElement.style.textDecoration = isU ? 'none' : 'underline';
+      ft.querySelector('#ve-ft-underline').classList.toggle('is-active', !isU);
+      const segBtn = this.propsEl.querySelector('.ve-format-seg-btn[data-fmt="underline"]');
+      if (segBtn) segBtn.classList.toggle('is-active', !isU);
+      this._saveHistory();
+    });
+
+    ft.querySelector('#ve-ft-strike')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.selectedElement) return;
+      const cur = window.getComputedStyle(this.selectedElement).textDecoration;
+      const isS = cur.includes('line-through');
+      this.selectedElement.style.textDecoration = isS ? 'none' : 'line-through';
+      ft.querySelector('#ve-ft-strike').classList.toggle('is-active', !isS);
+      const segBtn = this.propsEl.querySelector('.ve-format-seg-btn[data-fmt="strike"]');
+      if (segBtn) segBtn.classList.toggle('is-active', !isS);
+      this._saveHistory();
+    });
+
+    // Text color
+    const colorBtn = ft.querySelector('#ve-ft-color-btn');
+    const colorInput = ft.querySelector('#ve-ft-color-input');
+    const colorDot = ft.querySelector('#ve-ft-color-dot');
+    colorBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      colorInput?.click();
+    });
+    colorInput?.addEventListener('input', () => {
+      if (!this.selectedElement) return;
+      const col = colorInput.value;
+      this.selectedElement.style.color = col;
+      if (colorDot) {
+        colorDot.style.background = col;
+        colorDot.style.boxShadow = `0 0 6px ${col}`;
+      }
+      const pCol = this.propsEl.querySelector('#ve-typo-color');
+      if (pCol) pCol.value = col;
+      const pColHex = this.propsEl.querySelector('#ve-typo-color-hex');
+      if (pColHex) pColHex.textContent = col;
+    });
+    colorInput?.addEventListener('change', () => this._saveHistory());
+
+    // Highlight color
+    const hlBtn = ft.querySelector('#ve-ft-highlight-btn');
+    const hlInput = ft.querySelector('#ve-ft-highlight-input');
+    const hlLine = ft.querySelector('#ve-ft-highlight-line');
+    hlBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hlInput?.click();
+    });
+    hlInput?.addEventListener('input', () => {
+      if (!this.selectedElement) return;
+      const col = hlInput.value;
+      this.selectedElement.style.backgroundColor = col;
+      if (hlLine) hlLine.style.background = col;
+      const pBg = this.propsEl.querySelector('#ve-typo-bg');
+      if (pBg) pBg.value = col;
+    });
+    hlInput?.addEventListener('change', () => this._saveHistory());
+
+    // Parent & Del
+    ft.querySelector('#ve-ft-parent')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectParent();
+    });
+    ft.querySelector('#ve-ft-delete')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.deleteSelected();
+    });
+
+    window.addEventListener('scroll', () => this._updateFloatingToolbarPosition(), true);
+    window.addEventListener('resize', () => this._updateFloatingToolbarPosition());
+  }
+
+  _showFloatingToolbar(el) {
+    if (!this._floatingToolbar || !el) return;
+    const ft = this._floatingToolbar;
+
+    if (el.classList && el.classList.contains('ve-block')) {
+      ft.classList.add('is-hidden');
+      return;
+    }
+
+    const comp = window.getComputedStyle(el);
+    const curFont = (el.style.fontFamily || comp.fontFamily || 'Inter').replace(/['"]/g, '').split(',')[0].trim();
+    const curWeight = el.style.fontWeight || comp.fontWeight || '400';
+    const isBold = parseInt(curWeight) >= 600 || curWeight === 'bold';
+    const isItalic = (el.style.fontStyle || comp.fontStyle) === 'italic';
+    const textDecor = el.style.textDecoration || comp.textDecoration || '';
+    const isUnderline = textDecor.includes('underline');
+    const isStrike = textDecor.includes('line-through');
+    const curSize = parseInt(el.style.fontSize || comp.fontSize) || 16;
+    const curColor = this._colorToHex(el.style.color || comp.color) || '#ffffff';
+    const curBg = this._colorToHex(el.style.backgroundColor || comp.backgroundColor) || '#facc15';
+
+    const fontNameEl = ft.querySelector('.ve-ft-font-name');
+    if (fontNameEl) fontNameEl.textContent = curFont;
+
+    const sizeVal = ft.querySelector('#ve-ft-size-val');
+    if (sizeVal) sizeVal.value = curSize;
+
+    ft.querySelector('#ve-ft-bold')?.classList.toggle('is-active', isBold);
+    ft.querySelector('#ve-ft-italic')?.classList.toggle('is-active', isItalic);
+    ft.querySelector('#ve-ft-underline')?.classList.toggle('is-active', isUnderline);
+    ft.querySelector('#ve-ft-strike')?.classList.toggle('is-active', isStrike);
+
+    const colorDot = ft.querySelector('#ve-ft-color-dot');
+    if (colorDot) {
+      colorDot.style.background = curColor;
+      colorDot.style.boxShadow = `0 0 6px ${curColor}`;
+    }
+    const colorInput = ft.querySelector('#ve-ft-color-input');
+    if (colorInput) colorInput.value = curColor;
+
+    const highlightLine = ft.querySelector('#ve-ft-highlight-line');
+    if (highlightLine) highlightLine.style.background = curBg;
+    const highlightInput = ft.querySelector('#ve-ft-highlight-input');
+    if (highlightInput) highlightInput.value = curBg;
+
+    this._updateFloatingToolbarPosition();
+    ft.classList.remove('is-hidden');
+  }
+
+  _hideFloatingToolbar() {
+    this._floatingToolbar?.classList.add('is-hidden');
+    this._floatingToolbar?.querySelector('#ve-ft-font-menu')?.classList.add('is-hidden');
+  }
+
+  _updateFloatingToolbarPosition() {
+    if (!this._floatingToolbar || !this.selectedElement || this._floatingToolbar.classList.contains('is-hidden')) return;
+    const el = this.selectedElement;
+    if (el.classList && el.classList.contains('ve-block')) {
+      this._floatingToolbar.classList.add('is-hidden');
+      return;
+    }
+
+    const ft = this._floatingToolbar;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    const ftWidth = ft.offsetWidth || 340;
+    const ftHeight = ft.offsetHeight || 38;
+
+    let top = rect.top - ftHeight - 10;
+    if (top < 10) {
+      top = rect.bottom + 10;
+    }
+
+    let left = rect.left + (rect.width / 2) - (ftWidth / 2);
+    left = Math.max(10, Math.min(window.innerWidth - ftWidth - 10, left));
+
+    ft.style.position = 'fixed';
+    ft.style.top = `${Math.round(top)}px`;
+    ft.style.left = `${Math.round(left)}px`;
+  }
+
+  // ── CONTEXT MENU ──────────────────────────────────────────
+  _initContextMenu() {
+    if (this._contextMenu) return;
+    let cm = document.getElementById('ve-context-menu');
+    if (!cm) {
+      cm = document.createElement('div');
+      cm.id = 've-context-menu';
+      document.body.appendChild(cm);
+    }
+    cm.className = 've-context-menu is-hidden';
+    cm.innerHTML = `
+      <button type="button" class="ve-ctx-item" data-action="parent">
+        <span class="material-symbols-rounded">arrow_upward</span>
+        <span class="ve-ctx-label">Выбрать родителя</span>
+        <span class="ve-ctx-kbd">Esc</span>
+      </button>
+      <button type="button" class="ve-ctx-item" data-action="duplicate">
+        <span class="material-symbols-rounded">content_copy</span>
+        <span class="ve-ctx-label">Дублировать</span>
+        <span class="ve-ctx-kbd">Ctrl+D</span>
+      </button>
+      <button type="button" class="ve-ctx-item" data-action="edit-text">
+        <span class="material-symbols-rounded">edit</span>
+        <span class="ve-ctx-label">Редактировать текст</span>
+        <span class="ve-ctx-kbd">2x Click</span>
+      </button>
+      <div class="ve-ctx-divider"></div>
+      <button type="button" class="ve-ctx-item" data-action="inspect">
+        <span class="material-symbols-rounded">tune</span>
+        <span class="ve-ctx-label">Типография и свойства</span>
+      </button>
+      <div class="ve-ctx-divider"></div>
+      <button type="button" class="ve-ctx-item ve-ctx-danger" data-action="delete">
+        <span class="material-symbols-rounded">delete</span>
+        <span class="ve-ctx-label">Удалить элемент / блок</span>
+        <span class="ve-ctx-kbd">Del</span>
+      </button>
+    `;
+    document.body.appendChild(cm);
+    this._contextMenu = cm;
+    this._bindContextMenuEvents();
+  }
+
+  _bindContextMenuEvents() {
+    const cm = this._contextMenu;
+    if (!cm) return;
+
+    cm.addEventListener('click', (e) => {
+      const item = e.target.closest('.ve-ctx-item');
+      if (!item) return;
+      e.stopPropagation();
+      const action = item.dataset.action;
+
+      if (action === 'parent') {
+        this.selectParent();
+      } else if (action === 'duplicate') {
+        this.duplicateSelected();
+      } else if (action === 'edit-text') {
+        const target = this.selectedElement || this.selectedBlock?.querySelector('.ve-block-content');
+        if (target) {
+          target.contentEditable = 'true';
+          target.focus();
+        }
+      } else if (action === 'inspect') {
+        const propsContainer = document.getElementById('wysiwyg-props');
+        propsContainer?.classList.remove('is-collapsed');
+        propsContainer?.classList.add('is-open');
+        document.getElementById('ve-toggle-props')?.classList.add('is-active');
+      } else if (action === 'delete') {
+        this.deleteSelected();
+      }
+      this._hideContextMenu();
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('#ve-context-menu')) {
+        this._hideContextMenu();
+      }
+    });
+
+    window.addEventListener('scroll', () => this._hideContextMenu(), true);
+  }
+
+  _showContextMenu(x, y) {
+    if (!this._contextMenu) return;
+    const cm = this._contextMenu;
+    cm.classList.remove('is-hidden');
+
+    const cmW = cm.offsetWidth || 220;
+    const cmH = cm.offsetHeight || 190;
+
+    let posX = x;
+    let posY = y;
+
+    if (posX + cmW > window.innerWidth - 10) {
+      posX = window.innerWidth - cmW - 10;
+    }
+    if (posY + cmH > window.innerHeight - 10) {
+      posY = window.innerHeight - cmH - 10;
+    }
+
+    cm.style.left = `${Math.max(10, posX)}px`;
+    cm.style.top = `${Math.max(10, posY)}px`;
+  }
+
+  _hideContextMenu() {
+    this._contextMenu?.classList.add('is-hidden');
+  }
+
+  // ── KEYBOARD SHORTCUTS ────────────────────────────────────
+  _bindKeyboardShortcuts() {
+    window.addEventListener('keydown', e => {
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.isContentEditable
+      );
+
+      // Escape key
+      if (e.key === 'Escape') {
+        if (isTyping) {
+          activeEl.blur();
+          return;
+        }
+        if (this._contextMenu && !this._contextMenu.classList.contains('is-hidden')) {
+          this._hideContextMenu();
+          return;
+        }
+        if (this.selectedElement && this.selectedElement !== this.selectedBlock) {
+          this.selectParent();
+        } else if (this.selectedBlock) {
+          this._deselect();
+        }
+        return;
+      }
+
+      if (isTyping) return;
+
+      // Delete or Backspace
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (this.selectedElement || this.selectedBlock) {
+          e.preventDefault();
+          this.deleteSelected();
+        }
+        return;
+      }
+
+      // Duplicate: Ctrl+D / Cmd+D
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+        if (this.selectedElement || this.selectedBlock) {
+          e.preventDefault();
+          this.duplicateSelected();
+        }
+        return;
+      }
+
+      // Undo: Ctrl+Z / Cmd+Z (without shift)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+        e.preventDefault();
+        this.undo();
+        return;
+      }
+
+      // Redo: Ctrl+Y / Cmd+Y or Ctrl+Shift+Z / Cmd+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || ((e.key === 'z' || e.key === 'Z') && e.shiftKey))) {
+        e.preventDefault();
+        this.redo();
+        return;
+      }
+    });
   }
 
   // ── CANVAS DIMENSIONS TRACKING ────────────────────────────
@@ -1384,7 +2638,7 @@ export class VisualEditor {
     });
 
     // Strip editor UI elements
-    tempContainer.querySelectorAll('.ve-block-toolbar, .ve-resize-handle, .ve-resize-badge, .ve-empty-state, .ve-col-placeholder').forEach(el => el.remove());
+    tempContainer.querySelectorAll('.ve-block-toolbar, .ve-resize-handle, .ve-resize-badge, .ve-empty-state, .ve-col-placeholder, .ve-element-badge, .ve-breadcrumbs, .ve-floating-toolbar, .ve-context-menu').forEach(el => el.remove());
 
     // Recursively unwrap all .ve-block from deepest to root
     const blocks = Array.from(tempContainer.querySelectorAll('.ve-block')).reverse();
@@ -1451,8 +2705,10 @@ export class VisualEditor {
     tempContainer.querySelectorAll('[data-block-width]').forEach(el => el.removeAttribute('data-block-width'));
     tempContainer.querySelectorAll('[data-width]').forEach(el => el.removeAttribute('data-width'));
     tempContainer.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-    tempContainer.querySelectorAll('.is-selected, .is-dragging, .ve-drop-before, .ve-drop-after, .ve-drop-top, .ve-drop-bottom, .ve-drop-left, .ve-drop-right, .ve-drop-inside').forEach(el => {
-      el.classList.remove('is-selected', 'is-dragging', 've-drop-before', 've-drop-after', 've-drop-top', 've-drop-bottom', 've-drop-left', 've-drop-right', 've-drop-inside');
+    tempContainer.querySelectorAll('[data-ve-ignore]').forEach(el => el.removeAttribute('data-ve-ignore'));
+    tempContainer.querySelectorAll('.is-selected, .is-dragging, .ve-drop-before, .ve-drop-after, .ve-drop-top, .ve-drop-bottom, .ve-drop-left, .ve-drop-right, .ve-drop-inside, .ve-selected-element, .ve-hovered-element').forEach(el => {
+      el.classList.remove('is-selected', 'is-dragging', 've-drop-before', 've-drop-after', 've-drop-top', 've-drop-bottom', 've-drop-left', 've-drop-right', 've-drop-inside', 've-selected-element', 've-hovered-element');
+      if (el.getAttribute('class') === '') el.removeAttribute('class');
     });
 
     // Group consecutive top-level partial-width items into a flex row

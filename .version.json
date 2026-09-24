@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.75.4",
+  "version": "4.80.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-24T17:30:00Z",
-  "release_name": "AURORA 4.75.4 — Редактор афиш: улучшение качества изображений (1K, 2K, 4K, 8K, HDR, ACES Tone Mapping и интерактивный сплит-слайдер)"
+  "commit_date": "2026-09-24T18:32:00Z",
+  "release_name": "AURORA 4.80.0 — HTML-редактор PRO: полная типографика (16 шрифтов, жирный, курсив, подчеркивание, цвета, тени), точечное удаление любых вложенных блоков, хлебные крошки и плавающий тулбар"
 }

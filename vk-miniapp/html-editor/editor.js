@@ -45,7 +45,7 @@ import {
   closeBrackets, closeBracketsKeymap
 } from "@codemirror/autocomplete";
 import { lintKeymap } from "@codemirror/lint";
-import { VisualEditor } from "./visual.js";
+import { VisualEditor } from "./visual.js?v=4.80.0";
 
 // ─── 2. Constants & Config ────────────────────────────────────
 const VERSION = "2.0.0";
@@ -1347,6 +1347,7 @@ function initVisualEditor() {
   });
 
   visualEditor.init();
+  window.visualEditor = visualEditor;
 
   // Mode buttons
   document.getElementById("btn-mode-code")?.addEventListener("click", () => switchEditorMode("code"));

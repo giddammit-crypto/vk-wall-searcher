@@ -2021,6 +2021,25 @@
   </div><!-- /.enhancer-modal -->
 </div><!-- /#enhancer-modal-overlay -->
 
+<!-- Глобальный космический лоадер экспорта (при экспорте из шапки / инспектора без открытия модалки) -->
+<div class="enhancer-global-loader hidden" id="global-export-loader" role="status" aria-live="polite">
+  <div class="enhancer-cosmo-orbit" style="width: 42px; height: 42px; flex-shrink: 0;">
+    <div class="enhancer-cosmo-ring-outer"></div>
+    <div class="enhancer-cosmo-ring"></div>
+    <div class="enhancer-cosmo-core" style="width: 22px; height: 22px;"></div>
+  </div>
+  <div class="enhancer-global-loader-body">
+    <div class="enhancer-global-loader-head">
+      <span class="enhancer-global-loader-title" id="global-loader-title">Генерация Ultra-HD макета...</span>
+      <span class="enhancer-global-loader-badge" id="global-loader-badge">4K HDR</span>
+    </div>
+    <div class="enhancer-global-loader-status" id="global-loader-status">Обработка холста (0%)</div>
+    <div class="enhancer-progress-bar-bg" style="margin-top: 5px; height: 5px;">
+      <div class="enhancer-progress-bar-fill" id="global-loader-progress-bar" style="width: 0%;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Тост уведомлений -->
 <div class="toast hidden" id="toast"></div>
 

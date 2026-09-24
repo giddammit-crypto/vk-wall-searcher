@@ -639,17 +639,26 @@ async function exportPoster(fabricCanvas, options = {}) {
   const presetKey = options.hdrPreset || (typeof options.hdr === 'string' ? options.hdr : 'cinematic');
   const filename = options.filename || 'Афиша';
   const shouldDownload = options.download !== false;
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
   // 1. Расчёт целевого масштаба и проверка лимитов памяти Canvas
+  if (onProgress) onProgress(15, `Подготовка холста (${resolution.toUpperCase()})...`);
+  await new Promise(r => setTimeout(r, 25));
+
   const origW = canvasInst.getWidth ? canvasInst.getWidth() : (canvasInst.width || 800);
   const origH = canvasInst.getHeight ? canvasInst.getHeight() : (canvasInst.height || 600);
   const scaleInfo = calculateExportScale(origW, origH, resolution, options);
+
+  if (onProgress) onProgress(35, `Суперсэмплинг холста (${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px)...`);
+  await new Promise(r => setTimeout(r, 25));
 
   // 2. Рендеринг на скрытый буферный Canvas в сверхвысоком разрешении
   const bufferCanvas = await renderFabricToBuffer(canvasInst, scaleInfo.multiplier);
 
   // 3. Применение HDR и фильтра резкости к буферному холсту
   if (isHdr) {
+    if (onProgress) onProgress(65, 'Применение HDR тоноотображения и микроконтраста...');
+    await new Promise(r => setTimeout(r, 25));
     const hdrConfig = typeof options.hdr === 'object'
       ? options.hdr
       : (HDR_PRESETS[presetKey] || HDR_PRESETS.cinematic);
@@ -657,8 +666,12 @@ async function exportPoster(fabricCanvas, options = {}) {
   }
 
   // 4. Формирование целевого формата
+  if (onProgress) onProgress(85, `Кодирование файла ${format.toUpperCase()}...`);
+  await new Promise(r => setTimeout(r, 25));
+
   let dataUrl = null;
   let fileExt = 'png';
+  const canvasBg = (typeof canvasInst.backgroundColor === 'string' && canvasInst.backgroundColor) ? canvasInst.backgroundColor : '#ffffff';
 
   if (format === 'jpg' || format === 'jpeg') {
     fileExt = 'jpg';
@@ -667,7 +680,7 @@ async function exportPoster(fabricCanvas, options = {}) {
     jpgCanvas.width = bufferCanvas.width;
     jpgCanvas.height = bufferCanvas.height;
     const jCtx = jpgCanvas.getContext('2d');
-    jCtx.fillStyle = options.backgroundColor || canvasInst.backgroundColor || '#ffffff';
+    jCtx.fillStyle = options.backgroundColor || canvasBg;
     jCtx.fillRect(0, 0, jpgCanvas.width, jpgCanvas.height);
     jCtx.drawImage(bufferCanvas, 0, 0);
 
@@ -694,7 +707,7 @@ async function exportPoster(fabricCanvas, options = {}) {
     jpgCanvas.width = bufferCanvas.width;
     jpgCanvas.height = bufferCanvas.height;
     const jCtx = jpgCanvas.getContext('2d');
-    jCtx.fillStyle = options.backgroundColor || canvasInst.backgroundColor || '#ffffff';
+    jCtx.fillStyle = options.backgroundColor || canvasBg;
     jCtx.fillRect(0, 0, jpgCanvas.width, jpgCanvas.height);
     jCtx.drawImage(bufferCanvas, 0, 0);
 
@@ -704,6 +717,8 @@ async function exportPoster(fabricCanvas, options = {}) {
     if (shouldDownload) {
       pdf.save(`${filename}.pdf`);
     }
+
+    if (onProgress) onProgress(100, `Print-PDF (${scaleInfo.targetName}) готов!`);
 
     return {
       success: true,
@@ -723,6 +738,8 @@ async function exportPoster(fabricCanvas, options = {}) {
       triggerDownload(dataUrl, `${filename}.${fileExt}`);
     }
   }
+
+  if (onProgress) onProgress(100, `${fileExt.toUpperCase()} (${scaleInfo.targetName}) готов!`);
 
   return {
     success: true,
