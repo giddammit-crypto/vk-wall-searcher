@@ -282,10 +282,38 @@ function init() {
     });
   }
 
-  // 10. Сохранение, экспорт и публикация
+  // 10. Сохранение, импорт, экспорт и публикация
   document.getElementById('btn-save-project')?.addEventListener('click', () => {
     tildaEngine.saveProject();
     showToast('✅ Проект AURORA WEB сохранён');
+  });
+
+  const importInput = document.getElementById('project-import-file-input');
+  document.getElementById('btn-import-project')?.addEventListener('click', () => {
+    importInput?.click();
+  });
+
+  importInput?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const json = JSON.parse(ev.target.result);
+        if (json && json.pages && json.pages.length > 0) {
+          tildaEngine.project = json;
+          tildaEngine.init();
+          if (titleInput) titleInput.value = json.name || 'Сайт Aurora Web';
+          showToast(`🎉 Проект «${json.name || 'Сайт'}» успешно импортирован!`);
+        } else {
+          showToast('❌ Неверный формат файла project.json');
+        }
+      } catch (err) {
+        showToast('❌ Ошибка чтения файла проекта');
+      }
+    };
+    reader.readAsText(file);
+    importInput.value = '';
   });
 
   document.getElementById('btn-export-project')?.addEventListener('click', () => {
@@ -728,19 +756,88 @@ function syncToPreviewFrame() {
   doc.close();
 }
 
-// ─── Экспорт проекта в ZIP / HTML ─────────────────────────────
+// ─── Экспорт полноценного ZIP архива проекта ──────────────────
 async function exportProjectZip() {
-  const fullHtml = tildaEngine.generateStandaloneHtml();
+  showToast('📦 Сборка полноценного ZIP-архива сайта...');
   const title = tildaEngine.project.name || 'aurora-web-site';
+  const cleanTitle = title.toLowerCase().replace(/[^a-z0-9а-яё_-]/gi, '_');
 
-  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  if (typeof JSZip === 'undefined') {
+    try {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    } catch (e) {
+      console.warn('JSZip load error, falling back to standalone HTML:', e);
+      const fullHtml = tildaEngine.generateStandaloneHtml();
+      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${cleanTitle}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('✅ Готовый HTML-файл сайта скачан');
+      return;
+    }
+  }
+
+  const zip = new JSZip();
+
+  // 1. Папка fonts/ и добавление загруженных шрифтов
+  const fontsFolder = zip.folder('fonts');
+  if (customFonts && customFonts.length > 0) {
+    for (const f of customFonts) {
+      if (f.buffer) {
+        fontsFolder.file(f.fileName, f.buffer);
+      }
+    }
+  }
+
+  // 2. Папка css/ и файл css/style.css со стилями и @font-face
+  const cssFolder = zip.folder('css');
+  const cssContent = tildaEngine.generateZipCss(customFonts);
+  cssFolder.file('style.css', cssContent);
+
+  // 3. Папка js/ и файл js/runtime.js
+  const jsFolder = zip.folder('js');
+  let runtimeCode = '';
+  try {
+    const res = await fetch('tilda_runtime.js');
+    if (res.ok) runtimeCode = await res.text();
+  } catch (e) {
+    console.warn('Runtime fetch fallback:', e);
+  }
+  if (!runtimeCode) {
+    runtimeCode = `/* AURORA WEB Interactive Runtime Engine */\nconsole.log('AURORA WEB Runtime Ready');`;
+  }
+  jsFolder.file('runtime.js', runtimeCode);
+
+  // 4. Генерация страниц HTML (index.html и остальные страницы)
+  tildaEngine.project.pages.forEach((page, idx) => {
+    const isIndex = idx === 0 || page.slug === 'index';
+    const filename = isIndex ? 'index.html' : `${page.slug}.html`;
+    const pageHtml = tildaEngine.generatePageHtml(page, { isZip: true });
+    zip.file(filename, pageHtml);
+  });
+
+  // 5. Файл проекта project.json (для повторного импорта и восстановления в AURORA WEB)
+  zip.file('project.json', JSON.stringify(tildaEngine.project, null, 2));
+
+  // 6. Генерация архива и скачивание
+  const blob = await zip.generateAsync({ type: 'blob' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${title}.html`;
+  a.download = `${cleanTitle}.zip`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ Готовый автономный HTML-файл скачан');
+
+  showToast(`🎉 Проект «${title}» успешно экспортирован в ZIP со всеми HTML, CSS, JS, шрифтами и ресурсами!`);
 }
 
 // ─── Облачная публикация ──────────────────────────────────────

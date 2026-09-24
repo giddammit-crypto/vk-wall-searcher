@@ -13,6 +13,9 @@
 
   <link rel="stylesheet" href="style.css?v=5.2.0">
 
+  <!-- JSZip Library for Full Archive Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <!-- CodeMirror 6 import map -->
   <script type="importmap">
   {
@@ -113,9 +116,14 @@
       <span class="material-symbols-rounded">save</span>
       <span>Сохранить</span>
     </button>
-    <button class="topbar-action-btn" id="btn-export-project" title="Экспорт HTML / ZIP">
+    <button class="topbar-action-btn" id="btn-import-project" title="Импортировать проект (.json)">
+      <span class="material-symbols-rounded">folder_open</span>
+      <span>Импорт</span>
+    </button>
+    <input type="file" id="project-import-file-input" accept=".json" style="display:none;" />
+    <button class="topbar-action-btn" id="btn-export-project" title="Экспорт проекта в ZIP со всеми файлами">
       <span class="material-symbols-rounded">download</span>
-      <span>Экспорт</span>
+      <span>Экспорт ZIP</span>
     </button>
     <button class="topbar-action-btn btn-primary" id="btn-publish-cloud" title="Опубликовать в облаке на 24ч с прямой ссылкой">
       <span class="material-symbols-rounded">cloud_upload</span>

@@ -1684,14 +1684,14 @@ export class TildaEngine {
     }
   }
 
-  // ─── 11. Экспорт чистого автономного HTML ─────────────────────
-  generateStandaloneHtml() {
-    const page = this.getActivePage();
+  // ─── 11. Экспорт автономного HTML & ZIP ─────────────────────
+  generatePageHtml(page = null, options = {}) {
+    const p = page || this.getActivePage();
     const g = this.project.globalStyles;
     const s = this.project.settings;
-    const store = this.project.store;
+    const isZip = !!options.isZip;
 
-    const blocksHtml = page.blocks.map(blk => {
+    const blocksHtml = p.blocks.map(blk => {
       if (blk.isHidden) return '';
       const def = getBlockById(blk.blockDefId);
       if (!def) return '';
@@ -1716,13 +1716,13 @@ export class TildaEngine {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(page.metaTitle || s.metaTitle || page.title)}</title>
-  <meta name="description" content="${escapeHtml(page.metaDesc || s.metaDesc || '')}">
+  <title>${escapeHtml(p.metaTitle || s.metaTitle || p.title)}</title>
+  <meta name="description" content="${escapeHtml(p.metaDesc || s.metaDesc || '')}">
   ${s.faviconUrl ? `<link rel="icon" href="${escapeHtml(s.faviconUrl)}">` : ''}
   
   <!-- OpenGraph -->
-  <meta property="og:title" content="${escapeHtml(page.metaTitle || s.metaTitle || page.title)}">
-  <meta property="og:description" content="${escapeHtml(page.metaDesc || s.metaDesc || '')}">
+  <meta property="og:title" content="${escapeHtml(p.metaTitle || s.metaTitle || p.title)}">
+  <meta property="og:description" content="${escapeHtml(p.metaDesc || s.metaDesc || '')}">
   <meta property="og:image" content="${escapeHtml(s.ogImageUrl || '')}">
 
   <!-- Google Fonts -->
@@ -1731,6 +1731,7 @@ export class TildaEngine {
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@400;600;700;800;900&family=Oswald:wght@500;700&family=Playfair+Display:wght@600;800&family=Roboto:wght@400;500;700&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
   
+  ${isZip ? '<link rel="stylesheet" href="css/style.css">' : ''}
   ${s.headCode || ''}
   ${metrikaScript}
 
@@ -1748,7 +1749,7 @@ export class TildaEngine {
     }
     img { max-width: 100%; height: auto; display: block; }
     a { color: inherit; text-decoration: none; }
-    .t-container { width: 100%; max-width: ${g.maxWidth}; margin: 0 auto; box-sizing: border-box; }
+    .t-container { width: 100%; max-width: ${g.maxWidth}; margin: 0 auto; box-sizing: border-box; padding: 0 20px; }
     @media (max-width: 768px) {
       .t-nav-links { display: none !important; }
     }
@@ -1756,8 +1757,103 @@ export class TildaEngine {
 </head>
 <body>
 ${blocksHtml}
+${isZip ? '<script src="js/runtime.js"></script>' : ''}
 ${s.bodyCode || ''}
 </body>
 </html>`;
+  }
+
+  generateStandaloneHtml() {
+    return this.generatePageHtml(this.getActivePage(), { isZip: false });
+  }
+
+  generateZipCss(customFonts = []) {
+    const g = this.project.globalStyles;
+
+    let fontFaceCss = '';
+    customFonts.forEach(f => {
+      let format = 'truetype';
+      const ext = (f.fileName || '').split('.').pop().toLowerCase();
+      if (ext === 'woff2') format = 'woff2';
+      else if (ext === 'woff') format = 'woff';
+      else if (ext === 'otf') format = 'opentype';
+
+      fontFaceCss += `
+@font-face {
+  font-family: '${f.name}';
+  src: url('../fonts/${f.fileName}') format('${format}');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+`;
+    });
+
+    return `/* ============================================================
+   AURORA WEB — Production Stylesheet
+   ============================================================ */
+
+${fontFaceCss}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --aurora-font-head: '${g.fontHeading}', sans-serif;
+  --aurora-font-body: '${g.fontBody}', -apple-system, BlinkMacSystemFont, sans-serif;
+  --aurora-accent: ${g.colorAccent};
+  --aurora-bg: ${g.colorBg};
+  --aurora-text: ${g.colorText};
+  --aurora-btn-bg: ${g.buttonBg};
+  --aurora-btn-radius: ${g.buttonRadius};
+  --aurora-max-width: ${g.maxWidth};
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--aurora-font-body);
+  background: var(--aurora-bg);
+  color: var(--aurora-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--aurora-font-head);
+  letter-spacing: -0.02em;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+
+.t-container {
+  width: 100%;
+  max-width: var(--aurora-max-width);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0 20px;
+}
+
+/* Base Block Components */
+.tilda-block {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@media (max-width: 768px) {
+  .t-container { padding: 0 16px; }
+  .t-nav-links { display: none !important; }
+}
+`;
   }
 }
