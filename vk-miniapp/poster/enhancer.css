@@ -2135,3 +2135,6 @@
   display: none;
   transition: width 0.05s ease, height 0.05s ease;
 }
+#eraser-cursor-ring.is-visible {
+  display: block !important;
+}
