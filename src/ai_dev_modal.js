@@ -861,7 +861,7 @@ export function getAiDevModalHtml() {
                                 </div>
                             </div>
                             <p class="ai-dev-card-desc">
-                                Единый шлюз-агрегатор с OpenAI-совместимым API к сотням моделей мира. Содержит постоянно доступный бесплатный пул моделей с суффиксом `:free` (DeepSeek-R1, Llama 3.3, Qwen 2.5, Gemini Flash).
+                                Единый шлюз-агрегатор с OpenAI-совместимым API к сотням моделей мира. Содержит постоянно доступный бесплатный пул моделей с суффиксом \`:free\` (DeepSeek-R1, Llama 3.3, Qwen 2.5, Gemini Flash).
                             </p>
                             <div class="ai-dev-card-badges">
                                 <span class="ai-dev-tag tag-purple">Unified API</span>

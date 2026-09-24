@@ -4583,6 +4583,10 @@ select:focus {
     font-family: inherit;
 }
 
+.nav-menu-item > * {
+    pointer-events: none;
+}
+
 .nav-menu-item:hover,
 .nav-menu-item:focus-visible {
     background: rgba(255, 255, 255, 0.07);

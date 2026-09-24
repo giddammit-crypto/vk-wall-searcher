@@ -134,21 +134,32 @@ export class AuroraSplashLoader {
             ? Array.from(this.arcLettersGroup.querySelectorAll('.cosmo-letter'))
             : [];
 
+        // Safety Watchdog: unconditionally finishes splash after totalDuration + 1.2s
+        this.safetyTimer = setTimeout(() => {
+            console.warn('[Splash] Safety watchdog fired: forcing splash finish');
+            this.finish(true);
+        }, Math.max(3000, (this.totalDuration + 1.2) * 1000));
+
         this.init();
     }
 
     async init() {
         if (!this.container) return;
 
-        this.setupControls();
-        this.preloadStickers();
-        this.initStarfield();
-        this.initFxCanvas();
+        try {
+            this.setupControls();
+            this.preloadStickers();
+            this.initStarfield();
+            this.initFxCanvas();
 
-        await this.ensureThreeLibraries();
-        this.initWebGL();
-        this.loadModel();
-        this.start();
+            await this.ensureThreeLibraries();
+            this.initWebGL();
+            this.loadModel();
+            this.start();
+        } catch (err) {
+            console.error('[Splash] Fatal error in init(), dismissing splash immediately:', err);
+            this.finish(true);
+        }
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -179,38 +190,69 @@ export class AuroraSplashLoader {
     async ensureThreeLibraries() {
         if (window.THREE && window.THREE.GLTFLoader) return;
 
-        const loadScript = (src) => {
-            return new Promise((resolve, reject) => {
+        const loadScript = (src, checkGlobal) => {
+            return new Promise((resolve) => {
+                if (checkGlobal && checkGlobal()) {
+                    return resolve(true);
+                }
+
+                // Safety timeout per script: 2000ms max so it never hangs
+                const timer = setTimeout(() => {
+                    console.warn(`[Splash] Script ${src} timed out (2s), proceeding with fallback.`);
+                    resolve(false);
+                }, 2000);
+
                 const existing = document.querySelector(`script[src="${src}"]`);
                 if (existing) {
-                    if (existing.dataset.loaded === 'true' || window.THREE) {
-                        return resolve();
+                    if (existing.dataset.loaded === 'true' || (checkGlobal && checkGlobal())) {
+                        clearTimeout(timer);
+                        return resolve(true);
                     }
-                    existing.addEventListener('load', () => resolve());
-                    existing.addEventListener('error', (e) => reject(e));
+                    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                        // Defer script already executed in DOM. Check if global exists.
+                        clearTimeout(timer);
+                        return resolve(Boolean(checkGlobal && checkGlobal()));
+                    }
+                    existing.addEventListener('load', () => {
+                        clearTimeout(timer);
+                        resolve(true);
+                    }, { once: true });
+                    existing.addEventListener('error', () => {
+                        clearTimeout(timer);
+                        resolve(false);
+                    }, { once: true });
                     return;
                 }
+
                 const script = document.createElement('script');
                 script.src = src;
                 script.async = false;
                 script.onload = () => {
+                    clearTimeout(timer);
                     script.dataset.loaded = 'true';
-                    resolve();
+                    resolve(true);
                 };
-                script.onerror = (e) => reject(e);
+                script.onerror = () => {
+                    clearTimeout(timer);
+                    resolve(false);
+                };
                 document.head.appendChild(script);
             });
         };
 
         try {
             if (!window.THREE) {
-                await loadScript('assets/vendor/three/three.min.js');
+                await loadScript('assets/vendor/three/three.min.js', () => window.THREE);
             }
             if (window.THREE && !window.THREE.GLTFLoader) {
-                await loadScript('assets/vendor/three/GLTFLoader.js');
+                await loadScript('assets/vendor/three/GLTFLoader.js', () => window.THREE?.GLTFLoader);
             }
         } catch (err) {
-            console.warn('[Splash] Three.js недоступен, включаю PNG-fallback:', err);
+            console.warn('[Splash] Three.js loading error:', err);
+        }
+
+        if (!window.THREE || !window.THREE.GLTFLoader) {
+            console.warn('[Splash] Three.js / GLTFLoader unavailable, using PNG mascot fallback');
             this.activateMascotFallback();
         }
     }
@@ -1436,6 +1478,11 @@ export class AuroraSplashLoader {
         this.isClosed = true;
         this.isRunning = false;
 
+        if (this.safetyTimer) {
+            clearTimeout(this.safetyTimer);
+            this.safetyTimer = null;
+        }
+
         if (this.animFrameId) {
             cancelAnimationFrame(this.animFrameId);
             this.animFrameId = null;
@@ -1458,12 +1505,17 @@ export class AuroraSplashLoader {
         if (this.progressPercent) this.progressPercent.textContent = '100%';
         if (this.progressStatus) this.progressStatus.textContent = 'СИСТЕМА ГОТОВА К РАБОТЕ!';
 
-        const fadeDuration = isImmediate ? 200 : 650;
+        try {
+            sessionStorage.setItem('aurora_splash_seen', 'true');
+        } catch (e) {}
+
+        const fadeDuration = isImmediate ? 150 : 500;
 
         if (this.container) {
             this.container.classList.add('aurora-splash-closing');
             setTimeout(() => {
                 this.container.classList.add('aurora-splash-hidden');
+                this.container.style.display = 'none';
                 this.destroyThree();
                 if (typeof this.onComplete === 'function') {
                     this.onComplete();

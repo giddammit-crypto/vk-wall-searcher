@@ -19,9 +19,17 @@
             }
             var t = p.get('theme') || p.get('preview_theme') || localStorage.getItem('aurora_theme') || 'light';
             document.documentElement.setAttribute('data-theme', t);
+            if (sessionStorage.getItem('aurora_splash_seen') === 'true' && !p.has('splash')) {
+                document.documentElement.classList.add('aurora-splash-skip-early');
+            }
         } catch(e) {}
     })();
     </script>
+    <style>
+    html.aurora-splash-skip-early #aurora-splash {
+        display: none !important;
+    }
+    </style>
 
     <!-- CRITICAL STANDALONE READER CSS: Мгновенная блокировка отображения сайта Авроры для читателей со стеллажа -->
     <style id="critical-shelf-reader-css">
@@ -365,23 +373,51 @@
         </div>
     </div>
     <script type="module">
-    import { AuroraSplashLoader } from './src/splash_loader.js?v=5.6.0';
+    import { AuroraSplashLoader } from './src/splash_loader.js?v=4.74.3';
     (function() {
         try {
             const p = new URLSearchParams(window.location.search);
-            if (p.get('mode') !== 'shelf_recommend') {
-                window.__auroraSplash = new AuroraSplashLoader({
-                    duration: 8.0,
-                    modelUrl: 'assets/models/cute_robot.glb'
-                });
-            } else {
+            const isShelf = p.get('mode') === 'shelf_recommend';
+            const forceSplash = p.get('splash') === 'force' || p.get('splash') === '1';
+            let alreadySeen = false;
+            try { alreadySeen = sessionStorage.getItem('aurora_splash_seen') === 'true'; } catch(e) {}
+
+            if (isShelf || (alreadySeen && !forceSplash)) {
                 const splash = document.getElementById('aurora-splash');
-                if (splash) splash.style.display = 'none';
+                if (splash) {
+                    splash.style.display = 'none';
+                    splash.classList.add('aurora-splash-hidden');
+                }
+                return;
             }
+
+            window.__auroraSplash = new AuroraSplashLoader({
+                duration: 8.0,
+                modelUrl: 'assets/models/cute_robot.glb'
+            });
         } catch(e) {
             console.warn('[Splash] init error', e);
+            const splash = document.getElementById('aurora-splash');
+            if (splash) {
+                splash.style.display = 'none';
+                splash.classList.add('aurora-splash-hidden');
+            }
         }
     })();
+    </script>
+    <script>
+    /* Emergency safety watchdog timer: unconditionally dismiss splash after 9.5s */
+    setTimeout(function() {
+        var splash = document.getElementById('aurora-splash');
+        if (splash && !splash.classList.contains('aurora-splash-hidden')) {
+            console.warn('[Splash] Emergency fallback watchdog fired, hiding splash.');
+            splash.classList.add('aurora-splash-closing');
+            setTimeout(function() {
+                splash.classList.add('aurora-splash-hidden');
+                splash.style.display = 'none';
+            }, 300);
+        }
+    }, 9500);
     </script>
 
     <!-- Aurora Volumetric Ambient Backdrop -->
@@ -2116,7 +2152,7 @@
     </div>
 
     <!-- Main Application Module (ES Modules) -->
-    <script type="module" src="src/app.js?v=4.74.2"></script>
+    <script type="module" src="src/app.js?v=4.74.3"></script>
 
     <script>
     /* =============================================================
@@ -2632,7 +2668,7 @@
 
                 dd.querySelectorAll('.nav-menu-item').forEach(item => {
                     item.addEventListener('click', () => {
-                        closeAll();
+                        setTimeout(() => closeAll(), 120);
                     });
                 });
             });

@@ -110,7 +110,7 @@ import {
     initAiDevModal,
     openAiDevModal,
     closeAiDevModal
-} from './ai_dev_modal.js?v=4.69.0';
+} from './ai_dev_modal.js?v=4.74.3';
 
 import {
     initLeagueModal,
@@ -129,7 +129,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.68.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.74.2';
+export const APP_VERSION = '4.74.3';
 
 function initApp() {
 
