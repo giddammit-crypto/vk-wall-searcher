@@ -800,7 +800,7 @@ export function openPromoModal(defaultBranchCode = null) {
                 b.canonicalName === defaultBranchCode
             );
             if (targetBranch) {
-                sel.value = targetBranch.shortCode;
+                sel.value = targetBranch.canonicalName;
                 sel.dispatchEvent(new Event('change'));
             }
         }

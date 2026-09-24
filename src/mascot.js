@@ -1164,8 +1164,21 @@ export class AuroraMascot {
      * ПРЕЗЕНТАЦИЯ «КОСМО РАССКАЗЫВАЕТ О СЕБЕ» (кнопка «Заставка», ~36с)
      * ------------------------------------------------------------------- */
     startPresentation() {
-        if (this.isInPresentation || this.isCollapsed || this.isIn3D) return;
+        if (this.isInPresentation || this.isIn3D) return;
+
+        // Если маскот выключен или свернут, автоматически включаем и разворачиваем его
+        if (!this.isEnabled) {
+            this.enableMascot();
+        }
+        if (this.isCollapsed) {
+            this.expand();
+        }
         this.isInPresentation = true;
+
+        if (this.container) {
+            this.container.classList.remove('mascot-hidden');
+            this.container.style.display = '';
+        }
 
         // Остановить автономный цикл и текущую речь
         clearTimeout(this.activityCycleTimer);
@@ -1290,11 +1303,23 @@ export class AuroraMascot {
         this._stageWrap = wrap;
         this._stageEl = els;
         els.catcher.addEventListener('click', () => this.endPresentation(true));
+
+        this._escStageHandler = (e) => {
+            if (e.key === 'Escape' && this.isInPresentation) {
+                e.preventDefault();
+                this.endPresentation(true);
+            }
+        };
+        document.addEventListener('keydown', this._escStageHandler);
     }
 
     endPresentation(skipped = false) {
         if (!this.isInPresentation) return;
         this.isInPresentation = false;
+        if (this._escStageHandler) {
+            document.removeEventListener('keydown', this._escStageHandler);
+            this._escStageHandler = null;
+        }
         (this._stageTimers || []).forEach(clearTimeout);
         this._stageTimers = [];
         this.stopVoice(true);

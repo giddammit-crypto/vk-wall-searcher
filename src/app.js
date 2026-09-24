@@ -129,7 +129,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.68.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.62.1';
+export const APP_VERSION = '4.74.2';
 
 function initApp() {
 
@@ -3431,6 +3431,10 @@ function initApp() {
 
         // Escape: Close all modals & overlays
         if (e.key === 'Escape') {
+            if (window.Mascot && window.Mascot.isInPresentation) {
+                window.Mascot.endPresentation(true);
+                return;
+            }
             if (state.isScanning) {
                 triggerModalAttention();
                 return;

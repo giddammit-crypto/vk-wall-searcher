@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.74.1",
+  "version": "4.74.2",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-23T20:10:00Z",
-  "release_name": "AURORA 4.74.1 — Исправлены кнопки AI Dev Hub: восстановлены 5 вкладок, кнопка закрытия и поиск"
+  "commit_date": "2026-09-24T05:45:00Z",
+  "release_name": "AURORA 4.74.2 — Аудит и исправление кнопок: заставка Космо, выбор филиала в промо-плакатах, устранение наложения кнопок в редакторе афиш"
 }

@@ -3149,6 +3149,8 @@ input, select, textarea {
 
 /* ── Адаптивные улучшения шапки на экранах планшетов и мобильных ── */
 @media (max-width: 1080px) {
+  #btn-back .hbtn-label,
+  .ed-header-left .hbtn-label,
   .ed-header-center .hbtn-label,
   .ed-header-right .hbtn-label {
     display: none !important;
