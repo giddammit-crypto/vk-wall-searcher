@@ -1445,7 +1445,7 @@ ${appState.js}
     }
   });
 
-  // Mobile drawers (Palette & Properties)
+  // Mobile drawers & Desktop Collapsible Panels (Palette & Properties)
   const paletteContainer = document.getElementById("wysiwyg-palette");
   const propsContainer   = document.getElementById("wysiwyg-props");
   const backdropEl       = document.getElementById("wysiwyg-backdrop");
@@ -1457,20 +1457,41 @@ ${appState.js}
   };
 
   document.getElementById("ve-toggle-palette")?.addEventListener("click", () => {
-    const willOpen = !paletteContainer?.classList.contains("is-open");
-    closeDrawers();
-    if (willOpen) {
-      paletteContainer?.classList.add("is-open");
-      backdropEl?.classList.add("is-open");
+    if (window.innerWidth <= 880) {
+      const willOpen = !paletteContainer?.classList.contains("is-open");
+      closeDrawers();
+      if (willOpen) {
+        paletteContainer?.classList.remove("is-collapsed");
+        paletteContainer?.classList.add("is-open");
+        backdropEl?.classList.add("is-open");
+      }
+    } else {
+      paletteContainer?.classList.toggle("is-collapsed");
+      document.getElementById("ve-toggle-palette")?.classList.toggle("is-active", !paletteContainer?.classList.contains("is-collapsed"));
+    }
+  });
+
+  document.getElementById("ve-close-palette")?.addEventListener("click", () => {
+    if (window.innerWidth <= 880) {
+      closeDrawers();
+    } else {
+      paletteContainer?.classList.add("is-collapsed");
+      document.getElementById("ve-toggle-palette")?.classList.remove("is-active");
     }
   });
 
   document.getElementById("ve-toggle-props")?.addEventListener("click", () => {
-    const willOpen = !propsContainer?.classList.contains("is-open");
-    closeDrawers();
-    if (willOpen) {
-      propsContainer?.classList.add("is-open");
-      backdropEl?.classList.add("is-open");
+    if (window.innerWidth <= 880) {
+      const willOpen = !propsContainer?.classList.contains("is-open");
+      closeDrawers();
+      if (willOpen) {
+        propsContainer?.classList.remove("is-collapsed");
+        propsContainer?.classList.add("is-open");
+        backdropEl?.classList.add("is-open");
+      }
+    } else {
+      propsContainer?.classList.toggle("is-collapsed");
+      document.getElementById("ve-toggle-props")?.classList.toggle("is-active", !propsContainer?.classList.contains("is-collapsed"));
     }
   });
 

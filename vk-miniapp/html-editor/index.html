@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="visual.css">
+  <link rel="stylesheet" href="style.css?v=4.75.1">
+  <link rel="stylesheet" href="visual.css?v=4.75.1">
 
   <!-- CodeMirror 6 via import map -->
   <script type="importmap">
@@ -261,6 +261,9 @@
     <div class="wysiwyg-palette-title">
       <span class="material-symbols-rounded">widgets</span>
       <span>Палитра блоков</span>
+      <button class="icon-btn-sm ve-palette-close-btn" id="ve-close-palette" type="button" title="Свернуть палитру" style="margin-left:auto;background:transparent;border:none;color:#94a3b8;cursor:pointer;display:flex;align-items:center;padding:4px;border-radius:4px;">
+        <span class="material-symbols-rounded" style="font-size:18px;">chevron_left</span>
+      </button>
     </div>
     <div id="ve-palette-list"></div>
   </aside>
@@ -270,9 +273,9 @@
 
   <!-- Center Canvas Wrapper -->
   <div class="wysiwyg-canvas-wrapper" id="wysiwyg-canvas-wrapper">
-    <div class="wysiwyg-canvas-toolbar">
-      <!-- Mobile drawer toggle: Blocks Palette -->
-      <button class="canvas-tb-btn ve-mobile-toggle" id="ve-toggle-palette" title="Открыть палитру блоков">
+    <div class="wysiwyg-canvas-toolbar" id="wysiwyg-canvas-toolbar">
+      <!-- Drawer / Sidebar toggle: Blocks Palette -->
+      <button class="canvas-tb-btn ve-toggle-palette-btn is-active" id="ve-toggle-palette" title="Показать/скрыть палитру блоков">
         <span class="material-symbols-rounded">widgets</span>
         <span>Блоки</span>
       </button>
@@ -322,8 +325,8 @@
 
       <div style="flex: 1;"></div>
 
-      <!-- Mobile drawer toggle: Properties -->
-      <button class="canvas-tb-btn ve-mobile-toggle" id="ve-toggle-props" title="Открыть панель свойств">
+      <!-- Drawer / Sidebar toggle: Properties -->
+      <button class="canvas-tb-btn ve-toggle-props-btn is-active" id="ve-toggle-props" title="Показать/скрыть панель свойств">
         <span class="material-symbols-rounded">tune</span>
         <span>Свойства</span>
       </button>
@@ -338,12 +341,15 @@
     <div class="wysiwyg-canvas is-desktop" id="wysiwyg-canvas"></div>
 
     <!-- Bottom Add Block Action Bar -->
-    <div class="ve-canvas-footer-bar" id="ve-canvas-footer-bar">
-      <button class="ve-bottom-add-btn" id="ve-bottom-add-btn" type="button" title="Добавить блок в конец страницы">
-        <span class="material-symbols-rounded">add_circle</span>
+    <div class="ve-canvas-footer-bar" id="ve-canvas-footer-bar" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:36px;margin-bottom:60px;width:100%;max-width:960px;box-sizing:border-box;user-select:none;">
+      <button class="ve-bottom-add-btn" id="ve-bottom-add-btn" type="button" title="Добавить блок в конец страницы" style="appearance:none;-webkit-appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.16));border:1.5px dashed rgba(129,140,248,0.55);color:#e0e7ff;padding:12px 28px;border-radius:9999px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;outline:none;box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:all 0.25s ease;">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#818cf8;">add_circle</span>
         <span>Добавить блок</span>
       </button>
-      <span class="ve-bottom-hint">Холст адаптируется по высоте под любой объем контента</span>
+      <span class="ve-bottom-hint" style="font-size:12px;color:#64748b;font-weight:500;display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-symbols-rounded" style="font-size:15px;color:#6366f1;">expand</span>
+        <span>Холст автоматически адаптируется по высоте под любой объем контента</span>
+      </span>
     </div>
   </div>
 
@@ -485,7 +491,7 @@
 
 <!-- Boot editor -->
 <script type="module">
-  import { init } from './editor.js';
+  import { init } from './editor.js?v=4.75.1';
 
   // Close timeline via dedicated button
   document.getElementById('btn-close-timeline')?.addEventListener('click', () => {

@@ -1001,6 +1001,11 @@ kbd {
   .project-name { max-width: 120px; }
 }
 
+@media (max-width: 1200px) {
+  .header-center .hdr-btn-label { display: none !important; }
+  #btn-shortcuts, #btn-wrap, #btn-zen { display: none !important; }
+}
+
 @media (max-width: 992px) {
   .editor-header {
     gap: 6px;
@@ -1015,9 +1020,11 @@ kbd {
   }
   .brand-name { display: none; }
   .brand-badge { display: none; }
-  .project-name { max-width: 90px; }
-  .mode-switch-group { margin-left: 6px; padding: 2px; }
+  .project-name { max-width: 80px; }
+  .mode-switch-group { margin-left: 4px; padding: 2px; }
   .mode-btn { padding: 4px 8px; font-size: 11px; }
+  .font-ctrl { display: none !important; }
+  .layout-group { display: none !important; }
 }
 
 @media (max-width: 768px) {
@@ -1028,22 +1035,26 @@ kbd {
     width: 100% !important;
     height: 50% !important;
   }
+  .editor-main[data-layout="horizontal"] .preview-pane {
+    width: 100% !important;
+    height: 50% !important;
+  }
   .editor-main[data-layout="horizontal"] .split-handle {
-    height: 4px;
+    height: 6px;
     width: 100%;
     cursor: ns-resize;
   }
-  .project-name { display: none; }
+  .project-name { display: none !important; }
   .hdr-btn-label { display: none !important; }
   .header-center .hdr-btn { padding: 4px 6px; }
-  .font-ctrl { display: none; }
-  .layout-group { display: none; }
+  .header-right .hdr-btn { padding: 4px 6px; }
+  #btn-save-named { display: none !important; }
 }
 
 @media (max-width: 520px) {
-  .header-center .hdr-btn:nth-child(n+5) { display: none; }
-  #btn-save-named { display: none; }
-  #btn-wrap { display: none; }
+  .header-center .hdr-btn:nth-child(n+4) { display: none !important; }
+  .header-right { gap: 2px; }
+  .btn-run { padding: 5px 10px !important; font-size: 11px !important; }
 }
 
 /* ─── CODEMIRROR OVERRIDES ──────────────────────────────────── */

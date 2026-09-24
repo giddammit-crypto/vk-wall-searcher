@@ -1001,6 +1001,9 @@ export class VisualEditor {
       <div class="ve-props-header">
         <span class="material-symbols-rounded">${def?.icon || 'widgets'}</span>
         <span>${def?.label || 'Блок'}</span>
+        <button class="icon-btn-sm ve-props-close-btn" id="ve-close-props" type="button" title="Скрыть панель свойств" style="margin-left:auto;background:transparent;border:none;color:#94a3b8;cursor:pointer;display:flex;align-items:center;padding:4px;border-radius:4px;">
+          <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+        </button>
       </div>
 
       <div class="ve-props-section">
@@ -1136,6 +1139,19 @@ export class VisualEditor {
   _bindPropsEvents(wrapper, content) {
     const p = this.propsEl;
     const target = content.firstElementChild || content;
+
+    // Close / Collapse props panel
+    p.querySelector('#ve-close-props')?.addEventListener('click', () => {
+      const propsContainer = document.getElementById('wysiwyg-props');
+      const backdropEl = document.getElementById('wysiwyg-backdrop');
+      if (window.innerWidth <= 880) {
+        propsContainer?.classList.remove('is-open');
+        backdropEl?.classList.remove('is-open');
+      } else {
+        propsContainer?.classList.add('is-collapsed');
+        document.getElementById('ve-toggle-props')?.classList.remove('is-active');
+      }
+    });
 
     // Apply raw HTML
     p.querySelector('#ve-apply-raw')?.addEventListener('click', () => {
