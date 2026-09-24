@@ -1770,6 +1770,7 @@ function initCanvas(w, h) {
     selectionBorderColor: '#0d99ff',
     selectionLineWidth: 1.5,
   });
+  window.canvas = canvas;
 
   fabric.Object.prototype.set({
     borderColor: '#0d99ff',
@@ -2811,6 +2812,9 @@ function resetImageFilters() {
   if (!obj || obj.type !== 'image') return;
   obj.__filterValues = { brightness: 0, contrast: 0, blur: 0, grayscale: false, sepia: false };
   obj.filters = [];
+  if (obj.__isHdrEnhanced && window.PosterEnhancer?.restoreOriginalFabricImage) {
+    window.PosterEnhancer.restoreOriginalFabricImage(obj);
+  }
   obj.applyFilters();
   canvas.renderAll();
   saveHistory();
@@ -3088,6 +3092,17 @@ function onSelection() {
 
     syncToggle('btn-filter-grayscale', !!fv.grayscale);
     syncToggle('btn-filter-sepia', !!fv.sepia);
+
+    // Статус HDR улучшения изображения
+    const isEnhanced = !!obj.__isHdrEnhanced;
+    $('#btn-hdr-revert')?.classList.toggle('hidden', !isEnhanced);
+    if ($('#btn-hdr-revert')) $('#btn-hdr-revert').style.display = isEnhanced ? 'flex' : 'none';
+
+    // Активный пресет HDR для фото
+    const activePhotoPreset = obj.__currentHdrPreset || 'cinematic';
+    $$('.enhancer-img-presets-grid .enhancer-img-preset-chip').forEach(chip => {
+      chip.classList.toggle('is-active', chip.dataset.preset === activePhotoPreset);
+    });
   }
 
   updateFigmaDimensionsUI(obj);
@@ -3440,32 +3455,98 @@ function fitZoom() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ЭКСПОРТ
+   ЭКСПОРТ И СУПЕРСЭМПЛИНГ (1K, 2K, 4K, 8K + HDR)
    ══════════════════════════════════════════════════════════════ */
-function exportPng() {
+let currentExportResolution = '2k';
+let isExportHdrEnabled = true;
+let currentHdrPreset = 'cinematic';
+
+async function exportPng() {
   if (!canvas) return;
+  const enhancer = window.PosterEnhancer;
+  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  if (enhancer && typeof enhancer.exportPoster === 'function') {
+    try {
+      const resName = currentExportResolution.toUpperCase();
+      toast(`Генерация Ultra-PNG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+      await enhancer.exportPoster(canvas, {
+        resolution: currentExportResolution,
+        format: 'png',
+        hdr: getEnhancerHdrConfig(),
+        filename: filename
+      });
+      toast(`Ultra-PNG (${resName}) успешно сохранён в «Загрузки»`);
+      return;
+    } catch (err) {
+      console.warn('PosterEnhancer PNG export error, fallback to legacy:', err);
+    }
+  }
+
+  // Fallback
   const saved = zoom;
   applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
   const url = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
   const a = document.createElement('a');
-  a.href = url; a.download = ($('#poster-title').value || 'Афиша') + '.png'; a.click();
+  a.href = url; a.download = filename + '.png'; a.click();
   applyZoom(saved);
   toast('PNG сохранён в папку «Загрузки»');
 }
 
-function exportJpg() {
+async function exportJpg() {
   if (!canvas) return;
+  const enhancer = window.PosterEnhancer;
+  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  if (enhancer && typeof enhancer.exportPoster === 'function') {
+    try {
+      const resName = currentExportResolution.toUpperCase();
+      toast(`Генерация HDR-JPG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+      await enhancer.exportPoster(canvas, {
+        resolution: currentExportResolution,
+        format: 'jpg',
+        quality: 0.98,
+        hdr: getEnhancerHdrConfig(),
+        filename: filename
+      });
+      toast(`HDR-JPG (${resName}) успешно сохранён в «Загрузки»`);
+      return;
+    } catch (err) {
+      console.warn('PosterEnhancer JPG export error, fallback to legacy:', err);
+    }
+  }
+
+  // Fallback
   const saved = zoom;
   applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
-  const url = canvas.toDataURL({ format:'jpeg', quality:0.92, multiplier:2 });
+  const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier:2 });
   const a = document.createElement('a');
-  a.href = url; a.download = ($('#poster-title').value || 'Афиша') + '.jpg'; a.click();
+  a.href = url; a.download = filename + '.jpg'; a.click();
   applyZoom(saved);
   toast('JPG (высокое качество) сохранён в папку «Загрузки»');
 }
 
-function exportPdf() {
-  if (!canvas || !window.jspdf) { toast('PDF модуль загружается…'); return; }
+async function exportPdf() {
+  if (!canvas) return;
+  const enhancer = window.PosterEnhancer;
+  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  if (enhancer && typeof enhancer.exportPoster === 'function') {
+    try {
+      const resName = currentExportResolution.toUpperCase();
+      toast(`Генерация Print-PDF (${resName}${isExportHdrEnabled ? ' + HDR' : ''})…`);
+      await enhancer.exportPoster(canvas, {
+        resolution: currentExportResolution,
+        format: 'pdf',
+        hdr: getEnhancerHdrConfig(),
+        filename: filename
+      });
+      toast(`Print-PDF (${resName}) готов к печати 300 DPI`);
+      return;
+    } catch (err) {
+      console.warn('PosterEnhancer PDF export error, fallback to legacy:', err);
+    }
+  }
+
+  // Fallback
+  if (!window.jspdf) { toast('PDF модуль загружается…'); return; }
   const { jsPDF } = window.jspdf;
   const saved = zoom;
   applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
@@ -3473,9 +3554,358 @@ function exportPdf() {
   const isH = currentSize.w > currentSize.h;
   const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
   pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
-  pdf.save(($('#poster-title').value || 'Афиша') + '.pdf');
+  pdf.save(filename + '.pdf');
   applyZoom(saved);
   toast('PDF готов к печати');
+}
+
+function openHdrCompareModal() {
+  if (!canvas || !window.PosterEnhancer) return;
+  const overlay = $('#hdr-compare-modal-overlay');
+  const container = $('#hdr-compare-canvas-container');
+  if (!overlay || !container) return;
+
+  overlay.classList.remove('hidden');
+
+  const preview = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
+    maxWidth: 960,
+    preset: currentHdrPreset,
+    splitRatio: 0.5
+  });
+
+  preview.mountInteractiveSlider(container);
+
+  // Обработчики пресетов в модалке
+  $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(btn => {
+    btn.onclick = () => {
+      $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      currentHdrPreset = btn.dataset.hdrPreset;
+      const newPrev = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
+        maxWidth: 960,
+        preset: currentHdrPreset,
+        splitRatio: 0.5
+      });
+      newPrev.mountInteractiveSlider(container);
+    };
+  });
+}
+
+function closeHdrCompareModal() {
+  $('#hdr-compare-modal-overlay')?.classList.add('hidden');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   МОДАЛЬНОЕ ОКНО ULTRA-HD & HDR ENHANCER (АВРОРА)
+   ══════════════════════════════════════════════════════════════ */
+let enhancerPreviewObj = null;
+let enhancerDebounceTimer = null;
+let isEnhancerControlsInit = false;
+let isEnhancerSplitDragging = false;
+
+function getEnhancerHdrConfig() {
+  if (!isExportHdrEnabled) return false;
+  const clarity = (parseInt($('#enh-slider-clarity')?.value || '35', 10)) / 100;
+  const shadows = (parseInt($('#enh-slider-shadows')?.value || '25', 10)) / 100;
+  const vibrance = (parseInt($('#enh-slider-vibrance')?.value || '30', 10)) / 100;
+  const sharpen = (parseInt($('#enh-slider-sharpen')?.value || '40', 10)) / 100;
+  const basePreset = (window.PosterEnhancer?.HDR_PRESETS?.[currentHdrPreset]) || {};
+  return {
+    ...basePreset,
+    id: currentHdrPreset,
+    clarity,
+    shadows,
+    shadowLift: shadows,
+    vibrance,
+    sharpness: sharpen,
+    sharpenAmount: sharpen
+  };
+}
+
+function openEnhancerModal() {
+  if (!canvas) return;
+  const overlay = $('#enhancer-modal-overlay');
+  if (!overlay) return;
+
+  overlay.classList.remove('hidden');
+  initEnhancerControls();
+  updateEnhancerMetaResolution();
+  renderEnhancerSplitPreview();
+}
+
+function closeEnhancerModal() {
+  $('#enhancer-modal-overlay')?.classList.add('hidden');
+}
+
+function updateEnhancerMetaResolution() {
+  if (!canvas) return;
+  const metaEl = $('#enh-meta-resolution');
+  if (!metaEl) return;
+  const w = canvas.getWidth();
+  const h = canvas.getHeight();
+  if (window.PosterEnhancer) {
+    const scaleInfo = window.PosterEnhancer.calculateExportScale(w, h, currentExportResolution);
+    const targetW = Math.round(w * scaleInfo.multiplier);
+    const targetH = Math.round(h * scaleInfo.multiplier);
+    metaEl.textContent = `${targetW} × ${targetH} px (${scaleInfo.targetName})`;
+  } else {
+    metaEl.textContent = `${w} × ${h} px (${currentExportResolution.toUpperCase()})`;
+  }
+}
+
+function setEnhancerSplitRatio(ratio) {
+  const r = Math.max(0.01, Math.min(0.99, ratio));
+  const viewport = $('#enhancer-split-viewport');
+  if (viewport) {
+    viewport.style.setProperty('--split-pos', `${(r * 100).toFixed(2)}%`);
+  }
+}
+
+function initEnhancerSplitSlider() {
+  const viewport = $('#enhancer-split-viewport');
+  if (!viewport || viewport.__splitBound) return;
+  viewport.__splitBound = true;
+
+  const updateFromPointer = (e) => {
+    const rect = viewport.getBoundingClientRect();
+    if (!rect.width) return;
+    const clientX = e.touches && e.touches.length ? e.touches[0].clientX : e.clientX;
+    const ratio = (clientX - rect.left) / rect.width;
+    setEnhancerSplitRatio(ratio);
+  };
+
+  viewport.addEventListener('mousedown', (e) => {
+    isEnhancerSplitDragging = true;
+    updateFromPointer(e);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isEnhancerSplitDragging) return;
+    updateFromPointer(e);
+  });
+
+  window.addEventListener('mouseup', () => {
+    isEnhancerSplitDragging = false;
+  });
+
+  viewport.addEventListener('touchstart', (e) => {
+    isEnhancerSplitDragging = true;
+    updateFromPointer(e);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isEnhancerSplitDragging) return;
+    updateFromPointer(e);
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => {
+    isEnhancerSplitDragging = false;
+  });
+}
+
+function renderEnhancerSplitPreview() {
+  if (!canvas || !window.PosterEnhancer) return;
+  const viewport = $('#enhancer-split-viewport');
+  const canvasBefore = $('#enhancer-canvas-before');
+  const canvasAfter = $('#enhancer-canvas-after');
+  if (!viewport || !canvasBefore || !canvasAfter) return;
+
+  initEnhancerSplitSlider();
+
+  const hdrConfig = getEnhancerHdrConfig();
+
+  try {
+    enhancerPreviewObj = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
+      maxWidth: 1200,
+      preset: currentHdrPreset,
+      hdr: hdrConfig
+    });
+
+    if (enhancerPreviewObj) {
+      if (enhancerPreviewObj.beforeCanvas) {
+        canvasBefore.width = enhancerPreviewObj.beforeCanvas.width;
+        canvasBefore.height = enhancerPreviewObj.beforeCanvas.height;
+        const bCtx = canvasBefore.getContext('2d');
+        bCtx.clearRect(0, 0, canvasBefore.width, canvasBefore.height);
+        bCtx.drawImage(enhancerPreviewObj.beforeCanvas, 0, 0);
+      }
+      if (enhancerPreviewObj.afterCanvas) {
+        canvasAfter.width = enhancerPreviewObj.afterCanvas.width;
+        canvasAfter.height = enhancerPreviewObj.afterCanvas.height;
+        const aCtx = canvasAfter.getContext('2d');
+        aCtx.clearRect(0, 0, canvasAfter.width, canvasAfter.height);
+        aCtx.drawImage(enhancerPreviewObj.afterCanvas, 0, 0);
+      }
+    }
+  } catch (err) {
+    console.warn('Enhancer preview render error:', err);
+  }
+}
+
+function debounceEnhancerPreview() {
+  clearTimeout(enhancerDebounceTimer);
+  enhancerDebounceTimer = setTimeout(() => {
+    renderEnhancerSplitPreview();
+  }, 100);
+}
+
+function initEnhancerControls() {
+  if (isEnhancerControlsInit) return;
+  isEnhancerControlsInit = true;
+
+  initEnhancerSplitSlider();
+
+  // Закрытие модального окна по крестику и клику на оверлей
+  $('#enhancer-modal-close')?.addEventListener('click', closeEnhancerModal);
+  $('#enhancer-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeEnhancerModal();
+  });
+
+  // Закрытие по Escape
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#enhancer-modal-overlay')?.classList.contains('hidden')) {
+      closeEnhancerModal();
+    }
+  });
+
+  // Выбор целевого разрешения (чипы 1K, 2K, 4K, 8K, Оригинал)
+  $$('#enhancer-res-selector .enhancer-res-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      $$('#enhancer-res-selector .enhancer-res-chip').forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      currentExportResolution = chip.dataset.res || '4k';
+      updateEnhancerMetaResolution();
+      debounceEnhancerPreview();
+    });
+  });
+
+  // Тумблер HDR
+  $('#enh-toggle-hdr')?.addEventListener('change', (e) => {
+    isExportHdrEnabled = e.target.checked;
+    const slidersList = $('#enhancer-sliders-list');
+    const presetsWrap = $('.enhancer-presets-wrap');
+    if (slidersList) {
+      slidersList.style.opacity = isExportHdrEnabled ? '1' : '0.4';
+      slidersList.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
+    }
+    if (presetsWrap) {
+      presetsWrap.style.opacity = isExportHdrEnabled ? '1' : '0.4';
+      presetsWrap.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
+    }
+    debounceEnhancerPreview();
+  });
+
+  // Слайдеры тонкой настройки
+  const bindSlider = (id, valId) => {
+    const slider = $(`#${id}`);
+    const valEl = $(`#${valId}`);
+    if (!slider || !valEl) return;
+    slider.addEventListener('input', () => {
+      const v = slider.value;
+      valEl.textContent = `${v > 0 ? '+' : ''}${v}%`;
+      debounceEnhancerPreview();
+    });
+  };
+
+  bindSlider('enh-slider-clarity', 'enh-val-clarity');
+  bindSlider('enh-slider-shadows', 'enh-val-shadows');
+  bindSlider('enh-slider-vibrance', 'enh-val-vibrance');
+  bindSlider('enh-slider-sharpen', 'enh-val-sharpen');
+
+  // Быстрые пресеты
+  const presetMap = {
+    print:     { clarity: 45, shadows: 30, vibrance: 20, sharpen: 50 },
+    vivid:     { clarity: 35, shadows: 25, vibrance: 45, sharpen: 40 },
+    light:     { clarity: 15, shadows: 15, vibrance: 15, sharpen: 20 },
+    cinematic: { clarity: 40, shadows: 35, vibrance: 30, sharpen: 35 }
+  };
+
+  $$('.enhancer-presets-row .enhancer-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.enhancer-presets-row .enhancer-preset-btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const pKey = btn.dataset.preset;
+      currentHdrPreset = pKey;
+      const cfg = presetMap[pKey];
+      if (cfg) {
+        const setVal = (id, valId, num) => {
+          const s = $(`#${id}`);
+          const v = $(`#${valId}`);
+          if (s) s.value = num;
+          if (v) v.textContent = `${num > 0 ? '+' : ''}${num}%`;
+        };
+        setVal('enh-slider-clarity', 'enh-val-clarity', cfg.clarity);
+        setVal('enh-slider-shadows', 'enh-val-shadows', cfg.shadows);
+        setVal('enh-slider-vibrance', 'enh-val-vibrance', cfg.vibrance);
+        setVal('enh-slider-sharpen', 'enh-val-sharpen', cfg.sharpen);
+      }
+      debounceEnhancerPreview();
+    });
+  });
+
+  // Экспортные кнопки с космическим лоадером и прогресс-баром
+  const runExportWithLoader = async (exportFn, formatName) => {
+    const loader = $('#enhancer-loader-wrap');
+    const statusEl = $('#enhancer-loader-status');
+    const barEl = $('#enhancer-progress-bar-fill');
+
+    if (loader) loader.classList.remove('hidden');
+    if (statusEl) statusEl.textContent = `Обработка холста: ${currentExportResolution.toUpperCase()} HDR (25%)...`;
+    if (barEl) barEl.style.width = '30%';
+
+    try {
+      const p1 = setTimeout(() => {
+        if (barEl) barEl.style.width = '65%';
+        if (statusEl) statusEl.textContent = `Суперсэмплинг и тоноотображение (65%)...`;
+      }, 150);
+
+      const p2 = setTimeout(() => {
+        if (barEl) barEl.style.width = '85%';
+        if (statusEl) statusEl.textContent = `Сборка ${formatName} (85%)...`;
+      }, 350);
+
+      await exportFn();
+
+      clearTimeout(p1);
+      clearTimeout(p2);
+
+      if (barEl) barEl.style.width = '100%';
+      if (statusEl) statusEl.textContent = `${formatName} успешно сохранён (100%)!`;
+
+      setTimeout(() => {
+        if (loader) loader.classList.add('hidden');
+        if (barEl) barEl.style.width = '0%';
+      }, 1400);
+    } catch (err) {
+      if (loader) loader.classList.add('hidden');
+      toast(`Ошибка экспорта: ${err.message}`);
+    }
+  };
+
+  $('#btn-enh-export-png')?.addEventListener('click', () => runExportWithLoader(exportPng, 'Ultra-PNG'));
+  $('#btn-enh-export-jpg')?.addEventListener('click', () => runExportWithLoader(exportJpg, 'HDR-JPG'));
+  $('#btn-enh-export-pdf')?.addEventListener('click', () => runExportWithLoader(exportPdf, 'PDF 300 DPI'));
+
+  // Кнопка полноэкранного просмотра превью
+  $('#btn-enh-fullscreen')?.addEventListener('click', () => {
+    const vp = $('#enhancer-split-viewport');
+    if (!vp) return;
+    if (!document.fullscreenElement) {
+      vp.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  });
+
+  // Кнопки зума превью (синхронно для обоих слоев)
+  $('#btn-enh-zoom-100')?.addEventListener('click', () => {
+    const canvases = $$('#enhancer-split-viewport canvas');
+    const isZoomed = canvases[0]?.style.transform === 'scale(1.4)';
+    canvases.forEach(c => c.style.transform = isZoomed ? 'scale(1)' : 'scale(1.4)');
+  });
+  $('#btn-enh-zoom-fit')?.addEventListener('click', () => {
+    $$('#enhancer-split-viewport canvas').forEach(c => c.style.transform = 'scale(1)');
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5132,6 +5562,86 @@ function bindEvents() {
     a.click();
     URL.revokeObjectURL(url);
     toast('Векторный SVG для Figma скачан!');
+  });
+
+  /* Выбор целевого разрешения экспорта (1K, 2K, 4K, 8K) */
+  $$('#export-res-group .figma-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#export-res-group .figma-preset-btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      currentExportResolution = btn.dataset.res || '2k';
+      const scaleInfo = window.PosterEnhancer ? window.PosterEnhancer.calculateExportScale(canvas.getWidth(), canvas.getHeight(), currentExportResolution) : null;
+      if (scaleInfo) {
+        toast(`Разрешение экспорта: ${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px (${scaleInfo.targetName})`);
+      }
+    });
+  });
+
+  $('#chk-export-hdr')?.addEventListener('change', e => {
+    isExportHdrEnabled = e.target.checked;
+    toast(`HDR режим: ${isExportHdrEnabled ? 'ВКЛ' : 'ВЫКЛ'}`);
+  });
+
+  /* Вызов модального окна Ultra-HD & HDR Enhancer */
+  $('#btn-open-enhancer')?.addEventListener('click', openEnhancerModal);
+  $('#btn-image-hdr-enhance')?.addEventListener('click', async () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image' || !window.PosterEnhancer) {
+      toast('Сначала выделите изображение на холсте для HDR улучшения');
+      return;
+    }
+    toast('Применение HDR улучшения к фото…');
+    const sharpenOn = $('#img-smart-sharpen')?.checked ?? true;
+    await window.PosterEnhancer.enhanceFabricImage(obj, {
+      preset: currentHdrPreset || 'cinematic',
+      autoBalance: true,
+      hdr: { sharpness: sharpenOn ? 0.35 : 0 }
+    });
+    saveHistory();
+    onSelection();
+    toast('Фото улучшено в HDR качестве ✨');
+  });
+
+  $('#btn-export-compare')?.addEventListener('click', openHdrCompareModal);
+  $('#hdr-compare-modal-close')?.addEventListener('click', closeHdrCompareModal);
+  $('#hdr-compare-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeHdrCompareModal();
+  });
+  $('#btn-hdr-modal-export')?.addEventListener('click', async () => {
+    closeHdrCompareModal();
+    currentExportResolution = '4k';
+    await exportPng();
+  });
+
+  /* HDR улучшение выделенного изображения */
+  const applyPhotoPreset = async (presetKey, title) => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image' || !window.PosterEnhancer) return;
+    toast(`Применение: ${title}…`);
+    currentHdrPreset = presetKey;
+    const sharpenOn = $('#img-smart-sharpen')?.checked ?? true;
+    await window.PosterEnhancer.enhanceFabricImage(obj, {
+      preset: presetKey,
+      autoBalance: true,
+      hdr: { sharpness: sharpenOn ? 0.35 : 0 }
+    });
+    saveHistory();
+    onSelection();
+    toast(`${title} применён ✨`);
+  };
+
+  $('#btn-hdr-cinematic')?.addEventListener('click', () => applyPhotoPreset('cinematic', 'Кинематографичный HDR (ACES)'));
+  $('#btn-hdr-vivid')?.addEventListener('click', () => applyPhotoPreset('vivid', 'Максимальный Vivid HDR'));
+  $('#btn-hdr-light')?.addEventListener('click', () => applyPhotoPreset('light', 'Легкий HDR'));
+  $('#btn-hdr-print')?.addEventListener('click', () => applyPhotoPreset('print', 'Полиграфия 4K'));
+
+  $('#btn-hdr-revert')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image' || !window.PosterEnhancer) return;
+    window.PosterEnhancer.restoreOriginalFabricImage(obj);
+    saveHistory();
+    onSelection();
+    toast('Исходное фото восстановлено ↺');
   });
 
   /* Кнопка «F» в шапке */

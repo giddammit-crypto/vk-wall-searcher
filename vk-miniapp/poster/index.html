@@ -9,6 +9,7 @@
 <!-- 20+ шрифтов с полной кириллической поддержкой (включая 400 normal и 700/800 bold) + ofont.ru -->
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Comfortaa:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Dela+Gothic+One&family=Jura:wght@400;600;700&family=Kelly+Slab&family=Lobster&family=Marck+Script&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Neucha&family=Oswald:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Podkova:wght@400;600;700&family=Press+Start+2P&family=Roboto+Slab:wght@400;500;700&family=Rubik:wght@400;500;600;700&family=Ruslan+Display&family=Unbounded:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&subset=cyrillic&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=2.3.1">
+<link rel="stylesheet" href="enhancer.css?v=1.0.0">
 </head>
 <body>
 
@@ -217,6 +218,13 @@
       <!-- Скрытые кнопки загрузки/сохранения json для совместимости -->
       <button class="hbtn hidden" id="btn-save-project-json" title="Экспорт проекта"></button>
       <button class="hbtn hidden" id="btn-load-project-json" title="Импорт проекта"></button>
+
+      <!-- Кнопка вызова «4K HDR Экспорт» (Cyber-Glassmorphism Ultra-HD Enhancer) -->
+      <button class="hbtn" id="btn-open-enhancer" title="Улучшение качества и Экспорт Ultra-HD (1K, 2K, 4K, HDR)">
+        <span class="material-symbols-rounded">auto_awesome</span>
+        <span class="enh-btn-label">4K HDR Экспорт</span>
+        <span class="enh-btn-badge">PRO</span>
+      </button>
 
       <!-- Главная синяя кнопка «Экспорт» в стиле Figma Blue (#0d99ff) -->
       <button class="hbtn hbtn-figma-primary" id="btn-export-png" title="Скачать в высоком разрешении PNG">
@@ -806,12 +814,56 @@
             <span class="material-symbols-rounded">restart_alt</span>
             <span>Сбросить фильтры</span>
           </button>
+
+          <!-- Cyber-Glassmorphism: HDR Улучшение фото -->
+          <div class="enhancer-image-inspector" style="margin-top: 12px;">
+            <div class="enhancer-image-inspector-head">
+              <span class="enhancer-image-inspector-title">
+                <span class="material-symbols-rounded">auto_awesome</span>
+                <span>HDR Улучшение фото</span>
+              </span>
+              <span class="enhancer-ai-badge">AI ENHANCE</span>
+            </div>
+
+            <!-- Кнопка вызова / применения HDR к фото -->
+            <button class="pbtn" id="btn-image-hdr-enhance" title="Применить интеллектуальное улучшение к фотографии">
+              <span class="material-symbols-rounded">auto_fix_high</span>
+              <span>✨ HDR Улучшение фото</span>
+            </button>
+
+            <!-- Пресеты тоноотображения фото -->
+            <div class="enhancer-img-presets-grid">
+              <button class="enhancer-img-preset-chip is-active" id="btn-hdr-cinematic" data-preset="cinematic" title="Кинематографичный HDR (ACES)">Кино ACES</button>
+              <button class="enhancer-img-preset-chip" id="btn-hdr-vivid" data-preset="vivid" title="Максимальный сочный HDR">Vivid HDR</button>
+              <button class="enhancer-img-preset-chip" id="btn-hdr-light" data-preset="light" title="Легкий естественный HDR">Легкий HDR</button>
+              <button class="enhancer-img-preset-chip" id="btn-hdr-print" data-preset="print" title="Полиграфия (четкость и микроконтраст)">Печать 4K</button>
+            </div>
+
+            <!-- Тумблер резкости -->
+            <div class="enhancer-toggle-row" style="padding: 6px 10px; margin: 2px 0;">
+              <div class="enhancer-toggle-info">
+                <span class="enhancer-toggle-label" style="font-size: 11px;">
+                  <span class="material-symbols-rounded" style="font-size: 15px;">details</span>
+                  <span>Адаптивная резкость</span>
+                </span>
+              </div>
+              <label class="enh-switch" style="width: 36px; height: 20px;">
+                <input type="checkbox" id="img-smart-sharpen" checked>
+                <span class="enh-switch-slider"></span>
+              </label>
+            </div>
+
+            <button class="pbtn pbtn-ghost hidden" id="btn-hdr-revert" style="margin-top: 4px;">
+              <span class="material-symbols-rounded">undo</span>
+              <span>Оригинальное фото</span>
+            </button>
+          </div>
         </div><!-- /#props-image -->
 
         <!-- 6. EXPORT (Секция экспорта в инспекторе) -->
         <div class="figma-export-section">
           <div class="figma-section-title">
-            <span>EXPORT</span>
+            <span>EXPORT FORMAT</span>
           </div>
           <div class="figma-export-presets">
             <button class="figma-preset-btn is-active" id="btn-inspector-png" title="Скачать в формате PNG">PNG</button>
@@ -819,7 +871,28 @@
             <button class="figma-preset-btn" id="btn-inspector-pdf" title="Скачать в формате PDF">PDF</button>
             <button class="figma-preset-btn" id="btn-inspector-svg" title="Скачать векторный SVG для Figma">SVG</button>
           </div>
-          <button class="figma-main-export-btn" id="btn-inspector-export-png" title="Экспортировать афишу">
+
+          <div class="figma-section-title" style="margin-top: 8px;">
+            <span>RESOLUTION & HDR</span>
+          </div>
+          <div class="figma-export-presets" id="export-res-group">
+            <button class="figma-preset-btn" data-res="1k" title="1K Full HD (~1920px)">1K</button>
+            <button class="figma-preset-btn is-active" data-res="2k" title="2K Quad HD (~2560px, стандарт)">2K</button>
+            <button class="figma-preset-btn" data-res="4k" title="4K Ultra HD (~3840px)">4K</button>
+            <button class="figma-preset-btn" data-res="8k" title="8K Ultra Master (~7680px, печать)">8K</button>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--figma-text-secondary, #94a3b8);">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="chk-export-hdr" checked style="accent-color: #0d99ff;">
+              <span>HDR + Резкость</span>
+            </label>
+            <button class="pbtn pbtn-sm pbtn-ghost" id="btn-export-compare" title="Сравнить До/После" style="padding: 2px 6px; font-size: 11px;">
+              <span>До/После</span>
+            </button>
+          </div>
+
+          <button class="figma-main-export-btn" id="btn-inspector-export-png" title="Экспортировать афишу" style="margin-top: 10px;">
             <span class="material-symbols-rounded">download</span>
             <span>Экспорт афиши</span>
           </button>
@@ -1622,6 +1695,332 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛКА: СРАВНЕНИЕ ДО / ПОСЛЕ (HDR & КРИСТАЛЬНАЯ ЧЁТКОСТЬ)
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="hdr-compare-modal-overlay">
+  <div class="modal modal-wide" style="max-width: 960px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-rounded" style="color: #0d99ff;">auto_awesome</span>
+          <span>HDR Улучшение и суперсэмплинг</span>
+        </div>
+        <div class="modal-sub">
+          Интерактивное сравнение оригинала и HDR-обработки. Двигайте ползунок на изображении.
+        </div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="hdr-compare-modal-close" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 16px 24px;">
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+        <span style="font-size: 12px; font-weight: 600; color: var(--figma-text-secondary, #94a3b8);">Пресет HDR:</span>
+        <button class="pbtn pbtn-sm figma-preset-btn is-active" data-hdr-preset="cinematic">Кино ACES</button>
+        <button class="pbtn pbtn-sm figma-preset-btn" data-hdr-preset="vivid">Максимальный Vivid</button>
+        <button class="pbtn pbtn-sm figma-preset-btn" data-hdr-preset="light">Легкий HDR</button>
+        <button class="pbtn pbtn-sm figma-preset-btn" data-hdr-preset="print">Полиграфия</button>
+      </div>
+      <div id="hdr-compare-canvas-container" style="position: relative; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 8px 24px rgba(0,0,0,0.4); text-align: center; max-height: 60vh; display: flex; align-items: center; justify-content: center;">
+        <!-- Canvas слайдер монтируется сюда -->
+      </div>
+    </div>
+    <div class="modal-foot" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 24px;">
+      <span style="font-size: 11px; color: var(--figma-text-secondary, #94a3b8);">Тяните разделитель влево-вправо для сравнения</span>
+      <button class="hbtn hbtn-figma-primary" id="btn-hdr-modal-export">
+        <span class="material-symbols-rounded">download</span>
+        <span>Скачать в 4K Ultra HD</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: УЛУЧШЕНИЕ КАЧЕСТВА И ЭКСПОРТ ULTRA-HD
+     #enhancer-modal-overlay (Cyber-Glassmorphism)
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="enhancer-modal-overlay">
+  <div class="enhancer-modal" id="enhancer-modal" role="dialog" aria-modal="true" aria-labelledby="enhancer-modal-title">
+    
+    <!-- ── Шапка: иконка auto_awesome с градиентом, заголовок, бейдж, закрытие ── -->
+    <div class="enhancer-modal-head">
+      <div class="enhancer-head-left">
+        <div class="enhancer-head-icon-box">
+          <span class="material-symbols-rounded">auto_awesome</span>
+        </div>
+        <div class="enhancer-head-titles">
+          <div class="enhancer-head-row">
+            <h2 class="enhancer-title" id="enhancer-modal-title">Улучшение качества и Экспорт Ultra-HD</h2>
+            <span class="enhancer-head-badge">
+              <span class="material-symbols-rounded enh-spark">sparkles</span>
+              <span>1K • 2K • 4K • HDR • AI Tone</span>
+            </span>
+          </div>
+          <div class="enhancer-subtitle">Интеллектуальный суперсэмплинг холста, ACES Filmic тоноотображение и микроконтраст для печати и экранов</div>
+        </div>
+      </div>
+      <button class="enhancer-modal-close" id="enhancer-modal-close" title="Закрыть (Esc)">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+
+    <!-- ── Двухколоночный макет ── -->
+    <div class="enhancer-modal-body">
+      
+      <!-- ── Слева: Интерактивный сплит-слайдер «До / После» ── -->
+      <div class="enhancer-preview-col">
+        <div class="enhancer-preview-card">
+          <!-- Интерактивный контейнер сравнения с перетаскиваемой вертикальной линией -->
+          <div class="enhancer-split-container" id="enhancer-split-viewport" style="--split-pos: 50%;">
+            <!-- Слой «После» (4K HDR) -->
+            <div class="enhancer-layer-after" id="enhancer-layer-after">
+              <canvas id="enhancer-canvas-after"></canvas>
+            </div>
+            <!-- Слой «До» (Оригинал) -->
+            <div class="enhancer-layer-before" id="enhancer-layer-before">
+              <canvas id="enhancer-canvas-before"></canvas>
+            </div>
+            <!-- Перетаскиваемая вертикальная линия с ручкой -->
+            <div class="enhancer-split-divider" id="enhancer-split-divider">
+              <div class="enhancer-split-handle" id="enhancer-split-handle" title="Тяните для сравнения До/После">
+                <span class="material-symbols-rounded">compare_arrows</span>
+              </div>
+            </div>
+            <!-- Плавающие бейджи «Оригинал» и «4K HDR» -->
+            <div class="enhancer-badge-original">Оригинал</div>
+            <div class="enhancer-badge-enhanced">
+              <span class="enh-badge-star">★</span> 4K HDR
+            </div>
+          </div>
+
+          <!-- Нижняя панель инструментов превью (зум, полный экран, разрешение) -->
+          <div class="enhancer-preview-toolbar">
+            <div class="enhancer-preview-meta">
+              <span>Холст:</span>
+              <span class="enhancer-meta-res" id="enh-meta-resolution">1920 × 2715 px (4K Ultra-HD)</span>
+            </div>
+            <div class="enhancer-preview-controls">
+              <button class="enhancer-preview-btn" id="btn-enh-zoom-fit" title="Вписать в окно">
+                <span class="material-symbols-rounded">fit_screen</span>
+                <span>Вписать</span>
+              </button>
+              <button class="enhancer-preview-btn" id="btn-enh-zoom-100" title="100% масштаб">
+                <span>100%</span>
+              </button>
+              <button class="enhancer-preview-btn" id="btn-enh-fullscreen" title="Полноэкранный просмотр">
+                <span class="material-symbols-rounded">fullscreen</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="enhancer-preview-hint">
+          <span class="material-symbols-rounded">lightbulb</span>
+          <span>Передвигайте неоновую вертикальную линию на холсте, чтобы оценить чёткость шрифтов, глубину теней и контраст.</span>
+        </div>
+      </div>
+
+      <!-- ── Справа: Панель настроек ── -->
+      <div class="enhancer-settings-pane">
+
+        <!-- Секция 1: ЦЕЛЕВОЕ РАЗРЕШЕНИЕ -->
+        <div class="enhancer-section-card">
+          <div class="enhancer-section-head">
+            <div class="enhancer-section-title-wrap">
+              <span class="enhancer-section-num">01</span>
+              <span class="enhancer-section-title">Целевое разрешение</span>
+            </div>
+          </div>
+          <div class="enhancer-res-grid" id="enhancer-res-selector">
+            <!-- 1K (Full HD) -->
+            <div class="enhancer-res-chip" data-res="1k">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">1K (Full HD)</span>
+                <span class="enhancer-res-badge">1080p</span>
+              </div>
+              <span class="enhancer-res-dim">1920 px (длинная сторона)</span>
+              <span class="enhancer-res-desc">Для соцсетей, ВК, Telegram и сторис</span>
+            </div>
+
+            <!-- 2K (QHD) -->
+            <div class="enhancer-res-chip" data-res="2k">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">2K (QHD)</span>
+                <span class="enhancer-res-badge">1440p</span>
+              </div>
+              <span class="enhancer-res-dim">2560 px (длинная сторона)</span>
+              <span class="enhancer-res-desc">Для мониторов, презентаций и ТВ</span>
+            </div>
+
+            <!-- 4K (Ultra HD) -->
+            <div class="enhancer-res-chip is-active" data-res="4k">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">4K (Ultra HD)</span>
+                <span class="enhancer-res-badge enhancer-res-badge-pro">PRO ★</span>
+              </div>
+              <span class="enhancer-res-dim">3840 px (Ultra Master)</span>
+              <span class="enhancer-res-desc">Для полиграфии, печати A3/A2 и постеров</span>
+            </div>
+
+            <!-- 8K (Ultra Master) -->
+            <div class="enhancer-res-chip" data-res="8k">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">8K (Ultra Master)</span>
+                <span class="enhancer-res-badge enhancer-res-badge-pro">MAX ★</span>
+              </div>
+              <span class="enhancer-res-dim">7680 px (Ultra Master)</span>
+              <span class="enhancer-res-desc">Для интерьерной печати, билбордов и выставок</span>
+            </div>
+
+            <!-- Оригинал -->
+            <div class="enhancer-res-chip" data-res="original">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">Оригинал</span>
+                <span class="enhancer-res-badge">1X</span>
+              </div>
+              <span class="enhancer-res-dim">Исходный размер холста</span>
+              <span class="enhancer-res-desc">Без масштабирования (масштаб 1:1)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Секция 2: РЕЖИМ HDR И ТОНООТОБРАЖЕНИЕ -->
+        <div class="enhancer-section-card">
+          <div class="enhancer-section-head">
+            <div class="enhancer-section-title-wrap">
+              <span class="enhancer-section-num">02</span>
+              <span class="enhancer-section-title">Режим HDR и тоноотображение</span>
+            </div>
+          </div>
+
+          <!-- Тумблер HDR Tone Mapping -->
+          <div class="enhancer-toggle-row">
+            <div class="enhancer-toggle-info">
+              <span class="enhancer-toggle-label">
+                <span class="material-symbols-rounded">hdr_on</span>
+                <span>HDR Tone Mapping</span>
+              </span>
+              <span class="enhancer-toggle-hint">Расширенный динамический диапазон и насыщенные цвета</span>
+            </div>
+            <label class="enh-switch">
+              <input type="checkbox" id="enh-toggle-hdr" checked>
+              <span class="enh-switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Слайдеры тонкой настройки -->
+          <div class="enhancer-sliders-list" id="enhancer-sliders-list">
+            <!-- Микроконтраст (Clarity) -->
+            <div class="enhancer-slider-item">
+              <div class="enhancer-slider-head">
+                <span class="enhancer-slider-label">Микроконтраст (Clarity)</span>
+                <span class="enhancer-slider-val" id="enh-val-clarity">+35%</span>
+              </div>
+              <input type="range" class="enhancer-range" id="enh-slider-clarity" min="-50" max="100" value="35" step="5">
+            </div>
+
+            <!-- Подтягивание теней (Shadows) -->
+            <div class="enhancer-slider-item">
+              <div class="enhancer-slider-head">
+                <span class="enhancer-slider-label">Подтягивание теней (Shadows)</span>
+                <span class="enhancer-slider-val" id="enh-val-shadows">+25%</span>
+              </div>
+              <input type="range" class="enhancer-range" id="enh-slider-shadows" min="0" max="100" value="25" step="5">
+            </div>
+
+            <!-- Сочность (Vibrance) -->
+            <div class="enhancer-slider-item">
+              <div class="enhancer-slider-head">
+                <span class="enhancer-slider-label">Сочность (Vibrance)</span>
+                <span class="enhancer-slider-val" id="enh-val-vibrance">+30%</span>
+              </div>
+              <input type="range" class="enhancer-range" id="enh-slider-vibrance" min="-50" max="100" value="30" step="5">
+            </div>
+
+            <!-- Резкость (Sharpen) -->
+            <div class="enhancer-slider-item">
+              <div class="enhancer-slider-head">
+                <span class="enhancer-slider-label">Резкость (Sharpen / Детализация)</span>
+                <span class="enhancer-slider-val" id="enh-val-sharpen">+40%</span>
+              </div>
+              <input type="range" class="enhancer-range" id="enh-slider-sharpen" min="0" max="100" value="40" step="5">
+            </div>
+          </div>
+
+          <!-- Быстрые пресеты -->
+          <div class="enhancer-presets-wrap">
+            <span class="enhancer-presets-label">Быстрые пресеты:</span>
+            <div class="enhancer-presets-row">
+              <button class="enhancer-preset-btn" data-preset="print" id="btn-preset-print" title="Полиграфия 4K (четкость и микроконтраст)">
+                <span>🖨️ Полиграфия 4K</span>
+              </button>
+              <button class="enhancer-preset-btn is-active" data-preset="vivid" id="btn-preset-vivid" title="Яркий экран 4K HDR">
+                <span>✨ Яркий экран 4K HDR</span>
+              </button>
+              <button class="enhancer-preset-btn" data-preset="light" id="btn-preset-light" title="Мягкий HDR">
+                <span>🎨 Мягкий HDR</span>
+              </button>
+              <button class="enhancer-preset-btn" data-preset="cinematic" id="btn-preset-cinematic" title="Максимальный контраст (ACES)">
+                <span>⚡ Максимальный контраст</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Секция 3: ФОРМАТ И ЭКСПОРТ -->
+        <div class="enhancer-section-card">
+          <div class="enhancer-section-head">
+            <div class="enhancer-section-title-wrap">
+              <span class="enhancer-section-num">03</span>
+              <span class="enhancer-section-title">Формат и экспорт</span>
+            </div>
+          </div>
+
+          <div class="enhancer-export-group">
+            <!-- Кнопка: Скачать Ultra-PNG -->
+            <button class="enh-btn-export-primary" id="btn-enh-export-png" title="Скачать макет в формате Ultra-PNG без потерь">
+              <span class="material-symbols-rounded">download</span>
+              <span>Скачать Ultra-PNG (Без потерь)</span>
+            </button>
+
+            <!-- Кнопки: Скачать HDR-JPG и PDF -->
+            <div class="enhancer-export-secondary-row">
+              <button class="enh-btn-export-secondary" id="btn-enh-export-jpg" title="Скачать оптимизированный HDR-JPG (98%) для ВК и веб-сайтов">
+                <span class="material-symbols-rounded">image</span>
+                <span>Скачать HDR-JPG (98%)</span>
+              </button>
+              <button class="enh-btn-export-pdf" id="btn-enh-export-pdf" title="Скачать векторный PDF для полиграфической печати 300 DPI">
+                <span class="material-symbols-rounded">picture_as_pdf</span>
+                <span>Скачать PDF (300 DPI)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Индикатор прогресса генерации / лоадер с анимацией Космо -->
+          <div class="enhancer-loader-wrap hidden" id="enhancer-loader-wrap">
+            <div class="enhancer-cosmo-orbit">
+              <div class="enhancer-cosmo-ring-outer"></div>
+              <div class="enhancer-cosmo-ring"></div>
+              <div class="enhancer-cosmo-core"></div>
+            </div>
+            <div class="enhancer-loader-text-group">
+              <span class="enhancer-loader-title">Генерация Ultra-HD макета...</span>
+              <span class="enhancer-loader-status" id="enhancer-loader-status">Обработка холста: 4K HDR (0%)</span>
+            </div>
+            <div class="enhancer-progress-bar-bg">
+              <div class="enhancer-progress-bar-fill" id="enhancer-progress-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.enhancer-settings-pane -->
+
+    </div><!-- /.enhancer-modal-body -->
+
+  </div><!-- /.enhancer-modal -->
+</div><!-- /#enhancer-modal-overlay -->
+
 <!-- Тост уведомлений -->
 <div class="toast hidden" id="toast"></div>
 
@@ -1641,6 +2040,7 @@ if (typeof QRCode === 'undefined') {
   document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
 }
 </script>
+<script src="enhancer.js?v=1.0.0"></script>
 <script src="editor.js?v=2.5.1"></script>
 </body>
 </html>
