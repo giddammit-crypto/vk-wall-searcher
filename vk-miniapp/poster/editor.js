@@ -1774,15 +1774,17 @@ function initCanvas(w, h) {
 
   fabric.Object.prototype.set({
     borderColor: '#0d99ff',
-    borderScaleFactor: 1.5,
+    borderScaleFactor: 2,
     cornerColor: '#ffffff',
     cornerStrokeColor: '#0d99ff',
-    cornerSize: 8,
+    cornerSize: 10,
+    touchCornerSize: 26,
     transparentCorners: false,
     cornerStyle: 'rect',
-    padding: 0,
+    padding: 6,
     hasRotatingPoint: true,
     rotatingPointOffset: 24,
+    controlsAboveOverlay: true,
   });
 
   // Вращение мышкой за углы слоя (360° rotation handles)
@@ -1791,7 +1793,7 @@ function initCanvas(w, h) {
       ctx.save();
       ctx.translate(left, top);
       ctx.beginPath();
-      ctx.arc(0, 0, 4.5, 0, Math.PI * 2, false);
+      ctx.arc(0, 0, 5, 0, Math.PI * 2, false);
       ctx.fillStyle = '#0d99ff';
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
@@ -1801,28 +1803,28 @@ function initCanvas(w, h) {
     };
 
     fabric.Object.prototype.controls.rot_tl = new fabric.Control({
-      x: -0.5, y: -0.5, offsetY: -14, offsetX: -14,
+      x: -0.5, y: -0.5, offsetY: -16, offsetX: -16,
       cursorStyle: 'grab',
       actionHandler: fabric.controlsUtils.rotationWithSnapping,
       actionName: 'rotate',
       render: rotRenderer
     });
     fabric.Object.prototype.controls.rot_tr = new fabric.Control({
-      x: 0.5, y: -0.5, offsetY: -14, offsetX: 14,
+      x: 0.5, y: -0.5, offsetY: -16, offsetX: 16,
       cursorStyle: 'grab',
       actionHandler: fabric.controlsUtils.rotationWithSnapping,
       actionName: 'rotate',
       render: rotRenderer
     });
     fabric.Object.prototype.controls.rot_bl = new fabric.Control({
-      x: -0.5, y: 0.5, offsetY: 14, offsetX: -14,
+      x: -0.5, y: 0.5, offsetY: 16, offsetX: -16,
       cursorStyle: 'grab',
       actionHandler: fabric.controlsUtils.rotationWithSnapping,
       actionName: 'rotate',
       render: rotRenderer
     });
     fabric.Object.prototype.controls.rot_br = new fabric.Control({
-      x: 0.5, y: 0.5, offsetY: 14, offsetX: 14,
+      x: 0.5, y: 0.5, offsetY: 16, offsetX: 16,
       cursorStyle: 'grab',
       actionHandler: fabric.controlsUtils.rotationWithSnapping,
       actionName: 'rotate',
@@ -1836,8 +1838,25 @@ function initCanvas(w, h) {
   canvas.on('object:moving',      () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:scaling',     () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:rotating',    () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
-  // Волшебная палочка — всегда регистрируем здесь, т.к. canvas пересоздаётся
-  canvas.on('mouse:down', opt => _magicWandHandler(opt));
+  
+  // Обработчики мыши для инструментов Волшебной палочки и Ластика
+  canvas.on('mouse:down', opt => {
+    if (typeof _eraserMode !== 'undefined' && _eraserMode) {
+      _eraserMouseDownHandler(opt);
+    } else {
+      _magicWandHandler(opt);
+    }
+  });
+  canvas.on('mouse:move', opt => {
+    if (typeof _eraserMode !== 'undefined' && _eraserMode) {
+      _eraserMouseMoveHandler(opt);
+    }
+  });
+  canvas.on('mouse:up', opt => {
+    if (typeof _eraserMode !== 'undefined' && _eraserMode) {
+      _eraserMouseUpHandler(opt);
+    }
+  });
   canvas.on('object:modified', e => {
     // Нормализуем scale текстового объекта: превращаем scaleY→fontSize
     const obj = e.target;
@@ -2805,6 +2824,249 @@ function separateImageIntoLayers() {
       toast('🔮 Разделено на 2 слоя: Объект + Фон');
     });
   });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ИНСТРУМЕНТ «ЛАСТИК» (ИНТЕРАКТИВНОЕ СТИРАНИЕ / ВОССТАНОВЛЕНИЕ)
+   ══════════════════════════════════════════════════════════════ */
+let _eraserMode = false;
+let _eraserSubMode = 'erase'; // 'erase' | 'restore'
+let _eraserSize = 35;
+let _eraserHardness = 70;
+let _isErasing = false;
+let _lastErasePos = null;
+let _eraserOffCanvas = null;
+let _eraserOrigImg = null;
+
+function setEraserSubMode(subMode) {
+  _eraserSubMode = subMode === 'restore' ? 'restore' : 'erase';
+  $('#btn-eraser-mode-erase')?.classList.toggle('is-active', _eraserSubMode === 'erase');
+  $('#btn-eraser-mode-restore')?.classList.toggle('is-active', _eraserSubMode === 'restore');
+  toast(_eraserSubMode === 'erase' ? '🧹 Режим: Стирание пикселей' : '🖌️ Режим: Восстановление оригинала');
+}
+
+function setEraserSize(sz) {
+  _eraserSize = Math.max(5, Math.min(150, parseInt(sz, 10) || 35));
+  const slider = $('#eraser-size-slider');
+  const valEl  = $('#eraser-size-val');
+  if (slider) slider.value = _eraserSize;
+  if (valEl)  valEl.textContent = _eraserSize;
+  $$('.eraser-size-chip').forEach(chip => {
+    chip.classList.toggle('is-active', parseInt(chip.dataset.size, 10) === _eraserSize);
+  });
+}
+
+function setEraserHardness(hd) {
+  _eraserHardness = Math.max(0, Math.min(100, parseInt(hd, 10) || 70));
+  const slider = $('#eraser-hardness-slider');
+  const valEl  = $('#eraser-hardness-val');
+  if (slider) slider.value = _eraserHardness;
+  if (valEl)  valEl.textContent = _eraserHardness;
+}
+
+function toggleEraserMode() {
+  const obj = canvas?.getActiveObject();
+  if (!_eraserMode && (!obj || obj.type !== 'image')) {
+    toast('Выберите слой с изображением для ластика');
+    return;
+  }
+
+  _eraserMode = !_eraserMode;
+  const btn = $('#btn-bg-eraser');
+  const panel = $('#bg-eraser-panel');
+  const ring = $('#eraser-cursor-ring');
+
+  if (btn) btn.classList.toggle('is-active', _eraserMode);
+  if (panel) panel.classList.toggle('hidden', !_eraserMode);
+
+  if (_eraserMode) {
+    // Включаем ластик: сохраняем оригинал если ещё не сохранён
+    if (!obj.__originalSrc) {
+      obj.__originalSrc = obj.getSrc?.() || obj.getElement()?.src || '';
+    }
+    
+    // Инициализируем буферный оффскрин-холст
+    const el = obj.getElement();
+    const iw = el.naturalWidth || el.width;
+    const ih = el.naturalHeight || el.height;
+    _eraserOffCanvas = document.createElement('canvas');
+    _eraserOffCanvas.width = iw;
+    _eraserOffCanvas.height = ih;
+    const ctx = _eraserOffCanvas.getContext('2d');
+    ctx.drawImage(el, 0, 0);
+
+    // Загружаем оригинал для режима восстановления
+    _eraserOrigImg = new Image();
+    _eraserOrigImg.crossOrigin = 'anonymous';
+    _eraserOrigImg.src = obj.__originalSrc;
+
+    // Временно блокируем перетаскивание объекта
+    obj.selectable = false;
+    obj.evented = false;
+    if (canvas) {
+      canvas.selection = false;
+      canvas.defaultCursor = 'crosshair';
+    }
+    if (ring) ring.classList.remove('hidden');
+
+    toast('🧹 Ластик активен: проводите мышью по фото для стирания');
+  } else {
+    // Выключаем ластик: фиксируем изменения в объекте Fabric
+    if (_eraserOffCanvas && obj) {
+      obj.setSrc(_eraserOffCanvas.toDataURL('image/png'), () => {
+        obj.selectable = true;
+        obj.evented = true;
+        if (canvas) {
+          canvas.selection = true;
+          canvas.defaultCursor = 'default';
+          canvas.setActiveObject(obj);
+          canvas.renderAll();
+        }
+        updateLayersList();
+        saveHistory();
+      });
+    } else if (obj) {
+      obj.selectable = true;
+      obj.evented = true;
+      if (canvas) {
+        canvas.selection = true;
+        canvas.defaultCursor = 'default';
+        canvas.setActiveObject(obj);
+      }
+    }
+
+    _eraserOffCanvas = null;
+    _eraserOrigImg = null;
+    _isErasing = false;
+    _lastErasePos = null;
+    if (ring) ring.classList.add('hidden');
+    toast('Режим ластика завершён');
+  }
+}
+
+function _getLocalImageCoords(obj, canvasPtr) {
+  if (!obj) return null;
+  const invMat = fabric.util.invertTransform(obj.calcTransformMatrix());
+  const localPt = fabric.util.transformPoint(new fabric.Point(canvasPtr.x, canvasPtr.y), invMat);
+  const iw = obj.width || obj.getElement()?.naturalWidth || 1;
+  const ih = obj.height || obj.getElement()?.naturalHeight || 1;
+  let lx = localPt.x;
+  let ly = localPt.y;
+  if (obj.originX === 'center') lx += iw / 2;
+  if (obj.originY === 'center') ly += ih / 2;
+  return { x: lx, y: ly, iw, ih };
+}
+
+function _applyEraserStamp(lx, ly, obj) {
+  if (!_eraserOffCanvas) return;
+  const ctx = _eraserOffCanvas.getContext('2d');
+  const scale = (obj.scaleX || 1);
+  const r = Math.max(2, (_eraserSize / scale) / 2);
+  const hardness = Math.min(0.99, Math.max(0.01, _eraserHardness / 100));
+
+  if (_eraserSubMode === 'erase') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    const grad = ctx.createRadialGradient(lx, ly, r * hardness, lx, ly, r);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(lx, ly, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else if (_eraserSubMode === 'restore') {
+    if (_eraserOrigImg && _eraserOrigImg.complete) {
+      const bw = Math.ceil(r * 2);
+      const bCanvas = document.createElement('canvas');
+      bCanvas.width = bw;
+      bCanvas.height = bw;
+      const bCtx = bCanvas.getContext('2d');
+      bCtx.drawImage(_eraserOrigImg, lx - r, ly - r, bw, bw, 0, 0, bw, bw);
+      const grad = bCtx.createRadialGradient(r, r, r * hardness, r, r, r);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      bCtx.globalCompositeOperation = 'destination-in';
+      bCtx.fillStyle = grad;
+      bCtx.beginPath();
+      bCtx.arc(r, r, r, 0, Math.PI * 2);
+      bCtx.fill();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(bCanvas, lx - r, ly - r);
+      ctx.restore();
+    }
+  }
+}
+
+function _eraserMouseDownHandler(opt) {
+  if (!_eraserMode) return;
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') return;
+  const ptr = canvas.getPointer(opt.e);
+  const coords = _getLocalImageCoords(obj, ptr);
+  if (!coords) return;
+
+  _isErasing = true;
+  _applyEraserStamp(coords.x, coords.y, obj);
+  _lastErasePos = { x: coords.x, y: coords.y };
+
+  obj.setElement(_eraserOffCanvas);
+  obj.dirty = true;
+  canvas.requestRenderAll();
+}
+
+function _eraserMouseMoveHandler(opt) {
+  if (!_eraserMode) return;
+  const ring = $('#eraser-cursor-ring');
+  if (ring && opt.e) {
+    ring.style.left = (opt.e.clientX) + 'px';
+    ring.style.top = (opt.e.clientY) + 'px';
+    const displayDiam = Math.max(10, _eraserSize * (zoom || 1));
+    ring.style.width = displayDiam + 'px';
+    ring.style.height = displayDiam + 'px';
+  }
+
+  if (!_isErasing) return;
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image' || !_lastErasePos) return;
+
+  const ptr = canvas.getPointer(opt.e);
+  const coords = _getLocalImageCoords(obj, ptr);
+  if (!coords) return;
+
+  const dx = coords.x - _lastErasePos.x;
+  const dy = coords.y - _lastErasePos.y;
+  const dist = Math.hypot(dx, dy);
+  const scale = (obj.scaleX || 1);
+  const r = Math.max(2, (_eraserSize / scale) / 2);
+  const step = Math.max(2, r * 0.25);
+  const steps = Math.ceil(dist / step);
+
+  for (let s = 1; s <= steps; s++) {
+    const t = s / steps;
+    const px = _lastErasePos.x + dx * t;
+    const py = _lastErasePos.y + dy * t;
+    _applyEraserStamp(px, py, obj);
+  }
+
+  _lastErasePos = { x: coords.x, y: coords.y };
+  obj.setElement(_eraserOffCanvas);
+  obj.dirty = true;
+  canvas.requestRenderAll();
+}
+
+function _eraserMouseUpHandler(opt) {
+  if (!_eraserMode || !_isErasing) return;
+  _isErasing = false;
+  _lastErasePos = null;
+  const obj = canvas?.getActiveObject();
+  if (obj && _eraserOffCanvas) {
+    obj.setElement(_eraserOffCanvas);
+    obj.dirty = true;
+    canvas.requestRenderAll();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4462,56 +4724,252 @@ function initEnhancerControls() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   АВТОСОХРАНЕНИЕ
+   МЕНЕДЖЕР ЧЕРНОВИКОВ И АВТОСОХРАНЕНИЕ (MULTI-DRAFTS SYSTEM)
    ══════════════════════════════════════════════════════════════ */
+const DRAFTS_KEY = 'aurora_poster_drafts_v3';
 let autosaveT = null;
+
+function getSavedDrafts() {
+  try {
+    const raw = localStorage.getItem(DRAFTS_KEY);
+    let list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) list = [];
+
+    // Миграция со старой версии aurora_poster_v2 при первом запуске
+    const legacy = localStorage.getItem('aurora_poster_v2');
+    if (legacy && list.length === 0) {
+      try {
+        const d = JSON.parse(legacy);
+        if (d?.canvas) {
+          list.push({
+            id: 'legacy_' + (d.at || Date.now()),
+            title: d.title || 'Черновик (Автосохранённый)',
+            sizeKey: d.size || 'a4_v',
+            sizeLabel: SIZES[d.size]?.name || 'A4 Вертикальный',
+            objectsCount: d.canvas.objects?.length || 0,
+            updatedAt: d.at || Date.now(),
+            preview: '',
+            canvasData: d.canvas
+          });
+          localStorage.setItem(DRAFTS_KEY, JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
+    return list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  } catch (e) {
+    return [];
+  }
+}
+
+function updateDraftsBadgeCount() {
+  const drafts = getSavedDrafts();
+  const count = drafts.length;
+  $$('.draft-count-badge, #drafts-count-badge, #tpl-drafts-count-badge').forEach(el => {
+    el.textContent = count > 0 ? count : '0';
+  });
+}
+
+function saveCurrentDraft(isManual = false) {
+  if (!canvas) {
+    if (isManual) toast('Холст не инициализирован');
+    return;
+  }
+  try {
+    const drafts = getSavedDrafts();
+    const title = $('#poster-title')?.value?.trim() || 'Афиша без названия';
+    const sizeKey = Object.entries(SIZES).find(([, v]) => v === currentSize)?.[0] || 'a4_v';
+    const sizeName = SIZES[sizeKey]?.name || 'A4 Вертикальный';
+    const canvasJson = canvas.toJSON([
+      'selectable','hasControls','editable','visible','evented',
+      'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
+      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
+      '__originalSrc','__bgRemoved','layerName'
+    ]);
+    const objectsCount = canvas.getObjects().length;
+
+    // Генерируем компактное превью (180px)
+    let previewDataUrl = '';
+    try {
+      const prevScale = Math.min(180 / (canvas.getWidth() || 800), 0.25);
+      previewDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.65, multiplier: prevScale });
+    } catch (e) {}
+
+    const now = Date.now();
+    // Ищем существующий черновик с таким же именем за последний час
+    const existingIdx = drafts.findIndex(d => d.title === title && (now - (d.updatedAt || 0) < 3600000));
+    
+    const draftItem = {
+      id: existingIdx >= 0 ? drafts[existingIdx].id : 'draft_' + now + '_' + Math.random().toString(36).substr(2, 4),
+      title: title,
+      sizeKey: sizeKey,
+      sizeLabel: `${sizeName} (${currentSize.w}×${currentSize.h})`,
+      objectsCount: objectsCount,
+      updatedAt: now,
+      preview: previewDataUrl || (existingIdx >= 0 ? drafts[existingIdx].preview : ''),
+      canvasData: canvasJson
+    };
+
+    if (existingIdx >= 0) {
+      drafts[existingIdx] = draftItem;
+    } else {
+      drafts.unshift(draftItem);
+    }
+
+    // Храним до 25 черновиков
+    const trimmed = drafts.slice(0, 25);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(trimmed));
+    updateDraftsBadgeCount();
+
+    if (isManual) {
+      toast(`✅ Черновик «${title}» сохранён`);
+      if (!$('#drafts-modal-overlay')?.classList.contains('hidden')) {
+        renderDraftsList();
+      }
+    }
+  } catch (err) {
+    console.error('Save draft error:', err);
+    if (isManual) toast('Ошибка сохранения черновика: ' + (err.message || 'переполнено хранилище'));
+  }
+}
+
 function startAutosave() {
   clearInterval(autosaveT);
   autosaveT = setInterval(() => {
     if (!canvas) return;
-    try {
-      localStorage.setItem('aurora_poster_v2', JSON.stringify({
-        canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset']),
-        title: $('#poster-title').value,
-        size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
-        at: Date.now(),
-      }));
-    } catch(e) {}
+    saveCurrentDraft(false);
   }, 30000);
 }
 
-function manualSave() {
-  if (!canvas) return;
+function renderDraftsList() {
+  const container = $('#drafts-list-container');
+  const storageInfo = $('#drafts-storage-info');
+  if (!container) return;
+
+  const drafts = getSavedDrafts();
+  if (storageInfo) {
+    storageInfo.textContent = `Сохранено черновиков: ${drafts.length} из 25`;
+  }
+
+  if (drafts.length === 0) {
+    container.innerHTML = `
+      <div class="drafts-empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">У вас пока нет сохранённых черновиков</div>
+        <div class="empty-desc">Сохраняйте свои работы, чтобы быстро возвращаться к редактированию в любой момент.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '<div class="drafts-grid">';
+  drafts.forEach(d => {
+    const dt = new Date(d.updatedAt || Date.now()).toLocaleString('ru-RU', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+    const previewImg = d.preview
+      ? `<img src="${d.preview}" alt="${escapeHtml(d.title)}" />`
+      : `<div class="draft-card-placeholder">🖼️</div>`;
+
+    html += `
+      <div class="draft-card" data-id="${d.id}">
+        <div class="draft-card-preview">
+          ${previewImg}
+        </div>
+        <div class="draft-card-info">
+          <div class="draft-card-title" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</div>
+          <div class="draft-card-meta">
+            <span>📅 ${dt}</span>
+            <span>📐 ${escapeHtml(d.sizeLabel || 'A4')}</span>
+            <span>📑 Слоёв: ${d.objectsCount || 0}</span>
+          </div>
+          <div class="draft-card-actions">
+            <button class="btn-load-draft" data-draft-id="${d.id}">
+              📂 Открыть
+            </button>
+            <button class="btn-delete-draft" data-draft-id="${d.id}" title="Удалить черновик">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  // Привязка кликов по карточкам черновиков
+  container.querySelectorAll('.btn-load-draft').forEach(b => {
+    b.addEventListener('click', () => loadDraftById(b.dataset.draftId));
+  });
+  container.querySelectorAll('.btn-delete-draft').forEach(b => {
+    b.addEventListener('click', () => deleteDraftById(b.dataset.draftId));
+  });
+}
+
+function openDraftsModal() {
+  renderDraftsList();
+  $('#drafts-modal-overlay')?.classList.remove('hidden');
+}
+
+function closeDraftsModal() {
+  $('#drafts-modal-overlay')?.classList.add('hidden');
+}
+
+function loadDraftById(id) {
+  const drafts = getSavedDrafts();
+  const draft = drafts.find(d => d.id === id);
+  if (!draft || !draft.canvasData) {
+    toast('Черновик не найден или повреждён');
+    return;
+  }
+
+  currentSize = SIZES[draft.sizeKey] || SIZES.a4_v;
+  $('#screen-templates')?.classList.add('hidden');
+  $('#screen-editor')?.classList.remove('hidden');
+
+  initCanvas(currentSize.w, currentSize.h);
+  canvas.loadFromJSON(draft.canvasData, () => {
+    canvas.renderAll();
+    fitZoom();
+    saveHistory();
+    updateLayersList();
+    clearProps();
+  });
+
+  if (draft.title && $('#poster-title')) {
+    $('#poster-title').value = draft.title;
+  }
+
+  updateFormatBadge();
+  startAutosave();
+  closeDraftsModal();
+  toast(`✅ Черновик «${draft.title}» загружен`);
+}
+
+function deleteDraftById(id) {
+  if (!confirm('Удалить этот черновик без возможности восстановления?')) return;
   try {
-    localStorage.setItem('aurora_poster_v2', JSON.stringify({
-      canvas: canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset']),
-      title: $('#poster-title').value,
-      size: Object.entries(SIZES).find(([,v])=>v===currentSize)?.[0] || 'a4_v',
-      at: Date.now(),
-    }));
-    toast('Черновик сохранён');
-  } catch(e) { toast('Ошибка сохранения'); }
+    let drafts = getSavedDrafts();
+    drafts = drafts.filter(d => d.id !== id);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+    updateDraftsBadgeCount();
+    renderDraftsList();
+    toast('🗑️ Черновик удалён');
+  } catch (e) {
+    toast('Ошибка удаления черновика');
+  }
 }
 
 function loadDraft() {
-  try {
-    const raw = localStorage.getItem('aurora_poster_v2');
-    if (!raw) return false;
-    const d = JSON.parse(raw);
-    if (!d?.canvas) return false;
-    const dt = new Date(d.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    if (!confirm(`Найден черновик (${dt}). Восстановить?`)) return false;
-    currentSize = SIZES[d.size] || SIZES.a4_v;
-    $('#screen-templates').classList.add('hidden');
-    $('#screen-editor').classList.remove('hidden');
-    initCanvas(currentSize.w, currentSize.h);
-    canvas.loadFromJSON(d.canvas, () => {
-      canvas.renderAll(); fitZoom(); saveHistory(); updateLayersList();
-    });
-    if (d.title) $('#poster-title').value = d.title;
-    startAutosave();
-    return true;
-  } catch(e) { return false; }
+  updateDraftsBadgeCount();
+  const drafts = getSavedDrafts();
+  return drafts.length > 0;
+}
+
+function manualSave() {
+  saveCurrentDraft(true);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5908,11 +6366,22 @@ function bindEvents() {
     }
   });
 
-  /* Экспорт, проект и печать */
-  $('#btn-save').addEventListener('click', manualSave);
-  $('#btn-export-png').addEventListener('click', exportPng);
+  /* Экспорт, проект, черновики и печать */
+  $('#btn-save')?.addEventListener('click', manualSave);
+  $('#btn-open-drafts')?.addEventListener('click', openDraftsModal);
+  $('#btn-tpl-open-drafts')?.addEventListener('click', openDraftsModal);
+  $('#btn-settings-save-draft')?.addEventListener('click', manualSave);
+  $('#btn-settings-open-drafts')?.addEventListener('click', openDraftsModal);
+  $('#btn-draft-save-current')?.addEventListener('click', manualSave);
+  $('#drafts-modal-close')?.addEventListener('click', closeDraftsModal);
+  $('#btn-drafts-modal-done')?.addEventListener('click', closeDraftsModal);
+  $('#drafts-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeDraftsModal();
+  });
+
+  $('#btn-export-png')?.addEventListener('click', exportPng);
   $('#btn-export-jpg')?.addEventListener('click', exportJpg);
-  $('#btn-export-pdf').addEventListener('click', exportPdf);
+  $('#btn-export-pdf')?.addEventListener('click', exportPdf);
   $('#btn-print')?.addEventListener('click', printPoster);
   $('#btn-header-duplicate')?.addEventListener('click', duplicateActiveObject);
   $('#btn-toggle-grid')?.addEventListener('click', toggleGrid);
@@ -6093,39 +6562,63 @@ function bindEvents() {
   });
   $('#dim-stroke-w')?.addEventListener('change', () => saveHistory());
 
-  /* Экспорт пресеты внутри инспектора */
-  const formatButtons = ['#btn-inspector-png', '#btn-inspector-jpg', '#btn-inspector-pdf', '#btn-inspector-svg'];
-  const setActiveFormatBtn = (activeId) => {
-    formatButtons.forEach(id => {
-      $(id)?.classList.toggle('is-active', id === activeId);
+  /* Экспорт: выбор формата и скачивание по кнопке */
+  let currentExportFormat = 'png';
+  const setExportFormat = (fmt, notify = false) => {
+    currentExportFormat = (fmt || 'png').toLowerCase();
+    const formatButtons = {
+      'png': '#btn-inspector-png',
+      'jpg': '#btn-inspector-jpg',
+      'pdf': '#btn-inspector-pdf',
+      'svg': '#btn-inspector-svg'
+    };
+    Object.entries(formatButtons).forEach(([key, sel]) => {
+      $(sel)?.classList.toggle('is-active', key === currentExportFormat);
     });
+    const btnExport = $('#btn-inspector-export-png');
+    if (btnExport) {
+      const formatLabels = { png: 'PNG', jpg: 'JPG', pdf: 'PDF (Печать)', svg: 'SVG (Вектор)' };
+      const lbl = formatLabels[currentExportFormat] || currentExportFormat.toUpperCase();
+      btnExport.innerHTML = `<span class="icon">🚀</span> Экспорт афиши (${lbl})`;
+    }
+    if (notify) {
+      toast(`Выбран формат: ${currentExportFormat.toUpperCase()}`);
+    }
   };
 
-  $('#btn-inspector-export-png')?.addEventListener('click', exportPng);
-  $('#btn-inspector-png')?.addEventListener('click', () => {
-    setActiveFormatBtn('#btn-inspector-png');
-    exportPng();
-  });
-  $('#btn-inspector-jpg')?.addEventListener('click', () => {
-    setActiveFormatBtn('#btn-inspector-jpg');
-    exportJpg();
-  });
-  $('#btn-inspector-pdf')?.addEventListener('click', () => {
-    setActiveFormatBtn('#btn-inspector-pdf');
-    exportPdf();
-  });
-  $('#btn-inspector-svg')?.addEventListener('click', () => {
-    setActiveFormatBtn('#btn-inspector-svg');
-    const svgStr = buildFigmaSVG();
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = ($('#poster-title')?.value || 'poster') + '.svg';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Векторный SVG для Figma скачан!');
-  });
+  const exportBySelectedFormat = async () => {
+    switch (currentExportFormat) {
+      case 'jpg':
+      case 'jpeg':
+        await exportJpg();
+        break;
+      case 'pdf':
+        await exportPdf();
+        break;
+      case 'svg': {
+        const svgStr = buildFigmaSVG();
+        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = ($('#poster-title')?.value || 'poster') + '.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('✅ Векторный SVG скачан');
+        break;
+      }
+      case 'png':
+      default:
+        await exportPng();
+        break;
+    }
+  };
+
+  $('#btn-inspector-export-png')?.addEventListener('click', exportBySelectedFormat);
+  $('#btn-inspector-png')?.addEventListener('click', () => setExportFormat('png', true));
+  $('#btn-inspector-jpg')?.addEventListener('click', () => setExportFormat('jpg', true));
+  $('#btn-inspector-pdf')?.addEventListener('click', () => setExportFormat('pdf', true));
+  $('#btn-inspector-svg')?.addEventListener('click', () => setExportFormat('svg', true));
 
   /* Выбор целевого разрешения экспорта (1K, 2K, 4K, 8K) */
   $$('#export-res-group .figma-preset-btn').forEach(btn => {
@@ -6563,15 +7056,37 @@ function bindEvents() {
 
   $('#btn-reset-filters')?.addEventListener('click', resetImageFilters);
 
-  /* ── Удаление фона и вырезание ── */
+  /* ── Удаление фона, волшебная палочка и ластик ── */
   $('#btn-bg-remove-auto')?.addEventListener('click', () => {
     const tol = parseInt($('#bg-tolerance-slider')?.value || 28);
     const fth = parseInt($('#bg-feather-slider')?.value   || 2);
     removeImageBackground(tol, fth);
   });
   $('#btn-bg-magic-wand')?.addEventListener('click', toggleMagicWandMode);
+  $('#btn-bg-eraser')    ?.addEventListener('click', toggleEraserMode);
   $('#btn-split-layers') ?.addEventListener('click', separateImageIntoLayers);
   $('#btn-bg-revert')    ?.addEventListener('click', revertBackground);
+
+  // Режимы и ползунки ластика
+  $('#btn-eraser-mode-erase')?.addEventListener('click', () => setEraserSubMode('erase'));
+  $('#btn-eraser-mode-restore')?.addEventListener('click', () => setEraserSubMode('restore'));
+  $('#eraser-size-slider')?.addEventListener('input', e => setEraserSize(e.target.value));
+  $('#eraser-hardness-slider')?.addEventListener('input', e => setEraserHardness(e.target.value));
+  $$('.eraser-size-chip').forEach(chip => {
+    chip.addEventListener('click', () => setEraserSize(chip.dataset.size));
+  });
+
+  // Отслеживание кольца-курсора ластика над рабочей областью
+  $('#canvas-area')?.addEventListener('mousemove', e => {
+    const ring = $('#eraser-cursor-ring');
+    if (ring && _eraserMode) {
+      ring.style.left = e.clientX + 'px';
+      ring.style.top  = e.clientY + 'px';
+      const displayDiam = Math.max(10, _eraserSize * (typeof zoom !== 'undefined' ? zoom : 1));
+      ring.style.width  = displayDiam + 'px';
+      ring.style.height = displayDiam + 'px';
+    }
+  });
 
   // Синхронизация слайдеров bg-remove
   $('#bg-tolerance-slider')?.addEventListener('input', e => {
@@ -6580,10 +7095,6 @@ function bindEvents() {
   $('#bg-feather-slider')?.addEventListener('input', e => {
     const v = $('#bg-feather-val'); if (v) v.textContent = e.target.value;
   });
-
-  // Canvas mouse:down — обработчик волшебной палочки
-  // Регистрируем только если canvas уже создан (иначе регистрация произойдёт в initCanvas)
-  if (canvas) canvas.on('mouse:down', opt => _magicWandHandler(opt));
 
   /* ── Ползунок поворота и быстрые углы ── */
   $('#dim-r-slider')?.addEventListener('input', e => {
