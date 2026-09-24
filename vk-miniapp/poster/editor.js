@@ -1836,6 +1836,8 @@ function initCanvas(w, h) {
   canvas.on('object:moving',      () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:scaling',     () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:rotating',    () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
+  // Волшебная палочка — всегда регистрируем здесь, т.к. canvas пересоздаётся
+  canvas.on('mouse:down', opt => _magicWandHandler(opt));
   canvas.on('object:modified', e => {
     // Нормализуем scale текстового объекта: превращаем scaleY→fontSize
     const obj = e.target;
@@ -2593,37 +2595,18 @@ function toggleMagicWandMode() {
   _magicWandMode = !_magicWandMode;
   const btn = $('#btn-bg-magic-wand');
   if (btn) btn.classList.toggle('is-active', _magicWandMode);
-  canvas.defaultCursor = _magicWandMode ? 'crosshair' : 'default';
+  if (canvas) canvas.defaultCursor = _magicWandMode ? 'crosshair' : 'default';
   toast(_magicWandMode ? '🎯 Кликните по фону на изображении' : 'Режим палочки отключён');
 }
 
-function _magicWandHandler(opt) {
-  if (!_magicWandMode) return;
-  const obj = canvas?.getActiveObject();
-  if (!obj || obj.type !== 'image') {
-    toggleMagicWandMode(); return;
-  }
-  const ptr = canvas.getPointer(opt.e);
-  const el  = obj.getElement();
-  const iw  = el.naturalWidth  || el.width;
-  const ih  = el.naturalHeight || el.height;
-
-  // Координаты клика относительно изображения
-  const localX = (ptr.x - obj.left) / (obj.scaleX || 1);
-  const localY = (ptr.y - obj.top)  / (obj.scaleY || 1);
-  const px = Math.round(localX), py = Math.round(localY);
-  if (px < 0 || py < 0 || px >= iw || py >= ih) return;
-
-  const tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = iw; tmpCanvas.height = ih;
-  const ctx = tmpCanvas.getContext('2d');
-  ctx.drawImage(el, 0, 0);
-
-  const tolerance = parseInt($('#bg-tolerance-slider')?.value || 28) * 3;
-  const feather   = parseInt($('#bg-feather-slider')?.value   || 2);
-  const imgData   = ctx.getImageData(0, 0, iw, ih);
-  const data      = imgData.data;
-  const visited   = new Uint8Array(iw * ih);
+/**
+ * Внутренняя функция: применяет flood-fill + feather к ctx и вставляет результат на canvas.
+ * Вызывается как из _magicWandHandler (обычный путь), так и из CORS-fallback.
+ */
+function _magicWandProcess(ctx, obj, iw, ih, tmpCanvas, px, py, tolerance, feather) {
+  const imgData = ctx.getImageData(0, 0, iw, ih);
+  const data    = imgData.data;
+  const visited = new Uint8Array(iw * ih);
 
   const startIdx = (py * iw + px) * 4;
   const br = data[startIdx], bg = data[startIdx+1], bb = data[startIdx+2];
@@ -2647,14 +2630,14 @@ function _magicWandHandler(opt) {
   }
 
   if (feather > 0) {
-    for (let y = 0; y < ih; y++) {
-      for (let x = 0; x < iw; x++) {
-        const pi = (y*iw+x)*4;
+    for (let y2 = 0; y2 < ih; y2++) {
+      for (let x2 = 0; x2 < iw; x2++) {
+        const pi = (y2*iw+x2)*4;
         if (!data[pi+3]) continue;
         for (let dy = -feather; dy <= feather; dy++) {
           for (let dx = -feather; dx <= feather; dx++) {
-            const nx=x+dx, ny=y+dy;
-            if (nx>=0&&ny>=0&&nx<iw&&ny<ih&&!data[(ny*iw+nx)*4+3]) {
+            const nx2=x2+dx, ny2=y2+dy;
+            if (nx2>=0&&ny2>=0&&nx2<iw&&ny2<ih&&!data[(ny2*iw+nx2)*4+3]) {
               data[pi+3] = Math.max(0, data[pi+3]-80); break;
             }
           }
@@ -2679,6 +2662,48 @@ function _magicWandHandler(opt) {
   });
 
   toggleMagicWandMode();
+}
+
+function _magicWandHandler(opt) {
+  if (!_magicWandMode) return;
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') {
+    toggleMagicWandMode(); return;
+  }
+  const ptr = canvas.getPointer(opt.e);
+  const el  = obj.getElement();
+  const iw  = el.naturalWidth  || el.width;
+  const ih  = el.naturalHeight || el.height;
+
+  // Координаты клика относительно изображения
+  const localX = (ptr.x - obj.left) / (obj.scaleX || 1);
+  const localY = (ptr.y - obj.top)  / (obj.scaleY || 1);
+  const px = Math.round(localX), py = Math.round(localY);
+  if (px < 0 || py < 0 || px >= iw || py >= ih) return;
+
+  const tolerance = parseInt($('#bg-tolerance-slider')?.value || 28) * 3;
+  const feather   = parseInt($('#bg-feather-slider')?.value   || 2);
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = iw; tmpCanvas.height = ih;
+  const ctx = tmpCanvas.getContext('2d');
+
+  // Устанавливаем crossOrigin чтобы избежать CORS-ошибки при getImageData
+  try {
+    ctx.drawImage(el, 0, 0);
+  } catch(corsErr) {
+    // Пробуем через новый Image с crossOrigin=anonymous
+    const img2 = new Image();
+    img2.crossOrigin = 'anonymous';
+    img2.onload = () => {
+      ctx.drawImage(img2, 0, 0);
+      _magicWandProcess(ctx, obj, iw, ih, tmpCanvas, px, py, tolerance, feather);
+    };
+    img2.src = (obj.getSrc?.() || el.src) + '?t=' + Date.now();
+    return;
+  }
+
+  _magicWandProcess(ctx, obj, iw, ih, tmpCanvas, px, py, tolerance, feather);
 }
 
 /**
@@ -2991,10 +3016,12 @@ async function addQrCodeToCanvas() {
 
 
 function updateFormatBadge() {
-  const badge = $('#canvas-format-badge');
-  if (!badge || !currentSize) return;
+  if (!currentSize) return;
   const zPct = Math.round(zoom * 100);
-  badge.textContent = `${currentSize.name} · ${currentSize.w} × ${currentSize.h} пт · ${zPct}%`;
+  const text = `${currentSize.name} · ${currentSize.w} × ${currentSize.h} пт · ${zPct}%`;
+  $$('#canvas-format-badge, .canvas-format-badge').forEach(badge => {
+    badge.textContent = text;
+  });
 }
 
 function duplicateActiveObject() {
@@ -3827,7 +3854,7 @@ function applyZoom(z) {
   canvas.setZoom(zoom);
   canvas.setWidth(currentSize.w * zoom);
   canvas.setHeight(currentSize.h * zoom);
-  $('#zoom-label').textContent = Math.round(zoom * 100) + '%';
+  $$('#zoom-label, .zoom-val').forEach(el => el.textContent = Math.round(zoom * 100) + '%');
   updateFormatBadge();
 }
 
@@ -5954,10 +5981,17 @@ function bindEvents() {
     });
   });
 
-  /* Масштаб */
-  $('#btn-zoom-in') .addEventListener('click', () => applyZoom(zoom + 0.1));
-  $('#btn-zoom-out').addEventListener('click', () => applyZoom(zoom - 0.1));
-  $('#btn-zoom-fit').addEventListener('click', fitZoom);
+  /* Масштаб (основной хедер) */
+  $('#btn-zoom-in') ?.addEventListener('click', () => applyZoom(zoom + 0.1));
+  $('#btn-zoom-out')?.addEventListener('click', () => applyZoom(zoom - 0.1));
+  $('#btn-zoom-fit')?.addEventListener('click', fitZoom);
+  /* Масштаб (боковая панель — sidebar) */
+  $('#btn-zoom-in-sb') ?.addEventListener('click', () => applyZoom(zoom + 0.1));
+  $('#btn-zoom-out-sb')?.addEventListener('click', () => applyZoom(zoom - 0.1));
+  $('#btn-zoom-fit-sb')?.addEventListener('click', fitZoom);
+  /* Flip в секции ротации (rot-chip) */
+  $('#btn-flip-x-rot')?.addEventListener('click', () => flipActiveObject('x'));
+  $('#btn-flip-y-rot')?.addEventListener('click', () => flipActiveObject('y'));
 
   /* Панельные табы */
   $$('.panel-tab').forEach(tab => {
@@ -6548,7 +6582,8 @@ function bindEvents() {
   });
 
   // Canvas mouse:down — обработчик волшебной палочки
-  canvas.on('mouse:down', opt => _magicWandHandler(opt));
+  // Регистрируем только если canvas уже создан (иначе регистрация произойдёт в initCanvas)
+  if (canvas) canvas.on('mouse:down', opt => _magicWandHandler(opt));
 
   /* ── Ползунок поворота и быстрые углы ── */
   $('#dim-r-slider')?.addEventListener('input', e => {
@@ -6637,8 +6672,8 @@ function bindEvents() {
   $('#btn-align-bottom-canvas')?.addEventListener('click', () => alignActiveObject('bottom'));
 
   $('#btn-duplicate')?.addEventListener('click', duplicateActiveObject);
-  $('#btn-flip-x')?.addEventListener('click', () => flipActiveObject('x'));
-  $('#btn-flip-y')?.addEventListener('click', () => flipActiveObject('y'));
+  $$('#btn-flip-x').forEach(el => el.addEventListener('click', () => flipActiveObject('x')));
+  $$('#btn-flip-y').forEach(el => el.addEventListener('click', () => flipActiveObject('y')));
 
   $('#btn-bring-front').addEventListener('click', () => {
     canvas?.getActiveObject()?.bringToFront(); canvas.renderAll(); saveHistory(); updateLayersList();
