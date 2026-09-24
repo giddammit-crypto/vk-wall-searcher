@@ -141,12 +141,13 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  padding: 32px;
+  padding: 24px 20px 120px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: radial-gradient(circle at top, #1e293b 0%, #0b0f19 100%);
   position: relative;
+  scroll-behavior: smooth;
 }
 
 .wysiwyg-canvas-toolbar {
@@ -197,38 +198,59 @@
   --canvas-gap: 16px;
   width: 100%;
   max-width: 960px;
-  min-height: 100%;
+  min-height: calc(100vh - 170px);
+  height: auto !important;
+  max-height: none !important;
   background: #ffffff;
   color: #1e293b;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
   position: relative;
-  padding: 16px;
+  padding: 24px 20px 60px 20px;
   box-sizing: border-box;
   transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: visible;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
   gap: 16px;
+  container-type: inline-size;
+  container-name: canvas;
+}
+
+/* Force hard safeguard against user scoped CSS so canvas never clips */
+#wysiwyg-canvas {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: calc(100vh - 170px) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
 }
 
 /* ── Canvas Responsive Widths ── */
 .wysiwyg-canvas.is-fluid {
   max-width: 100%;
-  padding: 16px;
+  padding: 24px 20px;
 }
 .wysiwyg-canvas.is-mobile {
   max-width: 375px;
-  padding: 12px;
+  padding: 16px 12px 40px 12px;
 }
 .wysiwyg-canvas.is-tablet {
   max-width: 768px;
-  padding: 16px;
+  padding: 20px 16px 50px 16px;
 }
 .wysiwyg-canvas.is-desktop {
   max-width: 960px;
-  padding: 16px;
+  padding: 24px 20px 60px 20px;
 }
 
 /* ── Clean Preview Mode on Canvas ── */
@@ -302,8 +324,9 @@
 /* ── Block Container on Canvas ── */
 .ve-block {
   position: relative;
-  margin-bottom: 0px;
-  border-radius: 0;
+  margin-top: 10px;
+  margin-bottom: 14px;
+  border-radius: 6px;
   transition: outline 0.15s ease, box-shadow 0.15s ease;
   outline: 1.5px dashed transparent;
   outline-offset: -1px;
@@ -313,15 +336,21 @@
   max-width: 100%;
 }
 
+.ve-block:first-child {
+  margin-top: 26px;
+}
+
 .ve-block:hover {
   outline: 1.5px dashed rgba(99, 102, 241, 0.5);
   outline-offset: -1px;
+  z-index: 25;
 }
 
 .ve-block.is-selected {
   outline: 2px solid #6366f1;
   outline-offset: -1px;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  z-index: 30;
 }
 
 /* ── Width Preset Rules for Multi-Column & 1-Row Blocks ── */
@@ -629,27 +658,32 @@
 /* Block Toolbar (appears on hover or when selected) */
 .ve-block-toolbar {
   position: absolute;
-  top: -34px;
-  left: 0;
-  display: flex;
+  top: -30px;
+  left: 2px;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: #1e1b4b;
+  gap: 5px;
+  background: #0f172a;
+  border: 1px solid rgba(99, 102, 241, 0.45);
   color: #e0e7ff;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
-  transform: translateY(4px);
-  z-index: 30;
+  transform: translateY(2px);
+  z-index: 50;
   font-family: 'Montserrat', system-ui, sans-serif;
   user-select: none;
+  white-space: nowrap !important;
+  flex-wrap: nowrap !important;
+  max-width: none;
 }
 
-.ve-block:hover .ve-block-toolbar,
-.ve-block.is-selected .ve-block-toolbar {
+/* IMPORTANT: Direct child selector ONLY! Prevents parent hover from showing all child toolbars */
+.ve-block:hover > .ve-block-toolbar,
+.ve-block.is-selected > .ve-block-toolbar {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -659,6 +693,7 @@
   cursor: grab;
   font-size: 16px;
   color: #a5b4fc;
+  flex-shrink: 0;
 }
 
 .ve-drag-handle:active {
@@ -671,15 +706,19 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #c7d2fe;
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .ve-block-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   margin-left: 6px;
   border-left: 1px solid rgba(255, 255, 255, 0.15);
   padding-left: 4px;
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .ve-act-btn {
@@ -693,6 +732,7 @@
   align-items: center;
   justify-content: center;
   transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
 
 .ve-act-btn:hover {
@@ -711,7 +751,7 @@
 
 /* Width preset buttons in Block Toolbar */
 .ve-width-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   margin-left: 6px;
@@ -722,6 +762,8 @@
   padding-top: 1px;
   padding-bottom: 1px;
   padding-right: 3px;
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .ve-w-btn {
@@ -734,8 +776,10 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
-  line-height: 1.3;
+  line-height: 1.2;
   font-family: inherit;
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .ve-w-btn:hover {
@@ -1223,4 +1267,215 @@
     gap: 4px;
     padding: 6px 8px;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ADAPTIVE & RESPONSIVE CANVAS ENGINE
+   Container Queries + Explicit Class Overrides
+   ══════════════════════════════════════════════════════════════ */
+
+/* Mobile view: is-mobile (375px) OR container <= 680px */
+.wysiwyg-canvas.is-mobile .ve-row-2col,
+.wysiwyg-canvas.is-mobile .ve-row-3col,
+.wysiwyg-canvas.is-mobile .ve-row-4col,
+.wysiwyg-canvas.is-mobile .ve-row-asym-left,
+.wysiwyg-canvas.is-mobile .ve-row-asym-right {
+  grid-template-columns: 1fr !important;
+  gap: 14px !important;
+}
+
+@container canvas (max-width: 680px) {
+  .ve-row-2col,
+  .ve-row-3col,
+  .ve-row-4col,
+  .ve-row-asym-left,
+  .ve-row-asym-right {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+.wysiwyg-canvas.is-mobile .ve-row-flex,
+.wysiwyg-canvas.is-mobile .ve-row-container {
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+@container canvas (max-width: 680px) {
+  .ve-row-flex,
+  .ve-row-container {
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+}
+
+.wysiwyg-canvas.is-mobile .ve-col,
+.wysiwyg-canvas.is-mobile .ve-col-slot {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+@container canvas (max-width: 680px) {
+  .ve-col,
+  .ve-col-slot {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Force preset width blocks to full 100% on mobile */
+.wysiwyg-canvas.is-mobile .ve-block[data-width="50"],
+.wysiwyg-canvas.is-mobile .ve-block[data-width="33"],
+.wysiwyg-canvas.is-mobile .ve-block[data-width="25"],
+.wysiwyg-canvas.is-mobile .ve-block.ve-w-50,
+.wysiwyg-canvas.is-mobile .ve-block.ve-w-33,
+.wysiwyg-canvas.is-mobile .ve-block.ve-w-25 {
+  width: 100% !important;
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+}
+
+@container canvas (max-width: 680px) {
+  .ve-block[data-width="50"],
+  .ve-block[data-width="33"],
+  .ve-block[data-width="25"],
+  .ve-block.ve-w-50,
+  .ve-block.ve-w-33,
+  .ve-block.ve-w-25 {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Tablet view: is-tablet (768px) OR container 681px - 860px */
+.wysiwyg-canvas.is-tablet .ve-row-4col {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 14px !important;
+}
+
+.wysiwyg-canvas.is-tablet .ve-row-asym-left {
+  grid-template-columns: 1.5fr 1fr !important;
+}
+
+.wysiwyg-canvas.is-tablet .ve-row-asym-right {
+  grid-template-columns: 1fr 1.5fr !important;
+}
+
+@container canvas (min-width: 681px) and (max-width: 860px) {
+  .ve-row-4col {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+  }
+  .ve-row-asym-left {
+    grid-template-columns: 1.5fr 1fr !important;
+  }
+  .ve-row-asym-right {
+    grid-template-columns: 1fr 1.5fr !important;
+  }
+}
+
+/* Adaptive media & blocks inside canvas */
+.wysiwyg-canvas .ve-block-content img,
+.wysiwyg-canvas .ve-block-content video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.wysiwyg-canvas .ve-block-content iframe {
+  max-width: 100% !important;
+}
+
+.wysiwyg-canvas .ve-block-content pre {
+  max-width: 100% !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.wysiwyg-canvas .ve-block-content .ve-container,
+.wysiwyg-canvas .ve-block-content .ve-section {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Dimension Badge & Bottom Bar */
+.ve-canvas-dims-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.03em;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ve-canvas-footer-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 12px;
+  width: 100%;
+  max-width: 960px;
+  user-select: none;
+}
+
+.ve-bottom-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px dashed rgba(99, 102, 241, 0.45);
+  color: #a5b4fc;
+  padding: 10px 22px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.ve-bottom-add-btn:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: #818cf8;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+.ve-bottom-add-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.ve-bottom-hint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+@keyframes vePaletteGlow {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+.ve-palette-block.ve-palette-pulse {
+  animation: vePaletteGlow 0.8s ease-in-out;
+  border-color: #818cf8 !important;
+  background: rgba(99, 102, 241, 0.25) !important;
 }

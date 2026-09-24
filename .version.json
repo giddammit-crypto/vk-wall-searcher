@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.74.3",
+  "version": "4.75.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-24T06:16:00Z",
-  "release_name": "AURORA 4.74.3 — Комплексное исправление запуска приложений и кнопок (ai_dev_modal, splash watchdog, nav dropdowns)"
+  "commit_date": "2026-09-24T08:30:00Z",
+  "release_name": "AURORA 4.75.0 — Исправление адаптивности и высоты холста WYSIWYG редактора (неограниченная высота, отзывчивые колонки, изоляция тулбаров)"
 }

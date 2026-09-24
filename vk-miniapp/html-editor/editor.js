@@ -1421,7 +1421,28 @@ ${appState.js}
       e.currentTarget.classList.add("is-active");
       canvasEl.classList.remove("is-desktop", "is-tablet", "is-mobile", "is-fluid");
       canvasEl.classList.add(`is-${size}`);
+      if (visualEditor && typeof visualEditor._updateCanvasDims === "function") {
+        setTimeout(() => visualEditor._updateCanvasDims(), 50);
+      }
     });
+  });
+
+  // Bottom action bar: add block
+  document.getElementById("ve-bottom-add-btn")?.addEventListener("click", () => {
+    const paletteEl = document.getElementById("wysiwyg-palette");
+    const backdropEl = document.getElementById("wysiwyg-backdrop");
+    if (window.innerWidth <= 880) {
+      paletteEl?.classList.add("is-open");
+      backdropEl?.classList.add("is-open");
+    } else {
+      paletteEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+      paletteEl?.querySelectorAll(".ve-palette-block").forEach((b, i) => {
+        if (i < 3) {
+          b.classList.add("ve-palette-pulse");
+          setTimeout(() => b.classList.remove("ve-palette-pulse"), 1000);
+        }
+      });
+    }
   });
 
   // Mobile drawers (Palette & Properties)

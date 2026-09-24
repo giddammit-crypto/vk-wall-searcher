@@ -381,6 +381,17 @@ export class VisualEditor {
   _bindCanvas() {
     const canvas = this.canvasEl;
 
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const cr = entry.contentRect;
+          this._updateCanvasDims(Math.round(cr.width), Math.round(canvas.scrollHeight || cr.height));
+        }
+      });
+      ro.observe(canvas);
+      this._canvasResizeObserver = ro;
+    }
+
     canvas.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = this._paletteId ? 'copy' : 'move';
@@ -1261,6 +1272,16 @@ export class VisualEditor {
       </div>`;
   }
 
+  // ── CANVAS DIMENSIONS TRACKING ────────────────────────────
+  _updateCanvasDims(w, h) {
+    const badge = document.getElementById('ve-canvas-dims');
+    if (!badge || !this.canvasEl) return;
+    const rect = this.canvasEl.getBoundingClientRect();
+    const width = w !== undefined ? w : Math.round(rect.width);
+    const height = h !== undefined ? h : Math.round(this.canvasEl.scrollHeight || rect.height);
+    badge.textContent = `${width} × ${height}px`;
+  }
+
   // ── EMPTY STATE ───────────────────────────────────────────
   _updateEmptyState() {
     const canvas = this.canvasEl;
@@ -1277,6 +1298,7 @@ export class VisualEditor {
         <p class="ve-empty-sub">Двойной клик — редактировать текст</p>`;
       canvas.appendChild(empty);
     }
+    this._updateCanvasDims();
   }
 
   // ── HISTORY ───────────────────────────────────────────────
@@ -1487,6 +1509,11 @@ export class VisualEditor {
       for (const rule of rules) {
         if (rule instanceof CSSStyleRule) {
           const rawSelectors = rule.selectorText.split(',');
+          const isDirectCanvasRule = rawSelectors.some(sel => {
+            const s = sel.trim();
+            return s === 'body' || s === 'html' || s === ':root' || s === '#wysiwyg-canvas';
+          });
+
           const scopedSelectors = rawSelectors.map(sel => {
             const s = sel.trim();
             if (s === 'body' || s === 'html' || s === ':root') {
@@ -1504,7 +1531,21 @@ export class VisualEditor {
             return `#wysiwyg-canvas .ve-block-content ${s}, #wysiwyg-canvas ${s}:not(.wysiwyg-canvas-toolbar, .wysiwyg-canvas-toolbar *, .ve-block-toolbar, .ve-block-toolbar *, .ve-resize-handle, .ve-resize-badge)`;
           }).join(', ');
 
-          out += `${scopedSelectors} {\n  ${rule.style.cssText}\n}\n`;
+          let styleCss = rule.style.cssText;
+          if (isDirectCanvasRule) {
+            // Strip out properties that would constrain canvas height, disable scrolling, or break block flow
+            styleCss = styleCss
+              .replace(/(?:^|;)\s*(overflow|overflow-x|overflow-y)\s*:[^;]+/gi, '')
+              .replace(/(?:^|;)\s*(max-height|height)\s*:[^;]+/gi, '')
+              .replace(/(?:^|;)\s*(min-height)\s*:[^;]+/gi, '')
+              .replace(/(?:^|;)\s*(display|flex-direction|align-items|justify-content|align-content)\s*:[^;]+/gi, '')
+              .replace(/(?:^|;)\s*(position|top|left|right|bottom)\s*:[^;]+/gi, '')
+              .replace(/(?:^|;)\s*(width|max-width)\s*:[^;]+/gi, '')
+              .replace(/^;+|;+$/g, '')
+              .trim();
+          }
+
+          out += `${scopedSelectors} {\n  ${styleCss}\n}\n`;
         } else if (rule instanceof CSSMediaRule) {
           out += `@media ${rule.conditionText} {\n${processRules(rule.cssRules)}}\n`;
         } else if (rule instanceof CSSKeyframesRule) {
@@ -1655,7 +1696,16 @@ export class VisualEditor {
 
       if (doc.body) {
         if (doc.body.style.cssText) {
-          this.canvasEl.style.cssText += ';' + doc.body.style.cssText;
+          const safeBodyStyle = doc.body.style.cssText
+            .replace(/(?:^|;)\s*(overflow|overflow-x|overflow-y)\s*:[^;]+/gi, '')
+            .replace(/(?:^|;)\s*(max-height|height|min-height)\s*:[^;]+/gi, '')
+            .replace(/(?:^|;)\s*(display|flex-direction|align-items|justify-content|align-content)\s*:[^;]+/gi, '')
+            .replace(/(?:^|;)\s*(position|top|left|right|bottom|width|max-width)\s*:[^;]+/gi, '')
+            .replace(/^;+|;+$/g, '')
+            .trim();
+          if (safeBodyStyle) {
+            this.canvasEl.style.cssText += ';' + safeBodyStyle;
+          }
         }
         if (doc.body.className) {
           doc.body.classList.forEach(cls => this.canvasEl.classList.add(cls));
@@ -1696,6 +1746,7 @@ export class VisualEditor {
             this.setBlockWidth(block, detectedW);
           }
         });
+        this._updateCanvasDims();
         this._saveHistory();
         return;
       }
@@ -1710,6 +1761,7 @@ export class VisualEditor {
       html: htmlStr
     };
     this._insertBlock(def);
+    this._updateCanvasDims();
     this._saveHistory();
   }
 
@@ -1719,6 +1771,7 @@ export class VisualEditor {
     this._deselect();
     this._updateEmptyState();
     this.docTemplate = null;
+    this._updateCanvasDims();
     this._saveHistory();
   }
 
@@ -1740,5 +1793,6 @@ export class VisualEditor {
     this._updateEmptyState();
     this._saveHistory(); // initial empty state
     this._showEmptyProps();
+    this._updateCanvasDims();
   }
 }
