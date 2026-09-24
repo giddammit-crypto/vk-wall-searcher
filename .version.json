@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.75.1",
+  "version": "4.75.2",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-24T08:42:00Z",
-  "release_name": "AURORA 4.75.1 — Улучшение визуала нижней кнопки добавления блока, sticky-тулбар холста, сворачиваемые панели и адаптивность HTML-редактора"
+  "commit_date": "2026-09-24T09:02:00Z",
+  "release_name": "AURORA 4.75.2 — Исправление сжатия холста (flex-shrink: 0), неограниченное расширение холста по высоте под блоки и видимость нижней кнопки"
 }

@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css?v=4.75.1">
-  <link rel="stylesheet" href="visual.css?v=4.75.1">
+  <link rel="stylesheet" href="style.css?v=4.75.2">
+  <link rel="stylesheet" href="visual.css?v=4.75.2">
 
   <!-- CodeMirror 6 via import map -->
   <script type="importmap">
@@ -338,10 +338,10 @@
     </div>
 
     <!-- The Canvas Sheet -->
-    <div class="wysiwyg-canvas is-desktop" id="wysiwyg-canvas"></div>
+    <div class="wysiwyg-canvas is-desktop" id="wysiwyg-canvas" style="flex-shrink:0;"></div>
 
     <!-- Bottom Add Block Action Bar -->
-    <div class="ve-canvas-footer-bar" id="ve-canvas-footer-bar" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:36px;margin-bottom:60px;width:100%;max-width:960px;box-sizing:border-box;user-select:none;">
+    <div class="ve-canvas-footer-bar" id="ve-canvas-footer-bar" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:36px;margin-bottom:80px;width:100%;max-width:960px;box-sizing:border-box;user-select:none;flex-shrink:0;">
       <button class="ve-bottom-add-btn" id="ve-bottom-add-btn" type="button" title="Добавить блок в конец страницы" style="appearance:none;-webkit-appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.16));border:1.5px dashed rgba(129,140,248,0.55);color:#e0e7ff;padding:12px 28px;border-radius:9999px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;outline:none;box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:all 0.25s ease;">
         <span class="material-symbols-rounded" style="font-size:20px;color:#818cf8;">add_circle</span>
         <span>Добавить блок</span>
@@ -491,7 +491,7 @@
 
 <!-- Boot editor -->
 <script type="module">
-  import { init } from './editor.js?v=4.75.1';
+  import { init } from './editor.js?v=4.75.2';
 
   // Close timeline via dedicated button
   document.getElementById('btn-close-timeline')?.addEventListener('click', () => {

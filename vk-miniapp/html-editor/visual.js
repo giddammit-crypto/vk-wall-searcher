@@ -886,6 +886,10 @@ export class VisualEditor {
       const canvasRect = this.canvasEl.getBoundingClientRect();
       const startWidth = startRect.width;
       const startHeight = startRect.height;
+      const startPointerX = e.clientX;
+      const startPointerY = e.clientY;
+      const scrollWrapper = document.getElementById('wysiwyg-canvas-wrapper');
+      const startScrollTop = scrollWrapper ? scrollWrapper.scrollTop : 0;
 
       const isCentered = (wrapper.style.marginLeft === 'auto' && wrapper.style.marginRight === 'auto') ||
                          (target && (target.style.marginLeft === 'auto' || (target.style.margin && target.style.margin.includes('auto'))));
@@ -930,9 +934,10 @@ export class VisualEditor {
         }
 
         if (type === 'bottom' || type === 'corner') {
-          newH = Math.round(moveEvent.clientY - startRect.top);
-          const minH = 30;
-          newH = Math.max(minH, newH);
+          const curScroll = scrollWrapper ? scrollWrapper.scrollTop : 0;
+          const deltaScroll = curScroll - startScrollTop;
+          const deltaY = (moveEvent.clientY - startPointerY) + deltaScroll;
+          newH = Math.max(30, Math.round(startHeight + deltaY));
 
           wrapper.style.minHeight = `${newH}px`;
           if (target) {
@@ -941,11 +946,17 @@ export class VisualEditor {
 
           const hInput = this.propsEl.querySelector('#ve-prop-minheight');
           if (hInput) hInput.value = newH;
+
+          // Auto-scroll when dragging near viewport bottom
+          if (scrollWrapper && moveEvent.clientY > window.innerHeight - 50) {
+            scrollWrapper.scrollTop += 12;
+          }
         }
 
         const dispW = Math.round(wrapper.offsetWidth);
         const dispH = Math.round(wrapper.offsetHeight);
         badge.textContent = `${dispW} × ${dispH} px`;
+        this._updateCanvasDims();
       };
 
       const onPointerUp = () => {
@@ -960,6 +971,7 @@ export class VisualEditor {
         const rawText = this.propsEl.querySelector('#ve-raw-html');
         if (rawText && content) rawText.value = content.innerHTML.trim();
 
+        this._updateCanvasDims();
         this._saveHistory();
       };
 
@@ -1246,15 +1258,20 @@ export class VisualEditor {
             target.style.width = val ? '100%' : '';
             target.style.boxSizing = 'border-box';
           }
+          this._updateCanvasDims();
         } else if (prop === 'minHeight') {
           wrapper.style.minHeight = val;
           if (target) target.style.minHeight = val;
+          this._updateCanvasDims();
         } else {
           if (target) target.style[prop] = val;
           content.style[prop] = val;
         }
       });
-      input.addEventListener('change', () => this._saveHistory());
+      input.addEventListener('change', () => {
+        this._updateCanvasDims();
+        this._saveHistory();
+      });
     });
 
     // Typography inputs — apply to first matching child element
@@ -1294,7 +1311,7 @@ export class VisualEditor {
     if (!badge || !this.canvasEl) return;
     const rect = this.canvasEl.getBoundingClientRect();
     const width = w !== undefined ? w : Math.round(rect.width);
-    const height = h !== undefined ? h : Math.round(this.canvasEl.scrollHeight || rect.height);
+    const height = h !== undefined ? h : Math.round(Math.max(this.canvasEl.offsetHeight, this.canvasEl.scrollHeight, rect.height));
     badge.textContent = `${width} × ${height}px`;
   }
 
