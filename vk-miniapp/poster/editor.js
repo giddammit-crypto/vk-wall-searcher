@@ -3961,89 +3961,109 @@ function hideExportLoader(successMsg) {
 }
 
 async function exportPng() {
-  if (!canvas || isExportRunning) return;
+  if (!canvas) { toast('Холст не готов'); return; }
+  if (isExportRunning) {
+    // Принудительный сброс зависшего флага через 500ms
+    toast('Экспорт уже запущен, сбрасываю...');
+    isExportRunning = false;
+    await new Promise(r => setTimeout(r, 500));
+  }
   isExportRunning = true;
   const enhancer = window.PosterEnhancer;
   const filename = $('#poster-title')?.value?.trim() || 'Афиша';
   const resName = currentExportResolution.toUpperCase();
   const formatTitle = `Ultra-PNG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
 
+  console.log('[AURORA Export] Starting PNG export:', { resolution: currentExportResolution, hdr: isExportHdrEnabled, enhancerReady: !!enhancer });
   showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
 
   try {
     if (enhancer && typeof enhancer.exportPoster === 'function') {
-      await enhancer.exportPoster(canvas, {
+      console.log('[AURORA Export] Using PosterEnhancer.exportPoster...');
+      const result = await enhancer.exportPoster(canvas, {
         resolution: currentExportResolution,
         format: 'png',
         hdr: getEnhancerHdrConfig(),
         filename: filename,
-        onProgress: (p, msg) => updateExportProgress(p, msg)
+        onProgress: (p, msg) => { console.log(`[AURORA Export] ${p}% ${msg}`); updateExportProgress(p, msg); }
       });
+      console.log('[AURORA Export] Done:', result?.width, 'x', result?.height);
       hideExportLoader(`Ultra-PNG (${resName}) успешно сохранён`);
-      toast(`Ultra-PNG (${resName}) успешно сохранён в «Загрузки»`);
+      toast(`✅ Ultra-PNG (${resName}) сохранён в «Загрузки»`);
       return;
     }
 
-    // Fallback
-    const saved = zoom;
-    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    // Fallback: без enhancer
+    console.warn('[AURORA Export] PosterEnhancer not available, using fallback canvas.toDataURL');
+    const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
+    if (typeof applyZoom === 'function') applyZoom(1);
+    canvas.discardActiveObject();
+    canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
-    await new Promise(r => setTimeout(r, 20));
-    const url = canvas.toDataURL({ format:'png', quality:1, multiplier:2 });
+    await new Promise(r => setTimeout(r, 30));
+    const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
+    const url = canvas.toDataURL({ format:'png', quality:1, multiplier });
     const a = document.createElement('a');
-    a.href = url; a.download = filename + '.png'; a.click();
-    applyZoom(saved);
+    a.href = url; a.download = filename + '.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('PNG сохранён');
     toast('PNG сохранён в папку «Загрузки»');
   } catch (err) {
-    console.error('Export PNG error:', err);
+    console.error('[AURORA Export] PNG error:', err);
     hideExportLoader();
-    toast(`Ошибка экспорта: ${err.message}`);
+    toast(`❌ Ошибка экспорта: ${err.message || err}`);
   } finally {
     isExportRunning = false;
   }
 }
 
 async function exportJpg() {
-  if (!canvas || isExportRunning) return;
+  if (!canvas) { toast('Холст не готов'); return; }
+  if (isExportRunning) { isExportRunning = false; await new Promise(r => setTimeout(r, 500)); }
   isExportRunning = true;
   const enhancer = window.PosterEnhancer;
   const filename = $('#poster-title')?.value?.trim() || 'Афиша';
   const resName = currentExportResolution.toUpperCase();
   const formatTitle = `HDR-JPG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
 
+  console.log('[AURORA Export] Starting JPG export:', { resolution: currentExportResolution, hdr: isExportHdrEnabled });
   showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
 
   try {
     if (enhancer && typeof enhancer.exportPoster === 'function') {
-      await enhancer.exportPoster(canvas, {
+      const result = await enhancer.exportPoster(canvas, {
         resolution: currentExportResolution,
         format: 'jpg',
         quality: 0.98,
         hdr: getEnhancerHdrConfig(),
         filename: filename,
-        onProgress: (p, msg) => updateExportProgress(p, msg)
+        onProgress: (p, msg) => { console.log(`[AURORA Export JPG] ${p}% ${msg}`); updateExportProgress(p, msg); }
       });
       hideExportLoader(`HDR-JPG (${resName}) успешно сохранён`);
-      toast(`HDR-JPG (${resName}) успешно сохранён в «Загрузки»`);
+      toast(`✅ HDR-JPG (${resName}) сохранён в «Загрузки»`);
       return;
     }
 
     // Fallback
-    const saved = zoom;
-    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    console.warn('[AURORA Export] PosterEnhancer not available, using fallback');
+    const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
+    if (typeof applyZoom === 'function') applyZoom(1);
+    canvas.discardActiveObject(); canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
-    await new Promise(r => setTimeout(r, 20));
-    const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier:2 });
+    await new Promise(r => setTimeout(r, 30));
+    const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
+    const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier });
     const a = document.createElement('a');
-    a.href = url; a.download = filename + '.jpg'; a.click();
-    applyZoom(saved);
+    a.href = url; a.download = filename + '.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('JPG сохранён');
-    toast('JPG (высокое качество) сохранён в папку «Загрузки»');
+    toast('JPG (высокое качество) сохранён в «Загрузки»');
   } catch (err) {
-    console.error('Export JPG error:', err);
+    console.error('[AURORA Export] JPG error:', err);
     hideExportLoader();
-    toast(`Ошибка экспорта: ${err.message}`);
+    toast(`❌ Ошибка экспорта: ${err.message || err}`);
   } finally {
     isExportRunning = false;
   }
@@ -5911,7 +5931,7 @@ function bindEvents() {
 
   /* Графика и библиотека */
   $('#tool-photo')   ?.addEventListener('click', () => $('#photo-input').click());
-  $('#photo-input')  ?.addEventListener('change', e => { const f=e.target.files?.[0]; if(f) openPhotoImportModal(f); e.target.value=''; });
+  $('#photo-input')  ?.addEventListener('change', e => { const f=e.target.files?.[0]; if(f) addPhoto(f); e.target.value=''; });
   $('#tool-cosmo')   ?.addEventListener('click', openCosmoModal);
   $('#tool-logo')    ?.addEventListener('click', openLogoModal);
   $('#tool-stickers')?.addEventListener('click', openBadgeModal);
