@@ -536,6 +536,28 @@
             </div>
           </div>
 
+          <!-- Управление поворотом на 360° со слайдером и быстрыми углами -->
+          <div class="figma-rotation-control" style="margin-top: 8px;">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Поворот слоя (0°–360°)</span>
+              <span class="figma-slider-val"><b id="dim-r-val">0</b>°</span>
+            </div>
+            <input type="range" class="prop-range" id="dim-r-slider" min="0" max="360" value="0" step="1">
+            <div class="figma-rotation-presets" style="display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap;">
+              <button class="pbtn pbtn-xs rot-chip is-active" data-angle="0">0°</button>
+              <button class="pbtn pbtn-xs rot-chip" data-angle="90">90°</button>
+              <button class="pbtn pbtn-xs rot-chip" data-angle="180">180°</button>
+              <button class="pbtn pbtn-xs rot-chip" data-angle="270">270°</button>
+              <button class="pbtn pbtn-xs rot-chip" id="btn-rot-plus-90" title="Повернуть на +90°">⟳ +90°</button>
+              <button class="pbtn pbtn-xs rot-chip" id="btn-flip-x" title="Отразить по горизонтали (Flip X)">
+                <span class="material-symbols-rounded" style="font-size: 13px;">flip</span>
+              </button>
+              <button class="pbtn pbtn-xs rot-chip" id="btn-flip-y" title="Отразить по вертикали (Flip Y)">
+                <span class="material-symbols-rounded" style="font-size: 13px; transform: rotate(90deg);">flip</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Быстрые действия со слоем (Копия, Порядок, Блокировка, Группа, Удалить) -->
           <div class="figma-quick-actions">
             <button class="pbtn pbtn-sm" id="btn-duplicate" title="Дублировать объект (Ctrl+D)">
@@ -815,47 +837,53 @@
             <span>Сбросить фильтры</span>
           </button>
 
-          <!-- Cyber-Glassmorphism: HDR Улучшение фото -->
-          <div class="enhancer-image-inspector" style="margin-top: 12px;">
-            <div class="enhancer-image-inspector-head">
-              <span class="enhancer-image-inspector-title">
-                <span class="material-symbols-rounded">auto_awesome</span>
-                <span>HDR Улучшение фото</span>
+          <!-- Cyber-Glassmorphism: УДАЛЕНИЕ ФОНА И ОБЪЕКТЫ -->
+          <div class="bg-remove-inspector" style="margin-top: 14px;">
+            <div class="bg-remove-inspector-head">
+              <span class="bg-remove-inspector-title">
+                <span class="material-symbols-rounded">auto_fix_high</span>
+                <span>УДАЛЕНИЕ ФОНА И ВЫРЕЗАНИЕ</span>
               </span>
-              <span class="enhancer-ai-badge">AI ENHANCE</span>
+              <span class="bg-ai-badge">SMART AI</span>
             </div>
 
-            <!-- Кнопка вызова / применения HDR к фото -->
-            <button class="pbtn" id="btn-image-hdr-enhance" title="Применить интеллектуальное улучшение к фотографии">
-              <span class="material-symbols-rounded">auto_fix_high</span>
-              <span>✨ HDR Улучшение фото</span>
+            <!-- Главная кнопка: Удалить фон (Авто) -->
+            <button class="pbtn pbtn-bg-primary" id="btn-bg-remove-auto" title="Автоматическое удаление фона с изображения с помощью AI-контура">
+              <span class="material-symbols-rounded">magic_button</span>
+              <span>🪄 Удалить фон (Авто)</span>
             </button>
 
-            <!-- Пресеты тоноотображения фото -->
-            <div class="enhancer-img-presets-grid">
-              <button class="enhancer-img-preset-chip is-active" id="btn-hdr-cinematic" data-preset="cinematic" title="Кинематографичный HDR (ACES)">Кино ACES</button>
-              <button class="enhancer-img-preset-chip" id="btn-hdr-vivid" data-preset="vivid" title="Максимальный сочный HDR">Vivid HDR</button>
-              <button class="enhancer-img-preset-chip" id="btn-hdr-light" data-preset="light" title="Легкий естественный HDR">Легкий HDR</button>
-              <button class="enhancer-img-preset-chip" id="btn-hdr-print" data-preset="print" title="Полиграфия (четкость и микроконтраст)">Печать 4K</button>
+            <!-- Дополнительные действия: Волшебная палочка и Разделение слоёв -->
+            <div class="bg-actions-row">
+              <button class="pbtn pbtn-bg-subtle" id="btn-bg-magic-wand" title="Кликните по фону на холсте для удаления выбранного цвета">
+                <span class="material-symbols-rounded">colorize</span>
+                <span>🎯 Палочка</span>
+              </button>
+              <button class="pbtn pbtn-bg-subtle" id="btn-split-layers" title="Разделить на 2 слоя: передний план (объект) и фон (для вставки текста между ними)">
+                <span class="material-symbols-rounded">layers</span>
+                <span>🔮 Разделить слои</span>
+              </button>
             </div>
 
-            <!-- Тумблер резкости -->
-            <div class="enhancer-toggle-row" style="padding: 6px 10px; margin: 2px 0;">
-              <div class="enhancer-toggle-info">
-                <span class="enhancer-toggle-label" style="font-size: 11px;">
-                  <span class="material-symbols-rounded" style="font-size: 15px;">details</span>
-                  <span>Адаптивная резкость</span>
-                </span>
+            <!-- Слайдеры тонкой настройки удаления фона -->
+            <div class="bg-sliders-group">
+              <div class="figma-slider-head">
+                <span class="figma-sublabel">Допуск цвета (Tolerance)</span>
+                <span class="figma-slider-val"><b id="bg-tolerance-val">28</b>%</span>
               </div>
-              <label class="enh-switch" style="width: 36px; height: 20px;">
-                <input type="checkbox" id="img-smart-sharpen" checked>
-                <span class="enh-switch-slider"></span>
-              </label>
+              <input type="range" class="prop-range" id="bg-tolerance-slider" min="5" max="80" value="28" step="1">
+
+              <div class="figma-slider-head" style="margin-top: 6px;">
+                <span class="figma-sublabel">Сглаживание краёв (Feather)</span>
+                <span class="figma-slider-val"><b id="bg-feather-val">2</b> px</span>
+              </div>
+              <input type="range" class="prop-range" id="bg-feather-slider" min="0" max="10" value="2" step="1">
             </div>
 
-            <button class="pbtn pbtn-ghost hidden" id="btn-hdr-revert" style="margin-top: 4px;">
+            <!-- Кнопка сброса к оригиналу -->
+            <button class="pbtn pbtn-ghost hidden" id="btn-bg-revert" style="margin-top: 6px;" title="Восстановить исходное изображение с оригинальным фоном">
               <span class="material-symbols-rounded">undo</span>
-              <span>Оригинальное фото</span>
+              <span>↺ Вернуть исходный фон</span>
             </button>
           </div>
         </div><!-- /#props-image -->
@@ -1734,6 +1762,43 @@
       </button>
     </div>
   </div>
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: ИМПОРТ ФОТО И РАЗДЕЛЕНИЕ НА СЛОИ
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="photo-import-modal-overlay">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal-head">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-rounded" style="color: #0d99ff;">add_photo_alternate</span>
+        <div class="modal-title">Импорт изображения</div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="photo-import-modal-close" title="Закрыть">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 18px 22px;">
+      <p style="font-size: 13px; color: var(--figma-text-secondary, #94a3b8); margin-bottom: 16px; line-height: 1.5;">
+        Выберите способ размещения изображения на холсте:
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="pbtn" id="btn-import-single" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; background: rgba(255,255,255,0.04); border: 1px solid var(--figma-border, rgba(255,255,255,0.1)); border-radius: 8px;">
+          <span class="material-symbols-rounded" style="font-size: 24px; color: #0d99ff;">image</span>
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: #fff;">Обычное изображение (1 слой)</div>
+            <div style="font-size: 11px; color: var(--figma-text-muted, #64748b);">Добавить как стандартное фото без изменений</div>
+          </div>
+        </button>
+
+        <button class="pbtn" id="btn-import-split" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; background: linear-gradient(135deg, rgba(13,153,255,0.15) 0%, rgba(138,108,255,0.18) 100%); border: 1px solid rgba(13,153,255,0.4); border-radius: 8px; box-shadow: 0 0 16px rgba(13,153,255,0.15);">
+          <span class="material-symbols-rounded" style="font-size: 24px; color: #38bdf8;">layers</span>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #38bdf8;">Разделить на слои (Объект + Фон) ★</div>
+            <div style="font-size: 11px; color: #cbd5e1;">Автоматически отделяет передний план от фона для вставки текста и элементов между ними</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════
@@ -1753,7 +1818,7 @@
           <div class="enhancer-head-row">
             <h2 class="enhancer-title" id="enhancer-modal-title">Улучшение качества и Экспорт Ultra-HD</h2>
             <span class="enhancer-head-badge">
-              <span class="material-symbols-rounded enh-spark">sparkles</span>
+              <span class="material-symbols-rounded enh-spark">auto_awesome</span>
               <span>1K • 2K • 4K • HDR • AI Tone</span>
             </span>
           </div>
@@ -2020,6 +2085,54 @@
 
   </div><!-- /.enhancer-modal -->
 </div><!-- /#enhancer-modal-overlay -->
+
+<!-- ═══════════════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: РЕЖИМ ИМПОРТА ИЗОБРАЖЕНИЯ
+     #import-layer-dialog (Cyber-Glassmorphism)
+     ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="import-layer-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title">
+  <div class="modal import-layer-modal" style="width: min(620px, 94vw);">
+    <div class="modal-head">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="material-symbols-rounded" style="color: #38bdf8; font-size: 22px;">layers</span>
+        <div>
+          <span class="modal-title" id="import-dialog-title">Режим импорта изображения</span>
+          <div class="modal-sub">Выберите способ размещения фото на холсте макета</div>
+        </div>
+      </div>
+      <button class="hbtn hbtn-ghost hbtn-icon" id="import-dialog-close" title="Закрыть (Esc)">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+      <div class="import-options-grid">
+        <!-- Вариант 1: Обычное изображение (1 слой) -->
+        <button class="import-option-card" id="btn-import-single-layer">
+          <div class="import-card-icon-wrap">
+            <span class="material-symbols-rounded">image</span>
+          </div>
+          <div class="import-card-head">
+            <span class="import-card-title">Обычное изображение</span>
+            <span class="import-card-badge">1 СЛОЙ</span>
+          </div>
+          <p class="import-card-desc">Добавить фото стандартным слоем целиком на холст. Идеально для обычных иллюстраций, логотипов и фонов.</p>
+        </button>
+
+        <!-- Вариант 2: Разделение на слои (2 слоя: объект + фон) -->
+        <button class="import-option-card import-option-featured" id="btn-import-split-layers">
+          <div class="import-card-icon-wrap import-card-icon-ai">
+            <span class="material-symbols-rounded">auto_fix_high</span>
+          </div>
+          <div class="import-card-head">
+            <span class="import-card-title">Разделение на слои (AI)</span>
+            <span class="import-card-badge import-card-badge-ai">2 СЛОЯ • SMART 3D</span>
+          </div>
+          <p class="import-card-desc">Умное отделение переднего плана от фона. Вы сможете поместить заголовок или текст <b>между</b> фоном и объектом для потрясающего эффекта глубины!</p>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Глобальный космический лоадер экспорта (при экспорте из шапки / инспектора без открытия модалки) -->
 <div class="enhancer-global-loader hidden" id="global-export-loader" role="status" aria-live="polite">

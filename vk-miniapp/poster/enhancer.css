@@ -1777,3 +1777,163 @@
     gap: 10px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   СЕКЦИЯ УДАЛЕНИЯ ФОНА — .bg-remove-inspector (Cyber-Glassmorphism)
+   ══════════════════════════════════════════════════════════════ */
+
+.bg-remove-inspector {
+  background: linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(8,14,30,0.9) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 0 18px rgba(56,189,248,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
+}
+
+.bg-remove-inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.bg-remove-inspector-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.bg-remove-inspector-title .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.bg-ai-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #0d99ff;
+  background: rgba(13,153,255,0.12);
+  border: 1px solid rgba(13,153,255,0.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* Главная кнопка удаления фона */
+.pbtn-bg-primary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, rgba(13,153,255,0.25) 0%, rgba(138,108,255,0.22) 100%);
+  border: 1px solid rgba(13,153,255,0.45);
+  border-radius: 8px;
+  color: #e0f2fe;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 0 14px rgba(13,153,255,0.15);
+}
+
+.pbtn-bg-primary:hover {
+  background: linear-gradient(135deg, rgba(13,153,255,0.38) 0%, rgba(138,108,255,0.32) 100%);
+  border-color: rgba(13,153,255,0.7);
+  box-shadow: 0 0 22px rgba(13,153,255,0.28);
+  transform: translateY(-1px);
+}
+
+.pbtn-bg-primary:active {
+  transform: translateY(0);
+}
+
+/* Строка дополнительных кнопок */
+.bg-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Вторичные кнопки вырезания */
+.pbtn-bg-subtle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.pbtn-bg-subtle:hover {
+  background: rgba(56,189,248,0.12);
+  border-color: rgba(56,189,248,0.35);
+  color: #38bdf8;
+}
+
+.pbtn-bg-subtle.is-active {
+  background: rgba(56,189,248,0.2);
+  border-color: rgba(56,189,248,0.6);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(56,189,248,0.2);
+}
+
+/* Блок слайдеров */
+.bg-sliders-group {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 7px;
+}
+
+/* Rotation chips */
+.rot-chip {
+  flex: 1;
+  min-width: 40px;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.rot-chip:hover {
+  background: rgba(13,153,255,0.12);
+  border-color: rgba(13,153,255,0.35);
+  color: #38bdf8;
+}
+
+.rot-chip.is-active {
+  background: rgba(13,153,255,0.22);
+  border-color: rgba(13,153,255,0.6);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(13,153,255,0.2);
+}
+
+/* Заголовок раздела поворота */
+.figma-rotation-control .figma-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}

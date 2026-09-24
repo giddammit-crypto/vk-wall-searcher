@@ -1722,16 +1722,16 @@ function buildColorRows() {
     if (cp) cp.value = c;
   });
 
-  const BG_PILL_COLORS = ['#e11d48', '#10B981', '#0284c7', '#8A6CFF', '#FBBF24', '#070a1e', '#ffffff', '#4f46e5'];
+  const BG_PILL_COLORS = ['transparent', '#e11d48', '#10B981', '#0284c7', '#8A6CFF', '#FBBF24', '#070a1e', '#ffffff', '#4f46e5'];
   mkSwatches('text-bg-color-row', BG_PILL_COLORS, c => {
     const obj = canvas?.getActiveObject();
     if (obj && ['textbox','text','i-text'].includes(obj.type)) {
-      obj.set('backgroundColor', c);
+      obj.set('backgroundColor', c === 'transparent' ? '' : c);
       canvas.renderAll();
       saveHistory();
     }
     const cp = $('#text-bg-color-picker');
-    if (cp) cp.value = c;
+    if (cp && c !== 'transparent') cp.value = c;
   });
 }
 
@@ -1781,7 +1781,54 @@ function initCanvas(w, h) {
     transparentCorners: false,
     cornerStyle: 'rect',
     padding: 0,
+    hasRotatingPoint: true,
+    rotatingPointOffset: 24,
   });
+
+  // Вращение мышкой за углы слоя (360° rotation handles)
+  if (fabric && fabric.controlsUtils) {
+    const rotRenderer = function(ctx, left, top) {
+      ctx.save();
+      ctx.translate(left, top);
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.5, 0, Math.PI * 2, false);
+      ctx.fillStyle = '#0d99ff';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    fabric.Object.prototype.controls.rot_tl = new fabric.Control({
+      x: -0.5, y: -0.5, offsetY: -14, offsetX: -14,
+      cursorStyle: 'grab',
+      actionHandler: fabric.controlsUtils.rotationWithSnapping,
+      actionName: 'rotate',
+      render: rotRenderer
+    });
+    fabric.Object.prototype.controls.rot_tr = new fabric.Control({
+      x: 0.5, y: -0.5, offsetY: -14, offsetX: 14,
+      cursorStyle: 'grab',
+      actionHandler: fabric.controlsUtils.rotationWithSnapping,
+      actionName: 'rotate',
+      render: rotRenderer
+    });
+    fabric.Object.prototype.controls.rot_bl = new fabric.Control({
+      x: -0.5, y: 0.5, offsetY: 14, offsetX: -14,
+      cursorStyle: 'grab',
+      actionHandler: fabric.controlsUtils.rotationWithSnapping,
+      actionName: 'rotate',
+      render: rotRenderer
+    });
+    fabric.Object.prototype.controls.rot_br = new fabric.Control({
+      x: 0.5, y: 0.5, offsetY: 14, offsetX: 14,
+      cursorStyle: 'grab',
+      actionHandler: fabric.controlsUtils.rotationWithSnapping,
+      actionName: 'rotate',
+      render: rotRenderer
+    });
+  }
 
   canvas.on('selection:created',  onSelection);
   canvas.on('selection:updated',  onSelection);
@@ -2422,6 +2469,332 @@ function closeMobileDrawer() {
   if (drawer) drawer.classList.add('hidden');
   if (backdrop) backdrop.classList.add('hidden');
   $$('.dock-tab').forEach(tab => tab.classList.remove('is-active'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   УДАЛЕНИЕ ФОНА — canvas flood-fill + alpha masking (CPU)
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * Автоматическое удаление фона активного слоя-изображения.
+ * Алгоритм: flood-fill от всех 4 краёв холста → прозрачный alpha.
+ * @param {number} tolerance - допуск цвета (0-255)
+ * @param {number} feather   - радиус сглаживания краёв (px)
+ */
+function removeImageBackground(tolerance = 28, feather = 2) {
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') {
+    toast('Выберите слой с изображением'); return;
+  }
+
+  // Сохраняем оригинал для возможности отмены
+  if (!obj.__originalSrc) {
+    obj.__originalSrc = obj.toDataURL ? obj.toDataURL() : obj.getSrc?.() || '';
+  }
+
+  const tmpCanvas = document.createElement('canvas');
+  const el = obj.getElement();
+  tmpCanvas.width  = el.naturalWidth  || el.width;
+  tmpCanvas.height = el.naturalHeight || el.height;
+  const ctx = tmpCanvas.getContext('2d');
+  ctx.drawImage(el, 0, 0);
+
+  const iw = tmpCanvas.width;
+  const ih = tmpCanvas.height;
+  const imgData = ctx.getImageData(0, 0, iw, ih);
+  const data = imgData.data;
+
+  // BFS flood-fill от краёв
+  const visited = new Uint8Array(iw * ih);
+  const queue = [];
+
+  function colorDist(i, r, g, b) {
+    return Math.abs(data[i]-r) + Math.abs(data[i+1]-g) + Math.abs(data[i+2]-b);
+  }
+
+  function enqueue(x, y) {
+    const idx = y * iw + x;
+    if (x < 0 || y < 0 || x >= iw || y >= ih || visited[idx]) return;
+    visited[idx] = 1;
+    queue.push(idx);
+  }
+
+  // Стартовые точки — все 4 края
+  for (let x = 0; x < iw; x++) { enqueue(x, 0); enqueue(x, ih-1); }
+  for (let y = 0; y < ih; y++) { enqueue(0, y); enqueue(iw-1, y); }
+
+  // Цвет первого пикселя (фон)
+  const bgR = data[0], bgG = data[1], bgB = data[2];
+
+  let qi = 0;
+  while (qi < queue.length) {
+    const idx = queue[qi++];
+    const pi = idx * 4;
+    if (colorDist(pi, bgR, bgG, bgB) > tolerance * 3) continue;
+    data[pi+3] = 0; // прозрачный
+    const x = idx % iw, y = Math.floor(idx / iw);
+    enqueue(x+1, y); enqueue(x-1, y); enqueue(x, y+1); enqueue(x, y-1);
+  }
+
+  // Сглаживание краёв (feather): сортируем пиксели на границе
+  if (feather > 0) {
+    const r = feather;
+    for (let y = 0; y < ih; y++) {
+      for (let x = 0; x < iw; x++) {
+        const pi = (y * iw + x) * 4;
+        if (data[pi+3] === 0) continue;
+        // Ищем соседей с alpha=0
+        let hasTrans = false;
+        for (let dy = -r; dy <= r && !hasTrans; dy++) {
+          for (let dx = -r; dx <= r && !hasTrans; dx++) {
+            const nx = x+dx, ny = y+dy;
+            if (nx < 0 || ny < 0 || nx >= iw || ny >= ih) continue;
+            if (data[(ny*iw+nx)*4+3] === 0) hasTrans = true;
+          }
+        }
+        if (hasTrans) data[pi+3] = Math.max(0, data[pi+3] - 100);
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  fabric.Image.fromURL(tmpCanvas.toDataURL('image/png'), newImg => {
+    newImg.set({
+      left:    obj.left,
+      top:     obj.top,
+      scaleX:  obj.scaleX,
+      scaleY:  obj.scaleY,
+      angle:   obj.angle,
+      selectable: true,
+      layerName:  (obj.layerName || 'Фото') + ' (без фона)',
+      __originalSrc: obj.__originalSrc,
+      __bgRemoved: true,
+    });
+    const idx = canvas.getObjects().indexOf(obj);
+    canvas.remove(obj);
+    canvas.add(newImg);
+    canvas.moveTo(newImg, idx);
+    canvas.setActiveObject(newImg);
+    canvas.renderAll();
+    updateLayersList();
+    saveHistory();
+    toast('✅ Фон удалён');
+    $('#btn-bg-revert')?.classList.remove('hidden');
+  });
+}
+
+/**
+ * Удаление фона с помощью «волшебной палочки» — клик по точке на изображении.
+ * Включает/выключает режим. При клике на canvas — flood-fill от этой точки.
+ */
+let _magicWandMode = false;
+function toggleMagicWandMode() {
+  _magicWandMode = !_magicWandMode;
+  const btn = $('#btn-bg-magic-wand');
+  if (btn) btn.classList.toggle('is-active', _magicWandMode);
+  canvas.defaultCursor = _magicWandMode ? 'crosshair' : 'default';
+  toast(_magicWandMode ? '🎯 Кликните по фону на изображении' : 'Режим палочки отключён');
+}
+
+function _magicWandHandler(opt) {
+  if (!_magicWandMode) return;
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') {
+    toggleMagicWandMode(); return;
+  }
+  const ptr = canvas.getPointer(opt.e);
+  const el  = obj.getElement();
+  const iw  = el.naturalWidth  || el.width;
+  const ih  = el.naturalHeight || el.height;
+
+  // Координаты клика относительно изображения
+  const localX = (ptr.x - obj.left) / (obj.scaleX || 1);
+  const localY = (ptr.y - obj.top)  / (obj.scaleY || 1);
+  const px = Math.round(localX), py = Math.round(localY);
+  if (px < 0 || py < 0 || px >= iw || py >= ih) return;
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = iw; tmpCanvas.height = ih;
+  const ctx = tmpCanvas.getContext('2d');
+  ctx.drawImage(el, 0, 0);
+
+  const tolerance = parseInt($('#bg-tolerance-slider')?.value || 28) * 3;
+  const feather   = parseInt($('#bg-feather-slider')?.value   || 2);
+  const imgData   = ctx.getImageData(0, 0, iw, ih);
+  const data      = imgData.data;
+  const visited   = new Uint8Array(iw * ih);
+
+  const startIdx = (py * iw + px) * 4;
+  const br = data[startIdx], bg = data[startIdx+1], bb = data[startIdx+2];
+
+  const queue = [py * iw + px];
+  visited[py * iw + px] = 1;
+  let qi = 0;
+  while (qi < queue.length) {
+    const i = queue[qi++];
+    const pi = i * 4;
+    const dist = Math.abs(data[pi]-br) + Math.abs(data[pi+1]-bg) + Math.abs(data[pi+2]-bb);
+    if (dist > tolerance) continue;
+    data[pi+3] = 0;
+    const x = i % iw, y = Math.floor(i / iw);
+    [[x+1,y],[x-1,y],[x,y+1],[x,y-1]].forEach(([nx,ny]) => {
+      if (nx>=0 && ny>=0 && nx<iw && ny<ih && !visited[ny*iw+nx]) {
+        visited[ny*iw+nx] = 1;
+        queue.push(ny*iw+nx);
+      }
+    });
+  }
+
+  if (feather > 0) {
+    for (let y = 0; y < ih; y++) {
+      for (let x = 0; x < iw; x++) {
+        const pi = (y*iw+x)*4;
+        if (!data[pi+3]) continue;
+        for (let dy = -feather; dy <= feather; dy++) {
+          for (let dx = -feather; dx <= feather; dx++) {
+            const nx=x+dx, ny=y+dy;
+            if (nx>=0&&ny>=0&&nx<iw&&ny<ih&&!data[(ny*iw+nx)*4+3]) {
+              data[pi+3] = Math.max(0, data[pi+3]-80); break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  if (!obj.__originalSrc) obj.__originalSrc = obj.getSrc?.() || '';
+
+  fabric.Image.fromURL(tmpCanvas.toDataURL('image/png'), newImg => {
+    newImg.set({ left:obj.left, top:obj.top, scaleX:obj.scaleX, scaleY:obj.scaleY, angle:obj.angle,
+      selectable:true, layerName:(obj.layerName||'Фото')+' (без фона)', __originalSrc:obj.__originalSrc, __bgRemoved:true });
+    const idx = canvas.getObjects().indexOf(obj);
+    canvas.remove(obj); canvas.add(newImg);
+    canvas.moveTo(newImg, idx); canvas.setActiveObject(newImg);
+    canvas.renderAll(); updateLayersList(); saveHistory();
+    toast('✅ Цвет удалён');
+    $('#btn-bg-revert')?.classList.remove('hidden');
+  });
+
+  toggleMagicWandMode();
+}
+
+/**
+ * Восстановить оригинальное изображение (отменить удаление фона).
+ */
+function revertBackground() {
+  const obj = canvas?.getActiveObject();
+  if (!obj || !obj.__originalSrc) { toast('Нет оригинала для восстановления'); return; }
+
+  fabric.Image.fromURL(obj.__originalSrc, origImg => {
+    origImg.set({ left:obj.left, top:obj.top, scaleX:obj.scaleX, scaleY:obj.scaleY, angle:obj.angle,
+      selectable:true, layerName:(obj.layerName||'Фото').replace(' (без фона)','') });
+    const idx = canvas.getObjects().indexOf(obj);
+    canvas.remove(obj); canvas.add(origImg);
+    canvas.moveTo(origImg, idx); canvas.setActiveObject(origImg);
+    canvas.renderAll(); updateLayersList(); saveHistory();
+    toast('↺ Оригинальный фон восстановлен');
+    $('#btn-bg-revert')?.classList.add('hidden');
+  });
+}
+
+/**
+ * Разделить изображение на 2 слоя: передний план (объект) и фон.
+ * Алгоритм: flood-fill фон → полупрозрачная копия снизу (фон), чистый объект сверху.
+ */
+function separateImageIntoLayers() {
+  const obj = canvas?.getActiveObject();
+  if (!obj || obj.type !== 'image') { toast('Выберите слой с изображением'); return; }
+
+  const tolerance = parseInt($('#bg-tolerance-slider')?.value || 28) * 3;
+  const el = obj.getElement();
+  const iw = el.naturalWidth  || el.width;
+  const ih = el.naturalHeight || el.height;
+
+  // Временный canvas для анализа
+  const tmpC = document.createElement('canvas');
+  tmpC.width = iw; tmpC.height = ih;
+  const ctx = tmpC.getContext('2d');
+  ctx.drawImage(el, 0, 0);
+  const imgData = ctx.getImageData(0, 0, iw, ih);
+  const data    = imgData.data;
+
+  // Flood-fill от краёв — определяем маску фона
+  const bgMask  = new Uint8Array(iw * ih); // 1 = фон
+  const visited = new Uint8Array(iw * ih);
+  const queue   = [];
+  const bgR = data[0], bgG = data[1], bgB = data[2];
+
+  function enqueue(x, y) {
+    if (x<0||y<0||x>=iw||y>=ih||visited[y*iw+x]) return;
+    visited[y*iw+x] = 1; queue.push(y*iw+x);
+  }
+  for (let x=0;x<iw;x++){enqueue(x,0);enqueue(x,ih-1);}
+  for (let y=0;y<ih;y++){enqueue(0,y);enqueue(iw-1,y);}
+
+  let qi = 0;
+  while (qi < queue.length) {
+    const i = queue[qi++], pi = i*4;
+    const dist = Math.abs(data[pi]-bgR)+Math.abs(data[pi+1]-bgG)+Math.abs(data[pi+2]-bgB);
+    if (dist > tolerance) continue;
+    bgMask[i] = 1;
+    const x=i%iw, y=Math.floor(i/iw);
+    enqueue(x+1,y);enqueue(x-1,y);enqueue(x,y+1);enqueue(x,y-1);
+  }
+
+  // --- Слой «объект» (передний план): фон → прозрачный
+  const fgData = new ImageData(new Uint8ClampedArray(data), iw, ih);
+  for (let i=0;i<iw*ih;i++) if (bgMask[i]) fgData.data[i*4+3]=0;
+  const fgC = document.createElement('canvas'); fgC.width=iw; fgC.height=ih;
+  fgC.getContext('2d').putImageData(fgData,0,0);
+
+  // --- Слой «фон»: объект → полупрозрачный blur, фон сохранён
+  const bgC = document.createElement('canvas'); bgC.width=iw; bgC.height=ih;
+  const bgCtx = bgC.getContext('2d');
+  bgCtx.drawImage(el, 0, 0);
+  // Накрываем объект тёмным прозрачным слоем, чтобы он не мешал
+  const bgData2 = bgCtx.getImageData(0,0,iw,ih);
+  for (let i=0;i<iw*ih;i++) if (!bgMask[i]) bgData2.data[i*4+3]=Math.round(bgData2.data[i*4+3]*0.4);
+  bgCtx.putImageData(bgData2,0,0);
+
+  const scale = obj.scaleX || 1;
+  const posL  = obj.left, posT = obj.top;
+  const origIdx = canvas.getObjects().indexOf(obj);
+
+  fabric.Image.fromURL(bgC.toDataURL('image/png'), bgImg => {
+    bgImg.set({ left:posL, top:posT, scaleX:obj.scaleX, scaleY:obj.scaleY, angle:obj.angle,
+      selectable:true, layerName:'[Фон] '+( obj.layerName||'Фото'), opacity:0.7 });
+    canvas.remove(obj);
+    canvas.add(bgImg);
+    canvas.moveTo(bgImg, origIdx);
+
+    fabric.Image.fromURL(fgC.toDataURL('image/png'), fgImg => {
+      fgImg.set({ left:posL, top:posT, scaleX:obj.scaleX, scaleY:obj.scaleY, angle:obj.angle,
+        selectable:true, layerName:'[Объект] '+(obj.layerName||'Фото') });
+      canvas.add(fgImg);
+      canvas.bringToFront(fgImg);
+      canvas.setActiveObject(fgImg);
+      canvas.renderAll(); updateLayersList(); saveHistory();
+      toast('🔮 Разделено на 2 слоя: Объект + Фон');
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ДИАЛОГ ИМПОРТА ФОТО — показывает модалку выбора режима
+   ══════════════════════════════════════════════════════════════ */
+let _pendingPhotoFile = null;
+
+function openPhotoImportModal(file) {
+  _pendingPhotoFile = file;
+  $('#photo-import-modal-overlay')?.classList.remove('hidden');
+}
+
+function closePhotoImportModal() {
+  $('#photo-import-modal-overlay')?.classList.add('hidden');
+  _pendingPhotoFile = null;
 }
 
 function addPhoto(file) {
@@ -3123,7 +3496,19 @@ function updateFigmaDimensionsUI(obj) {
   if (dy) dy.value = Math.round(obj.top || 0);
   if (dw) dw.value = Math.round(obj.getScaledWidth() || 0);
   if (dh) dh.value = Math.round(obj.getScaledHeight() || 0);
-  if (dr) dr.value = Math.round(obj.angle || 0);
+  const angle = Math.round(((obj.angle || 0) % 360 + 360) % 360);
+  if (dr) dr.value = angle;
+
+  // Синхронизировать ползунок и label поворота
+  const drSlider = $('#dim-r-slider');
+  const drVal    = $('#dim-r-val');
+  if (drSlider) drSlider.value = angle;
+  if (drVal)    drVal.textContent = angle;
+
+  // Подсветить активный rot-chip
+  $$('.rot-chip').forEach(chip => {
+    chip.classList.toggle('is-active', chip.dataset.angle && +chip.dataset.angle === angle);
+  });
 
   const isRect = obj.type === 'rect';
   if (dRadWrap) dRadWrap.classList.toggle('hidden', !isRect);
@@ -5526,7 +5911,7 @@ function bindEvents() {
 
   /* Графика и библиотека */
   $('#tool-photo')   ?.addEventListener('click', () => $('#photo-input').click());
-  $('#photo-input')  ?.addEventListener('change', e => { addPhoto(e.target.files?.[0]); e.target.value=''; });
+  $('#photo-input')  ?.addEventListener('change', e => { const f=e.target.files?.[0]; if(f) openPhotoImportModal(f); e.target.value=''; });
   $('#tool-cosmo')   ?.addEventListener('click', openCosmoModal);
   $('#tool-logo')    ?.addEventListener('click', openLogoModal);
   $('#tool-stickers')?.addEventListener('click', openBadgeModal);
@@ -6123,6 +6508,97 @@ function bindEvents() {
   });
 
   $('#btn-reset-filters')?.addEventListener('click', resetImageFilters);
+
+  /* ── Удаление фона и вырезание ── */
+  $('#btn-bg-remove-auto')?.addEventListener('click', () => {
+    const tol = parseInt($('#bg-tolerance-slider')?.value || 28);
+    const fth = parseInt($('#bg-feather-slider')?.value   || 2);
+    removeImageBackground(tol, fth);
+  });
+  $('#btn-bg-magic-wand')?.addEventListener('click', toggleMagicWandMode);
+  $('#btn-split-layers') ?.addEventListener('click', separateImageIntoLayers);
+  $('#btn-bg-revert')    ?.addEventListener('click', revertBackground);
+
+  // Синхронизация слайдеров bg-remove
+  $('#bg-tolerance-slider')?.addEventListener('input', e => {
+    const v = $('#bg-tolerance-val'); if (v) v.textContent = e.target.value;
+  });
+  $('#bg-feather-slider')?.addEventListener('input', e => {
+    const v = $('#bg-feather-val'); if (v) v.textContent = e.target.value;
+  });
+
+  // Canvas mouse:down — обработчик волшебной палочки
+  canvas.on('mouse:down', opt => _magicWandHandler(opt));
+
+  /* ── Ползунок поворота и быстрые углы ── */
+  $('#dim-r-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    const angle = +e.target.value;
+    obj.set('angle', angle);
+    obj.setCoords();
+    canvas.renderAll();
+    const dr = $('#dim-r'); if (dr) dr.value = angle;
+    const dv = $('#dim-r-val'); if (dv) dv.textContent = angle;
+    $$('.rot-chip').forEach(chip =>
+      chip.classList.toggle('is-active', chip.dataset.angle && +chip.dataset.angle === angle)
+    );
+  });
+  $('#dim-r-slider')?.addEventListener('change', () => saveHistory());
+
+  $$('.rot-chip').forEach(chip => {
+    if (!chip.dataset.angle) return;
+    chip.addEventListener('click', () => {
+      const obj = canvas?.getActiveObject(); if (!obj) return;
+      const angle = +chip.dataset.angle;
+      obj.set('angle', angle);
+      obj.setCoords();
+      canvas.renderAll();
+      updateFigmaDimensionsUI(obj);
+      saveHistory();
+    });
+  });
+
+  $('#btn-rot-plus-90')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject(); if (!obj) return;
+    const angle = ((Math.round(obj.angle || 0) + 90) % 360 + 360) % 360;
+    obj.set('angle', angle);
+    obj.setCoords();
+    canvas.renderAll();
+    updateFigmaDimensionsUI(obj);
+    saveHistory();
+  });
+
+  /* ── Диалог импорта фото ── */
+  $('#photo-import-modal-close')?.addEventListener('click', closePhotoImportModal);
+  $('#photo-import-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePhotoImportModal();
+  });
+  $('#btn-import-single')?.addEventListener('click', () => {
+    const f = _pendingPhotoFile;
+    closePhotoImportModal();
+    if (f) addPhoto(f);
+  });
+  $('#btn-import-split')?.addEventListener('click', () => {
+    const f = _pendingPhotoFile;
+    closePhotoImportModal();
+    if (!f) return;
+    // Сначала добавляем фото, затем разделяем
+    const reader = new FileReader();
+    reader.onload = ev => {
+      fabric.Image.fromURL(ev.target.result, img => {
+        const maxW = currentSize.w * 0.7, maxH = currentSize.h * 0.7;
+        if (img.width > maxW) img.scaleToWidth(maxW);
+        if (img.getScaledHeight() > maxH) img.scaleToHeight(maxH);
+        img.set({ left:(currentSize.w-img.getScaledWidth())/2, top:(currentSize.h-img.getScaledHeight())/2,
+          selectable:true, layerName:'Фото' });
+        canvas.add(img); canvas.setActiveObject(img); canvas.renderAll();
+        updateLayersList();
+        toast('Фото добавлено, разделяем на слои…');
+        setTimeout(() => separateImageIntoLayers(), 300);
+      });
+    };
+    reader.readAsDataURL(f);
+  });
 
   /* ── Общие ── */
   $('#btn-center-h').addEventListener('click', () => {
