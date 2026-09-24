@@ -113,6 +113,12 @@ import {
 } from './ai_dev_modal.js?v=4.74.3';
 
 import {
+    initTypographyModal,
+    openTypographyModal,
+    closeTypographyModal
+} from './typography_modal.js?v=4.75.3';
+
+import {
     initLeagueModal,
     openLeagueModal,
     closeLeagueModal,
@@ -129,7 +135,7 @@ import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.68.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.74.3';
+export const APP_VERSION = '4.75.3';
 
 function initApp() {
 
@@ -261,6 +267,7 @@ function initApp() {
         opacModalBtn: document.getElementById('opac-modal-btn'),
         inoagentModalBtn: document.getElementById('inoagent-modal-btn'),
         aiDevModalBtn: document.getElementById('ai-dev-modal-btn'),
+        typographyModalBtn: document.getElementById('typography-modal-btn'),
         leagueModalBtn: document.getElementById('league-modal-btn'),
 
         // Tab 1: Visual Feed & Toolbar
@@ -3467,6 +3474,10 @@ function initApp() {
             if (aiDevModal && (aiDevModal.classList.contains('is-open') || !aiDevModal.classList.contains('hidden'))) {
                 closeAiDevModal();
             }
+            const typoModal = document.getElementById('typography-modal');
+            if (typoModal && (typoModal.classList.contains('is-open') || !typoModal.classList.contains('hidden'))) {
+                closeTypographyModal();
+            }
             return;
         }
 
@@ -3901,6 +3912,15 @@ function initApp() {
     }
     window.__openAiDevModal = (tab = null) => openAiDevModal(tab);
 
+    // Инициализация модального окна Типографа (Инструменты для текста)
+    initTypographyModal();
+    if (elements.typographyModalBtn) {
+        elements.typographyModalBtn.addEventListener('click', () => {
+            openTypographyModal();
+        });
+    }
+    window.__openTypographyModal = (text = '') => openTypographyModal(text);
+
     if (elements.leagueModalBtn) {
         elements.leagueModalBtn.addEventListener('click', () => {
             openLeagueModal(state.stats, state.matchedPosts);
@@ -4182,6 +4202,11 @@ function initApp() {
             openAiDevModal(_urlP.get('tab'));
         }, 250);
     }
+    if (_urlP.get('mode') === 'typography' || _urlP.get('mode') === 'typo' || _urlP.get('typo') === '1') {
+        setTimeout(() => {
+            openTypographyModal();
+        }, 250);
+    }
     if (_urlP.get('preview_cosmic') === '1') {
         if (elements.searchModalOverlay) {
             elements.searchModalOverlay.classList.remove('hidden');
@@ -4257,6 +4282,8 @@ function initApp() {
         closeInoagentModal,
         openAiDevModal,
         closeAiDevModal,
+        openTypographyModal,
+        closeTypographyModal,
         renderRadarSection,
         computeTimingHeatmap,
         renderTimingHeatmapSection,

@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.75.2",
+  "version": "4.75.3",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-24T09:02:00Z",
-  "release_name": "AURORA 4.75.2 — Исправление сжатия холста (flex-shrink: 0), неограниченное расширение холста по высоте под блоки и видимость нижней кнопки"
+  "commit_date": "2026-09-24T12:10:00Z",
+  "release_name": "AURORA 4.75.3 — Инструменты для текста: профессиональный Типограф (кавычки-ёлочки, тире, неразрывные пробелы)"
 }
