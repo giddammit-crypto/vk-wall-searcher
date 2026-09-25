@@ -3906,6 +3906,13 @@ function onSelection() {
   $('#props-empty')?.classList.add('hidden');
   $('#props-common')?.classList.remove('hidden');
 
+  // ── Универсальный ползунок прозрачности (для ВСЕХ типов объектов) ──
+  const opCommon = Math.round((obj.opacity !== undefined ? obj.opacity : 1) * 100);
+  const opCommonSlider = $('#opacity-slider-common');
+  const opCommonVal    = $('#opacity-val-common');
+  if (opCommonSlider) opCommonSlider.value = opCommon;
+  if (opCommonVal)    opCommonVal.textContent = opCommon;
+
   const isText      = ['textbox','text','i-text'].includes(obj.type);
   const isShape     = ['rect','circle','ellipse','line','polyline','polygon','path'].includes(obj.type);
   const isImage     = obj.type === 'image';
@@ -7347,6 +7354,232 @@ function bindEvents() {
     if (obj) { obj.set('opacity', v/100); canvas.renderAll(); }
   });
   $('#opacity-slider').addEventListener('change', () => saveHistory());
+
+  // ── Универсальный ползунок прозрачности (общая панель, для ВСЕХ объектов) ──
+  $('#opacity-slider-common')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject(); const v = +e.target.value;
+    const opCommonVal = $('#opacity-val-common');
+    if (opCommonVal) opCommonVal.textContent = v;
+    // Синхронизируем и старый слайдер в #props-shape, если он виден
+    const opSlider = $('#opacity-slider');
+    const opVal    = $('#opacity-val');
+    if (opSlider) opSlider.value = v;
+    if (opVal)    opVal.textContent = v;
+    if (obj) { obj.set('opacity', v / 100); canvas.renderAll(); }
+  });
+  $('#opacity-slider-common')?.addEventListener('change', () => saveHistory());
+
+  /* ══════════════════════════════════════════════════════
+     DRAG-AND-DROP изображений на холст
+     Поддержка: файловый менеджер, браузер (drag URL), буфер
+     ══════════════════════════════════════════════════════ */
+  (function initCanvasDragDrop() {
+    const canvasArea = $('#canvas-area');
+    const dropOverlay = $('#canvas-drop-overlay');
+    if (!canvasArea) return;
+
+    let _dragCounter = 0; // счётчик для вложенных dragenter/dragleave
+
+    /** Проверяем что среди перетаскиваемых данных есть изображение */
+    function hasImageData(dt) {
+      if (!dt) return false;
+      // Из файлового менеджера — files
+      if (dt.types && dt.types.includes('Files')) return true;
+      // Из браузера — URL или text/html с <img>
+      if (dt.types && (dt.types.includes('text/uri-list') || dt.types.includes('text/html'))) return true;
+      return false;
+    }
+
+    canvasArea.addEventListener('dragenter', e => {
+      if (!hasImageData(e.dataTransfer)) return;
+      e.preventDefault();
+      _dragCounter++;
+      canvasArea.classList.add('drag-active');
+      dropOverlay?.classList.remove('hidden');
+    }, false);
+
+    canvasArea.addEventListener('dragleave', e => {
+      _dragCounter--;
+      if (_dragCounter <= 0) {
+        _dragCounter = 0;
+        canvasArea.classList.remove('drag-active');
+        dropOverlay?.classList.add('hidden');
+      }
+    }, false);
+
+    canvasArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }, false);
+
+    canvasArea.addEventListener('drop', e => {
+      e.preventDefault();
+      _dragCounter = 0;
+      canvasArea.classList.remove('drag-active');
+      dropOverlay?.classList.add('hidden');
+
+      const dt = e.dataTransfer;
+      if (!dt) return;
+
+      // 1) Файлы из файлового менеджера / браузера (HTML download bar, drag from Desktop)
+      if (dt.files && dt.files.length > 0) {
+        const imgFiles = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+        if (imgFiles.length > 0) {
+          imgFiles.forEach(f => addPhotoAtDropPoint(f, e));
+          return;
+        }
+      }
+
+      // 2) URL-адрес изображения (drag ссылки или img из браузера)
+      const uriList = dt.getData('text/uri-list');
+      if (uriList) {
+        const urls = uriList.split('\n').map(u => u.trim()).filter(u => u && !u.startsWith('#'));
+        urls.forEach(url => loadImageFromUrl(url, e));
+        return;
+      }
+
+      // 3) HTML с тегом <img src="..."> (drag картинки из Google, Wikipedia, etc.)
+      const html = dt.getData('text/html');
+      if (html) {
+        const m = html.match(/src=["']([^"']+)["']/i);
+        if (m && m[1]) {
+          loadImageFromUrl(m[1], e);
+          return;
+        }
+      }
+
+      toast('Перетащите изображение (PNG, JPG, SVG, WebP)');
+    }, false);
+
+    /** Добавить фото с учётом координат точки дропа */
+    function addPhotoAtDropPoint(file, dropEvent) {
+      if (!canvas) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        fabric.Image.fromURL(ev.target.result, img => {
+          placeDroppedImage(img, dropEvent);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /** Загрузить изображение по URL (через proxy если нужно) */
+    function loadImageFromUrl(url, dropEvent) {
+      if (!canvas || !url) return;
+
+      // data: URL — загружаем напрямую
+      if (url.startsWith('data:')) {
+        fabric.Image.fromURL(url, img => {
+          placeDroppedImage(img, dropEvent);
+        });
+        return;
+      }
+
+      // Внешний URL — пробуем с crossOrigin anonymous, при ошибке — через allorigins proxy
+      fabric.Image.fromURL(url, img => {
+        if (img && img.width) {
+          placeDroppedImage(img, dropEvent);
+        } else {
+          // Fallback: allorigins proxy
+          const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+          fabric.Image.fromURL(proxyUrl, imgProxy => {
+            if (imgProxy && imgProxy.width) {
+              placeDroppedImage(imgProxy, dropEvent);
+            } else {
+              toast('⚠️ Не удалось загрузить изображение по URL (CORS ограничение)');
+            }
+          }, { crossOrigin: 'anonymous' });
+        }
+      }, { crossOrigin: 'anonymous' });
+    }
+
+    /** Разместить изображение на холсте в точке дропа */
+    function placeDroppedImage(img, dropEvent) {
+      if (!img || !canvas) return;
+
+      // Масштабируем если изображение слишком большое
+      const maxW = currentSize.w * 0.7;
+      const maxH = currentSize.h * 0.7;
+      if (img.width > maxW)             img.scaleToWidth(maxW);
+      if (img.getScaledHeight() > maxH) img.scaleToHeight(maxH);
+
+      // Вычисляем позицию в системе координат холста относительно точки дропа
+      let left = (currentSize.w - img.getScaledWidth()) / 2;
+      let top  = (currentSize.h - img.getScaledHeight()) / 2;
+
+      if (dropEvent) {
+        try {
+          const canvasEl = canvas.getElement();
+          const rect = canvasEl.getBoundingClientRect();
+          const zoom = canvas.getZoom() || 1;
+          const vpt = canvas.viewportTransform || [1,0,0,1,0,0];
+          const rawX = (dropEvent.clientX - rect.left - vpt[4]) / zoom;
+          const rawY = (dropEvent.clientY - rect.top  - vpt[5]) / zoom;
+          left = Math.max(0, rawX - img.getScaledWidth()  / 2);
+          top  = Math.max(0, rawY - img.getScaledHeight() / 2);
+        } catch(_) { /* fallback to center */ }
+      }
+
+      img.set({
+        left,
+        top,
+        selectable: true,
+        layerName: 'Фото (drag&drop)',
+      });
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+      saveHistory();
+      updateLayersList();
+      toast('🖼️ Изображение добавлено на холст');
+    }
+  })();
+
+  /* ══════════════════════════════════════════════════════
+     PASTE изображений из буфера обмена (Ctrl+V с файлом)
+     ══════════════════════════════════════════════════════ */
+  document.addEventListener('paste', e => {
+    // Пропускаем если фокус внутри текстового поля (нативная вставка текста)
+    const tgt = document.activeElement;
+    if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' ||
+        tgt.isContentEditable || (canvas && canvas.isEditing))) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    let foundImage = false;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        foundImage = true;
+        const file = item.getAsFile();
+        if (!file || !canvas) continue;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          fabric.Image.fromURL(ev.target.result, img => {
+            const maxW = currentSize.w * 0.7;
+            const maxH = currentSize.h * 0.7;
+            if (img.width > maxW)             img.scaleToWidth(maxW);
+            if (img.getScaledHeight() > maxH) img.scaleToHeight(maxH);
+            img.set({
+              left: (currentSize.w - img.getScaledWidth())  / 2,
+              top:  (currentSize.h - img.getScaledHeight()) / 2,
+              selectable: true,
+              layerName: 'Фото (вставка)',
+            });
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            saveHistory();
+            updateLayersList();
+            toast('📋 Изображение вставлено из буфера обмена');
+          });
+        };
+        reader.readAsDataURL(file);
+        break; // берём только первое изображение из буфера
+      }
+    }
+    // Если в буфере не изображение — ничего не делаем (текст вставится нативно)
+  });
 
   $('#stroke-width-slider').addEventListener('input', e => {
     const obj = canvas?.getActiveObject(); const v = +e.target.value;

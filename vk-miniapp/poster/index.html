@@ -422,6 +422,14 @@
         <canvas id="poster-canvas"></canvas>
       </div>
       <div class="canvas-format-badge" id="canvas-format-badge">A4 Вертикаль · 595 × 842 пт</div>
+      <!-- Overlay для drag-and-drop изображений -->
+      <div class="canvas-drop-overlay hidden" id="canvas-drop-overlay">
+        <div class="canvas-drop-content">
+          <span class="material-symbols-rounded" style="font-size:52px; color:#0d99ff;">image</span>
+          <div class="canvas-drop-title">Перетащите изображение на холст</div>
+          <div class="canvas-drop-sub">PNG, JPG, SVG, GIF, WebP · из браузера, файлового менеджера или буфера</div>
+        </div>
+      </div>
     </main>
 
     <!-- ── Правая панель: Figma Design Inspector ── -->
@@ -556,6 +564,15 @@
                 <span class="material-symbols-rounded" style="font-size: 13px; transform: rotate(90deg);">flip</span>
               </button>
             </div>
+          </div>
+
+          <!-- Прозрачность слоя (UNIVERSAL — для всех типов объектов) -->
+          <div class="figma-slider-group" style="margin-top: 10px;">
+            <div class="figma-slider-head">
+              <span class="figma-sublabel">Непрозрачность слоя</span>
+              <span class="figma-slider-val"><b id="opacity-val-common">100</b>%</span>
+            </div>
+            <input type="range" class="prop-range" id="opacity-slider-common" min="0" max="100" value="100" step="1">
           </div>
 
           <!-- Быстрые действия со слоем (Копия, Порядок, Блокировка, Группа, Удалить) -->

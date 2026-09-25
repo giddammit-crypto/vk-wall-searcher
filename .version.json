@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.88.0",
+  "version": "4.89.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-25T15:41:00+03:00",
-  "release_name": "AURORA 4.88.0 — Хронограф в стиле Figma UI Workspace (#1e1e1e, фреймы, хлебные крошки), 85 многослойных шаблонов афиш, бесшовный импорт в Редактор Афиш и копирование/вставка объектов по Ctrl+C / Ctrl+V"
+  "commit_date": "2026-09-25T16:22:00+03:00",
+  "release_name": "AURORA 4.89.0 — Drag&Drop изображений на холст (из браузера, файлового менеджера, Ctrl+V из буфера), ползунок прозрачности для всех типов объектов"
 }
