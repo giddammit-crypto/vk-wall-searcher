@@ -1381,6 +1381,15 @@ export function getBlocksByCategory(catId) {
   return TILDA_BLOCKS.filter(b => (b.cat || b.category) === catId);
 }
 
+function escapeBlockHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function renderBlockHtml(block, contentData, designData) {
   if (!block || typeof block.html !== 'function') return '';
   const mergedContent = { ...block.defaultContent, ...contentData };
@@ -1397,28 +1406,58 @@ export function renderBlockHtml(block, contentData, designData) {
     mergedContent.customElements.forEach(el => {
       const p = el.props || {};
       let inner = '';
+      const borderStyle = (p.borderWidth && p.borderWidth !== '0px') 
+        ? `${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor || '#0d99ff'}` 
+        : (p.borderColor && p.borderWidth ? `${p.borderWidth} solid ${p.borderColor}` : 'none');
+      const shadowStyle = p.boxShadow && p.boxShadow !== 'none' ? `box-shadow:${p.boxShadow};` : '';
+      const targetAttr = p.targetBlank ? 'target="_blank" rel="noopener noreferrer"' : '';
+
       if (el.type === 'img') {
-        inner = `<img src="${p.content || ''}" style="width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius || '8px'};pointer-events:none;" alt="" />`;
+        const lbAttr = p.lightbox ? `data-lightbox="true" data-caption="${escapeBlockHtml(p.caption || p.content || '')}" style="cursor:zoom-in;` : 'style="';
+        const imgTag = `<img src="${p.content || ''}" alt="${escapeBlockHtml(p.caption || '')}" ${lbAttr}width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius || '0px'};${shadowStyle}border:${borderStyle};display:block;pointer-events:none;" />`;
+        if (p.url && !p.lightbox) {
+          inner = `<a href="${p.url}" ${targetAttr} style="display:block;width:100%;height:100%;text-decoration:none;">${imgTag}</a>`;
+        } else {
+          inner = imgTag;
+        }
       } else if (el.type === 'shape') {
-        inner = `<div style="width:100%;height:100%;border-radius:${p.borderRadius || '8px'};background:${p.bgColor || 'rgba(13,153,255,0.2)'};border:${p.borderWidth || '1px'} solid ${p.borderColor || '#0d99ff'};"></div>`;
+        inner = `<div style="width:100%;height:100%;border-radius:${p.borderRadius || '0px'};background:${p.bgColor || 'rgba(13,153,255,0.2)'};border:${borderStyle};${shadowStyle}box-sizing:border-box;"></div>`;
       } else if (el.type === 'btn') {
-        inner = `<a href="${p.url || '#'}" class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor || '#0d99ff'};color:${p.color || '#fff'};border-radius:${p.borderRadius || '8px'};font-size:${p.fontSize || 15}px;font-weight:${p.fontWeight || '700'};font-family:'${p.fontFamily || 'Montserrat'}',sans-serif;text-decoration:none;user-select:none;">${p.content || 'Кнопка'}</a>`;
+        inner = `<a href="${p.url || '#'}" ${targetAttr} class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor || '#0d99ff'};color:${p.color || '#fff'};border-radius:${p.borderRadius || '8px'};font-size:${p.fontSize || 15}px;font-weight:${p.fontWeight || '700'};font-family:'${p.fontFamily || 'Montserrat'}',sans-serif;text-decoration:none;user-select:none;border:${borderStyle};${shadowStyle}letter-spacing:${p.letterSpacing || 0}px;box-sizing:border-box;">${escapeBlockHtml(p.content || 'Кнопка')}</a>`;
       } else if (el.type === 'icon') {
-        inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.color || '#0d99ff'};font-size:${p.fontSize || 32}px;"><span class="material-symbols-rounded" style="font-size:inherit;">${p.icon || 'star'}</span></div>`;
+        const iconInner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.color || '#0d99ff'};font-size:${p.fontSize || 32}px;background:${p.bgColor || 'transparent'};border-radius:${p.borderRadius || '0px'};border:${borderStyle};${shadowStyle}box-sizing:border-box;"><span class="material-symbols-rounded" style="font-size:inherit;">${p.icon || p.content || 'star'}</span></div>`;
+        if (p.url) {
+          inner = `<a href="${p.url}" ${targetAttr} style="display:block;width:100%;height:100%;text-decoration:none;">${iconInner}</a>`;
+        } else {
+          inner = iconInner;
+        }
+      } else if (el.type === 'form') {
+        inner = `
+          <div style="width:100%;height:100%;padding:14px;background:${p.bgColor || '#1e293b'};border-radius:${p.borderRadius || '12px'};border:${borderStyle};${shadowStyle}display:flex;flex-direction:column;gap:8px;box-sizing:border-box;">
+            <div style="font-size:13px;font-weight:700;color:${p.color || '#fff'};">${escapeBlockHtml(p.content || 'Оставить заявку')}</div>
+            <input type="text" placeholder="Ваше имя" style="padding:6px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+            <input type="tel" placeholder="+7 (999) 000-00-00" style="padding:6px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+            <button type="button" style="padding:6px 12px;background:#0d99ff;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Отправить</button>
+          </div>
+        `;
+      } else if (el.type === 'code') {
+        inner = `<div style="width:100%;height:100%;overflow:hidden;">${p.content || ''}</div>`;
       } else {
-        inner = `<div style="font-size:${p.fontSize || 16}px;font-weight:${p.fontWeight || '500'};color:${p.color || '#fff'};line-height:1.4;text-align:${p.textAlign || 'left'};font-family:'${p.fontFamily || 'Inter'}',sans-serif;word-break:break-word;">${p.content || ''}</div>`;
+        const tagOpen = p.url ? `<a href="${p.url}" ${targetAttr} style="text-decoration:none;color:inherit;display:block;width:100%;height:100%;">` : '';
+        const tagClose = p.url ? `</a>` : '';
+        inner = `${tagOpen}<div style="width:100%;height:100%;font-size:${p.fontSize || 16}px;font-weight:${p.fontWeight || '500'};color:${p.color || '#fff'};line-height:${p.lineHeight || 1.3};text-align:${p.textAlign || 'left'};font-family:'${p.fontFamily || 'Inter'}',sans-serif;letter-spacing:${p.letterSpacing || 0}px;word-break:break-word;box-sizing:border-box;">${escapeBlockHtml(p.content || '')}</div>${tagClose}`;
       }
 
       extraElementsMarkup += `
-        <div class="block-custom-element" data-custom-el-id="${el.id}" style="position:absolute;left:${p.x || 60}px;top:${p.y || 40}px;width:${p.width || 220}px;height:${p.height || 50}px;transform:rotate(${p.rotation || 0}deg);z-index:${p.zIndex || 10};box-sizing:border-box;cursor:move;">
+        <div class="block-custom-element" data-custom-el-id="${el.id}" data-custom-el-type="${el.type}" style="position:absolute;left:${p.x || 60}px;top:${p.y || 40}px;width:${p.width || 220}px;height:${p.height || 50}px;transform:rotate(${p.rotation || 0}deg);z-index:${p.zIndex || 10};opacity:${p.opacity !== undefined ? p.opacity : 1};box-sizing:border-box;cursor:move;pointer-events:auto;">
           ${inner}
         </div>
       `;
     });
 
-    const lastClosing = baseHtml.lastIndexOf('</div>');
+    const lastClosing = baseHtml.lastIndexOf('</');
     if (lastClosing !== -1) {
-      baseHtml = baseHtml.substring(0, lastClosing) + `<div class="block-custom-elements-container" style="position:relative;width:100%;max-width:1200px;margin:0 auto;height:0;">${extraElementsMarkup}</div>` + baseHtml.substring(lastClosing);
+      baseHtml = baseHtml.substring(0, lastClosing) + `<div class="block-custom-elements-container">${extraElementsMarkup}</div>` + baseHtml.substring(lastClosing);
     }
   }
 

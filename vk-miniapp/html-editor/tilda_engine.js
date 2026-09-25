@@ -25,6 +25,7 @@ export class TildaEngine {
 
     this.activeBreakpoint = 'desktop';
     this.activeBlockId = null;
+    this.activeCustomElementId = null;
     this.activeCategory = 'all';
     this.activeInspectorTab = 'content'; // content | design | anim | resp
     this.isGridSnapping = localStorage.getItem('aurora_grid_snapping') !== 'false';
@@ -309,6 +310,7 @@ export class TildaEngine {
 
       if (!blk.isLocked) {
         this.bindInlineEditing(contentEl, blk);
+        this.bindBlockCustomElements(blkEl, blk);
       }
       wrapper.appendChild(blkEl);
     });
@@ -950,10 +952,16 @@ export class TildaEngine {
   // ─── 5. Инспектор свойств (Figma Inspector) ───────────────────
   selectBlock(instanceId, preferredTab = null) {
     this.activeBlockId = instanceId;
+    this.activeCustomElementId = null;
     if (preferredTab) this.activeInspectorTab = preferredTab;
 
     document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
       el.classList.toggle('is-selected', el.dataset.blockId === instanceId);
+    });
+
+    document.querySelectorAll('.block-custom-element').forEach(el => {
+      el.classList.remove('is-selected-element', 'is-selected');
+      el.querySelectorAll('.custom-el-action-bar, .custom-el-resizer, .custom-el-dim-badge').forEach(n => n.remove());
     });
 
     this.layersList?.querySelectorAll('.tilda-layer-item').forEach(el => {
@@ -961,6 +969,321 @@ export class TildaEngine {
     });
 
     this.renderInspector();
+  }
+
+  selectCustomElement(blockId, customElId) {
+    this.activeBlockId = blockId;
+    this.activeCustomElementId = customElId;
+
+    document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
+      el.classList.toggle('is-selected', el.dataset.blockId === blockId);
+    });
+
+    const page = this.getActivePage();
+    const blk = page?.blocks.find(b => b.instanceId === blockId);
+    if (blk) {
+      const blkEl = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+      if (blkEl) this.bindBlockCustomElements(blkEl, blk);
+    }
+
+    this.renderInspector();
+  }
+
+  bindBlockCustomElements(blkEl, blk) {
+    const customElements = blkEl.querySelectorAll('.block-custom-element');
+    if (!customElements.length) return;
+
+    customElements.forEach(custEl => {
+      const elId = custEl.dataset.customElId;
+      if (!elId) return;
+
+      const isSelected = (this.activeCustomElementId === elId && this.activeBlockId === blk.instanceId);
+      if (isSelected) {
+        custEl.classList.add('is-selected-element', 'is-selected');
+        this.attachCustomElementControls(custEl, blk, elId);
+      } else {
+        custEl.classList.remove('is-selected-element', 'is-selected');
+        custEl.querySelectorAll('.custom-el-action-bar, .custom-el-resizer, .custom-el-dim-badge').forEach(n => n.remove());
+      }
+
+      custEl.onmousedown = (e) => {
+        if (e.target.closest('.custom-el-action-bar') || e.target.closest('.custom-el-resizer') || custEl.isContentEditable) return;
+        e.stopPropagation();
+        this.selectCustomElement(blk.instanceId, elId);
+        this.initCustomElementDrag(custEl, blk, elId, e);
+      };
+
+      custEl.ondblclick = (e) => {
+        e.stopPropagation();
+        this.enableCustomElementInlineEditing(custEl, blk, elId);
+      };
+    });
+  }
+
+  attachCustomElementControls(custEl, blk, elId) {
+    custEl.querySelectorAll('.custom-el-action-bar, .custom-el-resizer, .custom-el-dim-badge').forEach(n => n.remove());
+
+    const actionBar = document.createElement('div');
+    actionBar.className = 'custom-el-action-bar';
+    actionBar.innerHTML = `
+      <div class="custom-el-drag-handle" title="Перетащить элемент">⠿</div>
+      <button class="custom-el-action-btn btn-edit-text" type="button" title="Редактировать текст">✏️</button>
+      <button class="custom-el-action-btn btn-link" type="button" title="Настроить ссылку">🔗</button>
+      <button class="custom-el-action-btn btn-duplicate" type="button" title="Дублировать (Ctrl+D)">📋</button>
+      <button class="custom-el-action-btn btn-delete" type="button" title="Удалить элемент (Del)">🗑️</button>
+    `;
+
+    const rect = custEl.getBoundingClientRect();
+    const parentRect = custEl.parentElement.getBoundingClientRect();
+    if (rect.top - parentRect.top < 45) {
+      actionBar.classList.add('is-flipped-bottom');
+    }
+
+    actionBar.querySelector('.custom-el-drag-handle')?.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      this.initCustomElementDrag(custEl, blk, elId, e);
+    });
+
+    actionBar.querySelector('.btn-edit-text')?.addEventListener('click', e => {
+      e.stopPropagation();
+      this.enableCustomElementInlineEditing(custEl, blk, elId);
+    });
+
+    actionBar.querySelector('.btn-link')?.addEventListener('click', e => {
+      e.stopPropagation();
+      this.showLinkEditorForElement(custEl);
+    });
+
+    actionBar.querySelector('.btn-duplicate')?.addEventListener('click', e => {
+      e.stopPropagation();
+      this.duplicateCustomElement(blk.instanceId, elId);
+    });
+
+    actionBar.querySelector('.btn-delete')?.addEventListener('click', e => {
+      e.stopPropagation();
+      this.removeCustomElementFromBlock(blk.instanceId, elId);
+    });
+
+    custEl.appendChild(actionBar);
+
+    const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+    handles.forEach(dir => {
+      const resizer = document.createElement('div');
+      resizer.className = `custom-el-resizer resizer-${dir}`;
+      resizer.dataset.dir = dir;
+      resizer.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.initCustomElementResize(custEl, blk, elId, dir, e);
+      });
+      custEl.appendChild(resizer);
+    });
+  }
+
+  initCustomElementDrag(custEl, blk, elId, startEvt) {
+    const elData = blk.content?.customElements?.find(e => e.id === elId);
+    if (!elData) return;
+    if (!elData.props) elData.props = {};
+
+    const startMouseX = startEvt.clientX;
+    const startMouseY = startEvt.clientY;
+    const startX = elData.props.x || parseInt(custEl.style.left, 10) || 0;
+    const startY = elData.props.y || parseInt(custEl.style.top, 10) || 0;
+
+    let isMoved = false;
+
+    let badge = custEl.querySelector('.custom-el-dim-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'custom-el-dim-badge';
+      custEl.appendChild(badge);
+    }
+    badge.textContent = `X: ${startX} Y: ${startY}`;
+    badge.style.display = 'block';
+
+    custEl.classList.add('is-element-dragged');
+
+    const onMouseMove = ev => {
+      const dx = ev.clientX - startMouseX;
+      const dy = ev.clientY - startMouseY;
+
+      if (!isMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
+        isMoved = true;
+      }
+
+      let newX = startX + dx;
+      let newY = startY + dy;
+
+      if (this.isGridSnapping) {
+        newX = this.snapCoord(newX, 8);
+        newY = this.snapCoord(newY, 8);
+      }
+
+      custEl.style.left = `${newX}px`;
+      custEl.style.top = `${newY}px`;
+      badge.textContent = `X: ${newX} Y: ${newY}`;
+
+      const inpX = document.getElementById('cust-el-x');
+      const inpY = document.getElementById('cust-el-y');
+      if (inpX) inpX.value = newX;
+      if (inpY) inpY.value = newY;
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      custEl.classList.remove('is-element-dragged');
+      badge.remove();
+
+      if (isMoved) {
+        elData.props.x = parseInt(custEl.style.left, 10) || 0;
+        elData.props.y = parseInt(custEl.style.top, 10) || 0;
+        this.saveHistory();
+        this.saveProject();
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp, { once: true });
+  }
+
+  initCustomElementResize(custEl, blk, elId, dir, startEvt) {
+    const elData = blk.content?.customElements?.find(e => e.id === elId);
+    if (!elData) return;
+    if (!elData.props) elData.props = {};
+
+    const startMouseX = startEvt.clientX;
+    const startMouseY = startEvt.clientY;
+    const startX = elData.props.x || parseInt(custEl.style.left, 10) || 0;
+    const startY = elData.props.y || parseInt(custEl.style.top, 10) || 0;
+    const startW = elData.props.width || custEl.offsetWidth || 100;
+    const startH = elData.props.height || custEl.offsetHeight || 40;
+
+    let badge = custEl.querySelector('.custom-el-dim-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'custom-el-dim-badge';
+      custEl.appendChild(badge);
+    }
+    badge.textContent = `${startW} × ${startH} px`;
+    badge.style.display = 'block';
+
+    const onMouseMove = ev => {
+      const dx = ev.clientX - startMouseX;
+      const dy = ev.clientY - startMouseY;
+
+      let newW = startW;
+      let newH = startH;
+      let newX = startX;
+      let newY = startY;
+
+      if (dir.includes('e')) newW = Math.max(20, startW + dx);
+      if (dir.includes('s')) newH = Math.max(16, startH + dy);
+      if (dir.includes('w')) {
+        const potentialW = Math.max(20, startW - dx);
+        newX = startX + (startW - potentialW);
+        newW = potentialW;
+      }
+      if (dir.includes('n')) {
+        const potentialH = Math.max(16, startH - dy);
+        newY = startY + (startH - potentialH);
+        newH = potentialH;
+      }
+
+      if (this.isGridSnapping) {
+        newW = this.snapCoord(newW, 8);
+        newH = this.snapCoord(newH, 8);
+        newX = this.snapCoord(newX, 8);
+        newY = this.snapCoord(newY, 8);
+      }
+
+      custEl.style.width = `${newW}px`;
+      custEl.style.height = `${newH}px`;
+      custEl.style.left = `${newX}px`;
+      custEl.style.top = `${newY}px`;
+      badge.textContent = `${newW} × ${newH} px`;
+
+      const inpW = document.getElementById('cust-el-w');
+      const inpH = document.getElementById('cust-el-h');
+      const inpX = document.getElementById('cust-el-x');
+      const inpY = document.getElementById('cust-el-y');
+      if (inpW) inpW.value = newW;
+      if (inpH) inpH.value = newH;
+      if (inpX) inpX.value = newX;
+      if (inpY) inpY.value = newY;
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      badge.remove();
+
+      elData.props.width = parseInt(custEl.style.width, 10) || startW;
+      elData.props.height = parseInt(custEl.style.height, 10) || startH;
+      elData.props.x = parseInt(custEl.style.left, 10) || startX;
+      elData.props.y = parseInt(custEl.style.top, 10) || startY;
+
+      this.saveHistory();
+      this.saveProject();
+      this.renderInspector();
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp, { once: true });
+  }
+
+  enableCustomElementInlineEditing(custEl, blk, elId) {
+    const elData = blk.content?.customElements?.find(e => e.id === elId);
+    if (!elData) return;
+
+    let textContainer = custEl.querySelector('.t-btn, div, span, h1, h2, h3, p');
+    if (!textContainer) textContainer = custEl;
+
+    textContainer.contentEditable = 'true';
+    textContainer.focus();
+    textContainer.classList.add('is-editing-inline');
+
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(textContainer);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    const onBlur = () => {
+      textContainer.contentEditable = 'false';
+      textContainer.classList.remove('is-editing-inline');
+      textContainer.removeEventListener('blur', onBlur);
+
+      elData.props.content = textContainer.textContent || textContainer.innerText || '';
+      this.saveHistory();
+      this.saveProject();
+      this.renderInspector();
+    };
+
+    textContainer.addEventListener('blur', onBlur);
+  }
+
+  duplicateCustomElement(blockId, customElId) {
+    const page = this.getActivePage();
+    const blk = page.blocks.find(b => b.instanceId === blockId);
+    if (!blk || !blk.content?.customElements) return;
+
+    const elIdx = blk.content.customElements.findIndex(e => e.id === customElId);
+    if (elIdx < 0) return;
+
+    const original = blk.content.customElements[elIdx];
+    const clone = JSON.parse(JSON.stringify(original));
+    clone.id = 'cust_el_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    if (clone.props) {
+      clone.props.x = (clone.props.x || 0) + 20;
+      clone.props.y = (clone.props.y || 0) + 20;
+    }
+
+    blk.content.customElements.splice(elIdx + 1, 0, clone);
+    this.updateBlockDOM(blk);
+    this.saveHistory();
+    this.saveProject();
+    this.selectCustomElement(blockId, clone.id);
   }
 
   renderInspector() {
@@ -976,6 +1299,17 @@ export class TildaEngine {
     if (!blk) {
       this.renderPageInspector();
       return;
+    }
+
+    // Check if custom element is selected inside this block
+    if (this.activeCustomElementId) {
+      const customEl = blk.content?.customElements?.find(e => e.id === this.activeCustomElementId);
+      if (customEl) {
+        this.renderCustomElementInspector(blk, customEl);
+        return;
+      } else {
+        this.activeCustomElementId = null;
+      }
     }
 
     const def = getBlockById(blk.blockDefId);
@@ -1030,6 +1364,453 @@ export class TildaEngine {
     this.bindInspectorInputs(blk);
   }
 
+  renderCustomElementInspector(blk, customEl) {
+    const p = customEl.props || {};
+    const typeLabels = {
+      h1: '🏷️ Заголовок H1',
+      h2: '🏷️ Заголовок H2',
+      h3: '🏷️ Заголовок H3',
+      text: '📝 Текст',
+      btn: '🔘 Кнопка действия',
+      img: '🖼️ Изображение',
+      shape: '⬜ Фигура',
+      icon: '⭐ Иконка',
+      form: '📋 Форма заявки',
+      code: '💻 HTML код'
+    };
+    const typeTitle = typeLabels[customEl.type] || customEl.type.toUpperCase();
+
+    let html = `
+      <div class="tilda-inspector-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+          <button class="topbar-action-btn" id="btn-back-to-block" style="padding:4px 8px;font-size:11px;">
+            <span class="material-symbols-rounded" style="font-size:14px;">arrow_back</span>
+            <span>К блоку</span>
+          </button>
+          <span style="font-size:11px;color:#94a3b8;">${customEl.id.substr(0, 12)}</span>
+        </div>
+        <div class="insp-title" style="margin-top:6px;">
+          <span style="font-size:13px;font-weight:700;color:#0d99ff;">${typeTitle}</span>
+        </div>
+      </div>
+      <div class="tilda-inspector-body">
+        <!-- 1. Координаты и размеры -->
+        <div class="insp-section-title">Координаты и размер (px)</div>
+        <div class="insp-row-2">
+          <div class="insp-field"><label>X (слева px)</label><input type="number" id="cust-el-x" value="${p.x || 0}" /></div>
+          <div class="insp-field"><label>Y (сверху px)</label><input type="number" id="cust-el-y" value="${p.y || 0}" /></div>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field"><label>W (Ширина px)</label><input type="number" id="cust-el-w" value="${p.width || 200}" min="10" /></div>
+          <div class="insp-field"><label>H (Высота px)</label><input type="number" id="cust-el-h" value="${p.height || 50}" min="10" /></div>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field"><label>Поворот (°)</label><input type="number" id="cust-el-rot" value="${p.rotation || 0}" min="0" max="360" /></div>
+          <div class="insp-field"><label>Слой (Z-Index)</label><input type="number" id="cust-el-z" value="${p.zIndex || 10}" min="1" /></div>
+        </div>
+
+        <!-- Кнопки выравнивания -->
+        <div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:4px;margin:10px 0 14px;">
+          <button class="topbar-action-btn cust-align-btn" data-align="left" title="Влево" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_horizontal_left</span></button>
+          <button class="topbar-action-btn cust-align-btn" data-align="center" title="По центру" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_horizontal_center</span></button>
+          <button class="topbar-action-btn cust-align-btn" data-align="right" title="Вправо" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_horizontal_right</span></button>
+          <button class="topbar-action-btn cust-align-btn" data-align="top" title="Вверх" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_vertical_top</span></button>
+          <button class="topbar-action-btn cust-align-btn" data-align="middle" title="По вертикали" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_vertical_center</span></button>
+          <button class="topbar-action-btn cust-align-btn" data-align="bottom" title="Вниз" style="justify-content:center;padding:5px;"><span class="material-symbols-rounded" style="font-size:15px;">align_vertical_bottom</span></button>
+        </div>
+
+        <!-- 2. Типографика и текст -->
+        ${['text', 'h1', 'h2', 'h3', 'btn'].includes(customEl.type) ? `
+          <div class="insp-section-title">Типографика & Текст</div>
+          <div class="insp-field">
+            <label>Текст элемента</label>
+            <textarea id="cust-el-content" rows="3">${escapeHtml(p.content || '')}</textarea>
+          </div>
+          <div class="insp-row-2">
+            <div class="insp-field">
+              <label>Шрифт</label>
+              <select id="cust-el-font-family">
+                <option value="Montserrat" ${p.fontFamily === 'Montserrat' ? 'selected' : ''}>Montserrat</option>
+                <option value="Inter" ${p.fontFamily === 'Inter' ? 'selected' : ''}>Inter</option>
+                <option value="Unbounded" ${p.fontFamily === 'Unbounded' ? 'selected' : ''}>Unbounded</option>
+                <option value="Playfair Display" ${p.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display</option>
+                <option value="Oswald" ${p.fontFamily === 'Oswald' ? 'selected' : ''}>Oswald</option>
+                <option value="Caveat" ${p.fontFamily === 'Caveat' ? 'selected' : ''}>Caveat</option>
+                <option value="Roboto" ${p.fontFamily === 'Roboto' ? 'selected' : ''}>Roboto</option>
+                <option value="Open Sans" ${p.fontFamily === 'Open Sans' ? 'selected' : ''}>Open Sans</option>
+              </select>
+            </div>
+            <div class="insp-field">
+              <label>Размер (px)</label>
+              <input type="number" id="cust-el-font-size" value="${p.fontSize || 16}" min="10" max="140" />
+            </div>
+          </div>
+          <div class="insp-row-2">
+            <div class="insp-field">
+              <label>Насыщенность</label>
+              <select id="cust-el-font-weight">
+                <option value="400" ${p.fontWeight === '400' ? 'selected' : ''}>400 Regular</option>
+                <option value="500" ${p.fontWeight === '500' ? 'selected' : ''}>500 Medium</option>
+                <option value="600" ${p.fontWeight === '600' ? 'selected' : ''}>600 SemiBold</option>
+                <option value="700" ${p.fontWeight === '700' ? 'selected' : ''}>700 Bold</option>
+                <option value="800" ${p.fontWeight === '800' ? 'selected' : ''}>800 ExtraBold</option>
+                <option value="900" ${p.fontWeight === '900' ? 'selected' : ''}>900 Black</option>
+              </select>
+            </div>
+            <div class="insp-field">
+              <label>Выравнивание</label>
+              <select id="cust-el-text-align">
+                <option value="left" ${p.textAlign === 'left' ? 'selected' : ''}>Слева</option>
+                <option value="center" ${p.textAlign === 'center' ? 'selected' : ''}>По центру</option>
+                <option value="right" ${p.textAlign === 'right' ? 'selected' : ''}>Справа</option>
+              </select>
+            </div>
+          </div>
+          <div class="insp-field">
+            <label>Цвет текста</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="color" id="cust-el-color-picker" value="${p.color && p.color.startsWith('#') ? p.color : '#ffffff'}" />
+              <input type="text" id="cust-el-color-text" value="${p.color || '#ffffff'}" style="flex:1;" />
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 3. Изображение и Lightbox -->
+        ${customEl.type === 'img' ? `
+          <div class="insp-section-title">Параметры изображения</div>
+          <div class="insp-field">
+            <label>URL изображения</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="cust-el-img-url" value="${escapeHtml(p.content || '')}" placeholder="https://..." style="flex:1;" />
+              <button class="topbar-action-btn" id="btn-replace-cust-img" title="Заменить фото"><span class="material-symbols-rounded">image</span></button>
+            </div>
+          </div>
+          <div class="insp-field">
+            <label class="insp-checkbox">
+              <input type="checkbox" id="cust-el-lightbox" ${p.lightbox ? 'checked' : ''} /> Открывать в Lightbox при клике
+            </label>
+          </div>
+        ` : ''}
+
+        <!-- 4. Иконка -->
+        ${customEl.type === 'icon' ? `
+          <div class="insp-section-title">Выбор иконки</div>
+          <div class="insp-field">
+            <label>Имя иконки (Material Symbols)</label>
+            <input type="text" id="cust-el-icon-name" value="${escapeHtml(p.icon || p.content || 'star')}" />
+          </div>
+          <div class="anchor-presets-chips" style="margin-bottom:12px;">
+            ${['star', 'bolt', 'favorite', 'check_circle', 'shopping_cart', 'mail', 'call', 'lock', 'rocket_launch', 'shield', 'verified', 'thumb_up'].map(ic => `<span class="anchor-preset-chip cust-icon-chip" data-icon="${ic}">${ic}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        <!-- 5. Внешний вид (Фон, Рамка, Скругление) -->
+        <div class="insp-section-title">Внешний вид & Оформление</div>
+        <div class="insp-field">
+          <label>Цвет фона</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="color" id="cust-el-bg-color" value="${p.bgColor && p.bgColor.startsWith('#') ? p.bgColor : '#0d99ff'}" />
+            <input type="text" id="cust-el-bg-text" value="${p.bgColor || 'transparent'}" style="flex:1;" />
+          </div>
+          <div class="color-presets-row">
+            <span class="color-swatch-chip" style="background:#0d99ff;" data-target="bg" data-color="#0d99ff"></span>
+            <span class="color-swatch-chip" style="background:#8b5cf6;" data-target="bg" data-color="#8b5cf6"></span>
+            <span class="color-swatch-chip" style="background:#10b981;" data-target="bg" data-color="#10b981"></span>
+            <span class="color-swatch-chip" style="background:#1e293b;" data-target="bg" data-color="#1e293b"></span>
+            <span class="color-swatch-chip" style="background:transparent;border:1px dashed #64748b;" data-target="bg" data-color="transparent" title="Прозрачный"></span>
+          </div>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field">
+            <label>Скругление (px)</label>
+            <input type="text" id="cust-el-radius" value="${p.borderRadius || '0px'}" />
+          </div>
+          <div class="insp-field">
+            <label>Толщина рамки</label>
+            <input type="text" id="cust-el-border-w" value="${p.borderWidth || '0px'}" />
+          </div>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field">
+            <label>Стиль рамки</label>
+            <select id="cust-el-border-style">
+              <option value="solid" ${p.borderStyle === 'solid' ? 'selected' : ''}>Solid (Сплошная)</option>
+              <option value="dashed" ${p.borderStyle === 'dashed' ? 'selected' : ''}>Dashed (Пунктир)</option>
+              <option value="dotted" ${p.borderStyle === 'dotted' ? 'selected' : ''}>Dotted (Точки)</option>
+            </select>
+          </div>
+          <div class="insp-field">
+            <label>Цвет рамки</label>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="color" id="cust-el-border-color" value="${p.borderColor && p.borderColor.startsWith('#') ? p.borderColor : '#0d99ff'}" />
+              <input type="text" id="cust-el-border-text" value="${p.borderColor || '#0d99ff'}" style="flex:1;" />
+            </div>
+          </div>
+        </div>
+        <div class="insp-field">
+          <label>Прозрачность (0.0 — 1.0)</label>
+          <input type="number" step="0.1" min="0" max="1" id="cust-el-opacity" value="${p.opacity !== undefined ? p.opacity : 1}" />
+        </div>
+
+        <!-- 6. Ссылка и Якоря -->
+        <div class="insp-section-title">🔗 Ссылка & Действие</div>
+        <div class="insp-field">
+          <label>URL или #якорь</label>
+          <input type="text" id="cust-el-url" value="${escapeHtml(p.url || '')}" placeholder="https://... или #about" />
+        </div>
+        <div class="insp-field">
+          <label style="font-size:11px;color:#94a3b8;">🎯 Выбрать якорь страницы:</label>
+          <select id="cust-el-anchor-select" class="floating-anchor-dropdown">
+            <option value="">-- Выбрать якорь --</option>
+            ${this.getPageAnchorsList().map(a => `<option value="${a.value}">${a.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="link-quick-types-row">
+          <button type="button" class="link-quick-chip cust-link-chip" data-url="https://t.me/">💬 TG</button>
+          <button type="button" class="link-quick-chip cust-link-chip" data-url="tel:+79990000000">📞 Телефон</button>
+          <button type="button" class="link-quick-chip cust-link-chip" data-url="mailto:info@site.ru">✉️ Email</button>
+          <button type="button" class="link-quick-chip cust-link-chip" data-url="#order">📝 Заказ</button>
+          <button type="button" class="link-quick-chip cust-link-chip" data-url="#cart">🛍️ Корзина</button>
+        </div>
+        <div class="insp-field" style="margin-top:8px;">
+          <label class="insp-checkbox">
+            <input type="checkbox" id="cust-el-target-blank" ${p.targetBlank ? 'checked' : ''} /> Открывать в новой вкладке (target="_blank")
+          </label>
+        </div>
+
+        <!-- 7. Действия -->
+        <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;">
+          <button class="topbar-action-btn" id="btn-dup-cust-el" style="flex:1;"><span class="material-symbols-rounded">content_copy</span> Копия</button>
+          <button class="topbar-action-btn" id="btn-del-cust-el" style="flex:1;background:rgba(244,63,94,0.15);color:#f43f5e;border-color:rgba(244,63,94,0.3);"><span class="material-symbols-rounded">delete</span> Удалить</button>
+        </div>
+      </div>
+    `;
+
+    this.propsPanel.innerHTML = html;
+    this.bindCustomElementInspectorInputs(blk, customEl);
+  }
+
+  bindCustomElementInspectorInputs(blk, customEl) {
+    const p = customEl.props || {};
+
+    const syncEl = () => {
+      this.updateBlockDOM(blk);
+      this.saveHistory();
+      this.saveProject();
+    };
+
+    this.propsPanel.querySelector('#btn-back-to-block')?.addEventListener('click', () => {
+      this.activeCustomElementId = null;
+      this.renderInspector();
+    });
+
+    const bindNum = (id, propKey) => {
+      const inp = this.propsPanel.querySelector(id);
+      inp?.addEventListener('input', () => {
+        p[propKey] = parseFloat(inp.value) || 0;
+        syncEl();
+      });
+    };
+    bindNum('#cust-el-x', 'x');
+    bindNum('#cust-el-y', 'y');
+    bindNum('#cust-el-w', 'width');
+    bindNum('#cust-el-h', 'height');
+    bindNum('#cust-el-rot', 'rotation');
+    bindNum('#cust-el-z', 'zIndex');
+    bindNum('#cust-el-font-size', 'fontSize');
+    bindNum('#cust-el-opacity', 'opacity');
+
+    this.propsPanel.querySelectorAll('.cust-align-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const align = btn.dataset.align;
+        const containerW = 1200;
+        const blockEl = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+        const containerH = blockEl ? blockEl.offsetHeight : 500;
+        const elW = p.width || 200;
+        const elH = p.height || 50;
+
+        if (align === 'left') p.x = 20;
+        if (align === 'center') p.x = Math.round((containerW - elW) / 2);
+        if (align === 'right') p.x = containerW - elW - 20;
+        if (align === 'top') p.y = 20;
+        if (align === 'middle') p.y = Math.max(20, Math.round((containerH - elH) / 2));
+        if (align === 'bottom') p.y = Math.max(20, containerH - elH - 20);
+
+        const inpX = this.propsPanel.querySelector('#cust-el-x');
+        const inpY = this.propsPanel.querySelector('#cust-el-y');
+        if (inpX) inpX.value = p.x;
+        if (inpY) inpY.value = p.y;
+        syncEl();
+      });
+    });
+
+    const contentText = this.propsPanel.querySelector('#cust-el-content');
+    contentText?.addEventListener('input', () => {
+      p.content = contentText.value;
+      syncEl();
+    });
+
+    const fontFam = this.propsPanel.querySelector('#cust-el-font-family');
+    fontFam?.addEventListener('change', () => {
+      p.fontFamily = fontFam.value;
+      syncEl();
+    });
+
+    const fontWt = this.propsPanel.querySelector('#cust-el-font-weight');
+    fontWt?.addEventListener('change', () => {
+      p.fontWeight = fontWt.value;
+      syncEl();
+    });
+
+    const txtAlign = this.propsPanel.querySelector('#cust-el-text-align');
+    txtAlign?.addEventListener('change', () => {
+      p.textAlign = txtAlign.value;
+      syncEl();
+    });
+
+    const colorPicker = this.propsPanel.querySelector('#cust-el-color-picker');
+    const colorText = this.propsPanel.querySelector('#cust-el-color-text');
+    colorPicker?.addEventListener('input', () => {
+      p.color = colorPicker.value;
+      if (colorText) colorText.value = colorPicker.value;
+      syncEl();
+    });
+    colorText?.addEventListener('input', () => {
+      p.color = colorText.value;
+      if (colorPicker && colorText.value.startsWith('#')) colorPicker.value = colorText.value;
+      syncEl();
+    });
+
+    const bgPicker = this.propsPanel.querySelector('#cust-el-bg-color');
+    const bgText = this.propsPanel.querySelector('#cust-el-bg-text');
+    bgPicker?.addEventListener('input', () => {
+      p.bgColor = bgPicker.value;
+      if (bgText) bgText.value = bgPicker.value;
+      syncEl();
+    });
+    bgText?.addEventListener('input', () => {
+      p.bgColor = bgText.value;
+      if (bgPicker && bgText.value.startsWith('#')) bgPicker.value = bgText.value;
+      syncEl();
+    });
+
+    this.propsPanel.querySelectorAll('.color-swatch-chip').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const col = swatch.dataset.color;
+        p.bgColor = col;
+        if (bgText) bgText.value = col;
+        if (bgPicker && col.startsWith('#')) bgPicker.value = col;
+        syncEl();
+      });
+    });
+
+    const radInp = this.propsPanel.querySelector('#cust-el-radius');
+    radInp?.addEventListener('input', () => {
+      p.borderRadius = radInp.value;
+      syncEl();
+    });
+
+    const borderWInp = this.propsPanel.querySelector('#cust-el-border-w');
+    borderWInp?.addEventListener('input', () => {
+      p.borderWidth = borderWInp.value;
+      syncEl();
+    });
+
+    const borderSt = this.propsPanel.querySelector('#cust-el-border-style');
+    borderSt?.addEventListener('change', () => {
+      p.borderStyle = borderSt.value;
+      syncEl();
+    });
+
+    const borderColPicker = this.propsPanel.querySelector('#cust-el-border-color');
+    const borderColText = this.propsPanel.querySelector('#cust-el-border-text');
+    borderColPicker?.addEventListener('input', () => {
+      p.borderColor = borderColPicker.value;
+      if (borderColText) borderColText.value = borderColPicker.value;
+      syncEl();
+    });
+    borderColText?.addEventListener('input', () => {
+      p.borderColor = borderColText.value;
+      if (borderColPicker && borderColText.value.startsWith('#')) borderColPicker.value = borderColText.value;
+      syncEl();
+    });
+
+    const imgUrlInp = this.propsPanel.querySelector('#cust-el-img-url');
+    imgUrlInp?.addEventListener('input', () => {
+      p.content = imgUrlInp.value;
+      syncEl();
+    });
+
+    this.propsPanel.querySelector('#btn-replace-cust-img')?.addEventListener('click', () => {
+      window.openImageReplaceModal?.((newUrl) => {
+        p.content = newUrl;
+        if (imgUrlInp) imgUrlInp.value = newUrl;
+        syncEl();
+      });
+    });
+
+    const lbChk = this.propsPanel.querySelector('#cust-el-lightbox');
+    lbChk?.addEventListener('change', () => {
+      p.lightbox = lbChk.checked;
+      syncEl();
+    });
+
+    const iconNameInp = this.propsPanel.querySelector('#cust-el-icon-name');
+    iconNameInp?.addEventListener('input', () => {
+      p.icon = iconNameInp.value;
+      p.content = iconNameInp.value;
+      syncEl();
+    });
+
+    this.propsPanel.querySelectorAll('.cust-icon-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const ic = chip.dataset.icon;
+        p.icon = ic;
+        p.content = ic;
+        if (iconNameInp) iconNameInp.value = ic;
+        syncEl();
+      });
+    });
+
+    const urlInp = this.propsPanel.querySelector('#cust-el-url');
+    urlInp?.addEventListener('input', () => {
+      p.url = urlInp.value;
+      syncEl();
+    });
+
+    const anchorSelect = this.propsPanel.querySelector('#cust-el-anchor-select');
+    anchorSelect?.addEventListener('change', () => {
+      if (anchorSelect.value) {
+        p.url = anchorSelect.value;
+        if (urlInp) urlInp.value = anchorSelect.value;
+        syncEl();
+      }
+    });
+
+    this.propsPanel.querySelectorAll('.cust-link-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const qUrl = chip.dataset.url;
+        p.url = qUrl;
+        if (urlInp) urlInp.value = qUrl;
+        syncEl();
+      });
+    });
+
+    const targetBlankChk = this.propsPanel.querySelector('#cust-el-target-blank');
+    targetBlankChk?.addEventListener('change', () => {
+      p.targetBlank = targetBlankChk.checked;
+      syncEl();
+    });
+
+    this.propsPanel.querySelector('#btn-dup-cust-el')?.addEventListener('click', () => {
+      this.duplicateCustomElement(blk.instanceId, customEl.id);
+    });
+
+    this.propsPanel.querySelector('#btn-del-cust-el')?.addEventListener('click', () => {
+      this.removeCustomElementFromBlock(blk.instanceId, customEl.id);
+    });
+  }
+
   addCustomElementToBlock(blockId, type) {
     const page = this.getActivePage();
     const blk = page.blocks.find(b => b.instanceId === blockId);
@@ -1062,7 +1843,8 @@ export class TildaEngine {
     blk.content.customElements.push(newEl);
     this.updateBlockDOM(blk);
     this.saveHistory();
-    this.renderInspector();
+    this.saveProject();
+    this.selectCustomElement(blockId, newEl.id);
   }
 
   removeCustomElementFromBlock(blockId, elementId) {
@@ -1071,8 +1853,12 @@ export class TildaEngine {
     if (!blk || !blk.content?.customElements) return;
 
     blk.content.customElements = blk.content.customElements.filter(e => e.id !== elementId);
+    if (this.activeCustomElementId === elementId) {
+      this.activeCustomElementId = null;
+    }
     this.updateBlockDOM(blk);
     this.saveHistory();
+    this.saveProject();
     this.renderInspector();
   }
 
@@ -1210,9 +1996,15 @@ export class TildaEngine {
       `;
       c.customElements.forEach((el, idx) => {
         html += `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-dark-0);border:1px solid var(--border);border-radius:6px;">
-            <div style="font-size:12px;font-weight:600;color:#fff;">${el.type.toUpperCase()}: ${escapeHtml(el.props.content || 'Элемент ' + (idx + 1))}</div>
-            <button class="page-act-btn btn-del-cust-el" data-el-id="${el.id}" style="color:#f43f5e;" title="Удалить элемент"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></button>
+          <div class="insp-cust-el-card" data-el-id="${el.id}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-dark-0);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color 0.15s ease;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <span style="color:#0d99ff;font-size:11px;font-weight:700;">${el.type.toUpperCase()}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(el.props?.content || 'Элемент ' + (idx + 1))}</span>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <button class="page-act-btn btn-edit-cust-el" data-el-id="${el.id}" style="color:#0d99ff;" title="Настроить элемент"><span class="material-symbols-rounded" style="font-size:14px;">tune</span></button>
+              <button class="page-act-btn btn-del-cust-el" data-el-id="${el.id}" style="color:#f43f5e;" title="Удалить элемент"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></button>
+            </div>
           </div>
         `;
       });
@@ -1462,9 +2254,26 @@ export class TildaEngine {
       });
     });
 
-    // 3. Delete Custom Element
+    // 3. Select / Edit / Delete Custom Element
+    this.propsPanel.querySelectorAll('.insp-cust-el-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-del-cust-el')) return;
+        const elId = card.dataset.elId;
+        this.selectCustomElement(blk.instanceId, elId);
+      });
+    });
+
+    this.propsPanel.querySelectorAll('.btn-edit-cust-el').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const elId = btn.dataset.elId;
+        this.selectCustomElement(blk.instanceId, elId);
+      });
+    });
+
     this.propsPanel.querySelectorAll('.btn-del-cust-el').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const elId = btn.dataset.elId;
         this.removeCustomElementFromBlock(blk.instanceId, elId);
       });
@@ -1553,13 +2362,14 @@ export class TildaEngine {
   }
 
   updateBlockDOM(blk) {
-    const el = document.getElementById(blk.instanceId);
+    const el = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
     if (!el) return;
     const def = getBlockById(blk.blockDefId);
     const inner = el.querySelector('.tilda-block-inner');
     if (inner && def) {
       inner.innerHTML = renderBlockHtml(def, blk.content, blk.design);
       this.bindInlineEditing(inner, blk);
+      this.bindBlockCustomElements(el, blk);
       this.applyBlockStyles(el, blk);
     }
   }
@@ -2562,6 +3372,7 @@ button { font-family: inherit; }
 
     toolbar.innerHTML = `
       <div class="text-format-group">
+        <div class="floating-toolbar-drag-handle" id="drag-handle-floating-toolbar" title="Потяните для перемещения окна">⠿</div>
         <button class="text-tool-btn" id="btn-text-bold" type="button" title="Жирный (Ctrl+B)"><b>B</b></button>
         <button class="text-tool-btn" id="btn-text-italic" type="button" title="Курсив (Ctrl+I)"><i>I</i></button>
         <button class="text-tool-btn" id="btn-text-underline" type="button" title="Подчеркнутый (Ctrl+U)"><u>U</u></button>
@@ -2636,6 +3447,42 @@ button { font-family: inherit; }
       const p = toolbar.querySelector('#floating-link-popover');
       if (p) p.style.display = 'none';
     };
+
+    // Draggable toolbar logic
+    const dragHandle = toolbar.querySelector('#drag-handle-floating-toolbar');
+    let isToolbarDragging = false;
+    let tbStartX = 0, tbStartY = 0;
+    let tbStartLeft = 0, tbStartTop = 0;
+
+    dragHandle?.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      isToolbarDragging = true;
+      tbStartX = e.clientX;
+      tbStartY = e.clientY;
+      const rect = toolbar.getBoundingClientRect();
+      tbStartLeft = rect.left;
+      tbStartTop = rect.top;
+
+      const onMouseMove = ev => {
+        if (!isToolbarDragging) return;
+        const dx = ev.clientX - tbStartX;
+        const dy = ev.clientY - tbStartY;
+        const newLeft = Math.max(10, Math.min(window.innerWidth - toolbar.offsetWidth - 10, tbStartLeft + dx));
+        const newTop = Math.max(10, Math.min(window.innerHeight - toolbar.offsetHeight - 10, tbStartTop + dy));
+        toolbar.style.left = `${newLeft}px`;
+        toolbar.style.top = `${newTop}px`;
+      };
+
+      const onMouseUp = () => {
+        isToolbarDragging = false;
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp, { once: true });
+    });
 
     // Close buttons & Escape key
     toolbar.querySelector('#btn-text-toolbar-close')?.addEventListener('click', e => {

@@ -292,9 +292,9 @@ function initFreeElementDragOnCanvas() {
   let isDragging = false;
 
   artboard.addEventListener('mousedown', e => {
-    if (e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.closest('.block-height-resizer') || e.target.isContentEditable) return;
+    if (e.target.closest('.block-custom-element') || e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.closest('.block-height-resizer') || e.target.isContentEditable) return;
 
-    const target = e.target.closest('.block-custom-element, h1, h2, h3, h4, p, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge');
+    const target = e.target.closest('h1, h2, h3, h4, p, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge');
     if (!target) return;
 
     const blockWrapper = target.closest('.tilda-block-wrapper');
@@ -776,7 +776,10 @@ function init() {
         zeroBlockEditor?.deleteSelectedElement();
         showToast('🗑️ Элемент удалён');
       } else if (currentMode === 'builder') {
-        if (tildaEngine.activeBlockId) {
+        if (tildaEngine.activeCustomElementId && tildaEngine.activeBlockId) {
+          tildaEngine.removeCustomElementFromBlock(tildaEngine.activeBlockId, tildaEngine.activeCustomElementId);
+          showToast('🗑️ Элемент удалён');
+        } else if (tildaEngine.activeBlockId) {
           tildaEngine.deleteActiveBlock();
           showToast('🗑️ Блок удалён');
         }
@@ -791,10 +794,40 @@ function init() {
         zeroBlockEditor?.duplicateSelectedElement();
         showToast('📋 Элемент продублирован');
       } else if (currentMode === 'builder') {
-        if (tildaEngine.activeBlockId) {
+        if (tildaEngine.activeCustomElementId && tildaEngine.activeBlockId) {
+          tildaEngine.duplicateCustomElement(tildaEngine.activeBlockId, tildaEngine.activeCustomElementId);
+          showToast('📋 Элемент продублирован');
+        } else if (tildaEngine.activeBlockId) {
           tildaEngine.duplicateBlock(tildaEngine.activeBlockId);
           showToast('📋 Блок продублирован');
         }
+      }
+    }
+
+    // Escape: Deselect
+    if (e.key === 'Escape') {
+      if (tildaEngine?.activeCustomElementId) {
+        tildaEngine.activeCustomElementId = null;
+        tildaEngine.renderArtboard();
+        tildaEngine.renderInspector();
+      }
+    }
+
+    // Arrow keys: Move active custom element
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && !inInput && currentMode === 'builder' && tildaEngine?.activeCustomElementId && tildaEngine?.activeBlockId) {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const page = tildaEngine.getActivePage();
+      const blk = page?.blocks.find(b => b.instanceId === tildaEngine.activeBlockId);
+      const el = blk?.content?.customElements?.find(item => item.id === tildaEngine.activeCustomElementId);
+      if (el && el.props) {
+        if (e.key === 'ArrowLeft') el.props.x = (el.props.x || 0) - step;
+        if (e.key === 'ArrowRight') el.props.x = (el.props.x || 0) + step;
+        if (e.key === 'ArrowUp') el.props.y = (el.props.y || 0) - step;
+        if (e.key === 'ArrowDown') el.props.y = (el.props.y || 0) + step;
+        tildaEngine.updateBlockDOM(blk);
+        tildaEngine.saveHistory();
+        tildaEngine.saveProject();
       }
     }
 
