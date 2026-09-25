@@ -92,7 +92,7 @@ export const TILDA_BLOCKS = [
             <a href="${c.btnUrl}" style="display:inline-flex;padding:14px 28px;background:${d.accentColor};color:#fff;font-weight:700;border-radius:8px;text-decoration:none;">${c.btnText}</a>
           </div>
           <div style="position:relative;">
-            <img src="${c.img}" alt="Preview" style="width:100%;height:auto;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);" />
+            <img src="${c.img}" alt="${c.title || 'Cover'}" data-lightbox="true" data-caption="${c.title || ''}" style="width:100%;height:auto;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);cursor:zoom-in;" />
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@ export const TILDA_BLOCKS = [
     html: (c, d) => `
       <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:90px 24px;">
         <div class="t-container" style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:50px;align-items:center;">
-          <img src="${c.img}" alt="Mission" style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.6);" />
+          <img src="${c.img}" alt="${c.title || 'Mission'}" data-lightbox="true" data-caption="${c.title || ''}" style="width:100%;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.6);cursor:zoom-in;" />
           <div>
             <h2 style="font-size:2.4rem;font-weight:800;margin-bottom:20px;">${c.title}</h2>
             <p style="font-size:16px;line-height:1.8;color:#94a3b8;">${c.text}</p>
@@ -723,7 +723,7 @@ export const TILDA_BLOCKS = [
           <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:20px;">
             ${(c.images || []).map(img => `
               <div style="height:240px;border-radius:12px;overflow:hidden;position:relative;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);">
-                <img src="${img.src}" data-tilda-lightbox style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;" alt="${img.caption || ''}" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
+                <img src="${img.src}" data-lightbox="true" data-gallery-id="gallery-1" data-caption="${img.caption || ''}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;" alt="${img.caption || ''}" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
               </div>
             `).join('')}
           </div>
@@ -922,7 +922,7 @@ export const TILDA_BLOCKS = [
               <div class="tilda-product-card" data-product-card style="background:#121826;border:1px solid #233047;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
                 ${p.badge ? `<div style="position:absolute;top:14px;left:14px;background:#0d99ff;color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;z-index:10;">${p.badge}</div>` : ''}
                 <div style="height:210px;overflow:hidden;position:relative;background:#090d16;">
-                  <img src="${p.img}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
+                  <img src="${p.img}" alt="${p.name}" data-lightbox="true" data-caption="${p.name} - ${p.price || ''}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.3s;cursor:zoom-in;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" />
                 </div>
                 <div style="padding:24px;display:flex;flex-direction:column;flex:1;justify-content:space-between;">
                   <div>
@@ -1020,7 +1020,7 @@ export const TILDA_BLOCKS = [
       <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
         <div class="t-container" style="max-width:1150px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));gap:50px;align-items:center;">
           <div style="border-radius:20px;overflow:hidden;border:1px solid #233047;background:#121826;box-shadow:0 20px 50px rgba(0,0,0,0.5);">
-            <img src="${c.img}" alt="${c.title}" style="width:100%;height:auto;display:block;" />
+            <img src="${c.img}" alt="${c.title}" data-lightbox="true" data-caption="${c.title}" style="width:100%;height:auto;display:block;cursor:zoom-in;" />
           </div>
           <div>
             <div style="display:inline-block;padding:4px 12px;background:rgba(13,153,255,0.15);border:1px solid rgba(13,153,255,0.3);border-radius:6px;font-size:11px;font-weight:700;color:${d.accentColor};margin-bottom:12px;">${c.badge}</div>

@@ -151,47 +151,390 @@
     });
   }
 
-  // 4. Lightbox Modal for Images
-  function initLightbox() {
-    let overlay = document.getElementById('tilda-lightbox-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'tilda-lightbox-overlay';
-      overlay.className = 'tilda-lightbox-overlay';
-      overlay.innerHTML = `
-        <div class="tilda-lightbox-container">
-          <img class="tilda-lightbox-img" src="" alt="Zoomed view" />
-          <button class="tilda-lightbox-close" aria-label="Закрыть">&times;</button>
+  class AuroraLightbox {
+    constructor() {
+      this.overlay = null;
+      this.imgEl = null;
+      this.captionEl = null;
+      this.thumbsWrap = null;
+      this.toolbar = null;
+      this.gallerySet = [];
+      this.activeIndex = 0;
+      this.zoomLevel = 1.0;
+      this.panX = 0;
+      this.panY = 0;
+      
+      this.isDragging = false;
+      this.dragStartX = 0;
+      this.dragStartY = 0;
+      this.lastPanX = 0;
+      this.lastPanY = 0;
+      
+      this.touchStartX = 0;
+      this.touchStartY = 0;
+      this.initialPinchDist = 0;
+      
+      this.zoomLevels = [1.0, 1.5, 2.0, 3.0];
+      
+      this.initDOM();
+      this.bindEvents();
+    }
+
+    initDOM() {
+      if (document.getElementById('aurora-lightbox-overlay')) return;
+
+      this.overlay = document.createElement('div');
+      this.overlay.id = 'aurora-lightbox-overlay';
+      this.overlay.className = 'aurora-lightbox-overlay';
+      
+      this.overlay.innerHTML = `
+        <div class="aurora-lightbox-toolbar">
+          <span class="aurora-lightbox-counter"></span>
+          <button class="aurora-lightbox-btn" data-action="zoom-out" aria-label="Zoom Out">−</button>
+          <button class="aurora-lightbox-btn" data-action="zoom-in" aria-label="Zoom In">+</button>
+          <button class="aurora-lightbox-btn" data-action="fullscreen" aria-label="Fullscreen">⛶</button>
+          <button class="aurora-lightbox-btn" data-action="download" aria-label="Download">⤓</button>
+          <button class="aurora-lightbox-btn aurora-lightbox-close" data-action="close" aria-label="Close">✕</button>
+        </div>
+        <div class="aurora-lightbox-container">
+          <img class="aurora-lightbox-img" src="" alt="Zoomed view" draggable="false" />
+          <button class="aurora-lightbox-nav aurora-lightbox-prev" data-action="prev">‹</button>
+          <button class="aurora-lightbox-nav aurora-lightbox-next" data-action="next">›</button>
+        </div>
+        <div class="aurora-lightbox-footer">
+          <div class="aurora-lightbox-caption"></div>
+          <div class="aurora-lightbox-thumbs"></div>
         </div>
       `;
-      document.body.appendChild(overlay);
+      
+      document.body.appendChild(this.overlay);
+      
+      this.imgEl = this.overlay.querySelector('.aurora-lightbox-img');
+      this.captionEl = this.overlay.querySelector('.aurora-lightbox-caption');
+      this.thumbsWrap = this.overlay.querySelector('.aurora-lightbox-thumbs');
+      this.counterEl = this.overlay.querySelector('.aurora-lightbox-counter');
+      this.containerEl = this.overlay.querySelector('.aurora-lightbox-container');
+    }
 
-      overlay.addEventListener('click', e => {
-        if (e.target === overlay || e.target.classList.contains('tilda-lightbox-close')) {
-          overlay.classList.remove('is-open');
-        }
+    bindEvents() {
+      // Toolbar and Nav
+      this.overlay.addEventListener('click', e => {
+        const action = e.target.closest('[data-action]')?.dataset.action;
+        if (action === 'close') this.close();
+        else if (action === 'prev') this.prev();
+        else if (action === 'next') this.next();
+        else if (action === 'zoom-in') this.setZoom(this.getNextZoomLevel(1));
+        else if (action === 'zoom-out') this.setZoom(this.getNextZoomLevel(-1));
+        else if (action === 'fullscreen') this.toggleFullscreen();
+        else if (action === 'download') this.downloadImage(this.imgEl.src, 'image.jpg');
+        else if (e.target === this.containerEl || e.target === this.overlay) this.close();
       });
 
+      // Keyboard
       document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
-          overlay.classList.remove('is-open');
+        if (!this.overlay.classList.contains('is-open')) return;
+        if (e.key === 'Escape') this.close();
+        else if (e.key === 'ArrowLeft') this.prev();
+        else if (e.key === 'ArrowRight') this.next();
+        else if (e.key === '+' || e.key === '=') this.setZoom(this.getNextZoomLevel(1));
+        else if (e.key === '-') this.setZoom(this.getNextZoomLevel(-1));
+        else if (e.key.toLowerCase() === 'f') this.toggleFullscreen();
+        else if (e.key.toLowerCase() === 'd') this.downloadImage(this.imgEl.src, 'image.jpg');
+      });
+
+      // Mouse Wheel Zoom
+      this.containerEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -1 : 1;
+        this.setZoom(this.getNextZoomLevel(delta));
+      }, { passive: false });
+
+      // Double Click
+      this.imgEl.addEventListener('dblclick', () => {
+        this.setZoom(this.zoomLevel > 1.0 ? 1.0 : 2.0);
+      });
+
+      // Drag to Pan
+      this.imgEl.addEventListener('mousedown', e => {
+        if (this.zoomLevel <= 1.0) return;
+        e.preventDefault();
+        this.isDragging = true;
+        this.dragStartX = e.clientX;
+        this.dragStartY = e.clientY;
+        this.imgEl.style.cursor = 'grabbing';
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!this.isDragging) return;
+        const dx = e.clientX - this.dragStartX;
+        const dy = e.clientY - this.dragStartY;
+        this.panX = this.lastPanX + dx;
+        this.panY = this.lastPanY + dy;
+        this.updateTransform();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        this.lastPanX = this.panX;
+        this.lastPanY = this.panY;
+        this.imgEl.style.cursor = 'grab';
+      });
+
+      // Mobile Touch Gestures
+      this.containerEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          this.touchStartX = e.touches[0].clientX;
+          this.touchStartY = e.touches[0].clientY;
+          if (this.zoomLevel > 1.0) {
+            this.isDragging = true;
+            this.dragStartX = this.touchStartX;
+            this.dragStartY = this.touchStartY;
+          }
+        } else if (e.touches.length === 2) {
+          this.initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: true });
+
+      this.containerEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 1 && this.zoomLevel > 1.0 && this.isDragging) {
+          const dx = e.touches[0].clientX - this.dragStartX;
+          const dy = e.touches[0].clientY - this.dragStartY;
+          this.panX = this.lastPanX + dx;
+          this.panY = this.lastPanY + dy;
+          this.updateTransform();
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (this.initialPinchDist > 0) {
+            const scaleChange = dist / this.initialPinchDist;
+            let targetZoom = this.zoomLevel * scaleChange;
+            targetZoom = Math.max(1.0, Math.min(targetZoom, 3.0));
+            this.setZoom(targetZoom, false);
+            this.initialPinchDist = dist; // reset to continuous pinch
+          }
+        }
+      }, { passive: true });
+
+      this.containerEl.addEventListener('touchend', e => {
+        if (e.touches.length === 0) {
+          if (this.isDragging) {
+            this.isDragging = false;
+            this.lastPanX = this.panX;
+            this.lastPanY = this.panY;
+          }
+          if (this.zoomLevel === 1.0 && e.changedTouches.length === 1) {
+            const touchEndX = e.changedTouches[0].clientX;
+            const dx = touchEndX - this.touchStartX;
+            if (Math.abs(dx) > 50) {
+              if (dx < 0) this.next();
+              else this.prev();
+            }
+          }
+          this.initialPinchDist = 0;
         }
       });
     }
 
-    const imgEl = overlay.querySelector('.tilda-lightbox-img');
+    init() {
+      // Find all images matching criteria
+      const selectors = '.t-gallery img, [data-lightbox], .t-store-card img, .t-card img, .t-block img:not(.no-lightbox)';
+      const images = document.querySelectorAll(selectors);
+      
+      const galleries = {};
 
-    document.querySelectorAll('[data-tilda-lightbox], .tilda-gallery img, .tilda-lightbox-trigger').forEach(img => {
-      img.style.cursor = 'zoom-in';
-      img.addEventListener('click', () => {
-        const fullSrc = img.dataset.srcFull || img.dataset.src || img.src;
-        if (fullSrc && imgEl) {
-          imgEl.src = fullSrc;
-          overlay.classList.add('is-open');
-        }
+      images.forEach(img => {
+        img.style.cursor = 'zoom-in';
+        
+        // Find parent block to group
+        const block = img.closest('[data-gallery-id], [id^="block-"], .t-block') || document.body;
+        const groupId = block.getAttribute('data-gallery-id') || block.id || 'global';
+        
+        if (!galleries[groupId]) galleries[groupId] = [];
+        
+        const src = img.dataset.srcFull || img.dataset.src || img.src;
+        const caption = img.alt || img.title || '';
+        
+        const item = { src, caption, imgEl: img };
+        galleries[groupId].push(item);
+        
+        img.addEventListener('click', e => {
+          e.preventDefault();
+          const activeIdx = galleries[groupId].indexOf(item);
+          this.open(src, caption, galleries[groupId], activeIdx);
+        });
       });
-    });
+    }
+
+    open(src, caption, gallerySet, activeIndex = 0) {
+      this.gallerySet = gallerySet;
+      this.activeIndex = activeIndex;
+      this.overlay.classList.add('is-open');
+      this.overlay.style.opacity = '0';
+      this.overlay.style.display = 'flex';
+      
+      // smooth opening transition
+      requestAnimationFrame(() => {
+        this.overlay.style.transition = 'opacity 0.3s ease';
+        this.overlay.style.opacity = '1';
+      });
+      
+      this.renderCurrent();
+      this.renderThumbs();
+    }
+
+    close() {
+      this.overlay.style.opacity = '0';
+      setTimeout(() => {
+        this.overlay.classList.remove('is-open');
+        this.overlay.style.display = 'none';
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(()=>{});
+        }
+      }, 300);
+    }
+
+    renderCurrent() {
+      const item = this.gallerySet[this.activeIndex];
+      if (!item) return;
+
+      this.imgEl.style.opacity = '0';
+      this.imgEl.src = item.src;
+      this.captionEl.textContent = item.caption;
+      this.counterEl.textContent = `${this.activeIndex + 1} / ${this.gallerySet.length}`;
+      
+      this.imgEl.onload = () => {
+        this.imgEl.style.transition = 'opacity 0.3s ease';
+        this.imgEl.style.opacity = '1';
+      };
+
+      this.setZoom(1.0);
+      this.updateThumbsActive();
+      this.preloadAdjacent();
+    }
+
+    preloadAdjacent() {
+      const total = this.gallerySet.length;
+      if (total <= 1) return;
+      const nextIdx = (this.activeIndex + 1) % total;
+      const prevIdx = (this.activeIndex - 1 + total) % total;
+      
+      [nextIdx, prevIdx].forEach(idx => {
+        const img = new Image();
+        img.src = this.gallerySet[idx].src;
+      });
+    }
+
+    next() {
+      if (this.gallerySet.length <= 1) return;
+      this.activeIndex = (this.activeIndex + 1) % this.gallerySet.length;
+      this.renderCurrent();
+    }
+
+    prev() {
+      if (this.gallerySet.length <= 1) return;
+      this.activeIndex = (this.activeIndex - 1 + this.gallerySet.length) % this.gallerySet.length;
+      this.renderCurrent();
+    }
+
+    getNextZoomLevel(direction) {
+      let idx = this.zoomLevels.indexOf(this.zoomLevel);
+      if (idx === -1) {
+        // Find closest
+        idx = this.zoomLevels.reduce((best, val, i) => Math.abs(val - this.zoomLevel) < Math.abs(this.zoomLevels[best] - this.zoomLevel) ? i : best, 0);
+      }
+      idx += direction;
+      idx = Math.max(0, Math.min(idx, this.zoomLevels.length - 1));
+      return this.zoomLevels[idx];
+    }
+
+    setZoom(level, transition = true) {
+      this.zoomLevel = level;
+      if (this.zoomLevel <= 1.0) {
+        this.zoomLevel = 1.0;
+        this.panX = 0;
+        this.panY = 0;
+        this.lastPanX = 0;
+        this.lastPanY = 0;
+        this.imgEl.style.cursor = 'zoom-in';
+      } else {
+        this.imgEl.style.cursor = 'grab';
+      }
+      
+      if (transition) {
+        this.imgEl.style.transition = 'transform 0.2s ease, opacity 0.3s ease';
+      } else {
+        this.imgEl.style.transition = 'opacity 0.3s ease';
+      }
+      this.updateTransform();
+    }
+
+    updateTransform() {
+      this.imgEl.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+    }
+
+    toggleFullscreen() {
+      const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+      if (!isFs) {
+        if (this.overlay.requestFullscreen) {
+          this.overlay.requestFullscreen().catch(()=>{});
+        } else if (this.overlay.webkitRequestFullscreen) {
+          this.overlay.webkitRequestFullscreen();
+        } else if (this.overlay.mozRequestFullScreen) {
+          this.overlay.mozRequestFullScreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(()=>{});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        }
+      }
+    }
+
+    downloadImage(src, filename) {
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    renderThumbs() {
+      this.thumbsWrap.innerHTML = '';
+      if (this.gallerySet.length <= 1) return;
+      
+      this.gallerySet.forEach((item, idx) => {
+        const thumb = document.createElement('img');
+        thumb.src = item.src;
+        thumb.className = 'aurora-lightbox-thumb';
+        if (idx === this.activeIndex) thumb.classList.add('is-active');
+        
+        thumb.addEventListener('click', () => {
+          this.activeIndex = idx;
+          this.renderCurrent();
+        });
+        
+        this.thumbsWrap.appendChild(thumb);
+      });
+    }
+
+    updateThumbsActive() {
+      const thumbs = this.thumbsWrap.querySelectorAll('.aurora-lightbox-thumb');
+      thumbs.forEach((t, i) => t.classList.toggle('is-active', i === this.activeIndex));
+    }
   }
+
+  window.AuroraLightbox = new AuroraLightbox();
+  const initLightbox = () => window.AuroraLightbox.init();
 
   // 5. Interactive Forms & Lead Submissions
   function initForms() {
@@ -316,7 +659,8 @@
           const card = btn.closest('[data-product-card]') || btn.closest('.tilda-product-card');
           const id = btn.dataset.productId || Math.random().toString(36).substr(2, 6);
           const name = btn.dataset.productName || card?.querySelector('[data-product-name]')?.textContent?.trim() || 'Товар';
-          const price = parseFloat(btn.dataset.productPrice || card?.querySelector('[data-product-price]')?.textContent?.replace(/[^\d.]/g, '') || 0);
+          const priceRaw = btn.dataset.productPrice || card?.querySelector('[data-product-price]')?.textContent || '0';
+          const price = parseFloat(String(priceRaw).replace(/\s/g, '').replace(',', '.').replace(/[^\d.]/g, '') || 0);
           const img = btn.dataset.productImg || card?.querySelector('img')?.src || '';
           this.add({ id, name, price, img });
         });
@@ -496,5 +840,5 @@
     initAll();
   }
 
-  window.TildaRuntime = { init: initAll, Cart, triggerAnimation };
+  window.TildaRuntime = { init: initAll, Cart, triggerAnimation, lightbox: window.AuroraLightbox };
 })();

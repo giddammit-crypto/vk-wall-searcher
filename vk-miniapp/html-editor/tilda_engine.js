@@ -317,6 +317,11 @@ export class TildaEngine {
     wrapper.appendChild(this.createAddBlockBar(page.blocks.length, true));
 
     this.container.appendChild(wrapper);
+
+    // Re-initialize lightbox for live preview
+    if (window.AuroraLightbox) {
+      setTimeout(() => window.AuroraLightbox.init(), 100);
+    }
   }
 
   getBreakpointWidth() {
@@ -1830,6 +1835,12 @@ export class TildaEngine {
     clone.title = original.title + ' (Копия)';
     clone.slug = original.slug + '-copy';
 
+    if (Array.isArray(clone.blocks)) {
+      clone.blocks.forEach(b => {
+        b.instanceId = 'blk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      });
+    }
+
     this.project.pages.push(clone);
     this.switchPage(clone.id);
     this.saveHistory();
@@ -2274,7 +2285,7 @@ export class TildaEngine {
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@400;600;700;800;900&family=Oswald:wght@500;700&family=Playfair+Display:wght@600;800&family=Roboto:wght@400;500;700&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
   
-  ${isZip ? '<link rel="stylesheet" href="css/style.css">' : ''}
+  ${isZip ? '<link rel="stylesheet" href="css/style.css">' : '<link rel="stylesheet" href="style.css">'}
   ${s.headCode || ''}
   ${metrikaScript}
 
@@ -2345,32 +2356,9 @@ export class TildaEngine {
 </head>
 <body>
 ${blocksHtml}
-${isZip ? '<script src="js/runtime.js"></script>' : `
-<script>
-(function() {
-  const animatedElements = document.querySelectorAll('[data-tilda-anim]');
-  if (animatedElements.length > 0) {
-    animatedElements.forEach(el => {
-      const delay = el.getAttribute('data-anim-delay');
-      const duration = el.getAttribute('data-anim-duration');
-      if (delay) el.style.transitionDelay = delay + 's';
-      if (duration) el.style.transitionDuration = duration + 's';
-    });
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          el.classList.add('tilda-animated-in');
-          if (el.getAttribute('data-tilda-anim') === 'bounce') el.classList.add('anim-bounce');
-          obs.unobserve(el);
-        }
-      });
-    }, { threshold: 0.08 });
-    animatedElements.forEach(el => observer.observe(el));
-  }
-})();
-</script>
-`}
+${isZip ? '<script src="js/runtime.js"></script>' : '<script src="tilda_runtime.js"></script>'}
+
+
 ${s.bodyCode || ''}
 </body>
 </html>`;
