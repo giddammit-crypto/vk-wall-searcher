@@ -270,11 +270,16 @@
             <span class="material-symbols-rounded">search</span>
             <input type="text" id="dashboard-search-input" placeholder="Поиск по проектам и страницам..." />
           </div>
-          <div class="dashboard-filter-chips" id="dashboard-filter-chips">
+          <div class="dashboard-filter-chips" id="dashboard-filter-chips" style="flex-wrap:wrap;">
             <button class="dash-chip is-active" data-filter="all">Все проекты (<span id="dash-count-all">0</span>)</button>
             <button class="dash-chip" data-filter="landing">Лендинги</button>
             <button class="dash-chip" data-filter="store">Магазины</button>
             <button class="dash-chip" data-filter="portfolio">Портфолио</button>
+            <button class="dash-chip" data-filter="restaurant">Рестораны</button>
+            <button class="dash-chip" data-filter="event">Ивенты</button>
+            <button class="dash-chip" data-filter="education">Обучение</button>
+            <button class="dash-chip" data-filter="medical">Клиники</button>
+            <button class="dash-chip" data-filter="blog">Блоги</button>
           </div>
         </div>
 
@@ -348,8 +353,26 @@
     </div>
 
     <!-- View 4: Fullscreen Preview -->
-    <div id="view-preview" style="display:none;width:100%;height:100%;">
-      <iframe id="fullscreen-preview-frame" style="width:100%;height:calc(100vh - 90px);border:none;background:#fff;"></iframe>
+    <div id="view-preview" style="display:none;width:100%;height:100%;flex-direction:column;align-items:center;">
+      <div id="preview-control-bar">
+        <div class="preview-status-pill">
+          <span>🟢 Живой предпросмотр сайта (Интерактивный режим)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="topbar-action-btn" id="btn-preview-replay-anim" title="Перезапустить все анимации на странице">
+            <span>✨ Повторить анимации</span>
+          </button>
+          <div class="preview-vp-group">
+            <button class="preview-vp-btn is-active" data-preview-vp="100%">Десктоп</button>
+            <button class="preview-vp-btn" data-preview-vp="768px">Планшет</button>
+            <button class="preview-vp-btn" data-preview-vp="375px">Смартфон</button>
+          </div>
+          <button class="topbar-action-btn btn-primary" id="btn-preview-back-builder">
+            <span>← Вернуться в конструктор</span>
+          </button>
+        </div>
+      </div>
+      <iframe id="fullscreen-preview-frame" style="width:100%;height:calc(100vh - 132px);border:none;background:#fff;transition:width 0.25s ease;"></iframe>
     </div>
   </section>
 
@@ -382,11 +405,11 @@
       </div>
 
       <div class="insp-section-title">Выберите готовый шаблон структуры:</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px;max-height:360px;overflow-y:auto;padding-right:4px;">
         <div class="store-product-card template-card is-active" data-template="landing" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#0d99ff;">web</span>
-            <span>Лендинг (Landing Page)</span>
+            <span>Лендинг продукта</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Шапка, Главный экран, Преимущества, Тарифы, FAQ, Форма захвата, Подвал.</div>
         </div>
@@ -394,7 +417,7 @@
         <div class="store-product-card template-card" data-template="store" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#10b981;">shopping_bag</span>
-            <span>Каталог товаров (Магазин)</span>
+            <span>Каталог и магазин</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Шапка с корзиной, Витрина товаров, Фильтры, Форма заказа, Подвал.</div>
         </div>
@@ -402,15 +425,55 @@
         <div class="store-product-card template-card" data-template="about" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#8b5cf6;">groups</span>
-            <span>О компании & Команда</span>
+            <span>О компании и команда</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Обложка, История компании, Команда, Отзывы клиентов, Подвал.</div>
+        </div>
+
+        <div class="store-product-card template-card" data-template="portfolio" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#ec4899;">palette</span>
+            <span>Портфолио и кейсы</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Сплит-обложка, Галерея работ, Кейсы агентства, Отзывы, Подвал.</div>
+        </div>
+
+        <div class="store-product-card template-card" data-template="blog" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#38bdf8;">newspaper</span>
+            <span>Блог и новости</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Шапка медиа, Главная статья, Сетка публикаций, Подписка, Подвал.</div>
+        </div>
+
+        <div class="store-product-card template-card" data-template="restaurant" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#f97316;">restaurant</span>
+            <span>Меню ресторана и бронь</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Атмосферная обложка, Карточки блюд, Шеф-повар, Бронь столика, Контакты.</div>
+        </div>
+
+        <div class="store-product-card template-card" data-template="event" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#a855f7;">mic</span>
+            <span>Афиша и программа ивента</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Таймер обратного отсчета, Спикеры, Расписание сессий, Билеты, Регистрация.</div>
+        </div>
+
+        <div class="store-product-card template-card" data-template="education" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#14b8a6;">school</span>
+            <span>Страница онлайн-курса</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Оффер курса, Программа модулей, Преподаватели, Тарифы обучения, FAQ.</div>
         </div>
 
         <div class="store-product-card template-card" data-template="contacts" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#f59e0b;">contact_support</span>
-            <span>Контакты & Обратная связь</span>
+            <span>Контакты и карта</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Блок контактов, Интерактивная карта, Форма обратной связи, Подвал.</div>
         </div>
@@ -418,7 +481,7 @@
         <div class="store-product-card template-card" data-template="blank" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#94a3b8;">draft</span>
-            <span>Чистая страница (Blank)</span>
+            <span>Чистая страница</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Минимальная базовая разметка: только меню и футер.</div>
         </div>
@@ -524,7 +587,7 @@
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
       <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
-        Загрузите файл шрифта <b>.ttf, .otf, .woff, .woff2</b> (скачанный с <a href="https://ofont.ru" target="_blank" style="color:#0d99ff;text-decoration:underline;">ofont.ru</a> или вашего ПК). Шрифт сохранится в вашем браузере.
+        Загрузите файл шрифта <b>.ttf, .otf, .woff, .woff2</b> (скачанный с <a href="https://ofont.ru" target="_blank" rel="noopener noreferrer" style="color:#0d99ff;text-decoration:underline;">ofont.ru</a> или вашего ПК). Шрифт сохранится в вашем браузере.
       </div>
 
       <div id="ofont-dropzone" style="border:2px dashed #334155;border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:#0d1117;transition:border-color 0.2s;">
@@ -569,7 +632,7 @@
         <div style="display:flex;gap:8px;">
           <input type="text" id="cloud-site-url" readonly style="flex:1;padding:8px 12px;background:var(--bg-dark-0);border:1px solid var(--border);color:#fff;border-radius:6px;font-family:monospace;font-size:12px;" />
           <button class="topbar-action-btn" id="btn-copy-cloud-url" title="Скопировать ссылку"><span class="material-symbols-rounded">content_copy</span></button>
-          <a href="#" target="_blank" class="topbar-action-btn" id="btn-open-cloud-url" title="Открыть в новой вкладке" style="text-decoration:none;"><span class="material-symbols-rounded">open_in_new</span></a>
+          <a href="#" target="_blank" rel="noopener noreferrer" class="topbar-action-btn" id="btn-open-cloud-url" title="Открыть в новой вкладке" style="text-decoration:none;"><span class="material-symbols-rounded">open_in_new</span></a>
         </div>
       </div>
     </div>
@@ -641,24 +704,24 @@
       </div>
 
       <div class="insp-section-title">Выберите готовый шаблон сайта:</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;">
-        <div class="store-product-card proj-template-card is-active" data-proj-template="landing" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:14px;border:1px solid #0d99ff;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px;max-height:380px;overflow-y:auto;padding-right:4px;">
+        <div class="store-product-card proj-template-card is-active" data-proj-template="landing" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;border:1px solid #0d99ff;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#0d99ff;">rocket_launch</span>
-            <span>🚀 Флагманский Лендинг</span>
+            <span>🚀 Флагманский IT / SaaS Лендинг</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">8 готовых блоков: Меню, Обложка с фото, О нас, Преимущества, Тарифы, FAQ, Форма, Футер.</div>
         </div>
 
-        <div class="store-product-card proj-template-card" data-proj-template="store" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:14px;">
+        <div class="store-product-card proj-template-card" data-proj-template="store" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#10b981;">shopping_cart</span>
-            <span>🛍️ Интернет-магазин & Корзина</span>
+            <span>🛍️ Интернет-магазин & Гаджеты</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Витрина товаров ST300, Корзина ST100, Флагманский товар ST200, Форма доставки.</div>
         </div>
 
-        <div class="store-product-card proj-template-card" data-proj-template="portfolio" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:14px;">
+        <div class="store-product-card proj-template-card" data-proj-template="portfolio" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#8b5cf6;">palette</span>
             <span>🎨 Digital Agency & Портфолио</span>
@@ -666,10 +729,58 @@
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Премиум сплит-обложка, Сетка кейсов, Отзывы клиентов, Контакты и карта.</div>
         </div>
 
-        <div class="store-product-card proj-template-card" data-proj-template="blank" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:14px;">
+        <div class="store-product-card proj-template-card" data-proj-template="restaurant" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#f97316;">restaurant</span>
+            <span>🍽️ Ресторан & Доставка авторской кухни</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Атмосферная обложка, Витрина блюд с заказом, История шеф-повара, Бронь столика.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="event" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#a855f7;">mic</span>
+            <span>🎤 Конференция / Ивент / Вебинар 2026</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Таймер до старта, Спикеры саммита, Программа выступлений, Билеты и регистрация.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="education" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#14b8a6;">school</span>
+            <span>🎓 Онлайн-школа & Образовательный курс</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Оффер академии, Учебная программа по модулям, Менторы, Тарифы с рассрочкой.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="medical" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#06b6d4;">medical_services</span>
+            <span>🏥 Медицинская клиника & Beauty Studio</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Направления медицины, Ведущие врачи, Прайс-лист процедур, Онлайн-запись на прием.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="realestate" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#eab308;">apartment</span>
+            <span>🏢 Недвижимость & Архитектурное бюро</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Презентация жилых комплексов, Планировки и объекты, Преимущества, Запись на просмотр.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="blog" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
+          <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-rounded" style="color:#38bdf8;">newspaper</span>
+            <span>📰 IT-Медиа & Корпоративный блог</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Главный редакционный материал, Рубрикатор статей, Популярные обзоры, Подписка.</div>
+        </div>
+
+        <div class="store-product-card proj-template-card" data-proj-template="blank" style="cursor:pointer;flex-direction:column;align-items:flex-start;padding:12px;">
           <div style="font-weight:700;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px;">
             <span class="material-symbols-rounded" style="color:#94a3b8;">draft</span>
-            <span>📄 Чистый проект с нуля</span>
+            <span>📄 Чистый проект с нуля (Blank)</span>
           </div>
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Чистый лист для свободного творчества или сборки из Zero Block.</div>
         </div>

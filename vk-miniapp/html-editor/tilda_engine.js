@@ -18,23 +18,27 @@ function escapeHtml(str) {
 
 export class TildaEngine {
   constructor(options = {}) {
-    this.container = options.container || document.getElementById('tilda-artboard');
-    this.layersList = options.layersList || document.getElementById('tilda-layers-list');
-    this.propsPanel = options.propsPanel || document.getElementById('tilda-props-panel');
-    this.paletteContainer = options.paletteContainer || document.getElementById('tilda-blocks-palette');
+    const isHeadless = options.container === null;
+    const doc = typeof document !== 'undefined' ? document : null;
+    this.container = isHeadless ? null : (options.container || doc?.getElementById('tilda-artboard') || null);
+    this.layersList = isHeadless ? null : (options.layersList || doc?.getElementById('tilda-layers-list') || null);
+    this.propsPanel = isHeadless ? null : (options.propsPanel || doc?.getElementById('tilda-props-panel') || null);
+    this.paletteContainer = isHeadless ? null : (options.paletteContainer || doc?.getElementById('tilda-blocks-palette') || null);
 
     this.activeBreakpoint = 'desktop';
     this.activeBlockId = null;
     this.activeCustomElementId = null;
     this.activeCategory = 'all';
     this.activeInspectorTab = 'content'; // content | design | anim | resp
-    this.isGridSnapping = localStorage.getItem('aurora_grid_snapping') !== 'false';
+    this.isGridSnapping = (typeof localStorage !== 'undefined') ? localStorage.getItem('aurora_grid_snapping') !== 'false' : true;
 
     this.project = this.loadProject() || this.createDefaultProject();
     this.history = [];
     this.historyIdx = -1;
 
-    this.init();
+    if (!isHeadless && doc) {
+      this.init();
+    }
   }
 
   toggleGridSnapping() {
@@ -150,6 +154,7 @@ export class TildaEngine {
   }
 
   loadProject() {
+    if (typeof localStorage === 'undefined') return null;
     try {
       const raw = localStorage.getItem('aurora_web_current_project') || localStorage.getItem('aurora_tilda_current_project');
       if (raw) {
@@ -175,9 +180,17 @@ export class TildaEngine {
   }
 
   saveProject() {
+    if (typeof localStorage === 'undefined') return;
     try {
-      localStorage.setItem('aurora_web_current_project', JSON.stringify(this.project));
-      localStorage.setItem('aurora_tilda_current_project', JSON.stringify(this.project));
+      const serialized = JSON.stringify(this.project);
+      localStorage.setItem('aurora_web_current_project', serialized);
+      localStorage.setItem('aurora_tilda_current_project', serialized);
+      if (this.project && this.project.id) {
+        localStorage.setItem(`aurora_web_proj_${this.project.id}`, serialized);
+      }
+      if (typeof window !== 'undefined' && typeof window.saveFullProject === 'function' && this.project?.id) {
+        window.saveFullProject(this.project);
+      }
     } catch (e) {
       console.warn('Save project error:', e);
     }
@@ -308,6 +321,44 @@ export class TildaEngine {
         this.selectBlock(blk.instanceId);
       });
 
+      // Drag & Drop перемещения блока за ручку
+      const dragHandle = blkEl.querySelector('.blk-drag-handle');
+      if (dragHandle) {
+        dragHandle.addEventListener('dragstart', e => {
+          e.stopPropagation();
+          e.dataTransfer.setData('text/plain', 'move_block:' + blk.instanceId);
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => blkEl.classList.add('is-block-dragging'), 10);
+        });
+        dragHandle.addEventListener('dragend', () => {
+          blkEl.classList.remove('is-block-dragging');
+          document.querySelectorAll('.tilda-block-wrapper, .tilda-add-block-bar').forEach(el => {
+            el.classList.remove('drag-active', 'drag-over-top', 'drag-over-bottom');
+          });
+        });
+      }
+
+      // Разрешаем сброс блоков из палитры или перемещение других блоков прямо на блок
+      blkEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        const rect = blkEl.getBoundingClientRect();
+        const isTop = e.clientY < rect.top + rect.height / 2;
+        blkEl.classList.toggle('drag-over-top', isTop);
+        blkEl.classList.toggle('drag-over-bottom', !isTop);
+      });
+      blkEl.addEventListener('dragleave', () => {
+        blkEl.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      blkEl.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = blkEl.getBoundingClientRect();
+        const isTop = e.clientY < rect.top + rect.height / 2;
+        blkEl.classList.remove('drag-over-top', 'drag-over-bottom');
+        const raw = e.dataTransfer.getData('text/plain');
+        this.handleCanvasBlockDrop(raw, isTop ? idx : idx + 1);
+      });
+
       if (!blk.isLocked) {
         this.bindInlineEditing(contentEl, blk);
         this.bindBlockCustomElements(blkEl, blk);
@@ -323,6 +374,28 @@ export class TildaEngine {
     // Re-initialize lightbox for live preview
     if (window.AuroraLightbox) {
       setTimeout(() => window.AuroraLightbox.init(), 100);
+    }
+  }
+
+  handleCanvasBlockDrop(raw, insertIdx) {
+    if (!raw || typeof raw !== 'string') return;
+    const page = this.getActivePage();
+    if (!page) return;
+    if (raw.startsWith('add_block:')) {
+      const defId = raw.replace('add_block:', '').trim();
+      if (defId) this.addBlock(defId, insertIdx);
+    } else if (raw.startsWith('move_block:')) {
+      const instanceId = raw.replace('move_block:', '').trim();
+      const fromIdx = page.blocks.findIndex(b => b.instanceId === instanceId);
+      if (fromIdx >= 0 && fromIdx !== insertIdx) {
+        const [moved] = page.blocks.splice(fromIdx, 1);
+        const finalIdx = fromIdx < insertIdx ? Math.max(0, insertIdx - 1) : insertIdx;
+        page.blocks.splice(finalIdx, 0, moved);
+        this.saveHistory();
+        this.renderArtboard();
+        this.renderLayersTree();
+        this.selectBlock(instanceId);
+      }
     }
   }
 
@@ -388,7 +461,14 @@ export class TildaEngine {
       }
     }
 
-    // Scroll Animation Configuration
+    // Scroll Animation Configuration (18 types)
+    const allAnimClasses = [
+      'tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down',
+      'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-zoom-out',
+      'anim-flip-up', 'anim-flip-x', 'anim-rotate-in', 'anim-blur-in',
+      'anim-bounce', 'anim-elastic-up', 'anim-swing-in', 'anim-glitch',
+      'anim-typewriter', 'anim-pulse-glow', 'anim-stagger'
+    ];
     if (blk.animation && blk.animation.type && blk.animation.type !== 'none') {
       el.dataset.tildaAnim = blk.animation.type;
       el.dataset.animDelay = blk.animation.delay || 0;
@@ -398,7 +478,7 @@ export class TildaEngine {
       el.classList.add('tilda-animated-in');
     } else {
       delete el.dataset.tildaAnim;
-      el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+      el.classList.remove(...allAnimClasses);
     }
   }
 
@@ -410,7 +490,8 @@ export class TildaEngine {
       const startH = blkEl.offsetHeight;
 
       const onMouseMove = ev => {
-        const dy = ev.clientY - startY;
+        const zoom = (typeof window.getCanvasZoom === 'function') ? window.getCanvasZoom() : 1;
+        const dy = Math.round((ev.clientY - startY) / zoom);
         let newH = startH + dy;
         if (this.isGridSnapping) newH = this.snapCoord(newH, 10);
         newH = Math.max(120, newH);
@@ -439,6 +520,9 @@ export class TildaEngine {
     bar.className = 'tilda-block-action-bar';
     bar.innerHTML = `
       <div class="blk-action-title">
+        <div class="blk-drag-handle" draggable="true" title="Перетащите блок для изменения порядка" style="display:inline-flex;align-items:center;cursor:grab;margin-right:6px;opacity:0.8;">
+          <span class="material-symbols-rounded" style="font-size:16px;">drag_indicator</span>
+        </div>
         <span>${escapeHtml(blk.name)}</span>
         ${blk.anchor ? `<span class="blk-anchor-badge" title="Якорная ссылка на блок">#${escapeHtml(blk.anchor)}</span>` : ''}
       </div>
@@ -584,14 +668,51 @@ export class TildaEngine {
       libBtn?.click();
       this._insertIndex = insertIdx;
     });
+    bar.addEventListener('dragover', e => {
+      e.preventDefault();
+      bar.classList.add('drag-active');
+    });
+    bar.addEventListener('dragleave', () => {
+      bar.classList.remove('drag-active');
+    });
+    bar.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      bar.classList.remove('drag-active');
+      const raw = e.dataTransfer.getData('text/plain');
+      this.handleCanvasBlockDrop(raw, insertIdx);
+    });
     return bar;
   }
 
   bindInlineEditing(contentEl, blk) {
-    const editables = contentEl.querySelectorAll('h1, h2, h3, h4, p, a, button, span, blockquote, li');
-    editables.forEach(el => {
+    const editables = contentEl.querySelectorAll('h1, h2, h3, h4, p, a, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge, blockquote, li, span');
+    editables.forEach((el, idx) => {
+      if (el.closest('.block-custom-element')) return;
+      if (!el.getAttribute('data-el-key')) {
+        el.setAttribute('data-el-key', `${el.tagName.toLowerCase()}_${idx}`);
+      }
+      const key = el.getAttribute('data-el-key');
+
+      // Восстанавливаем ранее сохраненные инлайн-правки и смещения
+      if (blk.content?.inlineEdits && blk.content.inlineEdits[key] !== undefined && el.tagName !== 'IMG') {
+        el.innerHTML = blk.content.inlineEdits[key];
+      }
+      if (blk.content?.elementOffsets && blk.content.elementOffsets[key]) {
+        const off = blk.content.elementOffsets[key];
+        if (off.x || off.y) {
+          el.style.position = 'relative';
+          el.style.left = `${off.x || 0}px`;
+          el.style.top = `${off.y || 0}px`;
+          el.style.zIndex = '25';
+        }
+      }
+
+      if (el.tagName === 'IMG') return;
+
       el.addEventListener('dblclick', e => {
         e.stopPropagation();
+        const prevText = (el.innerText || '').trim();
         el.contentEditable = 'true';
         el.focus();
         el.classList.add('is-editing-inline');
@@ -600,13 +721,27 @@ export class TildaEngine {
           el.contentEditable = 'false';
           el.classList.remove('is-editing-inline');
           el.removeEventListener('blur', onBlur);
+
+          if (!blk.content) blk.content = {};
+          if (!blk.content.inlineEdits) blk.content.inlineEdits = {};
+          blk.content.inlineEdits[key] = el.innerHTML;
+
+          if ((el.tagName === 'H1' || el.tagName === 'H2') && blk.content.title !== undefined && prevText === (blk.content.title || '').trim()) {
+            blk.content.title = el.innerText.trim();
+          }
+
           this.saveHistory();
+          this.saveProject();
         };
         el.addEventListener('blur', onBlur);
       });
 
       if (el.tagName === 'A') {
         el.addEventListener('click', e => {
+          if (el.dataset.justDragged === 'true') {
+            e.preventDefault();
+            return;
+          }
           e.preventDefault();
           this.showLinkEditorForElement(el);
         });
@@ -684,7 +819,7 @@ export class TildaEngine {
     this.renderArtboard();
     this.renderLayersTree();
 
-    const el = document.getElementById(instanceId);
+    const el = document.getElementById(instanceId) || document.querySelector(`[data-block-id="${instanceId}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -721,7 +856,7 @@ export class TildaEngine {
       </div>
 
       <div class="tilda-category-chips-wrap">
-        <button class="tilda-cat-chip ${this.activeCategory === 'all' ? 'is-active' : ''}" data-cat="all">Все (40+)</button>
+        <button class="tilda-cat-chip ${this.activeCategory === 'all' ? 'is-active' : ''}" data-cat="all">Все (${TILDA_BLOCKS.length}+)</button>
         ${TILDA_CATEGORIES.map(c => `
           <button class="tilda-cat-chip ${this.activeCategory === c.id ? 'is-active' : ''}" data-cat="${c.id}">${c.name}</button>
         `).join('')}
@@ -748,7 +883,7 @@ export class TildaEngine {
 
       blocks.forEach(blk => {
         html += `
-          <div class="tilda-palette-card" data-block-def="${blk.id}" title="${blk.name}">
+          <div class="tilda-palette-card" draggable="true" data-block-def="${blk.id}" title="Кликните или перетащите на холст: ${blk.name}">
             <div class="tilda-card-icon">
               <span class="material-symbols-rounded">${blk.icon || 'view_agenda'}</span>
             </div>
@@ -798,6 +933,18 @@ export class TildaEngine {
     });
 
     this.paletteContainer.querySelectorAll('.tilda-palette-card').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        const defId = card.dataset.blockDef;
+        e.dataTransfer.setData('text/plain', 'add_block:' + defId);
+        e.dataTransfer.effectAllowed = 'copy';
+        card.classList.add('is-dragging');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('is-dragging');
+        document.querySelectorAll('.tilda-block-wrapper, .tilda-add-block-bar').forEach(el => {
+          el.classList.remove('drag-active', 'drag-over-top', 'drag-over-bottom');
+        });
+      });
       card.addEventListener('click', () => {
         const defId = card.dataset.blockDef;
         this.addBlock(defId);
@@ -871,7 +1018,7 @@ export class TildaEngine {
       item.addEventListener('click', e => {
         if (e.target.closest('.layer-act-btn') || e.target.closest('.layer-drag-handle')) return;
         this.selectBlock(item.dataset.id);
-        const el = document.getElementById(item.dataset.id);
+        const el = document.getElementById(item.dataset.id) || document.querySelector(`[data-block-id="${item.dataset.id}"]`);
         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
 
@@ -909,28 +1056,36 @@ export class TildaEngine {
     const items = this.layersList.querySelectorAll('.tilda-layer-item');
 
     items.forEach(item => {
-      item.addEventListener('dragstart', () => {
+      item.addEventListener('dragstart', e => {
         draggedId = item.dataset.id;
+        e.dataTransfer?.setData('text/plain', 'move_block:' + draggedId);
         item.classList.add('is-dragging');
       });
 
       item.addEventListener('dragend', () => {
         item.classList.remove('is-dragging');
+        items.forEach(it => it.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'));
         draggedId = null;
       });
 
       item.addEventListener('dragover', e => {
         e.preventDefault();
+        const rect = item.getBoundingClientRect();
+        const isTop = e.clientY < rect.top + rect.height / 2;
+        item.classList.toggle('drag-over-top', isTop);
+        item.classList.toggle('drag-over-bottom', !isTop);
         item.classList.add('drag-over');
       });
 
       item.addEventListener('dragleave', () => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
       });
 
       item.addEventListener('drop', e => {
         e.preventDefault();
-        item.classList.remove('drag-over');
+        const rect = item.getBoundingClientRect();
+        const isTop = e.clientY < rect.top + rect.height / 2;
+        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
         const targetId = item.dataset.id;
         if (!draggedId || draggedId === targetId) return;
 
@@ -939,8 +1094,10 @@ export class TildaEngine {
         const toIdx = page.blocks.findIndex(b => b.instanceId === targetId);
 
         if (fromIdx >= 0 && toIdx >= 0) {
-          const moved = page.blocks.splice(fromIdx, 1)[0];
-          page.blocks.splice(toIdx, 0, moved);
+          const [moved] = page.blocks.splice(fromIdx, 1);
+          let insertAt = page.blocks.findIndex(b => b.instanceId === targetId);
+          if (!isTop) insertAt += 1;
+          page.blocks.splice(insertAt, 0, moved);
           this.saveHistory();
           this.renderArtboard();
           this.renderLayersTree();
@@ -996,6 +1153,15 @@ export class TildaEngine {
     customElements.forEach(custEl => {
       const elId = custEl.dataset.customElId;
       if (!elId) return;
+
+      const elData = blk.content?.customElements?.find(e => e.id === elId);
+      if (elData?.props?.animation && elData.props.animation.type && elData.props.animation.type !== 'none') {
+        custEl.dataset.tildaAnim = elData.props.animation.type;
+        custEl.dataset.animDelay = elData.props.animation.delay || 0;
+        custEl.dataset.animDuration = elData.props.animation.duration || 0.7;
+      } else {
+        delete custEl.dataset.tildaAnim;
+      }
 
       const isSelected = (this.activeCustomElementId === elId && this.activeBlockId === blk.instanceId);
       if (isSelected) {
@@ -1089,6 +1255,8 @@ export class TildaEngine {
     const startMouseY = startEvt.clientY;
     const startX = elData.props.x || parseInt(custEl.style.left, 10) || 0;
     const startY = elData.props.y || parseInt(custEl.style.top, 10) || 0;
+    const elW = custEl.offsetWidth || elData.props.width || 100;
+    const elH = custEl.offsetHeight || elData.props.height || 40;
 
     let isMoved = false;
 
@@ -1103,9 +1271,28 @@ export class TildaEngine {
 
     custEl.classList.add('is-element-dragged');
 
+    // Умные направляющие (Smart Guides)
+    const blkEl = custEl.closest('.tilda-block-wrapper') || custEl.parentElement;
+    const guideX = document.createElement('div');
+    guideX.className = 'smart-guide-line-x';
+    guideX.style.cssText = 'position:absolute;top:0;bottom:0;width:1px;background:#f43f5e;z-index:95;pointer-events:none;display:none;box-shadow:0 0 6px rgba(244,63,94,0.8);';
+    const guideY = document.createElement('div');
+    guideY.className = 'smart-guide-line-y';
+    guideY.style.cssText = 'position:absolute;left:0;right:0;height:1px;background:#f43f5e;z-index:95;pointer-events:none;display:none;box-shadow:0 0 6px rgba(244,63,94,0.8);';
+    if (blkEl) {
+      blkEl.appendChild(guideX);
+      blkEl.appendChild(guideY);
+    }
+
     const onMouseMove = ev => {
-      const dx = ev.clientX - startMouseX;
-      const dy = ev.clientY - startMouseY;
+      const zoom = (typeof window.getCanvasZoom === 'function') ? window.getCanvasZoom() : 1;
+      let dx = Math.round((ev.clientX - startMouseX) / zoom);
+      let dy = Math.round((ev.clientY - startMouseY) / zoom);
+
+      if (ev.shiftKey) {
+        if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
 
       if (!isMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
         isMoved = true;
@@ -1117,6 +1304,52 @@ export class TildaEngine {
       if (this.isGridSnapping) {
         newX = this.snapCoord(newX, 8);
         newY = this.snapCoord(newY, 8);
+      }
+
+      // Проверка Smart Guides (центр блока и соседние кастомные элементы)
+      let snappedX = null;
+      let snappedY = null;
+      if (blkEl) {
+        const blkCenterX = Math.round(blkEl.clientWidth / 2);
+        const blkCenterY = Math.round(blkEl.clientHeight / 2);
+        if (Math.abs((newX + elW / 2) - blkCenterX) < 8) {
+          newX = Math.round(blkCenterX - elW / 2);
+          snappedX = blkCenterX;
+        }
+        if (Math.abs((newY + elH / 2) - blkCenterY) < 8) {
+          newY = Math.round(blkCenterY - elH / 2);
+          snappedY = blkCenterY;
+        }
+
+        const siblings = blkEl.querySelectorAll('.block-custom-element:not(.is-element-dragged)');
+        siblings.forEach(sib => {
+          const sX = parseInt(sib.style.left, 10) || 0;
+          const sY = parseInt(sib.style.top, 10) || 0;
+          const sW = sib.offsetWidth || 100;
+          const sH = sib.offsetHeight || 40;
+
+          if (Math.abs(newX - sX) < 8) { newX = sX; snappedX = sX; }
+          else if (Math.abs((newX + elW) - (sX + sW)) < 8) { newX = sX + sW - elW; snappedX = sX + sW; }
+          else if (Math.abs((newX + elW / 2) - (sX + sW / 2)) < 8) { newX = Math.round(sX + sW / 2 - elW / 2); snappedX = Math.round(sX + sW / 2); }
+
+          if (Math.abs(newY - sY) < 8) { newY = sY; snappedY = sY; }
+          else if (Math.abs((newY + elH) - (sY + sH)) < 8) { newY = sY + sH - elH; snappedY = sY + sH; }
+          else if (Math.abs((newY + elH / 2) - (sY + sH / 2)) < 8) { newY = Math.round(sY + sH / 2 - elH / 2); snappedY = Math.round(sY + sH / 2); }
+        });
+      }
+
+      if (snappedX !== null) {
+        guideX.style.left = `${snappedX}px`;
+        guideX.style.display = 'block';
+      } else {
+        guideX.style.display = 'none';
+      }
+
+      if (snappedY !== null) {
+        guideY.style.top = `${snappedY}px`;
+        guideY.style.display = 'block';
+      } else {
+        guideY.style.display = 'none';
       }
 
       custEl.style.left = `${newX}px`;
@@ -1134,8 +1367,12 @@ export class TildaEngine {
       window.removeEventListener('mouseup', onMouseUp);
       custEl.classList.remove('is-element-dragged');
       badge.remove();
+      guideX.remove();
+      guideY.remove();
 
       if (isMoved) {
+        custEl.dataset.justDragged = 'true';
+        setTimeout(() => delete custEl.dataset.justDragged, 250);
         elData.props.x = parseInt(custEl.style.left, 10) || 0;
         elData.props.y = parseInt(custEl.style.top, 10) || 0;
         this.saveHistory();
@@ -1169,8 +1406,9 @@ export class TildaEngine {
     badge.style.display = 'block';
 
     const onMouseMove = ev => {
-      const dx = ev.clientX - startMouseX;
-      const dy = ev.clientY - startMouseY;
+      const zoom = (typeof window.getCanvasZoom === 'function') ? window.getCanvasZoom() : 1;
+      const dx = Math.round((ev.clientX - startMouseX) / zoom);
+      const dy = Math.round((ev.clientY - startMouseY) / zoom);
 
       let newW = startW;
       let newH = startH;
@@ -1578,7 +1816,48 @@ export class TildaEngine {
           </label>
         </div>
 
-        <!-- 7. Действия -->
+        <!-- 7. Анимация элемента -->
+        <div class="insp-section-title">🎬 Анимация элемента</div>
+        <div class="insp-field">
+          <label>Эффект появления</label>
+          <select id="cust-el-anim-type">
+            <option value="none" ${(p.animation?.type || 'none') === 'none' ? 'selected' : ''}>Без анимации</option>
+            <option value="fade-in" ${p.animation?.type === 'fade-in' ? 'selected' : ''}>✨ Плавное появление (Fade In)</option>
+            <option value="slide-up" ${p.animation?.type === 'slide-up' ? 'selected' : ''}>⬆ Всплытие снизу (Slide Up)</option>
+            <option value="slide-down" ${p.animation?.type === 'slide-down' ? 'selected' : ''}>⬇ Появление сверху (Slide Down)</option>
+            <option value="slide-left" ${p.animation?.type === 'slide-left' ? 'selected' : ''}>⬅ Сдвиг справа налево (Slide Left)</option>
+            <option value="slide-right" ${p.animation?.type === 'slide-right' ? 'selected' : ''}>➡ Сдвиг слева направо (Slide Right)</option>
+            <option value="zoom-in" ${p.animation?.type === 'zoom-in' ? 'selected' : ''}>🔍 Увеличение (Zoom In)</option>
+            <option value="zoom-out" ${p.animation?.type === 'zoom-out' ? 'selected' : ''}>🔎 Уменьшение (Zoom Out)</option>
+            <option value="flip-up" ${p.animation?.type === 'flip-up' ? 'selected' : ''}>🔄 3D Поворот вверх (Flip Up)</option>
+            <option value="flip-x" ${p.animation?.type === 'flip-x' ? 'selected' : ''}>🔃 3D Разворот по оси (Flip X)</option>
+            <option value="rotate-in" ${p.animation?.type === 'rotate-in' ? 'selected' : ''}>🌀 Вращение (Rotate In)</option>
+            <option value="blur-in" ${p.animation?.type === 'blur-in' ? 'selected' : ''}>🌫 Фокус из размытия (Blur In)</option>
+            <option value="bounce" ${p.animation?.type === 'bounce' ? 'selected' : ''}>🏀 Пружинистое появление (Bounce)</option>
+            <option value="elastic-up" ${p.animation?.type === 'elastic-up' ? 'selected' : ''}>🪀 Эластичный подъём (Elastic Up)</option>
+            <option value="swing-in" ${p.animation?.type === 'swing-in' ? 'selected' : ''}>🎐 Покачивание (Swing In)</option>
+            <option value="glitch" ${p.animation?.type === 'glitch' ? 'selected' : ''}>⚡ Кибер-глитч (Glitch)</option>
+            <option value="typewriter" ${p.animation?.type === 'typewriter' ? 'selected' : ''}>⌨ Печатная машинка (Typewriter)</option>
+            <option value="pulse-glow" ${p.animation?.type === 'pulse-glow' ? 'selected' : ''}>💫 Неоновая пульсация (Pulse Glow)</option>
+            <option value="stagger" ${p.animation?.type === 'stagger' ? 'selected' : ''}>🌊 Каскадное появление (Stagger)</option>
+          </select>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field">
+            <label>Длительность (сек)</label>
+            <input type="number" step="0.1" min="0.2" max="5" id="cust-el-anim-duration" value="${p.animation?.duration || 0.7}" />
+          </div>
+          <div class="insp-field">
+            <label>Задержка (сек)</label>
+            <input type="number" step="0.1" min="0" max="5" id="cust-el-anim-delay" value="${p.animation?.delay || 0}" />
+          </div>
+        </div>
+        <button class="topbar-action-btn btn-primary" id="btn-test-cust-el-anim" type="button" style="width:100%;margin-top:8px;padding:10px;justify-content:center;">
+          <span class="material-symbols-rounded">play_arrow</span>
+          <span>▶ Проверить анимацию</span>
+        </button>
+
+        <!-- 8. Действия -->
         <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;">
           <button class="topbar-action-btn" id="btn-dup-cust-el" style="flex:1;"><span class="material-symbols-rounded">content_copy</span> Копия</button>
           <button class="topbar-action-btn" id="btn-del-cust-el" style="flex:1;background:rgba(244,63,94,0.15);color:#f43f5e;border-color:rgba(244,63,94,0.3);"><span class="material-symbols-rounded">delete</span> Удалить</button>
@@ -1800,6 +2079,43 @@ export class TildaEngine {
     targetBlankChk?.addEventListener('change', () => {
       p.targetBlank = targetBlankChk.checked;
       syncEl();
+    });
+
+    // Анимация кастомного элемента
+    const saveCustAnim = () => {
+      const type = this.propsPanel.querySelector('#cust-el-anim-type')?.value || 'none';
+      const duration = parseFloat(this.propsPanel.querySelector('#cust-el-anim-duration')?.value) || 0.7;
+      const delay = parseFloat(this.propsPanel.querySelector('#cust-el-anim-delay')?.value) || 0;
+      p.animation = { type, duration, delay };
+      syncEl();
+    };
+    this.propsPanel.querySelector('#cust-el-anim-type')?.addEventListener('change', saveCustAnim);
+    this.propsPanel.querySelector('#cust-el-anim-duration')?.addEventListener('input', saveCustAnim);
+    this.propsPanel.querySelector('#cust-el-anim-delay')?.addEventListener('input', saveCustAnim);
+
+    this.propsPanel.querySelector('#btn-test-cust-el-anim')?.addEventListener('click', () => {
+      saveCustAnim();
+      const animType = p.animation?.type || 'none';
+      if (animType === 'none') {
+        alert('Выберите эффект анимации из выпадающего списка выше!');
+        return;
+      }
+      const blockEl = document.getElementById(blk.instanceId) || document.getElementById(blk.anchor);
+      const domEl = blockEl?.querySelector(`.block-custom-element[data-custom-el-id="${customEl.id}"]`);
+      if (domEl) {
+        const allAnimClasses = [
+          'tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down',
+          'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-zoom-out',
+          'anim-flip-up', 'anim-flip-x', 'anim-rotate-in', 'anim-blur-in',
+          'anim-bounce', 'anim-elastic-up', 'anim-swing-in', 'anim-glitch',
+          'anim-typewriter', 'anim-pulse-glow', 'anim-stagger'
+        ];
+        domEl.classList.remove(...allAnimClasses);
+        domEl.style.animationDuration = `${p.animation.duration || 0.7}s`;
+        domEl.style.animationDelay = `${p.animation.delay || 0}s`;
+        void domEl.offsetWidth;
+        domEl.classList.add(`anim-${animType}`, 'tilda-animated-in');
+      }
     });
 
     this.propsPanel.querySelector('#btn-dup-cust-el')?.addEventListener('click', () => {
@@ -2081,8 +2397,18 @@ export class TildaEngine {
           <option value="slide-left" ${a.type === 'slide-left' ? 'selected' : ''}>⬅ Сдвиг справа налево (Slide Left)</option>
           <option value="slide-right" ${a.type === 'slide-right' ? 'selected' : ''}>➡ Сдвиг слева направо (Slide Right)</option>
           <option value="zoom-in" ${a.type === 'zoom-in' ? 'selected' : ''}>🔍 Увеличение (Zoom In)</option>
-          <option value="flip-up" ${a.type === 'flip-up' ? 'selected' : ''}>🔄 3D Поворот (Flip Up)</option>
+          <option value="zoom-out" ${a.type === 'zoom-out' ? 'selected' : ''}>🔎 Уменьшение (Zoom Out)</option>
+          <option value="flip-up" ${a.type === 'flip-up' ? 'selected' : ''}>🔄 3D Поворот вверх (Flip Up)</option>
+          <option value="flip-x" ${a.type === 'flip-x' ? 'selected' : ''}>🔃 3D Разворот по оси (Flip X)</option>
+          <option value="rotate-in" ${a.type === 'rotate-in' ? 'selected' : ''}>🌀 Вращение (Rotate In)</option>
+          <option value="blur-in" ${a.type === 'blur-in' ? 'selected' : ''}>🌫 Фокус из размытия (Blur In)</option>
           <option value="bounce" ${a.type === 'bounce' ? 'selected' : ''}>🏀 Пружинистое появление (Bounce)</option>
+          <option value="elastic-up" ${a.type === 'elastic-up' ? 'selected' : ''}>🪀 Эластичный подъём (Elastic Up)</option>
+          <option value="swing-in" ${a.type === 'swing-in' ? 'selected' : ''}>🎐 Покачивание (Swing In)</option>
+          <option value="glitch" ${a.type === 'glitch' ? 'selected' : ''}>⚡ Кибер-глитч (Glitch)</option>
+          <option value="typewriter" ${a.type === 'typewriter' ? 'selected' : ''}>⌨ Печатная машинка (Typewriter)</option>
+          <option value="pulse-glow" ${a.type === 'pulse-glow' ? 'selected' : ''}>💫 Неоновая пульсация (Pulse Glow)</option>
+          <option value="stagger" ${a.type === 'stagger' ? 'selected' : ''}>🌊 Каскадное появление (Stagger)</option>
         </select>
       </div>
       <div class="insp-row-2">
@@ -2338,7 +2664,14 @@ export class TildaEngine {
           alert('Выберите тип анимации из выпадающего списка выше!');
           return;
         }
-        el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+        const allAnimClasses = [
+          'tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down',
+          'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-zoom-out',
+          'anim-flip-up', 'anim-flip-x', 'anim-rotate-in', 'anim-blur-in',
+          'anim-bounce', 'anim-elastic-up', 'anim-swing-in', 'anim-glitch',
+          'anim-typewriter', 'anim-pulse-glow', 'anim-stagger'
+        ];
+        el.classList.remove(...allAnimClasses);
         void el.offsetWidth; // force DOM reflow
         el.classList.add(`anim-${animType}`);
         setTimeout(() => {
@@ -2611,48 +2944,32 @@ export class TildaEngine {
     this.renderInspector();
   }
 
+  getTemplateBlocks(templateType = 'landing') {
+    const templates = {
+      landing: ['menu-1', 'cover-1', 'about-1', 'features-1', 'features-5', 'pricing-1', 'faq-1', 'form-1', 'footer-1'],
+      store: ['menu-2', 'cover-2', 'store-1', 'store-4', 'store-single', 'store-cart', 'store-order', 'footer-4'],
+      portfolio: ['menu-1', 'cover-3', 'portfolio-3', 'portfolio-2', 'counters-1', 'testimonials-3', 'form-1', 'footer-3'],
+      restaurant: ['menu-1', 'cover-1', 'about-2', 'gallery-4', 'features-4', 'testimonials-1', 'contacts-2', 'footer-1'],
+      event: ['menu-1', 'cover-5', 'counters-1', 'team-1', 'timeline-1', 'pricing-1', 'form-5', 'footer-4'],
+      education: ['menu-1', 'cover-2', 'features-3', 'timeline-2', 'team-3', 'pricing-1', 'faq-1', 'form-3', 'footer-4'],
+      medical: ['menu-2', 'cover-4', 'about-1', 'features-4', 'team-1', 'testimonials-2', 'contacts-1', 'footer-1'],
+      realestate: ['menu-1', 'cover-1', 'counters-1', 'portfolio-1', 'timeline-2', 'form-4', 'contacts-2', 'footer-4'],
+      blog: ['menu-1', 'title-1', 'blog-2', 'blog-1', 'blog-3', 'form-2', 'footer-4'],
+      saas: ['menu-1', 'cover-5', 'partners-1', 'features-3', 'features-5', 'counters-2', 'pricing-2', 'faq-1', 'form-1', 'footer-4'],
+      agency: ['menu-1', 'cover-2', 'partners-2', 'about-1', 'portfolio-1', 'team-1', 'testimonials-3', 'form-1', 'footer-4'],
+      about: ['menu-1', 'cover-2', 'about-1', 'about-3', 'team-1', 'timeline-1', 'partners-1', 'footer-1'],
+      contacts: ['menu-1', 'title-1', 'contacts-1', 'contacts-2', 'form-1', 'footer-1'],
+      blank: ['menu-1', 'cover-3', 'footer-1']
+    };
+    const ids = templates[templateType] || templates.blank;
+    return ids.map(id => {
+      const fallbackId = getBlockById(id) ? id : (id.split('-')[0] + '-1');
+      return this.createBlockInstance(getBlockById(fallbackId) ? fallbackId : 'cover-1');
+    });
+  }
+
   addPage(title = 'Новая страница', slug = '', templateType = 'blank') {
-    let blocks = [];
-    if (templateType === 'landing') {
-      blocks = [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('cover-1'),
-        this.createBlockInstance('features-1'),
-        this.createBlockInstance('pricing-1'),
-        this.createBlockInstance('faq-1'),
-        this.createBlockInstance('form-1'),
-        this.createBlockInstance('footer-1')
-      ];
-    } else if (templateType === 'store') {
-      blocks = [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('store-1'),
-        this.createBlockInstance('features-1'),
-        this.createBlockInstance('form-1'),
-        this.createBlockInstance('footer-1')
-      ];
-    } else if (templateType === 'about') {
-      blocks = [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('cover-1'),
-        this.createBlockInstance('about-1'),
-        this.createBlockInstance('testimonials-1'),
-        this.createBlockInstance('footer-1')
-      ];
-    } else if (templateType === 'contacts') {
-      blocks = [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('contacts-1'),
-        this.createBlockInstance('form-1'),
-        this.createBlockInstance('footer-1')
-      ];
-    } else {
-      blocks = [
-        this.createBlockInstance('menu-1'),
-        this.createBlockInstance('cover-1'),
-        this.createBlockInstance('footer-1')
-      ];
-    }
+    const blocks = this.getTemplateBlocks(templateType);
 
     const newPage = {
       id: 'page_' + Date.now(),
@@ -3051,6 +3368,7 @@ export class TildaEngine {
     if (this.historyIdx > 0) {
       this.historyIdx--;
       this.project = JSON.parse(this.history[this.historyIdx]);
+      this.saveProject();
       this.renderArtboard();
       this.renderLayersTree();
       this.renderPagesList();
@@ -3065,6 +3383,7 @@ export class TildaEngine {
     if (this.historyIdx < this.history.length - 1) {
       this.historyIdx++;
       this.project = JSON.parse(this.history[this.historyIdx]);
+      this.saveProject();
       this.renderArtboard();
       this.renderLayersTree();
       this.renderPagesList();
@@ -3091,7 +3410,83 @@ export class TildaEngine {
         : '';
       const anchorAttr = blk.anchor ? ` data-anchor="${escapeHtml(blk.anchor)}"` : '';
       const blockId = blk.anchor || blk.instanceId;
-      return `<section id="${blockId}" class="tilda-block"${anchorAttr}${animAttr}>\n${renderBlockHtml(def, blk.content, blk.design)}\n</section>`;
+      let innerHtml = renderBlockHtml(def, blk.content, blk.design);
+
+      if (typeof document !== 'undefined' && blk.content) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = innerHtml;
+        const hasInline = blk.content.inlineEdits && Object.keys(blk.content.inlineEdits).length > 0;
+        const hasOffsets = blk.content.elementOffsets && Object.keys(blk.content.elementOffsets).length > 0;
+        if (hasInline || hasOffsets) {
+          const editables = tempDiv.querySelectorAll('h1, h2, h3, h4, p, a, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge, blockquote, li, span');
+          editables.forEach((el, idx) => {
+            if (el.closest('.block-custom-element')) return;
+            const key = el.getAttribute('data-el-key') || `${el.tagName.toLowerCase()}_${idx}`;
+            if (hasInline && blk.content.inlineEdits[key] !== undefined && el.tagName !== 'IMG') {
+              el.innerHTML = blk.content.inlineEdits[key];
+            }
+            if (hasOffsets && blk.content.elementOffsets[key]) {
+              const off = blk.content.elementOffsets[key];
+              if (off.x || off.y) {
+                el.style.position = 'relative';
+                el.style.left = `${off.x || 0}px`;
+                el.style.top = `${off.y || 0}px`;
+                el.style.zIndex = '25';
+              }
+            }
+          });
+        }
+        if (Array.isArray(blk.content.customElements) && blk.content.customElements.length > 0 && !tempDiv.querySelector('.block-custom-elements-container')) {
+          const targetSection = tempDiv.firstElementChild || tempDiv;
+          if (targetSection !== tempDiv) {
+            targetSection.style.position = 'relative';
+          }
+          blk.content.customElements.forEach(ce => {
+            const ceAnimAttr = (ce.animation && ce.animation !== 'none') ? ` data-tilda-anim="${ce.animation}"` : '';
+            const baseStyle = `position:absolute;left:${ce.x ?? 80}px;top:${ce.y ?? 60}px;width:${ce.w || 220}px;height:${ce.h || 60}px;z-index:${ce.zIndex || 25};opacity:${(ce.opacity ?? 100) / 100};transform:rotate(${ce.rotate || 0}deg);`;
+            let ceHtml = '';
+            if (ce.type === 'text') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;color:${ce.color || '#ffffff'};font-size:${ce.fontSize || 20}px;font-weight:${ce.fontWeight || '700'};line-height:1.3;">${ce.text || ''}</div>`;
+            } else if (ce.type === 'button') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}"><a href="${escapeHtml(ce.href || '#')}" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${ce.bg || '#0d99ff'};color:${ce.color || '#ffffff'};border-radius:${ce.radius ?? 10}px;font-size:${ce.fontSize || 15}px;font-weight:700;text-decoration:none;">${ce.text || 'Кнопка'}</a></div>`;
+            } else if (ce.type === 'image') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}overflow:hidden;border-radius:${ce.radius ?? 12}px;"><img src="${escapeHtml(ce.src || '')}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>`;
+            } else if (ce.type === 'shape') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}background:${ce.bg || 'rgba(13, 153, 255, 0.25)'};border:1px solid rgba(255,255,255,0.2);border-radius:${ce.radius ?? 16}px;backdrop-filter:blur(8px);"></div>`;
+            } else if (ce.type === 'badge') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:inline-flex;align-items:center;justify-content:center;background:${ce.bg || 'rgba(13, 153, 255, 0.18)'};color:${ce.color || '#38bdf8'};border:1px solid rgba(56,189,248,0.35);border-radius:${ce.radius ?? 999}px;font-size:${ce.fontSize || 13}px;font-weight:700;padding:4px 14px;">${ce.text || ''}</div>`;
+            } else if (ce.type === 'video') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}overflow:hidden;border-radius:${ce.radius ?? 12}px;background:#000;"><iframe src="${escapeHtml(ce.src || '')}" style="width:100%;height:100%;border:none;" allowfullscreen></iframe></div>`;
+            } else if (ce.type === 'divider') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;"><div style="width:100%;height:${ce.lineHeight || 2}px;background:${ce.bg || 'rgba(255,255,255,0.25)'};border-radius:4px;"></div></div>`;
+            } else if (ce.type === 'icon') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;justify-content:center;background:${ce.bg || 'rgba(13, 153, 255, 0.15)'};border-radius:${ce.radius ?? 16}px;"><span class="material-symbols-rounded" style="font-size:${ce.fontSize || 36}px;color:${ce.color || '#0d99ff'};">${ce.icon || 'star'}</span></div>`;
+            } else if (ce.type === 'timer') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;justify-content:center;gap:8px;background:${ce.bg || 'rgba(15, 23, 42, 0.85)'};color:${ce.color || '#ffffff'};border:1px solid rgba(255,255,255,0.15);border-radius:${ce.radius ?? 12}px;font-family:monospace;font-size:${ce.fontSize || 20}px;font-weight:800;">02 : 14 : 35 : 49</div>`;
+            } else if (ce.type === 'social') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;justify-content:center;gap:10px;background:${ce.bg || 'rgba(15, 23, 42, 0.6)'};border-radius:${ce.radius ?? 999}px;padding:6px 14px;"><span style="color:${ce.color || '#ffffff'};font-weight:700;font-size:13px;">VK</span><span style="color:${ce.color || '#ffffff'};font-weight:700;font-size:13px;">TG</span><span style="color:${ce.color || '#ffffff'};font-weight:700;font-size:13px;">YT</span></div>`;
+            } else if (ce.type === 'form') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}display:flex;align-items:center;gap:6px;background:${ce.bg || 'rgba(15, 23, 42, 0.85)'};padding:6px;border-radius:${ce.radius ?? 12}px;border:1px solid rgba(255,255,255,0.15);"><input type="email" placeholder="${escapeHtml(ce.placeholder || 'Ваш Email...')}" style="flex:1;height:100%;background:rgba(255,255,255,0.08);border:none;border-radius:8px;padding:0 10px;color:#fff;font-size:12px;"/><button type="button" style="height:100%;padding:0 14px;background:${ce.btnBg || '#0d99ff'};color:${ce.color || '#fff'};border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">${escapeHtml(ce.text || 'Отправить')}</button></div>`;
+            } else if (ce.type === 'html') {
+              ceHtml = `<div class="block-custom-element"${ceAnimAttr} style="${baseStyle}overflow:hidden;border-radius:${ce.radius ?? 8}px;">${ce.code || ''}</div>`;
+            }
+            if (ceHtml) targetSection.insertAdjacentHTML('beforeend', ceHtml);
+          });
+        }
+        innerHtml = tempDiv.innerHTML;
+      }
+
+      const d = blk.design || {};
+      const sectionStyles = [];
+      if (d.bgColor) sectionStyles.push(`background-color:${d.bgColor}`);
+      if (d.bgGradient) sectionStyles.push(`background-image:${d.bgGradient}`);
+      if (d.textColor) sectionStyles.push(`color:${d.textColor}`);
+      if (d.paddingTop !== undefined && d.paddingTop !== '') sectionStyles.push(`padding-top:${d.paddingTop}px`);
+      if (d.paddingBottom !== undefined && d.paddingBottom !== '') sectionStyles.push(`padding-bottom:${d.paddingBottom}px`);
+      if (d.minHeight) sectionStyles.push(`min-height:${d.minHeight}px`);
+      const styleAttr = sectionStyles.length ? ` style="${sectionStyles.join(';')}"` : '';
+
+      return `<section id="${blockId}" class="tilda-block"${anchorAttr}${animAttr}${styleAttr}>\n${innerHtml}\n</section>`;
     }).filter(Boolean).join('\n\n');
 
     const metrikaScript = s.yandexMetrikaId ? `
@@ -3133,6 +3528,13 @@ export class TildaEngine {
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: auto !important;
+      min-height: 100% !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      scroll-behavior: smooth;
+    }
     body {
       font-family: '${g.fontBody}', -apple-system, BlinkMacSystemFont, sans-serif;
       background: ${g.colorBg};
@@ -3148,15 +3550,25 @@ export class TildaEngine {
     .t-container { width: 100%; max-width: ${g.maxWidth}; margin: 0 auto; box-sizing: border-box; padding: 0 20px; }
     .tilda-block { width: 100%; position: relative; overflow: hidden; }
 
-    /* Animations Engine */
+    /* Animations Engine (18 Presets) */
     @keyframes auroraFadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes auroraSlideUp { from { opacity: 0; transform: translateY(45px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes auroraSlideDown { from { opacity: 0; transform: translateY(-45px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes auroraSlideLeft { from { opacity: 0; transform: translateX(55px); } to { opacity: 1; transform: translateX(0); } }
     @keyframes auroraSlideRight { from { opacity: 0; transform: translateX(-55px); } to { opacity: 1; transform: translateX(0); } }
     @keyframes auroraZoomIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+    @keyframes auroraZoomOut { from { opacity: 0; transform: scale(1.2); } to { opacity: 1; transform: scale(1); } }
     @keyframes auroraFlipUp { from { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); } to { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); } }
+    @keyframes auroraFlipX { 0% { opacity: 0; transform: perspective(800px) rotateY(80deg); } 100% { opacity: 1; transform: perspective(800px) rotateY(0deg); } }
+    @keyframes auroraRotateIn { 0% { opacity: 0; transform: rotate(-12deg) scale(0.85); } 100% { opacity: 1; transform: rotate(0deg) scale(1); } }
+    @keyframes auroraBlurIn { 0% { opacity: 0; filter: blur(18px); transform: scale(1.04); } 100% { opacity: 1; filter: blur(0px); transform: scale(1); } }
     @keyframes auroraBounce { 0% { opacity: 0; transform: scale(0.6) translateY(40px); } 60% { opacity: 1; transform: scale(1.05) translateY(-8px); } 80% { transform: scale(0.98) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes auroraElasticUp { 0% { opacity: 0; transform: translateY(70px) scaleY(1.25); } 55% { opacity: 1; transform: translateY(-12px) scaleY(0.95); } 75% { transform: translateY(5px) scaleY(1.02); } 100% { opacity: 1; transform: translateY(0) scaleY(1); } }
+    @keyframes auroraSwingIn { 0% { opacity: 0; transform: perspective(600px) rotateX(-60deg); transform-origin: top center; } 60% { opacity: 1; transform: perspective(600px) rotateX(12deg); } 80% { transform: perspective(600px) rotateX(-5deg); } 100% { opacity: 1; transform: perspective(600px) rotateX(0deg); } }
+    @keyframes auroraGlitch { 0% { opacity: 0; transform: translate(-8px, 4px) skewX(8deg); filter: hue-rotate(90deg); } 25% { opacity: 0.8; transform: translate(6px, -3px) skewX(-6deg); } 50% { transform: translate(-4px, 2px) skewX(3deg); filter: hue-rotate(-45deg); } 75% { transform: translate(2px, -1px); } 100% { opacity: 1; transform: translate(0, 0) skewX(0deg); filter: none; } }
+    @keyframes auroraTypewriter { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 10% { opacity: 1; } 100% { opacity: 1; clip-path: inset(0 0 0 0); } }
+    @keyframes auroraPulseGlow { 0% { opacity: 0; transform: scale(0.94); filter: brightness(1.6) drop-shadow(0 0 24px rgba(13,153,255,0.75)); } 60% { opacity: 1; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); filter: brightness(1) drop-shadow(0 0 0px transparent); } }
+    @keyframes auroraStagger { 0% { opacity: 0; transform: translateY(35px) scale(0.96); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
     .anim-fade-in { animation: auroraFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .anim-slide-up { animation: auroraSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -3164,14 +3576,24 @@ export class TildaEngine {
     .anim-slide-left { animation: auroraSlideLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .anim-slide-right { animation: auroraSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .anim-zoom-in { animation: auroraZoomIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-zoom-out { animation: auroraZoomOut 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .anim-flip-up { animation: auroraFlipUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-flip-x { animation: auroraFlipX 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-rotate-in { animation: auroraRotateIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-blur-in { animation: auroraBlurIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .anim-bounce { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-elastic-up { animation: auroraElasticUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-swing-in { animation: auroraSwingIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-glitch { animation: auroraGlitch 0.6s steps(4, end) forwards; }
+    .anim-typewriter { animation: auroraTypewriter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-pulse-glow { animation: auroraPulseGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-stagger { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
     [data-tilda-anim] {
-      transition-property: opacity, transform;
+      transition-property: opacity, transform, filter;
       transition-duration: 0.7s;
       transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      will-change: opacity, transform;
+      will-change: opacity, transform, filter;
     }
     [data-tilda-anim="fade-in"] { opacity: 0; }
     [data-tilda-anim="fade-in"].tilda-animated-in { opacity: 1; }
@@ -3185,10 +3607,30 @@ export class TildaEngine {
     [data-tilda-anim="slide-right"].tilda-animated-in { opacity: 1; transform: translateX(0); }
     [data-tilda-anim="zoom-in"] { opacity: 0; transform: scale(0.88); }
     [data-tilda-anim="zoom-in"].tilda-animated-in { opacity: 1; transform: scale(1); }
+    [data-tilda-anim="zoom-out"] { opacity: 0; transform: scale(1.18); }
+    [data-tilda-anim="zoom-out"].tilda-animated-in { opacity: 1; transform: scale(1); }
     [data-tilda-anim="flip-up"] { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); }
     [data-tilda-anim="flip-up"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+    [data-tilda-anim="flip-x"] { opacity: 0; transform: perspective(800px) rotateY(80deg); }
+    [data-tilda-anim="flip-x"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateY(0deg); }
+    [data-tilda-anim="rotate-in"] { opacity: 0; transform: rotate(-12deg) scale(0.85); }
+    [data-tilda-anim="rotate-in"].tilda-animated-in { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-tilda-anim="blur-in"] { opacity: 0; filter: blur(18px); transform: scale(1.04); }
+    [data-tilda-anim="blur-in"].tilda-animated-in { opacity: 1; filter: blur(0px); transform: scale(1); }
     [data-tilda-anim="bounce"] { opacity: 0; transform: scale(0.7); }
     [data-tilda-anim="bounce"].tilda-animated-in { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-tilda-anim="elastic-up"] { opacity: 0; transform: translateY(60px); }
+    [data-tilda-anim="elastic-up"].tilda-animated-in { animation: auroraElasticUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-tilda-anim="swing-in"] { opacity: 0; transform: perspective(600px) rotateX(-60deg); transform-origin: top center; }
+    [data-tilda-anim="swing-in"].tilda-animated-in { animation: auroraSwingIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-tilda-anim="glitch"] { opacity: 0; }
+    [data-tilda-anim="glitch"].tilda-animated-in { animation: auroraGlitch 0.6s steps(4, end) forwards; }
+    [data-tilda-anim="typewriter"] { opacity: 0; }
+    [data-tilda-anim="typewriter"].tilda-animated-in { animation: auroraTypewriter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-tilda-anim="pulse-glow"] { opacity: 0; }
+    [data-tilda-anim="pulse-glow"].tilda-animated-in { animation: auroraPulseGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    [data-tilda-anim="stagger"] { opacity: 0; transform: translateY(35px); }
+    [data-tilda-anim="stagger"].tilda-animated-in { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
     @media (max-width: 768px) {
       .t-container { padding: 0 16px; }
@@ -3251,7 +3693,13 @@ ${fontFaceCss}
   --aurora-max-width: ${g.maxWidth};
 }
 
-html { scroll-behavior: smooth; }
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scroll-behavior: smooth;
+}
 
 body {
   font-family: var(--aurora-font-body);
@@ -3285,15 +3733,25 @@ button { font-family: inherit; }
   overflow: hidden;
 }
 
-/* Animations Engine */
+/* Animations Engine (18 Presets) */
 @keyframes auroraFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes auroraSlideUp { from { opacity: 0; transform: translateY(45px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes auroraSlideDown { from { opacity: 0; transform: translateY(-45px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes auroraSlideLeft { from { opacity: 0; transform: translateX(55px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes auroraSlideRight { from { opacity: 0; transform: translateX(-55px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes auroraZoomIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes auroraZoomOut { from { opacity: 0; transform: scale(1.2); } to { opacity: 1; transform: scale(1); } }
 @keyframes auroraFlipUp { from { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); } to { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); } }
+@keyframes auroraFlipX { 0% { opacity: 0; transform: perspective(800px) rotateY(80deg); } 100% { opacity: 1; transform: perspective(800px) rotateY(0deg); } }
+@keyframes auroraRotateIn { 0% { opacity: 0; transform: rotate(-12deg) scale(0.85); } 100% { opacity: 1; transform: rotate(0deg) scale(1); } }
+@keyframes auroraBlurIn { 0% { opacity: 0; filter: blur(18px); transform: scale(1.04); } 100% { opacity: 1; filter: blur(0px); transform: scale(1); } }
 @keyframes auroraBounce { 0% { opacity: 0; transform: scale(0.6) translateY(40px); } 60% { opacity: 1; transform: scale(1.05) translateY(-8px); } 80% { transform: scale(0.98) translateY(4px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes auroraElasticUp { 0% { opacity: 0; transform: translateY(70px) scaleY(1.25); } 55% { opacity: 1; transform: translateY(-12px) scaleY(0.95); } 75% { transform: translateY(5px) scaleY(1.02); } 100% { opacity: 1; transform: translateY(0) scaleY(1); } }
+@keyframes auroraSwingIn { 0% { opacity: 0; transform: perspective(600px) rotateX(-60deg); transform-origin: top center; } 60% { opacity: 1; transform: perspective(600px) rotateX(12deg); } 80% { transform: perspective(600px) rotateX(-5deg); } 100% { opacity: 1; transform: perspective(600px) rotateX(0deg); } }
+@keyframes auroraGlitch { 0% { opacity: 0; transform: translate(-8px, 4px) skewX(8deg); filter: hue-rotate(90deg); } 25% { opacity: 0.8; transform: translate(6px, -3px) skewX(-6deg); } 50% { transform: translate(-4px, 2px) skewX(3deg); filter: hue-rotate(-45deg); } 75% { transform: translate(2px, -1px); } 100% { opacity: 1; transform: translate(0, 0) skewX(0deg); filter: none; } }
+@keyframes auroraTypewriter { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 10% { opacity: 1; } 100% { opacity: 1; clip-path: inset(0 0 0 0); } }
+@keyframes auroraPulseGlow { 0% { opacity: 0; transform: scale(0.94); filter: brightness(1.6) drop-shadow(0 0 24px rgba(13,153,255,0.75)); } 60% { opacity: 1; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); filter: brightness(1) drop-shadow(0 0 0px transparent); } }
+@keyframes auroraStagger { 0% { opacity: 0; transform: translateY(35px) scale(0.96); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
 
 .anim-fade-in { animation: auroraFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .anim-slide-up { animation: auroraSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -3301,14 +3759,24 @@ button { font-family: inherit; }
 .anim-slide-left { animation: auroraSlideLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .anim-slide-right { animation: auroraSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .anim-zoom-in { animation: auroraZoomIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-zoom-out { animation: auroraZoomOut 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .anim-flip-up { animation: auroraFlipUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-flip-x { animation: auroraFlipX 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-rotate-in { animation: auroraRotateIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-blur-in { animation: auroraBlurIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .anim-bounce { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-elastic-up { animation: auroraElasticUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-swing-in { animation: auroraSwingIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-glitch { animation: auroraGlitch 0.6s steps(4, end) forwards; }
+.anim-typewriter { animation: auroraTypewriter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-pulse-glow { animation: auroraPulseGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-stagger { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 [data-tilda-anim] {
-  transition-property: opacity, transform;
+  transition-property: opacity, transform, filter;
   transition-duration: 0.7s;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  will-change: opacity, transform, filter;
 }
 [data-tilda-anim="fade-in"] { opacity: 0; }
 [data-tilda-anim="fade-in"].tilda-animated-in { opacity: 1; }
@@ -3322,10 +3790,30 @@ button { font-family: inherit; }
 [data-tilda-anim="slide-right"].tilda-animated-in { opacity: 1; transform: translateX(0); }
 [data-tilda-anim="zoom-in"] { opacity: 0; transform: scale(0.88); }
 [data-tilda-anim="zoom-in"].tilda-animated-in { opacity: 1; transform: scale(1); }
+[data-tilda-anim="zoom-out"] { opacity: 0; transform: scale(1.18); }
+[data-tilda-anim="zoom-out"].tilda-animated-in { opacity: 1; transform: scale(1); }
 [data-tilda-anim="flip-up"] { opacity: 0; transform: perspective(800px) rotateX(25deg) translateY(30px); }
 [data-tilda-anim="flip-up"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+[data-tilda-anim="flip-x"] { opacity: 0; transform: perspective(800px) rotateY(80deg); }
+[data-tilda-anim="flip-x"].tilda-animated-in { opacity: 1; transform: perspective(800px) rotateY(0deg); }
+[data-tilda-anim="rotate-in"] { opacity: 0; transform: rotate(-12deg) scale(0.85); }
+[data-tilda-anim="rotate-in"].tilda-animated-in { opacity: 1; transform: rotate(0deg) scale(1); }
+[data-tilda-anim="blur-in"] { opacity: 0; filter: blur(18px); transform: scale(1.04); }
+[data-tilda-anim="blur-in"].tilda-animated-in { opacity: 1; filter: blur(0px); transform: scale(1); }
 [data-tilda-anim="bounce"] { opacity: 0; transform: scale(0.7); }
 [data-tilda-anim="bounce"].tilda-animated-in { animation: auroraBounce 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-tilda-anim="elastic-up"] { opacity: 0; transform: translateY(60px); }
+[data-tilda-anim="elastic-up"].tilda-animated-in { animation: auroraElasticUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-tilda-anim="swing-in"] { opacity: 0; transform: perspective(600px) rotateX(-60deg); transform-origin: top center; }
+[data-tilda-anim="swing-in"].tilda-animated-in { animation: auroraSwingIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-tilda-anim="glitch"] { opacity: 0; }
+[data-tilda-anim="glitch"].tilda-animated-in { animation: auroraGlitch 0.6s steps(4, end) forwards; }
+[data-tilda-anim="typewriter"] { opacity: 0; }
+[data-tilda-anim="typewriter"].tilda-animated-in { animation: auroraTypewriter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-tilda-anim="pulse-glow"] { opacity: 0; }
+[data-tilda-anim="pulse-glow"].tilda-animated-in { animation: auroraPulseGlow 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-tilda-anim="stagger"] { opacity: 0; transform: translateY(35px); }
+[data-tilda-anim="stagger"].tilda-animated-in { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 @media (max-width: 768px) {
   .t-container { padding: 0 16px; }

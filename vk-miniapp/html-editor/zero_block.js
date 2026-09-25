@@ -490,10 +490,22 @@ export class ZeroBlockEditor {
         `;
       }
 
+      const animType = p.animation?.type || 'none';
+      const animAttr = animType !== 'none'
+        ? `data-tilda-anim="${animType}" data-anim-delay="${p.animation?.delay || 0}" data-anim-duration="${p.animation?.duration || 0.6}"`
+        : '';
+
       elementsHtml += `
-        <div class="zero-el-wrapper ${isSelected ? 'is-selected' : ''}" data-el-id="${el.id}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;transform:rotate(${p.rotation}deg);opacity:${p.opacity !== undefined ? p.opacity : 1};z-index:${p.zIndex || 1};cursor:move;box-sizing:border-box;">
+        <div class="zero-el-wrapper ${isSelected ? 'is-selected' : ''}" data-el-id="${el.id}" ${animAttr} style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;transform:rotate(${p.rotation}deg);opacity:${p.opacity !== undefined ? p.opacity : 1};z-index:${p.zIndex || 1};cursor:move;box-sizing:border-box;">
           ${innerContent}
           <div class="zero-handles-group" style="display:${isSelected ? 'block' : 'none'};">
+            <!-- Floating Quick Actions Bar -->
+            <div class="zero-floating-bar" style="position:absolute;top:-52px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(15,23,42,0.95);border:1px solid rgba(13,153,255,0.45);border-radius:8px;padding:3px 6px;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:10001;white-space:nowrap;">
+              <span class="zero-float-drag" title="Перетащить элемент" style="cursor:grab;padding:2px 5px;color:#38bdf8;font-size:13px;font-weight:700;user-select:none;">⠿</span>
+              <button type="button" class="zero-float-btn" data-zb-action="duplicate" title="Дублировать (Ctrl+D)" style="background:transparent;border:none;color:#e2e8f0;cursor:pointer;padding:2px 5px;border-radius:4px;font-size:12px;">📋</button>
+              <button type="button" class="zero-float-btn" data-zb-action="front" title="На передний план" style="background:transparent;border:none;color:#e2e8f0;cursor:pointer;padding:2px 5px;border-radius:4px;font-size:12px;">⬆️</button>
+              <button type="button" class="zero-float-btn" data-zb-action="delete" title="Удалить (Delete)" style="background:transparent;border:none;color:#f43f5e;cursor:pointer;padding:2px 5px;border-radius:4px;font-size:12px;">🗑️</button>
+            </div>
             <!-- 8 Resizing Handles -->
             <div class="zero-resizer handle-nw" data-handle="nw"></div>
             <div class="zero-resizer handle-n" data-handle="n"></div>
@@ -543,6 +555,29 @@ export class ZeroBlockEditor {
       }
     });
 
+    // Floating quick action buttons
+    artboard.querySelectorAll('.zero-float-btn[data-zb-action]').forEach(btn => {
+      btn.addEventListener('mousedown', e => e.stopPropagation());
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const action = btn.dataset.zbAction;
+        const wrapper = btn.closest('.zero-el-wrapper');
+        const id = wrapper?.dataset.elId;
+        if (!id) return;
+        this.selectElement(id);
+        if (action === 'duplicate') {
+          this.duplicateSelectedElement();
+        } else if (action === 'front') {
+          this.block.bringToFront(id);
+          this.saveHistory();
+          this.render();
+          this.onSelectionChange?.(this.getSelectedElement());
+        } else if (action === 'delete') {
+          this.deleteSelectedElement();
+        }
+      });
+    });
+
     // Inline direct editing on double click
     artboard.querySelectorAll('.zero-el-wrapper').forEach(elWrapper => {
       const elId = elWrapper.dataset.elId;
@@ -579,7 +614,7 @@ export class ZeroBlockEditor {
     // Drag-to-move 60 FPS with Smart Snapping
     artboard.querySelectorAll('.zero-el-wrapper').forEach(elWrapper => {
       elWrapper.addEventListener('mousedown', e => {
-        if (e.target.dataset.handle || e.target.isContentEditable) return;
+        if (e.target.dataset.handle || e.target.isContentEditable || e.target.closest('.zero-float-btn')) return;
         e.stopPropagation();
         const id = elWrapper.dataset.elId;
         this.selectElement(id);
@@ -589,6 +624,7 @@ export class ZeroBlockEditor {
         const selected = this.getSelectedElement();
         if (!selected) return;
 
+        const dimBadge = elWrapper.querySelector('.zero-dim-badge');
         this.elStartPos = { x: selected.props.x, y: selected.props.y };
 
         const onMouseMove = ev => {
@@ -596,37 +632,122 @@ export class ZeroBlockEditor {
           if (this._rafId) cancelAnimationFrame(this._rafId);
 
           this._rafId = requestAnimationFrame(() => {
-            const dx = ev.clientX - this.dragStart.x;
-            const dy = ev.clientY - this.dragStart.y;
+            const zoom = (typeof window.getCanvasZoom === 'function') ? window.getCanvasZoom() : 1;
+            let dx = (ev.clientX - this.dragStart.x) / zoom;
+            let dy = (ev.clientY - this.dragStart.y) / zoom;
+
+            // Shift key locks movement to dominant axis
+            if (ev.shiftKey) {
+              if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+              else dx = 0;
+            }
+
             let nx = Math.round(this.elStartPos.x + dx);
             let ny = Math.round(this.elStartPos.y + dy);
 
-            // Magnetic snapping to Artboard Center & Edges
+            // Magnetic snapping to Artboard Center & Neighboring Elements
             const artboardW = artboard.clientWidth;
             const artboardH = artboard.clientHeight;
-            const elCenterX = nx + (selected.props.width / 2);
-            const elCenterY = ny + (selected.props.height / 2);
+            const w = selected.props.width;
+            const h = selected.props.height;
 
-            // Center X
-            if (Math.abs(elCenterX - artboardW / 2) < 8) {
-              nx = Math.round(artboardW / 2 - selected.props.width / 2);
-              if (guideX) { guideX.style.display = 'block'; guideX.style.left = (artboardW / 2) + 'px'; }
-            } else {
-              if (guideX) guideX.style.display = 'none';
+            let snappedX = false;
+            let snappedY = false;
+            let guideXPos = null;
+            let guideYPos = null;
+
+            // 1. Artboard Center X & Y
+            if (Math.abs((nx + w / 2) - artboardW / 2) < 8) {
+              nx = Math.round(artboardW / 2 - w / 2);
+              snappedX = true;
+              guideXPos = Math.round(artboardW / 2);
+            }
+            if (Math.abs((ny + h / 2) - artboardH / 2) < 8) {
+              ny = Math.round(artboardH / 2 - h / 2);
+              snappedY = true;
+              guideYPos = Math.round(artboardH / 2);
             }
 
-            // Center Y
-            if (Math.abs(elCenterY - artboardH / 2) < 8) {
-              ny = Math.round(artboardH / 2 - selected.props.height / 2);
-              if (guideY) { guideY.style.display = 'block'; guideY.style.top = (artboardH / 2) + 'px'; }
-            } else {
-              if (guideY) guideY.style.display = 'none';
+            // 2. Neighboring Elements Snapping (< 6px)
+            for (const other of this.block.elements) {
+              if (other.id === selected.id) continue;
+              const ox = other.props.x;
+              const oy = other.props.y;
+              const ow = other.props.width;
+              const oh = other.props.height;
+              const oRight = ox + ow;
+              const oBottom = oy + oh;
+              const oCenterX = ox + ow / 2;
+              const oCenterY = oy + oh / 2;
+
+              if (!snappedX) {
+                if (Math.abs(nx - ox) < 6) {
+                  nx = ox; snappedX = true; guideXPos = ox;
+                } else if (Math.abs(nx - oRight) < 6) {
+                  nx = oRight; snappedX = true; guideXPos = oRight;
+                } else if (Math.abs((nx + w) - ox) < 6) {
+                  nx = ox - w; snappedX = true; guideXPos = ox;
+                } else if (Math.abs((nx + w) - oRight) < 6) {
+                  nx = oRight - w; snappedX = true; guideXPos = oRight;
+                } else if (Math.abs((nx + w / 2) - oCenterX) < 6) {
+                  nx = Math.round(oCenterX - w / 2); snappedX = true; guideXPos = Math.round(oCenterX);
+                }
+              }
+
+              if (!snappedY) {
+                if (Math.abs(ny - oy) < 6) {
+                  ny = oy; snappedY = true; guideYPos = oy;
+                } else if (Math.abs(ny - oBottom) < 6) {
+                  ny = oBottom; snappedY = true; guideYPos = oBottom;
+                } else if (Math.abs((ny + h) - oy) < 6) {
+                  ny = oy - h; snappedY = true; guideYPos = oy;
+                } else if (Math.abs((ny + h) - oBottom) < 6) {
+                  ny = oBottom - h; snappedY = true; guideYPos = oBottom;
+                } else if (Math.abs((ny + h / 2) - oCenterY) < 6) {
+                  ny = Math.round(oCenterY - h / 2); snappedY = true; guideYPos = Math.round(oCenterY);
+                }
+              }
+            }
+
+            // 3. Grid Snapping (4px step, or 1px when Alt is pressed)
+            if (this.isGridSnapping) {
+              const step = ev.altKey ? 1 : 4;
+              if (!snappedX) nx = Math.round(nx / step) * step;
+              if (!snappedY) ny = Math.round(ny / step) * step;
+            }
+
+            if (guideX) {
+              if (snappedX && guideXPos !== null) {
+                guideX.style.display = 'block';
+                guideX.style.left = guideXPos + 'px';
+              } else {
+                guideX.style.display = 'none';
+              }
+            }
+
+            if (guideY) {
+              if (snappedY && guideYPos !== null) {
+                guideY.style.display = 'block';
+                guideY.style.top = guideYPos + 'px';
+              } else {
+                guideY.style.display = 'none';
+              }
             }
 
             selected.props.x = nx;
             selected.props.y = ny;
             elWrapper.style.left = nx + 'px';
             elWrapper.style.top = ny + 'px';
+
+            if (dimBadge) {
+              dimBadge.style.display = 'block';
+              dimBadge.textContent = `X: ${nx}, Y: ${ny}`;
+            }
+
+            const inpX = document.getElementById('zb-el-x');
+            const inpY = document.getElementById('zb-el-y');
+            if (inpX) inpX.value = nx;
+            if (inpY) inpY.value = ny;
           });
         };
 
@@ -634,6 +755,7 @@ export class ZeroBlockEditor {
           this.isDragging = false;
           if (guideX) guideX.style.display = 'none';
           if (guideY) guideY.style.display = 'none';
+          if (dimBadge) dimBadge.style.display = 'none';
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
           this.saveHistory();
@@ -668,23 +790,26 @@ export class ZeroBlockEditor {
           if (this._rafId) cancelAnimationFrame(this._rafId);
 
           this._rafId = requestAnimationFrame(() => {
-            const dx = ev.clientX - startMouseX;
-            const dy = ev.clientY - startMouseY;
+            const zoom = (typeof window.getCanvasZoom === 'function') ? window.getCanvasZoom() : 1;
+            const dx = (ev.clientX - startMouseX) / zoom;
+            const dy = (ev.clientY - startMouseY) / zoom;
 
             let nw = startW;
             let nh = startH;
             let nx = startX;
             let ny = startY;
 
-            if (hType.includes('e')) nw = Math.max(20, startW + dx);
-            if (hType.includes('s')) nh = Math.max(20, startH + dy);
+            if (hType.includes('e')) nw = Math.max(20, Math.round(startW + dx));
+            if (hType.includes('s')) nh = Math.max(20, Math.round(startH + dy));
             if (hType.includes('w')) {
-              nw = Math.max(20, startW - dx);
-              nx = startX + dx;
+              const potentialW = Math.max(20, Math.round(startW - dx));
+              nx = Math.round(startX + (startW - potentialW));
+              nw = potentialW;
             }
             if (hType.includes('n')) {
-              nh = Math.max(20, startH - dy);
-              ny = startY + dy;
+              const potentialH = Math.max(20, Math.round(startH - dy));
+              ny = Math.round(startY + (startH - potentialH));
+              nh = potentialH;
             }
 
             selected.props.width = nw;
@@ -840,7 +965,11 @@ export class ZeroBlockEditor {
     }
 
     // Element Inspector
+    if (!selected.props.animation) {
+      selected.props.animation = { type: 'none', duration: 0.6, delay: 0, trigger: 'scroll' };
+    }
     const p = selected.props;
+    const anim = p.animation;
     const typeLabel = {
       h1: '🏷️ Заголовок H1',
       h2: '🏷️ Заголовок H2',
@@ -1009,6 +1138,48 @@ export class ZeroBlockEditor {
           </label>
         </div>
 
+        <!-- 7. Element Animation -->
+        <div class="insp-section-title">🎬 Анимация элемента</div>
+        <div class="insp-field">
+          <label>Эффект анимации</label>
+          <select id="zb-el-anim-type">
+            <option value="none" ${(anim.type || 'none') === 'none' ? 'selected' : ''}>Без анимации</option>
+            <option value="fade-in" ${anim.type === 'fade-in' ? 'selected' : ''}>✨ Плавное появление (Fade In)</option>
+            <option value="slide-up" ${anim.type === 'slide-up' ? 'selected' : ''}>⬆ Всплытие снизу (Slide Up)</option>
+            <option value="slide-down" ${anim.type === 'slide-down' ? 'selected' : ''}>⬇ Появление сверху (Slide Down)</option>
+            <option value="slide-left" ${anim.type === 'slide-left' ? 'selected' : ''}>⬅ Сдвиг справа налево (Slide Left)</option>
+            <option value="slide-right" ${anim.type === 'slide-right' ? 'selected' : ''}>➡ Сдвиг слева направо (Slide Right)</option>
+            <option value="zoom-in" ${anim.type === 'zoom-in' ? 'selected' : ''}>🔍 Увеличение (Zoom In)</option>
+            <option value="zoom-out" ${anim.type === 'zoom-out' ? 'selected' : ''}>🔎 Уменьшение (Zoom Out)</option>
+            <option value="flip-up" ${anim.type === 'flip-up' ? 'selected' : ''}>🔄 3D Поворот вверх (Flip Up)</option>
+            <option value="flip-x" ${anim.type === 'flip-x' ? 'selected' : ''}>🔃 3D Разворот по оси X (Flip X)</option>
+            <option value="rotate-in" ${anim.type === 'rotate-in' ? 'selected' : ''}>🌀 Вихревой поворот (Rotate In)</option>
+            <option value="blur-in" ${anim.type === 'blur-in' ? 'selected' : ''}>🌫️ Выход из размытия (Blur In)</option>
+            <option value="bounce" ${anim.type === 'bounce' ? 'selected' : ''}>🏀 Пружинистый отскок (Bounce)</option>
+            <option value="elastic-up" ${anim.type === 'elastic-up' ? 'selected' : ''}>🎯 Эластичный импульс (Elastic Up)</option>
+            <option value="swing-in" ${anim.type === 'swing-in' ? 'selected' : ''}>🎪 Маятниковое открытие (Swing In)</option>
+            <option value="glitch" ${anim.type === 'glitch' ? 'selected' : ''}>⚡ Кибер-глитч (Glitch)</option>
+            <option value="typewriter" ${anim.type === 'typewriter' ? 'selected' : ''}>⌨️ Печатная машинка (Typewriter)</option>
+            <option value="pulse-glow" ${anim.type === 'pulse-glow' ? 'selected' : ''}>💫 Неоновый импульс (Pulse Glow)</option>
+            <option value="stagger" ${anim.type === 'stagger' ? 'selected' : ''}>🌊 Каскадное появление (Stagger)</option>
+          </select>
+        </div>
+        <div class="insp-row-2">
+          <div class="insp-field">
+            <label>Длительность (с)</label>
+            <input type="number" id="zb-el-anim-duration" min="0.1" max="5" step="0.1" value="${anim.duration ?? 0.6}" />
+          </div>
+          <div class="insp-field">
+            <label>Задержка (с)</label>
+            <input type="number" id="zb-el-anim-delay" min="0" max="5" step="0.1" value="${anim.delay ?? 0}" />
+          </div>
+        </div>
+        <div class="insp-field" style="margin-top:8px;">
+          <button type="button" class="topbar-action-btn" id="zb-btn-test-anim" style="width:100%;justify-content:center;background:rgba(13,153,255,0.14);border-color:rgba(13,153,255,0.35);color:#38bdf8;">
+            ▶ Проверить анимацию элемента
+          </button>
+        </div>
+
         <!-- Actions -->
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;">
           <button class="topbar-action-btn" id="zb-btn-dup-selected" style="flex:1;"><span class="material-symbols-rounded">content_copy</span> Копия</button>
@@ -1136,6 +1307,58 @@ export class ZeroBlockEditor {
     });
     panelEl.querySelector('#zb-el-target-blank')?.addEventListener('change', e => {
       selected.props.targetBlank = e.target.checked;
+    });
+
+    const playZeroElAnim = () => {
+      const elDom = this.container?.querySelector(`[data-el-id="${selected.id}"]`);
+      if (!elDom) return;
+      const aType = selected.props.animation?.type || 'none';
+      const aDur = parseFloat(selected.props.animation?.duration) || 0.6;
+      const aDelay = parseFloat(selected.props.animation?.delay) || 0;
+      if (aType === 'none') {
+        elDom.removeAttribute('data-tilda-anim');
+        elDom.removeAttribute('data-anim-duration');
+        elDom.removeAttribute('data-anim-delay');
+        return;
+      }
+      elDom.setAttribute('data-tilda-anim', aType);
+      elDom.setAttribute('data-anim-duration', String(aDur));
+      elDom.setAttribute('data-anim-delay', String(aDelay));
+      elDom.style.animationDuration = `${aDur}s`;
+      elDom.style.transitionDuration = `${aDur}s`;
+      elDom.style.animationDelay = `${aDelay}s`;
+      elDom.style.transitionDelay = `${aDelay}s`;
+      if (window.TildaRuntime?.triggerAnimation) {
+        window.TildaRuntime.triggerAnimation(elDom);
+      } else {
+        const allClasses = [
+          'tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down',
+          'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-zoom-out',
+          'anim-flip-up', 'anim-flip-x', 'anim-rotate-in', 'anim-blur-in',
+          'anim-bounce', 'anim-elastic-up', 'anim-swing-in', 'anim-glitch',
+          'anim-typewriter', 'anim-pulse-glow', 'anim-stagger'
+        ];
+        elDom.classList.remove(...allClasses);
+        void elDom.offsetWidth;
+        elDom.classList.add('tilda-animated-in', `anim-${aType}`);
+      }
+    };
+
+    panelEl.querySelector('#zb-el-anim-type')?.addEventListener('change', e => {
+      selected.props.animation.type = e.target.value;
+      this.saveHistory();
+      playZeroElAnim();
+    });
+    panelEl.querySelector('#zb-el-anim-duration')?.addEventListener('input', e => {
+      selected.props.animation.duration = parseFloat(e.target.value) || 0.6;
+      this.saveHistory();
+    });
+    panelEl.querySelector('#zb-el-anim-delay')?.addEventListener('input', e => {
+      selected.props.animation.delay = parseFloat(e.target.value) || 0;
+      this.saveHistory();
+    });
+    panelEl.querySelector('#zb-btn-test-anim')?.addEventListener('click', () => {
+      playZeroElAnim();
     });
 
     panelEl.querySelector('#zb-btn-dup-selected')?.addEventListener('click', () => {

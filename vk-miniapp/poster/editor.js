@@ -1323,12 +1323,12 @@ function renderCustomFontsList() {
   container.innerHTML = customFonts.map(f => `
     <div class="ofont-stored-item">
       <div class="ofont-item-info">
-        <div class="ofont-item-name" style="font-family:'${f.name}',sans-serif;">${f.name}</div>
-        <div class="ofont-item-meta">${f.fileName || 'шрифт ofont.ru'} · Пример: Библиотека Аврора 2025</div>
+        <div class="ofont-item-name" style="font-family:'${escapeHtml(f.name)}',sans-serif;">${escapeHtml(f.name)}</div>
+        <div class="ofont-item-meta">${escapeHtml(f.fileName || 'шрифт ofont.ru')} · Пример: Библиотека Аврора 2025</div>
       </div>
       <div class="ofont-item-actions">
-        <button class="pbtn pbtn-sm pbtn-primary ofont-apply-btn" data-font="${f.name}">Применить</button>
-        <button class="pbtn pbtn-sm pbtn-danger ofont-del-btn" data-font="${f.name}" title="Удалить шрифт">✕</button>
+        <button class="pbtn pbtn-sm pbtn-primary ofont-apply-btn" data-font="${escapeHtml(f.name)}">Применить</button>
+        <button class="pbtn pbtn-sm pbtn-danger ofont-del-btn" data-font="${escapeHtml(f.name)}" title="Удалить шрифт">✕</button>
       </div>
     </div>
   `).join('');
@@ -3330,11 +3330,13 @@ let _pendingPhotoFile = null;
 
 function openPhotoImportModal(file) {
   _pendingPhotoFile = file;
-  $('#photo-import-modal-overlay')?.classList.remove('hidden');
+  const modal = $('#photo-import-modal-overlay') || $('#import-layer-dialog');
+  modal?.classList.remove('hidden');
 }
 
 function closePhotoImportModal() {
-  $('#photo-import-modal-overlay')?.classList.add('hidden');
+  const modal = $('#photo-import-modal-overlay') || $('#import-layer-dialog');
+  modal?.classList.add('hidden');
   _pendingPhotoFile = null;
 }
 
@@ -3355,6 +3357,7 @@ function addPhoto(file) {
       canvas.add(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
+      saveHistory();
       updateLayersList();
       toast('Фото добавлено');
     });
@@ -3376,6 +3379,7 @@ function addCosmoMascot(filename) {
     canvas.add(img);
     canvas.setActiveObject(img);
     canvas.renderAll();
+    saveHistory();
     updateLayersList();
     toast('Космо добавлен на афишу! 🤖');
   }, {
@@ -3608,7 +3612,8 @@ function printPoster() {
     return;
   }
   const isLandscape = currentSize.w > currentSize.h;
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${$('#poster-title')?.value || 'Афиша'}</title><style>@page{size:${isLandscape ? 'landscape' : 'portrait'};margin:0;}body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#fff;}img{width:100%;height:100%;object-fit:contain;}</style></head><body><img src="${dataUrl}" onload="setTimeout(()=>{window.print();window.close();},300)"></body></html>`);
+  const safeTitle = escapeHtml($('#poster-title')?.value || 'Афиша');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>@page{size:${isLandscape ? 'landscape' : 'portrait'};margin:0;}body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#fff;}img{width:100%;height:100%;object-fit:contain;}</style></head><body><img src="${dataUrl}" onload="setTimeout(()=>{window.print();window.close();},300)"></body></html>`);
   win.document.close();
 }
 
@@ -4162,7 +4167,7 @@ function updateLayersList() {
     const isActive  = obj === activeObj;
     const isHidden  = obj.visible === false;
     const isLocked  = !obj.selectable;
-    const label = getObjLabel(obj, realIdx);
+    const label = escapeHtml(getObjLabel(obj, realIdx));
 
     return `
     <div class="layer-row ${isActive?'is-active':''} ${isHidden?'is-hidden':''} ${isLocked?'is-locked':''}"
@@ -4292,14 +4297,14 @@ function updateLayersList() {
       switch(btn.dataset.action) {
         case 'vis':
           obj.set('visible', !obj.visible);
-          canvas.renderAll(); updateLayersList(); break;
+          canvas.renderAll(); saveHistory(); updateLayersList(); break;
 
         case 'lock':
           obj.set({ selectable: !obj.selectable, evented: !obj.evented });
           if (!obj.selectable && canvas.getActiveObject() === obj) {
             canvas.discardActiveObject(); clearProps();
           }
-          canvas.renderAll(); updateLayersList(); break;
+          canvas.renderAll(); saveHistory(); updateLayersList(); break;
 
         case 'del':
           if (confirm('Удалить этот слой?')) {
@@ -5096,8 +5101,9 @@ function startAutosave() {
 }
 
 function renderDraftsList() {
-  const container = $('#drafts-list-container');
-  const storageInfo = $('#drafts-storage-info');
+  const container = $('#drafts-grid') || $('#drafts-list-container');
+  const emptyEl = $('#drafts-empty');
+  const storageInfo = $('#drafts-storage-status') || $('#drafts-storage-info');
   if (!container) return;
 
   const drafts = getSavedDrafts();
@@ -5106,17 +5112,24 @@ function renderDraftsList() {
   }
 
   if (drafts.length === 0) {
-    container.innerHTML = `
-      <div class="drafts-empty-state">
-        <div class="empty-icon">📂</div>
-        <div class="empty-title">У вас пока нет сохранённых черновиков</div>
-        <div class="empty-desc">Сохраняйте свои работы, чтобы быстро возвращаться к редактированию в любой момент.</div>
-      </div>
-    `;
+    container.innerHTML = '';
+    if (emptyEl) {
+      emptyEl.classList.remove('hidden');
+    } else {
+      container.innerHTML = `
+        <div class="drafts-empty-state">
+          <div class="empty-icon">📂</div>
+          <div class="empty-title">У вас пока нет сохранённых черновиков</div>
+          <div class="empty-desc">Сохраняйте свои работы, чтобы быстро возвращаться к редактированию в любой момент.</div>
+        </div>
+      `;
+    }
     return;
   }
 
-  let html = '<div class="drafts-grid">';
+  emptyEl?.classList.add('hidden');
+
+  let html = '';
   drafts.forEach(d => {
     const dt = new Date(d.updatedAt || Date.now()).toLocaleString('ru-RU', {
       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
@@ -5126,7 +5139,7 @@ function renderDraftsList() {
       : `<div class="draft-card-placeholder">🖼️</div>`;
 
     html += `
-      <div class="draft-card" data-id="${d.id}">
+      <div class="draft-card" data-id="${escapeHtml(d.id)}">
         <div class="draft-card-preview">
           ${previewImg}
         </div>
@@ -5138,10 +5151,10 @@ function renderDraftsList() {
             <span>📑 Слоёв: ${d.objectsCount || 0}</span>
           </div>
           <div class="draft-card-actions">
-            <button class="btn-load-draft" data-draft-id="${d.id}">
+            <button class="btn-load-draft" data-draft-id="${escapeHtml(d.id)}">
               📂 Открыть
             </button>
-            <button class="btn-delete-draft" data-draft-id="${d.id}" title="Удалить черновик">
+            <button class="btn-delete-draft" data-draft-id="${escapeHtml(d.id)}" title="Удалить черновик">
               🗑️
             </button>
           </div>
@@ -5149,7 +5162,6 @@ function renderDraftsList() {
       </div>
     `;
   });
-  html += '</div>';
 
   container.innerHTML = html;
 
@@ -6845,7 +6857,12 @@ function bindEvents() {
     if (btnExport) {
       const formatLabels = { png: 'PNG', jpg: 'JPG', pdf: 'PDF (Печать)', svg: 'SVG (Вектор)' };
       const lbl = formatLabels[currentExportFormat] || currentExportFormat.toUpperCase();
-      btnExport.innerHTML = `<span class="icon">🚀</span> Экспорт афиши (${lbl})`;
+      const labelEl = $('#inspector-export-label');
+      if (labelEl) {
+        labelEl.textContent = `Экспорт афиши (${lbl})`;
+      } else {
+        btnExport.innerHTML = `<span class="material-symbols-rounded">download</span><span id="inspector-export-label">Экспорт афиши (${lbl})</span>`;
+      }
     }
     if (notify) {
       toast(`Выбран формат: ${currentExportFormat.toUpperCase()}`);
@@ -7444,16 +7461,12 @@ function bindEvents() {
   });
 
   /* ── Диалог импорта фото ── */
-  $('#photo-import-modal-close')?.addEventListener('click', closePhotoImportModal);
-  $('#photo-import-modal-overlay')?.addEventListener('click', e => {
-    if (e.target === e.currentTarget) closePhotoImportModal();
-  });
-  $('#btn-import-single')?.addEventListener('click', () => {
+  const handleImportSingle = () => {
     const f = _pendingPhotoFile;
     closePhotoImportModal();
     if (f) addPhoto(f);
-  });
-  $('#btn-import-split')?.addEventListener('click', () => {
+  };
+  const handleImportSplit = () => {
     const f = _pendingPhotoFile;
     closePhotoImportModal();
     if (!f) return;
@@ -7467,13 +7480,26 @@ function bindEvents() {
         img.set({ left:(currentSize.w-img.getScaledWidth())/2, top:(currentSize.h-img.getScaledHeight())/2,
           selectable:true, layerName:'Фото' });
         canvas.add(img); canvas.setActiveObject(img); canvas.renderAll();
+        saveHistory();
         updateLayersList();
         toast('Фото добавлено, разделяем на слои…');
         setTimeout(() => separateImageIntoLayers(), 300);
       });
     };
     reader.readAsDataURL(f);
+  };
+  $('#photo-import-modal-close')?.addEventListener('click', closePhotoImportModal);
+  $('#import-dialog-close')?.addEventListener('click', closePhotoImportModal);
+  $('#photo-import-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePhotoImportModal();
   });
+  $('#import-layer-dialog')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePhotoImportModal();
+  });
+  $('#btn-import-single')?.addEventListener('click', handleImportSingle);
+  $('#btn-import-single-layer')?.addEventListener('click', handleImportSingle);
+  $('#btn-import-split')?.addEventListener('click', handleImportSplit);
+  $('#btn-import-split-layers')?.addEventListener('click', handleImportSplit);
 
   /* ── Общие ── */
   $('#btn-center-h').addEventListener('click', () => {

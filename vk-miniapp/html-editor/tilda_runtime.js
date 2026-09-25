@@ -734,18 +734,19 @@
         return;
       }
 
+      const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       let html = '';
       this.items.forEach((item, idx) => {
         html += `
           <div class="tilda-cart-row">
-            ${item.img ? `<img src="${item.img}" class="tilda-cart-thumb" />` : ''}
+            ${item.img ? `<img src="${esc(item.img)}" class="tilda-cart-thumb" alt="${esc(item.name)}" />` : ''}
             <div class="tilda-cart-info">
-              <div class="tilda-cart-title">${item.name}</div>
-              <div class="tilda-cart-price">${item.price} ₽</div>
+              <div class="tilda-cart-title">${esc(item.name)}</div>
+              <div class="tilda-cart-price">${Number(item.price) || 0} ₽</div>
             </div>
             <div class="tilda-cart-controls">
               <button class="tilda-qty-btn" onclick="window.TildaCart.updateQty(${idx}, -1)">−</button>
-              <span>${item.qty || 1}</span>
+              <span>${Number(item.qty) || 1}</span>
               <button class="tilda-qty-btn" onclick="window.TildaCart.updateQty(${idx}, 1)">+</button>
               <button class="tilda-remove-btn" onclick="window.TildaCart.remove(${idx})">&times;</button>
             </div>
@@ -758,9 +759,42 @@
   };
   window.TildaCart = Cart;
 
-  // 7. Scroll Animations (IntersectionObserver & Live Preview)
+  // 7. Scroll Animations (IntersectionObserver & Live Preview — 18 Effects)
+  const ALL_ANIM_CLASSES = [
+    'tilda-animated-in',
+    'anim-fade-in',
+    'anim-slide-up',
+    'anim-slide-down',
+    'anim-slide-left',
+    'anim-slide-right',
+    'anim-zoom-in',
+    'anim-zoom-out',
+    'anim-flip-up',
+    'anim-flip-x',
+    'anim-rotate-in',
+    'anim-blur-in',
+    'anim-bounce',
+    'anim-elastic-up',
+    'anim-swing-in',
+    'anim-glitch',
+    'anim-typewriter',
+    'anim-pulse-glow',
+    'anim-stagger'
+  ];
+
+  function applyStaggerDelays(el) {
+    const cards = el.querySelectorAll('.t-feature-card, .t-pricing-card, .t-card, .tilda-product-card, [data-filter-item], .t-container > div > div');
+    cards.forEach((card, i) => {
+      const staggerDelay = `${(i * 0.12).toFixed(2)}s`;
+      card.style.transitionDelay = staggerDelay;
+      card.style.animationDelay = staggerDelay;
+    });
+  }
+
   function initScrollAnimations() {
-    const animatedElements = document.querySelectorAll('[data-tilda-anim], .tilda-animate-on-scroll');
+    const animatedElements = document.querySelectorAll(
+      '.tilda-block[data-tilda-anim], .block-custom-element[data-tilda-anim], .zero-canvas-element[data-tilda-anim], [data-tilda-anim], .tilda-animate-on-scroll'
+    );
     if (animatedElements.length === 0) return;
 
     animatedElements.forEach(el => {
@@ -769,8 +803,17 @@
 
       const delay = el.getAttribute('data-anim-delay');
       const duration = el.getAttribute('data-anim-duration');
-      if (delay) el.style.transitionDelay = `${delay}s`;
-      if (duration) el.style.transitionDuration = `${duration}s`;
+      if (delay !== null && delay !== '') {
+        el.style.transitionDelay = `${delay}s`;
+        el.style.animationDelay = `${delay}s`;
+      }
+      if (duration !== null && duration !== '') {
+        el.style.transitionDuration = `${duration}s`;
+        el.style.animationDuration = `${duration}s`;
+      }
+      if (animType === 'stagger') {
+        applyStaggerDelays(el);
+      }
     });
 
     const observer = new IntersectionObserver((entries, obs) => {
@@ -779,10 +822,10 @@
           const el = entry.target;
           const animType = el.getAttribute('data-tilda-anim');
           if (animType && animType !== 'none') {
-            el.classList.add('tilda-animated-in');
-            if (animType === 'bounce') {
-              el.classList.add('anim-bounce');
+            if (animType === 'stagger') {
+              applyStaggerDelays(el);
             }
+            el.classList.add('tilda-animated-in', `anim-${animType}`);
           }
           obs.unobserve(el);
         }
@@ -800,12 +843,265 @@
   function triggerAnimation(el) {
     if (!el) return;
     const animType = el.getAttribute('data-tilda-anim') || 'fade-in';
-    el.classList.remove('tilda-animated-in', 'anim-fade-in', 'anim-slide-up', 'anim-slide-down', 'anim-slide-left', 'anim-slide-right', 'anim-zoom-in', 'anim-flip-up', 'anim-bounce');
+    if (animType === 'none') {
+      el.classList.remove(...ALL_ANIM_CLASSES);
+      return;
+    }
+
+    const delay = el.getAttribute('data-anim-delay');
+    const duration = el.getAttribute('data-anim-duration');
+    if (delay !== null && delay !== '') {
+      el.style.transitionDelay = `${delay}s`;
+      el.style.animationDelay = `${delay}s`;
+    }
+    if (duration !== null && duration !== '') {
+      el.style.transitionDuration = `${duration}s`;
+      el.style.animationDuration = `${duration}s`;
+    }
+    if (animType === 'stagger') {
+      applyStaggerDelays(el);
+    }
+
+    el.classList.remove(...ALL_ANIM_CLASSES);
     void el.offsetWidth; // Trigger reflow
     el.classList.add(`anim-${animType}`);
     setTimeout(() => {
       el.classList.add('tilda-animated-in');
-    }, 50);
+    }, 20);
+  }
+
+  function replayAllAnimations() {
+    const els = document.querySelectorAll('[data-tilda-anim]');
+    els.forEach(el => {
+      const animType = el.getAttribute('data-tilda-anim');
+      if (animType && animType !== 'none') {
+        triggerAnimation(el);
+      }
+    });
+  }
+
+  // 8. Interactive Tabs ([data-tilda-tabs])
+  function initTabs() {
+    document.querySelectorAll('[data-tilda-tabs]').forEach(tabsRoot => {
+      if (tabsRoot._tabsBound) return;
+      tabsRoot._tabsBound = true;
+
+      const btns = Array.from(tabsRoot.querySelectorAll('[data-tab-btn]'));
+      const panes = Array.from(tabsRoot.querySelectorAll('[data-tab-pane]'));
+      if (btns.length === 0 || panes.length === 0) return;
+
+      btns.forEach((btn, idx) => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          const targetKey = btn.getAttribute('data-tab-btn') || btn.dataset.tab || String(idx);
+
+          btns.forEach(b => {
+            const active = b === btn;
+            b.classList.toggle('is-active', active);
+            if (active) {
+              b.style.background = b.dataset.activeBg || '#0d99ff';
+              b.style.color = '#ffffff';
+              b.style.borderColor = '#0d99ff';
+            } else {
+              b.style.background = b.dataset.inactiveBg || 'rgba(30, 41, 59, 0.7)';
+              b.style.color = '#94a3b8';
+              b.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            }
+          });
+
+          panes.forEach((pane, pIdx) => {
+            const paneKey = pane.getAttribute('data-tab-pane') || pane.dataset.tab || String(pIdx);
+            const isMatch = paneKey === targetKey || (!btn.getAttribute('data-tab-btn') && pIdx === idx);
+            if (isMatch) {
+              pane.classList.add('is-active');
+              pane.style.display = pane.dataset.display || 'block';
+              pane.style.opacity = '0';
+              requestAnimationFrame(() => {
+                pane.style.transition = 'opacity 0.25s ease';
+                pane.style.opacity = '1';
+              });
+            } else {
+              pane.classList.remove('is-active');
+              pane.style.display = 'none';
+            }
+          });
+        });
+      });
+    });
+  }
+
+  // 9. Interactive Category Filters ([data-tilda-filter])
+  function initFilters() {
+    document.querySelectorAll('[data-tilda-filter]').forEach(filterRoot => {
+      if (filterRoot._filterBound) return;
+      filterRoot._filterBound = true;
+
+      const scope = filterRoot.closest('.tilda-block, section, [data-block-id]') || filterRoot;
+      const btns = Array.from(filterRoot.querySelectorAll('[data-filter-btn]'));
+      const items = Array.from(scope.querySelectorAll('[data-filter-item]'));
+      if (btns.length === 0) return;
+
+      btns.forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          const filterVal = (btn.getAttribute('data-filter-btn') || btn.dataset.filter || 'all').trim().toLowerCase();
+
+          btns.forEach(b => {
+            const active = b === btn;
+            b.classList.toggle('is-active', active);
+            b.style.background = active ? '#0d99ff' : 'rgba(30, 41, 59, 0.7)';
+            b.style.color = active ? '#ffffff' : '#94a3b8';
+            b.style.borderColor = active ? '#0d99ff' : 'rgba(255, 255, 255, 0.1)';
+          });
+
+          items.forEach(item => {
+            const catRaw = (item.getAttribute('data-filter-item') || item.dataset.category || '').trim().toLowerCase();
+            const categories = catRaw.split(',').map(s => s.trim());
+            const isMatch = filterVal === 'all' || filterVal === '*' || filterVal === 'все' || catRaw === filterVal || categories.includes(filterVal);
+
+            if (isMatch) {
+              item.style.display = '';
+              item.style.opacity = '0';
+              item.style.transform = 'scale(0.96) translateY(8px)';
+              requestAnimationFrame(() => {
+                item.style.transition = 'opacity 0.28s ease, transform 0.28s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'scale(1) translateY(0)';
+              });
+            } else {
+              item.style.display = 'none';
+            }
+          });
+        });
+      });
+    });
+  }
+
+  // 10. Animated Number Counters ([data-tilda-counter], [data-count-to])
+  function initCounters() {
+    const counters = document.querySelectorAll('[data-tilda-counter], [data-count-to]');
+    if (counters.length === 0) return;
+
+    const animateCounter = el => {
+      if (el._counterAnimated) return;
+      el._counterAnimated = true;
+
+      const rawTarget = el.getAttribute('data-count-to') || el.getAttribute('data-tilda-counter') || el.textContent || '0';
+      const prefix = el.getAttribute('data-count-prefix') || '';
+      const suffix = el.getAttribute('data-count-suffix') || (rawTarget.match(/[^\d.,\s]+$/)?.[0] || '');
+      const cleanNum = parseFloat(String(rawTarget).replace(/\s/g, '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
+      const isFloat = String(cleanNum).includes('.');
+      const decimals = isFloat ? (String(cleanNum).split('.')[1]?.length || 1) : 0;
+      const duration = 1200;
+      const startTime = performance.now();
+
+      const step = now => {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+        const current = cleanNum * eased;
+        const formatted = isFloat
+          ? current.toFixed(decimals)
+          : Math.round(current).toLocaleString('ru-RU');
+        el.textContent = `${prefix}${formatted}${suffix}`;
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        }
+      };
+
+      requestAnimationFrame(step);
+    };
+
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          animateCounter(entry.target);
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    counters.forEach(c => observer.observe(c));
+  }
+
+  // 11. Interactive Multi-Step Quizzes ([data-tilda-quiz])
+  function initQuizzes() {
+    document.querySelectorAll('[data-tilda-quiz]').forEach(quiz => {
+      if (quiz._quizBound) return;
+      quiz._quizBound = true;
+
+      const steps = Array.from(quiz.querySelectorAll('[data-quiz-step]'));
+      const progressBar = quiz.querySelector('[data-quiz-progress]');
+      const stepLabel = quiz.querySelector('[data-quiz-step-label]');
+      const resultPane = quiz.querySelector('[data-quiz-result]');
+      let currentStep = 0;
+
+      const updateQuizView = () => {
+        const total = steps.length || 1;
+        steps.forEach((s, idx) => {
+          s.style.display = idx === currentStep ? 'block' : 'none';
+          s.classList.toggle('is-active', idx === currentStep);
+        });
+        if (resultPane) {
+          resultPane.style.display = currentStep >= steps.length ? 'block' : 'none';
+        }
+        if (progressBar) {
+          const pct = Math.min(100, Math.round(((currentStep + 1) / total) * 100));
+          progressBar.style.width = `${pct}%`;
+        }
+        if (stepLabel && currentStep < steps.length) {
+          stepLabel.textContent = `Шаг ${currentStep + 1} из ${total}`;
+        }
+      };
+
+      quiz.querySelectorAll('[data-quiz-option]').forEach(opt => {
+        opt.addEventListener('click', () => {
+          const stepEl = opt.closest('[data-quiz-step]') || quiz;
+          stepEl.querySelectorAll('[data-quiz-option]').forEach(o => {
+            const active = o === opt;
+            o.classList.toggle('is-selected', active);
+            o.style.borderColor = active ? '#0d99ff' : 'rgba(255,255,255,0.12)';
+            o.style.background = active ? 'rgba(13,153,255,0.15)' : 'rgba(15,23,42,0.6)';
+          });
+          if (quiz.hasAttribute('data-quiz-auto-next') && steps.length > 0) {
+            setTimeout(() => {
+              if (currentStep < steps.length - 1 || resultPane) {
+                currentStep++;
+                updateQuizView();
+              }
+            }, 220);
+          }
+        });
+      });
+
+      quiz.querySelectorAll('[data-quiz-next]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          if (currentStep < steps.length - 1) {
+            currentStep++;
+            updateQuizView();
+          } else if (resultPane) {
+            currentStep = steps.length;
+            updateQuizView();
+          } else {
+            showToast('✅ Ответы квиза сохранены!');
+          }
+        });
+      });
+
+      quiz.querySelectorAll('[data-quiz-prev]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          if (currentStep > 0) {
+            currentStep--;
+            updateQuizView();
+          }
+        });
+      });
+
+      if (steps.length > 0) {
+        updateQuizView();
+      }
+    });
   }
 
   // Toast Helper
@@ -831,6 +1127,10 @@
     initLightbox();
     initForms();
     Cart.init();
+    initTabs();
+    initFilters();
+    initCounters();
+    initQuizzes();
     initScrollAnimations();
   }
 
@@ -840,5 +1140,15 @@
     initAll();
   }
 
-  window.TildaRuntime = { init: initAll, Cart, triggerAnimation, lightbox: window.AuroraLightbox };
+  window.TildaRuntime = {
+    init: initAll,
+    Cart,
+    triggerAnimation,
+    replayAllAnimations,
+    initTabs,
+    initFilters,
+    initCounters,
+    initQuizzes,
+    lightbox: window.AuroraLightbox
+  };
 })();

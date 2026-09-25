@@ -1,0 +1,2213 @@
+/* ==========================================================================
+   АВРОРА • ЛИТЕРАТУРНЫЙ ХРОНОГРАФ (style.css)
+   Эстетика: Aurora Cosmic Library (Dark Cosmic Indigo #070a1e + Noble Cream Light)
+   Типографика: Unbounded, Montserrat, Cormorant Garamond, Material Symbols Rounded
+   ========================================================================== */
+
+:root,
+[data-theme="dark"] {
+  /* ── Базовая палитра Aurora Cosmic Library (Тёмная тема) ── */
+  --bg-primary: #070a1e;
+  --bg-secondary: #0c112e;
+  --bg-surface: rgba(16, 23, 56, 0.74);
+  --bg-surface-hover: rgba(24, 34, 78, 0.86);
+  --bg-surface-strong: rgba(13, 19, 46, 0.94);
+  --bg-glass: rgba(18, 26, 62, 0.68);
+  --bg-input: rgba(9, 14, 36, 0.82);
+
+  /* ── Текст ── */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #8b9bb4;
+  --text-dim: #64748b;
+
+  /* ── Фирменные акценты ── */
+  --cyan: #00e5ff;
+  --cyan-soft: rgba(0, 229, 255, 0.14);
+  --cyan-border: rgba(0, 229, 255, 0.38);
+  --cyan-glow: 0 0 22px rgba(0, 229, 255, 0.28);
+
+  --gold: #f59e0b;
+  --gold-light: #fbbf24;
+  --gold-soft: rgba(245, 158, 11, 0.16);
+  --gold-border: rgba(245, 158, 11, 0.45);
+  --gold-glow: 0 0 24px rgba(245, 158, 11, 0.32);
+
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+  --purple-soft: rgba(139, 92, 246, 0.16);
+  --purple-border: rgba(139, 92, 246, 0.42);
+
+  --emerald: #10b981;
+  --emerald-light: #34d399;
+  --emerald-soft: rgba(16, 185, 129, 0.16);
+  --emerald-border: rgba(16, 185, 129, 0.42);
+
+  --danger: #f43f5e;
+  --danger-soft: rgba(244, 63, 94, 0.16);
+
+  /* ── Границы, стекло и тени ── */
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.28);
+  --glass-blur: blur(16px);
+  --shadow-sm: 0 4px 14px rgba(2, 5, 18, 0.4);
+  --shadow-md: 0 12px 32px rgba(2, 5, 18, 0.55);
+  --shadow-lg: 0 20px 50px rgba(2, 5, 18, 0.72);
+
+  /* ── Градиенты ── */
+  --grad-aurora: linear-gradient(135deg, #00e5ff 0%, #8b5cf6 52%, #f59e0b 100%);
+  --grad-cyan-purple: linear-gradient(135deg, #00e5ff 0%, #8b5cf6 100%);
+  --grad-gold: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
+  --grad-emerald: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --grad-card: linear-gradient(160deg, rgba(24, 34, 78, 0.78) 0%, rgba(12, 18, 44, 0.88) 100%);
+
+  /* ── Шрифты ── */
+  --font-display: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+
+  /* ── Скругления и переходы ── */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-pill: 9999px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Благородная бумажно-кремовая светлая тема («Читальный зал») ── */
+[data-theme="light"] {
+  --bg-primary: #f6f2e8;
+  --bg-secondary: #ede6d6;
+  --bg-surface: rgba(255, 253, 248, 0.86);
+  --bg-surface-hover: rgba(255, 255, 255, 0.98);
+  --bg-surface-strong: #fffdf9;
+  --bg-glass: rgba(255, 252, 245, 0.82);
+  --bg-input: #ffffff;
+
+  --text-primary: #16192b;
+  --text-secondary: #334155;
+  --text-muted: #5b677d;
+  --text-dim: #7c889e;
+
+  --cyan: #0284c7;
+  --cyan-soft: rgba(2, 132, 199, 0.12);
+  --cyan-border: rgba(2, 132, 199, 0.36);
+  --cyan-glow: 0 4px 16px rgba(2, 132, 199, 0.18);
+
+  --gold: #d97706;
+  --gold-light: #b45309;
+  --gold-soft: rgba(217, 119, 6, 0.14);
+  --gold-border: rgba(217, 119, 6, 0.42);
+  --gold-glow: 0 6px 20px rgba(217, 119, 6, 0.2);
+
+  --purple: #6d28d9;
+  --purple-light: #5b21b6;
+  --purple-soft: rgba(109, 40, 217, 0.11);
+  --purple-border: rgba(109, 40, 217, 0.34);
+
+  --emerald: #059669;
+  --emerald-light: #047857;
+  --emerald-soft: rgba(5, 150, 105, 0.12);
+  --emerald-border: rgba(5, 150, 105, 0.36);
+
+  --danger: #e11d48;
+  --danger-soft: rgba(225, 29, 72, 0.11);
+
+  --border-subtle: rgba(100, 88, 68, 0.16);
+  --border-strong: rgba(100, 88, 68, 0.28);
+  --shadow-sm: 0 3px 10px rgba(42, 34, 20, 0.07);
+  --shadow-md: 0 10px 28px rgba(42, 34, 20, 0.11);
+  --shadow-lg: 0 20px 46px rgba(42, 34, 20, 0.16);
+
+  --grad-aurora: linear-gradient(135deg, #0284c7 0%, #6d28d9 52%, #d97706 100%);
+  --grad-card: linear-gradient(160deg, rgba(255, 254, 250, 0.94) 0%, rgba(248, 243, 232, 0.96) 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   БАЗОВЫЕ СБРОСЫ И ФОН ЭКОСИСТЕМЫ АВРОРА
+   ═══════════════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  overflow-x: hidden;
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.material-symbols-rounded {
+  font-size: 20px;
+  line-height: 1;
+  vertical-align: middle;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Фоновые космические туманности и сетка ── */
+.aurora-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 85% 55% at 15% -10%, rgba(0, 229, 255, 0.12), transparent 60%),
+    radial-gradient(ellipse 80% 55% at 88% 8%, rgba(139, 92, 246, 0.14), transparent 62%),
+    radial-gradient(ellipse 70% 50% at 50% 105%, rgba(245, 158, 11, 0.08), transparent 60%),
+    var(--bg-primary);
+}
+
+[data-theme="light"] .aurora-ambient-bg {
+  background:
+    radial-gradient(ellipse 85% 55% at 15% -10%, rgba(2, 132, 199, 0.07), transparent 60%),
+    radial-gradient(ellipse 80% 55% at 88% 8%, rgba(217, 119, 6, 0.08), transparent 62%),
+    radial-gradient(ellipse 70% 50% at 50% 105%, rgba(109, 40, 217, 0.05), transparent 60%),
+    var(--bg-primary);
+}
+
+.aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  opacity: 0.42;
+  animation: orbFloat 22s ease-in-out infinite alternate;
+}
+
+[data-theme="light"] .aurora-orb {
+  opacity: 0.2;
+}
+
+.orb-cyan {
+  width: 420px;
+  height: 420px;
+  top: -120px;
+  left: -100px;
+  background: var(--cyan);
+}
+
+.orb-purple {
+  width: 460px;
+  height: 460px;
+  top: 22%;
+  right: -140px;
+  background: var(--purple);
+  animation-delay: -7s;
+}
+
+.orb-gold {
+  width: 360px;
+  height: 360px;
+  bottom: -100px;
+  left: 28%;
+  background: var(--gold);
+  animation-delay: -13s;
+}
+
+@keyframes orbFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(36px, 28px) scale(1.12);
+  }
+}
+
+.aurora-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 25%, black 20%, transparent 85%);
+}
+
+[data-theme="light"] .aurora-grid-overlay {
+  background-image:
+    linear-gradient(to right, rgba(24, 27, 44, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(24, 27, 44, 0.03) 1px, transparent 1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   1. ВЕРХНЯЯ ПАНЕЛЬ НАВИГАЦИИ (.chrono-topbar)
+   ═══════════════════════════════════════════════════════════════════ */
+.chrono-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.chrono-topbar-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.topbar-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s var(--ease-out);
+  white-space: nowrap;
+}
+
+.topbar-nav-link:hover {
+  color: var(--text-primary);
+  border-color: var(--cyan-border);
+  background: var(--bg-surface-hover);
+  transform: translateY(-1px);
+}
+
+.topbar-poster-link {
+  background: var(--purple-soft);
+  border-color: var(--purple-border);
+  color: var(--text-primary);
+}
+
+.topbar-poster-link:hover {
+  background: var(--purple);
+  color: #ffffff;
+  border-color: var(--purple);
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-subtle);
+}
+
+.chrono-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chrono-brand-emblem {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--grad-cyan-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #070a1e;
+  box-shadow: var(--cyan-glow);
+}
+
+[data-theme="light"] .chrono-brand-emblem {
+  color: #ffffff;
+}
+
+.chrono-brand-emblem .material-symbols-rounded {
+  font-size: 24px;
+}
+
+.chrono-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.chrono-brand-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.chrono-brand-subtitle {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Селектор расчётного года (#year-select) ── */
+.year-selector-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.year-selector-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.year-selector-label .material-symbols-rounded {
+  font-size: 17px;
+  color: var(--cyan);
+}
+
+.year-select {
+  background: transparent;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--cyan);
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.year-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* ── Универсальные кнопки (.chrono-btn) ── */
+.chrono-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.2s var(--ease-out);
+  white-space: nowrap;
+}
+
+.chrono-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.chrono-btn-primary {
+  background: var(--grad-cyan-purple);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: var(--cyan-glow);
+}
+
+.chrono-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.chrono-btn-secondary {
+  background: var(--cyan-soft);
+  border-color: var(--cyan-border);
+  color: var(--text-primary);
+}
+
+.chrono-btn-secondary:hover {
+  background: var(--cyan);
+  color: #070a1e;
+  box-shadow: var(--cyan-glow);
+}
+
+[data-theme="light"] .chrono-btn-secondary:hover {
+  color: #ffffff;
+}
+
+.chrono-btn-plan {
+  background: var(--emerald-soft);
+  border-color: var(--emerald-border);
+  color: var(--text-primary);
+}
+
+.chrono-btn-plan:hover {
+  background: var(--emerald);
+  color: #ffffff;
+}
+
+.plan-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--emerald);
+  color: #06281e;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+[data-theme="light"] .plan-count-badge {
+  color: #ffffff;
+}
+
+.chrono-btn-gold {
+  background: var(--grad-gold);
+  color: #140d00;
+  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: var(--gold-glow);
+}
+
+.chrono-btn-gold:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}
+
+.chrono-btn-ghost {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.chrono-btn-ghost:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.chrono-btn-danger-ghost {
+  background: var(--danger-soft);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: var(--danger);
+}
+
+.chrono-btn-danger-ghost:hover {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.chrono-btn-compact {
+  padding: 8px 11px;
+  font-size: 0.78rem;
+}
+
+.chrono-btn-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--gold-light);
+}
+
+.chrono-btn-icon:hover {
+  border-color: var(--gold-border);
+  background: var(--gold-soft);
+  transform: rotate(12deg);
+}
+
+.topbar-export-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. HERO-СЕКЦИЯ И ДАШБОРД СТАТИСТИКИ (.chrono-hero)
+   ═══════════════════════════════════════════════════════════════════ */
+.chrono-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chrono-hero {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+  padding: 28px 32px;
+  border-radius: var(--radius-xl);
+  background: var(--grad-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.chrono-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-aurora);
+}
+
+.chrono-hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.hero-eyebrow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 2.4vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.text-gradient-aurora {
+  background: var(--grad-aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 0.94rem;
+  color: var(--text-secondary);
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+/* ── 4 карточки статистики ── */
+.chrono-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: transform 0.2s var(--ease-out), border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-card-icon .material-symbols-rounded {
+  font-size: 26px;
+}
+
+.stat-card-cyan {
+  border-color: var(--cyan-border);
+}
+.stat-card-cyan .stat-card-icon {
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.stat-card-purple {
+  border-color: var(--purple-border);
+}
+.stat-card-purple .stat-card-icon {
+  background: var(--purple-soft);
+  color: var(--purple-light);
+}
+
+.stat-card-gold {
+  border-color: var(--gold-border);
+}
+.stat-card-gold .stat-card-icon {
+  background: var(--gold-soft);
+  color: var(--gold-light);
+}
+
+.stat-card-emerald {
+  border-color: var(--emerald-border);
+}
+.stat-card-emerald .stat-card-icon {
+  background: var(--emerald-soft);
+  color: var(--emerald-light);
+}
+
+.stat-card-value {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.stat-card-label {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   3. ЛЕНТА МЕСЯЦЕВ (#month-ribbon)
+   ═══════════════════════════════════════════════════════════════════ */
+.chrono-ribbon-section {
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.month-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.month-ribbon::-webkit-scrollbar {
+  height: 5px;
+}
+.month-ribbon::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+
+.month-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s var(--ease-out);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.month-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+  border-color: var(--border-subtle);
+}
+
+.month-tab.active,
+.month-tab.is-active {
+  background: var(--grad-cyan-purple);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: var(--cyan-glow);
+}
+
+.month-tab-badge,
+.month-tab .month-count,
+.month-tab .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: 0.71rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .month-tab-badge {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.month-tab.active .month-tab-badge,
+.month-tab.is-active .month-tab-badge,
+.month-tab.active .month-count,
+.month-tab.is-active .month-count {
+  background: rgba(7, 10, 30, 0.35);
+  color: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. ПАНЕЛЬ ФИЛЬТРАЦИИ, ПОИСКА И ПЕРЕКЛЮЧЕНИЯ ВИДА
+   ═══════════════════════════════════════════════════════════════════ */
+.chrono-controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.controls-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Поле поиска (#search-input) ── */
+.search-box {
+  position: relative;
+  flex: 1 1 380px;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--cyan);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 42px 12px 44px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: var(--text-dim);
+}
+
+.search-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px var(--cyan-soft);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+}
+
+.search-clear-btn:hover {
+  color: var(--text-primary);
+  background: var(--danger-soft);
+}
+
+/* ── Переключатель вида (#view-switcher) ── */
+.view-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+}
+
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s var(--ease-out);
+}
+
+.view-btn:hover {
+  color: var(--text-primary);
+}
+
+.view-btn.active,
+.view-btn.is-active {
+  background: var(--bg-surface-hover);
+  color: var(--cyan);
+  border: 1px solid var(--cyan-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Чипы фильтров (#jubilee-filters, #category-filters) ── */
+.controls-filters-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  min-width: 155px;
+}
+
+.filter-chips-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.81rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.18s var(--ease-out);
+}
+
+.filter-chip:hover {
+  border-color: var(--cyan-border);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.filter-chip.active,
+.filter-chip.is-active {
+  background: var(--cyan-soft);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  font-weight: 700;
+  box-shadow: var(--cyan-glow);
+}
+
+.filter-chip-gold.active,
+.filter-chip-gold.is-active,
+.filter-chip[data-jubilee="round"].active,
+.filter-chip[data-jubilee="round"].is-active {
+  background: var(--gold-soft);
+  border-color: var(--gold);
+  color: var(--gold-light);
+  box-shadow: var(--gold-glow);
+}
+
+.filter-chip-emerald.active,
+.filter-chip-emerald.is-active,
+.filter-chip[data-category="regional"].active,
+.filter-chip[data-category="regional"].is-active {
+  background: var(--emerald-soft);
+  border-color: var(--emerald);
+  color: var(--emerald-light);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. АКТИВНЫЕ ФИЛЬТРЫ И КОНТЕЙНЕРЫ ОТОБРАЖЕНИЯ
+   ═══════════════════════════════════════════════════════════════════ */
+.chrono-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.active-filters-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.summary-status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-icon {
+  color: var(--cyan);
+}
+
+.btn-reset-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border: 1px solid var(--cyan-border);
+  transition: all 0.2s ease;
+}
+
+.btn-reset-filters:hover {
+  background: var(--cyan);
+  color: #070a1e;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5.1. СЕТКА КАРТОЧЕК ДАТ (#chronograph-cards-grid)
+   Поддержка любых вариантов классов карточек из app.js
+   ═══════════════════════════════════════════════════════════════════ */
+.chronograph-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.chrono-card,
+.date-card,
+.chronograph-cards-grid > article,
+.chronograph-cards-grid > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: var(--grad-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.24s var(--ease-out), border-color 0.24s ease, box-shadow 0.24s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.chrono-card:hover,
+.date-card:hover,
+.chronograph-cards-grid > article:hover,
+.chronograph-cards-grid > div:hover {
+  transform: translateY(-4px);
+  border-color: var(--cyan-border);
+  box-shadow: var(--shadow-md);
+}
+
+/* Выделение круглых юбилеев золотым свечением */
+.chrono-card.is-round-jubilee,
+.chrono-card.is-jubilee,
+.date-card.is-round-jubilee,
+.date-card.is-jubilee {
+  border-color: var(--gold-border);
+}
+
+.chrono-card.is-round-jubilee::before,
+.chrono-card.is-jubilee::before,
+.date-card.is-round-jubilee::before,
+.date-card.is-jubilee::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-gold);
+}
+
+/* Выделение краеведческих дат изумрудным акцентом */
+.chrono-card.is-regional,
+.date-card.is-regional,
+.chrono-card[data-category="regional"],
+.date-card[data-category="regional"] {
+  border-color: var(--emerald-border);
+}
+
+/* Выделение карточек, добавленных в план */
+.chrono-card.in-plan,
+.chrono-card.is-planned,
+.date-card.in-plan,
+.date-card.is-planned {
+  box-shadow: 0 0 0 2px var(--emerald), var(--shadow-md);
+}
+
+/* ── Шапка карточки: дата, аватар/монограмма и золотой бейдж юбилея ── */
+.card-top,
+.card-header,
+.chrono-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-date-badge,
+.date-pill,
+.chrono-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--cyan-soft);
+  border: 1px solid var(--cyan-border);
+  color: var(--cyan);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.card-jubilee-badge,
+.jubilee-badge,
+.chrono-jubilee-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-border);
+  color: var(--gold-light);
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.card-jubilee-badge.is-round,
+.jubilee-badge.is-round,
+.jubilee-badge.round,
+.chrono-jubilee-badge.is-round {
+  background: var(--grad-gold);
+  color: #160e00;
+  border-color: transparent;
+  box-shadow: var(--gold-glow);
+}
+
+.card-category-badge,
+.category-badge,
+.category-tag,
+.chrono-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--purple-soft);
+  border: 1px solid var(--purple-border);
+  color: var(--purple-light);
+}
+
+.category-badge.cat-regional,
+.card-category-badge.cat-regional,
+[data-category="regional"] .card-category-badge {
+  background: var(--emerald-soft);
+  border-color: var(--emerald-border);
+  color: var(--emerald-light);
+}
+
+/* ── Персона / Заголовок / Аватар ── */
+.card-person-row,
+.card-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.card-avatar,
+.person-avatar,
+.chrono-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: var(--grad-cyan-purple);
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.card-avatar img,
+.person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-title,
+.chrono-card-title,
+.date-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.card-title:hover,
+.chrono-card-title:hover {
+  color: var(--cyan);
+}
+
+.card-role,
+.card-subtitle,
+.person-role,
+.card-years,
+.lifespan {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Краткая биография и книжная цитата ── */
+.card-bio,
+.chrono-card-bio {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-quote,
+.chrono-quote,
+blockquote.literary-quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-left: 3px solid var(--gold);
+  background: rgba(245, 158, 11, 0.07);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Ключевые произведения (теги книг) ── */
+.card-works,
+.works-list,
+.chrono-works-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.work-tag,
+.book-chip,
+.work-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--bg-surface-strong);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* ── Блок рекомендуемой книжной выставки на карточке ── */
+.card-exhibition,
+.exhibition-box,
+.chrono-exhibition-preview {
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 229, 255, 0.06);
+  border: 1px dashed var(--cyan-border);
+  font-size: 0.81rem;
+  color: var(--text-secondary);
+}
+
+.card-exhibition strong,
+.exhibition-box strong {
+  color: var(--cyan);
+  display: block;
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 3px;
+}
+
+/* ── Подвал карточки и кнопки действий ── */
+.card-footer,
+.card-actions,
+.chrono-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+
+.card-btn,
+.btn-card-action,
+.btn-detail,
+.btn-plan-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+}
+
+.card-btn:hover,
+.btn-card-action:hover,
+.btn-detail:hover,
+.btn-plan-toggle:hover {
+  border-color: var(--cyan);
+  color: var(--text-primary);
+  background: var(--cyan-soft);
+}
+
+.btn-plan-toggle.active,
+.btn-plan-toggle.in-plan,
+.card-btn.in-plan,
+.btn-card-plan.in-plan {
+  background: var(--emerald-soft);
+  border-color: var(--emerald);
+  color: var(--emerald-light);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5.2. КАЛЕНДАРНАЯ СЕТКА (#chronograph-calendar-view)
+   ═══════════════════════════════════════════════════════════════════ */
+.chronograph-calendar-view {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.calendar-panel-left,
+.calendar-panel-right {
+  background: var(--grad-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.calendar-panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.calendar-panel-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calendar-panel-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.weekday-weekend {
+  color: var(--gold-light);
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.cal-day,
+.calendar-day,
+.day-cell {
+  min-height: 78px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.18s var(--ease-out);
+  position: relative;
+}
+
+.cal-day:hover,
+.calendar-day:hover,
+.day-cell:hover {
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+}
+
+.cal-day.empty,
+.cal-day.is-empty,
+.calendar-day.empty,
+.day-cell.empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cal-day.has-events,
+.calendar-day.has-events,
+.day-cell.has-events {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: var(--cyan-border);
+}
+
+.cal-day.has-jubilee,
+.calendar-day.has-jubilee,
+.day-cell.has-jubilee {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: var(--gold-border);
+}
+
+.cal-day.active,
+.cal-day.is-selected,
+.calendar-day.active,
+.calendar-day.is-selected,
+.day-cell.active {
+  box-shadow: 0 0 0 2px var(--cyan), var(--cyan-glow);
+  border-color: var(--cyan);
+}
+
+.cal-day-num,
+.day-number,
+.day-num {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cal-day-dots,
+.day-dots,
+.day-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.cal-dot,
+.day-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+
+.cal-dot.gold,
+.cal-dot.is-round,
+.day-dot.gold,
+.day-dot.is-jubilee {
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+}
+
+.cal-dot.emerald,
+.day-dot.regional {
+  background: var(--emerald);
+}
+
+/* Правая колонка календаря — события выбранного дня */
+.calendar-events-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.calendar-events-header .material-symbols-rounded {
+  color: var(--cyan);
+  font-size: 24px;
+}
+
+.calendar-events-header h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.calendar-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 580px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5.3. МЕТОДИЧЕСКАЯ ТАБЛИЦА (#chronograph-table-view)
+   ═══════════════════════════════════════════════════════════════════ */
+.chronograph-table-view {
+  background: var(--grad-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.table-responsive-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chrono-method-table,
+.chronograph-table-view table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.chrono-method-table th,
+.chronograph-table-view th {
+  padding: 14px 16px;
+  background: var(--bg-surface-strong);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+
+.chrono-method-table td,
+.chronograph-table-view td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.chrono-method-table tbody tr:hover,
+.chronograph-table-view tbody tr:hover {
+  background: var(--bg-surface-hover);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5.4. ПУСТОЕ СОСТОЯНИЕ (#chronograph-empty-state)
+   ═══════════════════════════════════════════════════════════════════ */
+.chronograph-empty-state {
+  padding: 56px 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.empty-state-card {
+  max-width: 520px;
+  text-align: center;
+  padding: 40px 32px;
+  border-radius: var(--radius-xl);
+  background: var(--grad-card);
+  border: 1px dashed var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-icon .material-symbols-rounded {
+  font-size: 34px;
+}
+
+.empty-state-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.empty-state-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6, 7, 8. МОДАЛЬНЫЕ ОКНА (.modal-overlay)
+   ═══════════════════════════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(4, 7, 20, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  animation: modalFadeIn 0.2s var(--ease-out);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-dialog {
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-surface-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  padding: 28px 32px;
+  color: var(--text-primary);
+}
+
+.modal-dialog-detail {
+  max-width: 860px;
+}
+
+.modal-dialog-plan {
+  max-width: 780px;
+}
+
+.modal-dialog-form {
+  max-width: 680px;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+  z-index: 5;
+}
+
+.modal-close-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-right: 42px;
+}
+
+.modal-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.modal-header-icon {
+  font-size: 30px;
+  color: var(--cyan);
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: 700;
+}
+
+.modal-subtitle {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Детальное модальное окно (#date-modal-body) ── */
+.date-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-person-hero,
+.detail-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-right: 40px;
+}
+
+.modal-avatar,
+.detail-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  background: var(--grad-cyan-purple);
+  color: #ffffff;
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: var(--cyan-glow);
+}
+
+.modal-section-title,
+.detail-section-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cyan);
+  margin-bottom: 10px;
+}
+
+.exhibition-ideas-grid,
+.detail-exhibitions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.exhibition-idea-card,
+.idea-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ── Модальное окно плана (#plan-modal-overlay) ── */
+.plan-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.plan-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 20px;
+}
+
+.plan-item,
+.plan-item-card,
+.plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.plan-modal-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.plan-export-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Форма добавления своей даты филиала (#custom-date-form) ── */
+.custom-date-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  gap: 14px;
+}
+
+.form-row-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.form-row-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--cyan);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. УВЕДОМЛЕНИЯ (#toast)
+   ═══════════════════════════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 900;
+  padding: 14px 22px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-strong);
+  border: 1px solid var(--cyan);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg), var(--cyan-glow);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toastSlideIn 0.25s var(--ease-out);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. ПЕЧАТНЫЙ БЛОК «НАСТЕННЫЙ ЛИСТ ЧИТАЛЬНОГО ЗАЛА А4»
+   Скрыт на экране (.wall-sheet-print-only), великолепен на печати (@media print)
+   ═══════════════════════════════════════════════════════════════════ */
+.wall-sheet-print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-family: 'Montserrat', Georgia, serif !important;
+    font-size: 10.5pt !important;
+    line-height: 1.4 !important;
+    overflow: visible !important;
+  }
+
+  /* Скрываем весь экранный интерфейс при печати */
+  .aurora-ambient-bg,
+  .chrono-topbar,
+  .chrono-main,
+  .modal-overlay,
+  .toast,
+  #toast {
+    display: none !important;
+  }
+
+  /* Показываем и оформляем настенный лист А4 */
+  #wall-sheet-print-area,
+  .wall-sheet-print-only {
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .wall-sheet-frame {
+    border: 3px double #1e293b;
+    padding: 8mm 10mm;
+    min-height: 265mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .wall-sheet-header {
+    text-align: center;
+    border-bottom: 2px solid #1e293b;
+    padding-bottom: 4mm;
+    margin-bottom: 5mm;
+  }
+
+  .wall-sheet-org {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #334155;
+    margin-bottom: 2mm;
+  }
+
+  .wall-sheet-title,
+  #wall-sheet-print-area h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
+    font-size: 22pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #0f172a !important;
+    margin: 0 0 1.5mm 0;
+  }
+
+  .wall-sheet-subtitle,
+  #wall-sheet-print-area h2 {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 10pt !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+  }
+
+  #wall-sheet-print-area table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 3mm;
+    font-size: 9.5pt;
+  }
+
+  #wall-sheet-print-area th,
+  #wall-sheet-print-area td {
+    border: 1px solid #334155;
+    padding: 2.5mm 3mm;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  #wall-sheet-print-area th {
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 8.5pt;
+  }
+
+  .wall-sheet-item,
+  .wall-item,
+  .print-date-card,
+  #wall-sheet-print-area article,
+  #wall-sheet-print-area tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .wall-sheet-item,
+  .wall-item,
+  .print-date-card {
+    border-bottom: 1px solid #cbd5e1;
+    padding: 3mm 0;
+  }
+
+  .wall-sheet-footer {
+    margin-top: 6mm;
+    padding-top: 3mm;
+    border-top: 1px solid #475569;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: #475569;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   АДАПТИВНОСТЬ (Планшеты и мобильные экраны)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+  .chrono-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .chronograph-calendar-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .chrono-topbar-inner {
+    padding: 10px 16px;
+  }
+
+  .chrono-main {
+    padding: 18px 16px 60px;
+  }
+
+  .chrono-hero {
+    padding: 20px;
+  }
+
+  .chrono-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chronograph-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row-3,
+  .form-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-dialog {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chrono-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view-switcher {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .view-btn span:not(.material-symbols-rounded) {
+    display: none;
+  }
+}

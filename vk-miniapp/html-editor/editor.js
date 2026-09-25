@@ -109,6 +109,7 @@ function saveFullProject(project) {
     console.warn('Save full project error:', e);
   }
 }
+window.saveFullProject = saveFullProject;
 
 function createDefaultStarterProjects() {
   const engine = new TildaEngine({ container: null });
@@ -121,6 +122,8 @@ function createDefaultStarterProjects() {
   p2.id = 'proj_ecommerce_store';
   p2.name = '🛍️ Интернет-магазин Электроники & Гаджетов';
   p2.category = 'store';
+  p2.globalStyles.colorAccent = '#10b981';
+  p2.globalStyles.buttonBg = '#10b981';
   p2.pages = [
     {
       id: 'page_store',
@@ -128,7 +131,7 @@ function createDefaultStarterProjects() {
       slug: 'index',
       metaTitle: 'Каталог товаров | Aurora Shop',
       metaDesc: 'Купить гаджеты и аксессуары по выгодным ценам',
-      blocks: [
+      blocks: engine.getTemplateBlocks ? engine.getTemplateBlocks('store') : [
         engine.createBlockInstance('menu-1'),
         engine.createBlockInstance('cover-2'),
         engine.createBlockInstance('store-1'),
@@ -145,6 +148,7 @@ function createDefaultStarterProjects() {
   p3.name = '🎨 Digital Agency & Creative Studio';
   p3.category = 'portfolio';
   p3.globalStyles.colorAccent = '#8b5cf6';
+  p3.globalStyles.buttonBg = '#8b5cf6';
   p3.globalStyles.fontHeading = 'Unbounded';
   p3.pages = [
     {
@@ -153,7 +157,7 @@ function createDefaultStarterProjects() {
       slug: 'index',
       metaTitle: 'Aurora Creative Agency',
       metaDesc: 'Дизайн студия веб-разработки и брендинга',
-      blocks: [
+      blocks: engine.getTemplateBlocks ? engine.getTemplateBlocks('portfolio') : [
         engine.createBlockInstance('menu-1'),
         engine.createBlockInstance('cover-1'),
         engine.createBlockInstance('about-1'),
@@ -183,6 +187,7 @@ function setCanvasZoom(newZoom) {
   if (zeroMount) zeroMount.style.transform = `scale(${canvasZoom})`;
   if (zoomText) zoomText.textContent = `${Math.round(canvasZoom * 100)}%`;
 }
+window.getCanvasZoom = () => canvasZoom;
 
 function initCanvasZoom() {
   const workspace = document.getElementById('tilda-center-workspace');
@@ -290,15 +295,51 @@ function initFreeElementDragOnCanvas() {
   let startX = 0, startY = 0;
   let startLeft = 0, startTop = 0;
   let isDragging = false;
+  let dragBadge = null;
+  let centerGuideX = null;
+
+  const resolveElKey = (el, blockWrapper) => {
+    if (el.dataset.elKey) return el.dataset.elKey;
+    const contentEl = blockWrapper.querySelector('.tilda-block-inner, .tilda-block-content') || blockWrapper;
+    const all = Array.from(contentEl.querySelectorAll('h1, h2, h3, h4, p, a, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge, blockquote, li, span'));
+    const idx = all.indexOf(el);
+    const key = `${el.tagName.toLowerCase()}_${idx >= 0 ? idx : 0}`;
+    el.dataset.elKey = key;
+    return key;
+  };
 
   artboard.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
     if (e.target.closest('.block-custom-element') || e.target.closest('.tilda-block-action-bar') || e.target.closest('.tilda-add-block-bar') || e.target.closest('.block-height-resizer') || e.target.isContentEditable) return;
 
-    const target = e.target.closest('h1, h2, h3, h4, p, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge');
+    const target = e.target.closest('h1, h2, h3, h4, p, a, img, button, .t-btn, .t-feature-card, .t-pricing-card, .t-badge, blockquote, li, span');
     if (!target) return;
 
     const blockWrapper = target.closest('.tilda-block-wrapper');
     if (!blockWrapper) return;
+
+    const page = tildaEngine?.getActivePage();
+    const blk = page?.blocks.find(b => b.instanceId === (blockWrapper.dataset.blockId || blockWrapper.id) || b.anchor === blockWrapper.id);
+    if (blk?.isLocked) return;
+
+    const elKey = resolveElKey(target, blockWrapper);
+
+    // Alt + Click: сброс смещения элемента
+    if (e.altKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (blk?.content?.elementOffsets && blk.content.elementOffsets[elKey]) {
+        delete blk.content.elementOffsets[elKey];
+      }
+      target.style.left = '';
+      target.style.top = '';
+      target.style.position = '';
+      target.style.zIndex = '';
+      tildaEngine?.saveHistory();
+      if (tildaEngine?.project) saveFullProject(tildaEngine.project);
+      showToast('↺ Позиция элемента сброшена');
+      return;
+    }
 
     if (e.detail > 1) return;
 
@@ -307,42 +348,100 @@ function initFreeElementDragOnCanvas() {
     startX = e.clientX;
     startY = e.clientY;
 
-    const computed = window.getComputedStyle(activeEl);
-    startLeft = parseInt(computed.left, 10) || 0;
-    startTop = parseInt(computed.top, 10) || 0;
+    const savedOffset = blk?.content?.elementOffsets?.[elKey];
+    startLeft = savedOffset?.x !== undefined ? Number(savedOffset.x) : (parseInt(activeEl.style.left, 10) || 0);
+    startTop = savedOffset?.y !== undefined ? Number(savedOffset.y) : (parseInt(activeEl.style.top, 10) || 0);
+
+    let newX = startLeft;
+    let newY = startTop;
 
     const onMouseMove = ev => {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
+      const zoom = canvasZoom || 1;
+      const dx = (ev.clientX - startX) / zoom;
+      const dy = (ev.clientY - startY) / zoom;
 
       if (!isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
         isDragging = true;
         activeEl.style.position = 'relative';
         activeEl.style.zIndex = '30';
-        activeEl.style.cursor = 'grab';
+        activeEl.style.cursor = 'grabbing';
         activeEl.style.transition = 'none';
         activeEl.classList.add('is-element-dragged');
+
+        dragBadge = document.createElement('div');
+        dragBadge.className = 'free-drag-badge';
+        dragBadge.style.cssText = 'position:fixed;z-index:99999;background:rgba(15,23,42,0.92);color:#38bdf8;border:1px solid rgba(56,189,248,0.4);padding:3px 8px;border-radius:6px;font-size:11px;font-family:monospace;font-weight:700;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+        document.body.appendChild(dragBadge);
+
+        centerGuideX = document.createElement('div');
+        centerGuideX.className = 'smart-guide-line-x';
+        centerGuideX.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:#f43f5e;z-index:90;pointer-events:none;display:none;box-shadow:0 0 6px #f43f5e;';
+        blockWrapper.appendChild(centerGuideX);
       }
 
       if (isDragging) {
-        let newX = startLeft + dx;
-        let newY = startTop + dy;
+        newX = Math.round(startLeft + dx);
+        newY = Math.round(startTop + dy);
+
+        if (ev.shiftKey) {
+          if (Math.abs(dx) > Math.abs(dy)) newY = startTop;
+          else newX = startLeft;
+        }
+
         if (tildaEngine?.isGridSnapping) {
           newX = Math.round(newX / 8) * 8;
           newY = Math.round(newY / 8) * 8;
         }
+
+        // Примагничивание к центральной оси (newX === 0)
+        if (Math.abs(newX) < 6) {
+          newX = 0;
+          if (centerGuideX) centerGuideX.style.display = 'block';
+        } else {
+          if (centerGuideX) centerGuideX.style.display = 'none';
+        }
+
         activeEl.style.left = `${newX}px`;
         activeEl.style.top = `${newY}px`;
+
+        if (dragBadge) {
+          dragBadge.textContent = `X: ${newX}px, Y: ${newY}px (Alt+Клик — сброс)`;
+          dragBadge.style.left = `${ev.clientX + 14}px`;
+          dragBadge.style.top = `${ev.clientY + 14}px`;
+        }
       }
     };
 
     const onMouseUp = () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      if (isDragging) {
+
+      if (dragBadge) {
+        dragBadge.remove();
+        dragBadge = null;
+      }
+      if (centerGuideX) {
+        centerGuideX.remove();
+        centerGuideX = null;
+      }
+
+      if (isDragging && activeEl) {
         activeEl.classList.remove('is-element-dragged');
+        activeEl.style.cursor = '';
+        const draggedRef = activeEl;
+        draggedRef.dataset.justDragged = 'true';
+        setTimeout(() => {
+          delete draggedRef.dataset.justDragged;
+        }, 120);
+
+        if (blk) {
+          blk.content = blk.content || {};
+          blk.content.elementOffsets = blk.content.elementOffsets || {};
+          blk.content.elementOffsets[elKey] = { x: newX, y: newY };
+        }
         tildaEngine?.saveHistory();
-        showToast('📍 Позиция элемента зафиксирована');
+        if (tildaEngine?.project) saveFullProject(tildaEngine.project);
+        showToast('📍 Позиция элемента сохранена (Alt+Клик — сброс)');
       }
       activeEl = null;
       isDragging = false;
@@ -913,7 +1012,7 @@ function switchMode(mode) {
   document.getElementById('view-builder').style.display = mode === 'builder' ? 'flex' : 'none';
   document.getElementById('view-zero').style.display = mode === 'zero' ? 'flex' : 'none';
   document.getElementById('view-code').style.display = mode === 'code' ? 'flex' : 'none';
-  document.getElementById('view-preview').style.display = mode === 'preview' ? 'block' : 'none';
+  document.getElementById('view-preview').style.display = mode === 'preview' ? 'flex' : 'none';
 
   if (mode === 'zero') {
     if (!zeroBlockEditor) {
@@ -1068,26 +1167,38 @@ function bindZeroBlockToolbar() {
 
   // Apply & Save back to Page Block
   document.getElementById('zb-btn-apply')?.addEventListener('click', () => {
-    if (window.activeEditingZeroBlockId && tildaEngine) {
+    if (tildaEngine && zeroBlockEditor) {
       const page = tildaEngine.getActivePage();
-      const blk = page?.blocks.find(b => b.instanceId === window.activeEditingZeroBlockId);
-      if (blk && zeroBlockEditor) {
-        blk.content = blk.content || {};
-        blk.content.elements = zeroBlockEditor.block.elements.map(e => ({
-          id: e.id,
-          type: e.type,
-          props: { ...e.props },
-          responsiveProps: { ...e.responsiveProps }
-        }));
-        blk.design = blk.design || {};
-        blk.design.height = `${zeroBlockEditor.block.settings.height}px`;
-        blk.design.background = zeroBlockEditor.block.settings.background;
-        blk.design.bgColor = zeroBlockEditor.block.settings.background;
+      if (page) {
+        let blk = window.activeEditingZeroBlockId
+          ? page.blocks.find(b => b.instanceId === window.activeEditingZeroBlockId)
+          : page.blocks.find(b => b.typeId === 'zero-1');
+        if (!blk) {
+          blk = tildaEngine.createBlockInstance('zero-1');
+          if (blk) {
+            page.blocks.push(blk);
+            window.activeEditingZeroBlockId = blk.instanceId;
+          }
+        }
+        if (blk) {
+          blk.content = blk.content || {};
+          blk.content.elements = zeroBlockEditor.block.elements.map(e => ({
+            id: e.id,
+            type: e.type,
+            props: { ...e.props },
+            responsiveProps: { ...e.responsiveProps }
+          }));
+          blk.design = blk.design || {};
+          blk.design.height = parseInt(zeroBlockEditor.block.settings.height, 10) || 560;
+          blk.design.background = zeroBlockEditor.block.settings.background;
+          blk.design.bgColor = zeroBlockEditor.block.settings.background;
 
-        tildaEngine.saveHistory();
-        tildaEngine.renderArtboard();
-        tildaEngine.renderLayersTree();
-        tildaEngine.selectBlock(blk.instanceId);
+          tildaEngine.saveHistory();
+          tildaEngine.renderArtboard();
+          tildaEngine.renderLayersTree();
+          tildaEngine.selectBlock(blk.instanceId);
+          saveFullProject(tildaEngine.project);
+        }
       }
     }
     showToast('✅ Изменения Zero Block зафиксированы и сохранены!');
@@ -1124,31 +1235,34 @@ function initModals() {
     newProj.name = name;
     newProj.category = selectedProjTemplate;
 
-    if (selectedProjTemplate === 'store') {
-      newProj.pages[0].blocks = [
-        tildaEngine.createBlockInstance('menu-1'),
-        tildaEngine.createBlockInstance('cover-2'),
-        tildaEngine.createBlockInstance('store-1'),
-        tildaEngine.createBlockInstance('store-single'),
-        tildaEngine.createBlockInstance('store-cart'),
-        tildaEngine.createBlockInstance('footer-1')
-      ];
-    } else if (selectedProjTemplate === 'portfolio') {
-      newProj.pages[0].blocks = [
-        tildaEngine.createBlockInstance('menu-1'),
-        tildaEngine.createBlockInstance('cover-1'),
-        tildaEngine.createBlockInstance('about-1'),
-        tildaEngine.createBlockInstance('gallery-1'),
-        tildaEngine.createBlockInstance('testimonials-1'),
-        tildaEngine.createBlockInstance('contacts-1'),
-        tildaEngine.createBlockInstance('footer-1')
-      ];
-    } else if (selectedProjTemplate === 'blank') {
-      newProj.pages[0].blocks = [
-        tildaEngine.createBlockInstance('menu-1'),
-        tildaEngine.createBlockInstance('cover-1'),
-        tildaEngine.createBlockInstance('footer-1')
-      ];
+    if (typeof tildaEngine.getTemplateBlocks === 'function') {
+      newProj.pages[0].blocks = tildaEngine.getTemplateBlocks(selectedProjTemplate);
+    }
+
+    const templateMeta = {
+      landing: { accent: '#0d99ff', font: 'Montserrat', title: name, subtitle: 'Запустите современный сайт с высокой конверсией за считанные минуты' },
+      store: { accent: '#10b981', font: 'Montserrat', title: 'Магазин гаджетов и электроники', subtitle: 'Оригинальная продукция с быстрой доставкой и гарантией качества' },
+      portfolio: { accent: '#8b5cf6', font: 'Unbounded', title: 'Креативная студия и портфолио', subtitle: 'Создаём запоминающиеся цифровые продукты, дизайн-системы и брендинг' },
+      restaurant: { accent: '#f59e0b', font: 'Playfair Display', title: 'Авторский ресторан & Гастробар', subtitle: 'Изысканная кухня на открытом огне, уютная атмосфера и онлайн-бронирование столиков' },
+      event: { accent: '#ec4899', font: 'Unbounded', title: 'Главный технологический саммит 2026', subtitle: 'Более 40 спикеров мирового уровня, нетворкинг и практические воркшопы' },
+      education: { accent: '#3b82f6', font: 'Montserrat', title: 'Онлайн-академия современных профессий', subtitle: 'Практическое обучение с личным ментором, реальными проектами и трудоустройством' },
+      medical: { accent: '#06b6d4', font: 'Inter', title: 'Центр современной медицины и здоровья', subtitle: 'Передовая диагностика, опытные врачи и бережный подход к каждому пациенту' },
+      realestate: { accent: '#d97706', font: 'Playfair Display', title: 'Эксклюзивная недвижимость бизнес-класса', subtitle: 'Подбор апартаментов, пентхаусов и загородных резиденций с полным сопровождением' },
+      blog: { accent: '#6366f1', font: 'Montserrat', title: 'Медиа-журнал о технологиях и дизайне', subtitle: 'Аналитика, свежие тренды индустрии, интервью с экспертами и обзоры' },
+      saas: { accent: '#0ea5e9', font: 'Inter', title: 'Облачная AI-платформа для бизнеса', subtitle: 'Автоматизируйте рутинные процессы, анализируйте метрики и ускоряйте рост команды' },
+      agency: { accent: '#a855f7', font: 'Unbounded', title: 'Digital-агентство полного цикла', subtitle: 'Комплексный маркетинг, разработка веб-сервисов и масштабирование брендов' },
+      blank: { accent: '#0d99ff', font: 'Montserrat', title: name, subtitle: 'Начните создание уникального проекта с чистого листа' }
+    };
+
+    const meta = templateMeta[selectedProjTemplate] || templateMeta.landing;
+    newProj.globalStyles.colorAccent = meta.accent;
+    newProj.globalStyles.buttonBg = meta.accent;
+    newProj.globalStyles.fontHeading = meta.font;
+
+    const coverBlock = newProj.pages[0].blocks.find(b => b.blockDefId && b.blockDefId.startsWith('cover-'));
+    if (coverBlock && coverBlock.content) {
+      coverBlock.content.title = meta.title;
+      coverBlock.content.subtitle = meta.subtitle;
     }
 
     saveFullProject(newProj);
@@ -1421,12 +1535,16 @@ function initOfontModal() {
     await registerFontFace(name, pendingFontBuffer);
     await saveFontToDB(name, pendingFontFileName, pendingFontBuffer);
 
+    customFonts = customFonts.filter(x => x.name !== name);
     customFonts.push({ name, fileName: pendingFontFileName, buffer: pendingFontBuffer });
     renderCustomFontsList();
 
-    tildaEngine.project.globalStyles.fontHeading = name;
-    tildaEngine.applyGlobalStyles();
-    tildaEngine.renderDesignTokensUI();
+    if (tildaEngine?.project?.globalStyles) {
+      tildaEngine.project.globalStyles.fontHeading = name;
+      tildaEngine.applyGlobalStyles();
+      tildaEngine.renderDesignTokensUI();
+      saveFullProject(tildaEngine.project);
+    }
 
     showToast(`✅ Шрифт «${name}» успешно установлен!`);
     modal?.classList.add('hidden');
@@ -1461,12 +1579,12 @@ function renderCustomFontsList() {
   container.innerHTML = customFonts.map(f => `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#1e293b;border-radius:8px;border:1px solid #334155;">
       <div>
-        <div style="font-weight:700;font-size:13px;color:#fff;font-family:'${f.name}',sans-serif;">${f.name}</div>
-        <div style="font-size:10px;color:#94a3b8;">${f.fileName || 'ofont.ru'}</div>
+        <div style="font-weight:700;font-size:13px;color:#fff;font-family:'${escapeHtml(f.name)}',sans-serif;">${escapeHtml(f.name)}</div>
+        <div style="font-size:10px;color:#94a3b8;">${escapeHtml(f.fileName || 'ofont.ru')}</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="topbar-action-btn font-apply-btn" data-font="${f.name}" style="padding:4px 10px;font-size:11px;">Применить</button>
-        <button class="topbar-action-btn font-del-btn" data-font="${f.name}" style="padding:4px 8px;font-size:11px;color:#f43f5e;">✕</button>
+        <button class="topbar-action-btn font-apply-btn" data-font="${escapeHtml(f.name)}" style="padding:4px 10px;font-size:11px;">Применить</button>
+        <button class="topbar-action-btn font-del-btn" data-font="${escapeHtml(f.name)}" style="padding:4px 8px;font-size:11px;color:#f43f5e;">✕</button>
       </div>
     </div>
   `).join('');
@@ -1474,9 +1592,12 @@ function renderCustomFontsList() {
   container.querySelectorAll('.font-apply-btn').forEach(b => {
     b.addEventListener('click', () => {
       const fname = b.dataset.font;
-      tildaEngine.project.globalStyles.fontHeading = fname;
-      tildaEngine.applyGlobalStyles();
-      tildaEngine.renderDesignTokensUI();
+      if (tildaEngine?.project?.globalStyles) {
+        tildaEngine.project.globalStyles.fontHeading = fname;
+        tildaEngine.applyGlobalStyles();
+        tildaEngine.renderDesignTokensUI();
+        saveFullProject(tildaEngine.project);
+      }
       showToast(`Применён шрифт: ${fname}`);
       document.getElementById('ofont-modal-overlay')?.classList.add('hidden');
     });
@@ -1522,7 +1643,26 @@ function initCodeMirror() {
   codeEditor = new EditorView({ state, parent: container });
 
   document.getElementById('btn-code-run')?.addEventListener('click', () => {
-    showToast('⚡ Код скомпилирован');
+    const frame = document.getElementById('fullscreen-preview-frame');
+    const customHtml = codeEditor?.state?.doc?.toString();
+    if (frame && customHtml) {
+      document.querySelectorAll('.editor-mode-tab').forEach(t => {
+        t.classList.toggle('is-active', t.dataset.mode === 'preview');
+      });
+      document.getElementById('view-dashboard')?.classList.add('hidden');
+      document.getElementById('view-builder')?.classList.add('hidden');
+      document.getElementById('view-zeroblock')?.classList.add('hidden');
+      document.getElementById('view-code')?.classList.add('hidden');
+      document.getElementById('view-preview')?.classList.remove('hidden');
+      bindPreviewControlBar();
+      const doc = frame.contentDocument || frame.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(customHtml);
+        doc.close();
+      }
+    }
+    showToast('⚡ Код скомпилирован и запущен в превью');
   });
 }
 
@@ -1534,14 +1674,130 @@ function syncToCodeEditor() {
   });
 }
 
+let previewControlsBound = false;
+
+function bindPreviewControlBar() {
+  if (previewControlsBound) return;
+  const viewPreview = document.getElementById('view-preview');
+  const frame = document.getElementById('fullscreen-preview-frame');
+  if (!viewPreview || !frame) return;
+
+  let bar = document.getElementById('preview-control-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'preview-control-bar';
+    bar.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(15,23,42,0.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);border-radius:999px;box-shadow:0 12px 32px rgba(0,0,0,0.45);';
+    bar.innerHTML = `
+      <button type="button" class="topbar-action-btn is-active" data-preview-vp="100%" title="Desktop (100%)" style="border-radius:999px;padding:6px 12px;font-size:12px;">🖥️ ПК</button>
+      <button type="button" class="topbar-action-btn" data-preview-vp="768px" title="Tablet (768px)" style="border-radius:999px;padding:6px 12px;font-size:12px;">📱 Планшет</button>
+      <button type="button" class="topbar-action-btn" data-preview-vp="375px" title="Mobile (375px)" style="border-radius:999px;padding:6px 12px;font-size:12px;">📲 Смартфон</button>
+      <div style="width:1px;height:20px;background:rgba(255,255,255,0.15);margin:0 4px;"></div>
+      <button type="button" id="btn-preview-replay-anim" class="topbar-action-btn" title="Перезапустить анимации" style="border-radius:999px;padding:6px 12px;font-size:12px;color:#38bdf8;">✨ Повторить анимации</button>
+      <button type="button" id="btn-preview-back-builder" class="topbar-action-btn btn-primary" title="Вернуться в конструктор" style="border-radius:999px;padding:6px 14px;font-size:12px;">← В редактор</button>
+    `;
+    viewPreview.appendChild(bar);
+  }
+
+  bar.querySelectorAll('[data-preview-vp]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bar.querySelectorAll('[data-preview-vp]').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const vp = btn.dataset.previewVp || '100%';
+      frame.style.width = vp;
+      frame.style.margin = vp === '100%' ? '0' : '0 auto';
+      frame.style.display = 'block';
+      frame.style.transition = 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+    });
+  });
+
+  document.getElementById('btn-preview-replay-anim')?.addEventListener('click', () => {
+    if (frame.contentWindow?.TildaRuntime?.replayAllAnimations) {
+      frame.contentWindow.TildaRuntime.replayAllAnimations();
+      showToast('✨ Анимации перезапущены');
+      return;
+    }
+    const doc = frame.contentDocument || frame.contentWindow?.document;
+    if (!doc) return;
+    const animEls = doc.querySelectorAll('[data-tilda-anim]');
+    animEls.forEach(el => {
+      const aType = el.getAttribute('data-tilda-anim');
+      el.classList.remove('tilda-animated-in', `anim-${aType}`);
+      void el.offsetWidth;
+    });
+    setTimeout(() => {
+      animEls.forEach((el, idx) => {
+        const aType = el.getAttribute('data-tilda-anim');
+        const delay = parseFloat(el.getAttribute('data-anim-delay') || '0') * 1000;
+        const duration = parseFloat(el.getAttribute('data-anim-duration') || '0.7');
+        el.style.transitionDuration = `${duration}s`;
+        el.style.animationDuration = `${duration}s`;
+        setTimeout(() => {
+          if (aType && aType !== 'none') {
+            el.classList.add('tilda-animated-in', `anim-${aType}`);
+          }
+        }, delay || idx * 90);
+      });
+      showToast('✨ Анимации перезапущены');
+    }, 60);
+  });
+
+  document.getElementById('btn-preview-back-builder')?.addEventListener('click', () => {
+    switchMode('builder');
+  });
+
+  previewControlsBound = true;
+}
+
 function syncToPreviewFrame() {
   const frame = document.getElementById('fullscreen-preview-frame');
   if (!frame || !tildaEngine) return;
+  bindPreviewControlBar();
+
   const fullHtml = tildaEngine.generateStandaloneHtml();
   const doc = frame.contentDocument || frame.contentWindow.document;
   doc.open();
   doc.write(fullHtml);
   doc.close();
+
+  setTimeout(() => {
+    try {
+      frame.contentWindow?.TildaRuntime?.init?.();
+      const innerDoc = frame.contentDocument || frame.contentWindow?.document;
+      if (!innerDoc) return;
+      const animEls = innerDoc.querySelectorAll('[data-tilda-anim]');
+      if ('IntersectionObserver' in (frame.contentWindow || window)) {
+        const IO = frame.contentWindow?.IntersectionObserver || IntersectionObserver;
+        const obs = new IO((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const el = entry.target;
+              const aType = el.getAttribute('data-tilda-anim');
+              const delay = parseFloat(el.getAttribute('data-anim-delay') || '0') * 1000;
+              const duration = parseFloat(el.getAttribute('data-anim-duration') || '0.7');
+              el.style.transitionDuration = `${duration}s`;
+              el.style.animationDuration = `${duration}s`;
+              setTimeout(() => {
+                if (aType && aType !== 'none') {
+                  el.classList.add('tilda-animated-in', `anim-${aType}`);
+                }
+              }, delay);
+              obs.unobserve(el);
+            }
+          });
+        }, { threshold: 0.12 });
+        animEls.forEach(el => obs.observe(el));
+      } else {
+        animEls.forEach(el => {
+          const aType = el.getAttribute('data-tilda-anim');
+          if (aType && aType !== 'none') {
+            el.classList.add('tilda-animated-in', `anim-${aType}`);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Preview runtime init warning:', err);
+    }
+  }, 80);
 }
 
 // ─── Экспорт полноценного ZIP архива проекта ──────────────────
