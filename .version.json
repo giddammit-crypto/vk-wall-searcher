@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.96.0",
+  "version": "4.97.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-25T23:32:00+03:00",
-  "release_name": "AURORA DESIGN 4.96.0 — Эффект полупрозрачности для выступающих за холст частей объектов (Figma Out-of-Bounds Dimming) с сохранением ярких маркеров растяжки и вращения 360°"
+  "commit_date": "2026-09-25T23:38:00+03:00",
+  "release_name": "AURORA DESIGN 4.97.0 — Идеальный кроп листа при экспорте и в модальном сплит-предпросмотре Ultra-HD/HDR (строго границы афиши без монтажного стола и вылетов)"
 }

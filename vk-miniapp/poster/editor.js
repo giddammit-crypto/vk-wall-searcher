@@ -4092,20 +4092,24 @@ function toggleCanvasTransparency() {
 
 function printPoster() {
   if (!canvas) return;
-  const saved = zoom;
-  applyZoom(1);
-  canvas.discardActiveObject();
+  const pad = CANVAS_PADDING;
+  const curZ = canvas.getZoom() || 1;
+  const activeObj = canvas.getActiveObject();
+  if (activeObj) canvas.discardActiveObject();
+  canvas._isExporting = true;
   canvas.renderAll();
   const dataUrl = canvas.toDataURL({
-    left: 0,
-    top: 0,
-    width: currentSize.w,
-    height: currentSize.h,
+    left: pad * curZ,
+    top: pad * curZ,
+    width: currentSize.w * curZ,
+    height: currentSize.h * curZ,
     format: 'png',
     quality: 1,
-    multiplier: 2
+    multiplier: 2 / curZ
   });
-  applyZoom(saved);
+  canvas._isExporting = false;
+  if (activeObj) canvas.setActiveObject(activeObj);
+  canvas.renderAll();
 
   const win = window.open('', '_blank');
   if (!win) {
@@ -5304,30 +5308,31 @@ async function exportPng() {
 
     // Fallback: без enhancer
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback canvas.toDataURL');
-    const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
-    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
-    canvas.discardActiveObject();
-    canvas.setZoom(1);
-    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const activeObj = canvas.getActiveObject();
+    if (activeObj) canvas.discardActiveObject();
+    canvas._isExporting = true;
     canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
     const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
     const url = canvas.toDataURL({
       format: 'png',
-      left: 0,
-      top: 0,
-      width: currentSize.w,
-      height: currentSize.h,
+      left: pad * curZ,
+      top: pad * curZ,
+      width: currentSize.w * curZ,
+      height: currentSize.h * curZ,
       quality: 1,
-      multiplier: multiplier,
+      multiplier: multiplier / curZ,
       enableRetinaScaling: false
     });
+    canvas._isExporting = false;
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
     const a = document.createElement('a');
     a.href = url; a.download = filename + '.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    if (origVpt) canvas.viewportTransform = origVpt;
-    if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('PNG сохранён');
     toast('PNG сохранён в папку «Загрузки»');
   } catch (err) {
@@ -5368,30 +5373,31 @@ async function exportJpg() {
 
     // Fallback
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback');
-    const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
-    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
-    canvas.discardActiveObject();
-    canvas.setZoom(1);
-    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const activeObj = canvas.getActiveObject();
+    if (activeObj) canvas.discardActiveObject();
+    canvas._isExporting = true;
     canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
     const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
     const url = canvas.toDataURL({
       format: 'jpeg',
-      left: 0,
-      top: 0,
-      width: currentSize.w,
-      height: currentSize.h,
+      left: pad * curZ,
+      top: pad * curZ,
+      width: currentSize.w * curZ,
+      height: currentSize.h * curZ,
       quality: 0.95,
-      multiplier: multiplier,
+      multiplier: multiplier / curZ,
       enableRetinaScaling: false
     });
+    canvas._isExporting = false;
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
     const a = document.createElement('a');
     a.href = url; a.download = filename + '.jpg';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    if (origVpt) canvas.viewportTransform = origVpt;
-    if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('JPG сохранён');
     toast('JPG (высокое качество) сохранён в «Загрузки»');
   } catch (err) {
@@ -5434,29 +5440,31 @@ async function exportPdf() {
       return;
     }
     const { jsPDF } = window.jspdf;
-    const saved = zoom;
-    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
-    canvas.discardActiveObject();
-    canvas.setZoom(1);
-    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const activeObj = canvas.getActiveObject();
+    if (activeObj) canvas.discardActiveObject();
+    canvas._isExporting = true;
     canvas.renderAll();
     updateExportProgress(60, 'Рендеринг PDF страниц...');
     await new Promise(r => setTimeout(r, 20));
     const url = canvas.toDataURL({
       format: 'png',
-      left: 0,
-      top: 0,
-      width: currentSize.w,
-      height: currentSize.h,
+      left: pad * curZ,
+      top: pad * curZ,
+      width: currentSize.w * curZ,
+      height: currentSize.h * curZ,
       quality: 1,
+      multiplier: 1 / curZ,
       enableRetinaScaling: false
     });
+    canvas._isExporting = false;
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
     const isH = currentSize.w > currentSize.h;
     const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
     pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
     pdf.save(filename + '.pdf');
-    if (origVpt) canvas.viewportTransform = origVpt;
-    applyZoom(saved);
     hideExportLoader('PDF готов');
     toast('PDF готов к печати');
   } catch (err) {
@@ -5560,8 +5568,8 @@ function updateEnhancerMetaResolution() {
   if (!canvas) return;
   const metaEl = $('#enh-meta-resolution');
   if (!metaEl) return;
-  const w = canvas.getWidth();
-  const h = canvas.getHeight();
+  const w = currentSize ? currentSize.w : 800;
+  const h = currentSize ? currentSize.h : 600;
   if (window.PosterEnhancer) {
     const scaleInfo = window.PosterEnhancer.calculateExportScale(w, h, currentExportResolution);
     const targetW = Math.round(w * scaleInfo.multiplier);
@@ -6012,17 +6020,19 @@ async function saveCurrentDraft(isManual = false) {
     // Генерируем компактное превью (180px) строго по границам листа
     let previewDataUrl = '';
     try {
+      const pad = CANVAS_PADDING;
+      const curZ = canvas.getZoom() || 1;
       const artW = currentSize?.w || 800;
       const artH = currentSize?.h || 1200;
       const prevScale = Math.min(180 / artW, 0.25);
       previewDataUrl = canvas.toDataURL({
-        left: 0,
-        top: 0,
-        width: artW,
-        height: artH,
+        left: pad * curZ,
+        top: pad * curZ,
+        width: artW * curZ,
+        height: artH * curZ,
         format: 'jpeg',
         quality: 0.65,
-        multiplier: prevScale
+        multiplier: prevScale / curZ
       });
     } catch (e) {}
 
@@ -7452,22 +7462,26 @@ async function exportTildaDownloadPng() {
     const scaleInput = document.querySelector('input[name="tilda-png-scale"]:checked');
     const scale = parseFloat(scaleInput?.value || '1');
 
-    const savedZoom = zoom;
-    applyZoom(1);
-    canvas.discardActiveObject();
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const activeObj = canvas.getActiveObject();
+    if (activeObj) canvas.discardActiveObject();
+    canvas._isExporting = true;
     canvas.renderAll();
 
     const dataUrl = canvas.toDataURL({
-      left: 0,
-      top: 0,
-      width: currentSize.w,
-      height: currentSize.h,
+      left: pad * curZ,
+      top: pad * curZ,
+      width: currentSize.w * curZ,
+      height: currentSize.h * curZ,
       format: 'png',
-      multiplier: scale,
+      multiplier: scale / curZ,
       quality: 1
     });
 
-    applyZoom(savedZoom);
+    canvas._isExporting = false;
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
 
     const a = document.createElement('a');
     const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
@@ -7503,9 +7517,11 @@ async function exportTildaDownloadZip() {
   try {
     await embedAllImagesToBase64(canvas);
 
-    const savedZoom = zoom;
-    applyZoom(1);
-    canvas.discardActiveObject();
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const activeObj = canvas.getActiveObject();
+    if (activeObj) canvas.discardActiveObject();
+    canvas._isExporting = true;
     canvas.renderAll();
 
     // 1. Генерируем HTML
@@ -7513,15 +7529,19 @@ async function exportTildaDownloadZip() {
 
     // 2. Генерируем PNG × 2
     const pngDataUrl = canvas.toDataURL({
-      left: 0,
-      top: 0,
-      width: currentSize.w,
-      height: currentSize.h,
+      left: pad * curZ,
+      top: pad * curZ,
+      width: currentSize.w * curZ,
+      height: currentSize.h * curZ,
       format: 'png',
-      multiplier: 2,
+      multiplier: 2 / curZ,
       quality: 1
     });
     const pngBase64  = pngDataUrl.split(',')[1];
+
+    canvas._isExporting = false;
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
 
     // 3. CSS для блока
     const w = currentSize.w;

@@ -534,9 +534,8 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
     throw new Error('Fabric.js Canvas не инициализирован');
   }
 
-  // Сохраняем исходное состояние холста (zoom, viewportTransform, активный объект)
-  const origZoom = fabricCanvas.getZoom ? fabricCanvas.getZoom() : 1;
-  const origVpt = fabricCanvas.viewportTransform ? [...fabricCanvas.viewportTransform] : null;
+  const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
+  const curZoom = (fabricCanvas.getZoom ? fabricCanvas.getZoom() : 1) || 1;
   const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
   const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
   const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
@@ -546,15 +545,8 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
   try {
     fabricCanvas._isExporting = true;
     // Снимаем выделение, чтобы служебные маркеры не попали в экспорт
-    if (fabricCanvas.discardActiveObject) {
+    if (activeObj && fabricCanvas.discardActiveObject) {
       fabricCanvas.discardActiveObject();
-    }
-    // Сбрасываем зум и панорамирование в 1:1 без отступов монтажного стола
-    if (fabricCanvas.setZoom) {
-      fabricCanvas.setZoom(1);
-    }
-    if (fabricCanvas.viewportTransform) {
-      fabricCanvas.viewportTransform = [1, 0, 0, 1, 0, 0];
     }
     if (fabricCanvas.renderAll) {
       fabricCanvas.renderAll();
@@ -574,14 +566,14 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
       }
     }
 
-    // Кадрируем строго область листа [left: 0, top: 0, width: origW, height: origH]
+    // Кадрируем строго область листа [left: pad*curZoom, top: pad*curZoom, width: origW*curZoom, height: origH*curZoom]
     const dataUrl = fabricCanvas.toDataURL({
       format: 'png',
-      left: 0,
-      top: 0,
-      width: origW,
-      height: origH,
-      multiplier: multiplier,
+      left: pad * curZoom,
+      top: pad * curZoom,
+      width: origW * curZoom,
+      height: origH * curZoom,
+      multiplier: multiplier / curZoom,
       enableRetinaScaling: false
     });
 
@@ -598,13 +590,7 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
     return buffer;
   } finally {
     fabricCanvas._isExporting = false;
-    // Гарантированно восстанавливаем рабочее состояние холста редактора
-    if (origVpt && fabricCanvas.viewportTransform) {
-      fabricCanvas.viewportTransform = origVpt;
-    }
-    if (fabricCanvas.setZoom) {
-      fabricCanvas.setZoom(origZoom);
-    }
+    // Восстанавливаем выделение
     if (activeObj && fabricCanvas.setActiveObject) {
       fabricCanvas.setActiveObject(activeObj);
     }
@@ -785,44 +771,38 @@ function generateBeforeAfterPreview(source, options = {}) {
     srcCanvas.width = el.naturalWidth || el.width || 800;
     srcCanvas.height = el.naturalHeight || el.height || 600;
     srcCanvas.getContext('2d').drawImage(el, 0, 0, srcCanvas.width, srcCanvas.height);
-  } else if (source && typeof source.toDataURL === 'function') {
-    // fabric.Canvas: безопасный сброс зума, сдвига и выделения
-    const origZoom = source.getZoom ? source.getZoom() : 1;
-    const origVpt = source.viewportTransform ? [...source.viewportTransform] : null;
-    const activeObj = source.getActiveObject ? source.getActiveObject() : null;
+  } else if (source && (source.lowerCanvasEl || typeof source.toDataURL === 'function')) {
+    // fabric.Canvas: точный и мгновенный захват листа афиши
     const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : 800;
     const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : 600;
-    try {
-      if (activeObj && source.discardActiveObject) source.discardActiveObject();
-      if (source.setZoom) source.setZoom(1);
-      if (source.viewportTransform) source.viewportTransform = [1, 0, 0, 1, 0, 0];
-      if (source.renderAll) source.renderAll();
+    const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
+    const z = (source.getZoom ? source.getZoom() : 1) || 1;
+
+    srcCanvas = document.createElement('canvas');
+    srcCanvas.width = origW;
+    srcCanvas.height = origH;
+    const sCtx = srcCanvas.getContext('2d');
+
+    if (source.lowerCanvasEl) {
+      // Прямой синхронный кроп листа афиши с lowerCanvasEl (без контролов верхнего холста upperCanvas)
+      sCtx.drawImage(
+        source.lowerCanvasEl,
+        pad * z, pad * z, origW * z, origH * z,
+        0, 0, origW, origH
+      );
+    } else {
       const prevUrl = source.toDataURL({
         format: 'png',
-        left: 0,
-        top: 0,
-        width: origW,
-        height: origH,
-        multiplier: 1,
+        left: pad * z,
+        top: pad * z,
+        width: origW * z,
+        height: origH * z,
+        multiplier: 1 / z,
         enableRetinaScaling: false
       });
-      srcCanvas = document.createElement('canvas');
-      srcCanvas.width = origW;
-      srcCanvas.height = origH;
-      const sCtx = srcCanvas.getContext('2d');
-      const bg = source.__artboardBg || source.backgroundColor;
-      if (bg && bg !== 'transparent') {
-        sCtx.fillStyle = bg;
-        sCtx.fillRect(0, 0, origW, origH);
-      }
       const sImg = new Image();
       sImg.src = prevUrl;
-      sCtx.drawImage(sImg, 0, 0);
-    } finally {
-      if (origVpt && source.viewportTransform) source.viewportTransform = origVpt;
-      if (source.setZoom) source.setZoom(origZoom);
-      if (activeObj && source.setActiveObject) source.setActiveObject(activeObj);
-      if (source.renderAll) source.renderAll();
+      sCtx.drawImage(sImg, 0, 0, origW, origH);
     }
   } else if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) {
     srcCanvas = source;
