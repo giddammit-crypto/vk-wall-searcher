@@ -630,17 +630,17 @@ const TEMPLATES = [
     id: 'blank_a4_v',
     size: 'a4_v',
     category: 'blank',
-    name: 'Чистый лист A4',
-    desc: 'Вертикальный формат 595 × 842 pt',
+    name: 'Чистый лист A4 (Прозрачный)',
+    desc: 'Вертикальный формат 595 × 842 pt · Прозрачный холст',
     fmt: 'A4',
-    bg: '#ffffff',
+    bg: '',
     previewBg: '#1e293b',
     previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">texture</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">A4 вертикаль</span>
+        <span style="font-size:6px; color:#94a3b8;">A4 вертикаль · Прозрачный</span>
       </div>`,
     objects: [],
   },
@@ -650,18 +650,18 @@ const TEMPLATES = [
     id: 'blank_a4_h',
     size: 'a4_h',
     category: 'blank',
-    name: 'Чистый лист A4 горизонт',
-    desc: 'Горизонтальный формат 842 × 595 pt',
+    name: 'Чистый лист A4 горизонт (Прозрачный)',
+    desc: 'Горизонтальный формат 842 × 595 pt · Прозрачный холст',
     fmt: 'A4',
     isLandscape: true,
-    bg: '#ffffff',
+    bg: '',
     previewBg: '#1e293b',
     previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">texture</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">A4 горизонт</span>
+        <span style="font-size:6px; color:#94a3b8;">A4 горизонт · Прозрачный</span>
       </div>`,
     objects: [],
   },
@@ -672,17 +672,17 @@ const TEMPLATES = [
     size: 'square',
     category: 'blank',
     name: 'Чистый лист Квадрат (ВК)',
-    desc: 'Формат 1:1 для постов ВКонтакте 700 × 700 pt',
+    desc: 'Формат 1:1 для постов ВКонтакте 700 × 700 pt · Прозрачный холст',
     fmt: 'ВК 1:1',
     isSquare: true,
-    bg: '#ffffff',
+    bg: '',
     previewBg: '#1e293b',
     previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">texture</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">1:1 (ВК)</span>
+        <span style="font-size:6px; color:#94a3b8;">1:1 (ВК) · Прозрачный</span>
       </div>`,
     objects: [],
   },
@@ -693,17 +693,17 @@ const TEMPLATES = [
     size: 'banner',
     category: 'blank',
     name: 'Чистый лист Баннер 16:9',
-    desc: 'Горизонтальный экранный баннер 960 × 540 pt',
+    desc: 'Горизонтальный экранный баннер 960 × 540 pt · Прозрачный холст',
     fmt: '16:9',
     isLandscape: true,
-    bg: '#ffffff',
+    bg: '',
     previewBg: '#1e293b',
     previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">texture</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">16:9</span>
+        <span style="font-size:6px; color:#94a3b8;">16:9 · Прозрачный</span>
       </div>`,
     objects: [],
   },
@@ -714,16 +714,16 @@ const TEMPLATES = [
     size: 'story',
     category: 'blank',
     name: 'Чистый лист Сторис 9:16',
-    desc: 'Вертикальный формат для сторис ВК 540 × 960 pt',
+    desc: 'Вертикальный формат для сторис ВК 540 × 960 pt · Прозрачный холст',
     fmt: '9:16',
-    bg: '#ffffff',
+    bg: '',
     previewBg: '#1e293b',
     previewAccent: '#38BDF8',
     previewHtml: `
       <div class="mp-blank">
-        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">add_circle_outline</span>
+        <span class="material-symbols-rounded" style="font-size:22px; color:#38BDF8; opacity:0.8;">texture</span>
         <span style="font-size:7.5px; font-weight:700; color:#38BDF8; margin-top:3px;">ЧИСТЫЙ ЛИСТ</span>
-        <span style="font-size:6px; color:#94a3b8;">9:16</span>
+        <span style="font-size:6px; color:#94a3b8;">9:16 · Прозрачный</span>
       </div>`,
     objects: [],
   },
@@ -1603,33 +1603,31 @@ function buildCosmoGrid() {
 function buildBgPalette() {
   const el = $('#bg-palette');
   const mEl = $('#mobile-bg-palette');
-  const swatchesHtml = PALETTE.map(p => `
+  const transparentSwatch = `<button class="bg-swatch bg-swatch-transparent" data-color="" title="Прозрачный фон (Alpha Transparent)"></button>`;
+  const swatchesHtml = transparentSwatch + PALETTE.map(p => `
     <button class="bg-swatch" data-color="${p.hex}" title="${p.name}"
       style="background:${p.hex}; ${p.light ? 'border-color:rgba(0,0,0,0.15);' : ''}">
     </button>
   `).join('');
 
+  const onSwatchClick = e => {
+    const btn = e.target.closest('.bg-swatch');
+    if (btn && canvas) {
+      const col = btn.dataset.color || '';
+      canvas.setBackgroundColor(col, canvas.renderAll.bind(canvas));
+      saveHistory();
+      toast(col ? 'Фон холста обновлён' : 'Фон холста теперь прозрачный');
+    }
+  };
+
   if (el) {
     el.innerHTML = swatchesHtml;
-    el.addEventListener('click', e => {
-      const btn = e.target.closest('.bg-swatch');
-      if (btn && canvas) {
-        canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
-        saveHistory();
-      }
-    });
+    el.addEventListener('click', onSwatchClick);
   }
 
   if (mEl) {
     mEl.innerHTML = swatchesHtml;
-    mEl.addEventListener('click', e => {
-      const btn = e.target.closest('.bg-swatch');
-      if (btn && canvas) {
-        canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
-        saveHistory();
-        toast('Фон холста обновлён');
-      }
-    });
+    mEl.addEventListener('click', onSwatchClick);
   }
 
   // Свотчи фона в инспекторе Figma (Design и Settings)
@@ -1637,13 +1635,7 @@ function buildBgPalette() {
     const target = $(sel);
     if (target) {
       target.innerHTML = swatchesHtml;
-      target.addEventListener('click', e => {
-        const btn = e.target.closest('.bg-swatch');
-        if (btn && canvas) {
-          canvas.setBackgroundColor(btn.dataset.color, canvas.renderAll.bind(canvas));
-          saveHistory();
-        }
-      });
+      target.addEventListener('click', onSwatchClick);
     }
   });
 }
@@ -1763,7 +1755,7 @@ function loadTemplate(tpl) {
   }
 
   initCanvas(currentSize.w, currentSize.h);
-  canvas.setBackgroundColor(tpl.bg || '#ffffff', () => {});
+  canvas.setBackgroundColor(tpl.bg !== undefined ? tpl.bg : '', () => {});
   (tpl.objects || []).forEach(addTemplateObj);
   canvas.renderAll();
   fitZoom();
@@ -1786,7 +1778,7 @@ function initCanvas(w, h) {
 
   canvas = new fabric.Canvas('poster-canvas', {
     width: w, height: h,
-    backgroundColor: '#ffffff',
+    backgroundColor: '',
     preserveObjectStacking: true,
     selection: true,
     selectionColor: 'rgba(13, 153, 255, 0.15)',
@@ -1903,6 +1895,16 @@ function initCanvas(w, h) {
   });
   canvas.on('object:added',       () => updateLayersList());
   canvas.on('object:removed',     () => { saveHistory(); updateLayersList(); });
+  canvas.on('path:created', e => {
+    if (e.path) {
+      e.path.set({
+        strokeLineCap: 'round',
+        strokeLineJoin: 'round'
+      });
+      saveHistory();
+      updateLayersList();
+    }
+  });
 
   // Магнитные направляющие и примагничивание к сетке
   canvas.on('object:moving', e => {
@@ -3670,6 +3672,208 @@ function alignActiveObject(alignment) {
   saveHistory();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   FIGMA TOOLS: EYEDROPPER, PENCIL, SHADOW, BLEND MODES
+   ══════════════════════════════════════════════════════════════ */
+
+// 1. ПИПЕТКА (Eyedropper - Горячая клавиша I)
+async function activateEyedropper() {
+  const btn = $('#tool-eyedropper');
+  btn?.classList.add('is-active');
+
+  if (window.EyeDropper) {
+    try {
+      const eyeDropper = new window.EyeDropper();
+      const result = await eyeDropper.open();
+      if (result && result.sRGBHex) {
+        applyPickedColor(result.sRGBHex);
+      }
+    } catch (e) {
+      console.log('[Eyedropper] Canceled or error:', e);
+    } finally {
+      btn?.classList.remove('is-active');
+    }
+  } else {
+    startCanvasEyedropperFallback();
+  }
+}
+
+function startCanvasEyedropperFallback() {
+  if (!canvas) return;
+  const btn = $('#tool-eyedropper');
+  btn?.classList.add('is-active');
+  toast('Кликните на холст, чтобы взять цвет (Esc — отмена)');
+  const origCursor = canvas.defaultCursor;
+  canvas.defaultCursor = 'crosshair';
+
+  const onMouseDown = function(opt) {
+    cleanup();
+    const ptr = canvas.getPointer(opt.e);
+    const ctx = canvas.getContext();
+    const px = ctx.getImageData(Math.round(ptr.x), Math.round(ptr.y), 1, 1).data;
+    const hex = '#' + [px[0], px[1], px[2]].map(x => x.toString(16).padStart(2, '0')).join('');
+    applyPickedColor(hex);
+  };
+
+  const onKey = function(e) {
+    if (e.key === 'Escape') {
+      cleanup();
+      toast('Пипетка отменена');
+    }
+  };
+
+  function cleanup() {
+    canvas.off('mouse:down', onMouseDown);
+    window.removeEventListener('keydown', onKey);
+    canvas.defaultCursor = origCursor;
+    btn?.classList.remove('is-active');
+  }
+
+  canvas.on('mouse:down', onMouseDown);
+  window.addEventListener('keydown', onKey);
+}
+
+function applyPickedColor(hex) {
+  if (!hex) return;
+  hex = hex.toLowerCase();
+
+  // Копируем цвет в буфер обмена
+  try {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(hex).catch(() => {});
+    }
+  } catch (err) {}
+
+  const obj = canvas?.getActiveObject();
+  if (obj) {
+    const isText = ['textbox','text','i-text'].includes(obj.type);
+    if (isText) {
+      obj.set({ fill: hex });
+      if ($('#text-color-picker')) $('#text-color-picker').value = hex;
+      syncSwatches('#text-color-row', hex);
+    } else {
+      obj.set({ fill: hex });
+      if ($('#fill-color-picker')) $('#fill-color-picker').value = hex;
+      syncSwatches('#fill-color-row', hex);
+    }
+    const fillHex = $('#fill-hex-input');
+    if (fillHex) fillHex.value = hex.toUpperCase();
+    const fillChip = $('#fill-color-chip-preview');
+    if (fillChip) fillChip.style.backgroundColor = hex;
+    canvas.requestRenderAll();
+    saveHistory();
+    toast(`Пипетка: цвет ${hex.toUpperCase()} применён к объекту`);
+  } else {
+    if ($('#fill-color-picker')) $('#fill-color-picker').value = hex;
+    if ($('#text-color-picker')) $('#text-color-picker').value = hex;
+    toast(`Пипетка: скопирован цвет ${hex.toUpperCase()}`);
+  }
+}
+
+// 2. КАРАНДАШ / СВОБОДНОЕ РИСОВАНИЕ (Pencil - Горячая клавиша P)
+let _pencilColor = '#0d99ff';
+let _pencilWidth = 4;
+
+function toggleDrawingMode(forcedState) {
+  if (!canvas) return;
+  const newState = typeof forcedState === 'boolean' ? forcedState : !canvas.isDrawingMode;
+  canvas.isDrawingMode = newState;
+
+  const toolBtn = $('#tool-pencil');
+  const toolbar = $('#pencil-toolbar');
+
+  if (newState) {
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+    clearProps();
+
+    if (!canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    }
+    canvas.freeDrawingBrush.color = _pencilColor;
+    canvas.freeDrawingBrush.width = _pencilWidth;
+
+    toolBtn?.classList.add('is-active');
+    toolbar?.classList.remove('hidden');
+    toast('Карандаш включен (Рисуйте на холсте, Esc — выход)');
+  } else {
+    toolBtn?.classList.remove('is-active');
+    toolbar?.classList.add('hidden');
+    toast('Режим рисования завершён');
+  }
+}
+
+// 3. ЭФФЕКТЫ: ТЕНЬ (Drop Shadow)
+function updateActiveObjectShadow() {
+  const obj = canvas?.getActiveObject();
+  if (!obj) return;
+
+  const hex = $('#shadow-color-picker')?.value || '#000000';
+  const op = (parseInt($('#shadow-opacity-slider')?.value, 10) || 50) / 100;
+  const blur = parseInt($('#shadow-blur-slider')?.value, 10) || 15;
+  const offX = parseInt($('#shadow-offset-x')?.value, 10) || 0;
+  const offY = parseInt($('#shadow-offset-y')?.value, 10) || 8;
+
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  const rgba = `rgba(${r},${g},${b},${op})`;
+
+  obj.set('shadow', new fabric.Shadow({
+    color: rgba,
+    blur: blur,
+    offsetX: offX,
+    offsetY: offY
+  }));
+
+  canvas.requestRenderAll();
+}
+
+function toggleLayerShadow() {
+  const obj = canvas?.getActiveObject();
+  if (!obj) {
+    toast('Выберите объект для настройки тени');
+    return;
+  }
+  const hasShadow = !!obj.shadow;
+  const shadowWrap = $('#shadow-controls-wrap');
+  const shadowBtnLabel = $('#shadow-toggle-label');
+  const shadowBtn = $('#btn-toggle-shadow');
+
+  if (hasShadow) {
+    obj.set('shadow', null);
+    if (shadowWrap) shadowWrap.style.display = 'none';
+    if (shadowBtnLabel) shadowBtnLabel.textContent = 'Вкл';
+    shadowBtn?.classList.remove('is-active');
+    toast('Тень слоя выключена');
+  } else {
+    if (shadowWrap) shadowWrap.style.display = 'flex';
+    if (shadowBtnLabel) shadowBtnLabel.textContent = 'Выкл';
+    shadowBtn?.classList.add('is-active');
+    updateActiveObjectShadow();
+    toast('Тень слоя включена');
+  }
+  canvas.requestRenderAll();
+  saveHistory();
+}
+
+// 4. ПРОЗРАЧНОСТЬ ХОЛСТА (Toggle Canvas Transparency)
+function toggleCanvasTransparency() {
+  if (!canvas) return;
+  const currentBg = canvas.backgroundColor;
+  const isTransparent = !currentBg || currentBg === 'transparent' || currentBg === '';
+
+  if (isTransparent) {
+    canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+    saveHistory();
+    toast('Установлен белый фон холста (#ffffff)');
+  } else {
+    canvas.setBackgroundColor('', canvas.renderAll.bind(canvas));
+    saveHistory();
+    toast('Фон холста теперь прозрачный');
+  }
+}
+
 function printPoster() {
   if (!canvas) return;
   const saved = zoom;
@@ -3979,6 +4183,14 @@ function clearProps() {
   if (opSlider) opSlider.value = 100;
   const opVal = $('#opacity-val');
   if (opVal) opVal.textContent = '100';
+
+  // ── FIX: сброс shadow & blend mode при снятии выделения ──
+  const shadowWrap = $('#shadow-controls-wrap');
+  if (shadowWrap) shadowWrap.style.display = 'none';
+  $('#btn-toggle-shadow')?.classList.remove('is-active');
+  if ($('#shadow-toggle-label')) $('#shadow-toggle-label').textContent = 'Вкл';
+  if ($('#blend-mode-select')) $('#blend-mode-select').value = 'source-over';
+
   updateLockBtnUI(false);
   updateLayersList();
 }
@@ -3996,6 +4208,54 @@ function onSelection() {
   const opCommonVal    = $('#opacity-val-common');
   if (opCommonSlider) opCommonSlider.value = opCommon;
   if (opCommonVal)    opCommonVal.textContent = opCommon;
+
+  // ── Режим наложения (Blend mode) ──
+  const blendSelect = $('#blend-mode-select');
+  if (blendSelect) {
+    blendSelect.value = obj.globalCompositeOperation || 'source-over';
+  }
+
+  // ── Тень слоя (Drop Shadow) ──
+  const hasShadow = !!obj.shadow;
+  const shadowWrapEl = $('#shadow-controls-wrap');
+  const shadowBtnLabel = $('#shadow-toggle-label');
+  const shadowBtn = $('#btn-toggle-shadow');
+  if (shadowWrapEl) shadowWrapEl.style.display = hasShadow ? 'flex' : 'none';
+  if (shadowBtnLabel) shadowBtnLabel.textContent = hasShadow ? 'Выкл' : 'Вкл';
+  if (shadowBtn) shadowBtn.classList.toggle('is-active', hasShadow);
+
+  if (hasShadow && typeof obj.shadow === 'object') {
+    const s = obj.shadow;
+    const blur = s.blur !== undefined ? s.blur : 15;
+    const offX = s.offsetX !== undefined ? s.offsetX : 0;
+    const offY = s.offsetY !== undefined ? s.offsetY : 8;
+    const col = s.color || 'rgba(0,0,0,0.5)';
+
+    let hex = '#000000';
+    let op = 50;
+    if (typeof col === 'string') {
+      if (col.startsWith('#')) {
+        hex = col.slice(0, 7);
+        op = 100;
+      } else if (col.startsWith('rgba') || col.startsWith('rgb')) {
+        const match = col.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\)/);
+        if (match) {
+          const r = parseInt(match[1]).toString(16).padStart(2, '0');
+          const g = parseInt(match[2]).toString(16).padStart(2, '0');
+          const b = parseInt(match[3]).toString(16).padStart(2, '0');
+          hex = `#${r}${g}${b}`;
+          op = match[4] !== undefined ? Math.round(parseFloat(match[4]) * 100) : 100;
+        }
+      }
+    }
+    if ($('#shadow-color-picker')) $('#shadow-color-picker').value = hex;
+    if ($('#shadow-opacity-slider')) $('#shadow-opacity-slider').value = op;
+    if ($('#shadow-opacity-val')) $('#shadow-opacity-val').textContent = op;
+    if ($('#shadow-blur-slider')) $('#shadow-blur-slider').value = blur;
+    if ($('#shadow-blur-val')) $('#shadow-blur-val').textContent = blur;
+    if ($('#shadow-offset-x')) $('#shadow-offset-x').value = offX;
+    if ($('#shadow-offset-y')) $('#shadow-offset-y').value = offY;
+  }
 
   const isText      = ['textbox','text','i-text'].includes(obj.type);
   const isShape     = ['rect','circle','ellipse','line','polyline','polygon','path'].includes(obj.type);
@@ -4213,8 +4473,12 @@ function updateFigmaDimensionsUI(obj) {
   });
 
   const isRect = obj.type === 'rect';
-  if (dRadWrap) dRadWrap.classList.toggle('hidden', !isRect);
-  if (drad && isRect) drad.value = Math.round(obj.rx || 0);
+  const isImg  = obj.type === 'image';
+  if (dRadWrap) dRadWrap.classList.toggle('hidden', !(isRect || isImg));
+  if (drad) {
+    if (isRect) drad.value = Math.round(obj.rx || 0);
+    else if (isImg) drad.value = Math.round(obj.__cornerRadius || 0);
+  }
 
   // Sync Fill hex & preview
   const fillHex = $('#fill-hex-input');
@@ -7040,6 +7304,95 @@ function bindEvents() {
       const obj = canvas.getActiveObject();
       if (obj) { canvas.remove(obj); canvas.discardActiveObject(); canvas.renderAll(); clearProps(); }
     }
+
+    // ── Горячие клавиши Figma ──
+    if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // I / ш -> Пипетка
+      if (e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
+        e.preventDefault();
+        activateEyedropper();
+        return;
+      }
+      // P / з -> Карандаш
+      if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
+        e.preventDefault();
+        toggleDrawingMode();
+        return;
+      }
+      // V / м -> Выбор (отключение режима рисования)
+      if (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М') {
+        if (canvas?.isDrawingMode) {
+          e.preventDefault();
+          toggleDrawingMode(false);
+          return;
+        }
+      }
+      // [ / х -> Слой назад (Send Backwards)
+      if (e.key === '[' || e.key === 'х' || e.key === 'Х') {
+        const obj = canvas?.getActiveObject();
+        if (obj) {
+          e.preventDefault();
+          canvas.sendBackwards(obj);
+          canvas.requestRenderAll();
+          saveHistory();
+          updateLayersList();
+          return;
+        }
+      }
+      // ] / ъ -> Слой вперед (Bring Forward)
+      if (e.key === ']' || e.key === 'ъ' || e.key === 'Ъ') {
+        const obj = canvas?.getActiveObject();
+        if (obj) {
+          e.preventDefault();
+          canvas.bringForward(obj);
+          canvas.requestRenderAll();
+          saveHistory();
+          updateLayersList();
+          return;
+        }
+      }
+    }
+    // Shift + H -> Отразить по горизонтали (Flip Horizontal)
+    if (!inInput && e.shiftKey && !e.ctrlKey && !e.metaKey && (e.key === 'H' || e.key === 'h' || e.key === 'р' || e.key === 'Р')) {
+      e.preventDefault();
+      flipActiveObject('x');
+      return;
+    }
+    // Shift + V -> Отразить по вертикали (Flip Vertical)
+    if (!inInput && e.shiftKey && !e.ctrlKey && !e.metaKey && (e.key === 'V' || e.key === 'v' || e.key === 'м' || e.key === 'М')) {
+      e.preventDefault();
+      flipActiveObject('y');
+      return;
+    }
+    // Ctrl + [ -> На самый задний план
+    if ((e.ctrlKey || e.metaKey) && (e.key === '[' || e.key === 'х' || e.key === 'Х')) {
+      const obj = canvas?.getActiveObject();
+      if (obj) {
+        e.preventDefault();
+        obj.sendToBack();
+        canvas.requestRenderAll();
+        saveHistory();
+        updateLayersList();
+        return;
+      }
+    }
+    // Ctrl + ] -> На самый передний план
+    if ((e.ctrlKey || e.metaKey) && (e.key === ']' || e.key === 'ъ' || e.key === 'Ъ')) {
+      const obj = canvas?.getActiveObject();
+      if (obj) {
+        e.preventDefault();
+        obj.bringToFront();
+        canvas.requestRenderAll();
+        saveHistory();
+        updateLayersList();
+        return;
+      }
+    }
+    // Escape -> выход из режима рисования
+    if (e.key === 'Escape' && canvas?.isDrawingMode) {
+      toggleDrawingMode(false);
+      return;
+    }
   });
 
   /* Экспорт, проект, черновики и печать */
@@ -7109,6 +7462,51 @@ function bindEvents() {
   $('#tool-badge')     ?.addEventListener('click', addBadge);
   $('#tool-date')      ?.addEventListener('click', addDateBlock);
   $('#tool-quote')     ?.addEventListener('click', addQuote);
+  /* Figma инструменты */
+  $('#tool-pencil')?.addEventListener('click', () => toggleDrawingMode());
+  $('#tool-eyedropper')?.addEventListener('click', activateEyedropper);
+  $('#tool-transparent-canvas')?.addEventListener('click', toggleCanvasTransparency);
+  $('#btn-toggle-canvas-transparency')?.addEventListener('click', toggleCanvasTransparency);
+
+  /* Плавающая панель карандаша */
+  $('#pencil-color-picker')?.addEventListener('input', e => {
+    _pencilColor = e.target.value;
+    if (canvas?.freeDrawingBrush) canvas.freeDrawingBrush.color = _pencilColor;
+  });
+  $('#pencil-width-slider')?.addEventListener('input', e => {
+    _pencilWidth = parseInt(e.target.value, 10) || 4;
+    if ($('#pencil-width-val')) $('#pencil-width-val').textContent = _pencilWidth + 'px';
+    if (canvas?.freeDrawingBrush) canvas.freeDrawingBrush.width = _pencilWidth;
+  });
+  $('#btn-pencil-done')?.addEventListener('click', () => toggleDrawingMode(false));
+
+  /* Figma: Режим наложения (Blend mode) */
+  $('#blend-mode-select')?.addEventListener('change', e => {
+    const obj = canvas?.getActiveObject();
+    if (!obj) return;
+    obj.set('globalCompositeOperation', e.target.value);
+    canvas.requestRenderAll();
+    saveHistory();
+  });
+
+  /* Figma: Эффекты: Тень (Drop Shadow) */
+  $('#btn-toggle-shadow')?.addEventListener('click', toggleLayerShadow);
+  $('#shadow-color-picker')?.addEventListener('input', updateActiveObjectShadow);
+  $('#shadow-color-picker')?.addEventListener('change', () => saveHistory());
+  $('#shadow-opacity-slider')?.addEventListener('input', e => {
+    if ($('#shadow-opacity-val')) $('#shadow-opacity-val').textContent = e.target.value;
+    updateActiveObjectShadow();
+  });
+  $('#shadow-opacity-slider')?.addEventListener('change', () => saveHistory());
+  $('#shadow-blur-slider')?.addEventListener('input', e => {
+    if ($('#shadow-blur-val')) $('#shadow-blur-val').textContent = e.target.value;
+    updateActiveObjectShadow();
+  });
+  $('#shadow-blur-slider')?.addEventListener('change', () => saveHistory());
+  $('#shadow-offset-x')?.addEventListener('input', updateActiveObjectShadow);
+  $('#shadow-offset-x')?.addEventListener('change', () => saveHistory());
+  $('#shadow-offset-y')?.addEventListener('input', updateActiveObjectShadow);
+  $('#shadow-offset-y')?.addEventListener('change', () => saveHistory());
 
   /* Инструменты фигур и разметки */
   $('#tool-rect')   ?.addEventListener('click', addRect);
@@ -7213,9 +7611,25 @@ function bindEvents() {
   $('#dim-r')?.addEventListener('change', () => saveHistory());
 
   $('#dim-radius')?.addEventListener('input', e => {
-    const obj = canvas?.getActiveObject(); if (!obj || obj.type !== 'rect') return;
+    const obj = canvas?.getActiveObject(); if (!obj) return;
     const val = Math.max(0, parseFloat(e.target.value) || 0);
-    obj.set({ rx: val, ry: val });
+    if (obj.type === 'rect') {
+      obj.set({ rx: val, ry: val });
+    } else if (obj.type === 'image') {
+      obj.__cornerRadius = val;
+      if (val > 0) {
+        obj.clipPath = new fabric.Rect({
+          width: obj.width,
+          height: obj.height,
+          rx: val / (obj.scaleX || 1),
+          ry: val / (obj.scaleY || 1),
+          originX: 'center',
+          originY: 'center'
+        });
+      } else {
+        obj.clipPath = null;
+      }
+    }
     canvas.requestRenderAll();
   });
   $('#dim-radius')?.addEventListener('change', () => saveHistory());

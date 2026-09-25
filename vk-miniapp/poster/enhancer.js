@@ -491,6 +491,7 @@ function applyHdrToImageData(imageData, config = {}) {
         const totalBoost = clarityDelta + sharpDelta;
         if (totalBoost !== 0) {
           const pixelOffset = idx * 4;
+          if (data[pixelOffset + 3] === 0) continue; // Сохраняем прозрачные пиксели
           data[pixelOffset]     = Math.min(255, Math.max(0, data[pixelOffset]     + totalBoost));
           data[pixelOffset + 1] = Math.min(255, Math.max(0, data[pixelOffset + 1] + totalBoost));
           data[pixelOffset + 2] = Math.min(255, Math.max(0, data[pixelOffset + 2] + totalBoost));

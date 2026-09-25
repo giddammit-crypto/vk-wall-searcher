@@ -1190,6 +1190,57 @@ input, select, textarea {
   transform: scale(1.08);
 }
 
+.bg-swatch-transparent {
+  background-color: #242424 !important;
+  background-image:
+    linear-gradient(45deg, #181818 25%, transparent 25%),
+    linear-gradient(-45deg, #181818 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #181818 75%),
+    linear-gradient(-45deg, transparent 75%, #181818 75%) !important;
+  background-size: 8px 8px !important;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-swatch-transparent::after {
+  content: '';
+  width: 14px;
+  height: 2px;
+  background: #ef4444;
+  transform: rotate(-45deg);
+}
+
+.tool-btn.is-active {
+  background: rgba(13, 153, 255, 0.22) !important;
+  border-color: #0d99ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(13, 153, 255, 0.3);
+}
+
+.figma-select {
+  width: 100%;
+  background: var(--bg-1, #1e1e1e);
+  border: 1px solid var(--border, rgba(255,255,255,0.12));
+  border-radius: var(--radius-xs, 4px);
+  color: var(--text-1, #f3f4f6);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--trans-fast);
+}
+.figma-select:focus {
+  border-color: var(--figma-blue, #0d99ff);
+  box-shadow: 0 0 0 1px var(--figma-blue, #0d99ff);
+}
+.figma-select option {
+  background: #1e1e1e;
+  color: #f3f4f6;
+}
+
 /* Градиентные кнопки фона */
 .bg-gradients {
   display: flex;
@@ -1295,12 +1346,21 @@ input, select, textarea {
 .canvas-frame {
   flex-shrink: 0;
   box-shadow:
-    0 0 0 1px var(--border),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
     0 16px 48px rgba(0, 0, 0, 0.65),
     0 2px 8px rgba(0, 0, 0, 0.40);
   border-radius: 2px;
   position: relative;
   transition: box-shadow var(--trans-fast);
+  /* Фирменная шахматная сетка прозрачности Figma */
+  background-color: #222222;
+  background-image:
+    linear-gradient(45deg, #181818 25%, transparent 25%),
+    linear-gradient(-45deg, #181818 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #181818 75%),
+    linear-gradient(-45deg, transparent 75%, #181818 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
 .canvas-frame canvas {

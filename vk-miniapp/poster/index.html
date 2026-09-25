@@ -296,6 +296,23 @@
         </button>
       </div>
 
+      <!-- Группа: Инструменты Figma -->
+      <div class="sb-group">
+        <div class="sb-label">FIGMA ИНСТРУМЕНТЫ</div>
+        <button class="tool-btn" id="tool-pencil" title="Карандаш / Свободное рисование (Горячая клавиша: P)">
+          <span class="material-symbols-rounded">edit</span>
+          <span>Карандаш (P)</span>
+        </button>
+        <button class="tool-btn" id="tool-eyedropper" title="Пипетка — взять цвет с экрана/холста (Горячая клавиша: I)">
+          <span class="material-symbols-rounded">colorize</span>
+          <span>Пипетка (I)</span>
+        </button>
+        <button class="tool-btn" id="tool-transparent-canvas" title="Сделать холст прозрачным (Alpha Transparent)">
+          <span class="material-symbols-rounded">texture</span>
+          <span>Прозрачный холст</span>
+        </button>
+      </div>
+
       <!-- Группа 2: Фигуры и разметка -->
       <div class="sb-group">
         <div class="sb-label">ФИГУРЫ</div>
@@ -440,6 +457,19 @@
           <div class="canvas-drop-sub">PNG, JPG, SVG, GIF, WebP · из браузера, файлового менеджера или буфера</div>
         </div>
       </div>
+
+      <!-- Floating Pencil Bar (active when drawing mode is ON) -->
+      <div id="pencil-toolbar" class="pencil-toolbar hidden" style="position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e1e1e; border: 1px solid rgba(255,255,255,0.18); border-radius: 24px; padding: 6px 14px; display: flex; align-items: center; gap: 10px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); backdrop-filter: blur(16px);">
+        <span class="material-symbols-rounded" style="font-size: 18px; color: #0d99ff;">edit</span>
+        <span style="font-size: 12px; font-weight: 600; color: #fff;">Карандаш</span>
+        <input type="color" id="pencil-color-picker" value="#0d99ff" title="Цвет линии" style="width: 26px; height: 26px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 11px; color: #9ca3af;">Толщина</span>
+          <input type="range" id="pencil-width-slider" min="1" max="40" value="4" style="width: 80px; accent-color: #0d99ff;">
+          <span id="pencil-width-val" style="font-size: 11px; min-width: 24px; color: #fff; font-weight: 600;">4px</span>
+        </div>
+        <button class="pbtn pbtn-xs" id="btn-pencil-done" style="padding: 4px 10px; background: #0d99ff; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-size: 11px; font-weight: 600;">Готово (Esc)</button>
+      </div>
     </main>
 
     <!-- ── Правая панель: Figma Design Inspector ── -->
@@ -481,6 +511,10 @@
               <span class="figma-prop-label">Фон холста</span>
               <div class="bg-palette figma-quick-bg-palette" id="bg-palette-quick"></div>
             </div>
+            <button class="pbtn pbtn-sm" id="btn-toggle-canvas-transparency" title="Сделать фон прозрачным (Alpha Transparent)" style="margin-top: 8px; width: 100%; justify-content: center; gap: 6px;">
+              <span class="material-symbols-rounded" style="font-size: 15px;">texture</span>
+              <span>Сделать фон прозрачным</span>
+            </button>
             <div class="figma-empty-hint">
               <span class="material-symbols-rounded" style="font-size:26px; color:var(--text-3);">touch_app</span>
               <p>Выберите объект на холсте, чтобы настроить его параметры</p>
@@ -583,6 +617,64 @@
               <span class="figma-slider-val"><b id="opacity-val-common">100</b>%</span>
             </div>
             <input type="range" class="prop-range" id="opacity-slider-common" min="0" max="100" value="100" step="1">
+          </div>
+
+          <!-- Режим наложения (Blend Modes: Normal, Multiply, Screen, Overlay, etc.) -->
+          <div class="figma-prop-item" style="margin-top: 10px;">
+            <div class="figma-slider-head" style="margin-bottom: 5px;">
+              <span class="figma-sublabel">Режим наложения</span>
+            </div>
+            <select id="blend-mode-select" class="figma-select" title="Режим смешивания слоёв (Blend Mode)">
+              <option value="source-over">Обычный (Normal)</option>
+              <option value="multiply">Умножение (Multiply)</option>
+              <option value="screen">Осветление (Screen)</option>
+              <option value="overlay">Перекрытие (Overlay)</option>
+              <option value="darken">Затемнение (Darken)</option>
+              <option value="lighten">Светлее (Lighten)</option>
+              <option value="color-dodge">Осветление основы (Color Dodge)</option>
+              <option value="color-burn">Затемнение основы (Color Burn)</option>
+              <option value="difference">Разница (Difference)</option>
+              <option value="exclusion">Исключение (Exclusion)</option>
+              <option value="hue">Цветовой тон (Hue)</option>
+              <option value="saturation">Насыщенность (Saturation)</option>
+              <option value="luminosity">Яркость (Luminosity)</option>
+            </select>
+          </div>
+
+          <!-- Эффекты слоя: Внешняя тень (Drop Shadow) -->
+          <div class="figma-effects-group" style="margin-top: 12px; border-top: 1px solid var(--border, rgba(255,255,255,0.08)); padding-top: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span class="figma-sublabel" style="font-weight: 600;">Эффекты: Тень (Drop Shadow)</span>
+              <button class="pbtn pbtn-xs" id="btn-toggle-shadow" title="Включить / выключить тень" style="padding: 2px 8px; font-size: 11px;">
+                <span class="material-symbols-rounded" style="font-size: 13px; margin-right: 2px;">blur_on</span>
+                <span id="shadow-toggle-label">Вкл</span>
+              </button>
+            </div>
+            <div id="shadow-controls-wrap" style="display: none; flex-direction: column; gap: 8px;">
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="figma-input-tag" style="min-width: 48px; font-size: 11px;">Цвет</span>
+                <input type="color" id="shadow-color-picker" value="#000000" style="width: 32px; height: 24px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
+                <input type="range" class="prop-range" id="shadow-opacity-slider" min="0" max="100" value="50" step="1" title="Непрозрачность тени" style="flex: 1;">
+                <span class="figma-slider-val" style="font-size: 11px;"><b id="shadow-opacity-val">50</b>%</span>
+              </div>
+              <div class="figma-slider-group">
+                <div class="figma-slider-head">
+                  <span class="figma-sublabel">Размытие (Blur)</span>
+                  <span class="figma-slider-val"><b id="shadow-blur-val">15</b>px</span>
+                </div>
+                <input type="range" class="prop-range" id="shadow-blur-slider" min="0" max="100" value="15" step="1">
+              </div>
+              <div class="figma-dim-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="figma-input-field" title="Смещение X">
+                  <span class="figma-input-tag">X</span>
+                  <input type="number" id="shadow-offset-x" class="figma-input-sm" value="0">
+                </div>
+                <div class="figma-input-field" title="Смещение Y">
+                  <span class="figma-input-tag">Y</span>
+                  <input type="number" id="shadow-offset-y" class="figma-input-sm" value="8">
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Быстрые действия со слоем (Копия, Порядок, Блокировка, Группа, Удалить) -->
