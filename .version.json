@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.99.0",
+  "version": "5.0.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-26T00:07:00+03:00",
-  "release_name": "AURORA DESIGN 4.99.0 — Аппаратный чистый рендеринг листа афиши (renderCleanArtboardCanvas) с обрезкой вылетов за холст в Ultra-HD/HDR превью и экспорте"
+  "commit_date": "2026-09-26T00:16:00+03:00",
+  "release_name": "AURORA DESIGN 5.0.0 — Строгое бесшовное кадрирование листа афиши в модальном окне Ultra-HD/HDR и экспортах без полей монтажного стола"
 }

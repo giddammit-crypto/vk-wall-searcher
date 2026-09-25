@@ -582,17 +582,15 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
       ctx.fillRect(0, 0, targetW, targetH);
     }
 
-    // 2. АППАРАТНОЕ КАДРИРОВАНИЕ СТРОГО ПО ГРАНИЦАМ ЛИСТА [0, 0, targetW, targetH]
+    // 2. АППАРАТНОЕ КАДРИРОВАНИЕ СТРОГО ПО ГРАНИЦАМ ЛИСТА [0, 0, origW, origH]
     // Любые части объектов за пределами листа отсекаются аппаратно (ctx.clip)
     ctx.save();
+    ctx.scale(mult, mult);
     ctx.beginPath();
-    ctx.rect(0, 0, targetW, targetH);
+    ctx.rect(0, 0, origW, origH);
     ctx.clip();
 
-    // 3. Масштабирование системы координат в целевое разрешение
-    ctx.scale(mult, mult);
-
-    // 4. Отрисовка всех объектов афиши в порядке слоёв
+    // 3. Отрисовка всех объектов афиши в порядке слоёв
     const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i];
