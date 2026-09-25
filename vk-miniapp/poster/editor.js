@@ -1134,6 +1134,7 @@ const LOGOS = [
    ══════════════════════════════════════════════════════════════ */
 let canvas = null;
 let currentSize = SIZES.a4_v;
+if (typeof window !== 'undefined') window.currentSize = currentSize;
 let zoom = 1.0;
 let isGridVisible = false;
 let isSnappingEnabled = true;
@@ -1762,6 +1763,11 @@ function buildColorRows() {
 function loadTemplate(tpl) {
   if (!tpl) return;
   currentSize = SIZES[tpl.size] || SIZES.a4_v;
+  if (typeof window !== 'undefined') window.currentSize = currentSize;
+  if (canvas) {
+    canvas.__artboardWidth = currentSize.w;
+    canvas.__artboardHeight = currentSize.h;
+  }
   $('#screen-templates').classList.add('hidden');
   $('#screen-editor').classList.remove('hidden');
 
@@ -1858,6 +1864,17 @@ function initCanvas(w, h) {
     selectionLineWidth: 1.5,
   });
   window.canvas = canvas;
+  canvas.__artboardWidth = w;
+  canvas.__artboardHeight = h;
+  if (!currentSize) {
+    currentSize = { w, h, name: 'Холст' };
+  } else {
+    currentSize.w = w;
+    currentSize.h = h;
+  }
+  if (typeof window !== 'undefined') {
+    window.currentSize = currentSize;
+  }
 
   // Устанавливаем матрицу отображения: лист центрирован внутри padding
   canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
@@ -2135,19 +2152,21 @@ function initCanvas(w, h) {
     const totalW = canvas.getWidth();
     const totalH = canvas.getHeight();
 
-    // ── 1. МАСКА ЗАТЕМНЕНИЯ ДЛЯ ВЫСТУПАЮЩИХ ЧАСТЕЙ (FIGMA / TILDA OUT-OF-BOUNDS DIMMING MASK) ──
+    // ── 1. 100% НЕПРОЗРАЧНАЯ МАСКА МОНТАЖНОГО СТОЛА (#141824) ──
+    // Полностью скрывает любые части объектов, выходящие за пределы листа афиши.
+    // Так как маска рисуется на lowerCanvasEl, рамка выделения и ручки трансформации (на upperCanvasEl) остаются на 100% видны и интерактивны!
     ctx.save();
     ctx.beginPath();
     // Внешний контур (весь видимый Canvas с отступами монтажного стола)
     ctx.rect(0, 0, totalW, totalH);
     // Внутренний контур (окно выреза строго по границам листа афиши)
     ctx.rect(pad * z, pad * z, cw * z, ch * z);
-    // Evenodd заливает область за пределами листа, делая вышедшие части полупрозрачными (~35% видимости)
-    ctx.fillStyle = 'rgba(10, 15, 29, 0.65)';
+    // 100% непрозрачная заливка точным цветом фона монтажного стола (#141824)
+    ctx.fillStyle = '#141824';
     ctx.fill('evenodd');
 
-    // Тонкая неоновая граница листа афиши поверх маски и всех выступающих слоёв
-    ctx.strokeStyle = 'rgba(99, 102, 241, 0.55)';
+    // Тонкая неоновая граница листа афиши поверх маски
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.65)';
     ctx.lineWidth = Math.max(1, 1.5 * z);
     ctx.strokeRect(pad * z, pad * z, cw * z, ch * z);
     ctx.restore();
@@ -4316,6 +4335,11 @@ function importProjectJSON(file) {
         }
         if (!sizeKey) sizeKey = 'a4_v';
         currentSize = SIZES[sizeKey] || SIZES.a4_v;
+        if (typeof window !== 'undefined') window.currentSize = currentSize;
+        if (canvas) {
+          canvas.__artboardWidth = currentSize.w;
+          canvas.__artboardHeight = currentSize.h;
+        }
 
         $('#screen-templates')?.classList.add('hidden');
         $('#screen-editor')?.classList.remove('hidden');
@@ -5109,6 +5133,11 @@ function restoreHistory() {
       canvas.backgroundColor = '';
     }
     canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
+    if (currentSize) {
+      canvas.__artboardWidth = currentSize.w;
+      canvas.__artboardHeight = currentSize.h;
+      if (typeof window !== 'undefined') window.currentSize = currentSize;
+    }
     canvas.renderAll();
     savingHistory = false;
     updateHistoryBtns();
@@ -5128,6 +5157,9 @@ function updateHistoryBtns() {
 function applyZoom(z) {
   if (!canvas || !currentSize) return;
   zoom = Math.min(Math.max(z, 0.08), 4.0);
+  canvas.__artboardWidth = currentSize.w;
+  canvas.__artboardHeight = currentSize.h;
+  if (typeof window !== 'undefined') window.currentSize = currentSize;
   const totalW = (currentSize.w + CANVAS_PADDING * 2) * zoom;
   const totalH = (currentSize.h + CANVAS_PADDING * 2) * zoom;
   canvas.setWidth(totalW);
@@ -5155,6 +5187,42 @@ let currentHdrPreset = 'cinematic';
 let isExportRunning = false;
 
 /**
+ * Получает точные геометрические размеры листа афиши (Artboard), исключая
+ * CANVAS_PADDING монтажного стола и экранный zoom.
+ *
+ * @param {fabric.Canvas} canvasInst
+ * @returns {{ w: number, h: number }}
+ */
+function getArtboardDimensions(canvasInst) {
+  if (canvasInst) {
+    if (typeof canvasInst.__artboardWidth === 'number' && canvasInst.__artboardWidth > 0 &&
+        typeof canvasInst.__artboardHeight === 'number' && canvasInst.__artboardHeight > 0) {
+      return { w: canvasInst.__artboardWidth, h: canvasInst.__artboardHeight };
+    }
+  }
+  if (typeof window !== 'undefined' && window.currentSize && window.currentSize.w > 0 && window.currentSize.h > 0) {
+    return { w: window.currentSize.w, h: window.currentSize.h };
+  }
+  if (typeof currentSize !== 'undefined' && currentSize && currentSize.w > 0 && currentSize.h > 0) {
+    return { w: currentSize.w, h: currentSize.h };
+  }
+  // Защита от захвата CANVAS_PADDING (320px) при аварийном fallback
+  if (canvasInst && typeof canvasInst.getWidth === 'function' && canvasInst.getWidth() > 0) {
+    const pad = (typeof CANVAS_PADDING !== 'undefined') ? CANVAS_PADDING : 320;
+    const vpt = canvasInst.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const z = (canvasInst.getZoom && canvasInst.getZoom() > 0) ? canvasInst.getZoom() : (vpt[0] || 1);
+    const unscaledW = Math.round(canvasInst.getWidth() / z);
+    const unscaledH = Math.round(canvasInst.getHeight() / z);
+    const calcW = unscaledW - pad * 2;
+    const calcH = unscaledH - pad * 2;
+    if (calcW > 50 && calcH > 50) {
+      return { w: calcW, h: calcH };
+    }
+  }
+  return { w: 794, h: 1123 };
+}
+
+/**
  * Создает чистый растровый холст афиши (Artboard), аппаратно обрезанный
  * строго по границам [0, 0, currentSize.w, currentSize.h] без монтажного стола,
  * без выступающих за края частей и без служебных маркеров выделения.
@@ -5167,8 +5235,9 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
   if (window.PosterEnhancer && typeof window.PosterEnhancer.renderCleanArtboardCanvas === 'function') {
     return window.PosterEnhancer.renderCleanArtboardCanvas(fabricCanvas, multiplier);
   }
-  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
-  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
+  const dims = getArtboardDimensions(fabricCanvas);
+  const origW = dims.w;
+  const origH = dims.h;
   const mult = Math.max(0.01, multiplier || 1.0);
   const targetW = Math.max(1, Math.round(origW * mult));
   const targetH = Math.max(1, Math.round(origH * mult));
@@ -5208,8 +5277,7 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
         ctx.fillRect(0, 0, targetW, targetH);
       }
     } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.clearRect(0, 0, targetW, targetH);
     }
 
     // 2. АППАРАТНОЕ КАДРИРОВАНИЕ СТРОГО ПО ГРАНИЦАМ ЛИСТА [0, 0, origW, origH]
@@ -5220,14 +5288,35 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     ctx.rect(0, 0, origW, origH);
     ctx.clip();
 
+    // 2.1 Отрисовка фонового изображения (backgroundImage), если задано
+    const bgImg = fabricCanvas.backgroundImage;
+    if (bgImg) {
+      if (typeof bgImg.render === 'function') {
+        bgImg.render(ctx);
+      } else if (bgImg instanceof HTMLImageElement || bgImg instanceof HTMLCanvasElement) {
+        ctx.drawImage(bgImg, 0, 0, origW, origH);
+      }
+    }
+
     // 3. Отрисовка всех объектов афиши в порядке слоёв
     const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i];
-      if (obj && obj.visible !== false && !obj.__isHelper) {
+      if (obj && obj.visible !== false && !obj.__isHelper && !obj.excludeFromExport) {
         obj.render(ctx);
       }
     }
+
+    // 4. Отрисовка overlayImage, если задан
+    const ovImg = fabricCanvas.overlayImage;
+    if (ovImg) {
+      if (typeof ovImg.render === 'function') {
+        ovImg.render(ctx);
+      } else if (ovImg instanceof HTMLImageElement || ovImg instanceof HTMLCanvasElement) {
+        ctx.drawImage(ovImg, 0, 0, origW, origH);
+      }
+    }
+
     ctx.restore();
 
     return buffer;
@@ -5316,7 +5405,8 @@ function setExportResolution(res, notify = false) {
   updateEnhancerMetaResolution();
 
   if (notify && canvas && window.PosterEnhancer) {
-    const scaleInfo = window.PosterEnhancer.calculateExportScale(canvas.getWidth(), canvas.getHeight(), currentExportResolution);
+    const dims = getArtboardDimensions(canvas);
+    const scaleInfo = window.PosterEnhancer.calculateExportScale(dims.w, dims.h, currentExportResolution);
     if (scaleInfo) {
       toast(`Разрешение экспорта: ${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px (${scaleInfo.targetName})`);
     }
@@ -5569,9 +5659,10 @@ async function exportPdf() {
     const buffer = renderCleanArtboardCanvas(canvas, mult);
     const pdfDataUrl = buffer.toDataURL('image/jpeg', 0.96);
 
-    const isH = currentSize.w > currentSize.h;
-    const pdf = new jsPdfLib({ orientation: isH ? 'landscape' : 'portrait', unit: 'pt', format: [currentSize.w, currentSize.h] });
-    pdf.addImage(pdfDataUrl, 'JPEG', 0, 0, currentSize.w, currentSize.h, undefined, 'FAST');
+    const dims = getArtboardDimensions(canvas);
+    const isH = dims.w > dims.h;
+    const pdf = new jsPdfLib({ orientation: isH ? 'landscape' : 'portrait', unit: 'pt', format: [dims.w, dims.h] });
+    pdf.addImage(pdfDataUrl, 'JPEG', 0, 0, dims.w, dims.h, undefined, 'FAST');
     pdf.save(filename + '.pdf');
     hideExportLoader('PDF готов');
     toast('PDF готов к печати');
@@ -5687,8 +5778,9 @@ function closeEnhancerModal() {
 function updateEnhancerMetaResolution() {
   if (!canvas) return;
   const metaEl = $('#enh-meta-resolution');
-  const w = currentSize ? currentSize.w : 800;
-  const h = currentSize ? currentSize.h : 600;
+  const dims = getArtboardDimensions(canvas);
+  const w = dims.w;
+  const h = dims.h;
   let targetW = w;
   let targetH = h;
   let resLabel = currentExportResolution.toUpperCase();
@@ -5773,8 +5865,9 @@ function renderEnhancerSplitPreview() {
   const canvasAfter = $('#enhancer-canvas-after');
   if (!viewport || !canvasBefore || !canvasAfter) return;
 
-  const w = currentSize ? currentSize.w : 800;
-  const h = currentSize ? currentSize.h : 600;
+  const dims = getArtboardDimensions(canvas);
+  const w = dims.w;
+  const h = dims.h;
   const aspect = w / h;
 
   // Рассчитываем точные физические размеры окна сравнения под формат листа
@@ -6387,6 +6480,11 @@ async function loadDraftById(id) {
 
   _currentDraftId = draft.id;
   currentSize = SIZES[draft.sizeKey] || SIZES.a4_v;
+  if (typeof window !== 'undefined') window.currentSize = currentSize;
+  if (canvas) {
+    canvas.__artboardWidth = currentSize.w;
+    canvas.__artboardHeight = currentSize.h;
+  }
 
   $('#screen-templates')?.classList.add('hidden');
   $('#screen-editor')?.classList.remove('hidden');
@@ -6839,6 +6937,11 @@ async function doImportFigmaFrame() {
         w: frameMeta.width,
         h: frameMeta.height
       };
+      if (typeof window !== 'undefined') window.currentSize = currentSize;
+      if (canvas) {
+        canvas.__artboardWidth = currentSize.w;
+        canvas.__artboardHeight = currentSize.h;
+      }
       initCanvas(currentSize.w, currentSize.h);
 
       if ($('#poster-title')) $('#poster-title').value = frameMeta.name;
@@ -6891,6 +6994,11 @@ async function doImportFigmaFrame() {
         w: fw,
         h: fh
       };
+      if (typeof window !== 'undefined') window.currentSize = currentSize;
+      if (canvas) {
+        canvas.__artboardWidth = currentSize.w;
+        canvas.__artboardHeight = currentSize.h;
+      }
       initCanvas(currentSize.w, currentSize.h);
 
       // Фоновый цвет фрейма
@@ -7093,6 +7201,7 @@ async function exportFigmaClipboard() {
   }
 
   try {
+    canvas._isExporting = true;
     await embedAllImagesToBase64(canvas);
 
     const savedZoom = zoom;
@@ -7141,6 +7250,7 @@ async function exportFigmaClipboard() {
     console.error('Figma clipboard error:', err);
     toast('Ошибка экспорта: ' + err.message);
   } finally {
+    canvas._isExporting = false;
     if (activeObj) {
       if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
         const sel = new fabric.ActiveSelection(selectedObjects, { canvas });
@@ -7171,6 +7281,7 @@ async function exportFigmaSvg() {
   }
 
   try {
+    canvas._isExporting = true;
     await embedAllImagesToBase64(canvas);
 
     const savedZoom = zoom;
@@ -7195,6 +7306,7 @@ async function exportFigmaSvg() {
     console.error('Figma SVG export error:', err);
     toast('Ошибка экспорта: ' + err.message);
   } finally {
+    canvas._isExporting = false;
     if (activeObj) {
       if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
         const sel = new fabric.ActiveSelection(selectedObjects, { canvas });
@@ -7282,9 +7394,10 @@ async function embedAllImagesToBase64(canvasInst) {
  * чтобы в Figma макет открывался с идеальной структурой слоёв по блокам!
  */
 function buildFigmaSVG() {
-  const w = currentSize.w;
-  const h = currentSize.h;
-  const bg = canvas.backgroundColor || '#ffffff';
+  const dims = getArtboardDimensions(canvas);
+  const w = dims.w;
+  const h = dims.h;
+  const bg = canvas.__artboardBg || canvas.backgroundColor || '#ffffff';
 
   let svgStr = canvas.toSVG({
     suppressPreamble: false,
@@ -7292,7 +7405,7 @@ function buildFigmaSVG() {
     height: h + 'px',
     viewBox: { x: 0, y: 0, width: w, height: h }
   }, function(markup, obj) {
-    if (!obj) return markup;
+    if (!obj || obj.__isHelper || obj.excludeFromExport) return '';
     const layerName = obj.layerName || '';
     const blockTitle = obj.blockTitle || '';
     if (layerName) {
@@ -7309,14 +7422,34 @@ function buildFigmaSVG() {
   // Группируем последовательные элементы одного блока в <g id="[Блок ...]">
   svgStr = groupSvgBlocks(svgStr);
 
+  // Вставляем определение clipPath для аппаратного отсечения вылетов в Figma
+  const clipDef = `<clipPath id="figma-artboard-bounds-clip"><rect x="0" y="0" width="${w}" height="${h}" /></clipPath>`;
+  if (svgStr.includes('<defs>')) {
+    svgStr = svgStr.replace('<defs>', `<defs>\n\t${clipDef}`);
+  } else if (svgStr.includes('</svg>')) {
+    svgStr = svgStr.replace(/(<svg[^>]*>)/, `$1\n<defs>\n\t${clipDef}\n</defs>`);
+  }
+
   // Fabric.js иногда пишет background через CSS, а не через <rect>.
   // Вставляем явный фоновый прямоугольник сразу после открывающего <svg>-тега
   // чтобы Figma видел его как отдельный слой фона.
-  if (bg && bg !== 'rgba(0,0,0,0)' && bg !== 'transparent') {
+  let bgFill = bg;
+  if (typeof bgFill === 'object' && bgFill && bgFill.toLive) {
+    bgFill = '#ffffff';
+  }
+  if (bgFill && bgFill !== 'rgba(0,0,0,0)' && bgFill !== 'transparent') {
     svgStr = svgStr.replace(
       /(<svg[^>]*>)/,
-      `$1<rect id="Фон макета" x="0" y="0" width="${w}" height="${h}" fill="${escapeHtml(bg)}" />`
+      `$1<rect id="Фон макета" x="0" y="0" width="${w}" height="${h}" fill="${escapeHtml(String(bgFill))}" />`
     );
+  }
+
+  // Оборачиваем слои в группу с clip-path, гарантируя что ни один выступающий объект не выйдет за рамку
+  const wrapRegex = /(<\/defs>[\s\S]*?(?:<rect id="Фон макета"[^>]*\/>)?)([\s\S]*?)(<\/svg>)/;
+  if (wrapRegex.test(svgStr)) {
+    svgStr = svgStr.replace(wrapRegex, (match, p1, p2, p3) => {
+      return `${p1}\n<g id="Artboard-Layers" clip-path="url(#figma-artboard-bounds-clip)">\n${p2}\n</g>\n${p3}`;
+    });
   }
 
   return svgStr;
@@ -7491,8 +7624,9 @@ function updateTildaPngSizeLabel() {
   if (!canvas) return;
   const scaleInput = document.querySelector('input[name="tilda-png-scale"]:checked');
   const scale = parseFloat(scaleInput?.value || '1');
-  const w = Math.round(currentSize.w * scale);
-  const h = Math.round(currentSize.h * scale);
+  const dims = getArtboardDimensions(canvas);
+  const w = Math.round(dims.w * scale);
+  const h = Math.round(dims.h * scale);
   const label = $('#tilda-png-size-label');
   if (label) label.textContent = `Размер изображения: ${w} × ${h} px`;
 }
@@ -7507,9 +7641,10 @@ async function buildTildaHTML() {
   // Сначала встраиваем все изображения как base64
   await embedAllImagesToBase64(canvas);
 
-  const w = currentSize.w;
-  const h = currentSize.h;
-  const bg = canvas.backgroundColor || '#0f172a';
+  const dims = getArtboardDimensions(canvas);
+  const w = dims.w;
+  const h = dims.h;
+  const bg = canvas.__artboardBg || canvas.backgroundColor || '#0f172a';
   const objects = canvas.getObjects();
 
   // Генерируем HTML для каждого объекта
@@ -7658,8 +7793,9 @@ async function exportTildaDownloadPng() {
     a.href = dataUrl;
     a.click();
 
-    const w = Math.round(currentSize.w * scale);
-    const h = Math.round(currentSize.h * scale);
+    const dims = getArtboardDimensions(canvas);
+    const w = Math.round(dims.w * scale);
+    const h = Math.round(dims.h * scale);
     toast(`PNG скачан: ${w}×${h} px — идеально для Tilda 🔷`);
   } catch(err) {
     console.error('Tilda PNG error:', err);
@@ -7695,8 +7831,9 @@ async function exportTildaDownloadZip() {
     const pngBase64 = pngDataUrl.split(',')[1];
 
     // 3. CSS для блока
-    const w = currentSize.w;
-    const h = currentSize.h;
+    const dims = getArtboardDimensions(canvas);
+    const w = dims.w;
+    const h = dims.h;
     const cssContent = `/* Tilda Block — Аврора Редактор Афиш */
 .t-container {
   position: relative;
@@ -7730,8 +7867,6 @@ async function exportTildaDownloadZip() {
 ${htmlContent}
 </body>
 </html>`;
-
-    applyZoom(savedZoom);
 
     // 5. Собираем ZIP
     const zip = new JSZip();

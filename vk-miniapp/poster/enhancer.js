@@ -522,6 +522,41 @@ function applyHdrToCanvas(canvas, config = {}) {
 }
 
 /**
+ * Получает точные геометрические размеры листа афиши (Artboard), исключая
+ * CANVAS_PADDING монтажного стола и экранный zoom.
+ *
+ * @param {fabric.Canvas} canvasInst
+ * @returns {{ w: number, h: number }}
+ */
+function getArtboardDimensions(canvasInst) {
+  if (canvasInst) {
+    if (typeof canvasInst.__artboardWidth === 'number' && canvasInst.__artboardWidth > 0 &&
+        typeof canvasInst.__artboardHeight === 'number' && canvasInst.__artboardHeight > 0) {
+      return { w: canvasInst.__artboardWidth, h: canvasInst.__artboardHeight };
+    }
+  }
+  if (typeof window !== 'undefined' && window.currentSize && window.currentSize.w > 0 && window.currentSize.h > 0) {
+    return { w: window.currentSize.w, h: window.currentSize.h };
+  }
+  if (typeof currentSize !== 'undefined' && currentSize && currentSize.w > 0 && currentSize.h > 0) {
+    return { w: currentSize.w, h: currentSize.h };
+  }
+  // Защита от захвата CANVAS_PADDING (320px) при аварийном fallback
+  if (canvasInst && typeof canvasInst.getWidth === 'function' && canvasInst.getWidth() > 0) {
+    const pad = (typeof CANVAS_PADDING !== 'undefined') ? CANVAS_PADDING : 320;
+    const vpt = canvasInst.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const z = (canvasInst.getZoom && canvasInst.getZoom() > 0) ? canvasInst.getZoom() : (vpt[0] || 1);
+    const unscaledW = Math.round(canvasInst.getWidth() / z);
+    const unscaledH = Math.round(canvasInst.getHeight() / z);
+    const calcW = unscaledW - pad * 2;
+    const calcH = unscaledH - pad * 2;
+    if (calcW > 50 && calcH > 50) {
+      return { w: calcW, h: calcH };
+    }
+  }
+  return { w: 794, h: 1123 };
+}
+
 /**
  * Создает чистый растровый холст афиши (Artboard), аппаратно обрезанный
  * строго по границам [0, 0, currentSize.w, currentSize.h] без монтажного стола,
@@ -536,8 +571,9 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     throw new Error('Fabric.js Canvas не инициализирован');
   }
 
-  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
-  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
+  const dims = getArtboardDimensions(fabricCanvas);
+  const origW = dims.w;
+  const origH = dims.h;
   const mult = Math.max(0.01, multiplier || 1.0);
   const targetW = Math.max(1, Math.round(origW * mult));
   const targetH = Math.max(1, Math.round(origH * mult));
@@ -578,8 +614,7 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
         ctx.fillRect(0, 0, targetW, targetH);
       }
     } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.clearRect(0, 0, targetW, targetH);
     }
 
     // 2. АППАРАТНОЕ КАДРИРОВАНИЕ СТРОГО ПО ГРАНИЦАМ ЛИСТА [0, 0, origW, origH]
@@ -590,14 +625,35 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     ctx.rect(0, 0, origW, origH);
     ctx.clip();
 
+    // 2.1 Отрисовка фонового изображения (backgroundImage), если задано
+    const bgImg = fabricCanvas.backgroundImage;
+    if (bgImg) {
+      if (typeof bgImg.render === 'function') {
+        bgImg.render(ctx);
+      } else if (bgImg instanceof HTMLImageElement || bgImg instanceof HTMLCanvasElement) {
+        ctx.drawImage(bgImg, 0, 0, origW, origH);
+      }
+    }
+
     // 3. Отрисовка всех объектов афиши в порядке слоёв
     const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i];
-      if (obj && obj.visible !== false && !obj.__isHelper) {
+      if (obj && obj.visible !== false && !obj.__isHelper && !obj.excludeFromExport) {
         obj.render(ctx);
       }
     }
+
+    // 4. Отрисовка overlayImage, если задан
+    const ovImg = fabricCanvas.overlayImage;
+    if (ovImg) {
+      if (typeof ovImg.render === 'function') {
+        ovImg.render(ctx);
+      } else if (ovImg instanceof HTMLImageElement || ovImg instanceof HTMLCanvasElement) {
+        ctx.drawImage(ovImg, 0, 0, origW, origH);
+      }
+    }
+
     ctx.restore();
 
     return buffer;
@@ -666,8 +722,9 @@ async function exportPoster(fabricCanvas, options = {}) {
   if (onProgress) onProgress(15, `Подготовка холста (${resolution.toUpperCase()})...`);
   await new Promise(r => setTimeout(r, 25));
 
-  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (canvasInst.getWidth ? canvasInst.getWidth() : (canvasInst.width || 800));
-  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (canvasInst.getHeight ? canvasInst.getHeight() : (canvasInst.height || 600));
+  const dims = getArtboardDimensions(canvasInst);
+  const origW = dims.w;
+  const origH = dims.h;
   const scaleInfo = calculateExportScale(origW, origH, resolution, options);
 
   if (onProgress) onProgress(35, `Суперсэмплинг холста (${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px)...`);
@@ -692,7 +749,7 @@ async function exportPoster(fabricCanvas, options = {}) {
 
   let dataUrl = null;
   let fileExt = 'png';
-  const canvasBg = (typeof canvasInst.backgroundColor === 'string' && canvasInst.backgroundColor) ? canvasInst.backgroundColor : '#ffffff';
+  const canvasBg = canvasInst.__artboardBg || ((typeof canvasInst.backgroundColor === 'string' && canvasInst.backgroundColor) ? canvasInst.backgroundColor : '#ffffff');
 
   if (format === 'jpg' || format === 'jpeg') {
     fileExt = 'jpg';
@@ -806,8 +863,9 @@ function generateBeforeAfterPreview(source, options = {}) {
     srcCanvas.getContext('2d').drawImage(el, 0, 0, srcCanvas.width, srcCanvas.height);
   } else if (source && (typeof source.getObjects === 'function' || source.lowerCanvasEl || typeof source.toDataURL === 'function')) {
     // fabric.Canvas: точный, мгновенный и чистый рендеринг листа афиши
-    const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (source.getWidth ? source.getWidth() : (source.width || 800));
-    const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (source.getHeight ? source.getHeight() : (source.height || 600));
+    const dims = getArtboardDimensions(source);
+    const origW = dims.w;
+    const origH = dims.h;
     const maxPrevDim = options.maxWidth || 1200;
     const longSide = Math.max(origW, origH);
     const previewMultiplier = Math.min(1.0, maxPrevDim / Math.max(1, longSide));
