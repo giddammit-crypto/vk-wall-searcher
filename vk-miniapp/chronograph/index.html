@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Литературный хронограф АВРОРА — интерактивный календарь памятных, литературных и краеведческих дат, юбилеев писателей и готовых книжных выставок для методистов и библиотекарей.">
-  <title>Литературный хронограф — АВРОРА</title>
+  <meta name="description" content="Литературный хронограф АВРОРА — интерактивный календарь памятных, литературных и краеведческих дат, юбилеев писателей и готовых макетов книжных выставок в стиле Figma Workspace.">
+  <title>Литературный хронограф — АВРОРА (Figma Workspace)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,21 +14,26 @@
 </head>
 <body>
 
-  <!-- Фоновое космическое свечение Aurora Cosmic Library -->
-  <div class="aurora-ambient-bg" aria-hidden="true">
-    <div class="aurora-orb orb-cyan"></div>
-    <div class="aurora-orb orb-purple"></div>
-    <div class="aurora-orb orb-gold"></div>
-    <div class="aurora-grid-overlay"></div>
-  </div>
+  <!-- Фоновый слой (скрыт в строгой эстетике Figma Workspace) -->
+  <div class="aurora-ambient-bg" aria-hidden="true"></div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       1. ВЕРХНЯЯ ПАНЕЛЬ НАВИГАЦИИ (.chrono-topbar)
+       1. ВЕРХНЯЯ ПАНЕЛЬ В СТИЛЕ FIGMA TOP TOOLBAR (.chrono-topbar)
        ═══════════════════════════════════════════════════════════════════ -->
   <header class="chrono-topbar">
     <div class="chrono-topbar-inner">
-      <!-- Бренд и навигационные ссылки экосистемы АВРОРА -->
+      <!-- Левая секция: иконка Figma, хлебные крошки файла, бейдж 85 макетов и навигация -->
       <div class="topbar-left">
+        <a href="../../index.html" class="figma-f-btn" title="Вернуться на главный портал АВРОРА">
+          <svg class="figma-logo-svg" viewBox="0 0 38 57" width="13" height="19" fill="none" aria-hidden="true">
+            <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
+            <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
+            <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
+            <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
+            <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+          </svg>
+        </a>
+
         <a href="../../index.html" class="topbar-nav-link topbar-back-link" title="Вернуться на главный портал АВРОРА">
           <span class="material-symbols-rounded">arrow_back</span>
           <span>← На портал АВРОРА</span>
@@ -36,14 +41,14 @@
 
         <div class="topbar-divider"></div>
 
-        <div class="chrono-brand">
-          <div class="chrono-brand-emblem">
-            <span class="material-symbols-rounded">auto_stories</span>
-          </div>
-          <div class="chrono-brand-text">
-            <span class="chrono-brand-title">АВРОРА • Литературный хронограф</span>
-            <span class="chrono-brand-subtitle">Календарь памятных дат, юбилеев и книжных выставок</span>
-          </div>
+        <!-- Хлебные крошки файла в стиле Figma -->
+        <div class="chrono-brand figma-breadcrumbs" aria-label="Путь к файлу">
+          <span class="figma-crumb-folder">АВРОРА</span>
+          <span class="figma-crumb-sep">/</span>
+          <span class="figma-crumb-folder">Методический фонд</span>
+          <span class="figma-crumb-sep">/</span>
+          <span class="chrono-brand-title figma-crumb-file">Литературный хронограф</span>
+          <span class="figma-component-pill" title="Готовые шаблоны афиш для всех дат">❖ 85 макетов афиш</span>
         </div>
 
         <a href="../poster/index.html" class="topbar-nav-link topbar-poster-link" title="Перейти в Редактор библиотечных афиш АВРОРА">
@@ -51,7 +56,7 @@
         </a>
       </div>
 
-      <!-- Инструменты управления: год, своя дата, план, экспорт, печать, тема -->
+      <!-- Правая секция: год, своя дата, план, экспорт, печать, тема -->
       <div class="topbar-right">
         <div class="year-selector-wrap" title="Расчётный год для вычисления возраста юбилеев">
           <label for="year-select" class="year-selector-label">
@@ -91,7 +96,7 @@
           </button>
         </div>
 
-        <button type="button" id="btn-theme-toggle" class="chrono-btn chrono-btn-icon" title="Переключить тему оформления (Тёмный космос / Читальный зал)" aria-label="Переключить тему">
+        <button type="button" id="btn-theme-toggle" class="chrono-btn chrono-btn-icon" title="Переключить тему оформления (Figma Dark / Figma Light)" aria-label="Переключить тему">
           <span class="material-symbols-rounded theme-icon-dark">light_mode</span>
         </button>
       </div>
@@ -99,7 +104,7 @@
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       ОСНОВНОЙ КОНТЕНТ СТРАНИЦЫ
+       ОСНОВНОЙ ХОЛСТ FIGMA WORKSPACE
        ═══════════════════════════════════════════════════════════════════ -->
   <main class="chrono-main">
 
@@ -108,13 +113,13 @@
       <div class="chrono-hero-copy">
         <div class="hero-eyebrow">
           <span class="hero-eyebrow-dot"></span>
-          <span>МЕТОДИЧЕСКИЙ КОМПЛЕКС МБУК «ЦГБ» г. ВЛАДИМИРА • ЭКОСИСТЕМА АВРОРА</span>
+          <span>FIGMA DESIGN SYSTEM • МБУК «ЦГБ» г. ВЛАДИМИРА • ЭКОСИСТЕМА АВРОРА</span>
         </div>
         <h1 class="hero-title">
           Литературный и краеведческий <span class="text-gradient-aurora">хронограф юбилеев</span>
         </h1>
         <p class="hero-subtitle">
-          Интеллектуальный календарь памятных дат классиков, современных авторов, детских писателей и выдающихся деятелей Владимирского края. Автоматический расчёт круглых юбилеев, готовые концепции книжных выставок, цитаты и мгновенная вёрстка настенного листа А4 для читального зала.
+          Интерактивный календарь памятных дат классиков, современных авторов, детских писателей и деятелей Владимирского края. Каждая дата снабжена расчётом юбилея, концепцией выставки и готовым дизайн-макетом афиши А4 для открытия в Редакторе афиш.
         </p>
       </div>
 
@@ -125,17 +130,17 @@
           </div>
           <div class="stat-card-content">
             <div id="stat-total-dates" class="stat-card-value">0</div>
-            <div class="stat-card-label">Всего дат в базе</div>
+            <div class="stat-card-label">Всего фреймов дат</div>
           </div>
         </article>
 
         <article class="stat-card stat-card-purple">
           <div class="stat-card-icon">
-            <span class="material-symbols-rounded">event_note</span>
+            <span class="material-symbols-rounded">widgets</span>
           </div>
           <div class="stat-card-content">
             <div id="stat-month-dates" class="stat-card-value">0</div>
-            <div class="stat-card-label">Дат в выбранном периоде</div>
+            <div class="stat-card-label">В выбранном периоде</div>
           </div>
         </article>
 
@@ -145,7 +150,7 @@
           </div>
           <div class="stat-card-content">
             <div id="stat-jubilees-count" class="stat-card-value">0</div>
-            <div class="stat-card-label">Круглых юбилеев в периоде</div>
+            <div class="stat-card-label">Круглых юбилеев</div>
           </div>
         </article>
 
@@ -155,7 +160,7 @@
           </div>
           <div class="stat-card-content">
             <div id="stat-plan-count" class="stat-card-value">0</div>
-            <div class="stat-card-label">Отобрано в план выставок</div>
+            <div class="stat-card-label">В плане выставок</div>
           </div>
         </article>
       </div>
@@ -239,7 +244,7 @@
 
         <!-- Переключатель вида (#view-switcher) -->
         <div id="view-switcher" class="view-switcher" role="group" aria-label="Режим отображения">
-          <button type="button" class="view-btn active is-active" data-view="cards" title="Сетка подробных карточек">
+          <button type="button" class="view-btn active is-active" data-view="cards" title="Сетка фреймов карточек">
             <span class="material-symbols-rounded">grid_view</span>
             <span>Карточки</span>
           </button>
@@ -269,9 +274,9 @@
 
         <!-- Фильтр категорий (#category-filters) -->
         <div class="filter-group">
-          <span class="filter-group-label">Направление фонда:</span>
+          <span class="filter-group-label">Компоненты фонда:</span>
           <div id="category-filters" class="filter-chips-wrap">
-            <button type="button" class="filter-chip active is-active" data-category="all">Все категории</button>
+            <button type="button" class="filter-chip active is-active" data-category="all">❖ Все категории</button>
             <button type="button" class="filter-chip" data-category="classics">🏛️ Классики</button>
             <button type="button" class="filter-chip" data-category="modern">✒️ Современные и XX век</button>
             <button type="button" class="filter-chip filter-chip-emerald" data-category="regional">🦌 Краеведение (Владимир)</button>
@@ -282,7 +287,7 @@
       </div>
     </section>
 
-    <!-- 5. ОСНОВНЫЕ КОНТЕЙНЕРЫ ОТОБРАЖЕНИЯ -->
+    <!-- 5. ОСНОВНЫЕ КОНТЕЙНЕРЫ ОТОБРАЖЕНИЯ НА ХОЛСТЕ FIGMA -->
     <section class="chrono-results-section">
       <!-- Строка статуса текущего фильтра -->
       <div id="active-filters-summary" class="active-filters-summary">
@@ -361,7 +366,7 @@
           <div class="empty-state-icon">
             <span class="material-symbols-rounded">manage_search</span>
           </div>
-          <h3 class="empty-state-title">По заданным фильтрам дат не найдено</h3>
+          <h3 class="empty-state-title">По заданным фильтрам фреймов дат не найдено</h3>
           <p class="empty-state-desc">
             Попробуйте выбрать другой месяц, переключиться на «Весь год», изменить фильтр масштаба юбилея или добавить собственную памятную дату вашего филиала.
           </p>
@@ -380,7 +385,7 @@
         <span class="material-symbols-rounded">close</span>
       </button>
       <div id="date-modal-body" class="date-modal-body">
-        <!-- Динамически наполняется из app.js: портрет, годы жизни, золотой бейдж юбилея, биография, цитата, книги и карточки готовых выставок -->
+        <!-- Динамически наполняется из app.js -->
       </div>
     </div>
   </div>
@@ -556,8 +561,9 @@
   <!-- 10. ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ (#toast) -->
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-  <!-- Скрипты базы данных и логики приложения -->
+  <!-- Скрипты базы данных, готовых макетов афиш и логики приложения -->
   <script src="data.js"></script>
+  <script src="poster_templates.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

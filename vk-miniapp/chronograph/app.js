@@ -349,46 +349,58 @@
         concept: item.bio
       };
       const worksHtml = (item.works || []).slice(0, 4).map(w => `<span class="work-tag">📖 ${escapeHtml(w)}</span>`).join('');
+      const posterTpl = (typeof window.buildChronographPosterTemplate === 'function')
+        ? window.buildChronographPosterTemplate(item, state.year, 'a4_v', 0)
+        : null;
+      const posterDesc = posterTpl ? posterTpl.desc : (firstEx.format + ': ' + firstEx.title);
 
       return `
         <article class="chrono-card ${jub.isRound ? 'is-round-jubilee' : ''} ${item.category === 'regional' ? 'is-regional' : ''} ${inPlan ? 'in-plan' : ''}" data-id="${escapeHtml(item.id)}" data-category="${escapeHtml(item.category)}">
           <div>
+            <div class="figma-frame-bar">
+              <span class="figma-frame-tag">❖ Frame · #${escapeHtml(item.id)}</span>
+              <span class="figma-frame-dim">A4 (595×842)</span>
+            </div>
+
             <div class="card-top">
               <span class="card-date-badge">📅 ${Number(item.day)} ${MONTHS_GENITIVE[Number(item.month)]}</span>
               <span class="card-jubilee-badge ${jub.isRound ? 'is-round' : ''}">${escapeHtml(jub.badgeText)}</span>
             </div>
 
-            <div class="card-person-row" style="margin-top: 12px;">
+            <div class="card-person-row" style="margin-top: 10px;">
               <div class="card-avatar" style="background: ${escapeHtml( item.portraitColor || 'var(--grad-cyan-purple)' )};">
                 ${escapeHtml(item.monogram || getMonogram(item.name))}
               </div>
               <div>
                 <h3 class="card-title" data-action="open-detail" data-id="${escapeHtml(item.id)}">${escapeHtml(item.name)}</h3>
                 <div class="card-role">${escapeHtml(item.role || '')} • <span class="lifespan">${escapeHtml(formatLifespan(item))}</span></div>
-                <div style="margin-top: 5px;">
+                <div style="margin-top: 4px;">
                   <span class="card-category-badge ${item.category === 'regional' ? 'cat-regional' : ''}">${escapeHtml(cat.label)}</span>
                 </div>
               </div>
             </div>
 
-            <p class="card-bio" style="margin-top: 12px;">${escapeHtml(item.bio)}</p>
+            <p class="card-bio" style="margin-top: 10px;">${escapeHtml(item.bio)}</p>
 
-            ${item.quote ? `<blockquote class="card-quote" style="margin-top: 10px;">«${escapeHtml(item.quote)}»</blockquote>` : ''}
+            ${item.quote ? `<blockquote class="card-quote" style="margin-top: 8px;">«${escapeHtml(item.quote)}»</blockquote>` : ''}
 
-            <div class="card-works" style="margin-top: 10px;">${worksHtml}</div>
+            <div class="card-works" style="margin-top: 8px;">${worksHtml}</div>
 
-            <div class="card-exhibition" style="margin-top: 12px;">
-              <strong>💡 ${escapeHtml(firstEx.format || 'Книжная выставка')}:</strong>
-              ${escapeHtml(formatExhibitionTitle(firstEx.title))}
+            <div class="card-poster-mini" title="Готовый шаблон афиши А4 в Редакторе афиш">
+              <span class="poster-mini-badge">❖ Макет:</span>
+              <span class="poster-mini-title">${escapeHtml(posterDesc)}</span>
+              <button type="button" class="card-btn card-btn-poster" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-size="a4_v" data-idea-idx="0" title="Открыть готовый макет афиши в Редакторе Афиш АВРОРА">
+                🎨 В афишу
+              </button>
             </div>
           </div>
 
           <div class="card-footer">
             <button type="button" class="card-btn btn-detail" data-action="open-detail" data-id="${escapeHtml(item.id)}">
-              <span>📚 Справка и выставки</span>
+              <span>📚 Справка и 3 макета</span>
             </button>
-            <button type="button" class="card-btn" data-action="create-poster" data-id="${escapeHtml(item.id)}" title="Создать макет афиши в Редакторе Афиш АВРОРА">
-              <span>🎨 В афишу</span>
+            <button type="button" class="card-btn card-btn-poster" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-size="a4_v" data-idea-idx="0" title="Открыть в Редакторе Афиш АВРОРА">
+              <span>🎨 В Редактор афиш</span>
             </button>
             <button type="button" class="card-btn btn-plan-toggle ${inPlan ? 'in-plan' : ''}" data-action="toggle-plan" data-id="${escapeHtml(item.id)}">
               <span>${inPlan ? '✓ В плане' : '+ В план'}</span>
@@ -604,12 +616,18 @@
           <p style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(idea.concept || '')}</p>
           ${idea.audience ? `<div style="margin-top:6px; font-size:0.75rem; color:var(--text-muted);">Аудитория: ${escapeHtml(idea.audience)}</div>` : ''}
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <button type="button" class="card-btn" data-action="copy-idea" data-id="${escapeHtml(item.id)}" data-idea-idx="${idx}">
-            📋 Копировать название
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+          <button type="button" class="card-btn card-btn-poster" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-size="a4_v" data-idea-idx="${idx}" title="Открыть вертикальный плакат А4 в Редакторе афиш">
+            🎨 Афиша A4
           </button>
-          <button type="button" class="card-btn" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-idea-idx="${idx}">
-            🎨 В Редактор афиш
+          <button type="button" class="card-btn card-btn-poster" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-size="square" data-idea-idx="${idx}" title="Открыть квадратный пост ВК 1:1 в Редакторе афиш">
+            🟦 Пост ВК 1:1
+          </button>
+          <button type="button" class="card-btn card-btn-poster" data-action="create-poster" data-id="${escapeHtml(item.id)}" data-size="story" data-idea-idx="${idx}" title="Открыть сторис 9:16 в Редакторе афиш">
+            📱 Сторис 9:16
+          </button>
+          <button type="button" class="card-btn" data-action="copy-idea" data-id="${escapeHtml(item.id)}" data-idea-idx="${idx}">
+            📋 Название
           </button>
         </div>
       </div>
@@ -713,66 +731,27 @@
     }).join('');
   }
 
-  function sendToPosterEditor(itemId, ideaIndex = 0) {
+  function sendToPosterEditor(itemId, ideaIndex = 0, sizeKey = 'a4_v') {
     const item = state.items.find(it => it.id === itemId);
     if (!item) return;
 
-    const jub = computeJubileeInfo(item, state.year);
-    const idea = (item.exhibitionIdeas && item.exhibitionIdeas[ideaIndex]) || {
-      format: 'КНИЖНАЯ ВЫСТАВКА',
-      title: `К юбилею: ${item.shortName || item.name}`,
-      concept: item.bio
-    };
+    let tpl = null;
+    if (typeof window.buildChronographPosterTemplate === 'function') {
+      tpl = window.buildChronographPosterTemplate(item, state.year, sizeKey, ideaIndex);
+    }
 
-    try {
-      const drafts = JSON.parse(localStorage.getItem(STORAGE_KEYS.POSTER_DRAFTS) || '[]');
-      const newDraft = {
-        id: 'chrono_' + Date.now(),
-        name: `${idea.format}: ${item.shortName || item.name} (${jub.age} лет)`,
-        updatedAt: new Date().toISOString(),
-        formatKey: 'a4_portrait',
-        bgColor: '#0b1026',
-        elements: [
-          {
-            id: 'el_badge',
-            type: 'text',
-            text: `${Number(item.day)} ${MONTHS_GENITIVE[Number(item.month)].toUpperCase()} ${state.year} • ${jub.badgeText.toUpperCase()}`,
-            x: 80,
-            y: 90,
-            fontSize: 22,
-            color: '#f59e0b',
-            fontWeight: '700'
-          },
-          {
-            id: 'el_title',
-            type: 'text',
-            text: formatExhibitionTitle(idea.title),
-            x: 80,
-            y: 160,
-            fontSize: 44,
-            color: '#ffffff',
-            fontWeight: '800'
-          },
-          {
-            id: 'el_person',
-            type: 'text',
-            text: `${item.name} (${formatLifespan(item)})`,
-            x: 80,
-            y: 260,
-            fontSize: 28,
-            color: '#00e5ff',
-            fontWeight: '600'
-          }
-        ]
-      };
-      drafts.unshift(newDraft);
-      localStorage.setItem(STORAGE_KEYS.POSTER_DRAFTS, JSON.stringify(drafts.slice(0, 25)));
-      showToast(`✓ Черновик афиши «${idea.title}» сохранён в Редактор афиш!`);
-    } catch (_) {}
+    if (tpl) {
+      try {
+        localStorage.setItem('aurora_chrono_poster_import', JSON.stringify(tpl));
+        showToast(`✓ Макет «${tpl.name}» подготовлен для Редактора афиш!`);
+      } catch (e) {
+        console.error('Storage error:', e);
+      }
+    }
 
     setTimeout(() => {
-      window.location.href = `../poster/index.html?from=chronograph&id=${encodeURIComponent(item.id)}`;
-    }, 350);
+      window.location.href = `../poster/index.html?from=chronograph&id=${encodeURIComponent(item.id)}&size=${encodeURIComponent(sizeKey)}&idea=${ideaIndex}`;
+    }, 200);
   }
 
   function exportPlanFile(format = 'txt') {
@@ -980,7 +959,8 @@
         }
       } else if (action === 'create-poster') {
         const idx = Number(actionEl.getAttribute('data-idea-idx') || 0);
-        sendToPosterEditor(id, idx);
+        const size = actionEl.getAttribute('data-size') || 'a4_v';
+        sendToPosterEditor(id, idx, size);
       } else if (action === 'copy-idea') {
         const item = state.items.find(it => it.id === id);
         const idx = Number(actionEl.getAttribute('data-idea-idx') || 0);

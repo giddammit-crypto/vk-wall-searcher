@@ -81,6 +81,7 @@
     <div class="tpl-toolbar">
       <div class="tpl-chips" id="tpl-chips">
         <button class="tpl-chip is-active" data-cat="all">Все форматы</button>
+        <button class="tpl-chip" data-cat="chronograph">📚 Хронограф (85 дат)</button>
         <button class="tpl-chip" data-cat="events">Афиши мероприятий</button>
         <button class="tpl-chip" data-cat="books">Книжные выставки</button>
         <button class="tpl-chip" data-cat="kids">Детские праздники</button>
@@ -2282,6 +2283,8 @@ if (typeof QRCode === 'undefined') {
   document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
 }
 </script>
+<script src="../chronograph/data.js"></script>
+<script src="../chronograph/poster_templates.js"></script>
 <script src="enhancer.js?v=4.85.6"></script>
 <script src="editor.js?v=4.85.6"></script>
 </body>

@@ -1467,6 +1467,19 @@ function renderTemplatesGrid() {
 }
 
 function buildTemplates() {
+  if (typeof window.getAllChronographPosterTemplates === 'function') {
+    try {
+      const chronoTpls = window.getAllChronographPosterTemplates();
+      chronoTpls.forEach(ct => {
+        if (!TEMPLATES.some(t => t.id === ct.id)) {
+          TEMPLATES.push(ct);
+        }
+      });
+    } catch (err) {
+      console.error('Error registering chronograph templates:', err);
+    }
+  }
+
   renderTemplatesGrid();
 
   const grid = $('#tpl-grid');
@@ -3541,6 +3554,56 @@ function updateFormatBadge() {
   const text = `${currentSize.name} · ${currentSize.w} × ${currentSize.h} пт · ${zPct}%`;
   $$('#canvas-format-badge, .canvas-format-badge').forEach(badge => {
     badge.textContent = text;
+  });
+}
+
+let _clipboard = null;
+
+function copyActiveObject() {
+  if (!canvas) return;
+  const activeObj = canvas.getActiveObject();
+  if (!activeObj) return;
+
+  // Если курсор внутри редактируемого текста, работает нативное выделение и копирование строки
+  if (activeObj.isEditing) return;
+
+  activeObj.clone(cloned => {
+    _clipboard = cloned;
+    toast('Объект скопирован в буфер (Ctrl+C) 📋');
+  });
+}
+
+function pasteCopiedObject() {
+  if (!canvas || !_clipboard) {
+    toast('Буфер обмена пуст. Сначала скопируйте объект (Ctrl+C)');
+    return;
+  }
+
+  _clipboard.clone(clonedObj => {
+    canvas.discardActiveObject();
+    clonedObj.set({
+      left: clonedObj.left + 24,
+      top: clonedObj.top + 24,
+      evented: true,
+    });
+
+    if (clonedObj.type === 'activeSelection') {
+      clonedObj.canvas = canvas;
+      clonedObj.forEachObject(obj => {
+        canvas.add(obj);
+      });
+      clonedObj.setCoords();
+    } else {
+      canvas.add(clonedObj);
+    }
+
+    _clipboard.top += 24;
+    _clipboard.left += 24;
+    canvas.setActiveObject(clonedObj);
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    toast('Объект вставлен на холст (Ctrl+V) ✨');
   });
 }
 
@@ -6605,6 +6668,23 @@ function bindEvents() {
       if (inInput) return;
       e.preventDefault(); redo();
     }
+    // Копирование объекта по Ctrl+C / Cmd+C (английская и русская раскладки)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'с' || e.key === 'С')) {
+      if (inInput) return;
+      const activeObj = canvas?.getActiveObject();
+      if (activeObj && !activeObj.isEditing) {
+        e.preventDefault();
+        copyActiveObject();
+      }
+    }
+    // Вставка объекта по Ctrl+V / Cmd+V (английская и русская раскладки)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')) {
+      if (inInput) return;
+      if (_clipboard) {
+        e.preventDefault();
+        pasteCopiedObject();
+      }
+    }
     if ((e.ctrlKey||e.metaKey) && (e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В')) {
       e.preventDefault();
       duplicateActiveObject();
@@ -7517,6 +7597,10 @@ function bindEvents() {
   $('#btn-align-top-canvas')   ?.addEventListener('click', () => alignActiveObject('top'));
   $('#btn-align-bottom-canvas')?.addEventListener('click', () => alignActiveObject('bottom'));
 
+  $('#btn-copy')?.addEventListener('click', copyActiveObject);
+  $('#btn-paste')?.addEventListener('click', pasteCopiedObject);
+  $('#btn-header-copy')?.addEventListener('click', copyActiveObject);
+  $('#btn-header-paste')?.addEventListener('click', pasteCopiedObject);
   $('#btn-duplicate')?.addEventListener('click', duplicateActiveObject);
   $$('#btn-flip-x').forEach(el => el.addEventListener('click', () => flipActiveObject('x')));
   $$('#btn-flip-y').forEach(el => el.addEventListener('click', () => flipActiveObject('y')));
@@ -7721,6 +7805,68 @@ function bindEvents() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ПРОВЕРКА ИМПОРТА АФИШИ ИЗ ЛИТЕРАТУРНОГО ХРОНОГРАФА
+   ══════════════════════════════════════════════════════════════ */
+function checkChronographPosterImport() {
+  let importedTpl = null;
+
+  // 1. Проверяем локальное хранилище aurora_chrono_poster_import
+  try {
+    const raw = localStorage.getItem('aurora_chrono_poster_import');
+    if (raw) {
+      importedTpl = JSON.parse(raw);
+      localStorage.removeItem('aurora_chrono_poster_import');
+    }
+  } catch (err) {
+    console.error('Ошибка разбора aurora_chrono_poster_import:', err);
+  }
+
+  // 2. Если в localStorage нет, проверяем параметры адресной строки ?from=chronograph&id=...
+  if (!importedTpl) {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('from') === 'chronograph' || urlParams.get('chrono_id') || urlParams.get('id')) {
+        const targetId = urlParams.get('id') || urlParams.get('chrono_id');
+        const sizeKey = urlParams.get('size') || 'a4_v';
+        const ideaIdx = Number(urlParams.get('idea') || 0);
+
+        const allDates = window.CHRONOGRAPH_DATES || window.CHRONOGRAPH_DATA || [];
+        const list = Array.isArray(allDates) ? allDates : (allDates.items || []);
+        const item = list.find(d => 
+          String(d.id) === String(targetId) ||
+          String(d.id).includes(String(targetId)) ||
+          (d.title && d.title.toLowerCase().includes(String(targetId).toLowerCase())) ||
+          (d.name && d.name.toLowerCase().includes(String(targetId).toLowerCase()))
+        );
+
+        if (item && typeof window.buildChronographPosterTemplate === 'function') {
+          importedTpl = window.buildChronographPosterTemplate(item, 2026, sizeKey, ideaIdx);
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка разбора параметров URL хронографа:', err);
+    }
+  }
+
+  // 3. Если макет получен — открываем холст и сохраняем черновик
+  if (importedTpl && importedTpl.objects) {
+    setTimeout(() => {
+      loadTemplate(importedTpl);
+      if ($('#poster-title')) {
+        $('#poster-title').value = importedTpl.name || 'Афиша Литературного хронографа';
+      }
+      setTimeout(() => {
+        saveCurrentDraft(false);
+      }, 300);
+      toast('🎨 Афиша «' + (importedTpl.name || 'выставки') + '» загружена из Хронографа!');
+    }, 120);
+    return true;
+  }
+
+  return false;
+}
+
+/* ══════════════════════════════════════════════════════════════
    СТАРТ
    ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -7736,7 +7882,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Подключение сохранённых шрифтов ofont.ru из IndexedDB
   await loadSavedFonts();
 
-  if (!loadDraft()) {
+  // Автоматическая загрузка макета, если переход выполнен из Хронографа
+  const importedFromChronograph = checkChronographPosterImport();
+
+  if (!importedFromChronograph && !loadDraft()) {
     toast('Выберите шаблон для начала работы');
   }
 });
