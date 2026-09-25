@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-<title>Редактор афиш — АВРОРА</title>
+<title>AURORA DESIGN — Редактор афиш и вывесок</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- 20+ шрифтов с полной кириллической поддержкой (включая 400 normal и 700/800 bold) + ofont.ru -->
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Comfortaa:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Dela+Gothic+One&family=Jura:wght@400;600;700&family=Kelly+Slab&family=Lobster&family=Marck+Script&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Neucha&family=Oswald:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Podkova:wght@400;600;700&family=Press+Start+2P&family=Roboto+Slab:wght@400;500;700&family=Rubik:wght@400;500;600;700&family=Ruslan+Display&family=Unbounded:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&subset=cyrillic&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4.85.5">
-<link rel="stylesheet" href="enhancer.css?v=4.85.5">
+<link rel="stylesheet" href="style.css?v=4.92.0">
+<link rel="stylesheet" href="enhancer.css?v=4.92.0">
 </head>
 <body>
 
@@ -20,9 +20,9 @@
 
   <header class="tpl-header">
     <div class="tpl-brand">
-      <span class="tpl-brand-icon material-symbols-rounded">auto_awesome</span>
+      <span class="tpl-brand-icon material-symbols-rounded">palette</span>
       <div>
-        <div class="tpl-brand-name">АВРОРА — Редактор афиш</div>
+        <div class="tpl-brand-name">AURORA DESIGN</div>
         <div class="tpl-brand-sub">Профессиональные афиши, вывески, объявления и баннеры для библиотек</div>
       </div>
     </div>
@@ -31,9 +31,9 @@
   <!-- Hero-секция с космическим свечением и быстрыми форматами -->
   <div class="tpl-hero">
     <div class="tpl-hero-content">
-      <div class="tpl-hero-badge">✦ ДИЗАЙН-СТУДИЯ «АВРОРА» ✦</div>
+      <div class="tpl-hero-badge">✦ ДИЗАЙН-СТУДИЯ «AURORA DESIGN» ✦</div>
       <h1 class="tpl-hero-title">Создайте идеальную афишу для вашей библиотеки</h1>
-      <p class="tpl-hero-desc">Выберите готовый тематический шаблон с профессиональной типографикой или начните с чистого листа нужного формата</p>
+      <p class="tpl-hero-desc">Выберите готовый тематический шаблон с профессиональной типографикой или начните с чистого листа нужного формата (поддерживается вставка скриншота по Ctrl+V)</p>
       
       <div class="tpl-quick-blanks">
         <span class="tpl-quick-label">Начать с чистого листа:</span>
@@ -57,14 +57,8 @@
             <span class="material-symbols-rounded">web</span> Tilda Лендинг
           </button>
           <button class="tpl-quick-btn tpl-quick-btn-figma" id="btn-tpl-figma-import" title="Импортировать афишу из Figma по ссылке и API">
-            <svg class="figma-icon-svg" viewBox="0 0 38 57" width="14" height="21" fill="none" aria-hidden="true">
-              <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-              <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-              <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-              <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-              <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-            </svg>
-            Импорт из Figma (API)
+            <span class="material-symbols-rounded">cloud_download</span>
+            <span>Импорт API (Figma)</span>
           </button>
           <button class="tpl-quick-btn tpl-quick-btn-project" id="btn-tpl-import-project" title="Открыть проект из файла .aurora.json">
             <span class="material-symbols-rounded">file_open</span>
@@ -110,18 +104,12 @@
 <div id="screen-editor" class="screen-editor hidden">
 
   <!-- ── Шапка ── -->
-  <!-- ── Шапка в стиле Figma (Top Toolbar) ── -->
+  <!-- ── Шапка в стиле Aurora Design Top Toolbar ── -->
   <header class="ed-header figma-topbar">
     <div class="ed-header-left">
-      <!-- Кнопка «F» меню / назад в стиле Figma -->
-      <button class="figma-f-btn" id="btn-figma-menu" title="Меню / К шаблонам">
-        <svg class="figma-logo-svg" viewBox="0 0 38 57" width="13" height="19" fill="none" aria-hidden="true">
-          <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-        </svg>
+      <!-- Кнопка «AURORA» меню / назад -->
+      <button class="figma-f-btn aurora-menu-btn" id="btn-figma-menu" title="AURORA DESIGN — Меню / К шаблонам">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#00d2ff">palette</span>
       </button>
 
       <button class="hbtn hbtn-ghost" id="btn-back" title="К каталогу шаблонов">
@@ -190,20 +178,14 @@
     </div>
 
     <div class="ed-header-right">
-      <!-- Иконка шеринга и экспорта в Figma -->
-      <button class="hbtn hbtn-figma" id="btn-figma-export" title="Экспорт в Figma (векторный буфер и API)">
-        <svg class="hbtn-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="12" height="18" fill="none" aria-hidden="true">
-          <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-        </svg>
-        <span class="hbtn-label">Поделиться</span>
+      <!-- Иконка шеринга и экспорта -->
+      <button class="hbtn hbtn-figma" id="btn-figma-export" title="Экспорт макета (PNG, SVG, JSON, буфер)">
+        <span class="material-symbols-rounded">ios_share</span>
+        <span class="hbtn-label">Экспорт</span>
       </button>
 
-      <!-- Импорт Figma -->
-      <button class="hbtn hbtn-figma" id="btn-figma-import" title="Импорт макета из Figma по API">
+      <!-- Импорт -->
+      <button class="hbtn hbtn-figma" id="btn-figma-import" title="Импорт макета (Figma / API / JSON)">
         <span class="material-symbols-rounded">cloud_download</span>
         <span class="hbtn-label">Импорт</span>
       </button>
@@ -399,28 +381,16 @@
         </div>
       </div>
 
-      <!-- Группа: Figma API -->
+      <!-- Группа: Экспорт и Интеграция -->
       <div class="sb-group">
         <div class="sb-label">ИНТЕГРАЦИЯ И САЙТЫ</div>
-        <button class="tool-btn tool-btn-figma" id="tool-figma-import" title="Импорт афиши из Figma по ссылке">
-          <svg class="tool-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="16" height="24" fill="none" aria-hidden="true">
-            <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-            <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-            <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-            <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-            <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-          </svg>
-          <span>Импорт Figma</span>
+        <button class="tool-btn tool-btn-figma" id="tool-figma-import" title="Импорт афиши из Figma / API по ссылке">
+          <span class="material-symbols-rounded">cloud_download</span>
+          <span>Импорт Figma (API)</span>
         </button>
-        <button class="tool-btn tool-btn-figma" id="tool-figma-export" title="Экспорт макета в Figma (API и буфер)">
-          <svg class="tool-icon-svg figma-icon-svg" viewBox="0 0 38 57" width="16" height="24" fill="none" aria-hidden="true">
-            <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-            <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-            <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-            <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-            <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-          </svg>
-          <span>Экспорт Figma</span>
+        <button class="tool-btn tool-btn-figma" id="tool-figma-export" title="Экспорт макета в Figma / Вектор">
+          <span class="material-symbols-rounded">ios_share</span>
+          <span>Экспорт Figma (API)</span>
         </button>
         <button class="tool-btn tool-btn-tilda" id="tool-tilda-export" title="Экспорт для сайта Tilda (HTML/PNG/ZIP)">
           <span class="material-symbols-rounded">web</span>
@@ -1272,14 +1242,8 @@
             <span>Генератор QR</span>
           </button>
           <button class="drawer-card drawer-card-figma" id="mtool-figma-import">
-            <svg class="figma-icon-svg" viewBox="0 0 38 57" width="16" height="24" fill="none" aria-hidden="true" style="margin-bottom:2px">
-              <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-              <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z" fill="#0ACF83"/>
-              <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-              <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-              <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-            </svg>
-            <span>Импорт Figma</span>
+            <span class="material-symbols-rounded">cloud_download</span>
+            <span>Импорт Figma (API)</span>
           </button>
           <button class="drawer-card drawer-card-figma" id="mtool-figma-export">
             <span class="material-symbols-rounded">cloud_upload</span>

@@ -3632,6 +3632,41 @@ export class TildaEngine {
     [data-tilda-anim="stagger"] { opacity: 0; transform: translateY(35px); }
     [data-tilda-anim="stagger"].tilda-animated-in { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
+    /* Tilda Interactive Widgets & Popups */
+    .tilda-popup-overlay { position: fixed; inset: 0; background: rgba(7, 10, 19, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .tilda-popup-overlay.is-open { display: flex !important; }
+    .tilda-popup-box { background: #111827; border: 1px solid #374151; border-radius: 20px; width: 100%; max-width: 520px; padding: 36px 30px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7); position: relative; box-sizing: border-box; }
+    .tilda-popup-close-btn { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; color: #94a3b8; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .tilda-popup-close-btn:hover { background: #f43f5e; color: #fff; }
+    .tilda-ba-wrapper { position: relative; width: 100%; max-width: 900px; margin: 0 auto; border-radius: 16px; overflow: hidden; user-select: none; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); background: #0f172a; }
+    .tilda-ba-img-before, .tilda-ba-img-after { display: block; width: 100%; height: 480px; object-fit: cover; pointer-events: none; }
+    .tilda-ba-after-wrap { position: absolute; top: 0; left: 0; width: 50%; height: 100%; overflow: hidden; border-right: 3px solid #0d99ff; box-shadow: 5px 0 20px rgba(0, 0, 0, 0.4); }
+    .tilda-ba-after-wrap img { position: absolute; top: 0; left: 0; width: 100%; max-width: none; height: 100%; object-fit: cover; }
+    .tilda-ba-handle-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #0d99ff; transform: translateX(-50%); pointer-events: none; z-index: 10; }
+    .tilda-ba-handle-btn { position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); background: #0d99ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(13, 153, 255, 0.6); font-weight: 800; font-size: 18px; border: 3px solid #fff; }
+    .tilda-ba-range-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; z-index: 20; margin: 0; }
+    .tilda-ba-badge { position: absolute; top: 18px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; backdrop-filter: blur(6px); z-index: 5; }
+    .tilda-ba-badge-before { right: 18px; background: rgba(15, 23, 42, 0.75); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.15); }
+    .tilda-ba-badge-after { left: 18px; background: rgba(13, 153, 255, 0.85); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+    .tilda-fab-container { position: fixed; bottom: 28px; right: 28px; z-index: 9000; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+    .tilda-fab-main-btn { width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, #0d99ff 0%, #0284c7 100%); color: #fff; border: none; box-shadow: 0 10px 25px rgba(13, 153, 255, 0.45); display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; transition: transform 0.25s; }
+    .tilda-fab-main-btn:hover { transform: scale(1.08); }
+    .tilda-fab-main-btn.is-active { transform: rotate(45deg); background: #f43f5e; }
+    .tilda-fab-menu { display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateY(15px) scale(0.9); pointer-events: none; transition: all 0.25s; }
+    .tilda-fab-menu.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .tilda-fab-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 30px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+    .tilda-cookie-banner { position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 720px; margin: 0 auto; z-index: 9990; background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 18px 24px; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: space-between; gap: 20px; box-sizing: border-box; }
+    .tilda-cookie-btn { padding: 10px 22px; background: #0d99ff; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .tilda-marquee { position: relative; width: 100%; overflow: hidden; padding: 24px 0; background: rgba(15, 23, 42, 0.5); border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
+    .tilda-marquee-track { display: flex; gap: 40px; width: max-content; animation: tilda-marquee-scroll 25s linear infinite; }
+    .tilda-marquee-track:hover { animation-play-state: paused; }
+    @keyframes tilda-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .tilda-pricing-toggle-wrap { display: inline-flex; align-items: center; gap: 12px; background: rgba(15, 23, 42, 0.8); padding: 6px 10px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 40px; font-size: 14px; font-weight: 600; }
+    .tilda-pricing-pill-btn { padding: 6px 16px; border-radius: 20px; background: transparent; color: #94a3b8; border: none; cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+    .tilda-pricing-pill-btn.is-active { background: #0d99ff; color: #fff; box-shadow: 0 4px 12px rgba(13, 153, 255, 0.35); }
+    .tilda-calc-range { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; background: #334155; outline: none; }
+    .tilda-calc-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #0d99ff; cursor: pointer; box-shadow: 0 2px 8px rgba(13, 153, 255, 0.5); border: 2px solid #ffffff; }
+
     @media (max-width: 768px) {
       .t-container { padding: 0 16px; }
       .t-nav-links { display: none !important; }
@@ -3815,6 +3850,41 @@ button { font-family: inherit; }
 [data-tilda-anim="stagger"] { opacity: 0; transform: translateY(35px); }
 [data-tilda-anim="stagger"].tilda-animated-in { animation: auroraStagger 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
+/* Tilda Interactive Widgets & Popups */
+.tilda-popup-overlay { position: fixed; inset: 0; background: rgba(7, 10, 19, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.tilda-popup-overlay.is-open { display: flex !important; }
+.tilda-popup-box { background: #111827; border: 1px solid #374151; border-radius: 20px; width: 100%; max-width: 520px; padding: 36px 30px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7); position: relative; box-sizing: border-box; }
+.tilda-popup-close-btn { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; color: #94a3b8; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.tilda-popup-close-btn:hover { background: #f43f5e; color: #fff; }
+.tilda-ba-wrapper { position: relative; width: 100%; max-width: 900px; margin: 0 auto; border-radius: 16px; overflow: hidden; user-select: none; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); background: #0f172a; }
+.tilda-ba-img-before, .tilda-ba-img-after { display: block; width: 100%; height: 480px; object-fit: cover; pointer-events: none; }
+.tilda-ba-after-wrap { position: absolute; top: 0; left: 0; width: 50%; height: 100%; overflow: hidden; border-right: 3px solid #0d99ff; box-shadow: 5px 0 20px rgba(0, 0, 0, 0.4); }
+.tilda-ba-after-wrap img { position: absolute; top: 0; left: 0; width: 100%; max-width: none; height: 100%; object-fit: cover; }
+.tilda-ba-handle-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #0d99ff; transform: translateX(-50%); pointer-events: none; z-index: 10; }
+.tilda-ba-handle-btn { position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); background: #0d99ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(13, 153, 255, 0.6); font-weight: 800; font-size: 18px; border: 3px solid #fff; }
+.tilda-ba-range-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; z-index: 20; margin: 0; }
+.tilda-ba-badge { position: absolute; top: 18px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; backdrop-filter: blur(6px); z-index: 5; }
+.tilda-ba-badge-before { right: 18px; background: rgba(15, 23, 42, 0.75); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.15); }
+.tilda-ba-badge-after { left: 18px; background: rgba(13, 153, 255, 0.85); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+.tilda-fab-container { position: fixed; bottom: 28px; right: 28px; z-index: 9000; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.tilda-fab-main-btn { width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, #0d99ff 0%, #0284c7 100%); color: #fff; border: none; box-shadow: 0 10px 25px rgba(13, 153, 255, 0.45); display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; transition: transform 0.25s; }
+.tilda-fab-main-btn:hover { transform: scale(1.08); }
+.tilda-fab-main-btn.is-active { transform: rotate(45deg); background: #f43f5e; }
+.tilda-fab-menu { display: flex; flex-direction: column; gap: 10px; opacity: 0; transform: translateY(15px) scale(0.9); pointer-events: none; transition: all 0.25s; }
+.tilda-fab-menu.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.tilda-fab-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 30px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+.tilda-cookie-banner { position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 720px; margin: 0 auto; z-index: 9990; background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 18px 24px; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: space-between; gap: 20px; box-sizing: border-box; }
+.tilda-cookie-btn { padding: 10px 22px; background: #0d99ff; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.tilda-marquee { position: relative; width: 100%; overflow: hidden; padding: 24px 0; background: rgba(15, 23, 42, 0.5); border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
+.tilda-marquee-track { display: flex; gap: 40px; width: max-content; animation: tilda-marquee-scroll 25s linear infinite; }
+.tilda-marquee-track:hover { animation-play-state: paused; }
+@keyframes tilda-marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.tilda-pricing-toggle-wrap { display: inline-flex; align-items: center; gap: 12px; background: rgba(15, 23, 42, 0.8); padding: 6px 10px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 40px; font-size: 14px; font-weight: 600; }
+.tilda-pricing-pill-btn { padding: 6px 16px; border-radius: 20px; background: transparent; color: #94a3b8; border: none; cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+.tilda-pricing-pill-btn.is-active { background: #0d99ff; color: #fff; box-shadow: 0 4px 12px rgba(13, 153, 255, 0.35); }
+.tilda-calc-range { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; background: #334155; outline: none; }
+.tilda-calc-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #0d99ff; cursor: pointer; box-shadow: 0 2px 8px rgba(13, 153, 255, 0.5); border: 2px solid #ffffff; }
+
 @media (max-width: 768px) {
   .t-container { padding: 0 16px; }
   .t-nav-links { display: none !important; }
@@ -3824,6 +3894,7 @@ button { font-family: inherit; }
 
   showLinkEditorForElement(linkEl) {
     this.initFloatingTextToolbar();
+    this._activeLinkTarget = linkEl;
     const toolbar = document.getElementById('aurora-text-link-toolbar');
     const popover = toolbar?.querySelector('#floating-link-popover');
     const urlInput = toolbar?.querySelector('#floating-link-url-input');
@@ -3836,7 +3907,8 @@ button { font-family: inherit; }
         this.getPageAnchorsList().map(a => `<option value="${a.value}">${a.label}</option>`).join('');
     }
 
-    if (urlInput) urlInput.value = linkEl.getAttribute('href') || '';
+    const currentHref = linkEl.getAttribute('href') || linkEl.dataset?.url || '';
+    if (urlInput) urlInput.value = currentHref;
     if (blankChk) blankChk.checked = linkEl.getAttribute('target') === '_blank';
 
     const rect = linkEl.getBoundingClientRect();
@@ -4075,35 +4147,80 @@ button { font-family: inherit; }
       e.preventDefault();
       const url = urlInput.value.trim();
       if (!url) return;
-      restoreSavedRange();
 
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        let existingA = range.commonAncestorContainer?.parentElement?.closest('a');
-
-        if (existingA) {
-          existingA.setAttribute('href', url);
-          if (blankChk.checked) {
-            existingA.setAttribute('target', '_blank');
-            existingA.setAttribute('rel', 'noopener noreferrer');
-          } else {
-            existingA.removeAttribute('target');
-            existingA.removeAttribute('rel');
-          }
+      if (this._activeLinkTarget) {
+        const targetEl = this._activeLinkTarget;
+        targetEl.setAttribute('href', url);
+        if (blankChk.checked) {
+          targetEl.setAttribute('target', '_blank');
+          targetEl.setAttribute('rel', 'noopener noreferrer');
         } else {
-          document.execCommand('createLink', false, url);
-          if (blankChk.checked && range.commonAncestorContainer) {
-            const parent = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
-            const newLinks = parent?.querySelectorAll(`a[href="${url}"]`);
-            newLinks?.forEach(a => {
-              a.setAttribute('target', '_blank');
-              a.setAttribute('rel', 'noopener noreferrer');
-              a.classList.add('t-inline-link');
-            });
+          targetEl.removeAttribute('target');
+          targetEl.removeAttribute('rel');
+        }
+
+        const blockEl = targetEl.closest('.tilda-block');
+        if (blockEl) {
+          const instanceId = blockEl.dataset.instanceId || blockEl.dataset.blockId;
+          const page = this.getActivePage();
+          const blk = page?.blocks.find(b => b.instanceId === instanceId);
+          if (blk) {
+            blk.content = blk.content || {};
+            if (targetEl.classList.contains('t-btn') || targetEl.closest('.t-btn')) {
+              blk.content.btnUrl = url;
+            }
+            const elKey = targetEl.getAttribute('data-el-key');
+            if (elKey) {
+              blk.content.elementOverrides = blk.content.elementOverrides || {};
+              blk.content.elementOverrides[elKey] = {
+                href: url,
+                target: blankChk.checked ? '_blank' : ''
+              };
+            }
+            const custEl = targetEl.closest('.block-custom-element');
+            if (custEl && custEl.dataset.customElId && Array.isArray(blk.content.customElements)) {
+              const elData = blk.content.customElements.find(ce => ce.id === custEl.dataset.customElId);
+              if (elData) {
+                elData.props = elData.props || {};
+                elData.props.url = url;
+                elData.props.targetBlank = blankChk.checked;
+              }
+            }
+            this.saveHistory();
+            this.saveProject();
           }
         }
-        this.saveHistory();
+        this._activeLinkTarget = null;
+      } else {
+        restoreSavedRange();
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          let existingA = range.commonAncestorContainer?.parentElement?.closest('a');
+
+          if (existingA) {
+            existingA.setAttribute('href', url);
+            if (blankChk.checked) {
+              existingA.setAttribute('target', '_blank');
+              existingA.setAttribute('rel', 'noopener noreferrer');
+            } else {
+              existingA.removeAttribute('target');
+              existingA.removeAttribute('rel');
+            }
+          } else {
+            document.execCommand('createLink', false, url);
+            if (blankChk.checked && range.commonAncestorContainer) {
+              const parent = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+              const newLinks = parent?.querySelectorAll(`a[href="${url}"]`);
+              newLinks?.forEach(a => {
+                a.setAttribute('target', '_blank');
+                a.setAttribute('rel', 'noopener noreferrer');
+                a.classList.add('t-inline-link');
+              });
+            }
+          }
+          this.saveHistory();
+        }
       }
       popover.style.display = 'none';
       toolbar.style.display = 'none';
@@ -4111,19 +4228,61 @@ button { font-family: inherit; }
 
     // Delete link
     const unlinkAction = () => {
-      restoreSavedRange();
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const parentA = range.commonAncestorContainer?.parentElement?.closest('a') || (range.startContainer?.parentElement?.closest('a'));
-        if (parentA) {
-          const parent = parentA.parentNode;
-          while (parentA.firstChild) parent.insertBefore(parentA.firstChild, parentA);
-          parent.removeChild(parentA);
+      if (this._activeLinkTarget) {
+        const targetEl = this._activeLinkTarget;
+        const blockEl = targetEl.closest('.tilda-block');
+        const instanceId = blockEl?.dataset.instanceId || blockEl?.dataset.blockId;
+        const page = this.getActivePage();
+        const blk = page?.blocks.find(b => b.instanceId === instanceId);
+
+        if (targetEl.classList.contains('t-btn') || targetEl.closest('.t-btn')) {
+          targetEl.setAttribute('href', '#');
+          targetEl.removeAttribute('target');
+          targetEl.removeAttribute('rel');
+          if (blk) {
+            blk.content = blk.content || {};
+            blk.content.btnUrl = '#';
+            const elKey = targetEl.getAttribute('data-el-key');
+            if (elKey && blk.content.elementOverrides) {
+              delete blk.content.elementOverrides[elKey];
+            }
+          }
         } else {
-          document.execCommand('unlink', false, null);
+          if (targetEl.tagName === 'A') {
+            targetEl.removeAttribute('href');
+            targetEl.removeAttribute('target');
+            targetEl.removeAttribute('rel');
+          }
         }
-        this.saveHistory();
+
+        if (blk) {
+          const custEl = targetEl.closest('.block-custom-element');
+          if (custEl && custEl.dataset.customElId && Array.isArray(blk.content.customElements)) {
+            const elData = blk.content.customElements.find(ce => ce.id === custEl.dataset.customElId);
+            if (elData && elData.props) {
+              delete elData.props.url;
+              delete elData.props.targetBlank;
+            }
+          }
+          this.saveHistory();
+          this.saveProject();
+        }
+        this._activeLinkTarget = null;
+      } else {
+        restoreSavedRange();
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          const parentA = range.commonAncestorContainer?.parentElement?.closest('a') || (range.startContainer?.parentElement?.closest('a'));
+          if (parentA) {
+            const parent = parentA.parentNode;
+            while (parentA.firstChild) parent.insertBefore(parentA.firstChild, parentA);
+            parent.removeChild(parentA);
+          } else {
+            document.execCommand('unlink', false, null);
+          }
+          this.saveHistory();
+        }
       }
       popover.style.display = 'none';
       toolbar.style.display = 'none';

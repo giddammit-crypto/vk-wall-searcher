@@ -1155,7 +1155,7 @@ function bindZeroBlockToolbar() {
   document.getElementById('zb-align-center')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('center'));
   document.getElementById('zb-align-right')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('right'));
 
-  // Duplicate & Delete
+  // Duplicate & Delete & Auto-Layout
   document.getElementById('zb-dup-el')?.addEventListener('click', () => {
     zeroBlockEditor?.duplicateSelectedElement();
     showToast('📋 Элемент продублирован');
@@ -1163,6 +1163,10 @@ function bindZeroBlockToolbar() {
   document.getElementById('zb-del-el')?.addEventListener('click', () => {
     zeroBlockEditor?.deleteSelectedElement();
     showToast('🗑️ Элемент удалён');
+  });
+  document.getElementById('zb-auto-layout-mobile')?.addEventListener('click', () => {
+    zeroBlockEditor?.autoLayoutMobile();
+    showToast('✨ Элементы автоматически адаптированы под экран');
   });
 
   // Apply & Save back to Page Block

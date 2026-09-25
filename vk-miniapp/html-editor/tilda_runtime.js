@@ -1119,6 +1119,228 @@
     t._timer = setTimeout(() => t.classList.remove('is-show'), 3000);
   }
 
+  // 12. Tilda Popups (#popup:...)
+  function initPopups() {
+    // Trigger clicks on <a href="#popup:my-popup"> or [data-tilda-popup-trigger="my-popup"]
+    document.addEventListener('click', e => {
+      const trigger = e.target.closest('a[href^="#popup:"], [data-tilda-popup-trigger]');
+      if (!trigger) return;
+      e.preventDefault();
+      const popupId = trigger.dataset.tildaPopupTrigger || trigger.getAttribute('href').replace(/^#popup:/, '');
+      const popupEl = document.getElementById(`popup-${popupId}`) || document.querySelector(`[data-tilda-popup="${popupId}"]`) || document.getElementById(popupId);
+      if (popupEl) {
+        popupEl.classList.add('is-open');
+        popupEl.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+    });
+
+    // Close on backdrop or [data-tilda-popup-close]
+    document.addEventListener('click', e => {
+      if (e.target.matches('.tilda-popup-overlay, [data-tilda-popup-close], [data-tilda-popup-close] *')) {
+        const popup = e.target.closest('.tilda-popup-overlay, [data-tilda-popup]');
+        if (popup) {
+          popup.classList.remove('is-open');
+          popup.style.display = 'none';
+          document.body.style.overflow = '';
+        }
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.tilda-popup-overlay.is-open, [data-tilda-popup].is-open').forEach(p => {
+          p.classList.remove('is-open');
+          p.style.display = 'none';
+        });
+        document.body.style.overflow = '';
+      }
+    });
+  }
+
+  // 13. Interactive Cost Calculators ([data-tilda-calc])
+  function initCalculators() {
+    document.querySelectorAll('[data-tilda-calc]').forEach(calc => {
+      const totalEl = calc.querySelector('[data-calc-total]');
+      const baseCost = parseFloat(calc.dataset.calcBase || 0);
+
+      const recalculate = () => {
+        let sum = baseCost;
+        calc.querySelectorAll('input[type="range"][data-calc-price], input[type="number"][data-calc-price]').forEach(inp => {
+          const val = parseFloat(inp.value) || 0;
+          const price = parseFloat(inp.dataset.calcPrice) || 0;
+          sum += val * price;
+          const displayEl = calc.querySelector(`[data-calc-val-for="${inp.id || inp.name}"]`);
+          if (displayEl) displayEl.textContent = val;
+        });
+
+        calc.querySelectorAll('input[type="checkbox"][data-calc-price]:checked, input[type="radio"][data-calc-price]:checked').forEach(inp => {
+          sum += parseFloat(inp.dataset.calcPrice) || 0;
+        });
+
+        calc.querySelectorAll('select[data-calc-select]').forEach(sel => {
+          const opt = sel.options[sel.selectedIndex];
+          if (opt && opt.dataset.calcPrice) {
+            sum += parseFloat(opt.dataset.calcPrice) || 0;
+          }
+        });
+
+        if (totalEl) {
+          totalEl.textContent = new Intl.NumberFormat('ru-RU').format(Math.round(sum)) + ' ₽';
+        }
+      };
+
+      calc.addEventListener('input', recalculate);
+      calc.addEventListener('change', recalculate);
+      recalculate();
+    });
+  }
+
+  // 14. Before / After Image Comparison Slider ([data-tilda-before-after])
+  function initBeforeAfter() {
+    document.querySelectorAll('[data-tilda-before-after]').forEach(wrapper => {
+      const afterImg = wrapper.querySelector('.tilda-ba-after, [data-ba-after]');
+      const handle = wrapper.querySelector('.tilda-ba-handle, [data-ba-handle]');
+      if (!afterImg || !handle) return;
+
+      let isDragging = false;
+      const setPosition = (clientX) => {
+        const rect = wrapper.getBoundingClientRect();
+        let posX = clientX - rect.left;
+        posX = Math.max(0, Math.min(rect.width, posX));
+        const percent = (posX / rect.width) * 100;
+        afterImg.style.width = `${percent}%`;
+        handle.style.left = `${percent}%`;
+      };
+
+      handle.addEventListener('mousedown', () => isDragging = true);
+      handle.addEventListener('touchstart', () => isDragging = true, { passive: true });
+
+      window.addEventListener('mousemove', e => {
+        if (isDragging) setPosition(e.clientX);
+      });
+      window.addEventListener('touchmove', e => {
+        if (isDragging && e.touches[0]) setPosition(e.touches[0].clientX);
+      }, { passive: true });
+
+      window.addEventListener('mouseup', () => isDragging = false);
+      window.addEventListener('touchend', () => isDragging = false);
+    });
+  }
+
+  // 15. Countdown Timers ([data-tilda-timer])
+  function initTimers() {
+    document.querySelectorAll('[data-tilda-timer]').forEach(timerEl => {
+      const targetDateStr = timerEl.dataset.timerDate || timerEl.dataset.tildaTimer;
+      let targetTime;
+      if (targetDateStr && !isNaN(Date.parse(targetDateStr))) {
+        targetTime = new Date(targetDateStr).getTime();
+      } else {
+        targetTime = Date.now() + 3 * 24 * 60 * 60 * 1000;
+      }
+
+      const daysEl = timerEl.querySelector('[data-timer-days]');
+      const hoursEl = timerEl.querySelector('[data-timer-hours]');
+      const minsEl = timerEl.querySelector('[data-timer-mins]');
+      const secsEl = timerEl.querySelector('[data-timer-secs]');
+
+      const update = () => {
+        const now = Date.now();
+        const diff = Math.max(0, targetTime - now);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        if (daysEl) daysEl.textContent = String(days).padStart(2, '0');
+        if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+        if (minsEl) minsEl.textContent = String(mins).padStart(2, '0');
+        if (secsEl) secsEl.textContent = String(secs).padStart(2, '0');
+      };
+
+      update();
+      setInterval(update, 1000);
+    });
+  }
+
+  // 16. Floating Messenger FAB Widget ([data-tilda-fab])
+  function initFabWidgets() {
+    document.querySelectorAll('[data-tilda-fab]').forEach(fab => {
+      const mainBtn = fab.querySelector('.tilda-fab-btn, [data-fab-toggle]');
+      const menu = fab.querySelector('.tilda-fab-menu, [data-fab-menu]');
+      if (!mainBtn || !menu) return;
+
+      mainBtn.addEventListener('click', e => {
+        e.preventDefault();
+        const isOpen = menu.classList.toggle('is-open');
+        mainBtn.classList.toggle('is-active', isOpen);
+      });
+    });
+  }
+
+  // 17. Cookie / GDPR Banner ([data-tilda-cookie])
+  function initCookieBanners() {
+    const banners = document.querySelectorAll('[data-tilda-cookie]');
+    if (!banners.length) return;
+    try {
+      if (localStorage.getItem('aurora_cookie_accepted') === '1') {
+        banners.forEach(b => b.style.display = 'none');
+        return;
+      }
+    } catch(e) {}
+
+    banners.forEach(banner => {
+      banner.style.display = 'flex';
+      banner.querySelector('[data-cookie-accept]')?.addEventListener('click', e => {
+        e.preventDefault();
+        banner.style.display = 'none';
+        try { localStorage.setItem('aurora_cookie_accepted', '1'); } catch(e) {}
+      });
+    });
+  }
+
+  // 18. Pricing Table Monthly / Yearly Toggle ([data-pricing-toggle])
+  function initPricingToggles() {
+    document.querySelectorAll('[data-pricing-toggle]').forEach(toggle => {
+      const targetBlock = toggle.closest('.tilda-block') || document;
+      const chk = toggle.querySelector('input[type="checkbox"]');
+      const updatePrices = (isYearly) => {
+        targetBlock.querySelectorAll('[data-price-monthly]').forEach(el => {
+          el.textContent = isYearly ? (el.dataset.priceYearly || el.textContent) : el.dataset.priceMonthly;
+        });
+        targetBlock.querySelectorAll('[data-period-label]').forEach(el => {
+          el.textContent = isYearly ? '/ год' : '/ месяц';
+        });
+      };
+
+      if (chk) {
+        chk.addEventListener('change', () => updatePrices(chk.checked));
+      }
+      toggle.querySelectorAll('[data-billing-period]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          toggle.querySelectorAll('[data-billing-period]').forEach(b => b.classList.remove('is-active'));
+          btn.classList.add('is-active');
+          updatePrices(btn.dataset.billingPeriod === 'yearly');
+        });
+      });
+    });
+  }
+
+  // Toast Helper
+  function showToast(msg) {
+    let t = document.getElementById('tilda-runtime-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'tilda-runtime-toast';
+      t.className = 'tilda-runtime-toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('is-show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('is-show'), 3000);
+  }
+
   // Bootstrap
   function initAll() {
     initNavigation();
@@ -1131,6 +1353,13 @@
     initFilters();
     initCounters();
     initQuizzes();
+    initPopups();
+    initCalculators();
+    initBeforeAfter();
+    initTimers();
+    initFabWidgets();
+    initCookieBanners();
+    initPricingToggles();
     initScrollAnimations();
   }
 
@@ -1149,6 +1378,13 @@
     initFilters,
     initCounters,
     initQuizzes,
+    initPopups,
+    initCalculators,
+    initBeforeAfter,
+    initTimers,
+    initFabWidgets,
+    initCookieBanners,
+    initPricingToggles,
     lightbox: window.AuroraLightbox
   };
 })();

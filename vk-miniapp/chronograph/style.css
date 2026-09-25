@@ -937,8 +937,8 @@ button {
 }
 
 .card-avatar {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-sm);
   background: var(--grad-cyan-purple);
   color: #ffffff;
@@ -950,6 +950,34 @@ button {
   justify-content: center;
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.card-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.modal-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.card-avatar-fallback,
+.modal-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-title {
@@ -1302,8 +1330,8 @@ button {
 }
 
 .modal-avatar {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: var(--radius-md);
   background: var(--grad-cyan-purple);
   color: #ffffff;
@@ -1314,6 +1342,10 @@ button {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .modal-section-title {
@@ -1465,3 +1497,98 @@ button {
     color: #475569;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. АДАПТИВНОСТЬ ДЛЯ ПЛАНШЕТОВ И МОБИЛЬНЫХ УСТРОЙСТВ
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .chrono-topbar-inner {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .topbar-right {
+    flex-wrap: wrap;
+  }
+  .chronograph-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .hero-title {
+    font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .chrono-main {
+    padding: 12px 14px;
+    gap: 16px;
+  }
+  .chrono-topbar {
+    position: static;
+  }
+  .chrono-topbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .topbar-left, .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .figma-breadcrumbs {
+    font-size: 0.78rem;
+  }
+  .chronograph-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .chrono-card {
+    padding: 14px;
+  }
+  .card-avatar {
+    width: 46px;
+    height: 46px;
+  }
+  .chrono-controls-panel {
+    padding: 12px 14px;
+  }
+  .table-responsive-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-dialog {
+    padding: 16px;
+    max-height: 95vh;
+  }
+  .modal-person-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .modal-avatar {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-export-group {
+    display: none;
+  }
+  .card-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .card-footer {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .card-footer .card-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

@@ -362,6 +362,76 @@ export class ZeroBlockEditor {
     this.onSelectionChange?.(selected);
   }
 
+  autoLayoutMobile(targetBp = null) {
+    const bp = targetBp || (this.activeBreakpoint < 1200 ? this.activeBreakpoint : 480);
+    const contentWidth = Math.max(280, bp - 36);
+    let currentY = 32;
+
+    const sorted = [...this.block.elements].sort((a, b) => (a.props.y || 0) - (b.props.y || 0));
+
+    sorted.forEach(el => {
+      const p = el.props;
+      if (['h1', 'h2', 'h3', 'text'].includes(el.type)) {
+        if (el.type === 'h1') {
+          p.fontSize = bp <= 320 ? 24 : (bp <= 480 ? 28 : 34);
+        } else if (el.type === 'h2') {
+          p.fontSize = bp <= 320 ? 20 : 22;
+        } else if (el.type === 'text') {
+          p.fontSize = Math.min(p.fontSize || 16, 15);
+        }
+        const elW = Math.min(p.width || contentWidth, contentWidth);
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        p.width = elW;
+        currentY += (p.height || 50) + 18;
+      } else if (el.type === 'btn') {
+        const elW = Math.min(p.width || 240, contentWidth);
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        p.width = elW;
+        currentY += (p.height || 48) + 22;
+      } else if (el.type === 'img' || el.type === 'shape') {
+        const elW = Math.min(p.width || contentWidth, contentWidth);
+        const ratio = (p.height && p.width) ? (p.height / p.width) : 0.65;
+        const elH = Math.round(elW * Math.min(1.2, Math.max(0.4, ratio)));
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        p.width = elW;
+        p.height = Math.max(120, elH);
+        currentY += p.height + 22;
+      } else if (el.type === 'form' || el.type === 'code') {
+        const elW = Math.min(p.width || contentWidth, contentWidth);
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        p.width = elW;
+        currentY += (p.height || 220) + 24;
+      } else if (el.type === 'icon') {
+        const elW = p.width || 48;
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        currentY += (p.height || 48) + 16;
+      } else {
+        const elW = Math.min(p.width || contentWidth, contentWidth);
+        const elX = Math.max(16, Math.round((bp - elW) / 2));
+        p.x = elX;
+        p.y = currentY;
+        p.width = elW;
+        currentY += (p.height || 40) + 18;
+      }
+    });
+
+    this.block.settings.height = Math.max(currentY + 40, 460);
+    this.activeBreakpoint = bp;
+    this.saveHistory();
+    this.render();
+    this.onSelectionChange?.(this.getSelectedElement());
+  }
+
   bindKeyboardShortcuts() {
     window.addEventListener('keydown', e => {
       const ae = document.activeElement;

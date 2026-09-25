@@ -224,12 +224,15 @@
 
     const monogram = raw.monogram || raw.portrait?.initials || getMonogram(name);
     const portraitColor = raw.portraitColor || raw.portrait?.gradient || 'var(--grad-cyan-purple)';
+    const imageUrl = raw.imageUrl || raw.portraitUrl || raw.portrait?.imageUrl || raw.portrait?.url || raw.photo || '';
 
     return {
       ...raw,
       name,
       title: raw.title || name,
       shortName: raw.shortName || name,
+      imageUrl,
+      portraitUrl: imageUrl,
       works: worksList,
       exhibitions: Array.isArray(raw.exhibitions) ? raw.exhibitions : exhibitionList,
       exhibitionIdeas: exhibitionList.length ? exhibitionList : [
@@ -369,7 +372,7 @@
 
             <div class="card-person-row" style="margin-top: 10px;">
               <div class="card-avatar" style="background: ${escapeHtml( item.portraitColor || 'var(--grad-cyan-purple)' )};">
-                ${escapeHtml(item.monogram || getMonogram(item.name))}
+                ${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" class="card-avatar-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="card-avatar-fallback" style="display:none;">${escapeHtml(item.monogram || getMonogram(item.name))}</span>` : `<span>${escapeHtml(item.monogram || getMonogram(item.name))}</span>`}
               </div>
               <div>
                 <h3 class="card-title" data-action="open-detail" data-id="${escapeHtml(item.id)}">${escapeHtml(item.name)}</h3>
@@ -503,8 +506,16 @@
           <td style="white-space:nowrap; font-weight:700;">${Number(item.day)} ${MONTHS_GENITIVE[Number(item.month)]}</td>
           <td><span class="card-jubilee-badge ${jub.isRound ? 'is-round' : ''}">${escapeHtml(jub.badgeText)}</span></td>
           <td>
-            <strong style="cursor:pointer; color:var(--text-primary);" data-action="open-detail" data-id="${escapeHtml(item.id)}">${escapeHtml(item.name)}</strong>
-            <div style="font-size:0.76rem; color:var(--text-muted);">${escapeHtml(item.role)} (${escapeHtml(formatLifespan(item))})</div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="table-avatar" style="width:34px; height:34px; border-radius:6px; overflow:hidden; flex-shrink:0; background: ${escapeHtml(item.portraitColor || 'var(--grad-cyan-purple)')}; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:0.75rem; font-weight:700;">
+                ${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" style="width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none';">` : ''}
+                <span class="table-avatar-fallback">${escapeHtml(item.monogram || getMonogram(item.name))}</span>
+              </div>
+              <div>
+                <strong style="cursor:pointer; color:var(--text-primary);" data-action="open-detail" data-id="${escapeHtml(item.id)}">${escapeHtml(item.name)}</strong>
+                <div style="font-size:0.76rem; color:var(--text-muted);">${escapeHtml(item.role)} (${escapeHtml(formatLifespan(item))})</div>
+              </div>
+            </div>
           </td>
           <td><span class="card-category-badge ${item.category === 'regional' ? 'cat-regional' : ''}">${escapeHtml(cat.short)}</span></td>
           <td>${escapeHtml((item.works || []).slice(0, 3).join(', '))}</td>
@@ -636,7 +647,7 @@
     body.innerHTML = `
       <div class="modal-person-hero">
         <div class="modal-avatar" style="background: ${escapeHtml(item.portraitColor || 'var(--grad-cyan-purple)')};">
-          ${escapeHtml(item.monogram || getMonogram(item.name))}
+          ${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" class="modal-avatar-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="modal-avatar-fallback" style="display:none;">${escapeHtml(item.monogram || getMonogram(item.name))}</span>` : `<span>${escapeHtml(item.monogram || getMonogram(item.name))}</span>`}
         </div>
         <div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">

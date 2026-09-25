@@ -42,6 +42,8 @@ const FONTS = [
   { id: 'Arial',              name: 'Arial',              desc: 'Стандартный чёткий гротеск' },
 ];
 
+const figmaLoadedFonts = new Set(FONTS.map(f => f.id));
+
 /* ── Цветовые палитры ───────────────────────────────────────── */
 const PALETTE = [
   { hex: '#070a1e', name: 'Космос Авроры' },
@@ -1231,14 +1233,14 @@ async function loadSavedFonts() {
   try {
     const saved = await getAllFontsFromDB();
     customFonts = [];
-    for (const item of saved) {
+    await Promise.allSettled((saved || []).map(async item => {
       try {
         await registerFontFace(item.name, item.buffer);
         customFonts.push(item);
       } catch (e) {
         console.warn('Не удалось загрузить шрифт:', item.name, e);
       }
-    }
+    }));
     buildFontSelect();
     renderCustomFontsList();
   } catch (e) {
@@ -1273,24 +1275,38 @@ function buildFontSelect() {
 
 async function setFontFamily(fontFamily) {
   const obj = canvas?.getActiveObject();
-  if (!obj) return;
-  // Сначала убеждаемся, что шрифт загружен через <link> в <head>
+  if (!obj || !fontFamily) return;
+
+  // 1. Предзагружаем/регистрируем шрифт в фоне без блокировки
   ensureFontAvailable(fontFamily);
-  try {
-    if (document.fonts) {
-      await document.fonts.load(`400 32px "${fontFamily}"`);
-      await document.fonts.load(`700 32px "${fontFamily}"`);
-    }
-  } catch(e) {}
+
+  // 2. МГНОВЕННО (0 мс) применяем шрифт к объекту и запрашиваем рендер
   obj.set('fontFamily', fontFamily);
+  try { fabric.util?.clearFabricFontCache?.(fontFamily); } catch(e) {}
   obj.initDimensions?.();
+  obj.setCoords?.();
   obj.dirty = true;
   canvas.requestRenderAll();
   saveHistory();
   updateLayersList();
 
-  // Фикс: сбрасываем inline font-family у самого <select>, чтобы
-  // выбранный шрифт афиши не менял шрифт интерфейса редактора.
+  // 3. Если глифы ещё не подгружены браузером, догружаем в фоне и обновляем метрики
+  if (document.fonts && !document.fonts.check(`16px "${fontFamily}"`)) {
+    Promise.allSettled([
+      document.fonts.load(`400 32px "${fontFamily}"`),
+      document.fonts.load(`700 32px "${fontFamily}"`)
+    ]).then(() => {
+      try { fabric.util?.clearFabricFontCache?.(fontFamily); } catch(e) {}
+      if (canvas?.getActiveObject() === obj) {
+        obj.initDimensions?.();
+        obj.setCoords?.();
+        obj.dirty = true;
+        canvas.requestRenderAll();
+      }
+    });
+  }
+
+  // Фикс: сбрасываем inline font-family у самого <select>
   const sel = $('#font-family-select');
   if (sel) sel.style.fontFamily = "'Montserrat', system-ui, sans-serif";
 }
@@ -5903,7 +5919,6 @@ let figmaCurrentFileKey = null;
 let figmaCurrentDoc = null;
 let figmaSelectedFrameId = null;
 let figmaFramesList = [];
-const figmaLoadedFonts = new Set();
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -8291,13 +8306,15 @@ function bindEvents() {
   })();
 
   /* ══════════════════════════════════════════════════════
-     PASTE изображений из буфера обмена (Ctrl+V с файлом)
+     PASTE изображений и скриншотов из буфера обмена (Ctrl+V)
      ══════════════════════════════════════════════════════ */
   document.addEventListener('paste', e => {
-    // Пропускаем если фокус внутри текстового поля (нативная вставка текста)
+    // Пропускаем, если фокус внутри текстового поля (нативная вставка текста) и в буфере нет файлов
     const tgt = document.activeElement;
-    if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' ||
-        tgt.isContentEditable || (canvas && canvas.isEditing))) return;
+    const isTextInput = tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
+    const hasFiles = e.clipboardData?.files?.length > 0;
+    if (isTextInput && !hasFiles) return;
+    if (canvas && canvas.isEditing && !hasFiles) return;
 
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -8307,33 +8324,43 @@ function bindEvents() {
       if (item.type.startsWith('image/')) {
         foundImage = true;
         const file = item.getAsFile();
-        if (!file || !canvas) continue;
+        if (!file) continue;
+
+        e.preventDefault();
+
+        // Если экран шаблонов активен или холст ещё не готов — открываем чистый лист
+        const screenTpl = $('#screen-templates');
+        if ((screenTpl && !screenTpl.classList.contains('hidden')) || !canvas) {
+          const defaultTpl = TEMPLATES.find(x => x.id === 'blank_a4_v') || { id: 'blank_a4_v', name: 'Новая афиша (скриншот)', size: 'a4_v', bg: '#ffffff', objects: [] };
+          loadTemplate(defaultTpl);
+        }
+
         const reader = new FileReader();
         reader.onload = ev => {
           fabric.Image.fromURL(ev.target.result, img => {
-            const maxW = currentSize.w * 0.7;
-            const maxH = currentSize.h * 0.7;
+            if (!canvas) return;
+            const maxW = (currentSize?.w || 595) * 0.85;
+            const maxH = (currentSize?.h || 842) * 0.85;
             if (img.width > maxW)             img.scaleToWidth(maxW);
             if (img.getScaledHeight() > maxH) img.scaleToHeight(maxH);
             img.set({
-              left: (currentSize.w - img.getScaledWidth())  / 2,
-              top:  (currentSize.h - img.getScaledHeight()) / 2,
+              left: ((currentSize?.w || 595) - img.getScaledWidth())  / 2,
+              top:  ((currentSize?.h || 842) - img.getScaledHeight()) / 2,
               selectable: true,
-              layerName: 'Фото (вставка)',
+              layerName: 'Скриншот / Фото (Ctrl+V)',
             });
             canvas.add(img);
             canvas.setActiveObject(img);
-            canvas.renderAll();
+            canvas.requestRenderAll();
             saveHistory();
             updateLayersList();
-            toast('📋 Изображение вставлено из буфера обмена');
-          });
+            toast('📋 Скриншот успешно вставлен на холст (Ctrl+V)! 🚀');
+          }, { crossOrigin: 'anonymous' });
         };
         reader.readAsDataURL(file);
-        break; // берём только первое изображение из буфера
+        break; // берём первое изображение
       }
     }
-    // Если в буфере не изображение — ничего не делаем (текст вставится нативно)
   });
 
   $('#stroke-width-slider').addEventListener('input', e => {

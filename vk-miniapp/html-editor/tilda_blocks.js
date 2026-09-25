@@ -26,7 +26,8 @@ export const TILDA_CATEGORIES = [
   { id: 'team',         name: '👥 Команда',                  icon: 'group',          count: 3 },
   { id: 'timeline',     name: '📅 Таймлайн и этапы',         icon: 'timeline',       count: 2 },
   { id: 'counters',     name: '🔢 Счётчики и статистика',    icon: 'bar_chart',      count: 2 },
-  { id: 'partners',     name: '🤝 Партнёры и клиенты',       icon: 'handshake',      count: 2 }
+  { id: 'partners',     name: '🤝 Партнёры и клиенты',       icon: 'handshake',      count: 3 },
+  { id: 'widgets',      name: '🔮 Виджеты и интерактивы',    icon: 'auto_awesome',   count: 8 }
 ];
 
 export const TILDA_BLOCKS = [
@@ -3145,6 +3146,449 @@ export const TILDA_BLOCKS = [
         <div class="t-block t-zero-block" style="position:relative;width:100%;min-height:${hPx}px;height:${hPx}px;background:${d.background || '#070a13'};overflow:hidden;">
           <div class="t-zero-container" style="position:relative;width:100%;max-width:1200px;height:100%;margin:0 auto;">
             ${elsMarkup}
+          </div>
+        </div>
+      `;
+    }
+  },
+
+  // ─── 23. ИНТЕРАКТИВНЫЕ ВИДЖЕТЫ И ПОПАПЫ (WIDGETS) ─────────────
+  {
+    id: 'popup-1',
+    cat: 'widgets',
+    category: 'widgets',
+    name: 'Всплывающее окно (Popup Modal) с формой',
+    icon: 'open_in_new',
+    defaultContent: {
+      popupId: 'contact',
+      badge: '✨ БЕСПЛАТНАЯ КОНСУЛЬТАЦИЯ',
+      title: 'Оставьте заявку на персональный расчет',
+      subtitle: 'Наш ведущий специалист свяжется с вами в течение 10 минут и ответит на все вопросы.',
+      btnText: 'Отправить заявку',
+      triggerTitle: 'Интерактивное всплывающее окно (Popup)',
+      triggerDesc: 'Этот блок регистрирует всплывающее модальное окно. Любая кнопка или ссылка на сайте с адресом #popup:contact откроет это окно.',
+      triggerBtnText: 'Проверить всплывающее окно (#popup:contact)'
+    },
+    defaultDesign: {
+      bgColor: '#111827',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '40px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:960px;margin:0 auto;text-align:center;">
+          <div style="background:rgba(13,153,255,0.08);border:1px dashed rgba(13,153,255,0.4);border-radius:16px;padding:32px 24px;">
+            <div style="display:inline-block;padding:4px 14px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px;">МОДУЛЬ POPUP МОДАЛКИ</div>
+            <h3 style="font-size:22px;font-weight:800;margin-bottom:10px;">${c.triggerTitle}</h3>
+            <p style="color:#94a3b8;font-size:14px;max-width:640px;margin:0 auto 20px;line-height:1.6;">${c.triggerDesc}</p>
+            <a href="#popup:${c.popupId || 'contact'}" class="t-btn" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:${d.accentColor};color:#fff;font-weight:700;border-radius:8px;text-decoration:none;box-shadow:0 6px 20px rgba(13,153,255,0.35);">
+              <span class="material-symbols-rounded" style="font-size:18px;">open_in_new</span>
+              ${c.triggerBtnText}
+            </a>
+          </div>
+        </div>
+
+        <div class="tilda-popup-overlay" data-tilda-popup="${c.popupId || 'contact'}" id="popup-${c.popupId || 'contact'}">
+          <div class="tilda-popup-box">
+            <button type="button" class="tilda-popup-close-btn" data-tilda-popup-close title="Закрыть (Esc)">✕</button>
+            <div style="display:inline-block;padding:4px 12px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:11px;font-weight:700;margin-bottom:12px;letter-spacing:0.5px;">${c.badge}</div>
+            <h2 style="font-size:24px;font-weight:800;line-height:1.25;margin-bottom:10px;color:#fff;">${c.title}</h2>
+            <p style="font-size:14px;color:#94a3b8;line-height:1.5;margin-bottom:24px;">${c.subtitle}</p>
+            <form style="display:flex;flex-direction:column;gap:12px;" data-tilda-form="popup-${c.popupId || 'contact'}">
+              <input type="text" name="name" placeholder="Ваше имя" required style="padding:12px 16px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#fff;font-size:14px;outline:none;" />
+              <input type="tel" name="phone" placeholder="+7 (999) 000-00-00" required style="padding:12px 16px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#fff;font-size:14px;outline:none;" />
+              <input type="email" name="email" placeholder="Email (необязательно)" style="padding:12px 16px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#fff;font-size:14px;outline:none;" />
+              <button type="submit" style="padding:14px;background:${d.accentColor};color:#fff;font-weight:700;border:none;border-radius:8px;font-size:15px;cursor:pointer;box-shadow:0 8px 20px rgba(13,153,255,0.4);transition:transform 0.2s;">${c.btnText}</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'calc-1',
+    cat: 'widgets',
+    category: 'widgets',
+    name: 'Интерактивный калькулятор стоимости',
+    icon: 'calculate',
+    defaultContent: {
+      badge: 'ОНЛАЙН КАЛЬКУЛЯТОР',
+      title: 'Рассчитайте стоимость вашего проекта',
+      subtitle: 'Выберите необходимые параметры и узнайте примерную стоимость в реальном времени.',
+      basePrice: 20000,
+      pagePrice: 3500,
+      btnText: 'Заказать проект по расчету',
+      btnUrl: '#order'
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:960px;margin:0 auto;">
+          <div style="text-align:center;margin-bottom:44px;">
+            <div style="display:inline-block;padding:4px 14px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px;letter-spacing:1px;">${c.badge}</div>
+            <h2 style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:800;margin-bottom:14px;">${c.title}</h2>
+            <p style="color:#94a3b8;font-size:16px;max-width:620px;margin:0 auto;">${c.subtitle}</p>
+          </div>
+
+          <div data-tilda-calc data-calc-base="${c.basePrice || 20000}" style="background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:36px 30px;box-shadow:0 20px 50px rgba(0,0,0,0.4);display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:36px;align-items:center;">
+            <div style="display:flex;flex-direction:column;gap:24px;">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <label for="calc-pages-slider" style="font-size:15px;font-weight:600;color:#e2e8f0;">Количество страниц / экранов:</label>
+                  <span style="font-size:16px;font-weight:800;color:${d.accentColor};"><span data-calc-val-for="calc-pages-slider">5</span> стр.</span>
+                </div>
+                <input type="range" id="calc-pages-slider" name="calc-pages-slider" min="1" max="20" value="5" data-calc-price="${c.pagePrice || 3500}" class="tilda-calc-range" />
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <label style="font-size:14px;font-weight:600;color:#94a3b8;margin-bottom:4px;">Дополнительные опции:</label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#e2e8f0;cursor:pointer;">
+                  <input type="checkbox" data-calc-price="15000" checked style="width:18px;height:18px;accent-color:${d.accentColor};cursor:pointer;" />
+                  <span>Индивидуальный дизайн в Zero Block (+15 000 ₽)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#e2e8f0;cursor:pointer;">
+                  <input type="checkbox" data-calc-price="10000" checked style="width:18px;height:18px;accent-color:${d.accentColor};cursor:pointer;" />
+                  <span>Базовая SEO-оптимизация и скорость (+10 000 ₽)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#e2e8f0;cursor:pointer;">
+                  <input type="checkbox" data-calc-price="8000" style="width:18px;height:18px;accent-color:${d.accentColor};cursor:pointer;" />
+                  <span>Подключение CRM и платежной системы (+8 000 ₽)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="background:#0f172a;border:1px solid rgba(13,153,255,0.3);border-radius:16px;padding:30px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:8px;">ИТОГОВЫЙ РАСЧЕТ</div>
+              <div data-calc-total style="font-size:clamp(2.2rem, 4vw, 3rem);font-weight:900;color:#38bdf8;margin-bottom:20px;letter-spacing:-0.5px;">62 500 ₽</div>
+              <a href="${c.btnUrl || '#order'}" class="t-btn" style="width:100%;padding:14px;background:${d.accentColor};color:#fff;font-weight:700;border-radius:10px;text-decoration:none;box-shadow:0 8px 24px rgba(13,153,255,0.4);display:inline-block;box-sizing:border-box;">${c.btnText}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'before-after-1',
+    cat: 'gallery',
+    category: 'gallery',
+    name: 'Слайдер сравнения До / После',
+    icon: 'compare',
+    defaultContent: {
+      badge: 'РЕЗУЛЬТАТЫ РАБОТЫ',
+      title: 'Сравнение До и После редизайна',
+      subtitle: 'Потяните интерактивный ползунок в центре влево или вправо, чтобы оценить разницу.',
+      beforeImg: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1000&q=80',
+      afterImg: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1000&q=80',
+      beforeLabel: 'БЫЛО (Старый сайт)',
+      afterLabel: 'СТАЛО (Aurora Web)'
+    },
+    defaultDesign: {
+      bgColor: '#070a13',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '80px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:1000px;margin:0 auto;text-align:center;">
+          <div style="display:inline-block;padding:4px 14px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px;letter-spacing:1px;">${c.badge}</div>
+          <h2 style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:800;margin-bottom:14px;">${c.title}</h2>
+          <p style="color:#94a3b8;font-size:16px;max-width:640px;margin:0 auto 40px;">${c.subtitle}</p>
+
+          <div class="tilda-ba-wrapper" data-tilda-before-after>
+            <span class="tilda-ba-badge tilda-ba-badge-before">${c.beforeLabel}</span>
+            <span class="tilda-ba-badge tilda-ba-badge-after">${c.afterLabel}</span>
+            <img src="${c.beforeImg}" alt="Before" class="tilda-ba-img-before" />
+            <div class="tilda-ba-after-wrap" data-ba-after>
+              <img src="${c.afterImg}" alt="After" class="tilda-ba-img-after" />
+            </div>
+            <div class="tilda-ba-handle-line" data-ba-handle>
+              <div class="tilda-ba-handle-btn">⇄</div>
+            </div>
+            <input type="range" min="0" max="100" value="50" class="tilda-ba-range-input" />
+          </div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'timer-1',
+    cat: 'cover',
+    category: 'cover',
+    name: 'Таймер обратного отсчета акции',
+    icon: 'timer',
+    defaultContent: {
+      badge: '🔥 ОГРАНИЧЕННОЕ ПРЕДЛОЖЕНИЕ',
+      title: 'Скидка 40% на создание сайта до конца месяца',
+      subtitle: 'Забронируйте разработку проекта по специальной промо-цене прямо сейчас.',
+      endDate: '2026-12-31T23:59:59',
+      btnText: 'Зафиксировать скидку',
+      btnUrl: '#order'
+    },
+    defaultDesign: {
+      bgColor: '#0b0f19',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '90px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:860px;margin:0 auto;text-align:center;">
+          <div style="display:inline-block;padding:6px 18px;background:rgba(244,63,94,0.15);color:#f43f5e;border:1px solid rgba(244,63,94,0.35);border-radius:20px;font-size:12px;font-weight:700;margin-bottom:20px;letter-spacing:1px;">${c.badge}</div>
+          <h2 style="font-size:clamp(2.2rem, 5vw, 3.4rem);font-weight:900;line-height:1.2;margin-bottom:18px;letter-spacing:-0.5px;">${c.title}</h2>
+          <p style="font-size:1.15rem;color:#94a3b8;max-width:680px;margin:0 auto 44px;line-height:1.6;">${c.subtitle}</p>
+
+          <div data-tilda-timer data-timer-end="${c.endDate || '2026-12-31T23:59:59'}" style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:44px;">
+            <div style="min-width:90px;padding:18px 14px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+              <div data-timer-days style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:900;color:${d.accentColor};font-family:monospace;line-height:1;">00</div>
+              <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-top:6px;">Дней</div>
+            </div>
+            <div style="min-width:90px;padding:18px 14px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+              <div data-timer-hours style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:900;color:${d.accentColor};font-family:monospace;line-height:1;">00</div>
+              <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-top:6px;">Часов</div>
+            </div>
+            <div style="min-width:90px;padding:18px 14px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+              <div data-timer-mins style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:900;color:${d.accentColor};font-family:monospace;line-height:1;">00</div>
+              <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-top:6px;">Минут</div>
+            </div>
+            <div style="min-width:90px;padding:18px 14px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+              <div data-timer-secs style="font-size:clamp(2rem, 4vw, 2.8rem);font-weight:900;color:#38bdf8;font-family:monospace;line-height:1;">00</div>
+              <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-top:6px;">Секунд</div>
+            </div>
+          </div>
+
+          <a href="${c.btnUrl || '#order'}" class="t-btn" style="display:inline-flex;align-items:center;padding:16px 36px;background:${d.accentColor};color:#fff;border-radius:10px;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 10px 30px rgba(13,153,255,0.4);transition:transform 0.2s;">${c.btnText}</a>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'marquee-1',
+    cat: 'partners',
+    category: 'partners',
+    name: 'Бегущая строка партнеров и брендов',
+    icon: 'view_carousel',
+    defaultContent: {
+      title: 'Нам доверяют лидеры цифрового рынка',
+      items: [
+        'AURORA DESIGN', 'VK MINI APPS', 'ЯНДЕКС.ДЗЕН', 'TILDA PUBLISHING',
+        'GOOGLE CLOUD', 'FIGMA PRO', 'TELEGRAM API', 'GITHUB ENTERPRISE'
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#090d16',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '40px 0'
+    },
+    html: (c, d) => {
+      const itemsList = c.items || ['AURORA DESIGN', 'VK MINI APPS', 'ЯНДЕКС.ДЗЕН', 'TILDA PUBLISHING'];
+      const doubled = [...itemsList, ...itemsList];
+      return `
+        <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+          <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;">${c.title}</div>
+          </div>
+          <div class="tilda-marquee">
+            <div class="tilda-marquee-track">
+              ${doubled.map(item => `
+                <div style="display:inline-flex;align-items:center;gap:10px;padding:12px 28px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:50px;font-size:15px;font-weight:800;color:#e2e8f0;letter-spacing:0.5px;white-space:nowrap;">
+                  <span style="color:${d.accentColor};font-size:18px;">✦</span>
+                  ${item}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  },
+  {
+    id: 'widget-fab-1',
+    cat: 'contacts',
+    category: 'contacts',
+    name: 'Плавающий виджет связи (FAB) в мессенджерах',
+    icon: 'chat_bubble',
+    defaultContent: {
+      badge: 'ВИДЖЕТ СВЯЗИ',
+      title: 'Быстрая связь в мессенджерах (FAB кнопка)',
+      desc: 'В правом нижнем углу сайта отобразится плавающая кнопка для мгновенной связи через Telegram, WhatsApp, Телефон и ВКонтакте.',
+      telegramUrl: 'https://t.me/aurora_support',
+      whatsappUrl: 'https://wa.me/79990000000',
+      phoneUrl: 'tel:+79990000000',
+      vkUrl: 'https://vk.com'
+    },
+    defaultDesign: {
+      bgColor: '#111827',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '40px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:860px;margin:0 auto;text-align:center;">
+          <div style="background:rgba(13,153,255,0.08);border:1px dashed rgba(13,153,255,0.4);border-radius:16px;padding:28px 20px;">
+            <div style="display:inline-block;padding:4px 12px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:11px;font-weight:700;margin-bottom:10px;">${c.badge}</div>
+            <h3 style="font-size:20px;font-weight:800;margin-bottom:8px;">${c.title}</h3>
+            <p style="color:#94a3b8;font-size:14px;max-width:580px;margin:0 auto;">${c.desc}</p>
+          </div>
+        </div>
+
+        <div class="tilda-fab-container" data-tilda-fab>
+          <div class="tilda-fab-menu" data-fab-menu>
+            <a href="${c.telegramUrl || 'https://t.me'}" target="_blank" rel="noopener noreferrer" class="tilda-fab-item">
+              <span style="color:#38bdf8;font-size:18px;">✈️</span>
+              <span>Telegram</span>
+            </a>
+            <a href="${c.whatsappUrl || 'https://whatsapp.com'}" target="_blank" rel="noopener noreferrer" class="tilda-fab-item">
+              <span style="color:#22c55e;font-size:18px;">💬</span>
+              <span>WhatsApp</span>
+            </a>
+            <a href="${c.phoneUrl || 'tel:+79990000000'}" class="tilda-fab-item">
+              <span style="color:#eab308;font-size:18px;">📞</span>
+              <span>Позвонить нам</span>
+            </a>
+            <a href="${c.vkUrl || 'https://vk.com'}" target="_blank" rel="noopener noreferrer" class="tilda-fab-item">
+              <span style="color:#0d99ff;font-size:18px;">🌐</span>
+              <span>ВКонтакте</span>
+            </a>
+          </div>
+          <button type="button" class="tilda-fab-main-btn" data-fab-toggle title="Написать нам в мессенджере">💬</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'widget-cookie-1',
+    cat: 'footer',
+    category: 'footer',
+    name: 'Баннер согласия на Cookie / GDPR',
+    icon: 'cookie',
+    defaultContent: {
+      title: 'Уведомление об использовании Cookie файлов',
+      text: 'Мы используем cookie для обеспечения лучшего пользовательского опыта и аналитики. Оставаясь на сайте, вы подтверждаете согласие с Политикой конфиденциальности.',
+      btnText: 'Принять все',
+      policyUrl: '#privacy',
+      policyText: 'Подробнее'
+    },
+    defaultDesign: {
+      bgColor: '#090d16',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '30px 20px'
+    },
+    html: (c, d) => `
+      <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+        <div class="t-container" style="max-width:860px;margin:0 auto;text-align:center;">
+          <div style="background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);border-radius:12px;padding:20px;">
+            <span style="font-size:13px;color:#94a3b8;">🍪 Баннер согласия на Cookie появится внизу экрана при первом посещении сайта пользователем.</span>
+          </div>
+        </div>
+
+        <div class="tilda-cookie-banner" data-tilda-cookie>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span style="font-size:26px;">🍪</span>
+            <div style="font-size:13px;line-height:1.5;color:#cbd5e1;">
+              ${c.text}
+              ${c.policyUrl ? `<a href="${c.policyUrl}" style="color:${d.accentColor};text-decoration:underline;margin-left:6px;">${c.policyText || 'Подробнее'}</a>` : ''}
+            </div>
+          </div>
+          <button type="button" class="tilda-cookie-btn" data-cookie-accept>${c.btnText}</button>
+        </div>
+      </div>
+    `
+  },
+  {
+    id: 'pricing-toggle-1',
+    cat: 'pricing',
+    category: 'pricing',
+    name: 'Тарифная сетка с переключателем Месяц / Год (-20%)',
+    icon: 'toggle_on',
+    defaultContent: {
+      badge: 'ПРОЗРАЧНЫЕ ЦЕНЫ',
+      title: 'Тарифы для проектов любого масштаба',
+      subtitle: 'При оплате за год вы экономите 20% от ежемесячной стоимости.',
+      plans: [
+        {
+          name: 'Старт',
+          desc: 'Для персональных сайтов и лендингов',
+          priceMonthly: '990 ₽',
+          priceYearly: '790 ₽',
+          features: ['До 3 страниц', 'Готовые блоки Tilda', 'SSL сертификат', 'Поддержка 24/7'],
+          btnText: 'Выбрать тариф',
+          btnUrl: '#order',
+          popular: false
+        },
+        {
+          name: 'Бизнес',
+          desc: 'Для растущих проектов и магазинов',
+          priceMonthly: '2 490 ₽',
+          priceYearly: '1 990 ₽',
+          features: ['Неограниченно страниц', 'Zero Block редактор', 'Корзина и оплата', 'CRM интеграция', 'Приоритетная поддержка'],
+          btnText: 'Попробовать бесплатно',
+          btnUrl: '#order',
+          popular: true
+        },
+        {
+          name: 'Enterprise',
+          desc: 'Для корпораций и масштабных сервисов',
+          priceMonthly: '6 990 ₽',
+          priceYearly: '5 590 ₽',
+          features: ['Все возможности Бизнес', 'Выделенный сервер', 'Персональный менеджер', 'SLA 99.99%', 'Индивидуальные модули'],
+          btnText: 'Связаться с нами',
+          btnUrl: '#contact',
+          popular: false
+        }
+      ]
+    },
+    defaultDesign: {
+      bgColor: '#0f172a',
+      textColor: '#ffffff',
+      accentColor: '#0d99ff',
+      padding: '90px 20px'
+    },
+    html: (c, d) => {
+      const plans = c.plans || [];
+      return `
+        <div class="t-block" style="background:${d.bgColor};color:${d.textColor};padding:${d.padding};">
+          <div class="t-container" style="max-width:1200px;margin:0 auto;text-align:center;">
+            <div style="display:inline-block;padding:4px 14px;background:rgba(13,153,255,0.15);color:${d.accentColor};border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px;letter-spacing:1px;">${c.badge}</div>
+            <h2 style="font-size:clamp(2rem, 4vw, 3rem);font-weight:800;margin-bottom:14px;">${c.title}</h2>
+            <p style="color:#94a3b8;font-size:16px;max-width:640px;margin:0 auto 30px;">${c.subtitle}</p>
+
+            <div class="tilda-pricing-toggle-wrap" data-pricing-toggle>
+              <button type="button" class="tilda-pricing-pill-btn is-active" data-billing-period="monthly">Ежемесячно</button>
+              <button type="button" class="tilda-pricing-pill-btn" data-billing-period="yearly">На 1 год (-20% скидка)</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:30px;align-items:stretch;text-align:left;">
+              ${plans.map(p => `
+                <div class="t-pricing-card" style="background:${p.popular ? 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)' : '#1e293b'};border:${p.popular ? '2px solid #0d99ff' : '1px solid rgba(255,255,255,0.1)'};border-radius:20px;padding:36px 28px;display:flex;flex-direction:column;position:relative;box-shadow:${p.popular ? '0 20px 50px rgba(13,153,255,0.25)' : '0 10px 30px rgba(0,0,0,0.3)'};">
+                  ${p.popular ? `<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#0d99ff;color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:20px;letter-spacing:0.5px;">🔥 ХИТ ПРОДАЖ</div>` : ''}
+                  <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;">${p.name}</div>
+                  <div style="font-size:13px;color:#94a3b8;margin-bottom:24px;min-height:36px;">${p.desc}</div>
+                  <div style="margin-bottom:28px;">
+                    <span data-price-monthly="${p.priceMonthly}" data-price-yearly="${p.priceYearly}" style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-0.5px;">${p.priceMonthly}</span>
+                    <span data-period-label style="font-size:14px;color:#94a3b8;font-weight:600;">/ месяц</span>
+                  </div>
+                  <ul style="list-style:none;padding:0;margin:0 0 32px;display:flex;flex-direction:column;gap:12px;flex:1;">
+                    ${(p.features || []).map(f => `
+                      <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#e2e8f0;">
+                        <span style="color:${d.accentColor};font-weight:800;">✓</span>
+                        <span>${f}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+                  <a href="${p.btnUrl || '#order'}" class="t-btn" style="display:flex;align-items:center;justify-content:center;padding:14px;background:${p.popular ? d.accentColor : 'rgba(255,255,255,0.1)'};color:#fff;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;transition:all 0.2s;text-align:center;">${p.btnText}</a>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
       `;
