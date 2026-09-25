@@ -1085,6 +1085,7 @@
 
     // Экспорт функции открытия
     window.openRetouchModal = openModal;
+    window.openInstagramRetouchModal = openModal;
   }
 
   // Автоинициализация при загрузке DOM

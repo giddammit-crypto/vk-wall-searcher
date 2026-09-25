@@ -6078,6 +6078,14 @@ let isAiModalInit = false;
 let currentAiCategory = 'all';
 
 function openAiElementModal() {
+  if (typeof window.openAiGeneratorModal === 'function') {
+    window.openAiGeneratorModal();
+    return;
+  }
+  if (typeof window.AuroraAiElements?.openAiGeneratorModal === 'function') {
+    window.AuroraAiElements.openAiGeneratorModal();
+    return;
+  }
   initAiElementModal();
   renderAiElementsGrid(currentAiCategory);
   $('#ai-element-modal-overlay')?.classList.remove('hidden');
@@ -6359,6 +6367,14 @@ let isInstaSplitDragging = false;
 let instaSrcCanvas = null;
 
 function openInstagramRetouchModal() {
+  if (typeof window.openRetouchModal === 'function') {
+    window.openRetouchModal();
+    return;
+  }
+  if (typeof window.AuroraRetouchEngine?.openRetouchModal === 'function') {
+    window.AuroraRetouchEngine.openRetouchModal();
+    return;
+  }
   initInstagramRetouchModal();
   prepareInstaSourceCanvas();
   renderInstaSplitPreview();
@@ -10481,9 +10497,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.TEMPLATES = TEMPLATES;
   window.loadTemplate = loadTemplate;
   window.openAiElementModal = openAiElementModal;
-  window.openAiGeneratorModal = openAiElementModal;
+  if (!window.openAiGeneratorModal) {
+    window.openAiGeneratorModal = openAiElementModal;
+  }
   window.openInstagramRetouchModal = openInstagramRetouchModal;
-  window.openRetouchModal = openInstagramRetouchModal;
+  if (!window.openRetouchModal) {
+    window.openRetouchModal = openInstagramRetouchModal;
+  }
   window.addAiElement = addAiElement;
 
   // Инициализация хранилища черновиков и проектов (IndexedDB + кэш)

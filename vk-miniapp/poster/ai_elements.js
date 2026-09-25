@@ -742,6 +742,9 @@
           canvasInst.setActiveObject(group);
           canvasInst.requestRenderAll ? canvasInst.requestRenderAll() : canvasInst.renderAll();
 
+          // Скрываем анимацию вращающегося кружка Авроры (как изображение попадает на холст — анимация пропадает)
+          hideAuroraLoader();
+
           // Регистрация в истории Undo и обновление панели слоев
           if (typeof window.saveHistory === 'function') {
             window.saveHistory();
@@ -940,6 +943,9 @@
       if (statusPill) statusPill.className = 'ai-status-pill is-loading';
       if (statusText) statusText.textContent = 'Подключение к AI эндпоинту...';
 
+      // Запуск вращающегося кружка в стиле Авроры (на холсте и в превью)
+      showAuroraLoader('Нейросеть генерирует элемент...', 'Подбор композиции и прозрачного фона в стиле Авроры');
+
       activeAbortController = new AbortController();
 
       try {
@@ -966,10 +972,12 @@
         const chkAuto = document.getElementById('ai-chk-auto-insert');
         if (chkAuto && chkAuto.checked) {
           await addSvgElementToCanvas(res.svg, { prompt: val });
+          // addSvgElementToCanvas автоматически вызывает hideAuroraLoader() как только элемент добавлен на холст
           closeModal();
         }
 
       } catch (err) {
+        hideAuroraLoader();
         if (statusPill) statusPill.className = 'ai-status-pill is-error';
         if (statusText) statusText.textContent = `Ошибка: ${err.message}`;
         if (typeof window.toast === 'function') window.toast(`Сбой: ${err.message}`);
@@ -977,6 +985,10 @@
         if (btnGenerate) btnGenerate.disabled = false;
         if (btnCancel) btnCancel.classList.add('hidden');
         activeAbortController = null;
+        const chkAuto = document.getElementById('ai-chk-auto-insert');
+        if (!chkAuto || !chkAuto.checked || !currentSvg) {
+          hideAuroraLoader();
+        }
       }
     }
 
@@ -996,6 +1008,7 @@
           activeAbortController.abort();
           if (statusText) statusText.textContent = 'Генерация отменена';
         }
+        hideAuroraLoader();
       });
     }
 
@@ -1006,8 +1019,10 @@
         try {
           const val = promptInput ? promptInput.value.trim() : 'AI Sticker';
           await addSvgElementToCanvas(currentSvg, { prompt: val });
+          hideAuroraLoader();
           closeModal();
         } catch (err) {
+          hideAuroraLoader();
           if (typeof window.toast === 'function') window.toast(err.message);
         }
       });
@@ -1040,6 +1055,7 @@
 
     // Экспорт функции открытия модалки
     window.openAiGeneratorModal = openModal;
+    window.openAiElementModal = openModal;
   }
 
   // Автоинициализация при загрузке DOM
@@ -1059,6 +1075,11 @@
     addSvgElementToCanvas,
     sanitizeAndExtractSvg,
     getVisibleViewportCenter,
+    showAuroraLoader,
+    hideAuroraLoader,
+    openAiGeneratorModal: () => {
+      if (typeof window.openAiGeneratorModal === 'function') window.openAiGeneratorModal();
+    },
     tracker,
     CONFIG,
     STYLE_MODIFIERS,
