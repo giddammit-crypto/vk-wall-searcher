@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-26T00:16:00+03:00",
-  "release_name": "AURORA DESIGN 5.0.0 — Строгое бесшовное кадрирование листа афиши в модальном окне Ultra-HD/HDR и экспортах без полей монтажного стола"
+  "commit_date": "2026-09-26T00:22:00+03:00",
+  "release_name": "AURORA DESIGN 5.0.1 — Исправление динамических размеров видового экрана превью Ultra-HD/HDR и строгое кадрирование листа"
 }

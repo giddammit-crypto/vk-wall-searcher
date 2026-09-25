@@ -5676,11 +5676,6 @@ function openEnhancerModal() {
     b.classList.toggle('is-active', b.dataset.preset === currentHdrPreset);
   });
 
-  const viewport = $('#enhancer-split-viewport');
-  if (viewport && currentSize) {
-    viewport.style.aspectRatio = `${currentSize.w} / ${currentSize.h}`;
-  }
-
   updateEnhancerMetaResolution();
   renderEnhancerSplitPreview();
 }
@@ -5778,9 +5773,29 @@ function renderEnhancerSplitPreview() {
   const canvasAfter = $('#enhancer-canvas-after');
   if (!viewport || !canvasBefore || !canvasAfter) return;
 
-  if (currentSize) {
-    viewport.style.aspectRatio = `${currentSize.w} / ${currentSize.h}`;
+  const w = currentSize ? currentSize.w : 800;
+  const h = currentSize ? currentSize.h : 600;
+  const aspect = w / h;
+
+  // Рассчитываем точные физические размеры окна сравнения под формат листа
+  const previewCard = viewport.closest('.enhancer-preview-card') || viewport.parentElement;
+  const cardW = previewCard ? previewCard.clientWidth : 500;
+  const maxW = Math.max(260, (cardW ? cardW - 32 : 460));
+  const maxH = Math.max(280, Math.min(window.innerHeight * 0.52, 520));
+
+  let viewW, viewH;
+  if (maxW / maxH > aspect) {
+    viewH = Math.round(maxH);
+    viewW = Math.round(maxH * aspect);
+  } else {
+    viewW = Math.round(maxW);
+    viewH = Math.round(maxW / aspect);
   }
+
+  viewport.style.width = `${viewW}px`;
+  viewport.style.height = `${viewH}px`;
+  viewport.style.aspectRatio = `${w} / ${h}`;
+  viewport.style.margin = '0 auto 16px auto';
 
   initEnhancerSplitSlider();
 
@@ -9423,7 +9438,12 @@ function bindEvents() {
   $('#mtool-tilda-export')?.addEventListener('click', () => { closeMobileDrawer(); openTildaExportModal(); });
 
   /* Resize */
-  window.addEventListener('resize', fitZoom);
+  window.addEventListener('resize', () => {
+    fitZoom();
+    if (!$('#enhancer-modal-overlay')?.classList.contains('hidden')) {
+      debounceEnhancerPreview();
+    }
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
