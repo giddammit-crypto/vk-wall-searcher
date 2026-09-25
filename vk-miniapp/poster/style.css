@@ -2188,7 +2188,7 @@ input, select, textarea {
   line-height: 1.5;
 }
 
-/* ── Строка слоя в стиле Figma ── */
+/* ── Строка слоя в стиле Figma / Cyber-Glassmorphism ── */
 .layer-row {
   display: flex;
   align-items: center;
@@ -2199,26 +2199,30 @@ input, select, textarea {
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: all var(--trans-fast);
+  transition: background var(--trans-fast), border-color var(--trans-fast), transform var(--trans-fast);
   user-select: none;
   position: relative;
 }
 
 .layer-row:hover {
-  background: var(--bg-3);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
   color: var(--text-1);
 }
 
-/* Выделенный активный слой (Figma Blue) */
+/* Выделенный активный слой (Cyber-Glassmorphism с неоновым акцентом) */
 .layer-row.is-active {
-  background: var(--figma-blue) !important;
+  background: linear-gradient(90deg, rgba(13, 153, 255, 0.28) 0%, rgba(56, 189, 248, 0.12) 100%) !important;
   color: #ffffff !important;
-  border-color: var(--figma-blue) !important;
+  border-color: rgba(13, 153, 255, 0.55) !important;
+  box-shadow: inset 3px 0 0 0 #38bdf8, 0 0 14px rgba(13, 153, 255, 0.22) !important;
+  backdrop-filter: blur(8px);
 }
 
 .layer-row.is-active .layer-name {
   color: #ffffff !important;
   font-weight: 600;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
 .layer-row.is-active .material-symbols-rounded {
@@ -2226,7 +2230,7 @@ input, select, textarea {
 }
 
 .layer-row.is-active .layer-drag-handle {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: #38bdf8 !important;
 }
 
 .layer-row.is-active .layer-action-btn {
@@ -2241,19 +2245,62 @@ input, select, textarea {
   opacity: 0.65;
 }
 
-/* Drag-and-drop подсветка */
+/* Drag-and-drop подсветка строки (Ghost) */
 .layer-row.is-dragging {
-  opacity: 0.35;
-  background: var(--figma-blue-tint);
-  border: 1px dashed var(--figma-blue);
+  opacity: 0.35 !important;
+  transform: scale(0.98);
+  background: rgba(13, 153, 255, 0.1) !important;
+  border: 1px dashed rgba(56, 189, 248, 0.7) !important;
+  box-shadow: none !important;
 }
 
-.layer-row.drag-over-top {
-  border-top: 2px solid var(--figma-blue) !important;
+.layer-row.is-dragging * {
+  cursor: grabbing !important;
 }
 
-.layer-row.drag-over-bottom {
-  border-bottom: 2px solid var(--figma-blue) !important;
+/* ── Неоновый Drop Indicator в стиле Figma / Tilda (Линия с маркером-якорем) ── */
+.layer-row.drag-over-top::before,
+.layer-row.drag-over-bottom::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 2px #38bdf8;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: 1px;
+}
+
+.layer-row.drag-over-top::after,
+.layer-row.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 12px rgba(56, 189, 248, 0.9);
+  z-index: 31;
+  pointer-events: none;
+}
+
+/* Позиция сверху */
+.layer-row.drag-over-top::before {
+  top: -1px;
+}
+.layer-row.drag-over-top::after {
+  top: -3.5px;
+}
+
+/* Позиция снизу */
+.layer-row.drag-over-bottom::before {
+  bottom: -1px;
+}
+.layer-row.drag-over-bottom::after {
+  bottom: -3.5px;
 }
 
 .layer-drag-handle {
@@ -2261,10 +2308,30 @@ input, select, textarea {
   color: var(--text-3);
   cursor: grab;
   flex-shrink: 0;
+  transition: color var(--trans-fast);
 }
 
-.layer-row:hover .layer-drag-handle {
-  color: var(--text-2);
+.layer-drag-handle:hover {
+  color: #38bdf8;
+}
+
+.layer-drag-handle:active {
+  cursor: grabbing !important;
+}
+
+#layers-list.is-sorting {
+  cursor: grabbing !important;
+}
+
+#layers-list.is-sorting .layer-row:not(.is-dragging) {
+  transition: none !important;
+}
+
+.layer-order-btn:disabled,
+.layer-order-btn.is-disabled {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
 }
 
 .layer-thumb {

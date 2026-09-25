@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.92.0",
+  "version": "4.93.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-25T21:18:00+03:00",
-  "release_name": "AURORA 4.92.0 — Полный ребрендинг (AURORA DESIGN, AURORA LIB, AURORA WEB), мгновенные шрифты и Ctrl+V в постерах, 107 проверенных портретов классиков в хронографе (0 иноагентов), Tilda-паритет: интерактивные виджеты (попапы, калькуляторы, до/после, таймеры, FAB, cookie, переключатель тарифов) и мобильный Auto-Layout в Zero Block"
+  "commit_date": "2026-09-25T22:42:00+03:00",
+  "release_name": "AURORA DESIGN 4.93.0 — Продвинутое управление слоями: перетаскивание активных слоёв (DnD) с сохранением фокуса, атомарная z-перестановка без смещения индексов, мультиселект (ActiveSelection), шорткаты [, ], Ctrl+[, Ctrl+] и Figma-индикаторы вставки"
 }

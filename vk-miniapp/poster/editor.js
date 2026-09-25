@@ -4583,6 +4583,61 @@ function renderLayerThumb(obj) {
   </div>`;
 }
 
+/* ── Вспомогательные функции управления слоями (с поддержкой ActiveSelection) ── */
+let isLayerDragging = false;
+
+function layerBringForward(obj) {
+  if (!obj || !canvas) return;
+  if (obj.type === 'activeSelection') {
+    const list = [...obj.getObjects()];
+    list.reverse().forEach(o => o.bringForward());
+  } else {
+    obj.bringForward();
+  }
+  canvas.requestRenderAll();
+  saveHistory();
+  updateLayersList();
+}
+
+function layerSendBackwards(obj) {
+  if (!obj || !canvas) return;
+  if (obj.type === 'activeSelection') {
+    const list = [...obj.getObjects()];
+    list.forEach(o => o.sendBackwards());
+  } else {
+    obj.sendBackwards();
+  }
+  canvas.requestRenderAll();
+  saveHistory();
+  updateLayersList();
+}
+
+function layerBringToFront(obj) {
+  if (!obj || !canvas) return;
+  if (obj.type === 'activeSelection') {
+    const list = [...obj.getObjects()];
+    list.forEach(o => o.bringToFront());
+  } else {
+    obj.bringToFront();
+  }
+  canvas.requestRenderAll();
+  saveHistory();
+  updateLayersList();
+}
+
+function layerSendToBack(obj) {
+  if (!obj || !canvas) return;
+  if (obj.type === 'activeSelection') {
+    const list = [...obj.getObjects()];
+    list.reverse().forEach(o => o.sendToBack());
+  } else {
+    obj.sendToBack();
+  }
+  canvas.requestRenderAll();
+  saveHistory();
+  updateLayersList();
+}
+
 function updateLayersList() {
   const list = $('#layers-list');
   if (!list || !canvas) return;
@@ -4594,14 +4649,17 @@ function updateLayersList() {
   }
 
   const activeObj = canvas.getActiveObject();
+  const activeObjects = activeObj ? (activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]) : [];
 
-  // Рисуем в порядке: верхний слой сверху
+  // Рисуем в порядке: верхний слой сверху (обратный от z-индекса в canvas)
   list.innerHTML = [...objs].reverse().map((obj, revIdx) => {
     const realIdx = objs.length - 1 - revIdx;
-    const isActive  = obj === activeObj;
+    const isActive  = activeObjects.includes(obj);
     const isHidden  = obj.visible === false;
     const isLocked  = !obj.selectable;
     const label = escapeHtml(getObjLabel(obj, realIdx));
+    const isTop = realIdx === objs.length - 1;
+    const isBottom = realIdx === 0;
 
     return `
     <div class="layer-row ${isActive?'is-active':''} ${isHidden?'is-hidden':''} ${isLocked?'is-locked':''}"
@@ -4610,10 +4668,10 @@ function updateLayersList() {
       ${renderLayerThumb(obj)}
       <div class="layer-name" title="${label}">${label}</div>
       <div class="layer-order-btns">
-        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять на уровень выше">
+        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять на уровень выше" ${isTop ? 'disabled' : ''}>
           <span class="material-symbols-rounded">keyboard_arrow_up</span>
         </button>
-        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить на уровень ниже">
+        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить на уровень ниже" ${isBottom ? 'disabled' : ''}>
           <span class="material-symbols-rounded">keyboard_arrow_down</span>
         </button>
       </div>
@@ -4638,12 +4696,13 @@ function updateLayersList() {
   /* Клик для выделения */
   rows.forEach(row => {
     row.addEventListener('click', e => {
+      if (isLayerDragging) return;
       if (e.target.closest('button')) return;
       const idx = +row.dataset.idx;
       const obj = canvas.getObjects()[idx];
       if (obj && obj.selectable) {
         canvas.setActiveObject(obj);
-        canvas.renderAll();
+        canvas.requestRenderAll();
         onSelection();
       }
     });
@@ -4654,16 +4713,22 @@ function updateLayersList() {
 
   rows.forEach(row => {
     row.addEventListener('dragstart', e => {
+      isLayerDragging = true;
+      list.classList.add('is-sorting');
       draggedRowIdx = +row.dataset.idx;
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', draggedRowIdx);
+      e.dataTransfer.setData('text/plain', String(draggedRowIdx));
       row.classList.add('is-dragging');
     });
 
     row.addEventListener('dragend', () => {
       row.classList.remove('is-dragging');
+      list.classList.remove('is-sorting');
       rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
       draggedRowIdx = null;
+      setTimeout(() => {
+        isLayerDragging = false;
+      }, 80);
     });
 
     row.addEventListener('dragover', e => {
@@ -4697,6 +4762,9 @@ function updateLayersList() {
       const targetObj = currentObjs[targetIdx];
       if (!draggedObj || !targetObj) return;
 
+      // Запоминаем текущий активный объект перед перестановкой слоёв
+      const activeObjBefore = canvas.getActiveObject();
+
       // Работаем с визуальным порядком (сверху вниз)
       const visualList = [...currentObjs].reverse();
       const fromPos = visualList.indexOf(draggedObj);
@@ -4704,18 +4772,29 @@ function updateLayersList() {
 
       visualList.splice(fromPos, 1);
       const toPos = visualList.indexOf(targetObj);
+      if (toPos === -1) return;
       const insertPos = isTopHalf ? toPos : toPos + 1;
       visualList.splice(insertPos, 0, draggedObj);
 
-      // Применяем новый порядок z-индексов к canvas (снизу вверх)
+      // Применяем новый порядок z-индексов к canvas (снизу вверх) атомарно
       const newCanvasOrder = [...visualList].reverse();
-      newCanvasOrder.forEach((item, zIdx) => {
-        canvas.moveTo(item, zIdx);
-      });
+      canvas._objects = newCanvasOrder;
 
-      canvas.renderAll();
+      // Восстанавливаем активный объект (гарантируем сохранение активности перетаскиваемого объекта)
+      if (activeObjBefore) {
+        try {
+          canvas.setActiveObject(activeObjBefore);
+        } catch (_) {
+          canvas.setActiveObject(draggedObj);
+        }
+      } else {
+        canvas.setActiveObject(draggedObj);
+      }
+
+      canvas.requestRenderAll();
       saveHistory();
       updateLayersList();
+      onSelection();
       toast('Слой перемещён');
     });
   });
@@ -4731,33 +4810,45 @@ function updateLayersList() {
       switch(btn.dataset.action) {
         case 'vis':
           obj.set('visible', !obj.visible);
-          canvas.renderAll(); saveHistory(); updateLayersList(); break;
+          canvas.requestRenderAll(); saveHistory(); updateLayersList(); break;
 
         case 'lock':
           obj.set({ selectable: !obj.selectable, evented: !obj.evented });
           if (!obj.selectable && canvas.getActiveObject() === obj) {
             canvas.discardActiveObject(); clearProps();
           }
-          canvas.renderAll(); saveHistory(); updateLayersList(); break;
+          canvas.requestRenderAll(); saveHistory(); updateLayersList(); break;
 
         case 'del':
           if (confirm('Удалить этот слой?')) {
             canvas.remove(obj);
             canvas.discardActiveObject();
-            canvas.renderAll();
+            canvas.requestRenderAll();
             clearProps();
+            saveHistory();
+            updateLayersList();
           }
           break;
 
         case 'up':
           if (idx < canvas.getObjects().length - 1) {
-            obj.bringForward(); canvas.renderAll(); saveHistory(); updateLayersList();
+            obj.bringForward();
+            canvas.setActiveObject(obj);
+            canvas.requestRenderAll();
+            saveHistory();
+            updateLayersList();
+            onSelection();
           }
           break;
 
         case 'down':
           if (idx > 0) {
-            obj.sendBackwards(); canvas.renderAll(); saveHistory(); updateLayersList();
+            obj.sendBackwards();
+            canvas.setActiveObject(obj);
+            canvas.requestRenderAll();
+            saveHistory();
+            updateLayersList();
+            onSelection();
           }
           break;
       }
@@ -4773,7 +4864,7 @@ function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
   if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
-  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset'])));
+  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset','layerName','__originalSrc','__bgRemoved'])));
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -7347,10 +7438,7 @@ function bindEvents() {
         const obj = canvas?.getActiveObject();
         if (obj) {
           e.preventDefault();
-          canvas.sendBackwards(obj);
-          canvas.requestRenderAll();
-          saveHistory();
-          updateLayersList();
+          layerSendBackwards(obj);
           return;
         }
       }
@@ -7359,10 +7447,7 @@ function bindEvents() {
         const obj = canvas?.getActiveObject();
         if (obj) {
           e.preventDefault();
-          canvas.bringForward(obj);
-          canvas.requestRenderAll();
-          saveHistory();
-          updateLayersList();
+          layerBringForward(obj);
           return;
         }
       }
@@ -7384,10 +7469,7 @@ function bindEvents() {
       const obj = canvas?.getActiveObject();
       if (obj) {
         e.preventDefault();
-        obj.sendToBack();
-        canvas.requestRenderAll();
-        saveHistory();
-        updateLayersList();
+        layerSendToBack(obj);
         return;
       }
     }
@@ -7396,10 +7478,7 @@ function bindEvents() {
       const obj = canvas?.getActiveObject();
       if (obj) {
         e.preventDefault();
-        obj.bringToFront();
-        canvas.requestRenderAll();
-        saveHistory();
-        updateLayersList();
+        layerBringToFront(obj);
         return;
       }
     }
@@ -8620,16 +8699,28 @@ function bindEvents() {
   $$('#btn-flip-x').forEach(el => el.addEventListener('click', () => flipActiveObject('x')));
   $$('#btn-flip-y').forEach(el => el.addEventListener('click', () => flipActiveObject('y')));
 
-  $('#btn-bring-front').addEventListener('click', () => {
-    canvas?.getActiveObject()?.bringToFront(); canvas.renderAll(); saveHistory(); updateLayersList();
+  $('#btn-bring-front')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (obj) layerBringToFront(obj);
   });
-  $('#btn-send-back').addEventListener('click', () => {
-    canvas?.getActiveObject()?.sendToBack(); canvas.renderAll(); saveHistory(); updateLayersList();
+  $('#btn-send-back')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (obj) layerSendToBack(obj);
   });
-  $('#btn-delete-obj').addEventListener('click', () => {
+  $('#btn-delete-obj')?.addEventListener('click', () => {
     const obj = canvas?.getActiveObject(); if (!obj) return;
     if (!confirm('Удалить этот объект?')) return;
-    canvas.remove(obj); canvas.discardActiveObject(); canvas.renderAll(); clearProps();
+    if (obj.type === 'activeSelection') {
+      obj.getObjects().forEach(o => canvas.remove(o));
+      canvas.discardActiveObject();
+    } else {
+      canvas.remove(obj);
+      canvas.discardActiveObject();
+    }
+    canvas.requestRenderAll();
+    clearProps();
+    saveHistory();
+    updateLayersList();
   });
 
   /* Модалка шрифтов ofont.ru */
