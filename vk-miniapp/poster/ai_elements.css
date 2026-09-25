@@ -1,0 +1,618 @@
+/* ============================================================
+   AURORA DESIGN — AI ELEMENT & STICKER GENERATOR STYLES
+   Файл: vk-miniapp/poster/ai_elements.css
+   Стиль: Cyber-Glassmorphism, Neon Cyan & Deep Violet
+   ============================================================ */
+
+/* ── Модальное окно AI Генератора ── */
+.ai-modal-wrap {
+  width: min(920px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(155deg, rgba(14, 21, 46, 0.96) 0%, rgba(7, 10, 26, 0.98) 100%);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 40px rgba(0, 240, 255, 0.15);
+  backdrop-filter: blur(28px);
+  color: #f8fafc;
+  overflow: hidden;
+  animation: enhModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Шапка ── */
+.ai-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.ai-head-titles {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ai-head-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(168, 85, 247, 0.35));
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00f0ff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+.ai-head-h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-head-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ── Виджет лимита токенов в шапке ── */
+.ai-token-tracker-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  background: rgba(11, 17, 39, 0.7);
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ai-token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ai-tokens-val {
+  font-weight: 700;
+  color: #00f0ff;
+  font-family: monospace;
+}
+
+.ai-token-bar-bg {
+  width: 140px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ai-token-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00f0ff, #a855f7);
+  transition: width 0.3s ease;
+}
+
+.ai-token-timer {
+  font-size: 11px;
+  color: #cbd5e1;
+  font-family: monospace;
+}
+
+/* ── Тело модалки: 2 колонки ── */
+.ai-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  padding: 22px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 780px) {
+  .ai-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Левая колонка: форма генерации ── */
+.ai-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-textarea {
+  width: 100%;
+  min-height: 84px;
+  background: rgba(7, 11, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.ai-textarea:focus {
+  border-color: #00f0ff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
+  background: rgba(11, 17, 40, 0.95);
+}
+
+/* Быстрые подсказки промптов */
+.ai-prompt-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 96px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ai-chip-btn {
+  background: rgba(30, 41, 74, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ai-chip-btn:hover {
+  background: rgba(0, 240, 255, 0.18);
+  border-color: rgba(0, 240, 255, 0.45);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Стили элементов */
+.ai-styles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.ai-style-chip {
+  background: rgba(22, 34, 70, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ai-style-chip:hover {
+  border-color: rgba(0, 240, 255, 0.4);
+  color: #fff;
+}
+
+.ai-style-chip.is-active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.22), rgba(168, 85, 247, 0.25));
+  border-color: #00f0ff;
+  color: #00f0ff;
+  font-weight: 600;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
+}
+
+/* Кнопка генерации */
+.ai-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-ai-submit {
+  flex: 1;
+  height: 44px;
+  background: linear-gradient(135deg, #00f0ff 0%, #6366f1 50%, #a855f7 100%);
+  border: none;
+  border-radius: 12px;
+  color: #040714;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-ai-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(0, 240, 255, 0.5);
+  filter: brightness(1.08);
+}
+
+.btn-ai-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-ai-cancel {
+  height: 44px;
+  padding: 0 16px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ai-cancel:hover {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+/* Статус-бар */
+.ai-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(11, 17, 39, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+}
+
+.ai-status-pill {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+
+.ai-status-pill.is-loading {
+  background: #00f0ff;
+  box-shadow: 0 0 10px #00f0ff;
+  animation: aiPulse 1s infinite alternate;
+}
+
+.ai-status-pill.is-success {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.ai-status-pill.is-warning {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.ai-status-pill.is-error {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+@keyframes aiPulse {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(1.3); opacity: 1; }
+}
+
+.ai-status-text {
+  color: #cbd5e1;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Правая колонка: интерактивное превью с шахматкой ── */
+.ai-preview-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-preview-card {
+  flex: 1;
+  min-height: 240px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  /* Шахматный фон для наглядной проверки 100% прозрачности */
+  background-color: #0b1127;
+  background-image: 
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.7);
+}
+
+.ai-preview-badge-transp {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(11, 17, 39, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  color: #10b981;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.ai-preview-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.ai-preview-box svg {
+  max-width: 220px;
+  max-height: 220px;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6));
+}
+
+.ai-preview-placeholder {
+  text-align: center;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  max-width: 220px;
+}
+
+/* Кнопка вставки на холст */
+.btn-ai-insert {
+  height: 44px;
+  background: #10b981;
+  border: none;
+  border-radius: 12px;
+  color: #040714;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-ai-insert:hover:not(:disabled) {
+  background: #34d399;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.5);
+}
+
+.btn-ai-insert:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Чекбокс авто-вставки */
+.ai-auto-insert-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Нижняя полоса недавних генераций ── */
+.ai-modal-foot {
+  padding: 12px 24px 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 17, 39, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-recent-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.ai-history-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.15s ease;
+  overflow: hidden;
+}
+
+.ai-history-thumb:hover {
+  border-color: #00f0ff;
+  transform: scale(1.08);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+}
+
+.ai-thumb-inner svg {
+  width: 40px;
+  height: 40px;
+}
+
+.ai-thumb-label {
+  display: none;
+}
+
+.ai-history-empty {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   AURORA SPINNER ANIMATION (КРУТЯЩИЙСЯ КРУЖОК В СТИЛЕ АВРОРЫ)
+   ══════════════════════════════════════════════════════════════ */
+.aurora-canvas-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(9, 14, 34, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 24px;
+  padding: 26px 36px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 45px rgba(0, 240, 255, 0.3), inset 0 0 25px rgba(168, 85, 247, 0.2);
+  pointer-events: none;
+  animation: auroraLoaderFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.aurora-canvas-loader.is-hiding {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.88);
+}
+
+.aurora-spinner-orbit {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Внешнее сияющее кольцо с вращающимся градиентом Авроры */
+.aurora-spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 3.5px;
+  background: conic-gradient(from 0deg, #00f0ff, #a855f7, #ff007f, #3b82f6, #00f0ff);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: auroraSpin 1.2s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(0, 240, 255, 0.85));
+}
+
+/* Внутреннее пульсирующее ядро */
+.aurora-spinner-core {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #00f0ff 0%, #a855f7 65%, #ff007f 100%);
+  box-shadow: 0 0 20px #00f0ff, 0 0 32px #a855f7;
+  animation: auroraPulse 1.5s ease-in-out infinite alternate;
+}
+
+.aurora-loader-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.aurora-loader-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
+}
+
+.aurora-loader-sub {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+@keyframes auroraSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes auroraPulse {
+  0% { transform: scale(0.78); opacity: 0.65; }
+  100% { transform: scale(1.22); opacity: 1; }
+}
+
+@keyframes auroraLoaderFadeIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+

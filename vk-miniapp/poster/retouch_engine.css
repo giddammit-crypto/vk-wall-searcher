@@ -1,0 +1,486 @@
+/* ============================================================
+   AURORA DESIGN — INSTAGRAM PRO RETOUCH & COLOR GRADE STYLES
+   Файл: vk-miniapp/poster/retouch_engine.css
+   Стиль: Studio Cyber-Glassmorphism, Rose-Violet & Neon
+   ============================================================ */
+
+/* ── Модальное окно Ретуши ── */
+.retouch-modal-wrap {
+  width: min(1080px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(155deg, rgba(16, 20, 48, 0.97) 0%, rgba(8, 10, 26, 0.99) 100%);
+  border: 1px solid rgba(236, 72, 153, 0.32);
+  border-radius: 22px;
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.8), 0 0 45px rgba(236, 72, 153, 0.16);
+  backdrop-filter: blur(32px);
+  color: #f8fafc;
+  overflow: hidden;
+  animation: enhModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Шапка ── */
+.retouch-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.retouch-head-titles {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.retouch-head-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(139, 92, 246, 0.4));
+  border: 1px solid rgba(236, 72, 153, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f472b6;
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.35);
+}
+
+.retouch-head-h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.retouch-head-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.retouch-head-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ── Двухколоночный макет ── */
+.retouch-modal-body {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 22px;
+  padding: 22px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 860px) {
+  .retouch-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Левая колонка: интерактивное превью холста ── */
+.retouch-preview-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.retouch-preview-card {
+  position: relative;
+  background: #080c1d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+
+.retouch-preview-canvas {
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  border-radius: 4px;
+}
+
+.retouch-meta-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(11, 17, 39, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f472b6;
+  backdrop-filter: blur(8px);
+}
+
+.retouch-framing-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.retouch-framing-chip {
+  flex: 1;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.retouch-framing-chip:hover {
+  color: #fff;
+}
+
+.retouch-framing-chip.is-active {
+  background: rgba(236, 72, 153, 0.22);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.45);
+}
+
+/* ── Правая колонка: параметры и пресеты ── */
+.retouch-controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Секция: Формат Instagram */
+.retouch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.retouch-formats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.retouch-format-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  background: rgba(22, 34, 70, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retouch-format-chip:hover {
+  border-color: rgba(236, 72, 153, 0.4);
+}
+
+.retouch-format-chip.is-active {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(139, 92, 246, 0.25));
+  border-color: #ec4899;
+  box-shadow: 0 0 16px rgba(236, 72, 153, 0.25);
+}
+
+.retouch-format-ratio {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.retouch-format-chip.is-active .retouch-format-ratio {
+  color: #f472b6;
+}
+
+.retouch-format-dim {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+/* Слайдер интенсивности эффекта */
+.retouch-slider-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.retouch-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.retouch-slider-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.retouch-slider-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f472b6;
+  font-family: monospace;
+}
+
+.retouch-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.retouch-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f472b6;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(244, 114, 182, 0.6);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.retouch-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Сетка 12 пресетов */
+.retouch-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.retouch-preset-card {
+  background: rgba(22, 34, 70, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.retouch-preset-card:hover {
+  border-color: rgba(236, 72, 153, 0.45);
+  transform: translateY(-2px);
+}
+
+.retouch-preset-card.is-active {
+  border-color: #ec4899;
+  background: rgba(35, 48, 96, 0.65);
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.32);
+}
+
+.retouch-card-swatch {
+  height: 38px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 4px 8px;
+}
+
+.retouch-card-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.retouch-card-info {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.retouch-card-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.retouch-preset-card.is-active .retouch-card-title {
+  color: #f472b6;
+}
+
+.retouch-card-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Нижняя панель действий и экспорта ── */
+.retouch-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-retouch-primary {
+  height: 44px;
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-retouch-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 12px 28px rgba(236, 72, 153, 0.55);
+}
+
+.retouch-secondary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-retouch-secondary {
+  flex: 1;
+  height: 38px;
+  background: rgba(30, 41, 74, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-retouch-secondary:hover:not(:disabled) {
+  background: rgba(45, 62, 112, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.btn-retouch-apply {
+  flex: 1;
+  height: 38px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 10px;
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-retouch-apply:hover {
+  background: rgba(16, 185, 129, 0.35);
+  color: #fff;
+}
+
+/* Лоадер превью */
+.retouch-loader-wrap {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 29, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+}
+
+.retouch-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(236, 72, 153, 0.2);
+  border-top-color: #ec4899;
+  border-radius: 50%;
+  animation: enhSpin 0.7s linear infinite;
+}
+
+.retouch-loader-text {
+  font-size: 12px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+@keyframes enhSpin {
+  to { transform: rotate(360deg); }
+}
