@@ -66,6 +66,10 @@
             </svg>
             Импорт из Figma (API)
           </button>
+          <button class="tpl-quick-btn tpl-quick-btn-project" id="btn-tpl-import-project" title="Открыть проект из файла .aurora.json">
+            <span class="material-symbols-rounded">file_open</span>
+            <span>Открыть проект</span>
+          </button>
           <button class="tpl-quick-btn tpl-quick-btn-drafts" id="btn-tpl-open-drafts" title="Открыть сохранённые черновики">
             <span class="material-symbols-rounded">folder_open</span>
             <span>Мои черновики</span>
@@ -229,9 +233,15 @@
         <span class="draft-count-badge hidden" id="drafts-count-header">0</span>
       </button>
 
-      <!-- Скрытые кнопки загрузки/сохранения json для совместимости -->
-      <button class="hbtn hidden" id="btn-save-project-json" title="Экспорт проекта"></button>
-      <button class="hbtn hidden" id="btn-load-project-json" title="Импорт проекта"></button>
+      <!-- Экспорт и импорт проекта в файл .aurora.json -->
+      <button class="hbtn" id="btn-save-project-json" title="Экспорт проекта (.aurora.json)">
+        <span class="material-symbols-rounded">file_download</span>
+        <span class="hbtn-label">Экспорт .json</span>
+      </button>
+      <button class="hbtn" id="btn-load-project-json" title="Импорт проекта (.aurora.json)">
+        <span class="material-symbols-rounded">file_open</span>
+        <span class="hbtn-label">Импорт .json</span>
+      </button>
 
       <!-- Кнопка вызова «4K HDR Экспорт» (Cyber-Glassmorphism Ultra-HD Enhancer) -->
       <button class="hbtn" id="btn-open-enhancer" title="Улучшение качества и Экспорт Ultra-HD (1K, 2K, 4K, HDR)">
@@ -2247,13 +2257,23 @@
 
     <!-- Верхняя панель действий со списком черновиков -->
     <div class="drafts-top-bar" style="padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: rgba(0,0,0,0.15); flex-wrap: wrap;">
-      <button class="pbtn pbtn-bg-primary" id="btn-draft-save-current" style="width: auto; padding: 8px 16px;">
-        <span class="material-symbols-rounded">save</span>
-        <span>+ Сохранить текущий макет</span>
-      </button>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <button class="pbtn pbtn-bg-primary" id="btn-draft-save-current" style="width: auto; padding: 8px 16px;">
+          <span class="material-symbols-rounded">save</span>
+          <span>+ Сохранить текущий макет</span>
+        </button>
+        <button class="pbtn" id="btn-modal-import-project" title="Загрузить проект из файла .aurora.json">
+          <span class="material-symbols-rounded">file_open</span>
+          <span>Импорт .json</span>
+        </button>
+        <button class="pbtn" id="btn-modal-export-project" title="Скачать текущий макет как файл .aurora.json">
+          <span class="material-symbols-rounded">file_download</span>
+          <span>Экспорт .json</span>
+        </button>
+      </div>
       <div class="drafts-storage-info" style="font-size: 11.5px; color: var(--text-2); display: flex; align-items: center; gap: 6px;">
         <span class="material-symbols-rounded" style="font-size: 16px; color: #38bdf8;">cloud_done</span>
-        <span id="drafts-storage-status">Черновики сохраняются в браузере</span>
+        <span id="drafts-storage-status">Хранилище: IndexedDB + локальный кэш</span>
       </div>
     </div>
 

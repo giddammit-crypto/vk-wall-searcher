@@ -1757,6 +1757,11 @@ function loadTemplate(tpl) {
   $('#screen-templates').classList.add('hidden');
   $('#screen-editor').classList.remove('hidden');
 
+  _currentDraftId = 'draft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  if ($('#poster-title')) {
+    $('#poster-title').value = tpl.name || 'Новая афиша';
+  }
+
   initCanvas(currentSize.w, currentSize.h);
   canvas.setBackgroundColor(tpl.bg || '#ffffff', () => {});
   (tpl.objects || []).forEach(addTemplateObj);
@@ -1766,6 +1771,11 @@ function loadTemplate(tpl) {
   saveHistory();
   updateLayersList();
   startAutosave();
+
+  // Сохраняем исходное состояние в локальные черновики
+  setTimeout(() => {
+    saveCurrentDraft(false);
+  }, 350);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3809,22 +3819,45 @@ function resetImageFilters() {
 /* ══════════════════════════════════════════════════════════════
    ЭКСПОРТ И ИМПОРТ ПРОЕКТА (.AURORA.JSON)
    ══════════════════════════════════════════════════════════════ */
-function exportProjectJSON() {
-  if (!canvas) return;
-  const sizeKey = Object.entries(SIZES).find(([,v]) => v === currentSize)?.[0] || 'a4_v';
-  const data = {
-    auroraVersion: '2.2.0',
-    app: 'Aurora Poster Editor',
-    exportedAt: new Date().toISOString(),
-    title: $('#poster-title')?.value || 'Афиша',
-    sizeKey: sizeKey,
-    size: currentSize,
-    canvas: canvas.toJSON([
+function exportProjectJSON(targetDraft = null) {
+  if (!targetDraft && !canvas) {
+    toast('Холст не инициализирован для экспорта проекта');
+    return;
+  }
+  let data;
+  if (targetDraft) {
+    data = {
+      auroraVersion: '4.90.0',
+      app: 'Aurora Poster Editor',
+      exportedAt: new Date().toISOString(),
+      id: targetDraft.id,
+      title: targetDraft.title || 'Афиша',
+      sizeKey: targetDraft.sizeKey || 'a4_v',
+      size: SIZES[targetDraft.sizeKey] || SIZES.a4_v,
+      canvas: targetDraft.canvasData
+    };
+  } else {
+    const sizeKey = Object.entries(SIZES).find(([,v]) => v === currentSize)?.[0] || 'a4_v';
+    const canvasData = canvas.toJSON([
       'selectable','hasControls','editable','visible','evented',
       'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
-      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset'
-    ])
-  };
+      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
+      '__originalSrc','__bgRemoved','layerName'
+    ]);
+    data = {
+      auroraVersion: '4.90.0',
+      app: 'Aurora Poster Editor',
+      exportedAt: new Date().toISOString(),
+      id: _currentDraftId || ('draft_' + Date.now()),
+      title: $('#poster-title')?.value || 'Афиша',
+      sizeKey: sizeKey,
+      size: currentSize,
+      canvas: canvasData
+    };
+    // Также синхронизируем в локальные черновики
+    saveCurrentDraft(false);
+  }
+
   const jsonStr = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -3834,44 +3867,86 @@ function exportProjectJSON() {
   a.download = `${safeTitle}.aurora.json`;
   a.click();
   URL.revokeObjectURL(url);
-  toast('Проект афиши сохранён (.aurora.json) 💾');
+  toast('Проект афиши сохранён в файл (.aurora.json) 💾');
 }
 
 function importProjectJSON(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const proj = JSON.parse(e.target.result);
-      if (!proj || !proj.canvas) {
-        alert('Неверный формат файла проекта Aurora');
-        return;
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const proj = JSON.parse(e.target.result);
+        if (!proj) {
+          toast('⚠️ Не удалось разобрать JSON файл проекта');
+          return resolve(null);
+        }
+        // Поддерживаем как формат Aurora { canvas: ... }, так и прямой экспорт Fabric { objects: [...] }
+        const canvasPayload = proj.canvas ? proj.canvas : (proj.objects ? proj : null);
+        if (!canvasPayload) {
+          toast('⚠️ Неверный формат файла проекта Aurora (.json)');
+          return resolve(null);
+        }
+
+        // Определяем формат/размер
+        let sizeKey = proj.sizeKey;
+        if (!sizeKey && proj.size) {
+          sizeKey = Object.entries(SIZES).find(([,v]) => v.w === proj.size.w && v.h === proj.size.h)?.[0];
+        }
+        if (!sizeKey) sizeKey = 'a4_v';
+        currentSize = SIZES[sizeKey] || SIZES.a4_v;
+
+        $('#screen-templates')?.classList.add('hidden');
+        $('#screen-editor')?.classList.remove('hidden');
+
+        initCanvas(currentSize.w, currentSize.h);
+
+        const title = proj.title || file.name.replace(/\.(aurora\.)?json$/i, '') || 'Импортированный проект';
+        if ($('#poster-title')) {
+          $('#poster-title').value = title;
+        }
+        _currentDraftId = proj.id || ('draft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+
+        let resolved = false;
+        const finish = (val) => {
+          if (!resolved) { resolved = true; resolve(val); }
+        };
+
+        try {
+          const jsonToLoad = typeof canvasPayload === 'string' ? canvasPayload : JSON.stringify(canvasPayload);
+          canvas.loadFromJSON(jsonToLoad, async () => {
+            try {
+              canvas.renderAll();
+              fitZoom();
+              saveHistory();
+              updateLayersList();
+              clearProps();
+              updateFormatBadge();
+              startAutosave();
+
+              await saveCurrentDraft(false);
+              closeDraftsModal();
+              toast(`📂 Проект «${title}» успешно загружен!`);
+            } catch (cbErr) {
+              console.warn('loadFromJSON callback err:', cbErr);
+            }
+            finish(true);
+          });
+          // Защитный таймаут на случай задержки загрузки внешних ресурсов
+          setTimeout(() => finish(true), 3000);
+        } catch (loadErr) {
+          console.error('loadFromJSON error:', loadErr);
+          finish(null);
+        }
+      } catch (err) {
+        console.error('Import project error:', err);
+        toast('Ошибка при чтении файла проекта: ' + err.message);
+        resolve(null);
       }
-      const sizeKey = proj.sizeKey || 'a4_v';
-      currentSize = SIZES[sizeKey] || SIZES.a4_v;
-
-      $('#screen-templates')?.classList.add('hidden');
-      $('#screen-editor')?.classList.remove('hidden');
-
-      initCanvas(currentSize.w, currentSize.h);
-      canvas.loadFromJSON(proj.canvas, () => {
-        canvas.renderAll();
-        fitZoom();
-        saveHistory();
-        updateLayersList();
-        clearProps();
-      });
-
-      if (proj.title && $('#poster-title')) {
-        $('#poster-title').value = proj.title;
-      }
-      startAutosave();
-      toast('Проект успешно загружен! 📂');
-    } catch (err) {
-      alert('Ошибка при чтении файла проекта: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsText(file);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3895,6 +3970,15 @@ function clearProps() {
   if ($('#btn-header-group')) $('#btn-header-group').disabled = true;
   if ($('#btn-ungroup')) $('#btn-ungroup').disabled = true;
   if ($('#btn-header-ungroup')) $('#btn-header-ungroup').disabled = true;
+  // ── FIX: сброс universal opacity slider при снятии выделения ──
+  const opCommonSlider = $('#opacity-slider-common');
+  if (opCommonSlider) opCommonSlider.value = 100;
+  const opCommonVal = $('#opacity-val-common');
+  if (opCommonVal) opCommonVal.textContent = '100';
+  const opSlider = $('#opacity-slider');
+  if (opSlider) opSlider.value = 100;
+  const opVal = $('#opacity-val');
+  if (opVal) opVal.textContent = '100';
   updateLockBtnUI(false);
   updateLayersList();
 }
@@ -4414,6 +4498,7 @@ function saveHistory() {
   historyIdx = history.length - 1;
   updateHistoryBtns();
   savingHistory = false;
+  scheduleAutosave();
 }
 
 function undo() { if (!canvas || historyIdx <= 0) return; historyIdx--; restoreHistory(); }
@@ -5055,10 +5140,136 @@ function initEnhancerControls() {
 /* ══════════════════════════════════════════════════════════════
    МЕНЕДЖЕР ЧЕРНОВИКОВ И АВТОСОХРАНЕНИЕ (MULTI-DRAFTS SYSTEM)
    ══════════════════════════════════════════════════════════════ */
-const DRAFTS_KEY = 'aurora_poster_drafts_v3';
-let autosaveT = null;
+/* ══════════════════════════════════════════════════════════════
+   МЕНЕДЖЕР ЧЕРНОВИКОВ И ПРОЕКТОВ (INDEXEDDB + HYBRID STORAGE)
+   ══════════════════════════════════════════════════════════════ */
+const POSTER_DB_NAME = 'AuroraPosterDataDB';
+const POSTER_DB_VER  = 1;
+const DRAFTS_KEY     = 'aurora_poster_drafts_v3';
 
+let _cachedDrafts = [];
+let _currentDraftId = null;
+let _autosaveTimer = null;
+let _debounceSaveTimer = null;
+
+/** Открытие IndexedDB для неограниченного хранения черновиков и проектов */
+function openPosterDB() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') {
+      return reject(new Error('IndexedDB недоступен в этом браузере'));
+    }
+    const req = indexedDB.open(POSTER_DB_NAME, POSTER_DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('drafts')) {
+        const store = db.createObjectStore('drafts', { keyPath: 'id' });
+        store.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Сохранение в IndexedDB */
+async function idbSaveDraft(draft) {
+  try {
+    const db = await openPosterDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('drafts', 'readwrite');
+      const store = tx.objectStore('drafts');
+      store.put(draft);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('IDB save draft failed:', err);
+    return false;
+  }
+}
+
+/** Получение всех черновиков из IndexedDB */
+async function idbGetAllDrafts() {
+  try {
+    const db = await openPosterDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('drafts', 'readonly');
+      const store = tx.objectStore('drafts');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('IDB get all drafts failed:', err);
+    return [];
+  }
+}
+
+/** Удаление черновика из IndexedDB */
+async function idbDeleteDraft(id) {
+  try {
+    const db = await openPosterDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('drafts', 'readwrite');
+      const store = tx.objectStore('drafts');
+      store.delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('IDB delete draft failed:', err);
+    return false;
+  }
+}
+
+/** Синхронизация с localStorage с защитой от QuotaExceededError */
+function trySyncToLocalStorage(drafts) {
+  try {
+    const trimmed = drafts.slice(0, 20);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(trimmed));
+  } catch (quotaErr) {
+    console.warn('LocalStorage quota exceeded, storing compact index with IndexedDB backing...');
+    try {
+      // Сохраняем компактный индекс (без тяжелых base64 превью у старых черновиков)
+      const compact = drafts.slice(0, 12).map((d, i) => {
+        if (i === 0) return d;
+        return {
+          id: d.id,
+          title: d.title,
+          sizeKey: d.sizeKey,
+          sizeLabel: d.sizeLabel,
+          objectsCount: d.objectsCount,
+          updatedAt: d.updatedAt,
+          preview: '',
+          canvasData: d.canvasData
+        };
+      });
+      localStorage.setItem(DRAFTS_KEY, JSON.stringify(compact));
+    } catch (e2) {
+      try {
+        const minimal = drafts.slice(0, 5).map(d => ({
+          id: d.id,
+          title: d.title,
+          sizeKey: d.sizeKey,
+          sizeLabel: d.sizeLabel,
+          objectsCount: d.objectsCount,
+          updatedAt: d.updatedAt,
+          preview: '',
+          canvasData: d.canvasData
+        }));
+        localStorage.setItem(DRAFTS_KEY, JSON.stringify(minimal));
+      } catch (e3) {
+        console.warn('LocalStorage full, relying 100% on IndexedDB');
+      }
+    }
+  }
+}
+
+/** Синхронное получение списка черновиков из памяти/кэша */
 function getSavedDrafts() {
+  if (_cachedDrafts && _cachedDrafts.length > 0) {
+    return _cachedDrafts;
+  }
   try {
     const raw = localStorage.getItem(DRAFTS_KEY);
     let list = raw ? JSON.parse(raw) : [];
@@ -5085,36 +5296,78 @@ function getSavedDrafts() {
       } catch (e) {}
     }
 
-    return list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    _cachedDrafts = list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    return _cachedDrafts;
   } catch (e) {
     return [];
   }
 }
 
+/** Инициализация хранилища черновиков: чтение из IndexedDB + миграция */
+async function initDraftsStorage() {
+  getSavedDrafts();
+  updateDraftsBadgeCount();
+
+  try {
+    const idbList = await idbGetAllDrafts();
+    if (idbList && idbList.length > 0) {
+      const map = new Map();
+      _cachedDrafts.forEach(d => map.set(d.id, d));
+      idbList.forEach(d => {
+        const existing = map.get(d.id);
+        if (!existing || (d.updatedAt || 0) >= (existing.updatedAt || 0)) {
+          map.set(d.id, d);
+        }
+      });
+      _cachedDrafts = Array.from(map.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    } else if (_cachedDrafts.length > 0) {
+      for (const d of _cachedDrafts) {
+        await idbSaveDraft(d);
+      }
+    }
+  } catch (e) {
+    console.warn('Drafts sync warning:', e);
+  }
+
+  updateDraftsBadgeCount();
+}
+
+/** Обновление бейджей количества черновиков */
 function updateDraftsBadgeCount() {
   const drafts = getSavedDrafts();
   const count = drafts.length;
-  $$('.draft-count-badge, #drafts-count-badge, #tpl-drafts-count-badge').forEach(el => {
+  $$('.draft-count-badge, #drafts-count-header, #drafts-count-tpl, #drafts-count-badge').forEach(el => {
     el.textContent = count > 0 ? count : '0';
+    el.classList.toggle('hidden', count === 0);
   });
 }
 
-function saveCurrentDraft(isManual = false) {
+/** Сохранение текущего макета в черновики (с поддержкой IndexedDB и localStorage) */
+async function saveCurrentDraft(isManual = false) {
   if (!canvas) {
     if (isManual) toast('Холст не инициализирован');
-    return;
+    return null;
   }
   try {
-    const drafts = getSavedDrafts();
     const title = $('#poster-title')?.value?.trim() || 'Афиша без названия';
     const sizeKey = Object.entries(SIZES).find(([, v]) => v === currentSize)?.[0] || 'a4_v';
     const sizeName = SIZES[sizeKey]?.name || 'A4 Вертикальный';
-    const canvasJson = canvas.toJSON([
-      'selectable','hasControls','editable','visible','evented',
-      'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
-      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
-      '__originalSrc','__bgRemoved','layerName'
-    ]);
+
+    // Безопасная сериализация холста
+    let canvasJson;
+    try {
+      canvasJson = canvas.toJSON([
+        'selectable','hasControls','editable','visible','evented',
+        'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
+        '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
+        '__originalSrc','__bgRemoved','layerName'
+      ]);
+    } catch (serr) {
+      console.error('Canvas serialization error:', serr);
+      if (isManual) toast('Ошибка сериализации холста');
+      return null;
+    }
+
     const objectsCount = canvas.getObjects().length;
 
     // Генерируем компактное превью (180px)
@@ -5125,29 +5378,37 @@ function saveCurrentDraft(isManual = false) {
     } catch (e) {}
 
     const now = Date.now();
-    // Ищем существующий черновик с таким же именем за последний час
-    const existingIdx = drafts.findIndex(d => d.title === title && (now - (d.updatedAt || 0) < 3600000));
-    
+    if (!_currentDraftId) {
+      const existing = _cachedDrafts.find(d => d.title === title && (now - (d.updatedAt || 0) < 3600000));
+      _currentDraftId = existing ? existing.id : 'draft_' + now + '_' + Math.random().toString(36).substr(2, 5);
+    }
+
     const draftItem = {
-      id: existingIdx >= 0 ? drafts[existingIdx].id : 'draft_' + now + '_' + Math.random().toString(36).substr(2, 4),
+      id: _currentDraftId,
       title: title,
       sizeKey: sizeKey,
       sizeLabel: `${sizeName} (${currentSize.w}×${currentSize.h})`,
       objectsCount: objectsCount,
       updatedAt: now,
-      preview: previewDataUrl || (existingIdx >= 0 ? drafts[existingIdx].preview : ''),
+      preview: previewDataUrl || (_cachedDrafts.find(d => d.id === _currentDraftId)?.preview || ''),
       canvasData: canvasJson
     };
 
+    // Обновляем кэш в памяти
+    const existingIdx = _cachedDrafts.findIndex(d => d.id === _currentDraftId);
     if (existingIdx >= 0) {
-      drafts[existingIdx] = draftItem;
+      _cachedDrafts[existingIdx] = draftItem;
     } else {
-      drafts.unshift(draftItem);
+      _cachedDrafts.unshift(draftItem);
     }
+    _cachedDrafts = _cachedDrafts.slice(0, 50).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-    // Храним до 25 черновиков
-    const trimmed = drafts.slice(0, 25);
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(trimmed));
+    // 1. Сохраняем в IndexedDB (без лимитов размера)
+    await idbSaveDraft(draftItem);
+
+    // 2. Синхронизируем с localStorage
+    trySyncToLocalStorage(_cachedDrafts);
+
     updateDraftsBadgeCount();
 
     if (isManual) {
@@ -5156,20 +5417,32 @@ function saveCurrentDraft(isManual = false) {
         renderDraftsList();
       }
     }
+    return draftItem;
   } catch (err) {
     console.error('Save draft error:', err);
-    if (isManual) toast('Ошибка сохранения черновика: ' + (err.message || 'переполнено хранилище'));
+    if (isManual) toast('Ошибка сохранения: ' + (err.message || 'сбой хранилища'));
+    return null;
   }
 }
 
+/** Запуск периодического и отложенного автосохранения */
+function scheduleAutosave() {
+  if (!canvas) return;
+  clearTimeout(_debounceSaveTimer);
+  _debounceSaveTimer = setTimeout(() => {
+    saveCurrentDraft(false);
+  }, 1500);
+}
+
 function startAutosave() {
-  clearInterval(autosaveT);
-  autosaveT = setInterval(() => {
+  clearInterval(_autosaveTimer);
+  _autosaveTimer = setInterval(() => {
     if (!canvas) return;
     saveCurrentDraft(false);
   }, 30000);
 }
 
+/** Рендер списка сохранённых черновиков в модальном окне */
 function renderDraftsList() {
   const container = $('#drafts-grid') || $('#drafts-list-container');
   const emptyEl = $('#drafts-empty');
@@ -5178,7 +5451,7 @@ function renderDraftsList() {
 
   const drafts = getSavedDrafts();
   if (storageInfo) {
-    storageInfo.textContent = `Сохранено черновиков: ${drafts.length} из 25`;
+    storageInfo.textContent = `Сохранено черновиков: ${drafts.length} · IndexedDB активна`;
   }
 
   if (drafts.length === 0) {
@@ -5209,7 +5482,7 @@ function renderDraftsList() {
       : `<div class="draft-card-placeholder">🖼️</div>`;
 
     html += `
-      <div class="draft-card" data-id="${escapeHtml(d.id)}">
+      <div class="draft-card" data-id="${escapeHtml(d.id)}" style="cursor: pointer;" title="Кликните, чтобы открыть черновик">
         <div class="draft-card-preview">
           ${previewImg}
         </div>
@@ -5221,11 +5494,14 @@ function renderDraftsList() {
             <span>📑 Слоёв: ${d.objectsCount || 0}</span>
           </div>
           <div class="draft-card-actions">
-            <button class="btn-load-draft" data-draft-id="${escapeHtml(d.id)}">
-              📂 Открыть
+            <button class="btn-load-draft pbtn pbtn-sm" data-draft-id="${escapeHtml(d.id)}" title="Открыть этот черновик">
+              <span class="material-symbols-rounded" style="font-size:14px;">folder_open</span> Открыть
             </button>
-            <button class="btn-delete-draft" data-draft-id="${escapeHtml(d.id)}" title="Удалить черновик">
-              🗑️
+            <button class="btn-export-draft pbtn pbtn-sm" data-draft-id="${escapeHtml(d.id)}" title="Скачать как файл проекта (.aurora.json)">
+              <span class="material-symbols-rounded" style="font-size:14px;">download</span> Экспорт
+            </button>
+            <button class="btn-delete-draft pbtn pbtn-sm pbtn-danger-icon" data-draft-id="${escapeHtml(d.id)}" title="Удалить черновик">
+              <span class="material-symbols-rounded" style="font-size:14px; color:#ef4444;">delete</span>
             </button>
           </div>
         </div>
@@ -5235,16 +5511,42 @@ function renderDraftsList() {
 
   container.innerHTML = html;
 
-  // Привязка кликов по карточкам черновиков
-  container.querySelectorAll('.btn-load-draft').forEach(b => {
-    b.addEventListener('click', () => loadDraftById(b.dataset.draftId));
+  // Клик по всей карточке для загрузки
+  container.querySelectorAll('.draft-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      loadDraftById(card.dataset.id);
+    });
   });
+
+  // Кнопки загрузки, экспорта и удаления
+  container.querySelectorAll('.btn-load-draft').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      loadDraftById(b.dataset.draftId);
+    });
+  });
+
+  container.querySelectorAll('.btn-export-draft').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const d = getSavedDrafts().find(item => item.id === b.dataset.draftId);
+      if (d) exportProjectJSON(d);
+    });
+  });
+
   container.querySelectorAll('.btn-delete-draft').forEach(b => {
-    b.addEventListener('click', () => deleteDraftById(b.dataset.draftId));
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteDraftById(b.dataset.draftId);
+    });
   });
 }
 
 function openDraftsModal() {
+  if (canvas && canvas.getObjects().length > 0) {
+    saveCurrentDraft(false);
+  }
   renderDraftsList();
   $('#drafts-modal-overlay')?.classList.remove('hidden');
 }
@@ -5253,19 +5555,28 @@ function closeDraftsModal() {
   $('#drafts-modal-overlay')?.classList.add('hidden');
 }
 
-function loadDraftById(id) {
-  const drafts = getSavedDrafts();
-  const draft = drafts.find(d => d.id === id);
+async function loadDraftById(id) {
+  let draft = _cachedDrafts.find(d => d.id === id);
+  if (!draft || !draft.canvasData) {
+    try {
+      const all = await idbGetAllDrafts();
+      draft = all.find(d => d.id === id);
+    } catch (e) {}
+  }
+
   if (!draft || !draft.canvasData) {
     toast('Черновик не найден или повреждён');
     return;
   }
 
+  _currentDraftId = draft.id;
   currentSize = SIZES[draft.sizeKey] || SIZES.a4_v;
+
   $('#screen-templates')?.classList.add('hidden');
   $('#screen-editor')?.classList.remove('hidden');
 
   initCanvas(currentSize.w, currentSize.h);
+
   canvas.loadFromJSON(draft.canvasData, () => {
     canvas.renderAll();
     fitZoom();
@@ -5284,12 +5595,12 @@ function loadDraftById(id) {
   toast(`✅ Черновик «${draft.title}» загружен`);
 }
 
-function deleteDraftById(id) {
+async function deleteDraftById(id) {
   if (!confirm('Удалить этот черновик без возможности восстановления?')) return;
   try {
-    let drafts = getSavedDrafts();
-    drafts = drafts.filter(d => d.id !== id);
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+    _cachedDrafts = _cachedDrafts.filter(d => d.id !== id);
+    await idbDeleteDraft(id);
+    trySyncToLocalStorage(_cachedDrafts);
     updateDraftsBadgeCount();
     renderDraftsList();
     toast('🗑️ Черновик удалён');
@@ -6735,13 +7046,21 @@ function bindEvents() {
   $('#btn-save')?.addEventListener('click', manualSave);
   $('#btn-open-drafts')?.addEventListener('click', openDraftsModal);
   $('#btn-tpl-open-drafts')?.addEventListener('click', openDraftsModal);
+  $('#btn-tpl-import-project')?.addEventListener('click', () => $('#project-file-input')?.click());
   $('#btn-settings-save-draft')?.addEventListener('click', manualSave);
   $('#btn-settings-open-drafts')?.addEventListener('click', openDraftsModal);
   $('#btn-draft-save-current')?.addEventListener('click', manualSave);
+  $('#btn-modal-import-project')?.addEventListener('click', () => $('#project-file-input')?.click());
+  $('#btn-modal-export-project')?.addEventListener('click', () => exportProjectJSON());
   $('#drafts-modal-close')?.addEventListener('click', closeDraftsModal);
   $('#btn-drafts-modal-done')?.addEventListener('click', closeDraftsModal);
   $('#drafts-modal-overlay')?.addEventListener('click', e => {
     if (e.target === e.currentTarget) closeDraftsModal();
+  });
+
+  /* Заголовок афиши: автосохранение при вводе названия */
+  $('#poster-title')?.addEventListener('input', () => {
+    scheduleAutosave();
   });
 
   $('#btn-export-png')?.addEventListener('click', exportPng);
@@ -6753,14 +7072,27 @@ function bindEvents() {
   $('#btn-toggle-snap')?.addEventListener('click', toggleSnapping);
 
   /* Экспорт и импорт проекта (.aurora.json) */
-  $('#btn-save-project-json')?.addEventListener('click', exportProjectJSON);
-  $('#btn-load-project-json')?.addEventListener('click', () => {
-    $('#project-file-input')?.click();
-  });
+  $('#btn-save-project-json')?.addEventListener('click', () => exportProjectJSON());
+  $('#btn-load-project-json')?.addEventListener('click', () => $('#project-file-input')?.click());
+  $('#btn-settings-save-json')?.addEventListener('click', () => exportProjectJSON());
+  $('#btn-settings-load-json')?.addEventListener('click', () => $('#project-file-input')?.click());
+
   $('#project-file-input')?.addEventListener('change', e => {
     const file = e.target.files?.[0];
     if (file) importProjectJSON(file);
     e.target.value = '';
+  });
+
+  /* Жизненный цикл вкладки: сохранение при уходе */
+  window.addEventListener('beforeunload', () => {
+    if (canvas && canvas.getObjects().length > 0) {
+      saveCurrentDraft(false);
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && canvas && canvas.getObjects().length > 0) {
+      saveCurrentDraft(false);
+    }
   });
 
   /* Группировка и блокировка */
@@ -7423,6 +7755,15 @@ function bindEvents() {
 
       // 1) Файлы из файлового менеджера / браузера (HTML download bar, drag from Desktop)
       if (dt.files && dt.files.length > 0) {
+        // Проверяем: перетащен ли файл проекта Aurora (.aurora.json, .json, .aurora)
+        const projFile = Array.from(dt.files).find(f => 
+          f.name.endsWith('.aurora.json') || f.name.endsWith('.json') || f.name.endsWith('.aurora')
+        );
+        if (projFile) {
+          importProjectJSON(projFile);
+          return;
+        }
+
         const imgFiles = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
         if (imgFiles.length > 0) {
           imgFiles.forEach(f => addPhotoAtDropPoint(f, e));
@@ -8111,6 +8452,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildBgPalette();
   buildColorRows();
   bindEvents();
+
+  // Инициализация хранилища черновиков и проектов (IndexedDB + кэш)
+  await initDraftsStorage();
 
   // Подключение сохранённых шрифтов ofont.ru из IndexedDB
   await loadSavedFonts();
