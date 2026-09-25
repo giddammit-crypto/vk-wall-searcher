@@ -5833,8 +5833,13 @@ function initEnhancerControls() {
 
   // Закрытие по Escape
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('#enhancer-modal-overlay')?.classList.contains('hidden')) {
-      closeEnhancerModal();
+    if (e.key === 'Escape') {
+      if (!$('#enhancer-modal-overlay')?.classList.contains('hidden')) {
+        closeEnhancerModal();
+      }
+      if (!$('#hdr-compare-modal-overlay')?.classList.contains('hidden')) {
+        closeHdrCompareModal();
+      }
     }
   });
 
