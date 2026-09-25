@@ -1934,6 +1934,12 @@ function initCanvas(w, h) {
   canvas.on('before:render', opt => {
     const ctx = opt.ctx;
     if (!ctx || !currentSize) return;
+
+    // Защита чистоты экспорта
+    const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const isExporting = canvas._isExporting || (vpt[4] === 0 && vpt[5] === 0 && vpt[0] === 1);
+    if (isExporting) return;
+
     const cw = currentSize.w;
     const ch = currentSize.h;
     const z = zoom;
@@ -1977,12 +1983,6 @@ function initCanvas(w, h) {
         }
       }
     }
-
-    // 3. Тонкая неоновая граница листа афиши
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(pad * z, pad * z, cw * z, ch * z);
     ctx.restore();
   });
 
@@ -2123,12 +2123,36 @@ function initCanvas(w, h) {
     const ctx = opt.ctx;
     if (!ctx || !currentSize) return;
 
+    // Защита чистоты экспорта: не рисовать служебные маски и сетки в буфер экспорта
+    const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const isExporting = canvas._isExporting || (vpt[4] === 0 && vpt[5] === 0 && vpt[0] === 1);
+    if (isExporting) return;
+
     const cw = currentSize.w;
     const ch = currentSize.h;
     const z = zoom;
     const pad = CANVAS_PADDING;
+    const totalW = canvas.getWidth();
+    const totalH = canvas.getHeight();
 
-    // ── 1. ОТРИСОВКА СЕТКИ ВЕРСТКИ (GRID OVERLAY) ──
+    // ── 1. МАСКА ЗАТЕМНЕНИЯ ДЛЯ ВЫСТУПАЮЩИХ ЧАСТЕЙ (FIGMA / TILDA OUT-OF-BOUNDS DIMMING MASK) ──
+    ctx.save();
+    ctx.beginPath();
+    // Внешний контур (весь видимый Canvas с отступами монтажного стола)
+    ctx.rect(0, 0, totalW, totalH);
+    // Внутренний контур (окно выреза строго по границам листа афиши)
+    ctx.rect(pad * z, pad * z, cw * z, ch * z);
+    // Evenodd заливает область за пределами листа, делая вышедшие части полупрозрачными (~35% видимости)
+    ctx.fillStyle = 'rgba(10, 15, 29, 0.65)';
+    ctx.fill('evenodd');
+
+    // Тонкая неоновая граница листа афиши поверх маски и всех выступающих слоёв
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.55)';
+    ctx.lineWidth = Math.max(1, 1.5 * z);
+    ctx.strokeRect(pad * z, pad * z, cw * z, ch * z);
+    ctx.restore();
+
+    // ── 2. ОТРИСОВКА СЕТКИ ВЕРСТКИ (GRID OVERLAY) ──
     if (isGridVisible) {
       ctx.save();
 

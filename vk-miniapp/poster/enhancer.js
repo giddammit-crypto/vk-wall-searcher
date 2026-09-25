@@ -544,6 +544,7 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
   const targetH = Math.round(origH * multiplier);
 
   try {
+    fabricCanvas._isExporting = true;
     // Снимаем выделение, чтобы служебные маркеры не попали в экспорт
     if (fabricCanvas.discardActiveObject) {
       fabricCanvas.discardActiveObject();
@@ -596,6 +597,7 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
 
     return buffer;
   } finally {
+    fabricCanvas._isExporting = false;
     // Гарантированно восстанавливаем рабочее состояние холста редактора
     if (origVpt && fabricCanvas.viewportTransform) {
       fabricCanvas.viewportTransform = origVpt;
