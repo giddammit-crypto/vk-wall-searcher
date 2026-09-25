@@ -1786,6 +1786,55 @@ function loadTemplate(tpl) {
   }, 350);
 }
 
+const CUSTOM_PROPS_TO_SAVE = [
+  'selectable', 'hasControls', 'editable', 'visible', 'evented',
+  'lockMovementX', 'lockMovementY', 'lockScalingX', 'lockScalingY', 'lockRotation',
+  '__filterValues', '__isUppercase', '__origText', '__isHdrEnhanced', '__currentHdrPreset',
+  'layerName', '__originalSrc', '__bgRemoved', '__cornerRadius', 'clipPath'
+];
+
+/**
+ * Устанавливает или обновляет скругление углов для fabric.Image (через clipPath)
+ * @param {fabric.Image} img - Объект изображения
+ * @param {number} radiusPx - Радиус скругления в пикселях холста (или 9999 для идеального круга)
+ * @param {boolean} skipRender - Пропустить вызов renderAll (для пакетных обновлений)
+ */
+function setImageCornerRadius(img, radiusPx, skipRender = false) {
+  if (!img || img.type !== 'image') return;
+  const r = Math.max(0, parseFloat(radiusPx) || 0);
+  img.__cornerRadius = r;
+
+  if (r <= 0) {
+    img.clipPath = null;
+    img.dirty = true;
+  } else {
+    const sx = Math.abs(img.scaleX || 1);
+    const sy = Math.abs(img.scaleY || 1);
+    const maxRx = (img.width || 100) / 2;
+    const maxRy = (img.height || 100) / 2;
+    const actualRadius = r >= 9999 ? Math.min(maxRx, maxRy) : Math.min(r, Math.min(maxRx, maxRy) * Math.min(sx, sy));
+    const rx = Math.min(actualRadius / sx, maxRx);
+    const ry = Math.min(actualRadius / sy, maxRy);
+
+    img.clipPath = new fabric.Rect({
+      left: 0,
+      top: 0,
+      width: img.width,
+      height: img.height,
+      rx: rx,
+      ry: ry,
+      originX: 'center',
+      originY: 'center',
+      absolutePositioned: false
+    });
+    img.dirty = true;
+  }
+
+  if (!skipRender && canvas) {
+    canvas.requestRenderAll();
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    CANVAS
    ══════════════════════════════════════════════════════════════ */
@@ -1867,7 +1916,21 @@ function initCanvas(w, h) {
   canvas.on('selection:updated',  onSelection);
   canvas.on('selection:cleared',  clearProps);
   canvas.on('object:moving',      () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
-  canvas.on('object:scaling',     () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
+  canvas.on('object:scaling',     e => {
+    const obj = e.target || canvas?.getActiveObject();
+    if (obj && obj.type === 'image' && typeof obj.__cornerRadius === 'number' && obj.__cornerRadius > 0) {
+      setImageCornerRadius(obj, obj.__cornerRadius, true);
+    }
+    updateFigmaDimensionsUI(obj);
+  });
+  canvas.on('object:modified',    e => {
+    const obj = e.target || canvas?.getActiveObject();
+    if (obj && obj.type === 'image' && typeof obj.__cornerRadius === 'number' && obj.__cornerRadius > 0) {
+      setImageCornerRadius(obj, obj.__cornerRadius, true);
+    }
+    updateFigmaDimensionsUI(obj);
+    saveHistory();
+  });
   canvas.on('object:rotating',    () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   
   // Обработчики мыши для инструментов Волшебной палочки и Ластика
@@ -3598,7 +3661,7 @@ function copyActiveObject() {
   activeObj.clone(cloned => {
     _clipboard = cloned;
     toast('Объект скопирован в буфер (Ctrl+C) 📋');
-  });
+  }, CUSTOM_PROPS_TO_SAVE);
 }
 
 function pasteCopiedObject() {
@@ -3632,7 +3695,7 @@ function pasteCopiedObject() {
     saveHistory();
     updateLayersList();
     toast('Объект вставлен на холст (Ctrl+V) ✨');
-  });
+  }, CUSTOM_PROPS_TO_SAVE);
 }
 
 function duplicateActiveObject() {
@@ -3656,7 +3719,7 @@ function duplicateActiveObject() {
     saveHistory();
     updateLayersList();
     toast('Объект продублирован 📋');
-  });
+  }, CUSTOM_PROPS_TO_SAVE);
 }
 
 function flipActiveObject(axis) {
@@ -3684,8 +3747,35 @@ function alignActiveObject(alignment) {
     case 'bottom':   obj.set('top', h - oh - 20); break;
   }
   obj.setCoords();
-  canvas.renderAll();
+  canvas.requestRenderAll();
   saveHistory();
+}
+
+function fitActiveObjectToCanvas() {
+  const obj = canvas?.getActiveObject();
+  if (!obj || !canvas) return;
+  const maxW = currentSize.w * 0.85;
+  const maxH = currentSize.h * 0.85;
+  const curW = obj.getScaledWidth() || obj.width || 100;
+  const curH = obj.getScaledHeight() || obj.height || 100;
+  if (curW > maxW || curH > maxH) {
+    const scaleFactor = Math.min(maxW / curW, maxH / curH);
+    obj.set({
+      scaleX: (obj.scaleX || 1) * scaleFactor,
+      scaleY: (obj.scaleY || 1) * scaleFactor
+    });
+  }
+  const ow = obj.getScaledWidth();
+  const oh = obj.getScaledHeight();
+  obj.set({
+    left: Math.round((currentSize.w - ow) / 2),
+    top:  Math.round((currentSize.h - oh) / 2)
+  });
+  obj.setCoords();
+  canvas.requestRenderAll();
+  saveHistory();
+  onSelection();
+  toast('Объект отцентрирован и вписан в холст ✨');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4058,14 +4148,9 @@ function exportProjectJSON(targetDraft = null) {
     };
   } else {
     const sizeKey = Object.entries(SIZES).find(([,v]) => v === currentSize)?.[0] || 'a4_v';
-    const canvasData = canvas.toJSON([
-      'selectable','hasControls','editable','visible','evented',
-      'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
-      '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
-      '__originalSrc','__bgRemoved','layerName'
-    ]);
+    const canvasData = canvas.toJSON(CUSTOM_PROPS_TO_SAVE);
     data = {
-      auroraVersion: '4.90.0',
+      auroraVersion: '4.93.0',
       app: 'Aurora Poster Editor',
       exportedAt: new Date().toISOString(),
       id: _currentDraftId || ('draft_' + Date.now()),
@@ -4206,6 +4291,13 @@ function clearProps() {
   $('#btn-toggle-shadow')?.classList.remove('is-active');
   if ($('#shadow-toggle-label')) $('#shadow-toggle-label').textContent = 'Вкл';
   if ($('#blend-mode-select')) $('#blend-mode-select').value = 'source-over';
+
+  // Сброс контролов скругления углов изображения
+  const imgRadSlider = $('#img-corner-radius-slider');
+  const imgRadVal    = $('#img-corner-radius-val');
+  if (imgRadSlider) imgRadSlider.value = 0;
+  if (imgRadVal)    imgRadVal.textContent = '0';
+  $$('#img-corner-radius-section .corner-chip').forEach(b => b.classList.toggle('is-active', b.dataset.radius === '0'));
 
   updateLockBtnUI(false);
   updateLayersList();
@@ -4494,6 +4586,20 @@ function updateFigmaDimensionsUI(obj) {
   if (drad) {
     if (isRect) drad.value = Math.round(obj.rx || 0);
     else if (isImg) drad.value = Math.round(obj.__cornerRadius || 0);
+  }
+
+  if (isImg) {
+    const rad = obj.__cornerRadius || (obj.clipPath ? (obj.clipPath.rx || 0) : 0);
+    const imgRadSlider = $('#img-corner-radius-slider');
+    const imgRadVal    = $('#img-corner-radius-val');
+    if (imgRadSlider) imgRadSlider.value = rad >= 9999 ? 200 : Math.min(rad, 200);
+    if (imgRadVal)    imgRadVal.textContent = rad >= 9999 ? 'Круг' : Math.round(rad);
+
+    $$('#img-corner-radius-section .corner-chip').forEach(btn => {
+      const chipRad = parseInt(btn.dataset.radius, 10);
+      const isActive = (rad >= 9999 && chipRad === 9999) || (Math.round(rad) === chipRad);
+      btn.classList.toggle('is-active', isActive);
+    });
   }
 
   // Sync Fill hex & preview
@@ -4864,7 +4970,7 @@ function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
   if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
-  history.push(JSON.stringify(canvas.toJSON(['selectable','hasControls','editable','visible','evented','lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation','__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset','layerName','__originalSrc','__bgRemoved'])));
+  history.push(JSON.stringify(canvas.toJSON(CUSTOM_PROPS_TO_SAVE)));
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -5727,12 +5833,7 @@ async function saveCurrentDraft(isManual = false) {
     // Безопасная сериализация холста
     let canvasJson;
     try {
-      canvasJson = canvas.toJSON([
-        'selectable','hasControls','editable','visible','evented',
-        'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
-        '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
-        '__originalSrc','__bgRemoved','layerName'
-      ]);
+      canvasJson = canvas.toJSON(CUSTOM_PROPS_TO_SAVE);
     } catch (serr) {
       console.error('Canvas serialization error:', serr);
       if (isManual) toast('Ошибка сериализации холста');
@@ -7709,22 +7810,18 @@ function bindEvents() {
     const val = Math.max(0, parseFloat(e.target.value) || 0);
     if (obj.type === 'rect') {
       obj.set({ rx: val, ry: val });
+      canvas.requestRenderAll();
     } else if (obj.type === 'image') {
-      obj.__cornerRadius = val;
-      if (val > 0) {
-        obj.clipPath = new fabric.Rect({
-          width: obj.width,
-          height: obj.height,
-          rx: val / (obj.scaleX || 1),
-          ry: val / (obj.scaleY || 1),
-          originX: 'center',
-          originY: 'center'
-        });
-      } else {
-        obj.clipPath = null;
-      }
+      setImageCornerRadius(obj, val, false);
+      const imgSlider = $('#img-corner-radius-slider');
+      const imgVal    = $('#img-corner-radius-val');
+      if (imgSlider) imgSlider.value = val >= 9999 ? 200 : Math.min(val, 200);
+      if (imgVal)    imgVal.textContent = val >= 9999 ? 'Круг' : Math.round(val);
+      $$('#img-corner-radius-section .corner-chip').forEach(btn => {
+        const chipRad = parseInt(btn.dataset.radius, 10);
+        btn.classList.toggle('is-active', (val >= 9999 && chipRad === 9999) || Math.round(val) === chipRad);
+      });
     }
-    canvas.requestRenderAll();
   });
   $('#dim-radius')?.addEventListener('change', () => saveHistory());
 
@@ -8458,6 +8555,45 @@ function bindEvents() {
     const obj = canvas?.getActiveObject(); if (obj) { obj.set('stroke', e.target.value); canvas.renderAll(); }
   });
   $('#stroke-color-picker').addEventListener('change', () => saveHistory());
+
+  /* ── Скругление углов изображения (Corner Radius) ── */
+  $('#img-corner-radius-slider')?.addEventListener('input', e => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') return;
+    const v = parseInt(e.target.value, 10) || 0;
+    const valEl = $('#img-corner-radius-val');
+    if (valEl) valEl.textContent = v;
+    setImageCornerRadius(obj, v, false);
+    // Синхронизировать инпут #dim-radius
+    const drad = $('#dim-radius');
+    if (drad) drad.value = v;
+    $$('#img-corner-radius-section .corner-chip').forEach(btn => {
+      const chipRad = parseInt(btn.dataset.radius, 10);
+      btn.classList.toggle('is-active', chipRad === v);
+    });
+  });
+  $('#img-corner-radius-slider')?.addEventListener('change', () => saveHistory());
+
+  $$('#img-corner-radius-section .corner-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const obj = canvas?.getActiveObject();
+      if (!obj || obj.type !== 'image') return;
+      const rad = parseInt(btn.dataset.radius, 10) || 0;
+      const slider = $('#img-corner-radius-slider');
+      const valEl  = $('#img-corner-radius-val');
+      if (slider) slider.value = rad >= 9999 ? 200 : rad;
+      if (valEl)  valEl.textContent = rad >= 9999 ? 'Круг' : rad;
+      const drad = $('#dim-radius');
+      if (drad) drad.value = rad;
+      setImageCornerRadius(obj, rad, false);
+      saveHistory();
+      $$('#img-corner-radius-section .corner-chip').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+    });
+  });
+
+  /* ── Центрирование и вписывание объекта в холст ── */
+  $('#btn-fit-canvas-bounds')?.addEventListener('click', fitActiveObjectToCanvas);
 
   /* ── Фильтры изображения ── */
   $('#img-brightness-slider')?.addEventListener('input', e => {

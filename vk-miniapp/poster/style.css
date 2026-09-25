@@ -1333,9 +1333,9 @@ input, select, textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px;
-  background-color: #1e1e1e;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1.2px, transparent 1.2px);
+  padding: 64px 80px;
+  background-color: #141824;
+  background-image: radial-gradient(rgba(56, 189, 248, 0.12) 1.2px, transparent 1.2px);
   background-size: 20px 20px;
   background-position: 0 0;
   position: relative;
@@ -1346,11 +1346,12 @@ input, select, textarea {
 .canvas-frame {
   flex-shrink: 0;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 16px 48px rgba(0, 0, 0, 0.65),
-    0 2px 8px rgba(0, 0, 0, 0.40);
+    0 0 0 1px rgba(99, 102, 241, 0.25),
+    0 20px 60px -10px rgba(0, 0, 0, 0.85),
+    0 0 40px rgba(56, 189, 248, 0.1);
   border-radius: 2px;
   position: relative;
+  overflow: visible !important;
   transition: box-shadow var(--trans-fast);
   /* Фирменная шахматная сетка прозрачности Figma */
   background-color: #222222;
@@ -1363,9 +1364,46 @@ input, select, textarea {
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
+.canvas-frame .canvas-container,
+.canvas-container {
+  overflow: visible !important;
+}
+
 .canvas-frame canvas {
   display: block;
   border-radius: 2px;
+}
+
+/* Чипы быстрого выбора скругления углов */
+.corner-chip {
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-2);
+  border-radius: 6px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.corner-chip:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.corner-chip:active {
+  transform: scale(0.96);
+}
+
+.corner-chip.is-active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(99, 102, 241, 0.35));
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
 }
 
 /* Плашка информации о формате холста */
