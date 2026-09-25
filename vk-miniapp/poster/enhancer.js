@@ -522,6 +522,104 @@ function applyHdrToCanvas(canvas, config = {}) {
 }
 
 /**
+/**
+ * Создает чистый растровый холст афиши (Artboard), аппаратно обрезанный
+ * строго по границам [0, 0, currentSize.w, currentSize.h] без монтажного стола,
+ * без выступающих за края частей и без служебных маркеров выделения.
+ *
+ * @param {fabric.Canvas} fabricCanvas
+ * @param {number} multiplier
+ * @returns {HTMLCanvasElement}
+ */
+function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
+  if (!fabricCanvas) {
+    throw new Error('Fabric.js Canvas не инициализирован');
+  }
+
+  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
+  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
+  const mult = Math.max(0.01, multiplier || 1.0);
+  const targetW = Math.max(1, Math.round(origW * mult));
+  const targetH = Math.max(1, Math.round(origH * mult));
+
+  const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
+
+  try {
+    fabricCanvas._isExporting = true;
+    if (activeObj && fabricCanvas.discardActiveObject) {
+      fabricCanvas.discardActiveObject();
+    }
+
+    const buffer = document.createElement('canvas');
+    buffer.width = targetW;
+    buffer.height = targetH;
+    const ctx = buffer.getContext('2d');
+
+    // 1. Отрисовка цвета фона листа (Paper Background)
+    const artboardBg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor || '#ffffff';
+    if (artboardBg && artboardBg !== 'transparent' && artboardBg !== '') {
+      if (typeof artboardBg === 'string') {
+        ctx.fillStyle = artboardBg;
+        ctx.fillRect(0, 0, targetW, targetH);
+      } else if (typeof artboardBg.toLive === 'function') {
+        try {
+          ctx.fillStyle = artboardBg.toLive(ctx);
+          ctx.fillRect(0, 0, targetW, targetH);
+        } catch (e) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, targetW, targetH);
+        }
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+      }
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+    }
+
+    // 2. АППАРАТНОЕ КАДРИРОВАНИЕ СТРОГО ПО ГРАНИЦАМ ЛИСТА [0, 0, targetW, targetH]
+    // Любые части объектов за пределами листа отсекаются аппаратно (ctx.clip)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, targetW, targetH);
+    ctx.clip();
+
+    // 3. Масштабирование системы координат в целевое разрешение
+    ctx.scale(mult, mult);
+
+    // 4. Отрисовка всех объектов афиши в порядке слоёв
+    const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
+    for (let i = 0; i < objects.length; i++) {
+      const obj = objects[i];
+      if (obj && obj.visible !== false && !obj.__isHelper) {
+        obj.render(ctx);
+      }
+    }
+    ctx.restore();
+
+    return buffer;
+  } finally {
+    fabricCanvas._isExporting = false;
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas: fabricCanvas });
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(sel);
+      } else if (!selectedObjects && fabricCanvas.contains && fabricCanvas.contains(activeObj)) {
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(activeObj);
+      }
+    }
+    if (fabricCanvas.requestRenderAll) {
+      fabricCanvas.requestRenderAll();
+    }
+  }
+}
+
+/**
  * Рендерит холст Fabric.js с заданным коэффициентом масштабирования (multiplier)
  * на скрытый буферный Canvas без искажения текущего вида в редакторе
  *
@@ -533,91 +631,7 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
   if (!fabricCanvas) {
     throw new Error('Fabric.js Canvas не инициализирован');
   }
-
-  const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
-  const curZoom = (fabricCanvas.getZoom ? fabricCanvas.getZoom() : 1) || 1;
-  const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
-  let selectedObjects = null;
-  if (activeObj && activeObj.type === 'activeSelection') {
-    selectedObjects = activeObj.getObjects();
-  }
-  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
-  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
-  const targetW = Math.round(origW * multiplier);
-  const targetH = Math.round(origH * multiplier);
-  const prevBg = fabricCanvas.backgroundColor;
-  const artboardBg = fabricCanvas.__artboardBg || prevBg || '#ffffff';
-
-  try {
-    fabricCanvas._isExporting = true;
-    // Снимаем выделение, чтобы служебные маркеры не попали в экспорт
-    if (activeObj && fabricCanvas.discardActiveObject) {
-      fabricCanvas.discardActiveObject();
-    }
-    fabricCanvas.backgroundColor = artboardBg;
-    if (fabricCanvas.renderAll) {
-      fabricCanvas.renderAll();
-    }
-
-    let buffer;
-    if (typeof fabricCanvas.toCanvasElement === 'function') {
-      buffer = fabricCanvas.toCanvasElement(multiplier / curZoom, {
-        left: pad * curZoom,
-        top: pad * curZoom,
-        width: origW * curZoom,
-        height: origH * curZoom,
-        enableRetinaScaling: false
-      });
-    } else {
-      buffer = document.createElement('canvas');
-      buffer.width = targetW;
-      buffer.height = targetH;
-      const ctx = buffer.getContext('2d');
-
-      // Отрисовка фонового цвета афиши (если задан)
-      if (artboardBg && artboardBg !== 'transparent') {
-        ctx.fillStyle = artboardBg;
-        ctx.fillRect(0, 0, targetW, targetH);
-      }
-
-      const dataUrl = fabricCanvas.toDataURL({
-        format: 'png',
-        left: pad * curZoom,
-        top: pad * curZoom,
-        width: origW * curZoom,
-        height: origH * curZoom,
-        multiplier: multiplier / curZoom,
-        enableRetinaScaling: false
-      });
-
-      await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, targetW, targetH);
-          resolve();
-        };
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
-    }
-
-    return buffer;
-  } finally {
-    fabricCanvas._isExporting = false;
-    fabricCanvas.backgroundColor = prevBg;
-    // Восстанавливаем выделение
-    if (activeObj) {
-      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
-        const sel = new fabric.ActiveSelection(selectedObjects, { canvas: fabricCanvas });
-        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(sel);
-      } else if (!selectedObjects && fabricCanvas.contains && fabricCanvas.contains(activeObj)) {
-        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(activeObj);
-      }
-    }
-    if (fabricCanvas.renderAll) {
-      fabricCanvas.renderAll();
-    }
-  }
+  return renderCleanArtboardCanvas(fabricCanvas, multiplier);
 }
 
 /**
@@ -792,77 +806,15 @@ function generateBeforeAfterPreview(source, options = {}) {
     srcCanvas.width = el.naturalWidth || el.width || 800;
     srcCanvas.height = el.naturalHeight || el.height || 600;
     srcCanvas.getContext('2d').drawImage(el, 0, 0, srcCanvas.width, srcCanvas.height);
-  } else if (source && (typeof source.toCanvasElement === 'function' || typeof source.toDataURL === 'function' || source.lowerCanvasEl)) {
-    // fabric.Canvas: точный и чистый захват листа афиши без служебных рамок и сеток
+  } else if (source && (typeof source.getObjects === 'function' || source.lowerCanvasEl || typeof source.toDataURL === 'function')) {
+    // fabric.Canvas: точный, мгновенный и чистый рендеринг листа афиши
     const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (source.getWidth ? source.getWidth() : (source.width || 800));
     const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (source.getHeight ? source.getHeight() : (source.height || 600));
     const maxPrevDim = options.maxWidth || 1200;
     const longSide = Math.max(origW, origH);
     const previewMultiplier = Math.min(1.0, maxPrevDim / Math.max(1, longSide));
-    const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
-    const z = (source.getZoom ? source.getZoom() : 1) || 1;
 
-    const activeObj = source.getActiveObject ? source.getActiveObject() : null;
-    let selectedObjects = null;
-    if (activeObj && activeObj.type === 'activeSelection') {
-      selectedObjects = activeObj.getObjects();
-    }
-    const prevBg = source.backgroundColor;
-    const artboardBg = source.__artboardBg || prevBg || '#ffffff';
-
-    try {
-      source._isExporting = true;
-      if (activeObj && source.discardActiveObject) {
-        source.discardActiveObject();
-      }
-      source.backgroundColor = artboardBg;
-      if (source.renderAll) {
-        source.renderAll();
-      }
-
-      if (typeof source.toCanvasElement === 'function') {
-        srcCanvas = source.toCanvasElement(previewMultiplier / z, {
-          left: pad * z,
-          top: pad * z,
-          width: origW * z,
-          height: origH * z,
-          enableRetinaScaling: false
-        });
-      } else {
-        const prevW = Math.max(1, Math.round(origW * previewMultiplier));
-        const prevH = Math.max(1, Math.round(origH * previewMultiplier));
-        srcCanvas = document.createElement('canvas');
-        srcCanvas.width = prevW;
-        srcCanvas.height = prevH;
-        const sCtx = srcCanvas.getContext('2d');
-        const prevUrl = source.toDataURL({
-          format: 'png',
-          left: pad * z,
-          top: pad * z,
-          width: origW * z,
-          height: origH * z,
-          multiplier: previewMultiplier / z,
-          enableRetinaScaling: false
-        });
-        const sImg = new Image();
-        sImg.src = prevUrl;
-        sCtx.drawImage(sImg, 0, 0, prevW, prevH);
-      }
-    } finally {
-      source._isExporting = false;
-      source.backgroundColor = prevBg;
-      if (activeObj) {
-        if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
-          const sel = new fabric.ActiveSelection(selectedObjects, { canvas: source });
-          if (source.setActiveObject) source.setActiveObject(sel);
-        } else if (!selectedObjects && source.contains && source.contains(activeObj)) {
-          if (source.setActiveObject) source.setActiveObject(activeObj);
-        }
-      }
-      if (source.renderAll) {
-        source.renderAll();
-      }
-    }
+    srcCanvas = renderCleanArtboardCanvas(source, previewMultiplier);
   } else if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) {
     srcCanvas = source;
   } else if (typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) {
@@ -1143,6 +1095,7 @@ function restoreOriginalFabricImage(fabricImage) {
  * Единый объект модуля PosterEnhancer
  */
 const PosterEnhancer = {
+  renderCleanArtboardCanvas,
   calculateExportScale,
   applyHdrToImageData,
   applyHdrToCanvas,
@@ -1159,6 +1112,7 @@ const PosterEnhancer = {
 // Экспорт в глобальный объект window для классических скриптов браузера и Fabric.js UI
 if (typeof window !== 'undefined') {
   window.PosterEnhancer = PosterEnhancer;
+  window.renderCleanArtboardCanvas = renderCleanArtboardCanvas;
   window.calculateExportScale = calculateExportScale;
   window.applyHdrToCanvas = applyHdrToCanvas;
   window.applyHdrToImageData = applyHdrToImageData;

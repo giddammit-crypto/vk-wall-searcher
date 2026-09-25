@@ -4092,23 +4092,11 @@ function toggleCanvasTransparency() {
 
 async function printPoster() {
   if (!canvas) return;
-  const pad = CANVAS_PADDING;
-  const curZ = canvas.getZoom() || 1;
   let dataUrl;
 
   try {
-    await withExportCanvasState(async (c) => {
-      dataUrl = c.toDataURL({
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        format: 'png',
-        quality: 1,
-        multiplier: 2 / curZ,
-        enableRetinaScaling: false
-      });
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, 2.0);
+    dataUrl = buffer.toDataURL('image/png');
   } catch (err) {
     console.error('Print poster render error:', err);
     toast('Ошибка подготовки к печати');
@@ -5167,6 +5155,97 @@ let currentHdrPreset = 'cinematic';
 let isExportRunning = false;
 
 /**
+ * Создает чистый растровый холст афиши (Artboard), аппаратно обрезанный
+ * строго по границам [0, 0, currentSize.w, currentSize.h] без монтажного стола,
+ * без выступающих за края частей и без служебных маркеров выделения.
+ *
+ * @param {fabric.Canvas} fabricCanvas
+ * @param {number} multiplier
+ * @returns {HTMLCanvasElement}
+ */
+function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
+  if (window.PosterEnhancer && typeof window.PosterEnhancer.renderCleanArtboardCanvas === 'function') {
+    return window.PosterEnhancer.renderCleanArtboardCanvas(fabricCanvas, multiplier);
+  }
+  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
+  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
+  const mult = Math.max(0.01, multiplier || 1.0);
+  const targetW = Math.max(1, Math.round(origW * mult));
+  const targetH = Math.max(1, Math.round(origH * mult));
+
+  const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
+
+  try {
+    fabricCanvas._isExporting = true;
+    if (activeObj && fabricCanvas.discardActiveObject) {
+      fabricCanvas.discardActiveObject();
+    }
+
+    const buffer = document.createElement('canvas');
+    buffer.width = targetW;
+    buffer.height = targetH;
+    const ctx = buffer.getContext('2d');
+
+    const artboardBg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor || '#ffffff';
+    if (artboardBg && artboardBg !== 'transparent' && artboardBg !== '') {
+      if (typeof artboardBg === 'string') {
+        ctx.fillStyle = artboardBg;
+        ctx.fillRect(0, 0, targetW, targetH);
+      } else if (typeof artboardBg.toLive === 'function') {
+        try {
+          ctx.fillStyle = artboardBg.toLive(ctx);
+          ctx.fillRect(0, 0, targetW, targetH);
+        } catch (e) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, targetW, targetH);
+        }
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+      }
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, targetW, targetH);
+    ctx.clip();
+
+    ctx.scale(mult, mult);
+
+    const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
+    for (let i = 0; i < objects.length; i++) {
+      const obj = objects[i];
+      if (obj && obj.visible !== false && !obj.__isHelper) {
+        obj.render(ctx);
+      }
+    }
+    ctx.restore();
+
+    return buffer;
+  } finally {
+    fabricCanvas._isExporting = false;
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas: fabricCanvas });
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(sel);
+      } else if (!selectedObjects && fabricCanvas.contains && fabricCanvas.contains(activeObj)) {
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(activeObj);
+      }
+    }
+    if (fabricCanvas.requestRenderAll) {
+      fabricCanvas.requestRenderAll();
+    }
+  }
+}
+
+/**
  * Безопасный запуск операций захвата/экспорта холста Fabric.js:
  * 1. Сохраняет и временно снимает выделение (включая группы ActiveSelection),
  *    чтобы рамки, ручки трансформации и маркеры не попадали в рендер.
@@ -5369,27 +5448,13 @@ async function exportPng() {
     }
 
     // Fallback: без enhancer
-    console.warn('[AURORA Export] PosterEnhancer not available, using fallback canvas.toDataURL');
+    console.warn('[AURORA Export] PosterEnhancer not available, using fallback renderCleanArtboardCanvas');
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
 
     const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-
-    let url;
-    await withExportCanvasState(async (c) => {
-      url = c.toDataURL({
-        format: 'png',
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        quality: 1,
-        multiplier: mult / curZ,
-        enableRetinaScaling: false
-      });
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, mult);
+    const url = buffer.toDataURL('image/png');
 
     const a = document.createElement('a');
     a.href = url;
@@ -5442,41 +5507,8 @@ async function exportJpg() {
     await new Promise(r => setTimeout(r, 30));
 
     const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-    const targetW = Math.round(currentSize.w * mult);
-    const targetH = Math.round(currentSize.h * mult);
-
-    let url;
-    await withExportCanvasState(async (c) => {
-      // Для JPG создаем подложку, чтобы прозрачные зоны не стали чёрными
-      const buffer = document.createElement('canvas');
-      buffer.width = targetW;
-      buffer.height = targetH;
-      const ctx = buffer.getContext('2d');
-      ctx.fillStyle = c.__artboardBg || c.backgroundColor || '#ffffff';
-      ctx.fillRect(0, 0, targetW, targetH);
-
-      const pngData = c.toDataURL({
-        format: 'png',
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        quality: 1,
-        multiplier: mult / curZ,
-        enableRetinaScaling: false
-      });
-
-      await new Promise((res, rej) => {
-        const img = new Image();
-        img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
-        img.onerror = rej;
-        img.src = pngData;
-      });
-
-      url = buffer.toDataURL('image/jpeg', 0.96);
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, mult);
+    const url = buffer.toDataURL('image/jpeg', 0.96);
 
     const a = document.createElement('a');
     a.href = url;
@@ -5531,41 +5563,9 @@ async function exportPdf() {
     updateExportProgress(60, 'Рендеринг PDF страниц...');
     await new Promise(r => setTimeout(r, 20));
 
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
     const mult = currentExportResolution === '8k' ? 4 : currentExportResolution === '4k' ? 3 : 2;
-    const targetW = Math.round(currentSize.w * mult);
-    const targetH = Math.round(currentSize.h * mult);
-
-    let pdfDataUrl;
-    await withExportCanvasState(async (c) => {
-      const buffer = document.createElement('canvas');
-      buffer.width = targetW;
-      buffer.height = targetH;
-      const ctx = buffer.getContext('2d');
-      ctx.fillStyle = c.__artboardBg || c.backgroundColor || '#ffffff';
-      ctx.fillRect(0, 0, targetW, targetH);
-
-      const pngData = c.toDataURL({
-        format: 'png',
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        quality: 1,
-        multiplier: mult / curZ,
-        enableRetinaScaling: false
-      });
-
-      await new Promise((res, rej) => {
-        const img = new Image();
-        img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
-        img.onerror = rej;
-        img.src = pngData;
-      });
-
-      pdfDataUrl = buffer.toDataURL('image/jpeg', 0.96);
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, mult);
+    const pdfDataUrl = buffer.toDataURL('image/jpeg', 0.96);
 
     const isH = currentSize.w > currentSize.h;
     const pdf = new jsPdfLib({ orientation: isH ? 'landscape' : 'portrait', unit: 'pt', format: [currentSize.w, currentSize.h] });
@@ -6168,23 +6168,10 @@ async function saveCurrentDraft(isManual = false) {
     // Генерируем компактное превью (180px) строго по границам листа без маркеров выделения
     let previewDataUrl = '';
     try {
-      const pad = CANVAS_PADDING;
-      const curZ = canvas.getZoom() || 1;
       const artW = currentSize?.w || 800;
-      const artH = currentSize?.h || 1200;
       const prevScale = Math.min(180 / artW, 0.25);
-      await withExportCanvasState(async (c) => {
-        previewDataUrl = c.toDataURL({
-          left: pad * curZ,
-          top: pad * curZ,
-          width: artW * curZ,
-          height: artH * curZ,
-          format: 'jpeg',
-          quality: 0.70,
-          multiplier: prevScale / curZ,
-          enableRetinaScaling: false
-        });
-      });
+      const buffer = renderCleanArtboardCanvas(canvas, prevScale);
+      previewDataUrl = buffer.toDataURL('image/jpeg', 0.70);
     } catch (e) {
       console.warn('Draft preview generation error:', e);
     }
@@ -7645,22 +7632,8 @@ async function exportTildaDownloadPng() {
     const scaleInput = document.querySelector('input[name="tilda-png-scale"]:checked');
     const scale = parseFloat(scaleInput?.value || '1');
 
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-    let dataUrl;
-
-    await withExportCanvasState(async (c) => {
-      dataUrl = c.toDataURL({
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        format: 'png',
-        multiplier: scale / curZ,
-        quality: 1,
-        enableRetinaScaling: false
-      });
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, scale);
+    const dataUrl = buffer.toDataURL('image/png');
 
     const a = document.createElement('a');
     const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
@@ -7696,26 +7669,12 @@ async function exportTildaDownloadZip() {
   try {
     await embedAllImagesToBase64(canvas);
 
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-
     // 1. Генерируем HTML
     const htmlContent = await buildTildaHTML();
 
     // 2. Генерируем PNG × 2
-    let pngDataUrl;
-    await withExportCanvasState(async (c) => {
-      pngDataUrl = c.toDataURL({
-        left: pad * curZ,
-        top: pad * curZ,
-        width: currentSize.w * curZ,
-        height: currentSize.h * curZ,
-        format: 'png',
-        multiplier: 2 / curZ,
-        quality: 1,
-        enableRetinaScaling: false
-      });
-    });
+    const buffer = renderCleanArtboardCanvas(canvas, 2.0);
+    const pngDataUrl = buffer.toDataURL('image/png');
     const pngBase64 = pngDataUrl.split(',')[1];
 
     // 3. CSS для блока
