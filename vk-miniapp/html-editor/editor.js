@@ -884,57 +884,180 @@ function switchMode(mode) {
 
   if (mode === 'zero') {
     if (!zeroBlockEditor) {
-      zeroBlockEditor = new ZeroBlockEditor('#zero-block-canvas-mount');
-      window.zeroBlockEditor = zeroBlockEditor;
-    } else {
-      zeroBlockEditor.render();
+      const page = tildaEngine?.getActivePage();
+      const zbBlock = page?.blocks.find(b => b.instanceId === tildaEngine.activeBlockId && (b.isZero || b.blockDefId === 'zero-1'))
+        || page?.blocks.find(b => b.isZero || b.blockDefId === 'zero-1');
+
+      if (zbBlock) {
+        window.openZeroEditorForBlock(zbBlock.instanceId);
+        return;
+      } else {
+        zeroBlockEditor = new ZeroBlockEditor('#zero-block-canvas-mount');
+        window.zeroBlockEditor = zeroBlockEditor;
+      }
     }
+
+    zeroBlockEditor.onSelectionChange = () => {
+      const propsPanel = document.getElementById('tilda-props-panel');
+      const anchors = tildaEngine ? tildaEngine.getPageAnchorsList() : [];
+      zeroBlockEditor.renderInspector(propsPanel, anchors);
+    };
+
+    zeroBlockEditor.render();
+    const propsPanel = document.getElementById('tilda-props-panel');
+    const anchors = tildaEngine ? tildaEngine.getPageAnchorsList() : [];
+    zeroBlockEditor.renderInspector(propsPanel, anchors);
   } else if (mode === 'code') {
     syncToCodeEditor();
   } else if (mode === 'preview') {
     syncToPreviewFrame();
   } else if (mode === 'builder') {
     tildaEngine.renderArtboard();
+    tildaEngine.renderInspector();
   }
 }
+
+// ─── Zero Block Global Helper ──────────────────────────────────
+window.openZeroEditorForBlock = function(instanceId) {
+  if (!tildaEngine) return;
+  const page = tildaEngine.getActivePage();
+  const blk = page?.blocks.find(b => b.instanceId === instanceId);
+  if (!blk) return;
+
+  window.activeEditingZeroBlockId = instanceId;
+
+  const zbData = {
+    id: blk.instanceId,
+    settings: {
+      height: parseInt(blk.design?.height) || 600,
+      background: blk.design?.background || blk.design?.bgColor || '#070a13',
+      backgroundImage: blk.design?.bgImage || '',
+      gridWidth: 1200
+    },
+    elements: blk.content?.elements || []
+  };
+
+  zeroBlockEditor = new ZeroBlockEditor('#zero-block-canvas-mount', zbData);
+  window.zeroBlockEditor = zeroBlockEditor;
+
+  zeroBlockEditor.onSelectionChange = () => {
+    const propsPanel = document.getElementById('tilda-props-panel');
+    const anchors = tildaEngine.getPageAnchorsList();
+    zeroBlockEditor.renderInspector(propsPanel, anchors);
+  };
+
+  switchMode('zero');
+};
 
 // ─── Zero Block Toolbar ────────────────────────────────────────
 function bindZeroBlockToolbar() {
   document.getElementById('zb-add-h1')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('h1', { content: 'Новый заголовок H1' });
+    const el = zeroBlockEditor?.block.addElement('h1', { content: 'Новый заголовок H1' });
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
+  });
+  document.getElementById('zb-add-h2')?.addEventListener('click', () => {
+    const el = zeroBlockEditor?.block.addElement('h2', { content: 'Новый заголовок H2' });
+    zeroBlockEditor?.saveHistory();
+    zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
   document.getElementById('zb-add-text')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('text', { content: 'Новый текстовый блок' });
+    const el = zeroBlockEditor?.block.addElement('text', { content: 'Новый текстовый блок' });
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
   document.getElementById('zb-add-btn')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('btn', { content: 'Кнопка' });
+    const el = zeroBlockEditor?.block.addElement('btn', { content: 'Кнопка действия' });
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
   document.getElementById('zb-add-img')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('img', {});
+    const el = zeroBlockEditor?.block.addElement('img', {});
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
   document.getElementById('zb-add-shape')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('shape', {});
+    const el = zeroBlockEditor?.block.addElement('shape', {});
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
   document.getElementById('zb-add-icon')?.addEventListener('click', () => {
-    zeroBlockEditor?.block.addElement('icon', {});
+    const el = zeroBlockEditor?.block.addElement('icon', {});
+    zeroBlockEditor?.saveHistory();
     zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
+  });
+  document.getElementById('zb-add-form')?.addEventListener('click', () => {
+    const el = zeroBlockEditor?.block.addElement('form', {});
+    zeroBlockEditor?.saveHistory();
+    zeroBlockEditor?.render();
+    if (el) zeroBlockEditor?.selectElement(el.id);
   });
 
+  // Undo / Redo
+  document.getElementById('zb-undo')?.addEventListener('click', () => {
+    zeroBlockEditor?.undo();
+  });
+  document.getElementById('zb-redo')?.addEventListener('click', () => {
+    zeroBlockEditor?.redo();
+  });
+
+  // Breakpoints switcher
+  document.querySelectorAll('.zb-bp-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.zb-bp-btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const bp = parseInt(btn.dataset.bp) || 1200;
+      zeroBlockEditor?.setBreakpoint(bp);
+    });
+  });
+
+  // Alignment
   document.getElementById('zb-align-left')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('left'));
   document.getElementById('zb-align-center')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('center'));
   document.getElementById('zb-align-right')?.addEventListener('click', () => zeroBlockEditor?.alignSelected('right'));
 
+  // Duplicate & Delete
+  document.getElementById('zb-dup-el')?.addEventListener('click', () => {
+    zeroBlockEditor?.duplicateSelectedElement();
+    showToast('📋 Элемент продублирован');
+  });
   document.getElementById('zb-del-el')?.addEventListener('click', () => {
     zeroBlockEditor?.deleteSelectedElement();
     showToast('🗑️ Элемент удалён');
   });
+
+  // Apply & Save back to Page Block
   document.getElementById('zb-btn-apply')?.addEventListener('click', () => {
-    showToast('✅ Изменения Zero Block зафиксированы');
+    if (window.activeEditingZeroBlockId && tildaEngine) {
+      const page = tildaEngine.getActivePage();
+      const blk = page?.blocks.find(b => b.instanceId === window.activeEditingZeroBlockId);
+      if (blk && zeroBlockEditor) {
+        blk.content = blk.content || {};
+        blk.content.elements = zeroBlockEditor.block.elements.map(e => ({
+          id: e.id,
+          type: e.type,
+          props: { ...e.props },
+          responsiveProps: { ...e.responsiveProps }
+        }));
+        blk.design = blk.design || {};
+        blk.design.height = `${zeroBlockEditor.block.settings.height}px`;
+        blk.design.background = zeroBlockEditor.block.settings.background;
+        blk.design.bgColor = zeroBlockEditor.block.settings.background;
+
+        tildaEngine.saveHistory();
+        tildaEngine.renderArtboard();
+        tildaEngine.renderLayersTree();
+        tildaEngine.selectBlock(blk.instanceId);
+      }
+    }
+    showToast('✅ Изменения Zero Block зафиксированы и сохранены!');
     switchMode('builder');
   });
 }

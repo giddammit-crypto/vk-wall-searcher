@@ -449,9 +449,9 @@ export class TildaEngine {
           <span class="material-symbols-rounded">tune</span>
           <span>Настройки</span>
         </button>
-        <button class="blk-btn btn-zero" title="Конвертировать в Zero Block" style="color:#0d99ff;">
+        <button class="blk-btn btn-zero" title="${blk.isZero || blk.blockDefId === 'zero-1' ? 'Редактировать Zero Block' : 'Конвертировать в Zero Block'}" style="color:#0d99ff;font-weight:${blk.isZero || blk.blockDefId === 'zero-1' ? '700' : 'normal'};">
           <span class="material-symbols-rounded">bolt</span>
-          <span>В Zero</span>
+          <span>${blk.isZero || blk.blockDefId === 'zero-1' ? 'Zero Редактор' : 'В Zero'}</span>
         </button>
         <button class="blk-btn btn-up" title="Переместить выше" ${idx === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">arrow_upward</span>
@@ -478,7 +478,13 @@ export class TildaEngine {
     });
     bar.querySelector('.btn-zero')?.addEventListener('click', e => {
       e.stopPropagation();
-      this.convertToZeroBlock(blk.instanceId);
+      if (blk.isZero || blk.blockDefId === 'zero-1') {
+        if (window.openZeroEditorForBlock) {
+          window.openZeroEditorForBlock(blk.instanceId);
+        }
+      } else {
+        this.convertToZeroBlock(blk.instanceId);
+      }
     });
     bar.querySelector('.btn-up')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -557,6 +563,9 @@ export class TildaEngine {
     this.renderArtboard();
     this.renderLayersTree();
     this.selectBlock(blk.instanceId);
+    if (window.openZeroEditorForBlock) {
+      window.openZeroEditorForBlock(blk.instanceId);
+    }
   }
 
   createAddBlockBar(insertIdx, isBottom = false) {
@@ -1069,7 +1078,23 @@ export class TildaEngine {
 
   renderContentFields(blk, def) {
     const c = blk.content || {};
-    let html = `
+    let html = '';
+
+    if (blk.isZero || blk.blockDefId === 'zero-1') {
+      html += `
+        <div style="margin-bottom:16px;">
+          <button class="topbar-action-btn btn-primary" id="btn-open-zero-modal" style="width:100%;padding:14px;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(13,153,255,0.4);">
+            <span class="material-symbols-rounded">bolt</span>
+            <span>⚡ Открыть редактор Zero Block</span>
+          </button>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:16px;line-height:1.5;">
+          Элементов в блоке: <b style="color:#0d99ff;">${c.elements?.length || 0}</b>. Вы можете свободно перемещать, вращать, масштабировать и редактировать текст прямо на холсте.
+        </div>
+      `;
+    }
+
+    html += `
       <div class="insp-section-title" style="display:flex;align-items:center;justify-content:space-between;">
         <span>+ Добавить элемент в блок</span>
       </div>
@@ -1340,6 +1365,13 @@ export class TildaEngine {
   }
 
   bindInspectorInputs(blk) {
+    // 0. Zero block editor button
+    this.propsPanel.querySelector('#btn-open-zero-modal')?.addEventListener('click', () => {
+      if (window.openZeroEditorForBlock) {
+        window.openZeroEditorForBlock(blk.instanceId);
+      }
+    });
+
     // 1. Content Inputs
     this.propsPanel.querySelectorAll('[data-content-key]').forEach(input => {
       const eventName = (input.type === 'checkbox') ? 'change' : 'input';
@@ -2549,9 +2581,17 @@ button { font-family: inherit; }
         <button class="text-tool-btn" id="btn-text-clean" type="button" title="Очистить форматирование">
           <span class="material-symbols-rounded" style="font-size:16px;">format_clear</span>
         </button>
+        <div class="text-tool-divider"></div>
+        <button class="text-tool-btn text-tool-close-btn" id="btn-text-toolbar-close" type="button" title="Закрыть панель (Esc)">
+          <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+        </button>
       </div>
 
       <div class="floating-link-popover" id="floating-link-popover" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:2px;">
+          <span style="font-size:11px;font-weight:700;color:#94a3b8;">🔗 Настройка ссылки</span>
+          <button type="button" id="btn-close-link-popover" class="text-tool-btn" style="width:20px;height:20px;font-size:13px;color:#94a3b8;" title="Закрыть (Esc)">✕</button>
+        </div>
         <div class="link-popover-row">
           <span class="material-symbols-rounded" style="font-size:16px;color:#0d99ff;">link</span>
           <input type="text" id="floating-link-url-input" placeholder="https://... или #якорь" />
@@ -2590,6 +2630,35 @@ button { font-family: inherit; }
         sel.addRange(savedRange);
       }
     };
+
+    const hideToolbar = () => {
+      toolbar.style.display = 'none';
+      const p = toolbar.querySelector('#floating-link-popover');
+      if (p) p.style.display = 'none';
+    };
+
+    // Close buttons & Escape key
+    toolbar.querySelector('#btn-text-toolbar-close')?.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideToolbar();
+    });
+
+    toolbar.querySelector('#btn-close-link-popover')?.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const p = toolbar.querySelector('#floating-link-popover');
+      if (p) p.style.display = 'none';
+      if (!window.getSelection() || window.getSelection().isCollapsed) {
+        toolbar.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && toolbar.style.display !== 'none') {
+        hideToolbar();
+      }
+    });
 
     // Format buttons
     toolbar.querySelector('#btn-text-bold')?.addEventListener('mousedown', e => {
@@ -2762,7 +2831,7 @@ button { font-family: inherit; }
 
       updateSavedRange();
       toolbar.style.display = 'flex';
-      const tbW = toolbar.offsetWidth || 240;
+      const tbW = toolbar.offsetWidth || 260;
       const left = Math.max(10, Math.min(window.innerWidth - tbW - 20, rect.left + rect.width / 2 - tbW / 2));
       const top = Math.max(10, rect.top - 46);
       toolbar.style.left = `${left}px`;

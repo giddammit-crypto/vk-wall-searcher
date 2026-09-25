@@ -966,18 +966,58 @@ button, input, select, textarea {
 .handle-ne { top: -4px; right: -4px; cursor: ne-resize; }
 .handle-se { bottom: -4px; right: -4px; cursor: se-resize; }
 .handle-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+.handle-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.handle-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.handle-e { top: 50%; right: -4px; transform: translateY(-50%); cursor: e-resize; }
+.handle-w { top: 50%; left: -4px; transform: translateY(-50%); cursor: w-resize; }
 
 .zero-rotator {
   position: absolute;
   top: -24px;
   left: 50%;
   transform: translateX(-50%);
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: var(--accent);
-  border: 1.5px solid #fff;
+  border: 2px solid #fff;
   border-radius: 50%;
   cursor: grab;
+  box-shadow: 0 0 6px rgba(13, 153, 255, 0.6);
+}
+
+.zero-dim-badge {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(13, 153, 255, 0.5);
+  color: #38bdf8;
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+}
+
+.zb-icon-chip {
+  cursor: pointer;
+  padding: 3px 8px;
+  background: var(--bg-dark-0);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-2);
+  transition: all 0.15s ease;
+}
+.zb-icon-chip:hover {
+  border-color: var(--accent);
+  color: #fff;
+  background: var(--bg-dark-3);
 }
 
 /* ─── 6. RIGHT INSPECTOR (FIGMA PROPERTIES) ─────────────────── */
@@ -2184,6 +2224,10 @@ button, input, select, textarea {
 .text-tool-btn.is-active {
   background: rgba(13, 153, 255, 0.25);
   color: #0d99ff;
+}
+.text-tool-close-btn:hover {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
 }
 
 .text-tool-divider {

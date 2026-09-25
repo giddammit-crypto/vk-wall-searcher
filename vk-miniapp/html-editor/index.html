@@ -293,22 +293,48 @@
     <!-- View 2: Zero Block Editor Canvas -->
     <div id="view-zero" style="display:none;width:100%;flex-direction:column;align-items:center;">
       <!-- Zero Block Top Elements Bar -->
-      <div style="display:flex;gap:6px;background:var(--bg-dark-1);padding:8px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:16px;user-select:none;flex-wrap:wrap;align-items:center;">
-        <button class="topbar-action-btn" id="zb-add-h1"><span class="material-symbols-rounded">format_h1</span> + Заголовок</button>
-        <button class="topbar-action-btn" id="zb-add-text"><span class="material-symbols-rounded">title</span> + Текст</button>
-        <button class="topbar-action-btn" id="zb-add-btn"><span class="material-symbols-rounded">smart_button</span> + Кнопка</button>
-        <button class="topbar-action-btn" id="zb-add-img"><span class="material-symbols-rounded">image</span> + Фото</button>
-        <button class="topbar-action-btn" id="zb-add-shape"><span class="material-symbols-rounded">crop_square</span> + Фигура</button>
-        <button class="topbar-action-btn" id="zb-add-icon"><span class="material-symbols-rounded">star</span> + Иконка</button>
-        <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+      <div style="display:flex;gap:6px;background:var(--bg-dark-1);padding:8px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:16px;user-select:none;flex-wrap:wrap;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+        <!-- Element Adders -->
+        <button class="topbar-action-btn" id="zb-add-h1" title="Добавить заголовок H1"><span class="material-symbols-rounded">format_h1</span> + H1</button>
+        <button class="topbar-action-btn" id="zb-add-h2" title="Добавить подзаголовок H2"><span class="material-symbols-rounded">format_h2</span> + H2</button>
+        <button class="topbar-action-btn" id="zb-add-text" title="Добавить текстовый блок"><span class="material-symbols-rounded">title</span> + Текст</button>
+        <button class="topbar-action-btn" id="zb-add-btn" title="Добавить кнопку действия"><span class="material-symbols-rounded">smart_button</span> + Кнопка</button>
+        <button class="topbar-action-btn" id="zb-add-img" title="Добавить фото"><span class="material-symbols-rounded">image</span> + Фото</button>
+        <button class="topbar-action-btn" id="zb-add-shape" title="Добавить геометрическую фигуру"><span class="material-symbols-rounded">crop_square</span> + Фигура</button>
+        <button class="topbar-action-btn" id="zb-add-icon" title="Добавить иконку"><span class="material-symbols-rounded">star</span> + Иконка</button>
+        <button class="topbar-action-btn" id="zb-add-form" title="Добавить форму заявки"><span class="material-symbols-rounded">edit_calendar</span> + Форма</button>
+
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;"></div>
+
+        <!-- History Undo / Redo -->
+        <button class="topbar-action-btn" id="zb-undo" title="Отменить (Ctrl+Z)"><span class="material-symbols-rounded">undo</span></button>
+        <button class="topbar-action-btn" id="zb-redo" title="Повторить (Ctrl+Y)"><span class="material-symbols-rounded">redo</span></button>
+
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;"></div>
+
+        <!-- Breakpoint Switcher for Zero Block -->
+        <div class="bp-group" id="zb-bp-selector" title="Адаптивные экраны Zero Block">
+          <button class="bp-btn zb-bp-btn is-active" data-bp="1200" title="1200px (Desktop)"><span class="material-symbols-rounded">desktop_windows</span></button>
+          <button class="bp-btn zb-bp-btn" data-bp="960" title="960px (Laptop)"><span class="material-symbols-rounded">laptop</span></button>
+          <button class="bp-btn zb-bp-btn" data-bp="768" title="768px (Tablet)"><span class="material-symbols-rounded">tablet_mac</span></button>
+          <button class="bp-btn zb-bp-btn" data-bp="480" title="480px (Mobile Landscape)"><span class="material-symbols-rounded">stay_current_landscape</span></button>
+          <button class="bp-btn zb-bp-btn" data-bp="320" title="320px (Mobile Portrait)"><span class="material-symbols-rounded">smartphone</span></button>
+        </div>
+
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;"></div>
+
+        <!-- Align Tools -->
         <button class="topbar-action-btn" id="zb-align-left" title="Выровнять влево"><span class="material-symbols-rounded">align_horizontal_left</span></button>
         <button class="topbar-action-btn" id="zb-align-center" title="Выровнять по центру"><span class="material-symbols-rounded">align_horizontal_center</span></button>
         <button class="topbar-action-btn" id="zb-align-right" title="Выровнять вправо"><span class="material-symbols-rounded">align_horizontal_right</span></button>
-        <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;"></div>
+
+        <button class="topbar-action-btn" id="zb-dup-el" title="Дублировать элемент (Ctrl+D)"><span class="material-symbols-rounded">content_copy</span></button>
         <button class="topbar-action-btn" id="zb-del-el" style="color:#f43f5e;" title="Удалить элемент (Del)"><span class="material-symbols-rounded">delete</span></button>
-        <button class="topbar-action-btn" id="zb-btn-apply" style="background:var(--accent);color:#fff;"><span class="material-symbols-rounded">check</span> Применить</button>
+        <button class="topbar-action-btn btn-primary" id="zb-btn-apply" style="background:var(--accent);color:#fff;font-weight:700;"><span class="material-symbols-rounded">check</span> Применить и выйти</button>
       </div>
-      <div id="zero-block-canvas-mount" style="width:100%;"></div>
+      <div id="zero-block-canvas-mount" style="width:100%;display:flex;justify-content:center;"></div>
     </div>
 
     <!-- View 3: CodeMirror 6 Code Editor -->
