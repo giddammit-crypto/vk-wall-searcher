@@ -1838,11 +1838,18 @@ function setImageCornerRadius(img, radiusPx, skipRender = false) {
 /* ══════════════════════════════════════════════════════════════
    CANVAS
    ══════════════════════════════════════════════════════════════ */
+/* ── Монтажный стол (Pasteboard Workspace с поддержкой вылетов за края холста) ── */
+const CANVAS_PADDING = 320; // Безопасное поле (px) вокруг листа для свободного перемещения и масштабирования
+
 function initCanvas(w, h) {
   if (canvas) canvas.dispose();
 
+  const totalW = (w + CANVAS_PADDING * 2) * zoom;
+  const totalH = (h + CANVAS_PADDING * 2) * zoom;
+
   canvas = new fabric.Canvas('poster-canvas', {
-    width: w, height: h,
+    width: totalW,
+    height: totalH,
     backgroundColor: '',
     preserveObjectStacking: true,
     selection: true,
@@ -1851,6 +1858,17 @@ function initCanvas(w, h) {
     selectionLineWidth: 1.5,
   });
   window.canvas = canvas;
+
+  // Устанавливаем матрицу отображения: лист центрирован внутри padding
+  canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
+
+  // Разделяем фон листа афиши и монтажного стола
+  canvas.setBackgroundColor = function(col, callback) {
+    canvas.__artboardBg = col;
+    canvas.backgroundColor = '';
+    if (typeof callback === 'function') callback();
+    canvas.requestRenderAll();
+  };
 
   fabric.Object.prototype.set({
     borderColor: '#0d99ff',
@@ -1911,6 +1929,62 @@ function initCanvas(w, h) {
       render: rotRenderer
     });
   }
+
+  // ── Отрисовка бумажного листа афиши (Figma Artboard Sheet) ──
+  canvas.on('before:render', opt => {
+    const ctx = opt.ctx;
+    if (!ctx || !currentSize) return;
+    const cw = currentSize.w;
+    const ch = currentSize.h;
+    const z = zoom;
+    const pad = CANVAS_PADDING;
+
+    ctx.save();
+    // 1. Тень бумажного листа афиши на монтажном столе
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+    ctx.shadowBlur = 32 * z;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 12 * z;
+
+    // 2. Фоновая заливка листа
+    const bg = canvas.__artboardBg || canvas.backgroundColor || '#ffffff';
+    if (bg && bg !== 'transparent' && bg !== '') {
+      if (typeof bg === 'string') {
+        ctx.fillStyle = bg;
+        ctx.fillRect(pad * z, pad * z, cw * z, ch * z);
+      } else if (bg && typeof bg.toLive === 'function') {
+        try {
+          ctx.fillStyle = bg.toLive(ctx);
+          ctx.fillRect(pad * z, pad * z, cw * z, ch * z);
+        } catch (e) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(pad * z, pad * z, cw * z, ch * z);
+        }
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(pad * z, pad * z, cw * z, ch * z);
+      }
+    } else {
+      // Шахматка для прозрачного холста
+      ctx.fillStyle = '#222222';
+      ctx.fillRect(pad * z, pad * z, cw * z, ch * z);
+      const sq = 12 * z;
+      ctx.fillStyle = '#181818';
+      for (let px = 0; px < cw * z; px += sq * 2) {
+        for (let py = 0; py < ch * z; py += sq * 2) {
+          ctx.fillRect((pad * z) + px, (pad * z) + py, Math.min(sq, cw * z - px), Math.min(sq, ch * z - py));
+          ctx.fillRect((pad * z) + px + sq, (pad * z) + py + sq, Math.min(sq, cw * z - (px + sq)), Math.min(sq, ch * z - (py + sq)));
+        }
+      }
+    }
+
+    // 3. Тонкая неоновая граница листа афиши
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(pad * z, pad * z, cw * z, ch * z);
+    ctx.restore();
+  });
 
   canvas.on('selection:created',  onSelection);
   canvas.on('selection:updated',  onSelection);
@@ -2047,11 +2121,12 @@ function initCanvas(w, h) {
 
   canvas.on('after:render', opt => {
     const ctx = opt.ctx;
-    if (!ctx) return;
+    if (!ctx || !currentSize) return;
 
     const cw = currentSize.w;
     const ch = currentSize.h;
     const z = zoom;
+    const pad = CANVAS_PADDING;
 
     // ── 1. ОТРИСОВКА СЕТКИ ВЕРСТКИ (GRID OVERLAY) ──
     if (isGridVisible) {
@@ -2067,15 +2142,15 @@ function initCanvas(w, h) {
       ctx.beginPath();
       for (let x = step; x < cw; x += step) {
         if (x % majorStep === 0) continue;
-        const px = Math.round(x * z) + 0.5;
-        ctx.moveTo(px, 0);
-        ctx.lineTo(px, ch * z);
+        const px = Math.round((pad + x) * z) + 0.5;
+        ctx.moveTo(px, pad * z);
+        ctx.lineTo(px, (pad + ch) * z);
       }
       for (let y = step; y < ch; y += step) {
         if (y % majorStep === 0) continue;
-        const py = Math.round(y * z) + 0.5;
-        ctx.moveTo(0, py);
-        ctx.lineTo(cw * z, py);
+        const py = Math.round((pad + y) * z) + 0.5;
+        ctx.moveTo(pad * z, py);
+        ctx.lineTo((pad + cw) * z, py);
       }
       ctx.stroke();
 
@@ -2084,14 +2159,14 @@ function initCanvas(w, h) {
       ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.32)';
       for (let x = majorStep; x < cw; x += majorStep) {
-        const px = Math.round(x * z) + 0.5;
-        ctx.moveTo(px, 0);
-        ctx.lineTo(px, ch * z);
+        const px = Math.round((pad + x) * z) + 0.5;
+        ctx.moveTo(px, pad * z);
+        ctx.lineTo(px, (pad + ch) * z);
       }
       for (let y = majorStep; y < ch; y += majorStep) {
-        const py = Math.round(y * z) + 0.5;
-        ctx.moveTo(0, py);
-        ctx.lineTo(cw * z, py);
+        const py = Math.round((pad + y) * z) + 0.5;
+        ctx.moveTo(pad * z, py);
+        ctx.lineTo((pad + cw) * z, py);
       }
       ctx.stroke();
 
@@ -2100,12 +2175,12 @@ function initCanvas(w, h) {
       ctx.lineWidth = 1.2;
       ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
       ctx.setLineDash([4, 4]);
-      const cx = Math.round((cw / 2) * z) + 0.5;
-      ctx.moveTo(cx, 0);
-      ctx.lineTo(cx, ch * z);
-      const cy = Math.round((ch / 2) * z) + 0.5;
-      ctx.moveTo(0, cy);
-      ctx.lineTo(cw * z, cy);
+      const cx = Math.round((pad + cw / 2) * z) + 0.5;
+      ctx.moveTo(cx, pad * z);
+      ctx.lineTo(cx, (pad + ch) * z);
+      const cy = Math.round((pad + ch / 2) * z) + 0.5;
+      ctx.moveTo(pad * z, cy);
+      ctx.lineTo((pad + cw) * z, cy);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -2119,31 +2194,31 @@ function initCanvas(w, h) {
 
         for (let c = 0; c < totalColumns; c++) {
           const colX = margin + c * (colWidth + gutter);
-          const rx = colX * z;
+          const rx = (pad + colX) * z;
           const rw = colWidth * z;
           const rh = ch * z;
 
           // Полупрозрачная заливка колонки
           ctx.fillStyle = 'rgba(239, 68, 68, 0.06)';
-          ctx.fillRect(rx, 0, rw, rh);
+          ctx.fillRect(rx, pad * z, rw, rh);
 
           // Границы колонки
           ctx.strokeStyle = 'rgba(239, 68, 68, 0.22)';
           ctx.lineWidth = 0.75;
-          ctx.strokeRect(rx, 0, rw, rh);
+          ctx.strokeRect(rx, pad * z, rw, rh);
 
           // Номер колонки
           ctx.fillStyle = 'rgba(239, 68, 68, 0.85)';
           ctx.font = `bold ${Math.max(8, Math.round(9 * z))}px sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillText(String(c + 1), rx + rw / 2, Math.max(12, 14 * z));
+          ctx.fillText(String(c + 1), rx + rw / 2, (pad + 14) * z);
         }
 
         // Подпись 12 колонок
         ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
         ctx.textAlign = 'left';
         ctx.font = `bold ${Math.max(9, Math.round(11 * z))}px sans-serif`;
-        ctx.fillText('СЕТКА TILDA: 12 КОЛОНОК', (margin + 6) * z, Math.max(26, 30 * z));
+        ctx.fillText('СЕТКА TILDA: 12 КОЛОНОК', (pad + margin + 6) * z, (pad + 30) * z);
       }
 
       // 1.5 Направляющие границ блоков для 6-блочного лендинга (1200×2400)
@@ -2157,19 +2232,19 @@ function initCanvas(w, h) {
         ];
 
         blockSplits.forEach(bs => {
-          const sy = Math.round(bs.y * z) + 0.5;
+          const sy = Math.round((pad + bs.y) * z) + 0.5;
           ctx.strokeStyle = '#38BDF8';
           ctx.lineWidth = 1.5;
           ctx.setLineDash([6, 3]);
           ctx.beginPath();
-          ctx.moveTo(0, sy);
-          ctx.lineTo(cw * z, sy);
+          ctx.moveTo(pad * z, sy);
+          ctx.lineTo((pad + cw) * z, sy);
           ctx.stroke();
 
           ctx.fillStyle = 'rgba(56, 189, 248, 0.95)';
           ctx.font = `bold ${Math.max(8, Math.round(10 * z))}px sans-serif`;
           ctx.textAlign = 'right';
-          ctx.fillText(`⮜ ${bs.label} ⮞`, (cw - 24) * z, sy - 4);
+          ctx.fillText(`⮜ ${bs.label} ⮞`, (pad + cw - 24) * z, sy - 4);
         });
         ctx.setLineDash([]);
       }
@@ -2184,8 +2259,9 @@ function initCanvas(w, h) {
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(smartGuides.x * zoom, 0);
-      ctx.lineTo(smartGuides.x * zoom, currentSize.h * zoom);
+      const gx = (pad + smartGuides.x) * z;
+      ctx.moveTo(gx, pad * z);
+      ctx.lineTo(gx, (pad + currentSize.h) * z);
       ctx.stroke();
       ctx.restore();
     }
@@ -2195,8 +2271,9 @@ function initCanvas(w, h) {
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(0, smartGuides.y * zoom);
-      ctx.lineTo(currentSize.w * zoom, smartGuides.y * zoom);
+      const gy = (pad + smartGuides.y) * z;
+      ctx.moveTo(pad * z, gy);
+      ctx.lineTo((pad + currentSize.w) * z, gy);
       ctx.stroke();
       ctx.restore();
     }
@@ -3738,16 +3815,23 @@ function alignActiveObject(alignment) {
   const h = currentSize.h;
   const ow = obj.getScaledWidth();
   const oh = obj.getScaledHeight();
+  const ox = obj.originX || 'left';
+  const oy = obj.originY || 'top';
+
+  const setLeft = l => obj.set('left', ox === 'center' ? l + ow / 2 : l);
+  const setTop  = t => obj.set('top',  oy === 'center' ? t + oh / 2 : t);
+
   switch(alignment) {
-    case 'center-h': obj.set('left', (w - ow) / 2); break;
-    case 'center-v': obj.set('top', (h - oh) / 2); break;
-    case 'left':     obj.set('left', 20); break;
-    case 'right':    obj.set('left', w - ow - 20); break;
-    case 'top':      obj.set('top', 20); break;
-    case 'bottom':   obj.set('top', h - oh - 20); break;
+    case 'center-h': setLeft((w - ow) / 2); break;
+    case 'center-v': setTop((h - oh) / 2); break;
+    case 'left':     setLeft(24); break;
+    case 'right':    setLeft(w - ow - 24); break;
+    case 'top':      setTop(24); break;
+    case 'bottom':   setTop(h - oh - 24); break;
   }
   obj.setCoords();
   canvas.requestRenderAll();
+  updateFigmaDimensionsUI(obj);
   saveHistory();
 }
 
@@ -3767,9 +3851,11 @@ function fitActiveObjectToCanvas() {
   }
   const ow = obj.getScaledWidth();
   const oh = obj.getScaledHeight();
+  const ox = obj.originX || 'left';
+  const oy = obj.originY || 'top';
   obj.set({
-    left: Math.round((currentSize.w - ow) / 2),
-    top:  Math.round((currentSize.h - oh) / 2)
+    left: ox === 'center' ? Math.round(currentSize.w / 2) : Math.round((currentSize.w - ow) / 2),
+    top:  oy === 'center' ? Math.round(currentSize.h / 2) : Math.round((currentSize.h - oh) / 2)
   });
   obj.setCoords();
   canvas.requestRenderAll();
@@ -3986,7 +4072,15 @@ function printPoster() {
   applyZoom(1);
   canvas.discardActiveObject();
   canvas.renderAll();
-  const dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+  const dataUrl = canvas.toDataURL({
+    left: 0,
+    top: 0,
+    width: currentSize.w,
+    height: currentSize.h,
+    format: 'png',
+    quality: 1,
+    multiplier: 2
+  });
   applyZoom(saved);
 
   const win = window.open('', '_blank');
@@ -4970,7 +5064,10 @@ function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
   if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
+  const prevBg = canvas.backgroundColor;
+  if (canvas.__artboardBg) canvas.backgroundColor = canvas.__artboardBg;
   history.push(JSON.stringify(canvas.toJSON(CUSTOM_PROPS_TO_SAVE)));
+  canvas.backgroundColor = prevBg;
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -4985,6 +5082,11 @@ function restoreHistory() {
   if (!history[historyIdx]) return;
   savingHistory = true;
   canvas.loadFromJSON(history[historyIdx], () => {
+    if (canvas.backgroundColor) {
+      canvas.__artboardBg = canvas.backgroundColor;
+      canvas.backgroundColor = '';
+    }
+    canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
     canvas.renderAll();
     savingHistory = false;
     updateHistoryBtns();
@@ -5002,20 +5104,23 @@ function updateHistoryBtns() {
    МАСШТАБ
    ══════════════════════════════════════════════════════════════ */
 function applyZoom(z) {
-  if (!canvas) return;
+  if (!canvas || !currentSize) return;
   zoom = Math.min(Math.max(z, 0.08), 4.0);
-  canvas.setZoom(zoom);
-  canvas.setWidth(currentSize.w * zoom);
-  canvas.setHeight(currentSize.h * zoom);
+  const totalW = (currentSize.w + CANVAS_PADDING * 2) * zoom;
+  const totalH = (currentSize.h + CANVAS_PADDING * 2) * zoom;
+  canvas.setWidth(totalW);
+  canvas.setHeight(totalH);
+  canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
   $$('#zoom-label, .zoom-val').forEach(el => el.textContent = Math.round(zoom * 100) + '%');
   updateFormatBadge();
+  canvas.requestRenderAll();
 }
 
 function fitZoom() {
   const wrap = $('#canvas-area');
   if (!wrap || !currentSize) return;
-  const pw = wrap.clientWidth - 56;
-  const ph = wrap.clientHeight - 56;
+  const pw = wrap.clientWidth - 80;
+  const ph = wrap.clientHeight - 80;
   applyZoom(Math.min(pw / currentSize.w, ph / currentSize.h, 1.0));
 }
 
@@ -5176,16 +5281,28 @@ async function exportPng() {
     // Fallback: без enhancer
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback canvas.toDataURL');
     const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
-    if (typeof applyZoom === 'function') applyZoom(1);
+    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
     canvas.discardActiveObject();
+    canvas.setZoom(1);
+    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
     canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
     const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
-    const url = canvas.toDataURL({ format:'png', quality:1, multiplier });
+    const url = canvas.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: currentSize.w,
+      height: currentSize.h,
+      quality: 1,
+      multiplier: multiplier,
+      enableRetinaScaling: false
+    });
     const a = document.createElement('a');
     a.href = url; a.download = filename + '.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if (origVpt) canvas.viewportTransform = origVpt;
     if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('PNG сохранён');
     toast('PNG сохранён в папку «Загрузки»');
@@ -5228,15 +5345,28 @@ async function exportJpg() {
     // Fallback
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback');
     const savedZoom = typeof zoom !== 'undefined' ? zoom : 1;
-    if (typeof applyZoom === 'function') applyZoom(1);
-    canvas.discardActiveObject(); canvas.renderAll();
+    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
+    canvas.discardActiveObject();
+    canvas.setZoom(1);
+    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
     const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
-    const url = canvas.toDataURL({ format:'jpeg', quality:0.95, multiplier });
+    const url = canvas.toDataURL({
+      format: 'jpeg',
+      left: 0,
+      top: 0,
+      width: currentSize.w,
+      height: currentSize.h,
+      quality: 0.95,
+      multiplier: multiplier,
+      enableRetinaScaling: false
+    });
     const a = document.createElement('a');
     a.href = url; a.download = filename + '.jpg';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if (origVpt) canvas.viewportTransform = origVpt;
     if (typeof applyZoom === 'function') applyZoom(savedZoom);
     hideExportLoader('JPG сохранён');
     toast('JPG (высокое качество) сохранён в «Загрузки»');
@@ -5281,14 +5411,27 @@ async function exportPdf() {
     }
     const { jsPDF } = window.jspdf;
     const saved = zoom;
-    applyZoom(1); canvas.discardActiveObject(); canvas.renderAll();
+    const origVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
+    canvas.discardActiveObject();
+    canvas.setZoom(1);
+    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    canvas.renderAll();
     updateExportProgress(60, 'Рендеринг PDF страниц...');
     await new Promise(r => setTimeout(r, 20));
-    const url = canvas.toDataURL({ format:'png', quality:1 });
+    const url = canvas.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: currentSize.w,
+      height: currentSize.h,
+      quality: 1,
+      enableRetinaScaling: false
+    });
     const isH = currentSize.w > currentSize.h;
     const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
     pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
     pdf.save(filename + '.pdf');
+    if (origVpt) canvas.viewportTransform = origVpt;
     applyZoom(saved);
     hideExportLoader('PDF готов');
     toast('PDF готов к печати');
@@ -5842,11 +5985,21 @@ async function saveCurrentDraft(isManual = false) {
 
     const objectsCount = canvas.getObjects().length;
 
-    // Генерируем компактное превью (180px)
+    // Генерируем компактное превью (180px) строго по границам листа
     let previewDataUrl = '';
     try {
-      const prevScale = Math.min(180 / (canvas.getWidth() || 800), 0.25);
-      previewDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.65, multiplier: prevScale });
+      const artW = currentSize?.w || 800;
+      const artH = currentSize?.h || 1200;
+      const prevScale = Math.min(180 / artW, 0.25);
+      previewDataUrl = canvas.toDataURL({
+        left: 0,
+        top: 0,
+        width: artW,
+        height: artH,
+        format: 'jpeg',
+        quality: 0.65,
+        multiplier: prevScale
+      });
     } catch (e) {}
 
     const now = Date.now();
@@ -7281,6 +7434,10 @@ async function exportTildaDownloadPng() {
     canvas.renderAll();
 
     const dataUrl = canvas.toDataURL({
+      left: 0,
+      top: 0,
+      width: currentSize.w,
+      height: currentSize.h,
       format: 'png',
       multiplier: scale,
       quality: 1
@@ -7331,7 +7488,15 @@ async function exportTildaDownloadZip() {
     const htmlContent = await buildTildaHTML();
 
     // 2. Генерируем PNG × 2
-    const pngDataUrl = canvas.toDataURL({ format: 'png', multiplier: 2, quality: 1 });
+    const pngDataUrl = canvas.toDataURL({
+      left: 0,
+      top: 0,
+      width: currentSize.w,
+      height: currentSize.h,
+      format: 'png',
+      multiplier: 2,
+      quality: 1
+    });
     const pngBase64  = pngDataUrl.split(',')[1];
 
     // 3. CSS для блока
@@ -7583,10 +7748,45 @@ function bindEvents() {
         return;
       }
     }
-    // Escape -> выход из режима рисования
-    if (e.key === 'Escape' && canvas?.isDrawingMode) {
-      toggleDrawingMode(false);
-      return;
+    // ── Клавиатурный Nudge (стрелки: 1px, Shift + стрелки: 10px) как в Figma ──
+    if (!inInput && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      const activeObj = canvas?.getActiveObject();
+      if (activeObj && !activeObj.isEditing) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === 'ArrowUp') dy = -step;
+        else if (e.key === 'ArrowDown') dy = step;
+        else if (e.key === 'ArrowLeft') dx = -step;
+        else if (e.key === 'ArrowRight') dx = step;
+
+        activeObj.set({
+          left: (activeObj.left || 0) + dx,
+          top: (activeObj.top || 0) + dy
+        });
+        activeObj.setCoords();
+        canvas.requestRenderAll();
+        saveHistory();
+        syncUI();
+        return;
+      }
+    }
+
+    // Escape -> выход из режима рисования или сброс выделения
+    if (e.key === 'Escape') {
+      if (canvas?.isDrawingMode) {
+        e.preventDefault();
+        toggleDrawingMode(false);
+        return;
+      }
+      if (canvas?.getActiveObject()) {
+        e.preventDefault();
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        onSelection();
+        return;
+      }
     }
   });
 

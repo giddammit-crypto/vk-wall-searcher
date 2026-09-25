@@ -538,13 +538,17 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
   const origZoom = fabricCanvas.getZoom ? fabricCanvas.getZoom() : 1;
   const origVpt = fabricCanvas.viewportTransform ? [...fabricCanvas.viewportTransform] : null;
   const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
+  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
+  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
+  const targetW = Math.round(origW * multiplier);
+  const targetH = Math.round(origH * multiplier);
 
   try {
     // Снимаем выделение, чтобы служебные маркеры не попали в экспорт
     if (fabricCanvas.discardActiveObject) {
       fabricCanvas.discardActiveObject();
     }
-    // Сбрасываем зум и панорамирование в 1:1
+    // Сбрасываем зум и панорамирование в 1:1 без отступов монтажного стола
     if (fabricCanvas.setZoom) {
       fabricCanvas.setZoom(1);
     }
@@ -555,45 +559,40 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
       fabricCanvas.renderAll();
     }
 
-    let buffer = null;
+    const buffer = document.createElement('canvas');
+    buffer.width = targetW;
+    buffer.height = targetH;
+    const ctx = buffer.getContext('2d');
 
-    // Вариант 1: встроенный метод toCanvasElement в Fabric.js 5.x
-    if (typeof fabricCanvas.toCanvasElement === 'function') {
-      try {
-        buffer = fabricCanvas.toCanvasElement(multiplier);
-      } catch (err) {
-        console.warn('fabric.toCanvasElement failed, fallback to toDataURL:', err);
+    // Отрисовка фонового цвета афиши (если задан)
+    const bg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor;
+    if (bg && bg !== 'transparent' && bg !== '') {
+      if (typeof bg === 'string') {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, targetW, targetH);
       }
     }
 
-    // Вариант 2: надёжный fallback через toDataURL
-    if (!buffer || !buffer.width || !buffer.height) {
-      const origW = fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800);
-      const origH = fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600);
-      const targetW = Math.round(origW * multiplier);
-      const targetH = Math.round(origH * multiplier);
+    // Кадрируем строго область листа [left: 0, top: 0, width: origW, height: origH]
+    const dataUrl = fabricCanvas.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: origW,
+      height: origH,
+      multiplier: multiplier,
+      enableRetinaScaling: false
+    });
 
-      buffer = document.createElement('canvas');
-      buffer.width = targetW;
-      buffer.height = targetH;
-      const ctx = buffer.getContext('2d');
-
-      const dataUrl = fabricCanvas.toDataURL({
-        format: 'png',
-        multiplier: multiplier,
-        enableRetinaScaling: false
-      });
-
-      await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, targetW, targetH);
-          resolve();
-        };
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
-    }
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
 
     return buffer;
   } finally {
@@ -646,8 +645,8 @@ async function exportPoster(fabricCanvas, options = {}) {
   if (onProgress) onProgress(15, `Подготовка холста (${resolution.toUpperCase()})...`);
   await new Promise(r => setTimeout(r, 25));
 
-  const origW = canvasInst.getWidth ? canvasInst.getWidth() : (canvasInst.width || 800);
-  const origH = canvasInst.getHeight ? canvasInst.getHeight() : (canvasInst.height || 600);
+  const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (canvasInst.getWidth ? canvasInst.getWidth() : (canvasInst.width || 800));
+  const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (canvasInst.getHeight ? canvasInst.getHeight() : (canvasInst.height || 600));
   const scaleInfo = calculateExportScale(origW, origH, resolution, options);
 
   if (onProgress) onProgress(35, `Суперсэмплинг холста (${scaleInfo.targetWidth} × ${scaleInfo.targetHeight} px)...`);
@@ -784,17 +783,39 @@ function generateBeforeAfterPreview(source, options = {}) {
     srcCanvas.width = el.naturalWidth || el.width || 800;
     srcCanvas.height = el.naturalHeight || el.height || 600;
     srcCanvas.getContext('2d').drawImage(el, 0, 0, srcCanvas.width, srcCanvas.height);
-  } else if (source && typeof source.toCanvasElement === 'function') {
+  } else if (source && typeof source.toDataURL === 'function') {
     // fabric.Canvas: безопасный сброс зума, сдвига и выделения
     const origZoom = source.getZoom ? source.getZoom() : 1;
     const origVpt = source.viewportTransform ? [...source.viewportTransform] : null;
     const activeObj = source.getActiveObject ? source.getActiveObject() : null;
+    const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : 800;
+    const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : 600;
     try {
       if (activeObj && source.discardActiveObject) source.discardActiveObject();
       if (source.setZoom) source.setZoom(1);
       if (source.viewportTransform) source.viewportTransform = [1, 0, 0, 1, 0, 0];
       if (source.renderAll) source.renderAll();
-      srcCanvas = source.toCanvasElement(1);
+      const prevUrl = source.toDataURL({
+        format: 'png',
+        left: 0,
+        top: 0,
+        width: origW,
+        height: origH,
+        multiplier: 1,
+        enableRetinaScaling: false
+      });
+      srcCanvas = document.createElement('canvas');
+      srcCanvas.width = origW;
+      srcCanvas.height = origH;
+      const sCtx = srcCanvas.getContext('2d');
+      const bg = source.__artboardBg || source.backgroundColor;
+      if (bg && bg !== 'transparent') {
+        sCtx.fillStyle = bg;
+        sCtx.fillRect(0, 0, origW, origH);
+      }
+      const sImg = new Image();
+      sImg.src = prevUrl;
+      sCtx.drawImage(sImg, 0, 0);
     } finally {
       if (origVpt && source.viewportTransform) source.viewportTransform = origVpt;
       if (source.setZoom) source.setZoom(origZoom);

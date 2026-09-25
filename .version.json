@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "4.94.0",
+  "version": "4.95.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-25T23:05:00+03:00",
-  "release_name": "AURORA DESIGN 4.94.0 — Скругление углов изображений (Corner Radius), быстрые пресеты и режим Круг, свободное управление и видимость объектов за пределами холста (Figma/Tilda Workspace) и кнопка Fit to Canvas"
+  "commit_date": "2026-09-25T23:20:00+03:00",
+  "release_name": "AURORA DESIGN 4.95.0 — Полноценный воркспейс Figma/Tilda: свободное управление и видимость маркеров объектов за пределами холста (Artboard Pasteboard), стрелки клавиатуры Nudge и чистый экспорт"
 }
