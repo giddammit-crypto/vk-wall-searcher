@@ -537,10 +537,16 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
   const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
   const curZoom = (fabricCanvas.getZoom ? fabricCanvas.getZoom() : 1) || 1;
   const activeObj = fabricCanvas.getActiveObject ? fabricCanvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
   const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (fabricCanvas.getWidth ? fabricCanvas.getWidth() : (fabricCanvas.width || 800));
   const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (fabricCanvas.getHeight ? fabricCanvas.getHeight() : (fabricCanvas.height || 600));
   const targetW = Math.round(origW * multiplier);
   const targetH = Math.round(origH * multiplier);
+  const prevBg = fabricCanvas.backgroundColor;
+  const artboardBg = fabricCanvas.__artboardBg || prevBg || '#ffffff';
 
   try {
     fabricCanvas._isExporting = true;
@@ -548,51 +554,65 @@ async function renderFabricToBuffer(fabricCanvas, multiplier = 1.0) {
     if (activeObj && fabricCanvas.discardActiveObject) {
       fabricCanvas.discardActiveObject();
     }
+    fabricCanvas.backgroundColor = artboardBg;
     if (fabricCanvas.renderAll) {
       fabricCanvas.renderAll();
     }
 
-    const buffer = document.createElement('canvas');
-    buffer.width = targetW;
-    buffer.height = targetH;
-    const ctx = buffer.getContext('2d');
+    let buffer;
+    if (typeof fabricCanvas.toCanvasElement === 'function') {
+      buffer = fabricCanvas.toCanvasElement(multiplier / curZoom, {
+        left: pad * curZoom,
+        top: pad * curZoom,
+        width: origW * curZoom,
+        height: origH * curZoom,
+        enableRetinaScaling: false
+      });
+    } else {
+      buffer = document.createElement('canvas');
+      buffer.width = targetW;
+      buffer.height = targetH;
+      const ctx = buffer.getContext('2d');
 
-    // Отрисовка фонового цвета афиши (если задан)
-    const bg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor;
-    if (bg && bg !== 'transparent' && bg !== '') {
-      if (typeof bg === 'string') {
-        ctx.fillStyle = bg;
+      // Отрисовка фонового цвета афиши (если задан)
+      if (artboardBg && artboardBg !== 'transparent') {
+        ctx.fillStyle = artboardBg;
         ctx.fillRect(0, 0, targetW, targetH);
       }
+
+      const dataUrl = fabricCanvas.toDataURL({
+        format: 'png',
+        left: pad * curZoom,
+        top: pad * curZoom,
+        width: origW * curZoom,
+        height: origH * curZoom,
+        multiplier: multiplier / curZoom,
+        enableRetinaScaling: false
+      });
+
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
     }
-
-    // Кадрируем строго область листа [left: pad*curZoom, top: pad*curZoom, width: origW*curZoom, height: origH*curZoom]
-    const dataUrl = fabricCanvas.toDataURL({
-      format: 'png',
-      left: pad * curZoom,
-      top: pad * curZoom,
-      width: origW * curZoom,
-      height: origH * curZoom,
-      multiplier: multiplier / curZoom,
-      enableRetinaScaling: false
-    });
-
-    await new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-        resolve();
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
 
     return buffer;
   } finally {
     fabricCanvas._isExporting = false;
+    fabricCanvas.backgroundColor = prevBg;
     // Восстанавливаем выделение
-    if (activeObj && fabricCanvas.setActiveObject) {
-      fabricCanvas.setActiveObject(activeObj);
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas: fabricCanvas });
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(sel);
+      } else if (!selectedObjects && fabricCanvas.contains && fabricCanvas.contains(activeObj)) {
+        if (fabricCanvas.setActiveObject) fabricCanvas.setActiveObject(activeObj);
+      }
     }
     if (fabricCanvas.renderAll) {
       fabricCanvas.renderAll();
@@ -625,7 +645,8 @@ async function exportPoster(fabricCanvas, options = {}) {
   const quality = options.quality ?? 0.95;
   const isHdr = options.hdr !== false;
   const presetKey = options.hdrPreset || (typeof options.hdr === 'string' ? options.hdr : 'cinematic');
-  const filename = options.filename || 'Афиша';
+  const rawFilename = options.filename || 'Афиша';
+  const filename = String(rawFilename).replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша';
   const shouldDownload = options.download !== false;
   const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
@@ -771,38 +792,76 @@ function generateBeforeAfterPreview(source, options = {}) {
     srcCanvas.width = el.naturalWidth || el.width || 800;
     srcCanvas.height = el.naturalHeight || el.height || 600;
     srcCanvas.getContext('2d').drawImage(el, 0, 0, srcCanvas.width, srcCanvas.height);
-  } else if (source && (source.lowerCanvasEl || typeof source.toDataURL === 'function')) {
-    // fabric.Canvas: точный и мгновенный захват листа афиши
-    const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : 800;
-    const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : 600;
+  } else if (source && (typeof source.toCanvasElement === 'function' || typeof source.toDataURL === 'function' || source.lowerCanvasEl)) {
+    // fabric.Canvas: точный и чистый захват листа афиши без служебных рамок и сеток
+    const origW = (typeof currentSize !== 'undefined' && currentSize?.w) ? currentSize.w : (source.getWidth ? source.getWidth() : (source.width || 800));
+    const origH = (typeof currentSize !== 'undefined' && currentSize?.h) ? currentSize.h : (source.getHeight ? source.getHeight() : (source.height || 600));
+    const maxPrevDim = options.maxWidth || 1200;
+    const longSide = Math.max(origW, origH);
+    const previewMultiplier = Math.min(1.0, maxPrevDim / Math.max(1, longSide));
     const pad = typeof CANVAS_PADDING !== 'undefined' ? CANVAS_PADDING : 320;
     const z = (source.getZoom ? source.getZoom() : 1) || 1;
 
-    srcCanvas = document.createElement('canvas');
-    srcCanvas.width = origW;
-    srcCanvas.height = origH;
-    const sCtx = srcCanvas.getContext('2d');
+    const activeObj = source.getActiveObject ? source.getActiveObject() : null;
+    let selectedObjects = null;
+    if (activeObj && activeObj.type === 'activeSelection') {
+      selectedObjects = activeObj.getObjects();
+    }
+    const prevBg = source.backgroundColor;
+    const artboardBg = source.__artboardBg || prevBg || '#ffffff';
 
-    if (source.lowerCanvasEl) {
-      // Прямой синхронный кроп листа афиши с lowerCanvasEl (без контролов верхнего холста upperCanvas)
-      sCtx.drawImage(
-        source.lowerCanvasEl,
-        pad * z, pad * z, origW * z, origH * z,
-        0, 0, origW, origH
-      );
-    } else {
-      const prevUrl = source.toDataURL({
-        format: 'png',
-        left: pad * z,
-        top: pad * z,
-        width: origW * z,
-        height: origH * z,
-        multiplier: 1 / z,
-        enableRetinaScaling: false
-      });
-      const sImg = new Image();
-      sImg.src = prevUrl;
-      sCtx.drawImage(sImg, 0, 0, origW, origH);
+    try {
+      source._isExporting = true;
+      if (activeObj && source.discardActiveObject) {
+        source.discardActiveObject();
+      }
+      source.backgroundColor = artboardBg;
+      if (source.renderAll) {
+        source.renderAll();
+      }
+
+      if (typeof source.toCanvasElement === 'function') {
+        srcCanvas = source.toCanvasElement(previewMultiplier / z, {
+          left: pad * z,
+          top: pad * z,
+          width: origW * z,
+          height: origH * z,
+          enableRetinaScaling: false
+        });
+      } else {
+        const prevW = Math.max(1, Math.round(origW * previewMultiplier));
+        const prevH = Math.max(1, Math.round(origH * previewMultiplier));
+        srcCanvas = document.createElement('canvas');
+        srcCanvas.width = prevW;
+        srcCanvas.height = prevH;
+        const sCtx = srcCanvas.getContext('2d');
+        const prevUrl = source.toDataURL({
+          format: 'png',
+          left: pad * z,
+          top: pad * z,
+          width: origW * z,
+          height: origH * z,
+          multiplier: previewMultiplier / z,
+          enableRetinaScaling: false
+        });
+        const sImg = new Image();
+        sImg.src = prevUrl;
+        sCtx.drawImage(sImg, 0, 0, prevW, prevH);
+      }
+    } finally {
+      source._isExporting = false;
+      source.backgroundColor = prevBg;
+      if (activeObj) {
+        if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+          const sel = new fabric.ActiveSelection(selectedObjects, { canvas: source });
+          if (source.setActiveObject) source.setActiveObject(sel);
+        } else if (!selectedObjects && source.contains && source.contains(activeObj)) {
+          if (source.setActiveObject) source.setActiveObject(activeObj);
+        }
+      }
+      if (source.renderAll) {
+        source.renderAll();
+      }
     }
   } else if (typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement) {
     srcCanvas = source;

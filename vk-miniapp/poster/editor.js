@@ -4090,26 +4090,32 @@ function toggleCanvasTransparency() {
   }
 }
 
-function printPoster() {
+async function printPoster() {
   if (!canvas) return;
   const pad = CANVAS_PADDING;
   const curZ = canvas.getZoom() || 1;
-  const activeObj = canvas.getActiveObject();
-  if (activeObj) canvas.discardActiveObject();
-  canvas._isExporting = true;
-  canvas.renderAll();
-  const dataUrl = canvas.toDataURL({
-    left: pad * curZ,
-    top: pad * curZ,
-    width: currentSize.w * curZ,
-    height: currentSize.h * curZ,
-    format: 'png',
-    quality: 1,
-    multiplier: 2 / curZ
-  });
-  canvas._isExporting = false;
-  if (activeObj) canvas.setActiveObject(activeObj);
-  canvas.renderAll();
+  let dataUrl;
+
+  try {
+    await withExportCanvasState(async (c) => {
+      dataUrl = c.toDataURL({
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        format: 'png',
+        quality: 1,
+        multiplier: 2 / curZ,
+        enableRetinaScaling: false
+      });
+    });
+  } catch (err) {
+    console.error('Print poster render error:', err);
+    toast('Ошибка подготовки к печати');
+    return;
+  }
+
+  if (!dataUrl) return;
 
   const win = window.open('', '_blank');
   if (!win) {
@@ -5160,6 +5166,59 @@ let isExportHdrEnabled = true;
 let currentHdrPreset = 'cinematic';
 let isExportRunning = false;
 
+/**
+ * Безопасный запуск операций захвата/экспорта холста Fabric.js:
+ * 1. Сохраняет и временно снимает выделение (включая группы ActiveSelection),
+ *    чтобы рамки, ручки трансформации и маркеры не попадали в рендер.
+ * 2. Устанавливает флаг canvas._isExporting = true, подавляя служебные маски,
+ *    границы монтажного стола и сетку в хуках before:render / after:render.
+ * 3. Временно активирует цвет фона афиши (__artboardBg), чтобы прозрачные зоны
+ *    не чернели при экспорте в JPG/PDF.
+ * 4. Гарантированно восстанавливает исходное состояние в finally-блоке.
+ *
+ * @param {Function} callback - (canvas) => Promise<any> | any
+ * @returns {Promise<any>}
+ */
+async function withExportCanvasState(callback) {
+  if (!canvas) return null;
+  const activeObj = canvas.getActiveObject ? canvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
+
+  const prevBg = canvas.backgroundColor;
+  const artboardBg = canvas.__artboardBg || prevBg || '#ffffff';
+
+  try {
+    canvas._isExporting = true;
+    if (activeObj && canvas.discardActiveObject) {
+      canvas.discardActiveObject();
+    }
+    canvas.backgroundColor = artboardBg;
+    if (canvas.renderAll) {
+      canvas.renderAll();
+    }
+
+    return await callback(canvas);
+  } finally {
+    canvas._isExporting = false;
+    canvas.backgroundColor = prevBg;
+
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas });
+        if (canvas.setActiveObject) canvas.setActiveObject(sel);
+      } else if (!selectedObjects && canvas.contains && canvas.contains(activeObj)) {
+        if (canvas.setActiveObject) canvas.setActiveObject(activeObj);
+      }
+    }
+    if (canvas.renderAll) {
+      canvas.renderAll();
+    }
+  }
+}
+
 function setExportResolution(res, notify = false) {
   currentExportResolution = (res || '2k').toLowerCase();
 
@@ -5202,6 +5261,8 @@ function setExportHdr(enabled, notify = false) {
     presetsWrap.style.opacity = isExportHdrEnabled ? '1' : '0.4';
     presetsWrap.style.pointerEvents = isExportHdrEnabled ? 'auto' : 'none';
   }
+
+  updateEnhancerMetaResolution();
 
   if (notify) {
     toast(`HDR режим: ${isExportHdrEnabled ? 'ВКЛ' : 'ВЫКЛ'}`);
@@ -5283,7 +5344,8 @@ async function exportPng() {
   }
   isExportRunning = true;
   const enhancer = window.PosterEnhancer;
-  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
+  const filename = rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша';
   const resName = currentExportResolution.toUpperCase();
   const formatTitle = `Ultra-PNG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
 
@@ -5308,31 +5370,33 @@ async function exportPng() {
 
     // Fallback: без enhancer
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback canvas.toDataURL');
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-    const activeObj = canvas.getActiveObject();
-    if (activeObj) canvas.discardActiveObject();
-    canvas._isExporting = true;
-    canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
-    const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
-    const url = canvas.toDataURL({
-      format: 'png',
-      left: pad * curZ,
-      top: pad * curZ,
-      width: currentSize.w * curZ,
-      height: currentSize.h * curZ,
-      quality: 1,
-      multiplier: multiplier / curZ,
-      enableRetinaScaling: false
+
+    const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+
+    let url;
+    await withExportCanvasState(async (c) => {
+      url = c.toDataURL({
+        format: 'png',
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        quality: 1,
+        multiplier: mult / curZ,
+        enableRetinaScaling: false
+      });
     });
-    canvas._isExporting = false;
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
+
     const a = document.createElement('a');
-    a.href = url; a.download = filename + '.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    a.href = url;
+    a.download = filename + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     hideExportLoader('PNG сохранён');
     toast('PNG сохранён в папку «Загрузки»');
   } catch (err) {
@@ -5349,7 +5413,8 @@ async function exportJpg() {
   if (isExportRunning) { isExportRunning = false; await new Promise(r => setTimeout(r, 500)); }
   isExportRunning = true;
   const enhancer = window.PosterEnhancer;
-  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
+  const filename = rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша';
   const resName = currentExportResolution.toUpperCase();
   const formatTitle = `HDR-JPG (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
 
@@ -5373,31 +5438,52 @@ async function exportJpg() {
 
     // Fallback
     console.warn('[AURORA Export] PosterEnhancer not available, using fallback');
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-    const activeObj = canvas.getActiveObject();
-    if (activeObj) canvas.discardActiveObject();
-    canvas._isExporting = true;
-    canvas.renderAll();
     updateExportProgress(60, 'Рендеринг холста...');
     await new Promise(r => setTimeout(r, 30));
-    const multiplier = currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : 1;
-    const url = canvas.toDataURL({
-      format: 'jpeg',
-      left: pad * curZ,
-      top: pad * curZ,
-      width: currentSize.w * curZ,
-      height: currentSize.h * curZ,
-      quality: 0.95,
-      multiplier: multiplier / curZ,
-      enableRetinaScaling: false
+
+    const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const targetW = Math.round(currentSize.w * mult);
+    const targetH = Math.round(currentSize.h * mult);
+
+    let url;
+    await withExportCanvasState(async (c) => {
+      // Для JPG создаем подложку, чтобы прозрачные зоны не стали чёрными
+      const buffer = document.createElement('canvas');
+      buffer.width = targetW;
+      buffer.height = targetH;
+      const ctx = buffer.getContext('2d');
+      ctx.fillStyle = c.__artboardBg || c.backgroundColor || '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      const pngData = c.toDataURL({
+        format: 'png',
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        quality: 1,
+        multiplier: mult / curZ,
+        enableRetinaScaling: false
+      });
+
+      await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
+        img.onerror = rej;
+        img.src = pngData;
+      });
+
+      url = buffer.toDataURL('image/jpeg', 0.96);
     });
-    canvas._isExporting = false;
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
+
     const a = document.createElement('a');
-    a.href = url; a.download = filename + '.jpg';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    a.href = url;
+    a.download = filename + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     hideExportLoader('JPG сохранён');
     toast('JPG (высокое качество) сохранён в «Загрузки»');
   } catch (err) {
@@ -5413,7 +5499,8 @@ async function exportPdf() {
   if (!canvas || isExportRunning) return;
   isExportRunning = true;
   const enhancer = window.PosterEnhancer;
-  const filename = $('#poster-title')?.value?.trim() || 'Афиша';
+  const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
+  const filename = rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша';
   const resName = currentExportResolution.toUpperCase();
   const formatTitle = `Print-PDF (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
 
@@ -5434,43 +5521,62 @@ async function exportPdf() {
     }
 
     // Fallback
-    if (!window.jspdf) {
+    const jsPdfLib = (typeof window !== 'undefined' ? (window.jspdf?.jsPDF || window.jsPDF) : null);
+    if (!jsPdfLib) {
       hideExportLoader();
       toast('PDF модуль загружается…');
       return;
     }
-    const { jsPDF } = window.jspdf;
-    const pad = CANVAS_PADDING;
-    const curZ = canvas.getZoom() || 1;
-    const activeObj = canvas.getActiveObject();
-    if (activeObj) canvas.discardActiveObject();
-    canvas._isExporting = true;
-    canvas.renderAll();
+
     updateExportProgress(60, 'Рендеринг PDF страниц...');
     await new Promise(r => setTimeout(r, 20));
-    const url = canvas.toDataURL({
-      format: 'png',
-      left: pad * curZ,
-      top: pad * curZ,
-      width: currentSize.w * curZ,
-      height: currentSize.h * curZ,
-      quality: 1,
-      multiplier: 1 / curZ,
-      enableRetinaScaling: false
+
+    const pad = CANVAS_PADDING;
+    const curZ = canvas.getZoom() || 1;
+    const mult = currentExportResolution === '8k' ? 4 : currentExportResolution === '4k' ? 3 : 2;
+    const targetW = Math.round(currentSize.w * mult);
+    const targetH = Math.round(currentSize.h * mult);
+
+    let pdfDataUrl;
+    await withExportCanvasState(async (c) => {
+      const buffer = document.createElement('canvas');
+      buffer.width = targetW;
+      buffer.height = targetH;
+      const ctx = buffer.getContext('2d');
+      ctx.fillStyle = c.__artboardBg || c.backgroundColor || '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      const pngData = c.toDataURL({
+        format: 'png',
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        quality: 1,
+        multiplier: mult / curZ,
+        enableRetinaScaling: false
+      });
+
+      await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => { ctx.drawImage(img, 0, 0, targetW, targetH); res(); };
+        img.onerror = rej;
+        img.src = pngData;
+      });
+
+      pdfDataUrl = buffer.toDataURL('image/jpeg', 0.96);
     });
-    canvas._isExporting = false;
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
+
     const isH = currentSize.w > currentSize.h;
-    const pdf = new jsPDF({ orientation: isH?'landscape':'portrait', unit:'pt', format:[currentSize.w, currentSize.h] });
-    pdf.addImage(url, 'PNG', 0, 0, currentSize.w, currentSize.h);
+    const pdf = new jsPdfLib({ orientation: isH ? 'landscape' : 'portrait', unit: 'pt', format: [currentSize.w, currentSize.h] });
+    pdf.addImage(pdfDataUrl, 'JPEG', 0, 0, currentSize.w, currentSize.h, undefined, 'FAST');
     pdf.save(filename + '.pdf');
     hideExportLoader('PDF готов');
     toast('PDF готов к печати');
   } catch (err) {
     console.error('Export PDF error:', err);
     hideExportLoader();
-    toast(`Ошибка экспорта: ${err.message}`);
+    toast(`Ошибка экспорта: ${err.message || err}`);
   } finally {
     isExportRunning = false;
   }
@@ -5484,28 +5590,40 @@ function openHdrCompareModal() {
 
   overlay.classList.remove('hidden');
 
+  // Синхронизация активного пресета
+  $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.hdrPreset === currentHdrPreset);
+  });
+
   const preview = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
     maxWidth: 960,
     preset: currentHdrPreset,
     splitRatio: 0.5
   });
 
-  preview.mountInteractiveSlider(container);
+  if (preview && typeof preview.mountInteractiveSlider === 'function') {
+    preview.mountInteractiveSlider(container);
+  }
 
-  // Обработчики пресетов в модалке
-  $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(btn => {
-    btn.onclick = () => {
-      $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(b => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      currentHdrPreset = btn.dataset.hdrPreset;
-      const newPrev = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
-        maxWidth: 960,
-        preset: currentHdrPreset,
-        splitRatio: 0.5
+  // Обработчики пресетов в модалке (вешаем единожды)
+  if (!overlay.__hdrBound) {
+    overlay.__hdrBound = true;
+    $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('#hdr-compare-modal-overlay [data-hdr-preset]').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        currentHdrPreset = btn.dataset.hdrPreset;
+        const newPrev = window.PosterEnhancer.generateBeforeAfterPreview(canvas, {
+          maxWidth: 960,
+          preset: currentHdrPreset,
+          splitRatio: 0.5
+        });
+        if (newPrev && typeof newPrev.mountInteractiveSlider === 'function') {
+          newPrev.mountInteractiveSlider(container);
+        }
       });
-      newPrev.mountInteractiveSlider(container);
-    };
-  });
+    });
+  }
 }
 
 function closeHdrCompareModal() {
@@ -5556,6 +5674,11 @@ function openEnhancerModal() {
     b.classList.toggle('is-active', b.dataset.preset === currentHdrPreset);
   });
 
+  const viewport = $('#enhancer-split-viewport');
+  if (viewport && currentSize) {
+    viewport.style.aspectRatio = `${currentSize.w} / ${currentSize.h}`;
+  }
+
   updateEnhancerMetaResolution();
   renderEnhancerSplitPreview();
 }
@@ -5567,16 +5690,32 @@ function closeEnhancerModal() {
 function updateEnhancerMetaResolution() {
   if (!canvas) return;
   const metaEl = $('#enh-meta-resolution');
-  if (!metaEl) return;
   const w = currentSize ? currentSize.w : 800;
   const h = currentSize ? currentSize.h : 600;
-  if (window.PosterEnhancer) {
+  let targetW = w;
+  let targetH = h;
+  let resLabel = currentExportResolution.toUpperCase();
+
+  if (window.PosterEnhancer && typeof window.PosterEnhancer.calculateExportScale === 'function') {
     const scaleInfo = window.PosterEnhancer.calculateExportScale(w, h, currentExportResolution);
-    const targetW = Math.round(w * scaleInfo.multiplier);
-    const targetH = Math.round(h * scaleInfo.multiplier);
-    metaEl.textContent = `${targetW} × ${targetH} px (${scaleInfo.targetName})`;
+    targetW = scaleInfo.targetWidth;
+    targetH = scaleInfo.targetHeight;
+    resLabel = scaleInfo.targetName;
   } else {
-    metaEl.textContent = `${w} × ${h} px (${currentExportResolution.toUpperCase()})`;
+    const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
+    targetW = Math.round(w * mult);
+    targetH = Math.round(h * mult);
+  }
+
+  if (metaEl) {
+    metaEl.textContent = `${targetW} × ${targetH} px (${resLabel})`;
+  }
+
+  // Обновляем плавающий бейдж над превью
+  const badgeEnhanced = $('.enhancer-badge-enhanced');
+  if (badgeEnhanced) {
+    const badgeText = currentExportResolution.toUpperCase();
+    badgeEnhanced.innerHTML = `<span class="enh-badge-star">★</span> ${badgeText}${isExportHdrEnabled ? ' HDR' : ''}`;
   }
 }
 
@@ -5636,6 +5775,10 @@ function renderEnhancerSplitPreview() {
   const canvasBefore = $('#enhancer-canvas-before');
   const canvasAfter = $('#enhancer-canvas-after');
   if (!viewport || !canvasBefore || !canvasAfter) return;
+
+  if (currentSize) {
+    viewport.style.aspectRatio = `${currentSize.w} / ${currentSize.h}`;
+  }
 
   initEnhancerSplitSlider();
 
@@ -6017,7 +6160,7 @@ async function saveCurrentDraft(isManual = false) {
 
     const objectsCount = canvas.getObjects().length;
 
-    // Генерируем компактное превью (180px) строго по границам листа
+    // Генерируем компактное превью (180px) строго по границам листа без маркеров выделения
     let previewDataUrl = '';
     try {
       const pad = CANVAS_PADDING;
@@ -6025,16 +6168,21 @@ async function saveCurrentDraft(isManual = false) {
       const artW = currentSize?.w || 800;
       const artH = currentSize?.h || 1200;
       const prevScale = Math.min(180 / artW, 0.25);
-      previewDataUrl = canvas.toDataURL({
-        left: pad * curZ,
-        top: pad * curZ,
-        width: artW * curZ,
-        height: artH * curZ,
-        format: 'jpeg',
-        quality: 0.65,
-        multiplier: prevScale / curZ
+      await withExportCanvasState(async (c) => {
+        previewDataUrl = c.toDataURL({
+          left: pad * curZ,
+          top: pad * curZ,
+          width: artW * curZ,
+          height: artH * curZ,
+          format: 'jpeg',
+          quality: 0.70,
+          multiplier: prevScale / curZ,
+          enableRetinaScaling: false
+        });
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Draft preview generation error:', e);
+    }
 
     const now = Date.now();
     if (!_currentDraftId) {
@@ -6929,12 +7077,18 @@ async function exportFigmaClipboard() {
   if (btn) btn.disabled = true;
   toast('Подготовка изображений для Figma…');
 
+  const activeObj = canvas.getActiveObject ? canvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
+
   try {
     await embedAllImagesToBase64(canvas);
 
     const savedZoom = zoom;
     applyZoom(1);
-    canvas.discardActiveObject();
+    if (activeObj) canvas.discardActiveObject();
     canvas.renderAll();
 
     const svgStr = buildFigmaSVG();
@@ -6978,6 +7132,15 @@ async function exportFigmaClipboard() {
     console.error('Figma clipboard error:', err);
     toast('Ошибка экспорта: ' + err.message);
   } finally {
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas });
+        if (canvas.setActiveObject) canvas.setActiveObject(sel);
+      } else if (!selectedObjects && canvas.contains && canvas.contains(activeObj)) {
+        if (canvas.setActiveObject) canvas.setActiveObject(activeObj);
+      }
+      canvas.renderAll();
+    }
     if (btn) btn.disabled = false;
   }
 }
@@ -6992,12 +7155,18 @@ async function exportFigmaSvg() {
   if (btn) btn.disabled = true;
   toast('Встраивание изображений в SVG…');
 
+  const activeObj = canvas.getActiveObject ? canvas.getActiveObject() : null;
+  let selectedObjects = null;
+  if (activeObj && activeObj.type === 'activeSelection') {
+    selectedObjects = activeObj.getObjects();
+  }
+
   try {
     await embedAllImagesToBase64(canvas);
 
     const savedZoom = zoom;
     applyZoom(1);
-    canvas.discardActiveObject();
+    if (activeObj) canvas.discardActiveObject();
     canvas.renderAll();
 
     const svgStr = buildFigmaSVG();
@@ -7017,6 +7186,15 @@ async function exportFigmaSvg() {
     console.error('Figma SVG export error:', err);
     toast('Ошибка экспорта: ' + err.message);
   } finally {
+    if (activeObj) {
+      if (selectedObjects && selectedObjects.length > 0 && typeof fabric !== 'undefined' && fabric.ActiveSelection) {
+        const sel = new fabric.ActiveSelection(selectedObjects, { canvas });
+        if (canvas.setActiveObject) canvas.setActiveObject(sel);
+      } else if (!selectedObjects && canvas.contains && canvas.contains(activeObj)) {
+        if (canvas.setActiveObject) canvas.setActiveObject(activeObj);
+      }
+      canvas.renderAll();
+    }
     if (btn) btn.disabled = false;
   }
 }
@@ -7464,24 +7642,20 @@ async function exportTildaDownloadPng() {
 
     const pad = CANVAS_PADDING;
     const curZ = canvas.getZoom() || 1;
-    const activeObj = canvas.getActiveObject();
-    if (activeObj) canvas.discardActiveObject();
-    canvas._isExporting = true;
-    canvas.renderAll();
+    let dataUrl;
 
-    const dataUrl = canvas.toDataURL({
-      left: pad * curZ,
-      top: pad * curZ,
-      width: currentSize.w * curZ,
-      height: currentSize.h * curZ,
-      format: 'png',
-      multiplier: scale / curZ,
-      quality: 1
+    await withExportCanvasState(async (c) => {
+      dataUrl = c.toDataURL({
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        format: 'png',
+        multiplier: scale / curZ,
+        quality: 1,
+        enableRetinaScaling: false
+      });
     });
-
-    canvas._isExporting = false;
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
 
     const a = document.createElement('a');
     const safeTitle = ($('#poster-title')?.value || 'Афиша').replace(/[\/\\?%*:|"<>]/g, '_');
@@ -7519,29 +7693,25 @@ async function exportTildaDownloadZip() {
 
     const pad = CANVAS_PADDING;
     const curZ = canvas.getZoom() || 1;
-    const activeObj = canvas.getActiveObject();
-    if (activeObj) canvas.discardActiveObject();
-    canvas._isExporting = true;
-    canvas.renderAll();
 
     // 1. Генерируем HTML
     const htmlContent = await buildTildaHTML();
 
     // 2. Генерируем PNG × 2
-    const pngDataUrl = canvas.toDataURL({
-      left: pad * curZ,
-      top: pad * curZ,
-      width: currentSize.w * curZ,
-      height: currentSize.h * curZ,
-      format: 'png',
-      multiplier: 2 / curZ,
-      quality: 1
+    let pngDataUrl;
+    await withExportCanvasState(async (c) => {
+      pngDataUrl = c.toDataURL({
+        left: pad * curZ,
+        top: pad * curZ,
+        width: currentSize.w * curZ,
+        height: currentSize.h * curZ,
+        format: 'png',
+        multiplier: 2 / curZ,
+        quality: 1,
+        enableRetinaScaling: false
+      });
     });
-    const pngBase64  = pngDataUrl.split(',')[1];
-
-    canvas._isExporting = false;
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
+    const pngBase64 = pngDataUrl.split(',')[1];
 
     // 3. CSS для блока
     const w = currentSize.w;
