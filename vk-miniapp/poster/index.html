@@ -2457,16 +2457,16 @@
         <div>
           <h2 class="ai-head-h2" id="ai-modal-title">
             <span>AI Генератор Элементов и Стикеров</span>
-            <span class="enh-btn-badge" style="background: linear-gradient(135deg, #00f0ff, #a855f7);">SVG PRO</span>
+            <span class="ai-head-badge">100% FREE AI</span>
           </h2>
-          <div class="ai-head-sub">Векторные элементы и Студийные Фото 8K · Qwen 3.8 Max (Flagship AI)</div>
+          <div class="ai-head-sub">Студийные Фото 8K и SVG элементы · Бесплатные модели Qwen 3.8 Max Free / FLUX Free (0₽)</div>
         </div>
       </div>
 
       <!-- Виджет учета токенов (1,000,000 / день) -->
       <div class="ai-token-tracker-box">
         <div class="ai-token-row">
-          <span style="font-size:11px; color:#94a3b8;">Лимит токенов:</span>
+          <span style="font-size:11px; color:#8c8c8c;">Бесплатный лимит:</span>
           <span class="ai-tokens-val" id="ai-tokens-badge">0 / 1 000 000 токенов</span>
         </div>
         <div class="ai-token-bar-bg">
@@ -2596,7 +2596,7 @@
         <!-- Статус-бар -->
         <div class="ai-status-bar">
           <div class="ai-status-pill" id="ai-status-pill"></div>
-          <span class="ai-status-text" id="ai-status-text">Готов к генерации. Qwen 3.8 Max (Резерв: Qwen 3.6 / Minimax)</span>
+          <span class="ai-status-text" id="ai-status-text">Готов к генерации · 100% Бесплатные модели: Qwen 3.8 Max Free / FLUX Free (0₽)</span>
         </div>
       </div>
 
@@ -2716,7 +2716,7 @@
 <div class="modal-overlay hidden" id="retouch-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="retouch-modal-title">
   <div class="retouch-modal-wrap">
     
-    <!-- Шапка -->
+    <!-- Шапка в стиле Figma Studio -->
     <div class="retouch-modal-head">
       <div class="retouch-head-titles">
         <div class="retouch-head-icon">
@@ -2724,10 +2724,10 @@
         </div>
         <div>
           <h2 class="retouch-head-h2" id="retouch-modal-title">
-            <span>Instagram Pro Ретушь и Цветокоррекция</span>
-            <span class="retouch-head-badge">12 СТИЛЕЙ</span>
+            <span>Instagram Pro Ретушь & Color Grade</span>
+            <span class="retouch-head-badge">12 PRESETS</span>
           </h2>
-          <div class="retouch-head-sub">Студийный цветогрейдинг Fabric.js и экспорт 1:1, 4:5, 9:16 с кинематографичным блюром</div>
+          <div class="retouch-head-sub">Студийный цветогрейдинг, интерактивное сравнение До / После и экспорт 1:1, 4:5, 9:16</div>
         </div>
       </div>
 
@@ -2736,13 +2736,31 @@
       </button>
     </div>
 
-    <!-- Тело: 2 колонки -->
+    <!-- Тело: 2 колонки (Figma Responsive Grid) -->
     <div class="retouch-modal-body">
-      <!-- Левая колонка: превью -->
+      <!-- Левая колонка: интерактивное превью с До / После -->
       <div class="retouch-preview-col">
-        <div class="retouch-preview-card">
-          <canvas class="retouch-preview-canvas" id="retouch-preview-canvas"></canvas>
-          <div class="retouch-meta-badge" id="retouch-meta-format">4:5 Портрет · 1080 × 1350 px</div>
+        <div class="retouch-preview-card" id="retouch-preview-card">
+          <!-- Тулбар превью: бейдж формата + переключатель сплита -->
+          <div class="retouch-preview-topbar">
+            <span class="retouch-meta-badge" id="retouch-meta-format">4:5 Портрет · 1080 × 1350 px</span>
+            <button type="button" class="retouch-split-toggle is-active" id="btn-retouch-toggle-split" title="Переключить режим сплит-сравнения До/После">
+              <span class="material-symbols-rounded" style="font-size:16px;">compare</span>
+              <span id="retouch-split-toggle-text">Сравнение До / После</span>
+            </button>
+          </div>
+
+          <!-- Сплит-вьюпорт сравнения -->
+          <div class="retouch-split-viewport" id="retouch-split-viewport">
+            <canvas class="retouch-preview-canvas" id="retouch-preview-canvas"></canvas>
+            <div class="retouch-split-divider" id="retouch-split-divider">
+              <div class="retouch-split-handle" title="Перетащите для сравнения До и После">
+                <span class="material-symbols-rounded">unfold_more</span>
+              </div>
+            </div>
+            <span class="retouch-split-badge before">До</span>
+            <span class="retouch-split-badge after">После</span>
+          </div>
           
           <div class="retouch-loader-wrap hidden" id="retouch-loader-wrap">
             <div class="retouch-spinner"></div>
@@ -2751,8 +2769,8 @@
         </div>
 
         <!-- Режим фона / обрамления -->
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.05em;">Режим обрамления Instagram:</span>
+        <div class="retouch-framing-box">
+          <span class="retouch-subhead-label">Обрамление Instagram</span>
           <div class="retouch-framing-selector">
             <button type="button" class="retouch-framing-chip is-active" data-framing="blur" title="Размытый кинематографичный фон макета (золотой стандарт Instagram)">✨ Smart Блюр</button>
             <button type="button" class="retouch-framing-chip" data-framing="color" title="Заливка цветом фона афиши">🎨 Цвет фона</button>
@@ -2761,39 +2779,65 @@
         </div>
       </div>
 
-      <!-- Правая колонка: настройки и пресеты -->
+      <!-- Правая колонка: параметры и пресеты (Figma Inspector Panel) -->
       <div class="retouch-controls-col">
         <!-- Формат Instagram -->
         <div>
           <div class="retouch-section-head">
-            <span>Формат публикации Instagram</span>
+            <span>Формат публикации</span>
           </div>
           <div class="retouch-formats-grid">
             <div class="retouch-format-chip" data-format="square">
               <span class="retouch-format-ratio">1:1</span>
               <span class="retouch-format-dim">1080 × 1080</span>
-              <span style="font-size:9.5px; color:#cbd5e1;">Квадрат</span>
+              <span class="retouch-format-sub">Квадрат</span>
             </div>
             <div class="retouch-format-chip is-active" data-format="portrait">
               <span class="retouch-format-ratio">4:5</span>
               <span class="retouch-format-dim">1080 × 1350</span>
-              <span style="font-size:9.5px; color:#f472b6; font-weight:700;">★ Портрет PRO</span>
+              <span class="retouch-format-sub is-pro">★ Портрет PRO</span>
             </div>
             <div class="retouch-format-chip" data-format="story">
               <span class="retouch-format-ratio">9:16</span>
               <span class="retouch-format-dim">1080 × 1920</span>
-              <span style="font-size:9.5px; color:#cbd5e1;">Stories / Reels</span>
+              <span class="retouch-format-sub">Stories / Reels</span>
             </div>
           </div>
         </div>
 
-        <!-- Слайдер интенсивности -->
-        <div class="retouch-slider-card">
-          <div class="retouch-slider-head">
-            <span class="retouch-slider-label">Интенсивность грейдинга:</span>
-            <span class="retouch-slider-val" id="retouch-intensity-val">85%</span>
+        <!-- Слайдеры точной настройки (Figma Inspector Sliders) -->
+        <div class="retouch-sliders-panel">
+          <div class="retouch-slider-card">
+            <div class="retouch-slider-head">
+              <span class="retouch-slider-label">Интенсивность грейдинга</span>
+              <span class="retouch-slider-val" id="retouch-intensity-val">85%</span>
+            </div>
+            <input type="range" class="retouch-range" id="retouch-intensity-slider" min="0" max="100" value="85" step="1">
           </div>
-          <input type="range" class="retouch-range" id="retouch-intensity-slider" min="0" max="100" value="85" step="1">
+
+          <div class="retouch-fine-tune-grid">
+            <div class="retouch-fine-slider-item">
+              <div class="retouch-slider-head">
+                <span class="retouch-slider-label">Теплота</span>
+                <span class="retouch-slider-val" id="retouch-warmth-val">0</span>
+              </div>
+              <input type="range" class="retouch-range" id="retouch-warmth-slider" min="-50" max="50" value="0" step="1">
+            </div>
+            <div class="retouch-fine-slider-item">
+              <div class="retouch-slider-head">
+                <span class="retouch-slider-label">Контраст</span>
+                <span class="retouch-slider-val" id="retouch-contrast-val">0</span>
+              </div>
+              <input type="range" class="retouch-range" id="retouch-contrast-slider" min="-50" max="50" value="0" step="1">
+            </div>
+            <div class="retouch-fine-slider-item">
+              <div class="retouch-slider-head">
+                <span class="retouch-slider-label">Виньетка</span>
+                <span class="retouch-slider-val" id="retouch-vignette-val">0%</span>
+              </div>
+              <input type="range" class="retouch-range" id="retouch-vignette-slider" min="0" max="100" value="0" step="1">
+            </div>
+          </div>
         </div>
 
         <!-- Сетка 12 пресетов -->
@@ -2804,7 +2848,7 @@
           <div class="retouch-presets-grid" id="retouch-presets-grid"></div>
         </div>
 
-        <!-- Кнопки действий -->
+        <!-- Кнопки действий (Sticky Desktop/Mobile Action Bar) -->
         <div class="retouch-actions-group">
           <button type="button" class="btn-retouch-primary" id="btn-retouch-download-jpg">
             <span class="material-symbols-rounded">download</span>

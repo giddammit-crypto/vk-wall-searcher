@@ -54,10 +54,12 @@
       'sk-xt-aac34b4f7773baf2d8fee9d07f8d6050a17c404cda157a89'  // Резервный ключ 2
     ],
     MODELS: [
-      { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (Основная)' },
-      { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus (Резервная 1)' },
-      { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (Резервная 2)' },
-      { id: 'minimax/minimax-m3:free', name: 'Minimax M3 (Резервная 3)' }
+      { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (100% Free)' },
+      { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (100% Free)' },
+      { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus (100% Free)' },
+      { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen 3.8 Omni Flash (100% Free)' },
+      { id: 'deepseek/deepseek-v4.1-flash:free', name: 'DeepSeek V4.1 Flash (100% Free)' },
+      { id: 'minimax/minimax-m3:free', name: 'Minimax M3 (100% Free)' }
     ],
     MAX_TOKENS: 1200,
     REQUEST_TIMEOUT_MS: 35000,
@@ -1042,6 +1044,7 @@
     return new Promise((resolve, reject) => {
       const seed = Math.floor(Math.random() * 10000000);
       const encoded = encodeURIComponent(masterPrompt);
+      // Бесплатная модель FLUX (100% Free Open Model)
       const fluxUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
       const proxyUrl = `ai_proxy.php?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
 
@@ -1061,7 +1064,7 @@
         pImg.crossOrigin = 'anonymous';
         const pTimeout = setTimeout(() => {
           pImg.src = '';
-          reject(new Error('Превышено время ожидания загрузки фото (45с)'));
+          reject(new Error('Превышено время ожидания загрузки фото от бесплатного фото-движка (45с)'));
         }, 22000);
         pImg.onload = () => {
           clearTimeout(pTimeout);
@@ -1095,18 +1098,18 @@
   async function generateAiPhoto(userPrompt, presetKey = 'studio', options = {}) {
     const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {};
 
-    // 1. Промпт-инжиниринг через Qwen 3.8 Max
+    // 1. Промпт-инжиниринг через Qwen 3.8 Max (100% Free)
     onStatus({
       status: 'prompt_engineering',
-      message: 'Промпт-инжиниринг Qwen 3.8 Max (Hasselblad 100MP, f/8, crystal-sharp focus)...'
+      message: 'Промпт-инжиниринг: Qwen 3.8 Max Free (Hasselblad 100MP, f/8, crystal-sharp focus)...'
     });
 
     const llmResult = await engineerPhotographicMasterPrompt(userPrompt, presetKey, options);
 
-    // 2. Рендеринг через FLUX
+    // 2. Рендеринг через бесплатный FLUX
     onStatus({
       status: 'flux_rendering',
-      message: 'Рендеринг фото в FLUX 8K движке (1024x1024 photorealistic)...'
+      message: 'Рендеринг в FLUX Free движке (1024x1024, 0₽)...'
     });
 
     const rawImg = await renderFluxImage(llmResult.masterPrompt);
@@ -1152,7 +1155,7 @@
 
     onStatus({
       status: 'success',
-      message: `Фотография 8K успешно создана! (Токены: ${llmResult.totalTokens})`
+      message: `Фотография 8K успешно создана! (100% Free · Модель: ${llmResult.modelName})`
     });
 
     return {
@@ -1315,9 +1318,9 @@
             hasControls: true,
             hasBorders: true,
             transparentCorners: false,
-            cornerColor: '#00f0ff',
+            cornerColor: '#0d99ff',
             cornerStrokeColor: '#ffffff',
-            borderColor: '#00f0ff',
+            borderColor: '#0d99ff',
             cornerSize: 10,
             padding: 6
           });
@@ -1327,6 +1330,9 @@
           group.__aiSvg = svgText;
           group.name = options.prompt ? `AI: ${options.prompt.slice(0, 20)}` : 'AI Стикер';
 
+          if (typeof canvasInst.discardActiveObject === 'function') {
+            canvasInst.discardActiveObject();
+          }
           canvasInst.add(group);
           canvasInst.setActiveObject(group);
           canvasInst.requestRenderAll ? canvasInst.requestRenderAll() : canvasInst.renderAll();
@@ -1391,9 +1397,9 @@
             hasControls: true,
             hasBorders: true,
             transparentCorners: false,
-            cornerColor: '#00f0ff',
+            cornerColor: '#0d99ff',
             cornerStrokeColor: '#ffffff',
-            borderColor: '#00f0ff',
+            borderColor: '#0d99ff',
             cornerSize: 10,
             padding: 6
           });
@@ -1414,6 +1420,9 @@
             window.setImageCornerRadius(fabricImg, cornerRad, true);
           }
 
+          if (typeof canvasInst.discardActiveObject === 'function') {
+            canvasInst.discardActiveObject();
+          }
           canvasInst.add(fabricImg);
           canvasInst.setActiveObject(fabricImg);
           canvasInst.requestRenderAll ? canvasInst.requestRenderAll() : canvasInst.renderAll();

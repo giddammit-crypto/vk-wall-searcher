@@ -365,14 +365,16 @@
      ПИКСЕЛЬНЫЙ ДВИЖОК РЕТУШИ И ГРЕЙДИНГА (CANVAS & IMAGEDATA)
      ══════════════════════════════════════════════════════════════ */
   /**
-   * Применяет пресет ретуши к ImageData с интерполяцией интенсивности (0..100%).
+   * Применяет пресет ретуши к ImageData с интерполяцией интенсивности (0..100%)
+   * и параметрами тонкой настройки (warmth, contrast, vignette).
    *
    * @param {ImageData} imageData
    * @param {string|object} presetKeyOrObj
    * @param {number} intensity - от 0 до 100
+   * @param {object} fineTune - { warmth: -50..+50, contrast: -50..+50, vignette: 0..100 }
    * @returns {ImageData}
    */
-  function applyRetouchToImageData(imageData, presetKeyOrObj, intensity = 85) {
+  function applyRetouchToImageData(imageData, presetKeyOrObj, intensity = 85, fineTune = {}) {
     const { width, height, data } = imageData;
     const totalPixels = width * height;
     if (totalPixels === 0) return imageData;
@@ -383,13 +385,19 @@
 
     // Нормализованный коэффициент интенсивности k in [0, 1]
     const k = Math.max(0, Math.min(100, Number(intensity) || 85)) / 100.0;
-    if (k <= 0.001) return imageData; // 0% — без изменений
+    const userWarmth = Number(fineTune?.warmth || 0);     // -50..+50
+    const userContrast = Number(fineTune?.contrast || 0); // -50..+50
+    const userVignette = Number(fineTune?.vignette || 0); // 0..100
 
-    // 1. Интерполяция параметров пресета
+    if (k <= 0.001 && userWarmth === 0 && userContrast === 0 && userVignette === 0) {
+      return imageData; // 0% — без изменений
+    }
+
+    // 1. Интерполяция параметров пресета + тонкая настройка
     const brightness = (preset.brightness || 0) * k;
-    const contrast = (preset.contrast || 0) * k;
+    const contrast = (preset.contrast || 0) * k + (userContrast / 100.0) * 0.45;
     const saturation = (preset.saturation || 0) * k;
-    const tempK = (preset.temperature || 0) * k;
+    const tempK = (preset.temperature || 0) * k + userWarmth * 0.75;
     const shadowLift = (preset.shadowLift || 0) * k;
     const blackLift = (preset.blackPointLift || 0) * k;
 
@@ -405,7 +413,7 @@
     // Интерполяция ColorMatrix с единичной матрицей Identity
     const pMatrix = preset.colorMatrix || null;
     let cm = null;
-    if (pMatrix && pMatrix.length >= 20) {
+    if (pMatrix && pMatrix.length >= 20 && k > 0.001) {
       cm = new Float32Array(20);
       for (let i = 0; i < 20; i++) {
         const isDiag = (i === 0 || i === 6 || i === 12 || i === 18);
@@ -416,12 +424,18 @@
 
     // Буфер яркости для Convolve / Bloom / Sharpen
     let lumBuffer = null;
-    const hasConvolve = !!preset.convolve && (preset.sharpen || preset.bloom || preset.clarity);
+    const hasConvolve = !!preset.convolve && (preset.sharpen || preset.bloom || preset.clarity) && k > 0.001;
     if (hasConvolve && width > 4 && height > 4) {
       lumBuffer = new Float32Array(totalPixels);
     }
 
-    // ПАСС 1: Основная цветокоррекция (ColorMatrix, Яркость, Контраст, Насыщенность, Тени)
+    // Параметры виньетирования
+    const vignetteK = Math.max(0, Math.min(100, userVignette)) / 100.0;
+    const cx = width / 2;
+    const cy = height / 2;
+    const maxDistSq = (cx * cx + cy * cy) || 1;
+
+    // ПАСС 1: Основная цветокоррекция (ColorMatrix, Яркость, Контраст, Насыщенность, Тени, Виньетка)
     for (let i = 0, p = 0; i < data.length; i += 4, p++) {
       let r = data[i];
       let g = data[i + 1];
@@ -440,7 +454,7 @@
         b = nb;
       }
 
-      // Цветовая температура
+      // Цветовая температура / Warmth
       if (tempK !== 0) {
         r *= tempR;
         b *= tempB;
@@ -480,6 +494,21 @@
         b = curLum + (b - curLum) * sFactor;
       }
 
+      // Виньетка (Vignette radial falloff)
+      if (vignetteK > 0) {
+        const px = p % width;
+        const py = (p / width) | 0;
+        const dx = px - cx;
+        const dy = py - cy;
+        const distSq = (dx * dx + dy * dy) / maxDistSq;
+        if (distSq > 0.15) {
+          const vFactor = Math.max(0.08, 1.0 - vignetteK * Math.min(1.0, (distSq - 0.15) * 1.25));
+          r *= vFactor;
+          g *= vFactor;
+          b *= vFactor;
+        }
+      }
+
       // Клампинг в диапазон 0..255
       r = Math.min(255, Math.max(0, r));
       g = Math.min(255, Math.max(0, g));
@@ -496,7 +525,6 @@
 
     // ПАСС 2: Свертка Convolve (Bloom Diffusion или High-Pass Unsharp)
     if (lumBuffer && preset.convolve) {
-      const conv = preset.convolve;
       const sharpenFactor = (preset.sharpen || 0) * k * 0.85;
 
       if (sharpenFactor > 0) {
@@ -526,13 +554,13 @@
   }
 
   /**
-   * Применяет ретушь к Canvas элементу
+   * Применяет ретушь к Canvas элементу с учетом параметров fineTune
    */
-  function applyRetouchToCanvas(sourceCanvas, presetKeyOrObj, intensity = 85) {
+  function applyRetouchToCanvas(sourceCanvas, presetKeyOrObj, intensity = 85, fineTune = {}) {
     if (!sourceCanvas) return null;
     const ctx = sourceCanvas.getContext('2d');
     const imgData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-    applyRetouchToImageData(imgData, presetKeyOrObj, intensity);
+    applyRetouchToImageData(imgData, presetKeyOrObj, intensity, fineTune);
     ctx.putImageData(imgData, 0, 0);
     return sourceCanvas;
   }
@@ -546,8 +574,9 @@
    * @param {fabric.Image} imgObj
    * @param {string|object} presetKeyOrObj
    * @param {number} intensity - 0..100
+   * @param {object} fineTune - { warmth, contrast, vignette }
    */
-  function applyFabricImageRetouch(imgObj, presetKeyOrObj, intensity = 85) {
+  function applyFabricImageRetouch(imgObj, presetKeyOrObj, intensity = 85, fineTune = {}) {
     if (!imgObj || imgObj.type !== 'image' || typeof fabric === 'undefined') return;
 
     const preset = (typeof presetKeyOrObj === 'string') 
@@ -555,6 +584,7 @@
       : (presetKeyOrObj || RETOUCH_PRESETS.warm_glow);
 
     const k = Math.max(0, Math.min(100, intensity)) / 100.0;
+    const userContrast = Number(fineTune?.contrast || 0);
 
     // Сохраняем исходные фильтры объекта для чистого сброса
     if (!imgObj.__originalFiltersSaved) {
@@ -587,9 +617,10 @@
       imgObj.filters.push(new fabric.Image.filters.Brightness({ brightness: preset.brightness * k }));
     }
 
-    // 3. Contrast
-    if (preset.contrast && fabric.Image.filters.Contrast) {
-      imgObj.filters.push(new fabric.Image.filters.Contrast({ contrast: preset.contrast * k }));
+    // 3. Contrast (с учетом пользовательской подстройки)
+    const effectiveContrast = (preset.contrast || 0) * k + (userContrast / 100.0) * 0.35;
+    if (effectiveContrast !== 0 && fabric.Image.filters.Contrast) {
+      imgObj.filters.push(new fabric.Image.filters.Contrast({ contrast: effectiveContrast }));
     }
 
     // 4. Saturation
@@ -620,29 +651,42 @@
 
   /**
    * Накладывает глобальную ретушь на весь холст Fabric.js в реальном времени.
-   * Применяет фильтры ко всем растровым слоям и накладывает стилизованный
-   * глобальный артборд-оверлей тонирования (__artboardGradeOverlay).
+   * Применяет фильтры ко всем растровым слоям (включая вложенные в fabric.Group и фон),
+   * накладывает стилизованный глобальный оверлей тонирования листа (__artboardGradeOverlay),
+   * и сохраняет действие в историю (Ctrl+Z).
    *
    * @param {fabric.Canvas} fabricCanvas
    * @param {string} presetKey
    * @param {number} intensity (0..100)
+   * @param {object} fineTune - { warmth, contrast, vignette }
    */
-  function applyRetouchToArtboard(fabricCanvas, presetKey = 'warm_glow', intensity = 85) {
+  function applyRetouchToArtboard(fabricCanvas, presetKey = 'warm_glow', intensity = 85, fineTune = {}) {
     const c = fabricCanvas || window.canvas;
     if (!c) return;
 
     const preset = RETOUCH_PRESETS[presetKey] || RETOUCH_PRESETS.warm_glow;
     const k = Math.max(0, Math.min(100, intensity)) / 100.0;
 
+    // Рекурсивный обход элементов холста
+    function processObject(obj) {
+      if (!obj) return;
+      if (obj.type === 'image' && !obj.__isGradeOverlay) {
+        applyFabricImageRetouch(obj, preset, intensity, fineTune);
+      } else if (obj.type === 'group' && Array.isArray(obj._objects)) {
+        obj._objects.forEach(innerObj => processObject(innerObj));
+      }
+    }
+
     // 1. Применяем фильтры ко всем fabric.Image слоям
     const objects = c.getObjects ? c.getObjects() : [];
-    objects.forEach(obj => {
-      if (obj.type === 'image' && !obj.__isGradeOverlay) {
-        applyFabricImageRetouch(obj, preset, intensity);
-      }
-    });
+    objects.forEach(obj => processObject(obj));
 
-    // 2. Создаем или обновляем глобальный оверлей тонирования листа (__artboardGradeOverlay)
+    // 2. Применяем к backgroundImage если есть
+    if (c.backgroundImage && c.backgroundImage.type === 'image') {
+      applyFabricImageRetouch(c.backgroundImage, preset, intensity, fineTune);
+    }
+
+    // 3. Создаем или обновляем глобальный оверлей тонирования листа (__artboardGradeOverlay)
     let overlay = c.__artboardGradeOverlay;
     if (k <= 0.001) {
       if (overlay) {
@@ -650,6 +694,7 @@
         c.__artboardGradeOverlay = null;
       }
       c.requestRenderAll();
+      if (typeof window.saveHistory === 'function') window.saveHistory();
       return;
     }
 
@@ -688,6 +733,9 @@
     }
 
     c.requestRenderAll();
+    if (typeof window.saveHistory === 'function') {
+      window.saveHistory();
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -695,7 +743,7 @@
      ══════════════════════════════════════════════════════════════ */
   /**
    * Рендерит афишу в точные пропорции Instagram (1080x1080, 1080x1350, 1080x1920)
-   * с выбранным пресетом ретуши и режимом фона ('blur', 'color', 'crop').
+   * с выбранным пресетом ретуши, тонкой настройкой и режимом фона ('blur', 'color', 'crop').
    *
    * @param {fabric.Canvas} fabricCanvas
    * @param {object} options
@@ -703,17 +751,33 @@
    *   - presetKey: имя пресета из RETOUCH_PRESETS
    *   - intensity: 0..100
    *   - framingMode: 'blur' | 'color' | 'crop'
+   *   - warmth: -50..+50
+   *   - contrast: -50..+50
+   *   - vignette: 0..100
+   *   - rawOnly: boolean (если true, ретушь не накладывается — для режима До)
    * @returns {Promise<HTMLCanvasElement>}
    */
   async function renderInstagramPosterCanvas(fabricCanvas, options = {}) {
     const c = fabricCanvas || window.canvas;
     if (!c) throw new Error('Холст не найден');
 
+    // Снимаем активное выделение, чтобы маркеры и рамки не попадали в экспорт
+    if (typeof c.discardActiveObject === 'function') {
+      c.discardActiveObject();
+      if (typeof c.requestRenderAll === 'function') c.requestRenderAll();
+    }
+
     const formatKey = options.formatKey || 'portrait';
     const formatMeta = INSTAGRAM_FORMATS[formatKey] || INSTAGRAM_FORMATS.portrait;
     const presetKey = options.presetKey || 'warm_glow';
     const intensity = Number(options.intensity ?? 85);
     const framingMode = options.framingMode || 'blur'; // 'blur' | 'color' | 'crop'
+
+    const fineTune = {
+      warmth: Number(options.warmth || 0),
+      contrast: Number(options.contrast || 0),
+      vignette: Number(options.vignette || 0)
+    };
 
     // 1. Получаем чистый растровый артборд афиши в 2x качестве
     const renderArtboard = (typeof window.renderCleanArtboardCanvas === 'function')
@@ -742,7 +806,9 @@
     // Режим А: ОРИГИНАЛ (без изменения соотношения сторон)
     if (formatKey === 'original') {
       ctx.drawImage(cleanArtboard, 0, 0, targetW, targetH);
-      applyRetouchToCanvas(outCanvas, presetKey, intensity);
+      if (!options.rawOnly) {
+        applyRetouchToCanvas(outCanvas, presetKey, intensity, fineTune);
+      }
       return outCanvas;
     }
 
@@ -760,7 +826,9 @@
       ctx.drawImage(cleanArtboard, cropX, cropY, cropW, cropH);
       ctx.restore();
 
-      applyRetouchToCanvas(outCanvas, presetKey, intensity);
+      if (!options.rawOnly) {
+        applyRetouchToCanvas(outCanvas, presetKey, intensity, fineTune);
+      }
       return outCanvas;
     }
 
@@ -785,7 +853,9 @@
       ctx.drawImage(cleanArtboard, fitX, fitY, fitW, fitH);
       ctx.restore();
 
-      applyRetouchToCanvas(outCanvas, presetKey, intensity);
+      if (!options.rawOnly) {
+        applyRetouchToCanvas(outCanvas, presetKey, intensity, fineTune);
+      }
       return outCanvas;
     }
 
@@ -834,8 +904,10 @@
     ctx.strokeRect(fitX, fitY, fitW, fitH);
     ctx.restore();
 
-    // 3. Применяем кинематографичный цветогрейдинг ко всему холсту
-    applyRetouchToCanvas(outCanvas, presetKey, intensity);
+    // 3. Применяем кинематографичный цветогрейдинг ко всему холсту (если не rawOnly)
+    if (!options.rawOnly) {
+      applyRetouchToCanvas(outCanvas, presetKey, intensity, fineTune);
+    }
 
     return outCanvas;
   }
@@ -876,7 +948,7 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     МОДАЛЬНЫЙ ИНТЕРФЕЙС И СОБЫТИЯ
+     МОДАЛЬНЫЙ ИНТЕРФЕЙС И СОБЫТИЯ (FIGMA STUDIO UI)
      ══════════════════════════════════════════════════════════════ */
   function initModalUI() {
     const modalOverlay = document.getElementById('retouch-modal-overlay');
@@ -884,9 +956,21 @@
 
     const btnClose = document.getElementById('retouch-modal-close');
     const previewCanvas = document.getElementById('retouch-preview-canvas');
+    const splitViewport = document.getElementById('retouch-split-viewport');
+    const splitDivider = document.getElementById('retouch-split-divider');
+    const btnToggleSplit = document.getElementById('btn-retouch-toggle-split');
+    const splitToggleText = document.getElementById('retouch-split-toggle-text');
+
     const presetsGrid = document.getElementById('retouch-presets-grid');
     const intensitySlider = document.getElementById('retouch-intensity-slider');
     const intensityValLabel = document.getElementById('retouch-intensity-val');
+    const warmthSlider = document.getElementById('retouch-warmth-slider');
+    const warmthValLabel = document.getElementById('retouch-warmth-val');
+    const contrastSlider = document.getElementById('retouch-contrast-slider');
+    const contrastValLabel = document.getElementById('retouch-contrast-val');
+    const vignetteSlider = document.getElementById('retouch-vignette-slider');
+    const vignetteValLabel = document.getElementById('retouch-vignette-val');
+
     const formatTabs = document.querySelectorAll('.retouch-format-chip');
     const framingTabs = document.querySelectorAll('.retouch-framing-chip');
     const btnDownloadJpg = document.getElementById('btn-retouch-download-jpg');
@@ -899,10 +983,20 @@
     let currentFormat = 'portrait';
     let currentFraming = 'blur';
     let currentIntensity = 85;
+    let currentWarmth = 0;
+    let currentContrast = 0;
+    let currentVignette = 0;
+
+    let isSplitMode = true;
+    let splitRatio = 0.50; // 0..1
+    let isDraggingSplit = false;
+
+    let cachedBeforeCanvas = null;
+    let cachedAfterCanvas = null;
     let renderDebounceTimer = null;
     let isRendering = false;
 
-    // 1. Отрисовка карточек 12 пресетов
+    // 1. Отрисовка карточек 12 пресетов в стиле Figma
     if (presetsGrid) {
       presetsGrid.innerHTML = Object.values(RETOUCH_PRESETS).map(p => `
         <div class="retouch-preset-card ${p.id === currentPreset ? 'is-active' : ''}" data-preset="${p.id}">
@@ -930,14 +1024,43 @@
       });
     }
 
-    // 2. Слайдер интенсивности
+    // 2. Слайдеры настройки
     if (intensitySlider) {
       intensitySlider.value = currentIntensity;
       if (intensityValLabel) intensityValLabel.textContent = `${currentIntensity}%`;
-
       intensitySlider.addEventListener('input', e => {
         currentIntensity = Number(e.target.value);
         if (intensityValLabel) intensityValLabel.textContent = `${currentIntensity}%`;
+        schedulePreviewUpdate(60);
+      });
+    }
+
+    if (warmthSlider) {
+      warmthSlider.value = currentWarmth;
+      if (warmthValLabel) warmthValLabel.textContent = `${currentWarmth}`;
+      warmthSlider.addEventListener('input', e => {
+        currentWarmth = Number(e.target.value);
+        if (warmthValLabel) warmthValLabel.textContent = (currentWarmth > 0 ? `+${currentWarmth}` : `${currentWarmth}`);
+        schedulePreviewUpdate(60);
+      });
+    }
+
+    if (contrastSlider) {
+      contrastSlider.value = currentContrast;
+      if (contrastValLabel) contrastValLabel.textContent = `${currentContrast}`;
+      contrastSlider.addEventListener('input', e => {
+        currentContrast = Number(e.target.value);
+        if (contrastValLabel) contrastValLabel.textContent = (currentContrast > 0 ? `+${currentContrast}` : `${currentContrast}`);
+        schedulePreviewUpdate(60);
+      });
+    }
+
+    if (vignetteSlider) {
+      vignetteSlider.value = currentVignette;
+      if (vignetteValLabel) vignetteValLabel.textContent = `${currentVignette}%`;
+      vignetteSlider.addEventListener('input', e => {
+        currentVignette = Number(e.target.value);
+        if (vignetteValLabel) vignetteValLabel.textContent = `${currentVignette}%`;
         schedulePreviewUpdate(60);
       });
     }
@@ -971,8 +1094,116 @@
       }
     }
 
-    // 5. Отрисовка превью с дебаунсом
-    function schedulePreviewUpdate(delay = 140) {
+    // 5. Интерактивная отрисовка сплит-превью До / После
+    function drawSplitPreview() {
+      if (!previewCanvas || !cachedAfterCanvas) return;
+      const pw = cachedAfterCanvas.width;
+      const ph = cachedAfterCanvas.height;
+
+      if (previewCanvas.width !== pw || previewCanvas.height !== ph) {
+        previewCanvas.width = pw;
+        previewCanvas.height = ph;
+      }
+
+      const ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0, 0, pw, ph);
+
+      if (!isSplitMode || !cachedBeforeCanvas) {
+        // Режим "Только результат"
+        ctx.drawImage(cachedAfterCanvas, 0, 0);
+        if (splitDivider) splitDivider.style.display = 'none';
+        if (splitViewport) {
+          splitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'none');
+        }
+        return;
+      }
+
+      // Режим сплит-сравнения
+      if (splitDivider) splitDivider.style.display = 'block';
+      if (splitViewport) {
+        splitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'flex');
+      }
+
+      const splitX = Math.round(pw * splitRatio);
+
+      // Левая часть: До (Оригинал)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, splitX, ph);
+      ctx.clip();
+      ctx.drawImage(cachedBeforeCanvas, 0, 0);
+      ctx.restore();
+
+      // Правая часть: После (Ретушь)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(splitX, 0, pw - splitX, ph);
+      ctx.clip();
+      ctx.drawImage(cachedAfterCanvas, 0, 0);
+      ctx.restore();
+
+      // Тонкая разделительная линия на холсте
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(splitX, 0);
+      ctx.lineTo(splitX, ph);
+      ctx.stroke();
+      ctx.restore();
+
+      // Обновляем позицию визуального разделителя в DOM
+      if (splitDivider) {
+        splitDivider.style.left = `${(splitRatio * 100).toFixed(2)}%`;
+      }
+    }
+
+    // 6. Перетаскивание разделителя сплита (Mouse + Touch / Pointer Events)
+    function updateSplitFromPointer(clientX) {
+      if (!splitViewport) return;
+      const rect = splitViewport.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const ratio = (clientX - rect.left) / rect.width;
+      splitRatio = Math.max(0.04, Math.min(0.96, ratio));
+      drawSplitPreview();
+    }
+
+    if (splitViewport) {
+      splitViewport.addEventListener('pointerdown', e => {
+        isDraggingSplit = true;
+        splitViewport.setPointerCapture(e.pointerId);
+        updateSplitFromPointer(e.clientX);
+      });
+      splitViewport.addEventListener('pointermove', e => {
+        if (isDraggingSplit) {
+          updateSplitFromPointer(e.clientX);
+        }
+      });
+      splitViewport.addEventListener('pointerup', e => {
+        if (isDraggingSplit) {
+          isDraggingSplit = false;
+          try { splitViewport.releasePointerCapture(e.pointerId); } catch (ex) {}
+        }
+      });
+      splitViewport.addEventListener('pointercancel', () => {
+        isDraggingSplit = false;
+      });
+    }
+
+    // 7. Кнопка переключения режима сплита
+    if (btnToggleSplit) {
+      btnToggleSplit.addEventListener('click', () => {
+        isSplitMode = !isSplitMode;
+        btnToggleSplit.classList.toggle('is-active', isSplitMode);
+        if (splitToggleText) {
+          splitToggleText.textContent = isSplitMode ? 'Сравнение До / После' : 'Только результат';
+        }
+        drawSplitPreview();
+      });
+    }
+
+    // 8. Обновление превью с дебаунсом
+    function schedulePreviewUpdate(delay = 120) {
       if (renderDebounceTimer) clearTimeout(renderDebounceTimer);
       renderDebounceTimer = setTimeout(() => {
         updatePreview();
@@ -987,19 +1218,26 @@
       if (loaderWrap) loaderWrap.classList.remove('hidden');
 
       try {
-        const fullCanvas = await renderInstagramPosterCanvas(window.canvas, {
-          formatKey: currentFormat,
-          presetKey: currentPreset,
-          intensity: currentIntensity,
-          framingMode: currentFraming
-        });
+        const [rawCanvas, retouchedCanvas] = await Promise.all([
+          renderInstagramPosterCanvas(window.canvas, {
+            formatKey: currentFormat,
+            framingMode: currentFraming,
+            rawOnly: true
+          }),
+          renderInstagramPosterCanvas(window.canvas, {
+            formatKey: currentFormat,
+            presetKey: currentPreset,
+            intensity: currentIntensity,
+            framingMode: currentFraming,
+            warmth: currentWarmth,
+            contrast: currentContrast,
+            vignette: currentVignette
+          })
+        ]);
 
-        if (previewCanvas && fullCanvas) {
-          previewCanvas.width = fullCanvas.width;
-          previewCanvas.height = fullCanvas.height;
-          const ctx = previewCanvas.getContext('2d');
-          ctx.drawImage(fullCanvas, 0, 0);
-        }
+        cachedBeforeCanvas = rawCanvas;
+        cachedAfterCanvas = retouchedCanvas;
+        drawSplitPreview();
       } catch (err) {
         console.warn('[Retouch Preview] Ошибка обновления:', err);
       } finally {
@@ -1008,7 +1246,7 @@
       }
     }
 
-    // 6. Кнопки экспорта
+    // 9. Кнопки экспорта
     if (btnDownloadJpg) {
       btnDownloadJpg.addEventListener('click', async () => {
         btnDownloadJpg.disabled = true;
@@ -1018,6 +1256,9 @@
             presetKey: currentPreset,
             intensity: currentIntensity,
             framingMode: currentFraming,
+            warmth: currentWarmth,
+            contrast: currentContrast,
+            vignette: currentVignette,
             fileType: 'jpg'
           });
         } catch (err) {
@@ -1037,6 +1278,9 @@
             presetKey: currentPreset,
             intensity: currentIntensity,
             framingMode: currentFraming,
+            warmth: currentWarmth,
+            contrast: currentContrast,
+            vignette: currentVignette,
             fileType: 'png'
           });
         } catch (err) {
@@ -1047,15 +1291,16 @@
       });
     }
 
-    // 7. Кнопка «Применить ретушь к холсту»
+    // 10. Кнопка «Применить ретушь к холсту»
     if (btnApplyArtboard) {
       btnApplyArtboard.addEventListener('click', () => {
-        applyRetouchToArtboard(window.canvas, currentPreset, currentIntensity);
+        applyRetouchToArtboard(window.canvas, currentPreset, currentIntensity, {
+          warmth: currentWarmth,
+          contrast: currentContrast,
+          vignette: currentVignette
+        });
         if (typeof window.toast === 'function') {
           window.toast(`✨ Пресет «${RETOUCH_PRESETS[currentPreset].name}» применен к афише!`);
-        }
-        if (typeof window.saveHistory === 'function') {
-          window.saveHistory();
         }
         closeModal();
       });
