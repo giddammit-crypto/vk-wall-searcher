@@ -1164,11 +1164,21 @@
             padding: 6
           });
 
+          fabricImg.isAiElement = true;
           fabricImg.__isAiElement = true;
+          fabricImg.isAiPhoto = true;
           fabricImg.__isAiPhoto = true;
+          fabricImg.aiType = 'photo';
+          fabricImg.aiPrompt = promptText;
           fabricImg.__aiPrompt = promptText;
           fabricImg.name = layerTitle;
           fabricImg.layerName = layerTitle;
+
+          // Поддержка скругления углов (options.cornerRadius или options.radius)
+          const cornerRad = options.cornerRadius !== undefined ? options.cornerRadius : options.radius;
+          if (typeof cornerRad === 'number' && cornerRad > 0 && typeof window.setImageCornerRadius === 'function') {
+            window.setImageCornerRadius(fabricImg, cornerRad, true);
+          }
 
           canvasInst.add(fabricImg);
           canvasInst.setActiveObject(fabricImg);
@@ -1618,6 +1628,11 @@
   /* ══════════════════════════════════════════════════════════════
      ПУБЛИЧНЫЙ API МОДУЛЯ
      ══════════════════════════════════════════════════════════════ */
+  if (typeof window !== 'undefined') {
+    window.addPhotoImageElementToCanvas = addPhotoImageElementToCanvas;
+    window.addPhotoElementToCanvas = addPhotoImageElementToCanvas;
+  }
+
   return {
     generateAiElement,
     generateAiPhoto,
@@ -1625,6 +1640,7 @@
     engineerPhotographicMasterPrompt,
     smartAutoCutout,
     addPhotoImageElementToCanvas,
+    addPhotoElementToCanvas: addPhotoImageElementToCanvas,
     addSvgElementToCanvas,
     sanitizeAndExtractSvg,
     getVisibleViewportCenter,

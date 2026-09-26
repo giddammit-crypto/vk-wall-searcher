@@ -4954,14 +4954,27 @@ const LAYER_ICONS = {
 };
 
 function getObjLabel(obj, idx) {
+  const isPhoto = !!(obj.isAiPhoto || obj.__isAiPhoto || obj.aiType === 'photo');
+  const isAi = !!(obj.isAiElement || obj.__isAiElement || isPhoto);
+
   if (obj.layerName) {
-    if (obj.isAiElement && !obj.layerName.startsWith('[AI]')) {
+    if (isPhoto) {
+      if (!obj.layerName.startsWith('[AI Photo]')) {
+        const clean = obj.layerName.replace(/^\[AI(?:\s+Photo)?\]\s*/i, '');
+        return `[AI Photo] ${clean}`;
+      }
+      return obj.layerName;
+    }
+    if (isAi && !obj.layerName.startsWith('[AI]')) {
       return `[AI] ${obj.layerName}`;
     }
     return obj.layerName;
   }
-  if (obj.isAiElement) {
-    return `[AI] ${obj.aiPrompt || 'Элемент'}`;
+  if (isPhoto) {
+    return `[AI Photo] ${obj.aiPrompt || obj.__aiPrompt || 'Фото'}`;
+  }
+  if (isAi) {
+    return `[AI] ${obj.aiPrompt || obj.__aiPrompt || 'Элемент'}`;
   }
   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
     const txt = (obj.text || '').replace(/\n/g, ' ').trim();
@@ -4974,15 +4987,29 @@ function getObjLabel(obj, idx) {
 
 
 function renderLayerThumb(obj) {
+  const isAiPhoto = !!(obj.isAiPhoto || obj.__isAiPhoto || obj.aiType === 'photo');
+  const isAi = !!(obj.isAiElement || obj.__isAiElement || isAiPhoto);
+
   if (obj.type === 'image') {
     const src = obj._element?.src || (typeof obj.getSrc === 'function' ? obj.getSrc() : null);
+    const thumbClass = isAiPhoto ? 'is-ai is-ai-photo' : (isAi ? 'is-ai' : '');
+    const badgeText = isAiPhoto ? 'AI 📷' : 'AI';
+    const thumbTitle = isAiPhoto ? 'AI Фотография' : (isAi ? 'AI Элемент' : 'Изображение');
+
     if (src) {
-      return `<div class="layer-thumb ${obj.isAiElement ? 'is-ai' : ''}" title="${obj.isAiElement ? 'AI Элемент' : 'Изображение'}">
+      return `<div class="layer-thumb ${thumbClass}" title="${thumbTitle}">
         <img class="layer-thumb-img" src="${src}" alt="" loading="lazy">
-        ${obj.isAiElement ? '<span class="layer-ai-badge">AI</span>' : ''}
+        ${isAi ? `<span class="layer-ai-badge">${badgeText}</span>` : ''}
       </div>`;
     }
-    return `<div class="layer-thumb ${obj.isAiElement ? 'is-ai' : ''}"><span class="material-symbols-rounded">${obj.isAiElement ? 'auto_awesome' : 'image'}</span>${obj.isAiElement ? '<span class="layer-ai-badge">AI</span>' : ''}</div>`;
+    return `<div class="layer-thumb ${thumbClass}" title="${thumbTitle}"><span class="material-symbols-rounded">${isAiPhoto ? 'photo_camera' : (isAi ? 'auto_awesome' : 'image')}</span>${isAi ? `<span class="layer-ai-badge">${badgeText}</span>` : ''}</div>`;
+  }
+
+  if (obj.type === 'group' && isAi) {
+    return `<div class="layer-thumb is-ai" title="AI Векторная графика">
+      <span class="material-symbols-rounded" style="color:var(--text-1)">auto_awesome</span>
+      <span class="layer-ai-badge">AI</span>
+    </div>`;
   }
 
   const icon = LAYER_ICONS[obj.type] || 'layers';
@@ -6286,8 +6313,57 @@ function renderAiElementsGrid(category = 'all') {
   });
 }
 
-function addAiElement(src, title, promptText = '') {
+function addAiPhotoElement(src, title, promptText = '', options = {}) {
   if (!canvas || !src) return;
+  fabric.Image.fromURL(src, img => {
+    if (!img) return;
+    const targetDim = Math.min(currentSize.w * 0.45, currentSize.h * 0.45, 340);
+    if (img.width > targetDim || img.height > targetDim) {
+      if (img.width >= img.height) {
+        img.scaleToWidth(targetDim);
+      } else {
+        img.scaleToHeight(targetDim);
+      }
+    }
+    let cleanTitle = (title || promptText || 'Студийное фото').trim();
+    cleanTitle = cleanTitle.replace(/^\[AI(?:\s+Photo)?\]\s*/i, '');
+    const finalLayerName = `[AI Photo] ${cleanTitle}`;
+
+    img.set({
+      left: (currentSize.w - img.getScaledWidth()) / 2,
+      top:  (currentSize.h - img.getScaledHeight()) / 2,
+      selectable: true,
+      layerName: finalLayerName,
+      name: finalLayerName,
+      isAiElement: true,
+      __isAiElement: true,
+      isAiPhoto: true,
+      __isAiPhoto: true,
+      aiType: 'photo',
+      aiPrompt: promptText || cleanTitle || 'AI Photo',
+      __aiPrompt: promptText || cleanTitle || 'AI Photo'
+    });
+
+    if (options.cornerRadius && typeof setImageCornerRadius === 'function') {
+      setImageCornerRadius(img, options.cornerRadius, true);
+    }
+
+    canvas.add(img);
+    canvas.setActiveObject(img);
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    onSelection();
+    closeAiElementModal();
+    toast(`📸 Фотография «${finalLayerName}» добавлена на холст!`);
+  }, { crossOrigin: 'anonymous' });
+}
+
+function addAiElement(src, title, promptText = '', aiType = 'vector-svg', options = {}) {
+  if (!canvas || !src) return;
+  if (aiType === 'photo' || (title && (title.includes('[AI Photo]') || title.toLowerCase().includes('фото')))) {
+    return addAiPhotoElement(src, title, promptText, options);
+  }
   fabric.Image.fromURL(src, img => {
     if (!img) return;
     const targetDim = Math.min(currentSize.w * 0.45, currentSize.h * 0.45, 340);
@@ -6306,10 +6382,17 @@ function addAiElement(src, title, promptText = '') {
       top:  (currentSize.h - img.getScaledHeight()) / 2,
       selectable: true,
       layerName: finalLayerName,
+      name: finalLayerName,
       isAiElement: true,
+      __isAiElement: true,
       aiPrompt: promptText || title || 'AI Элемент',
-      aiType: 'vector-svg'
+      __aiPrompt: promptText || title || 'AI Элемент',
+      aiType: aiType || 'vector-svg'
     });
+
+    if (options.cornerRadius && typeof setImageCornerRadius === 'function') {
+      setImageCornerRadius(img, options.cornerRadius, true);
+    }
 
     canvas.add(img);
     canvas.setActiveObject(img);
@@ -6321,6 +6404,8 @@ function addAiElement(src, title, promptText = '') {
     toast(`✦ Элемент «${finalLayerName}» добавлен на холст!`);
   }, { crossOrigin: 'anonymous' });
 }
+
+window.addAiPhotoElement = addAiPhotoElement;
 
 async function generateAiElement() {
   const promptInput = $('#ai-prompt-input');
@@ -8960,18 +9045,19 @@ function bindEvents() {
         pasteCopiedObject();
       }
     }
-    // Инструмент выделения (Select / Move Tool) по клавише V / М (как в Photoshop/Figma)
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')) {
-      if (inInput) return;
-      e.preventDefault();
-      activateSelectTool();
-    }
-
-    // Сброс режимов и возврат в инструмент выделения по Escape
-    if (e.key === 'Escape') {
-      if (inInput) return;
-      if (typeof activateSelectTool === 'function') {
-        activateSelectTool(true);
+    // Пробел для временного панорамирования (Figma-like Pan Mode)
+    if ((e.code === 'Space' || e.key === ' ') && !inInput) {
+      const activeObj = canvas?.getActiveObject();
+      if (!activeObj || !activeObj.isEditing) {
+        e.preventDefault();
+        if (!isSpacePressed) {
+          isSpacePressed = true;
+          if (canvas) {
+            canvas.defaultCursor = 'grab';
+            canvas.hoverCursor = 'grab';
+            canvas.selection = false;
+          }
+        }
       }
     }
 
@@ -9107,23 +9193,32 @@ function bindEvents() {
       }
     }
 
-    // Escape -> выход из режима рисования или сброс выделения (возврат к стрелке)
+    // Escape -> выход из режима рисования, пипетки, панорамирования, сброс выделения и возврат к стрелке выбора
     if (e.key === 'Escape') {
-      if (canvas?.isDrawingMode) {
-        e.preventDefault();
-        toggleDrawingMode(false);
-        activateSelectTool(false);
-        return;
-      }
+      if (inInput) return;
+      e.preventDefault();
       if (canvas?.getActiveObject()) {
-        e.preventDefault();
         canvas.discardActiveObject();
         canvas.requestRenderAll();
-        onSelection();
-        activateSelectTool(false);
-        return;
+        clearProps();
       }
-      activateSelectTool(false);
+      setActiveTool('select', false);
+      return;
+    }
+  });
+
+  document.addEventListener('keyup', e => {
+    if (e.code === 'Space' || e.key === ' ') {
+      if (isSpacePressed) {
+        isSpacePressed = false;
+        if (canvas && !isPanningMode) {
+          canvas.defaultCursor = (window.currentTool === 'select') ? 'default' : canvas.defaultCursor;
+          canvas.hoverCursor = (window.currentTool === 'select') ? 'move' : canvas.hoverCursor;
+          if (window.currentTool === 'select') {
+            canvas.selection = true;
+          }
+        }
+      }
     }
   });
 
@@ -10695,6 +10790,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openRetouchModal = openInstagramRetouchModal;
   }
   window.addAiElement = addAiElement;
+  window.addAiPhotoElement = addAiPhotoElement;
+  window.setImageCornerRadius = setImageCornerRadius;
+  window.setActiveTool = setActiveTool;
+  window.activateSelectTool = activateSelectTool;
 
   // Инициализация хранилища черновиков и проектов (IndexedDB + кэш)
   await initDraftsStorage();
