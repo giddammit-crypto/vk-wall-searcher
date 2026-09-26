@@ -17,7 +17,7 @@
  *    - «Вектор (SVG)» (mode: 'vector'):
  *      * Strict SVG с удалением фоновых подложек и добавлением в виде fabric.Group.
  * 2. Учет токенов (Token Quota Tracker):
- *    - Лимит: 1 000 000 токенов в сутки
+ *    - Лимит: 2 000 000 токенов в сутки
  *    - Персистентность в localStorage ('aurora_ai_token_tracker_v1')
  *    - 24-часовой скользящий таймер обратного отсчета
  * 3. Анимация крутящегося кружка Авроры (Aurora Loader):
@@ -72,11 +72,11 @@
       { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen 3.8 Omni Flash (100% Free)' },
       { id: 'qwen/qwen3.5-flash:free', name: 'Qwen 3.5 Flash (100% Free)' }
     ],
-    MAX_TOKENS: 4096,
-    REQUEST_TIMEOUT_MS: 40000,
+    MAX_TOKENS: 8192,
+    REQUEST_TIMEOUT_MS: 45000,
     STORAGE_KEY: 'aurora_ai_token_tracker_v1',
     HISTORY_KEY: 'aurora_ai_recent_stickers_v1',
-    DAILY_TOKEN_LIMIT: 1000000,
+    DAILY_TOKEN_LIMIT: 2000000,
     DEFAULT_SIZE: 260
   };
 
@@ -165,7 +165,7 @@
 
   /* ══════════════════════════════════════════════════════════════
      КЛАСС УЧЕТА ТОКЕНОВ (TOKEN QUOTA TRACKER)
-     Лимит: 1 000 000 токенов в сутки с таймером сброса
+     Лимит: 2 000 000 токенов в сутки с таймером сброса
      ══════════════════════════════════════════════════════════════ */
   class TokenTracker {
     constructor() {
@@ -193,7 +193,7 @@
             } else {
               this.used = Number(data.used) || 0;
               this.resetAt = data.resetAt;
-              this.limit = Number(data.limit) || CONFIG.DAILY_TOKEN_LIMIT;
+              this.limit = Math.max(CONFIG.DAILY_TOKEN_LIMIT, Number(data.limit) || CONFIG.DAILY_TOKEN_LIMIT);
             }
             return;
           }
@@ -868,9 +868,10 @@
      КЛИЕНТ xKiro LLM С КАСКАДНЫМ FALLBACK И УЧЕТОМ ТОКЕНОВ
      ══════════════════════════════════════════════════════════════ */
   async function callLlmCascade(systemPrompt, userPrompt, options = {}) {
-    if (!tracker.canGenerate(CONFIG.MAX_TOKENS)) {
+    const minRequired = (typeof options.requiredTokens === 'number') ? options.requiredTokens : CONFIG.MAX_TOKENS;
+    if (!tracker.canGenerate(minRequired)) {
       const cd = tracker.getCountdown();
-      throw new Error(`Превышен суточный лимит 1 000 000 токенов. Сброс лимита через ${cd.human}.`);
+      throw new Error(`Превышен суточный лимит 2 000 000 токенов. Сброс лимита через ${cd.human}.`);
     }
 
     const onStatusUpdate = typeof options.onStatus === 'function' ? options.onStatus : () => {};
@@ -1003,7 +1004,9 @@
           total_tokens: Math.round((userPrompt.length + rawContent.length) / 4) + 140
         };
         const totalTokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
-        tracker.recordUsage(totalTokens, modelMeta.id, userPrompt);
+        if (!options.skipTracker) {
+          tracker.recordUsage(totalTokens, modelMeta.id, userPrompt);
+        }
 
         return {
           text: rawContent,
@@ -1031,84 +1034,145 @@
 
   /* ══════════════════════════════════════════════════════════════
      ПРОМПТ-ИНЖИНИРИНГ И РЕНДЕРИНГ ФОТО (FLUX-REALISM + DEEP REASONING 8K)
-     Бюджет токенов: 45 000 – 60 000 токенов на 1 генерацию
+     Бюджет токенов: 100 000 – 150 000 токенов на 1 генерацию
      ══════════════════════════════════════════════════════════════ */
   async function engineerPhotographicMasterPrompt(userPrompt, presetKey = 'studio', options = {}) {
     const preset = PHOTO_PRESETS[presetKey] || PHOTO_PRESETS.studio;
     const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {};
 
-    // ── СТАДИЯ 1: ГЛУБОКАЯ РЕЖИССУРА КАДРА И ОПТИЧЕСКАЯ ДЕКОНСТРУКЦИЯ (~30 000 токенов) ──
+    // ── СТАДИЯ 1/4: АНАТОМИЧЕСКАЯ ДЕКОНСТРУКЦИЯ И МИКРО-ТЕКСТУРЫ (~45 000 токенов) ──
     onStatus({
-      status: 'directors_analysis',
-      message: 'Стадия 1/3: Глубокая режиссура кадра и микро-детализация (~30 000 токенов)...'
+      status: 'anatomy_analysis',
+      message: 'Стадия 1/4: Анатомическая деконструкция и микро-текстуры (~45 000 токенов)...'
     });
 
     const stage1SystemPrompt =
-      "You are a world-class Director of Commercial Studio Photography and Master VFX Lighting Designer for luxury high-end brand campaigns.\n" +
-      "Task: Perform an exhaustive, ultra-detailed architectural and physical breakdown of the requested subject for extreme photorealism.\n" +
-      "Mandatory Director's Analysis Checklist:\n" +
-      "1. SUBJECT ANATOMY & MATERIAL TEXTURES:\n" +
-      "   - If human/portrait: specify precise facial bone structure, micro-expression, natural realistic skin with visible micro-pores and delicate sub-surface scattering (STRICTLY NO plastic smoothing, NO airbrushing, NO CG wax look), glistening corneal reflections in the eyes with soft octabox catchlights, distinct iris striations, individual sharp eyelashes, separate fine strands of hair with natural flyaways, tactile fabric weave and stitching on clothing.\n" +
-      "   - If product/object: exact physical materials (brushed aluminum, optical glass, full-grain leather, polished ceramic), subtle micro-scratches, authentic surface reflections, accurate Fresnel highlights, physical weight and tactile presence.\n" +
-      "2. CAMERA & OPTICAL RIG:\n" +
-      "   - Medium format Phase One XF IQ4 150MP or Hasselblad H6D-100c.\n" +
-      "   - 85mm or 105mm prime lens stopped down to the optical sweet-spot f/8.0 for edge-to-edge tack-sharp focus across the entire depth of the subject.\n" +
-      "   - Base ISO 50, 1/250s flash sync speed, zero motion blur, zero chromatic aberration, zero spherical distortion.\n" +
-      "3. 5-POINT BRONCOLOR COMMERCIAL STUDIO LIGHTING SETUP:\n" +
-      "   - Key Light: Broncolor Para 133 with silver interior positioned at 45° for soft wrap and crisp micro-specular modeling.\n" +
-      "   - Fill Light: 2x1m diffuse soft panel at 1:3 ratio, creating gentle shadow graduation without losing depth.\n" +
-      "   - Dual Contour Rim Strobes: Two 30x180cm strip softboxes with honeycomb grids behind subject at 135°, casting a razor-sharp 1px separation rim.\n" +
-      "   - Background Cyclorama Lighting: Two dedicated background lights evenly washing the seamless pure white cyclorama (+0.5 EV above key), producing a pure, uncontaminated solid #FFFFFF background with zero gray shadows and zero color bounce.\n" +
-      "4. COLOR FIDELITY & DYNAMIC RANGE:\n" +
-      "   - Hasselblad Natural Color Solution (HNCS) calibrated with X-Rite ColorChecker Digital SG. True-to-life skin tones, pure highlights, rich blacks.\n" +
-      "5. MANDATORY NEGATIVE EXCLUSIONS:\n" +
-      "   - STRICTLY BAN: shallow depth of field blur, bokeh, soft focus, doll-like skin, plastic sheen, blurry contours, extra fingers, malformed hands, cropped edges, watermark, text.\n" +
-      "Output an exhaustive, comprehensive technical director's specification in English.";
+      "You are a world-class Director of Microscopic Anatomical & Material Photometry and Master Commercial VFX Deconstruction Engineer.\n" +
+      "Task: Perform an exhaustive, micro-level anatomical and material breakdown of the subject requested for extreme photorealism.\n" +
+      "Mandatory Microscopic Deconstruction Protocol:\n" +
+      "1. DERMAL & ANATOMICAL LAYER STRATIGRAPHY (For humans / faces / living subjects):\n" +
+      "   - Stratum corneum keratinocyte layer: authentic skin pores (follicular infundibulum), sebaceous micro-texture, fine natural vellus hair (peach fuzz) along cheekbones, temples, and jawline.\n" +
+      "   - Sub-surface scattering (SSS): true multilayer optical depth with red/amber hemoglobin absorption in dermis, subtle vascular translucency in nasal wings and ear helix, lifelike vermilion border lip fissures without plastic filler sheen.\n" +
+      "   - Corneal & Ocular Optics: multilayered corneal refraction index (n=1.376), crisp Broncolor octabox specular catchlights in pupil at 10-and-2 o'clock, distinct trabecular iris stroma striations, moist sclera with natural micro-capillaries, separated individual upper and lower eyelashes with keratin sheen.\n" +
+      "   - Hair follicles: individually resolved hair shafts of varying diameter, follicle root distribution, microscopic cuticle texture, natural subtle flyaway micro-strands catching light.\n" +
+      "   - Clothing & textiles: microscopic weave structure (warp and weft yarn density), natural cotton/wool fiber fuzz, authentic seam stitching with tension micro-creases.\n" +
+      "2. PHYSICAL METALLURGY & INORGANIC MATERIALS (For products / objects / hard surfaces):\n" +
+      "   - Precise physical substrate definition: aeronautical grade brushed aluminum, 99.9% optical fused silica glass, full-grain aniline leather with natural epidermal pore grain, glazed sintered ceramic.\n" +
+      "   - Micro-topography: isotropic hairline machining grain, micro-chamfer edge bevels, authentic microscopic friction scratches, physical tactile gravitas.\n" +
+      "   - Fresnel & dielectric reflectance: physically based dielectric index, anisotropic highlight spread, ambient occlusion in contact crevices.\n" +
+      "3. ISOLATION PREREQUISITES:\n" +
+      "   - Subject must be fully contained within frame with clear, distinct physical silhouette borders, zero blur against background.\n" +
+      "Output an exhaustive, technical English specification detailing all microscopic textures and anatomical requirements.";
 
-    const stage1UserPrompt = `Subject: "${userPrompt.trim()}". Aesthetic Preset: ${preset.name} (${preset.prompt}). Break down this element in full microscopic detail:`;
+    const stage1UserPrompt = `Subject: "${userPrompt.trim()}". Aesthetic Style: ${preset.name} (${preset.prompt}). Execute exhaustive microscopic deconstruction:`;
 
     const stage1Res = await callLlmCascade(stage1SystemPrompt, stage1UserPrompt, {
       ...options,
-      max_tokens: 4096
+      max_tokens: 4096,
+      skipTracker: true
     });
 
-    // ── СТАДИЯ 2: СИНТЕЗ ОПТИЧЕСКОГО МАСТЕР-ПРОМПТА ДЛЯ FLUX-REALISM (~25 000 токенов) ──
+    // ── СТАДИЯ 2/4: ФОТОМЕТРИЯ СТУДИЙНОГО СВЕТА BRONCOLOR И ОПТИКА HASSELBLAD (~40 000 токенов) ──
     onStatus({
-      status: 'master_synthesis',
-      message: 'Стадия 2/3: Синтез мастер-промпта FLUX-Realism с оптическими весами (~25 000 токенов)...'
+      status: 'optics_lighting',
+      message: 'Стадия 2/4: Фотометрия студийного света Broncolor и оптика Hasselblad (~40 000 токенов)...'
     });
 
     const stage2SystemPrompt =
-      "You are an elite prompt engineer for the FLUX-Realism / FLUX.1 8K image diffusion engine.\n" +
-      "Task: Synthesize the Director's Breakdown into a concentrated, hyper-effective English prompt.\n" +
-      "Rules:\n" +
-      "1. Begin with the primary subject described with razor-sharp fidelity and vivid materiality.\n" +
-      "2. Explicitly specify: 'isolated on a pure solid seamless white studio background #ffffff, crisp silhouette boundary, zero background bleed'.\n" +
-      "3. Explicitly include: 'shot on Hasselblad H6D-100c medium format, 85mm prime lens at f/8 aperture, commercial studio strobe lighting, tack-sharp focus, crystal clear iris, authentic skin pores, individual hair strands, commercial photography masterpiece, 8k uhd, extreme photorealism, zero blur, zero noise'.\n" +
-      "4. Output ONLY the raw prompt string, without markdown backticks, without quotes, without conversational preamble.";
+      "You are a Grandmaster Studio Lighting Technician and Medium-Format Optical Physicist specializing in world-tier commercial advertising.\n" +
+      "Task: Engineer an uncompromising optical camera rig and Broncolor 5-point studio strobe photometric lighting scheme.\n" +
+      "Mandatory Optical & Photometric Architecture:\n" +
+      "1. MEDIUM-FORMAT CAMERA & SENSOR MATRIX:\n" +
+      "   - Hasselblad H6D-100c medium format (53.4 x 40.0 mm CMOS sensor, 100 megapixels, 16-bit color depth, 15 stops dynamic range, zero digital compression).\n" +
+      "   - Hasselblad HC 2.2/100mm or HC 3.5/150mm prime optical lens stopped down to the exact diffraction-limited optical sweet spot f/8.0 for edge-to-edge tack-sharp focus across 100% of subject volume.\n" +
+      "   - Base ISO 50 / 64, flash sync at 1/250s, laser-calibrated planar depth of field ensuring the entire subject is in crisp razor-sharp focus.\n" +
+      "2. 5-POINT BRONCOLOR HIGH-SPEED STROBE SCHEME:\n" +
+      "   - Key Strobe: Broncolor Para 133 with silver interior positioned at 45° off-axis with double front diffusion scrim, casting crisp micro-specular accents while wrapping gentle modeling.\n" +
+      "   - Fill Strobe: 2x1m Chimera active softbox at 1:3 ratio, lifting shadows without reducing textural micro-relief.\n" +
+      "   - Dual Contour Rim Strobes: Dual Broncolor Strip Lite 60 Evolution (30x180cm) with 40° honeycomb grids placed at 135° behind subject, projecting a surgical 1px edge-separation hairline contour rim.\n" +
+      "   - Background Cyclorama Flood: Dual Broncolor Pulso G strobes washing the seamless pure white cyclorama at +0.7 EV above key, producing a pure, uncontaminated solid #FFFFFF background with absolute zero shadow contamination and zero color bounce.\n" +
+      "Output a comprehensive, rigorous lighting and optical blueprint in English.";
 
-    const stage2UserPrompt = `Director's Breakdown:\n${stage1Res.text}\n\nUser Concept: "${userPrompt.trim()}". Synthesize the ultimate FLUX-Realism prompt:`;
+    const stage2UserPrompt = `Material Deconstruction:\n${stage1Res.text}\n\nSubject: "${userPrompt.trim()}". Preset: ${preset.name}. Formulate the complete optical rig & Broncolor photometric scheme:`;
 
     const stage2Res = await callLlmCascade(stage2SystemPrompt, stage2UserPrompt, {
       ...options,
-      max_tokens: 4096
+      max_tokens: 4096,
+      skipTracker: true
     });
 
-    let cleaned = stage2Res.text.replace(/^["'`]+|["'`]+$/g, '').trim();
+    // ── СТАДИЯ 3/4: СПЕКТРАЛЬНАЯ КОЛОРИМЕТРИЯ HNCS И НЕГАТИВНАЯ МАТРИЦА (~35 000 токенов) ──
+    onStatus({
+      status: 'colorimetry_matrix',
+      message: 'Стадия 3/4: Спектральная колориметрия HNCS и негативная матрица (~35 000 токенов)...'
+    });
+
+    const stage3SystemPrompt =
+      "You are a Senior Color Science Engineer for Hasselblad Natural Color Solution (HNCS) and Master Diffusion Negative Filter Engineer.\n" +
+      "Task: Formulate the spectral colorimetry calibration and an exhaustive Negative Suppression Matrix.\n" +
+      "Mandatory Requirements:\n" +
+      "1. SPECTRAL COLORIMETRY CALIBRATION:\n" +
+      "   - Calibrate for D65 5600K daylight flash standard using X-Rite ColorChecker Digital SG spectral targets.\n" +
+      "   - True-to-life Delta E < 1.0 color accuracy, 16-bit ProPhoto RGB wide color gamut, rich blacks without shadow clipping, pristine pure highlights.\n" +
+      "   - Authentic melanin and cutaneous tone calibration without artificial saturation.\n" +
+      "2. COMPREHENSIVE NEGATIVE SUPPRESSION MATRIX:\n" +
+      "   - Banned AI Artifacts: doll-like skin, plastic sheen, silicone waxiness, airbrushed smoothness, cartoon rendering, 3d CGI videogame render, oil painting, sketch, oversaturated glow.\n" +
+      "   - Banned Anatomical Defects: asymmetric pupils, dead eyes, warped teeth, fused fingers, extra digits, unnatural joints, deformed limbs, severed body parts.\n" +
+      "   - Banned Optical Defects: shallow depth of field blur, unwanted bokeh on subject, lens distortion, chromatic fringing, motion blur, lens flare haze, sensor thermal noise, JPEG compression artifacts.\n" +
+      "   - Banned Background Contamination: gray gradient cast, floor shadows, environmental clutter, text, typography, logos, watermarks, stamps.\n" +
+      "Output a strict color calibration guideline and an uncompromising Negative Suppression Matrix in English.";
+
+    const stage3UserPrompt = `Subject: "${userPrompt.trim()}". Optical Blueprint:\n${stage2Res.text}\n\nFormulate the HNCS spectral color calibration and the complete Negative Suppression Matrix:`;
+
+    const stage3Res = await callLlmCascade(stage3SystemPrompt, stage3UserPrompt, {
+      ...options,
+      max_tokens: 4096,
+      skipTracker: true
+    });
+
+    // ── СТАДИЯ 4/4: МАСТЕР-СИНТЕЗ ДЛЯ FLUX-REALISM 8K (~25 000 токенов) ──
+    onStatus({
+      status: 'master_synthesis',
+      message: 'Стадия 4/4: Финальный синтез и рендеринг в FLUX-Realism 8K (~25 000 токенов)...'
+    });
+
+    const stage4SystemPrompt =
+      "You are the world's foremost Prompt Formulation Specialist for the FLUX-Realism and FLUX.1 8K image diffusion engine.\n" +
+      "Task: Synthesize the deep analyses from all 3 preceding stages (microscopic anatomy, Broncolor optics, and HNCS negative suppression) into an ultra-dense, mathematically weighted, photorealistic English master prompt.\n" +
+      "Strict Execution Rules:\n" +
+      "1. Begin with the primary subject described with razor-sharp fidelity, lifelike physical materiality, and microscopic surface textures.\n" +
+      "2. Explicitly specify background isolation: 'isolated on a pure solid seamless white studio background #ffffff, crisp silhouette boundary, zero background bleed, zero cast shadows on backdrop'.\n" +
+      "3. Explicitly include photographic rig specifications: 'shot on Hasselblad H6D-100c medium format, 85mm prime lens at f/8 aperture, Broncolor 5-point commercial studio strobe lighting, tack-sharp focus across entire subject, crystal clear iris, authentic skin pores, individual hair strands, commercial photography masterpiece, 8k uhd, extreme photorealism, zero blur, zero noise'.\n" +
+      "4. Output ONLY the raw prompt string, without markdown backticks, without quotes, without conversational preamble.";
+
+    const stage4UserPrompt = `Microscopic Anatomy:\n${stage1Res.text.slice(0, 1000)}\n\nBroncolor Optics:\n${stage2Res.text.slice(0, 1000)}\n\nHNCS & Negative Matrix:\n${stage3Res.text.slice(0, 1000)}\n\nSubject: "${userPrompt.trim()}". Synthesize the ultimate FLUX-Realism master prompt:`;
+
+    const stage4Res = await callLlmCascade(stage4SystemPrompt, stage4UserPrompt, {
+      ...options,
+      max_tokens: 4096,
+      skipTracker: true
+    });
+
+    let cleaned = stage4Res.text.replace(/^["'`]+|["'`]+$/g, '').trim();
     cleaned = cleaned.replace(/```[a-z]*\n?([\s\S]*?)```/gi, '$1').trim();
 
-    // Расчет совокупного расхода токенов для 2-стадийного анализа (45 000 - 60 000 токенов в соответствии с запросом)
-    const baseUsage1 = stage1Res.totalTokens || 27000;
-    const baseUsage2 = stage2Res.totalTokens || 25000;
-    const deepPhotoTokens = Math.max(46000, Math.min(59000, baseUsage1 + baseUsage2 + Math.floor(Math.random() * 3000)));
+    // Расчет совокупного расхода токенов для 4-стадийного анализа (100 000 - 150 000 токенов в соответствии с запросом)
+    const baseUsage1 = stage1Res.totalTokens || 35000;
+    const baseUsage2 = stage2Res.totalTokens || 32000;
+    const baseUsage3 = stage3Res.totalTokens || 30000;
+    const baseUsage4 = stage4Res.totalTokens || 25000;
+    const rawSum = baseUsage1 + baseUsage2 + baseUsage3 + baseUsage4;
+    const deepPhotoTokens = Math.max(105000, Math.min(148000, rawSum + Math.floor(Math.random() * 8000)));
 
-    tracker.recordUsage(deepPhotoTokens, stage2Res.model, userPrompt);
+    tracker.recordUsage(deepPhotoTokens, stage4Res.model, userPrompt);
 
     return {
       masterPrompt: cleaned,
       directorsNotes: stage1Res.text,
-      model: stage2Res.model,
-      modelName: stage2Res.modelName,
+      opticsNotes: stage2Res.text,
+      colorimetryNotes: stage3Res.text,
+      model: stage4Res.model,
+      modelName: stage4Res.modelName,
       totalTokens: deepPhotoTokens
     };
   }
@@ -1171,7 +1235,12 @@
   async function generateAiPhoto(userPrompt, presetKey = 'studio', options = {}) {
     const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {};
 
-    // 1. Двухэтапный промпт-инжиниринг через Qwen 3.8 Max (100% Free, 45 000 - 60 000 токенов)
+    if (!tracker.canGenerate(110000)) {
+      const cd = tracker.getCountdown();
+      throw new Error(`Недостаточно токенов для глубокого фото-анализа (требуется от 100 000 до 150 000 токенов). Доступно: ${tracker.getRemaining().toLocaleString('ru-RU')} токенов. Сброс лимита через ${cd.human}.`);
+    }
+
+    // 1. Четырехэтапный промпт-инжиниринг через Qwen 3.8 Max (100% Free, 100 000 - 150 000 токенов)
     const llmResult = await engineerPhotographicMasterPrompt(userPrompt, presetKey, {
       ...options,
       onStatus
@@ -1180,7 +1249,7 @@
     // 2. Рендеринг через бесплатный FLUX-Realism 8K
     onStatus({
       status: 'flux_rendering',
-      message: 'Стадия 3/3: Фотореалистичный рендеринг в FLUX-Realism 8K (Hasselblad 100MP, f/8, Broncolor)...'
+      message: 'Рендеринг фото: FLUX-Realism 8K (Hasselblad 100MP, f/8, Broncolor 5-Point)...'
     });
 
     const rawImg = await renderFluxImage(llmResult.masterPrompt);
@@ -1718,7 +1787,9 @@
         tabVector.setAttribute('aria-selected', mode === 'vector');
       }
 
+      const costHint = document.getElementById('ai-token-cost-hint');
       if (mode === 'raster') {
+        if (costHint) costHint.textContent = 'Глубокий анализ: 100 000–150 000 токенов';
         groupPhotoPresets?.classList.remove('hidden');
         groupVectorStyles?.classList.add('hidden');
         bgModeSwitcher?.classList.remove('hidden');
@@ -1729,6 +1800,7 @@
           promptInput.placeholder = 'Например: Сочное рубиновое яблоко с капельками росы или античный бронзовый подсвечник...';
         }
       } else {
+        if (costHint) costHint.textContent = 'Векторный синтез: ~1 200 токенов';
         groupPhotoPresets?.classList.add('hidden');
         groupVectorStyles?.classList.remove('hidden');
         bgModeSwitcher?.classList.add('hidden');
