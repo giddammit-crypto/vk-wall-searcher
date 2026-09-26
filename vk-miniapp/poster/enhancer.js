@@ -639,7 +639,7 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i];
-      if (obj && obj.visible !== false && !obj.__isHelper && !obj.excludeFromExport) {
+      if (obj && obj.visible !== false && (!obj.__isHelper || obj.__isGradeOverlay) && !obj.excludeFromExport) {
         obj.render(ctx);
       }
     }
@@ -763,6 +763,14 @@ async function exportPoster(fabricCanvas, options = {}) {
     jCtx.drawImage(bufferCanvas, 0, 0);
 
     dataUrl = jpgCanvas.toDataURL('image/jpeg', quality);
+    jpgCanvas.width = 0;
+    jpgCanvas.height = 0;
+    if (shouldDownload) {
+      triggerDownload(dataUrl, `${filename}.${fileExt}`);
+    }
+  } else if (format === 'webp') {
+    fileExt = 'webp';
+    dataUrl = bufferCanvas.toDataURL('image/webp', quality ?? 0.94);
     if (shouldDownload) {
       triggerDownload(dataUrl, `${filename}.${fileExt}`);
     }
@@ -790,6 +798,8 @@ async function exportPoster(fabricCanvas, options = {}) {
     jCtx.drawImage(bufferCanvas, 0, 0);
 
     const pdfImgData = jpgCanvas.toDataURL('image/jpeg', 0.96);
+    jpgCanvas.width = 0;
+    jpgCanvas.height = 0;
     pdf.addImage(pdfImgData, 'JPEG', 0, 0, origW, origH, undefined, 'FAST');
 
     if (shouldDownload) {

@@ -158,11 +158,11 @@
 #btn-open-enhancer .enh-btn-badge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 5px;
+  padding: 2px 6px;
   background: rgba(56, 189, 248, 0.25);
   border: 1px solid rgba(56, 189, 248, 0.5);
   border-radius: var(--enh-radius-pill);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #7dd3fc;
@@ -1548,8 +1548,8 @@
   }
 
   .enhancer-head-badge {
-    font-size: 9.5px;
-    padding: 2px 7px;
+    font-size: 11px;
+    padding: 3px 8px;
   }
 
   .enhancer-subtitle {
@@ -1562,6 +1562,17 @@
     max-height: calc(96vh - 66px);
   }
 
+  .enhancer-preview-card {
+    min-height: auto;
+    padding: 10px;
+  }
+
+  .enhancer-split-container {
+    min-height: 160px;
+    max-height: 220px;
+    margin: 0 auto 10px auto;
+  }
+
   .enhancer-split-handle {
     width: 38px;
     height: 38px;
@@ -1569,8 +1580,8 @@
 
   .enhancer-badge-original,
   .enhancer-badge-enhanced {
-    padding: 4px 8px;
-    font-size: 9.5px;
+    padding: 4px 9px;
+    font-size: 11px;
     top: 8px;
   }
 
@@ -1578,7 +1589,7 @@
   .enhancer-badge-enhanced { right: 8px; }
 
   .enhancer-res-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 8px;
   }
 
@@ -2012,13 +2023,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 17px;
-  height: 17px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 9999px;
   background: #0d99ff;
   color: #ffffff;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   margin-left: 4px;
 }

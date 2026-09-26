@@ -5346,7 +5346,7 @@ function restoreHistory() {
     }
     // Восстанавливаем скругление углов для изображений и AI-элементов
     canvas.getObjects().forEach(o => {
-      if (o.type === 'image' && o.__cornerRadius > 0 && !o.clipPath) {
+      if (o.type === 'image' && o.__cornerRadius > 0) {
         setImageCornerRadius(o, o.__cornerRadius, true);
       }
     });
@@ -5359,8 +5359,10 @@ function restoreHistory() {
 }
 
 function updateHistoryBtns() {
-  $('#btn-undo').disabled = historyIdx <= 0;
-  $('#btn-redo').disabled = historyIdx >= history.length - 1;
+  const undoBtn = $('#btn-undo');
+  if (undoBtn) undoBtn.disabled = historyIdx <= 0;
+  const redoBtn = $('#btn-redo');
+  if (redoBtn) redoBtn.disabled = historyIdx >= history.length - 1;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5514,7 +5516,7 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     const objects = fabricCanvas.getObjects ? fabricCanvas.getObjects() : [];
     for (let i = 0; i < objects.length; i++) {
       const obj = objects[i];
-      if (obj && obj.visible !== false && !obj.__isHelper && !obj.excludeFromExport) {
+      if (obj && obj.visible !== false && (!obj.__isHelper || obj.__isGradeOverlay) && !obj.excludeFromExport) {
         obj.render(ctx);
       }
     }
@@ -5759,6 +5761,8 @@ async function exportPng() {
     const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
     const buffer = renderCleanArtboardCanvas(canvas, mult);
     const url = buffer.toDataURL('image/png');
+    buffer.width = 0;
+    buffer.height = 0;
 
     const a = document.createElement('a');
     a.href = url;
@@ -5813,6 +5817,8 @@ async function exportJpg() {
     const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
     const buffer = renderCleanArtboardCanvas(canvas, mult);
     const url = buffer.toDataURL('image/jpeg', 0.96);
+    buffer.width = 0;
+    buffer.height = 0;
 
     const a = document.createElement('a');
     a.href = url;
@@ -5870,6 +5876,8 @@ async function exportPdf() {
     const mult = currentExportResolution === '8k' ? 4 : currentExportResolution === '4k' ? 3 : 2;
     const buffer = renderCleanArtboardCanvas(canvas, mult);
     const pdfDataUrl = buffer.toDataURL('image/jpeg', 0.96);
+    buffer.width = 0;
+    buffer.height = 0;
 
     const dims = getArtboardDimensions(canvas);
     const isH = dims.w > dims.h;
@@ -5925,6 +5933,8 @@ async function exportWebp() {
 
     updateExportProgress(85, 'Кодирование WebP...');
     const url = buffer.toDataURL('image/webp', 0.94);
+    buffer.width = 0;
+    buffer.height = 0;
 
     const a = document.createElement('a');
     a.href = url;
@@ -5953,6 +5963,8 @@ async function copyCanvasImageToClipboard() {
   try {
     const buffer = renderCleanArtboardCanvas(canvas, 1.5);
     buffer.toBlob(async blob => {
+      buffer.width = 0;
+      buffer.height = 0;
       if (!blob) {
         toast('Ошибка создания растрового изображения');
         return;
@@ -6356,7 +6368,7 @@ let isAiModalInit = false;
 let currentAiCategory = 'all';
 
 function openAiElementModal() {
-  if (typeof window.openAiGeneratorModal === 'function') {
+  if (typeof window.openAiGeneratorModal === 'function' && window.openAiGeneratorModal !== openAiElementModal) {
     window.openAiGeneratorModal();
     return;
   }
@@ -6703,7 +6715,7 @@ let isInstaSplitDragging = false;
 let instaSrcCanvas = null;
 
 function openInstagramRetouchModal() {
-  if (typeof window.openRetouchModal === 'function') {
+  if (typeof window.openRetouchModal === 'function' && window.openRetouchModal !== openInstagramRetouchModal) {
     window.openRetouchModal();
     return;
   }
@@ -10932,13 +10944,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Глобальные экспорты для внешних скриптов и тулбаров
   window.TEMPLATES = TEMPLATES;
   window.loadTemplate = loadTemplate;
-  window.openAiElementModal = openAiElementModal;
-  if (!window.openAiGeneratorModal) {
-    window.openAiGeneratorModal = openAiElementModal;
+  if (window.AuroraAiElements?.openAiGeneratorModal) {
+    window.openAiElementModal = window.AuroraAiElements.openAiGeneratorModal;
+  } else if (!window.openAiElementModal) {
+    window.openAiElementModal = openAiElementModal;
   }
-  window.openInstagramRetouchModal = openInstagramRetouchModal;
+  if (!window.openAiGeneratorModal) {
+    window.openAiGeneratorModal = window.openAiElementModal;
+  }
+  if (window.AuroraRetouchEngine?.openRetouchModal) {
+    window.openInstagramRetouchModal = window.AuroraRetouchEngine.openRetouchModal;
+  } else if (!window.openInstagramRetouchModal) {
+    window.openInstagramRetouchModal = openInstagramRetouchModal;
+  }
   if (!window.openRetouchModal) {
-    window.openRetouchModal = openInstagramRetouchModal;
+    window.openRetouchModal = window.openInstagramRetouchModal;
   }
   window.addAiElement = addAiElement;
   window.addAiPhotoElement = addAiPhotoElement;
