@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="1000" viewBox="0 0 3200 1000" fill="none">
+  <defs>
+    <linearGradient id="night" x1="1600" y1="0" x2="1600" y2="1000" gradientUnits="userSpaceOnUse"><stop stop-color="#080E20"/><stop offset=".48" stop-color="#17243B"/><stop offset="1" stop-color="#382827"/></linearGradient>
+    <radialGradient id="aurora" cx="0" cy="0" r="1" gradientTransform="matrix(0 510 -1180 0 1600 395)" gradientUnits="userSpaceOnUse"><stop stop-color="#45C9D5" stop-opacity=".46"/><stop offset=".38" stop-color="#4D8DAB" stop-opacity=".17"/><stop offset="1" stop-color="#182138" stop-opacity="0"/></radialGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#111B30"/><stop offset=".24" stop-color="#384159"/><stop offset=".5" stop-color="#73604D"/><stop offset=".78" stop-color="#323A51"/><stop offset="1" stop-color="#10182B"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFE5A8"/><stop offset=".44" stop-color="#C49A5D"/><stop offset="1" stop-color="#533D36"/></linearGradient>
+    <linearGradient id="window" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#71DBE0" stop-opacity=".78"/><stop offset=".45" stop-color="#4B809D" stop-opacity=".58"/><stop offset="1" stop-color="#172843" stop-opacity=".92"/></linearGradient>
+    <linearGradient id="shelf" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#704A36"/><stop offset=".16" stop-color="#302838"/><stop offset=".82" stop-color="#1B1D30"/><stop offset="1" stop-color="#090F1D"/></linearGradient>
+    <linearGradient id="floorline" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#E4C18A" stop-opacity=".5"/><stop offset="1" stop-color="#E4C18A" stop-opacity="0"/></linearGradient>
+    <radialGradient id="lamp" cx="0" cy="0" r="1" gradientTransform="matrix(0 86 -78 0 0 0)" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE0A0" stop-opacity=".66"/><stop offset="1" stop-color="#FFC86F" stop-opacity="0"/></radialGradient>
+    <filter id="blur24" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="softShadow" x="-.3" y="-.3" width="1.6" height="1.7"><feGaussianBlur stdDeviation="12"/></filter>
+    <pattern id="starfield" width="240" height="180" patternUnits="userSpaceOnUse"><circle cx="19" cy="33" r="1.4" fill="#D5F6F4" opacity=".62"/><circle cx="145" cy="72" r="1" fill="#FFE5B3" opacity=".58"/><circle cx="208" cy="139" r="1.6" fill="#A7EAF0" opacity=".44"/><circle cx="81" cy="147" r=".8" fill="#FFF" opacity=".5"/></pattern>
+    <g id="windowBay">
+      <path d="M34 435V235C34 131 119 53 220 53S406 131 406 235V435H34Z" fill="#10172A" stroke="url(#gold)" stroke-width="15"/>
+      <path d="M58 421V237C58 146 129 77 220 77S382 146 382 237V421H58Z" fill="url(#window)"/>
+      <path d="M64 346C130 308 189 370 251 332C303 300 343 307 378 282V424H64V346Z" fill="#8BC9C1" opacity=".2"/>
+      <path d="M64 374C127 344 185 397 244 368C306 338 347 351 378 329" stroke="#C8F3DC" stroke-opacity=".45" stroke-width="7"/>
+      <path d="M220 78V420M62 238H378M76 160L220 236L364 160M76 315L220 236L364 315" stroke="#D1B77E" stroke-opacity=".78" stroke-width="9"/>
+      <path d="M205 91H235V420H205zM68 222H372V252H68z" fill="#1C2638" fill-opacity=".56"/>
+      <path d="M60 430H380" stroke="#FFE5A6" stroke-opacity=".8" stroke-width="5"/>
+      <circle cx="220" cy="237" r="15" fill="#FFE4A5" opacity=".52"/>
+    </g>
+    <g id="bookcase">
+      <rect x="0" y="0" width="380" height="390" rx="8" fill="url(#shelf)" stroke="#9A7550" stroke-width="8"/>
+      <rect x="12" y="13" width="356" height="365" rx="4" stroke="#D5B476" stroke-opacity=".3" stroke-width="3"/>
+      <g stroke="#B28A59" stroke-width="13"><path d="M4 100H376M4 193H376M4 286H376M4 374H376"/></g>
+      <g stroke="#D9B77A" stroke-opacity=".3" stroke-width="3"><path d="M9 88H371M9 181H371M9 274H371M9 362H371"/></g>
+      <g>
+        <path d="M20 94V34Q43 26 64 35V94Z" fill="#8F3946"/><path d="M68 94V20Q91 28 109 18V94Z" fill="#355E78"/><path d="M115 94V42Q136 35 159 43V94Z" fill="#B47A3E"/><path d="M164 94V27Q190 21 209 30V94Z" fill="#426951"/><path d="M215 94V38Q238 24 258 39V94Z" fill="#714A78"/><path d="M264 94V24Q287 30 306 20V94Z" fill="#9A4F31"/><path d="M312 94V40Q336 31 357 41V94Z" fill="#3D5C73"/>
+        <path d="M20 186V121Q42 117 58 125V186Z" fill="#45634D"/><path d="M63 186V113Q84 120 104 110V186Z" fill="#942E44"/><path d="M110 186V132Q132 123 151 132V186Z" fill="#315879"/><path d="M157 186V115Q178 123 198 112V186Z" fill="#AA773B"/><path d="M204 186V125Q228 117 248 129V186Z" fill="#514271"/><path d="M254 186V116Q279 110 299 121V186Z" fill="#3D704D"/><path d="M306 186V132Q331 120 357 129V186Z" fill="#983F36"/>
+        <path d="M20 279V210Q40 218 60 205V279Z" fill="#A06539"/><path d="M65 279V219Q88 206 108 216V279Z" fill="#4C6D81"/><path d="M114 279V205Q136 214 155 205V279Z" fill="#783E58"/><path d="M162 279V223Q182 213 202 220V279Z" fill="#4B7651"/><path d="M210 279V206Q233 217 252 208V279Z" fill="#A44B3A"/><path d="M260 279V217Q282 205 302 215V279Z" fill="#625084"/><path d="M310 279V204Q333 215 357 205V279Z" fill="#35536B"/>
+        <path d="M20 367V306Q43 300 61 308V367Z" fill="#593A60"/><path d="M66 367V298Q88 305 107 295V367Z" fill="#98713B"/><path d="M114 367V315Q135 307 155 317V367Z" fill="#3E6B57"/><path d="M162 367V300Q184 310 202 300V367Z" fill="#9A3B43"/><path d="M210 367V315Q232 302 251 313V367Z" fill="#365A79"/><path d="M259 367V300Q283 311 301 302V367Z" fill="#86513D"/><path d="M309 367V312Q334 300 357 310V367Z" fill="#526348"/>
+      </g>
+      <g fill="#EBD294" opacity=".8"><path d="M30 83H54V87H30zM76 78H101V83H76zM121 82H151V86H121zM173 80H203V85H173zM221 82H249V86H221zM273 80H300V84H273zM319 82H350V86H319z"/></g>
+    </g>
+    <g id="chandelier">
+      <path d="M0 0V75M-93 77H93M-78 77L-116 121M-40 77L-55 132M0 77V143M40 77L55 132M78 77L116 121" stroke="#C99B58" stroke-width="7"/>
+      <path d="M-116 121Q-100 150 -81 121M-55 132Q-40 160 -23 132M-15 143Q0 174 15 143M23 132Q40 160 55 132M81 121Q100 150 116 121" fill="#3C4D4D" stroke="#D9B36E" stroke-width="6"/>
+      <g fill="#FFE8AA" filter="url(#blur24)" opacity=".65"><circle cx="-99" cy="131" r="17"/><circle cx="-39" cy="142" r="17"/><circle cy="153" r="19"/><circle cx="39" cy="142" r="17"/><circle cx="99" cy="131" r="17"/></g>
+      <g fill="#FFF1C7"><circle cx="-99" cy="131" r="5"/><circle cx="-39" cy="142" r="5"/><circle cy="153" r="6"/><circle cx="39" cy="142" r="5"/><circle cx="99" cy="131" r="5"/></g>
+    </g>
+  </defs>
+  <path fill="url(#night)" d="M0 0H3200V1000H0z"/>
+  <path fill="url(#starfield)" d="M0 0H3200V500H0z" opacity=".48"/>
+  <path fill="url(#aurora)" d="M0 0H3200V860H0z"/>
+  <path d="M0 160Q800 -75 1600 100Q2400 -75 3200 160V0H0Z" fill="#070D1A" opacity=".8"/>
+  <path d="M0 35Q800 -170 1600 55Q2400 -170 3200 35" stroke="#A98455" stroke-opacity=".35" stroke-width="13"/>
+  <path d="M0 55Q800 -125 1600 76Q2400 -125 3200 55" stroke="#D6B779" stroke-opacity=".18" stroke-width="3"/>
+  <g opacity=".4" stroke="#C5A46D" stroke-width="4"><path d="M400 0Q500 130 800 184M1200 0Q1300 122 1600 184M2000 0Q2100 122 2400 184M2800 0Q2900 130 3200 184M0 184Q300 130 400 0"/></g>
+  <g opacity=".86"><use href="#windowBay" x="-10" y="130"/><use href="#windowBay" x="790" y="130"/><use href="#windowBay" x="2390" y="130"/><use href="#windowBay" x="3190" y="130"/></g>
+  <g opacity=".95"><use href="#windowBay" x="1190" y="75"/><use href="#windowBay" x="1990" y="75"/></g>
+  <g opacity=".88"><use href="#bookcase" x="-110" y="415"/><use href="#bookcase" x="350" y="415"/><use href="#bookcase" x="810" y="415"/><use href="#bookcase" x="1270" y="415"/><use href="#bookcase" x="1730" y="415"/><use href="#bookcase" x="2190" y="415"/><use href="#bookcase" x="2650" y="415"/></g>
+  <g fill="url(#stone)" stroke="url(#gold)" stroke-width="7"><path d="M10 135H78V705H10zM760 135H828V705H760zM1575 78H1645V705H1575zM2370 135H2438V705H2370zM3125 135H3193V705H3125z"/><path d="M0 693H3200V758H0z"/></g>
+  <g fill="#E7C887" opacity=".72"><path d="M0 694H3200V701H0z"/><path d="M0 747H3200V752H0z"/></g>
+  <g opacity=".92"><use href="#chandelier" x="800" y="66"/><use href="#chandelier" x="2400" y="66"/></g>
+  <g opacity=".42" filter="url(#blur24)" fill="#75DDE2"><path d="M1430 135H1770L2020 740H1180z"/><path d="M350 210H480L820 740H610z"/><path d="M2700 210H2830L2580 740H2380z"/></g>
+  <g fill="#FFE0A0" opacity=".55"><circle cx="800" cy="295" r="3"/><circle cx="2400" cy="295" r="3"/><circle cx="1600" cy="278" r="4"/><circle cx="1040" cy="530" r="2"/><circle cx="2150" cy="600" r="2"/></g>
+  <path d="M0 710H3200V1000H0z" fill="#080D18" opacity=".72"/>
+  <path d="M0 714H3200" stroke="url(#floorline)" stroke-width="18"/>
+  <path d="M0 748H3200" stroke="#F0D39B" stroke-opacity=".12" stroke-width="2"/>
+  <path d="M0 0H3200V1000H0z" fill="url(#night)" opacity=".13"/>
+</svg>

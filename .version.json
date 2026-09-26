@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.3.3",
+  "version": "5.3.4",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-27T02:42:00+03:00",
-  "release_name": "AURORA DESIGN 5.3.3 — Cosmo Cyber-Game 2.4.0: Dynamic Aura Lighting & Procedural Cosmo Details"
+  "commit_date": "2026-09-27T02:50:00+03:00",
+  "release_name": "AURORA DESIGN 5.3.4 — Cosmo Cyber-Game: Vector Atrium BG, Multi-Plane Parallax Architecture & Parquet Tiling"
 }

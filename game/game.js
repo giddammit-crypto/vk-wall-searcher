@@ -24,7 +24,7 @@
     };        // Preloaded Photorealistic Game Textures
 
     const GAME_TEXTURE_URLS = {
-        bg: 'assets/bg_library.jpg',
+        bg: 'assets/bg_library_atrium.svg',
         shelf: 'assets/shelf_photoreal.jpg',
         terminal_broken: 'assets/terminal_broken.jpg',
         terminal_repaired: 'assets/terminal_repaired.jpg',
@@ -34,9 +34,18 @@
     const gameTextures = {};
     for (const [key, src] of Object.entries(GAME_TEXTURE_URLS)) {
         const img = new Image();
-        img.src = src;
         img.onload = () => { gameTextures[key] = img; };
-        img.onerror = () => { gameTextures[key] = null; };
+        img.onerror = () => {
+            if (key === 'bg' && src !== 'assets/bg_library.jpg') {
+                const fallback = new Image();
+                fallback.onload = () => { gameTextures[key] = fallback; };
+                fallback.onerror = () => { gameTextures[key] = null; };
+                fallback.src = 'assets/bg_library.jpg';
+            } else {
+                gameTextures[key] = null;
+            }
+        };
+        img.src = src;
     }
 
     // Load the supplied mascot art from the shared site assets. Trim transparent
@@ -466,6 +475,7 @@
             ctx.globalAlpha = 0.2;
             ctx.globalCompositeOperation = 'soft-light';
             const bands = 28;
+            const groundTextureOffset = ((cameraX * 0.12) % vw + vw) % vw;
             for (let band = 0; band < bands; band++) {
                 const near = (band + 1) / bands;
                 const far = band / bands;
@@ -476,12 +486,18 @@
                 const sourceY = Math.floor(far * parquet.naturalHeight);
                 const sourceBottom = Math.max(sourceY + 1, Math.floor(near * parquet.naturalHeight));
                 const sliceHeight = Math.min(parquet.naturalHeight - sourceY, sourceBottom - sourceY);
-                ctx.drawImage(
-                    parquet,
-                    0, sourceY, parquet.naturalWidth, sliceHeight,
-                    screenW * (1 - scale1) * 0.5, y1,
-                    screenW * scale2, Math.max(1, y2 - y1 + 1)
-                );
+                const bandWidth = screenW * scale2;
+                const bandX = screenW * (1 - scale1) * 0.5 - groundTextureOffset * scale2;
+                const bandTiles = [bandX - bandWidth, bandX, bandX + bandWidth, bandX + bandWidth * 2];
+                for (const tileX of bandTiles) {
+                    if (tileX > screenW || tileX + bandWidth < 0) continue;
+                    ctx.drawImage(
+                        parquet,
+                        0, sourceY, parquet.naturalWidth, sliceHeight,
+                        tileX, y1,
+                        bandWidth, Math.max(1, y2 - y1 + 1)
+                    );
+                }
             }
             ctx.restore();
         }
@@ -547,6 +563,7 @@
             for (const side of [-1, 1]) {
                 const x = centerX + side * (vw * 0.52 - halfWidth);
                 const panelWidth = halfWidth * 0.66;
+                if (x + panelWidth < -40 || x > vw + 40) continue;
                 const timberWidth = Math.max(2, 9 * t);
                 const panelGradient = ctx.createLinearGradient(x, y - shelfHeight, x + panelWidth, y);
                 panelGradient.addColorStop(0, side < 0 ? '#160f22' : '#201023');
@@ -2444,22 +2461,113 @@
 
         const bgImg = gameTextures.bg;
         if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
-            // Soft smooth parallax scrolling with photo-realistic library background
+            // Use the original panoramic environment as a slow-moving far plane.
             const bgRatio = vh / bgImg.naturalHeight;
             const bgW = bgImg.naturalWidth * bgRatio;
             const bgH = vh;
-            const parallaxX = -(camX * 0.16) % bgW;
+            const parallaxX = -((camX * 0.12) % bgW);
 
             ctx.save();
             for (let x = parallaxX - bgW; x < vw + bgW; x += bgW) {
                 ctx.drawImage(bgImg, x, 0, bgW, bgH);
             }
 
+            // A second, clipped architecture plane gives the camera lateral parallax
+            // while preserving the room's stable vanishing point and skyline.
+            ctx.save();
+            ctx.globalAlpha = 0.74;
+            const archStep = 480;
+            const archCameraX = camX * 0.24;
+            const archStart = Math.floor(archCameraX / archStep) * archStep;
+            for (let worldX = archStart - archStep; worldX < archCameraX + vw + archStep; worldX += archStep) {
+                const x = worldX - archCameraX;
+                const isCenter = Math.abs(((worldX % 1920) + 1920) % 1920 - 960) < 90;
+                const bayW = isCenter ? 310 : 270;
+                const bayX = x + (archStep - bayW) * 0.5;
+                const top = vh * (isCenter ? 0.19 : 0.25);
+                const base = vh * 0.82;
+                const bayH = base - top;
+                const sideW = 17;
+                const archGrad = ctx.createLinearGradient(bayX, top, bayX + bayW, base);
+                archGrad.addColorStop(0, '#10192C');
+                archGrad.addColorStop(0.42, '#334052');
+                archGrad.addColorStop(0.72, '#665442');
+                archGrad.addColorStop(1, '#121725');
+                ctx.fillStyle = archGrad;
+                ctx.fillRect(bayX, top + bayW * 0.35, sideW, bayH - bayW * 0.35);
+                ctx.fillRect(bayX + bayW - sideW, top + bayW * 0.35, sideW, bayH - bayW * 0.35);
+                ctx.fillRect(bayX - 8, base - 20, bayW + 16, 24);
+                ctx.beginPath();
+                ctx.moveTo(bayX, top + bayW * 0.35);
+                ctx.quadraticCurveTo(bayX + bayW * 0.5, top - bayW * 0.05, bayX + bayW, top + bayW * 0.35);
+                ctx.lineTo(bayX + bayW - sideW, top + bayW * 0.35);
+                ctx.quadraticCurveTo(bayX + bayW * 0.5, top + bayW * 0.08, bayX + sideW, top + bayW * 0.35);
+                ctx.closePath();
+                ctx.fill();
+
+                const innerX = bayX + sideW + 10;
+                const innerW = bayW - (sideW + 10) * 2;
+                const innerY = top + bayW * 0.36;
+                const innerH = base - innerY - 30;
+                const glass = ctx.createLinearGradient(0, innerY, 0, base);
+                glass.addColorStop(0, 'rgba(88,180,199,0.34)');
+                glass.addColorStop(0.52, 'rgba(93,143,170,0.18)');
+                glass.addColorStop(1, 'rgba(25,37,57,0.7)');
+                ctx.fillStyle = glass;
+                ctx.fillRect(innerX, innerY, innerW, innerH);
+                const windowGlow = ctx.createRadialGradient(innerX + innerW * 0.5, innerY + innerH * 0.45, 1, innerX + innerW * 0.5, innerY + innerH * 0.45, innerW * 0.82);
+                windowGlow.addColorStop(0, 'rgba(137,231,224,0.28)');
+                windowGlow.addColorStop(1, 'rgba(87,177,198,0)');
+                ctx.fillStyle = windowGlow;
+                ctx.fillRect(innerX, innerY, innerW, innerH);
+                ctx.strokeStyle = 'rgba(225,198,145,0.72)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(bayX + 4, top + bayW * 0.34, bayW - 8, base - (top + bayW * 0.34) - 18);
+                ctx.strokeStyle = 'rgba(245,218,168,0.42)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(bayX + bayW * 0.5, innerY); ctx.lineTo(bayX + bayW * 0.5, base - 28);
+                ctx.moveTo(innerX, innerY + innerH * 0.57); ctx.lineTo(innerX + innerW, innerY + innerH * 0.57);
+                ctx.stroke();
+
+                // Oculus stones and capitals, shaded separately to read as carved relief.
+                const capital = ctx.createLinearGradient(bayX, 0, bayX + bayW, 0);
+                capital.addColorStop(0, '#1C2639'); capital.addColorStop(0.5, '#9E7E54'); capital.addColorStop(1, '#20283B');
+                ctx.fillStyle = capital;
+                ctx.fillRect(bayX - 6, top + bayW * 0.34, bayW + 12, 9);
+                ctx.fillRect(bayX - 7, base - 25, bayW + 14, 6);
+                ctx.fillStyle = 'rgba(255,225,166,0.44)';
+                ctx.fillRect(bayX + 7, top + bayW * 0.34 + 2, bayW - 14, 2);
+
+                if (isCenter) {
+                    // Subdued gilded bookcase silhouette in the center aisle.
+                    const shelfTop = top + bayW * 0.52;
+                    const shelfBottom = base - 30;
+                    ctx.fillStyle = 'rgba(13,18,31,0.68)';
+                    ctx.fillRect(bayX + 38, shelfTop, bayW - 76, shelfBottom - shelfTop);
+                    for (let row = 0; row < 3; row++) {
+                        const sy = shelfTop + 12 + row * 42;
+                        const colors = ['#8C4E48', '#3F6477', '#81704D', '#45604E', '#6C527C'];
+                        for (let book = 0; book < 9; book++) {
+                            const bx = bayX + 47 + book * 25;
+                            const bh = 22 + ((book * 13 + row * 7) % 19);
+                            ctx.fillStyle = colors[(book + row * 3) % colors.length];
+                            ctx.fillRect(bx, sy + 38 - bh, 17, bh);
+                            ctx.fillStyle = 'rgba(245,218,163,0.55)';
+                            ctx.fillRect(bx + 3, sy + 40 - bh, 11, 1.5);
+                        }
+                        ctx.fillStyle = 'rgba(190,150,93,0.74)';
+                        ctx.fillRect(bayX + 40, sy + 38, bayW - 80, 5);
+                    }
+                }
+            }
+            ctx.restore();
+
             // Atmospheric cyber-library vignette overlay
             const atmoGrad = ctx.createLinearGradient(0, 0, 0, vh);
-            atmoGrad.addColorStop(0, 'rgba(4, 7, 18, 0.45)');
-            atmoGrad.addColorStop(0.5, 'rgba(4, 7, 18, 0.15)');
-            atmoGrad.addColorStop(1, 'rgba(4, 7, 18, 0.65)');
+            atmoGrad.addColorStop(0, 'rgba(4, 7, 18, 0.22)');
+            atmoGrad.addColorStop(0.5, 'rgba(4, 7, 18, 0.08)');
+            atmoGrad.addColorStop(1, 'rgba(4, 7, 18, 0.58)');
             ctx.fillStyle = atmoGrad;
             ctx.fillRect(0, 0, vw, vh);
             ctx.restore();
