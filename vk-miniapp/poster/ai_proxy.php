@@ -28,35 +28,55 @@ $apiKeys = [
 
 // Fallback models on xkiro
 $defaultModels = [
-    'minimax/minimax-m3:free',
-    'qwen/qwen3.6-35b-a3b:free',
-    'qwen/qwen3.5-397b-a17b:free'
+    'qwen/qwen3.8-max:free',
+    'qwen/qwen3.6-plus:free',
+    'qwen/qwen3.7-max:free',
+    'minimax/minimax-m3:free'
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
     if (($_GET['action'] ?? '') === 'image_proxy' && !empty($_GET['url'])) {
         $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
         if ($url) {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_TIMEOUT => 45,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_USERAGENT => 'Mozilla/5.0 AuroraDesign/5.1.0'
-            ]);
-            $data = curl_exec($ch);
-            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: 'image/jpeg';
-            curl_close($ch);
-            if ($data !== false) {
-                header('Content-Type: ' . $contentType);
-                echo $data;
-                exit;
+            $maxRetries = 3;
+            $currentUrl = $url;
+            $data = false;
+            $contentType = 'image/jpeg';
+            
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $ch = curl_init($currentUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_TIMEOUT => 40,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 AuroraDesign/5.2.3'
+                ]);
+                $data = curl_exec($ch);
+                $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: 'image/jpeg';
+                $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                curl_close($ch);
+                
+                // If response is valid image (not JSON error like 429/500 and not HTML)
+                if ($data !== false && $httpCode >= 200 && $httpCode < 300 && !str_starts_with(trim($data), '{') && !str_starts_with(trim($data), '<!doctype') && !str_starts_with(trim($data), '<html')) {
+                    header('Content-Type: ' . $contentType);
+                    header('Cache-Control: public, max-age=86400');
+                    echo $data;
+                    exit;
+                }
+                
+                // If it failed or was rate limited, change seed and retry
+                $newSeed = rand(100000, 9999999);
+                $currentUrl = preg_replace('/seed=\d+/', 'seed=' . $newSeed, $url);
+                if ($currentUrl === $url) {
+                    $currentUrl .= '&seed=' . $newSeed;
+                }
+                usleep(400000); // 400ms delay between retries
             }
         }
-        http_response_code(400);
-        echo json_encode(['error' => 'Failed to proxy image']);
+        http_response_code(502);
+        echo json_encode(['error' => 'Failed to proxy image after retries']);
         exit;
     }
 
@@ -78,7 +98,7 @@ if (!is_array($requestData) || empty($requestData['messages'])) {
     exit;
 }
 
-$requestedModel = !empty($requestData['model']) ? trim($requestData['model']) : 'minimax/minimax-m3:free';
+$requestedModel = !empty($requestData['model']) ? trim($requestData['model']) : 'qwen/qwen3.8-max:free';
 
 // Build models list to try: requested model first, then fallbacks
 $modelsToTry = [$requestedModel];

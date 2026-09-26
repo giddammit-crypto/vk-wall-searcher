@@ -54,9 +54,10 @@
       'sk-xt-aac34b4f7773baf2d8fee9d07f8d6050a17c404cda157a89'  // Резервный ключ 2
     ],
     MODELS: [
-      { id: 'minimax/minimax-m3:free', name: 'Minimax M3 (Основная)' },
-      { id: 'qwen/qwen3.6-35b-a3b:free', name: 'Qwen 3.6 35B (Fallback 1)' },
-      { id: 'qwen/qwen3.5-397b-a17b:free', name: 'Qwen 3.5 397B (Fallback 2)' }
+      { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (Основная)' },
+      { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus (Резервная 1)' },
+      { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (Резервная 2)' },
+      { id: 'minimax/minimax-m3:free', name: 'Minimax M3 (Резервная 3)' }
     ],
     MAX_TOKENS: 1200,
     REQUEST_TIMEOUT_MS: 35000,
@@ -315,39 +316,39 @@
   const PHOTO_PRESETS = {
     studio: {
       name: 'Студийный свет',
-      desc: 'Софтбокс 3 точки, rim-light, мягкие тени',
+      desc: 'Резкий студийный свет, четкие глаза, поры кожи',
       pill: 'Pro Light',
-      prompt: 'Shot on Hasselblad H6D-100c medium format camera, 100 megapixels, 85mm f/1.4 lens, ISO 64. Professional 3-point softbox studio lighting, cinematic rim lighting highlighting contours, pure solid seamless white studio backdrop, photorealistic commercial product photography, 8k uhd, exquisite micro-textures, crisp sharp separation edges.'
+      prompt: 'Shot on Hasselblad H6D-100c medium format camera, 100 megapixels, 85mm prime lens at f/8 for complete edge-to-edge sharpness, ISO 64. Professional commercial 3-point crisp key and contour rim lighting, tack-sharp focus across entire subject, crystal clear iris and eyelashes, hyper-detailed skin pores and realistic natural skin texture, individual sharp strands of hair, pure solid seamless white studio backdrop #ffffff, commercial high-end photography masterpiece, 8k uhd, exquisite tactile micro-textures, zero blur, zero noise.'
     },
     macro: {
       name: 'Макро 8K',
       desc: 'Сверхдетализация текстур, поры, волокна',
       pill: '8K UHD',
-      prompt: 'Shot on Hasselblad H6D-100c with 100mm f/2.8 Macro lens, extreme depth of detail, microscopic tactile textures, glistening water droplets, hyper-focused subject, pure seamless solid white studio backdrop, sharp distinct silhouette, commercial macro photography masterpiece, 8k.'
+      prompt: 'Shot on Hasselblad H6D-100c with 100mm f/8 Macro lens, extreme depth of field, razor-sharp focus across every surface, microscopic tactile textures, glistening water droplets, hyper-focused subject, pure seamless solid white studio backdrop #ffffff, ultra-sharp distinct silhouette, commercial macro photography masterpiece, 8k uhd, crystal clear details.'
     },
     vogue: {
       name: 'Глянец / Vogue',
-      desc: 'Модный глянец, вспышка, сочные цвета',
+      desc: 'Модный глянец, четкий фокус, сочные цвета',
       pill: 'Fashion',
-      prompt: 'Vogue editorial commercial lighting, beauty dish and silver umbrella diffusion, high-fashion specular reflections, vibrant rich colors, pure solid seamless white studio backdrop, crisp clean silhouette boundary, 8k hyper-realistic commercial shot.'
+      prompt: 'Vogue high-end editorial commercial lighting, hard beauty reflector and silver diffusion, crisp high-fashion specular reflections, vibrant rich colors, tack-sharp focus on eyes, lips, and facial contours, authentic fine skin texture, pure solid seamless white studio backdrop #ffffff, razor-sharp silhouette boundary, 8k uhd hyper-realistic commercial fashion shot.'
     },
     bokeh: {
-      name: 'Боке f/1.4',
-      desc: 'Оптическое размытие фона, мягкие диски',
-      pill: 'f/1.4 Lens',
-      prompt: 'Shot with 85mm f/1.4 prime lens at wide open aperture, ultra-shallow depth of field, razor-sharp focus on subject center with smooth creamy falloff, isolated on pure solid white seamless backdrop, commercial hero photography, 8k.'
+      name: 'Боке / Портрет',
+      desc: 'Портретный объектив, кристальный фокус',
+      pill: 'Portrait',
+      prompt: 'Shot with 85mm prime lens at f/4 aperture, tack-sharp crystal-clear focus on subject face, eyes, lashes and hair, realistic skin pores, zero blur on the subject, pure solid white seamless studio backdrop #ffffff, commercial hero portrait photography, 8k uhd, crisp contours.'
     },
     cinema: {
       name: 'Кинокадр',
       desc: '35mm Anamorphic, Teal & Orange киногамма',
       pill: 'Cinema',
-      prompt: 'Cinematic dramatic lighting, 35mm anamorphic prime lens, subtle cyan and amber rim highlights, sculptural shadow contrast, pure solid seamless clean white studio backdrop, cinematic commercial still, sharp crisp contour, 8k resolution.'
+      prompt: 'Cinematic dramatic lighting, 35mm anamorphic prime lens, f/5.6 aperture for deep clarity, subtle cyan and amber rim highlights, sculptural shadow contrast, tack-sharp subject details, authentic facial and clothing textures, pure solid seamless clean white studio backdrop #ffffff, cinematic commercial still, razor-sharp crisp contour, 8k uhd resolution.'
     },
     isolated3d: {
       name: '3D Изоляция',
       desc: 'Octane 3D, идеальные тени, левитация',
       pill: 'Octane 3D',
-      prompt: 'Octane 3D photorealistic studio render, subsurface scattering, physically based rendering materials, floating isolated hero element, soft ambient occlusion, pure white infinity studio background, raytraced reflections, 8k.'
+      prompt: 'Octane 3D hyper-detailed photorealistic studio render, subsurface scattering, physically based rendering materials, floating isolated hero element, ambient occlusion, pure solid white infinity studio background #ffffff, raytraced sharp reflections, 8k uhd.'
     }
   };
 
@@ -431,6 +432,41 @@
       ctx.putImageData(patchData, startX, startY);
     } catch (e) {
       // ignore
+    }
+  }
+
+  /* ── 1.1 Интеллектуальное повышение резкости и микро-контраста (Unsharp Mask) ── */
+  function _enhancePhotoSharpness(ctx, iw, ih, amount = 0.30) {
+    try {
+      const imgData = ctx.getImageData(0, 0, iw, ih);
+      const data = imgData.data;
+      const copy = new Uint8ClampedArray(data);
+      const w = iw, h = ih;
+      const a = amount;
+      const centerW = 1 + 4 * a;
+
+      for (let y = 1; y < h - 1; y++) {
+        const row = y * w;
+        for (let x = 1; x < w - 1; x++) {
+          const idx = (row + x) * 4;
+          // Пропускаем чистый белый студийный фон
+          const r = copy[idx], g = copy[idx + 1], b = copy[idx + 2];
+          if (r > 248 && g > 248 && b > 248) continue;
+
+          const top = ((y - 1) * w + x) * 4;
+          const bot = ((y + 1) * w + x) * 4;
+          const left = (row + x - 1) * 4;
+          const right = (row + x + 1) * 4;
+
+          for (let c = 0; c < 3; c++) {
+            const val = centerW * copy[idx + c] - a * (copy[top + c] + copy[bot + c] + copy[left + c] + copy[right + c]);
+            data[idx + c] = Math.max(0, Math.min(255, Math.round(val)));
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    } catch (e) {
+      console.warn('[AI Enhance] Ошибка повышения микро-резкости:', e);
     }
   }
 
@@ -678,8 +714,9 @@
       return tmpCanvas.toDataURL('image/png');
     }
 
-    // 1. Устранение плашки водяного знака pollinations.ai (35px в правом нижнем углу)
+    // 1. Устранение плашки водяного знака pollinations.ai (35px в правом нижнем углу) и повышение резкости
     _cleanPollinationsWatermark(ctx, iw, ih);
+    _enhancePhotoSharpness(ctx, iw, ih, 0.22);
 
     const imgData = ctx.getImageData(0, 0, iw, ih);
     const data = imgData.data;
@@ -976,14 +1013,14 @@
     const preset = PHOTO_PRESETS[presetKey] || PHOTO_PRESETS.studio;
 
     const systemPrompt =
-      "You are an elite photographic prompt engineer and director of photography.\n" +
-      "Task: Transform the user's element request into a world-class, ultra-detailed English prompt for the FLUX.1 photorealistic image engine.\n" +
-      "CRITICAL MANDATORY SPECIFICATIONS:\n" +
-      "1. Pure isolated studio photography: The subject MUST be placed isolated on a pure seamless solid white studio background (pure #ffffff solid studio backdrop), perfectly lit with clean separation edges for background removal.\n" +
-      "2. Camera & Optics: Shot on Hasselblad H6D-100c medium format camera, 100 megapixels, 85mm f/1.4 lens, ISO 64, 1/250s shutter.\n" +
-      "3. Lighting: Professional 3-point studio lighting setup with soft key light, gentle fill, and crisp rim/edge lighting highlighting subject contours.\n" +
-      "4. Render Quality: 8k UHD resolution, extreme photorealism, tactile surface textures, micro-details, sharp crisp borders, commercial product photography masterpiece.\n" +
-      "5. NO distractions: NO background scenery, NO gradients, NO shadows touching the frame edges, NO floor texture, NO text, NO watermarks, NO cropped parts.\n" +
+      "You are an elite photographic prompt engineer and director of photography for high-end commercial 8K studio photography.\n" +
+      "Task: Transform the user's element request into a world-class, ultra-detailed, razor-sharp English prompt for the FLUX.1 / 8K photorealistic image engine.\n" +
+      "CRITICAL MANDATORY RULES FOR MAXIMUM QUALITY & CRYSTAL SHARPNESS:\n" +
+      "1. TACK-SHARP PHOTOREALISM: Enforce tack-sharp crystal-clear focus across the entire subject. If a person or face: razor-sharp eyes with sparkling specular catchlights, clearly defined iris and pupils, individual sharp eyelashes, authentic fine skin texture with natural visible micro-pores (STRICTLY NO plastic smear, NO airbrushing, NO painting effect, NO artificial smoothing), and separate fine strands of hair.\n" +
+      "2. STRICT BAN ON BLUR WORDS: NEVER output words like 'shallow depth of field', 'creamy falloff', 'soft focus', 'bokeh', 'softbox blur', 'diffused light', 'blurry'. Always use 'f/8 aperture, deep depth of field, edge-to-edge sharpness, crisp focus, razor-sharp contours'.\n" +
+      "3. PURE SOLID WHITE STUDIO BACKDROP: The subject MUST be isolated on a pure seamless solid white studio backdrop (pure #ffffff solid studio background), evenly illuminated with crisp separation edges for background removal.\n" +
+      "4. CAMERA & LIGHTING: Shot on Hasselblad H6D-100c medium format 100MP camera, 85mm prime lens at f/8 aperture, ISO 64, 1/250s shutter. Crisp high-end commercial studio strobe lighting with sharp rim contour accents.\n" +
+      "5. MASTER RENDER QUALITY: 8k UHD resolution, extreme photorealism, tactile micro-textures, award-winning commercial advertising photography, zero blur, zero noise, no cropped elements, no text, no watermarks.\n" +
       "Output ONLY the raw English prompt string, without quotation marks, markdown backticks, or conversational text.";
 
     const promptText = `Create studio photo prompt for: "${userPrompt.trim()}". Style specifications: ${preset.prompt}. Output English prompt only.`;
@@ -1006,28 +1043,49 @@
       const seed = Math.floor(Math.random() * 10000000);
       const encoded = encodeURIComponent(masterPrompt);
       const fluxUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
+      const proxyUrl = `ai_proxy.php?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
 
+      let finished = false;
       const timeoutId = setTimeout(() => {
+        if (finished) return;
+        finished = true;
         img.src = '';
-        reject(new Error('Превышено время ожидания FLUX фото-движка (45с)'));
-      }, 45000);
+        tryProxyLoad();
+      }, 25000);
+
+      function tryProxyLoad() {
+        const pImg = new Image();
+        pImg.crossOrigin = 'anonymous';
+        const pTimeout = setTimeout(() => {
+          pImg.src = '';
+          reject(new Error('Превышено время ожидания загрузки фото (45с)'));
+        }, 22000);
+        pImg.onload = () => {
+          clearTimeout(pTimeout);
+          resolve(pImg);
+        };
+        pImg.onerror = () => {
+          clearTimeout(pTimeout);
+          reject(new Error('Не удалось загрузить сгенерированное фото от FLUX фото-движка'));
+        };
+        pImg.src = proxyUrl + '&r=' + Date.now();
+      }
 
       img.onload = () => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timeoutId);
         resolve(img);
       };
 
       img.onerror = () => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timeoutId);
-        const proxyUrl = `ai_proxy.php?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
-        const pImg = new Image();
-        pImg.crossOrigin = 'anonymous';
-        pImg.onload = () => resolve(pImg);
-        pImg.onerror = () => reject(new Error('Не удалось загрузить сгенерированное фото от FLUX фото-движка'));
-        pImg.src = proxyUrl;
+        tryProxyLoad();
       };
 
       img.src = fluxUrl;
@@ -1037,10 +1095,10 @@
   async function generateAiPhoto(userPrompt, presetKey = 'studio', options = {}) {
     const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {};
 
-    // 1. Промпт-инжиниринг через xKiro LLM
+    // 1. Промпт-инжиниринг через Qwen 3.8 Max
     onStatus({
       status: 'prompt_engineering',
-      message: 'Промпт-инжиниринг xKiro LLM (Hasselblad 100MP, 85mm f/1.4, студийный свет)...'
+      message: 'Промпт-инжиниринг Qwen 3.8 Max (Hasselblad 100MP, f/8, crystal-sharp focus)...'
     });
 
     const llmResult = await engineerPhotographicMasterPrompt(userPrompt, presetKey, options);
@@ -1053,7 +1111,7 @@
 
     const rawImg = await renderFluxImage(llmResult.masterPrompt);
 
-    // Сохранение исходного фото 8K (с интеллектуальным устранением водяного знака)
+    // Сохранение исходного фото 8K (с интеллектуальным устранением водяного знака и повышением резкости)
     let rawDataUrl = '';
     try {
       const c = document.createElement('canvas');
@@ -1062,9 +1120,12 @@
       c.width = cw;
       c.height = ch;
       const cctx = c.getContext('2d');
-      cctx.drawImage(rawImg, 0, 0);
+      cctx.imageSmoothingEnabled = true;
+      cctx.imageSmoothingQuality = 'high';
+      cctx.drawImage(rawImg, 0, 0, cw, ch);
       _cleanPollinationsWatermark(cctx, cw, ch);
-      rawDataUrl = c.toDataURL('image/jpeg', 0.95);
+      _enhancePhotoSharpness(cctx, cw, ch, 0.30);
+      rawDataUrl = c.toDataURL('image/jpeg', 0.96);
     } catch (e) {
       rawDataUrl = rawImg.src;
     }
@@ -1784,8 +1845,8 @@
         ? 'Нейросеть создаёт студийное фото 8K...'
         : 'Нейросеть генерирует векторный SVG...';
       const loaderSub = isRaster
-        ? 'Hasselblad 100MP · FLUX Рендеринг · 100% Transparent Cutout'
-        : 'Создание векторных слоёв на 100% прозрачном фоне';
+        ? 'Qwen 3.8 Max AI · FLUX 8K UHD · 100% Transparent Cutout'
+        : 'Qwen 3.8 Max AI · Векторный SVG на 100% прозрачном фоне';
 
       showAuroraLoader(loaderTitle, loaderSub);
       activeAbortController = new AbortController();
