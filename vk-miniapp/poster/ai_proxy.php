@@ -17,7 +17,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     exit;
 }
 
-header('Content-Type: application/json; charset=UTF-8');
+// PHP 7.4 compatibility polyfills (str_starts_with, str_ends_with, str_contains were introduced in PHP 8.0)
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle !== '' && strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return $needle === '' || $needle === substr($haystack, -strlen($needle));
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+    }
+}
 
 // 3 API Keys provided by user
 $apiKeys = [
@@ -26,14 +41,15 @@ $apiKeys = [
     'sk-xt-aac34b4f7773baf2d8fee9d07f8d6050a17c404cda157a89'  // Fallback 2
 ];
 
-// 100% FREE Tier models on xkiro (0$ / Free API tier)
+// 100% FREE Tier models on xkiro (0$ / Free API tier - tested & verified)
 $defaultModels = [
     'qwen/qwen3.8-max:free',
     'qwen/qwen3.7-max:free',
+    'qwen/qwen3.7-plus:free',
     'qwen/qwen3.6-plus:free',
+    'qwen/qwen3.7-flash:free',
     'qwen/qwen3.8-omni-flash:free',
-    'deepseek/deepseek-v4.1-flash:free',
-    'minimax/minimax-m3:free'
+    'qwen/qwen3.5-flash:free'
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {

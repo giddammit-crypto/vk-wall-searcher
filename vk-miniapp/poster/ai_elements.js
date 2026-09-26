@@ -46,7 +46,17 @@
      КОНФИГУРАЦИЯ И КОНСТАНТЫ
      ══════════════════════════════════════════════════════════════ */
   const CONFIG = {
-    API_PROXY_URL: 'ai_proxy.php',
+    API_PROXY_URL: (function() {
+      try {
+        if (typeof window !== 'undefined' && window.location) {
+          const href = window.location.href;
+          if (href.includes('biblioteka33.ru')) {
+            return '/stat/vk-miniapp/poster/ai_proxy.php';
+          }
+        }
+      } catch (e) {}
+      return 'ai_proxy.php';
+    })(),
     API_DIRECT_URL: 'https://api.xkiro.com/v1/chat/completions',
     API_KEYS: [
       'sk-xt-17b6c5800266d39cf7a21e9371895f5dafd3dc75db4fa502', // Основной ключ
@@ -56,10 +66,11 @@
     MODELS: [
       { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (100% Free)' },
       { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (100% Free)' },
+      { id: 'qwen/qwen3.7-plus:free', name: 'Qwen 3.7 Plus (100% Free)' },
       { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus (100% Free)' },
+      { id: 'qwen/qwen3.7-flash:free', name: 'Qwen 3.7 Flash (100% Free)' },
       { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen 3.8 Omni Flash (100% Free)' },
-      { id: 'deepseek/deepseek-v4.1-flash:free', name: 'DeepSeek V4.1 Flash (100% Free)' },
-      { id: 'minimax/minimax-m3:free', name: 'Minimax M3 (100% Free)' }
+      { id: 'qwen/qwen3.5-flash:free', name: 'Qwen 3.5 Flash (100% Free)' }
     ],
     MAX_TOKENS: 1200,
     REQUEST_TIMEOUT_MS: 35000,
@@ -923,7 +934,14 @@
               lastErrText = typeof pData.error === 'object' ? (pData.error.message || JSON.stringify(pData.error)) : String(pData.error);
             }
           } else {
-            lastErrText = `Proxy HTTP ${proxyResp.status}`;
+            let errDetail = '';
+            try {
+              const errObj = await proxyResp.json();
+              if (errObj && errObj.error) {
+                errDetail = typeof errObj.error === 'object' ? (errObj.error.message || JSON.stringify(errObj.error)) : String(errObj.error);
+              }
+            } catch (e) {}
+            lastErrText = errDetail ? `Proxy ${proxyResp.status}: ${errDetail}` : `Proxy HTTP ${proxyResp.status}`;
           }
         } catch (proxyErr) {
           lastErrText = proxyErr.message || String(proxyErr);
@@ -960,7 +978,9 @@
                 }
               }
             } catch (dErr) {
-              lastErrText = dErr.message || String(dErr);
+              if (!lastErrText) {
+                lastErrText = dErr.message || String(dErr);
+              }
             }
           }
         }
@@ -1046,7 +1066,7 @@
       const encoded = encodeURIComponent(masterPrompt);
       // Бесплатная модель FLUX (100% Free Open Model)
       const fluxUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
-      const proxyUrl = `ai_proxy.php?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
+      const proxyUrl = `${CONFIG.API_PROXY_URL}?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -1560,8 +1580,8 @@
 
       if (btnInsertLabel) {
         btnInsertLabel.textContent = isCutout
-          ? 'Вставить вырезанный объект на холст'
-          : 'Вставить исходное фото 8K на холст';
+          ? 'Вставить вырезанный объект'
+          : 'Вставить фото на холст';
       }
 
       // Если в памяти есть сгенерированный результат — мгновенно перерисовываем превью
@@ -1761,13 +1781,13 @@
         return;
       }
       historyStrip.innerHTML = list.map(item => `
-        <div class="ai-history-thumb" data-id="${item.id}" title="${escapeHtml(item.prompt)}">
+        <div class="ai-history-thumb" data-id="${item.id}" title="${escapeHtml(item.prompt)} (${item.type === 'raster' ? 'Фото 8K' : 'Вектор SVG'})">
           <div class="ai-thumb-inner">
             ${item.type === 'raster' 
-              ? `<img src="${item.dataUrl}" style="width:100%;height:100%;object-fit:contain;" alt="Photo">` 
+              ? `<img src="${item.dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" alt="Photo">` 
               : (item.svg || '<span class="material-symbols-rounded">category</span>')}
           </div>
-          <span class="ai-thumb-label">${escapeHtml((item.prompt || '').slice(0, 16))}...</span>
+          <span class="ai-thumb-type-badge">${item.type === 'raster' ? '📷' : '📐'}</span>
         </div>
       `).join('');
     }
