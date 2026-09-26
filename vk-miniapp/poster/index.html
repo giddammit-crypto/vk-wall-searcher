@@ -2600,16 +2600,37 @@
         </div>
       </div>
 
-      <!-- Правая колонка: интерактивное превью с шахматкой прозрачности -->
+      <!-- Правая колонка: интерактивное превью с шахматкой прозрачности и контролем вырезания -->
       <div class="ai-preview-col">
-        <div class="ai-preview-card">
-          <div class="ai-preview-badge-transp" id="ai-transp-badge">
+        <!-- 1. Тумблер переключения фона (Cyber-Glassmorphism Dual Switcher) -->
+        <div class="ai-bg-mode-switcher" id="ai-bg-mode-switcher" role="radiogroup" aria-label="Режим фона">
+          <button type="button" class="ai-bg-mode-btn is-active" id="btn-bg-mode-cutout" data-bg-mode="cutout" role="radio" aria-checked="true">
+            <span class="ai-bg-mode-icon">✨</span>
+            <div class="ai-bg-mode-texts">
+              <span class="ai-bg-mode-label">Прозрачный фон</span>
+              <span class="ai-bg-mode-sub">Вырезать объект</span>
+            </div>
+            <span class="ai-bg-mode-tag neon-cyan">Alpha</span>
+          </button>
+          <button type="button" class="ai-bg-mode-btn" id="btn-bg-mode-original" data-bg-mode="original" role="radio" aria-checked="false">
+            <span class="ai-bg-mode-icon">🖼️</span>
+            <div class="ai-bg-mode-texts">
+              <span class="ai-bg-mode-label">Исходное фото</span>
+              <span class="ai-bg-mode-sub">Без вырезания 8K</span>
+            </div>
+            <span class="ai-bg-mode-tag neon-amber">Full 8K</span>
+          </button>
+        </div>
+
+        <!-- Карточка предпросмотра -->
+        <div class="ai-preview-card" id="ai-preview-card-wrap">
+          <div class="ai-preview-badge-transp is-cutout" id="ai-transp-badge">
             <span class="ai-transp-pulse-dot"></span>
             <div class="ai-transp-text-group">
-              <span class="ai-transp-title">100% Transparent Cutout</span>
-              <span class="ai-transp-sub">Чистый Alpha-канал без артефактов</span>
+              <span class="ai-transp-title" id="ai-transp-badge-title">100% Alpha Cutout</span>
+              <span class="ai-transp-sub" id="ai-transp-badge-sub">Чистый Alpha-канал без артефактов</span>
             </div>
-            <span class="ai-transp-check">✓</span>
+            <span class="ai-transp-check" id="ai-transp-badge-icon">✓</span>
           </div>
           <div class="ai-preview-box" id="ai-svg-preview-box">
             <div class="ai-preview-placeholder">
@@ -2619,9 +2640,32 @@
           </div>
         </div>
 
+        <!-- 2. Контрол чувствительности вырезания прямо под превью -->
+        <div class="ai-cutout-controls-panel" id="ai-cutout-controls-panel">
+          <div class="ai-cutout-ctrl-header">
+            <div class="ai-cutout-ctrl-title-wrap">
+              <span class="material-symbols-rounded" style="font-size: 16px; color: #38bdf8;">tune</span>
+              <span class="ai-cutout-ctrl-label">Точность вырезания фона:</span>
+              <span class="ai-cutout-val-badge" id="ai-cutout-val-badge">30%</span>
+            </div>
+            <button type="button" class="ai-cutout-reset-btn" id="btn-ai-cutout-reset" title="Сбросить на исходное фото без вырезания">
+              <span class="material-symbols-rounded" style="font-size: 14px;">replay</span>
+              <span>Сброс на 8K фото</span>
+            </button>
+          </div>
+          <div class="ai-cutout-slider-wrap">
+            <input type="range" class="ai-cutout-slider" id="ai-cutout-tolerance-slider" min="0" max="100" value="30" step="1">
+            <div class="ai-cutout-slider-ticks">
+              <span title="0% — Сохранить всё">Мягко (0%)</span>
+              <span title="30% — Рекомендуемый баланс">Стандарт (30%)</span>
+              <span title="100% — Агрессивно">Жестко (100%)</span>
+            </div>
+          </div>
+        </div>
+
         <button type="button" class="btn-ai-insert" id="btn-ai-insert-canvas" disabled>
           <span class="material-symbols-rounded">add_circle</span>
-          <span>Вставить на холст в центр видимой области</span>
+          <span id="btn-ai-insert-label">Вставить на холст в центр видимой области</span>
         </button>
 
         <label class="ai-auto-insert-label">

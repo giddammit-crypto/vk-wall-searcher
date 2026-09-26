@@ -419,48 +419,123 @@
     return Math.sqrt((2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db);
   }
 
-  function _sampleBackgroundColors(data, iw, ih) {
-    const samples = [];
-    const step = Math.max(4, Math.floor(Math.min(iw, ih) / 40));
+  /* ── 1. Устранение водяного знака pollinations.ai (35-42px в правом нижнем углу) ── */
+  function _cleanPollinationsWatermark(ctx, iw, ih) {
+    const wmWidth = Math.min(180, Math.floor(iw * 0.22));
+    const wmHeight = Math.min(42, Math.floor(ih * 0.055));
+    const startX = iw - wmWidth;
+    const startY = ih - wmHeight;
+    try {
+      const patchY = Math.max(0, startY - wmHeight - 4);
+      const patchData = ctx.getImageData(startX, patchY, wmWidth, wmHeight);
+      ctx.putImageData(patchData, startX, startY);
+    } catch (e) {
+      // ignore
+    }
+  }
 
-    // 1. Угловые блоки 5x5
-    const cornerCoords = [
-      [0, 0], [iw - 1, 0], [0, ih - 1], [iw - 1, ih - 1]
-    ];
-    for (const [cx, cy] of cornerCoords) {
-      let rSum = 0, gSum = 0, bSum = 0, count = 0;
-      for (let dy = 0; dy < 5; dy++) {
-        for (let dx = 0; dx < 5; dx++) {
-          const x = Math.min(Math.max(0, cx + (cx === 0 ? dx : -dx)), iw - 1);
-          const y = Math.min(Math.max(0, cy + (cy === 0 ? dy : -dy)), ih - 1);
-          const idx = (y * iw + x) * 4;
-          if (data[idx + 3] > 10) {
-            rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2]; count++;
-          }
+  /* ── 2. Сэмплирование фона ИСКЛЮЧИТЕЛЬНО из гарантированных зон (верхние углы и верхняя кромка) ── */
+  function _analyzeStudioBackground(data, iw, ih) {
+    const samples = [];
+    const rVals = [];
+    const gVals = [];
+    const bVals = [];
+
+    function addSample(x, y) {
+      if (x < 0 || x >= iw || y < 0 || y >= ih) return;
+      const idx = (y * iw + x) * 4;
+      if (data[idx + 3] > 20) {
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        samples.push({ r, g, b });
+        rVals.push(r);
+        gVals.push(g);
+        bVals.push(b);
+      }
+    }
+
+    // 1. Верхний левый угол (32x32 блок)
+    const cornerSize = Math.min(32, Math.floor(Math.min(iw, ih) / 10));
+    for (let dy = 0; dy < cornerSize; dy += 2) {
+      for (let dx = 0; dx < cornerSize; dx += 2) {
+        addSample(dx, dy);
+      }
+    }
+
+    // 2. Верхний правый угол (32x32 блок)
+    for (let dy = 0; dy < cornerSize; dy += 2) {
+      for (let dx = 0; dx < cornerSize; dx += 2) {
+        addSample(iw - 1 - dx, dy);
+      }
+    }
+
+    // 3. Верхняя кромка (y = 0..10) с адаптивным шагом
+    const stepX = Math.max(4, Math.floor(iw / 60));
+    for (let x = cornerSize; x < iw - cornerSize; x += stepX) {
+      for (let y = 0; y < 8; y += 2) {
+        addSample(x, y);
+      }
+    }
+
+    // 4. Верхняя четверть боковых кромок (y = 0 .. ih * 0.25, СТРОГО не ниже!)
+    // НИ В КОЕМ СЛУЧАЕ не сэмплировать из нижней границы (ih - 1), где находятся плечи и тело!
+    const maxSideY = Math.floor(ih * 0.25);
+    const stepY = Math.max(4, Math.floor(ih / 60));
+    for (let y = cornerSize; y < maxSideY; y += stepY) {
+      for (let dx = 0; dx < 6; dx += 2) {
+        addSample(dx, y);
+        addSample(iw - 1 - dx, y);
+      }
+    }
+
+    if (!samples.length) {
+      return {
+        samples: [{ r: 255, g: 255, b: 255 }],
+        median: { r: 255, g: 255, b: 255 },
+        stdDev: 2
+      };
+    }
+
+    // Медиана каналов
+    rVals.sort((a, b) => a - b);
+    gVals.sort((a, b) => a - b);
+    bVals.sort((a, b) => a - b);
+    const mid = Math.floor(samples.length / 2);
+    const medR = rVals[mid];
+    const medG = gVals[mid];
+    const medB = bVals[mid];
+
+    // Стандартное отклонение (дисперсия)
+    let sumSq = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const dr = samples[i].r - medR;
+      const dg = samples[i].g - medG;
+      const db = samples[i].b - medB;
+      sumSq += (dr * dr + dg * dg + db * db) / 3;
+    }
+    const stdDev = Math.sqrt(sumSq / samples.length);
+
+    // Кластеризация уникальных образцов фона для быстрого BFS
+    const unique = [{ r: medR, g: medG, b: medB }];
+    for (let i = 0; i < samples.length; i += 4) {
+      const s = samples[i];
+      let hasNear = false;
+      for (let j = 0; j < unique.length; j++) {
+        const u = unique[j];
+        if (Math.abs(s.r - u.r) < 6 && Math.abs(s.g - u.g) < 6 && Math.abs(s.b - u.b) < 6) {
+          hasNear = true;
+          break;
         }
       }
-      if (count > 0) {
-        samples.push({ r: Math.round(rSum / count), g: Math.round(gSum / count), b: Math.round(bSum / count) });
+      if (!hasNear && unique.length < 32) {
+        unique.push(s);
       }
     }
 
-    // 2. Верхняя и нижняя кромки
-    for (let x = 0; x < iw; x += step) {
-      const idxTop = x * 4;
-      const idxBot = ((ih - 1) * iw + x) * 4;
-      if (data[idxTop + 3] > 10) samples.push({ r: data[idxTop], g: data[idxTop + 1], b: data[idxTop + 2] });
-      if (data[idxBot + 3] > 10) samples.push({ r: data[idxBot], g: data[idxBot + 1], b: data[idxBot + 2] });
-    }
-
-    // 3. Левая и правая кромки
-    for (let y = 0; y < ih; y += step) {
-      const idxLeft = (y * iw) * 4;
-      const idxRight = (y * iw + (iw - 1)) * 4;
-      if (data[idxLeft + 3] > 10) samples.push({ r: data[idxLeft], g: data[idxLeft + 1], b: data[idxLeft + 2] });
-      if (data[idxRight + 3] > 10) samples.push({ r: data[idxRight], g: data[idxRight + 1], b: data[idxRight + 2] });
-    }
-
-    return samples;
+    return {
+      samples: unique,
+      median: { r: medR, g: medG, b: medB },
+      stdDev: Math.min(25, stdDev)
+    };
   }
 
   function _minDistToBgSamples(r, g, b, samples) {
@@ -470,10 +545,40 @@
       const d = _perceptualColorDist(r, g, b, s.r, s.g, s.b);
       if (d < minD) {
         minD = d;
-        if (minD < 5) break;
+        if (minD < 4) break;
       }
     }
     return minD;
+  }
+
+  /* ── 3. Детекция градиента контура (Sobel Edge Barrier) ── */
+  function _computeEdgeMap(data, iw, ih) {
+    const lum = new Uint8Array(iw * ih);
+    const edges = new Uint8Array(iw * ih);
+
+    for (let i = 0, p = 0; i < iw * ih * 4; i += 4, p++) {
+      lum[p] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
+    }
+
+    for (let y = 1; y < ih - 1; y++) {
+      const rowPrev = (y - 1) * iw;
+      const rowCur  = y * iw;
+      const rowNext = (y + 1) * iw;
+      for (let x = 1; x < iw - 1; x++) {
+        const gx = 
+          -lum[rowPrev + x - 1] + lum[rowPrev + x + 1]
+          -2 * lum[rowCur + x - 1] + 2 * lum[rowCur + x + 1]
+          -lum[rowNext + x - 1] + lum[rowNext + x + 1];
+
+        const gy = 
+          -lum[rowPrev + x - 1] - 2 * lum[rowPrev + x] - lum[rowPrev + x + 1]
+          +lum[rowNext + x - 1] + 2 * lum[rowNext + x] + lum[rowNext + x + 1];
+
+        edges[rowCur + x] = Math.min(255, (Math.abs(gx) + Math.abs(gy)) >> 3);
+      }
+    }
+
+    return edges;
   }
 
   function _defringeAndFeatherAlpha(data, iw, ih, featherRadius = 2) {
@@ -557,7 +662,7 @@
   }
 
   function smartAutoCutout(img, options = {}) {
-    const tolerance = options.tolerance || 28;
+    const userTolerance = options.tolerance !== undefined ? options.tolerance : 30;
     const feather = options.feather || 2;
     const iw = img.naturalWidth || img.width || 1024;
     const ih = img.naturalHeight || img.height || 1024;
@@ -568,16 +673,28 @@
     const ctx = tmpCanvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(img, 0, 0, iw, ih);
 
+    // 0% tolerance = 100% исходное нетронутое фото
+    if (userTolerance <= 0) {
+      return tmpCanvas.toDataURL('image/png');
+    }
+
+    // 1. Устранение плашки водяного знака pollinations.ai (35px в правом нижнем углу)
+    _cleanPollinationsWatermark(ctx, iw, ih);
+
     const imgData = ctx.getImageData(0, 0, iw, ih);
     const data = imgData.data;
 
-    const bgSamples = _sampleBackgroundColors(data, iw, ih);
-    if (!bgSamples.length) {
-      bgSamples.push({ r: 255, g: 255, b: 255 });
-    }
+    // 2. Анализ фона из гарантированных зон (верхние углы [0,0], [iw-1,0] и верхняя кромка)
+    const bgInfo = _analyzeStudioBackground(data, iw, ih);
 
-    const tolDist = (tolerance / 100) * 440 + 10;
-    const softTol = tolDist + 24;
+    // 3. Адаптивный порог толерантности (шкала 0..100 мапится в перцептивные 12..72 ед.)
+    // По умолчанию 30% дает ~30.0 ед. (не задевает кожу ~109 и волосы ~240)
+    const baseTol = (userTolerance / 100) * 60 + 12;
+    const tolDist = baseTol + Math.min(10, bgInfo.stdDev * 1.2);
+    const softTol = tolDist + 14;
+
+    // 4. Детекция градиента контура (Sobel Edge Barrier)
+    const edges = _computeEdgeMap(data, iw, ih);
 
     const visited = new Uint8Array(iw * ih);
     const queue = new Int32Array(iw * ih);
@@ -592,29 +709,62 @@
       queue[tail++] = idx;
     }
 
-    for (let x = 0; x < iw; x++) { pushQueue(x, 0); pushQueue(x, ih - 1); }
-    for (let y = 0; y < ih; y++) { pushQueue(0, y); pushQueue(iw - 1, y); }
+    // 5. Посев BFS: ТОЛЬКО верхняя кромка и верхняя четверть боковых сторон!
+    // КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО сеять с нижней границы y=ih-1, где стоит человек!
+    for (let x = 0; x < iw; x++) {
+      const p0 = x * 4;
+      const d0 = _minDistToBgSamples(data[p0], data[p0 + 1], data[p0 + 2], bgInfo.samples);
+      if (d0 <= tolDist + 10) {
+        pushQueue(x, 0);
+      }
+    }
+    const maxSeedSideY = Math.floor(ih * 0.25);
+    for (let y = 1; y < maxSeedSideY; y++) {
+      const pLeft = (y * iw) * 4;
+      const pRight = (y * iw + (iw - 1)) * 4;
+      if (_minDistToBgSamples(data[pLeft], data[pLeft + 1], data[pLeft + 2], bgInfo.samples) <= tolDist + 10) {
+        pushQueue(0, y);
+      }
+      if (_minDistToBgSamples(data[pRight], data[pRight + 1], data[pRight + 2], bgInfo.samples) <= tolDist + 10) {
+        pushQueue(iw - 1, y);
+      }
+    }
 
+    // 6. BFS Flood-Fill с защитой центрального ядра и контурным барьером Собеля
     while (head < tail) {
       const idx = queue[head++];
       const pi = idx * 4;
       const r = data[pi], g = data[pi + 1], b = data[pi + 2];
-      const dist = _minDistToBgSamples(r, g, b, bgSamples);
+      const dist = _minDistToBgSamples(r, g, b, bgInfo.samples);
+      const edgeVal = edges[idx];
 
-      if (dist <= tolDist) {
+      const x = idx % iw;
+      const y = Math.floor(idx / iw);
+
+      // Защита центральной зоны (Center Core Protection: лицо, шея, плечи)
+      const isCenterCore = (x > iw * 0.20 && x < iw * 0.80 && y > ih * 0.18);
+      const effectiveTol = isCenterCore ? (tolDist * 0.72) : tolDist;
+      const effectiveSoft = isCenterCore ? (softTol * 0.72) : softTol;
+
+      // Контурный барьер Собеля: останавливает заливку на границах силуэта
+      const isEdgeBarrier = (edgeVal > (isCenterCore ? 16 : 26)) && (dist > effectiveTol * 0.45);
+      if (isEdgeBarrier) {
+        continue;
+      }
+
+      if (dist <= effectiveTol) {
         data[pi + 3] = 0;
-        const x = idx % iw;
-        const y = Math.floor(idx / iw);
         pushQueue(x + 1, y);
         pushQueue(x - 1, y);
         pushQueue(x, y + 1);
         pushQueue(x, y - 1);
-      } else if (dist <= softTol) {
-        const alphaFactor = (dist - tolDist) / (softTol - tolDist);
+      } else if (dist <= effectiveSoft) {
+        const alphaFactor = (dist - effectiveTol) / (effectiveSoft - effectiveTol);
         data[pi + 3] = Math.round(data[pi + 3] * alphaFactor);
       }
     }
 
+    // 7. Сглаживание краев и дефринжинг
     _defringeAndFeatherAlpha(data, iw, ih, feather);
 
     ctx.putImageData(imgData, 0, 0);
@@ -903,18 +1053,37 @@
 
     const rawImg = await renderFluxImage(llmResult.masterPrompt);
 
-    // 3. Smart Auto Cutout на 100% прозрачный фон
+    // Сохранение исходного фото 8K (с интеллектуальным устранением водяного знака)
+    let rawDataUrl = '';
+    try {
+      const c = document.createElement('canvas');
+      const cw = rawImg.naturalWidth || rawImg.width || 1024;
+      const ch = rawImg.naturalHeight || rawImg.height || 1024;
+      c.width = cw;
+      c.height = ch;
+      const cctx = c.getContext('2d');
+      cctx.drawImage(rawImg, 0, 0);
+      _cleanPollinationsWatermark(cctx, cw, ch);
+      rawDataUrl = c.toDataURL('image/jpeg', 0.95);
+    } catch (e) {
+      rawDataUrl = rawImg.src;
+    }
+
+    // 3. Smart Auto Cutout 2.0 на 100% прозрачный фон
     onStatus({
       status: 'smart_cutout',
-      message: 'Smart Auto Cutout: Multi-seed Chroma + Defringing + Alpha Feathering (100% прозрачный фон)...'
+      message: 'Smart Auto Cutout 2.0: Sobel Barrier + Core Protection + Alpha Feathering...'
     });
 
-    const transparentPngUrl = smartAutoCutout(rawImg, { tolerance: 28, feather: 2 });
+    const userTol = (typeof options.tolerance === 'number') ? options.tolerance : 30;
+    const transparentPngUrl = smartAutoCutout(rawImg, { tolerance: userTol, feather: 2 });
 
     // Сохранение в историю сессии
     saveToRecentHistory({
       type: 'raster',
       dataUrl: transparentPngUrl,
+      cutoutDataUrl: transparentPngUrl,
+      rawDataUrl: rawDataUrl,
       prompt: userPrompt,
       presetKey,
       modelName: llmResult.modelName
@@ -928,6 +1097,10 @@
     return {
       type: 'raster',
       dataUrl: transparentPngUrl,
+      cutoutDataUrl: transparentPngUrl,
+      rawDataUrl: rawDataUrl,
+      rawImg: rawImg,
+      tolerance: 30,
       prompt: userPrompt,
       masterPrompt: llmResult.masterPrompt,
       model: llmResult.model,
@@ -1240,6 +1413,7 @@
     const btnGenerate = document.getElementById('btn-ai-generate');
     const btnGenerateLabel = document.getElementById('btn-ai-generate-label');
     const btnInsert = document.getElementById('btn-ai-insert-canvas');
+    const btnInsertLabel = document.getElementById('btn-ai-insert-label');
     const btnCancel = document.getElementById('btn-ai-cancel');
     const previewContainer = document.getElementById('ai-svg-preview-box');
     const statusText = document.getElementById('ai-status-text');
@@ -1257,10 +1431,78 @@
     const photoPresetCards = document.querySelectorAll('.ai-preset-card');
     const styleChips = document.querySelectorAll('.ai-style-chip');
 
+    // Контролы режимов фона и слайдера чувствительности
+    const btnBgCutout = document.getElementById('btn-bg-mode-cutout');
+    const btnBgOriginal = document.getElementById('btn-bg-mode-original');
+    const previewCardWrap = document.getElementById('ai-preview-card-wrap');
+    const transpBadge = document.getElementById('ai-transp-badge');
+    const transpBadgeTitle = document.getElementById('ai-transp-badge-title');
+    const transpBadgeSub = document.getElementById('ai-transp-badge-sub');
+    const transpBadgeIcon = document.getElementById('ai-transp-badge-icon');
+    const cutoutPanel = document.getElementById('ai-cutout-controls-panel');
+    const cutoutSlider = document.getElementById('ai-cutout-tolerance-slider');
+    const cutoutValBadge = document.getElementById('ai-cutout-val-badge');
+    const btnCutoutReset = document.getElementById('btn-ai-cutout-reset');
+    const bgModeSwitcher = document.getElementById('ai-bg-mode-switcher');
+
     let currentMode = 'raster'; // 'raster' | 'vector'
     let currentPhotoPreset = 'studio';
     let currentVectorStyle = 'neon';
-    let currentResult = null; // { type: 'raster'|'vector', dataUrl?: string, svg?: string, prompt: string }
+    let currentBgMode = 'cutout'; // 'cutout' | 'original'
+    let currentCutoutTolerance = 30; // 0..100%
+    let currentResult = null; // { type: 'raster'|'vector', dataUrl?: string, cutoutDataUrl?: string, rawDataUrl?: string, rawImg?: any, svg?: string, prompt: string }
+
+    // 0. Функция переключения фона: Прозрачный фон (Cutout) vs Исходное фото (8K)
+    function updateBgModeUI(mode) {
+      currentBgMode = mode;
+      const isCutout = (mode === 'cutout');
+
+      if (btnBgCutout) {
+        btnBgCutout.classList.toggle('is-active', isCutout);
+        btnBgCutout.setAttribute('aria-checked', isCutout);
+      }
+      if (btnBgOriginal) {
+        btnBgOriginal.classList.toggle('is-active', !isCutout);
+        btnBgOriginal.setAttribute('aria-checked', !isCutout);
+      }
+
+      if (previewCardWrap) {
+        previewCardWrap.classList.toggle('mode-original', !isCutout);
+      }
+
+      if (transpBadge) {
+        transpBadge.classList.toggle('is-cutout', isCutout);
+        transpBadge.classList.toggle('is-original', !isCutout);
+      }
+      if (transpBadgeTitle) {
+        transpBadgeTitle.textContent = isCutout ? '100% Alpha Cutout' : 'Full 8K Photo';
+      }
+      if (transpBadgeSub) {
+        transpBadgeSub.textContent = isCutout ? 'Чистый Alpha-канал без артефактов' : 'Исходный студийный кадр без вырезания';
+      }
+      if (transpBadgeIcon) {
+        transpBadgeIcon.textContent = isCutout ? '✓' : '🖼️';
+      }
+
+      if (cutoutPanel) {
+        cutoutPanel.classList.toggle('is-hidden', !isCutout);
+      }
+
+      if (btnInsertLabel) {
+        btnInsertLabel.textContent = isCutout
+          ? 'Вставить вырезанный объект на холст'
+          : 'Вставить исходное фото 8K на холст';
+      }
+
+      // Если в памяти есть сгенерированный результат — мгновенно перерисовываем превью
+      if (currentResult && currentResult.type === 'raster') {
+        const targetUrl = isCutout
+          ? (currentResult.cutoutDataUrl || currentResult.dataUrl)
+          : (currentResult.rawDataUrl || currentResult.dataUrl);
+        currentResult.dataUrl = targetUrl;
+        setPreviewRaster(targetUrl);
+      }
+    }
 
     // 1. Привязка трекера токенов к UI
     function updateTokenUI(state) {
@@ -1334,6 +1576,8 @@
       if (mode === 'raster') {
         groupPhotoPresets?.classList.remove('hidden');
         groupVectorStyles?.classList.add('hidden');
+        bgModeSwitcher?.classList.remove('hidden');
+        updateBgModeUI(currentBgMode);
         if (btnGenerateLabel) btnGenerateLabel.textContent = 'Сгенерировать Студийное Фото 8K';
         if (promptLabelText) promptLabelText.textContent = 'Описание объекта для студийной съемки (Растр 8K)';
         if (promptInput && (!promptInput.value || promptInput.value.includes('стрелка') || promptInput.value.includes('штамп'))) {
@@ -1342,6 +1586,17 @@
       } else {
         groupPhotoPresets?.classList.add('hidden');
         groupVectorStyles?.classList.remove('hidden');
+        bgModeSwitcher?.classList.add('hidden');
+        cutoutPanel?.classList.add('is-hidden');
+        if (previewCardWrap) previewCardWrap.classList.remove('mode-original');
+        if (transpBadge) {
+          transpBadge.classList.add('is-cutout');
+          transpBadge.classList.remove('is-original');
+        }
+        if (transpBadgeTitle) transpBadgeTitle.textContent = '100% Vector SVG';
+        if (transpBadgeSub) transpBadgeSub.textContent = 'Векторные кривые без растровых артефактов';
+        if (transpBadgeIcon) transpBadgeIcon.textContent = '✓';
+        if (btnInsertLabel) btnInsertLabel.textContent = 'Вставить векторный элемент на холст';
         if (btnGenerateLabel) btnGenerateLabel.textContent = 'Сгенерировать Векторный SVG';
         if (promptLabelText) promptLabelText.textContent = 'Описание векторного элемента / стикера';
         if (promptInput && (!promptInput.value || promptInput.value.includes('яблоко') || promptInput.value.includes('наушники'))) {
@@ -1354,6 +1609,50 @@
 
     tabRaster?.addEventListener('click', () => setMode('raster'));
     tabVector?.addEventListener('click', () => setMode('vector'));
+
+    // Привязка кнопок тумблера режимов фона
+    btnBgCutout?.addEventListener('click', () => updateBgModeUI('cutout'));
+    btnBgOriginal?.addEventListener('click', () => updateBgModeUI('original'));
+
+    // Привязка слайдера чувствительности вырезания (мгновенный live-recalculate с дебаунсом)
+    let cutoutRecalcTimer = null;
+    if (cutoutSlider) {
+      cutoutSlider.addEventListener('input', () => {
+        const val = parseInt(cutoutSlider.value, 10);
+        currentCutoutTolerance = val;
+        if (cutoutValBadge) cutoutValBadge.textContent = `${val}%`;
+
+        if (currentResult && currentResult.type === 'raster') {
+          const sourceImg = currentResult.rawImg;
+          if (sourceImg) {
+            clearTimeout(cutoutRecalcTimer);
+            cutoutRecalcTimer = setTimeout(() => {
+              try {
+                const newCutout = smartAutoCutout(sourceImg, { tolerance: val, feather: 2 });
+                currentResult.cutoutDataUrl = newCutout;
+                if (currentBgMode === 'cutout') {
+                  currentResult.dataUrl = newCutout;
+                  setPreviewRaster(newCutout);
+                }
+                if (statusText) statusText.textContent = `Порог вырезания: ${val}% (пересчитан на лету)`;
+              } catch (err) {
+                console.warn('Live cutout recalculation error:', err);
+              }
+            }, 35);
+          }
+        }
+      });
+    }
+
+    // Привязка кнопки сброса на исходное фото
+    if (btnCutoutReset) {
+      btnCutoutReset.addEventListener('click', () => {
+        updateBgModeUI('original');
+        if (typeof window.toast === 'function') {
+          window.toast('Переключено на исходное 8K фото без вырезания');
+        }
+      });
+    }
 
     // 4. Выбор фото-пресетов
     function selectPhotoPreset(key) {
@@ -1412,11 +1711,14 @@
         if (item) {
           currentResult = item;
           if (item.type === 'raster') {
-            setPreviewRaster(item.dataUrl);
             setMode('raster');
+            const activeUrl = (currentBgMode === 'cutout') ? (item.cutoutDataUrl || item.dataUrl) : (item.rawDataUrl || item.dataUrl);
+            currentResult.dataUrl = activeUrl;
+            setPreviewRaster(activeUrl);
+            updateBgModeUI(currentBgMode);
           } else {
-            setPreviewSvg(item.svg);
             setMode('vector');
+            setPreviewSvg(item.svg);
           }
           if (btnInsert) btnInsert.disabled = false;
           if (statusText) statusText.textContent = `Загружен из истории: "${item.prompt}"`;
@@ -1447,15 +1749,17 @@
         previewContainer.innerHTML = `
           <div class="ai-preview-placeholder">
             <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.35;">photo_camera</span>
-            <p>Здесь появится студийная фотография на 100% прозрачном фоне</p>
+            <p>Здесь появится студийная фотография 8K</p>
           </div>
         `;
         if (btnInsert) btnInsert.disabled = true;
         return;
       }
+      const isCutout = (currentBgMode === 'cutout');
+      const shadowClass = isCutout ? 'is-cutout-shadow' : '';
       previewContainer.innerHTML = `
         <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:12px;">
-          <img src="${imgDataUrl}" class="ai-raster-preview-img" alt="8K Transparent Photo">
+          <img src="${imgDataUrl}" class="ai-raster-preview-img ${shadowClass}" alt="8K Photo Preview">
         </div>
       `;
       if (btnInsert) btnInsert.disabled = false;
@@ -1491,13 +1795,17 @@
 
         if (isRaster) {
           res = await generateAiPhoto(val, currentPhotoPreset, {
+            tolerance: currentCutoutTolerance,
             signal: activeAbortController.signal,
             onStatus: info => {
               if (statusText) statusText.textContent = info.message;
             }
           });
           currentResult = res;
-          setPreviewRaster(res.dataUrl);
+          const activeUrl = (currentBgMode === 'cutout') ? (res.cutoutDataUrl || res.dataUrl) : (res.rawDataUrl || res.dataUrl);
+          res.dataUrl = activeUrl;
+          setPreviewRaster(activeUrl);
+          updateBgModeUI(currentBgMode);
         } else {
           res = await generateAiVectorElement(val, currentVectorStyle, {
             signal: activeAbortController.signal,
