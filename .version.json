@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-26T07:35:00+03:00",
-  "release_name": "AURORA DESIGN 5.2.0 — Professional 8K Photo Generator (FLUX + Smart Transparent Cutout), Move / Select Arrow Cursor Tool (V/Esc) & Aurora Spinner"
+  "commit_date": "2026-09-26T07:37:00+03:00",
+  "release_name": "AURORA DESIGN 5.2.1 — Select Tool Spacebar Pan, Enhanced Object & Layer Interaction & 8K Photo Generator"
 }
