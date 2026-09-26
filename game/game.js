@@ -458,6 +458,34 @@
         ctx.fillStyle = floorGradient;
         ctx.fillRect(screenOffsetX, horizonY, screenW, groundY + 90 - horizonY);
 
+        // Project real parquet texture in horizontal perspective slices instead of
+        // stretching it as a flat foreground strip; each band widens toward camera.
+        const parquet = gameTextures.floor;
+        if (parquet && parquet.complete && parquet.naturalWidth > 0 && groundY > horizonY) {
+            ctx.save();
+            ctx.globalAlpha = 0.2;
+            ctx.globalCompositeOperation = 'soft-light';
+            const bands = 28;
+            for (let band = 0; band < bands; band++) {
+                const near = (band + 1) / bands;
+                const far = band / bands;
+                const y1 = horizonY + (groundY + 90 - horizonY) * far;
+                const y2 = horizonY + (groundY + 90 - horizonY) * near;
+                const scale1 = 0.035 + Math.pow(far, 1.32) * 0.965;
+                const scale2 = 0.035 + Math.pow(near, 1.32) * 0.965;
+                const sourceY = Math.floor(far * parquet.naturalHeight);
+                const sourceBottom = Math.max(sourceY + 1, Math.floor(near * parquet.naturalHeight));
+                const sliceHeight = Math.min(parquet.naturalHeight - sourceY, sourceBottom - sourceY);
+                ctx.drawImage(
+                    parquet,
+                    0, sourceY, parquet.naturalWidth, sliceHeight,
+                    screenW * (1 - scale1) * 0.5, y1,
+                    screenW * scale2, Math.max(1, y2 - y1 + 1)
+                );
+            }
+            ctx.restore();
+        }
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(screenOffsetX, horizonY, screenW, groundY + 90 - horizonY);
@@ -471,6 +499,7 @@
             const distantX = vanishX + line * 14;
             const nearbyX = vanishX + line * (screenW / 8) - offset * (line / 9);
             ctx.strokeStyle = line % 3 === 0 ? 'rgba(238, 185, 119, 0.19)' : 'rgba(182, 142, 102, 0.11)';
+            ctx.lineWidth = line % 3 === 0 ? 1.5 : 1;
             ctx.beginPath();
             ctx.moveTo(distantX, horizonY);
             ctx.lineTo(nearbyX, groundY + 100);
@@ -518,12 +547,25 @@
             for (const side of [-1, 1]) {
                 const x = centerX + side * (vw * 0.52 - halfWidth);
                 const panelWidth = halfWidth * 0.66;
+                const timberWidth = Math.max(2, 9 * t);
                 const panelGradient = ctx.createLinearGradient(x, y - shelfHeight, x + panelWidth, y);
                 panelGradient.addColorStop(0, side < 0 ? '#160f22' : '#201023');
                 panelGradient.addColorStop(0.45, side < 0 ? '#594026' : '#473322');
                 panelGradient.addColorStop(1, '#100d18');
                 ctx.fillStyle = panelGradient;
                 ctx.fillRect(x, y - shelfHeight, panelWidth, shelfHeight);
+                // Carved upright framing turns the flat book bands into receding oak bays.
+                for (const post of [0, panelWidth * 0.5, panelWidth - timberWidth]) {
+                    const postGradient = ctx.createLinearGradient(x + post, 0, x + post + timberWidth, 0);
+                    postGradient.addColorStop(0, 'rgba(9,8,17,0.78)');
+                    postGradient.addColorStop(0.3, 'rgba(211,160,92,0.52)');
+                    postGradient.addColorStop(0.55, 'rgba(104,64,36,0.75)');
+                    postGradient.addColorStop(1, 'rgba(8,8,16,0.82)');
+                    ctx.fillStyle = postGradient;
+                    ctx.fillRect(x + post, y - shelfHeight, timberWidth, shelfHeight);
+                    ctx.fillStyle = `rgba(247,211,143,${0.12 + t * 0.2})`;
+                    ctx.fillRect(x + post + timberWidth * 0.3, y - shelfHeight + 3 * t, Math.max(1, timberWidth * 0.12), Math.max(1, shelfHeight - 6 * t));
+                }
 
                 ctx.save();
                 ctx.beginPath();
@@ -744,7 +786,7 @@
                     ctx.fillRect(depthX + 16, top + depthH, 10 * perspective, Math.max(0, Math.min(245, vh - 55 - top - depthH)));
                     ctx.fillRect(depthX + scaledW - 24, top + depthH, 10 * perspective, Math.max(0, Math.min(245, vh - 55 - top - depthH)));
                 }
-                if (this.hasLamp && perspective > 0.35) this.drawBankersLamp(ctx, depthX + 36 * perspective, top - slabDepth);
+                if (this.hasLamp && perspective > 0.35) this.drawBankersLamp(ctx, depthX + 36 * perspective, top - slabDepth, perspective);
             } else {
                 const ledgeDepth = Math.max(8, 20 * perspective);
                 drawContactShadow(ctx, dx + this.w * 0.5, dy + this.h + ledgeDepth, this.w * 0.65, 8, 0.35);
@@ -773,88 +815,127 @@
                 ctx.fill();
                 ctx.fillStyle = '#C59B5A';
                 ctx.fillRect(depthX, top - 1, depthW, Math.max(1, perspective * 3));
-                if (perspective > 0.28) this.drawShelfBooks(ctx, depthX, top);
+                if (perspective > 0.28) this.drawShelfBooks(ctx, depthX, top, depthW, perspective);
             }
         }
 
-        drawBankersLamp(ctx, dx, dy) {
-            const lampX = dx + 36;
-            const lampY = dy - 32;
+        drawBankersLamp(ctx, baseX, baseY, perspective) {
+            ctx.save();
+            ctx.translate(baseX, baseY);
+            ctx.scale(perspective, perspective);
+            const lampX = 0;
+            const lampY = -32;
 
-            // Brass stand
-            ctx.strokeStyle = '#D4AF37';
+            // Warm brass stem and weighted foot catch the desktop highlights.
+            const brass = ctx.createLinearGradient(-5, 0, 5, 0);
+            brass.addColorStop(0, '#60401f');
+            brass.addColorStop(0.45, '#FFE2A0');
+            brass.addColorStop(1, '#8D5E27');
+            ctx.strokeStyle = brass;
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(lampX, dy);
+            ctx.moveTo(lampX, 0);
             ctx.lineTo(lampX, lampY + 8);
             ctx.arc(lampX + 8, lampY + 8, 8, Math.PI, Math.PI * 1.5);
             ctx.stroke();
+            ctx.fillStyle = '#D4AF72';
+            ctx.beginPath();
+            ctx.ellipse(lampX, -1, 11, 3.5, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-            // Green glass shade
-            ctx.fillStyle = '#1B7A43';
-            ctx.shadowColor = '#2ECC71';
+            // Enamel shade with a bright glass lip and local glow.
+            const shade = ctx.createLinearGradient(lampX, lampY - 8, lampX + 20, lampY + 8);
+            shade.addColorStop(0, '#7CF0A7');
+            shade.addColorStop(0.42, '#267A4A');
+            shade.addColorStop(1, '#0B3026');
+            ctx.fillStyle = shade;
+            ctx.shadowColor = '#5BE895';
             ctx.shadowBlur = 14;
             ctx.beginPath();
-            ctx.arc(lampX + 16, lampY, 18, Math.PI * 0.9, Math.PI * 2.1);
+            ctx.ellipse(lampX + 16, lampY, 19, 9, -0.08, Math.PI, Math.PI * 2);
+            ctx.lineTo(lampX + 34, lampY + 2);
+            ctx.quadraticCurveTo(lampX + 16, lampY + 12, lampX - 2, lampY + 2);
+            ctx.closePath();
             ctx.fill();
             ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(255,238,179,0.85)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(lampX - 2, lampY + 2);
+            ctx.quadraticCurveTo(lampX + 16, lampY + 12, lampX + 34, lampY + 2);
+            ctx.stroke();
 
-            // Volumetric Warm Light Cone onto Desk (Screen blend mode)
+            // Cone and pool of warm reflected light, kept in the same depth plane.
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            const coneGrad = ctx.createRadialGradient(lampX + 16, lampY + 8, 3, lampX + 16, lampY + 60, 95);
-            coneGrad.addColorStop(0, 'rgba(255, 230, 150, 0.5)');
-            coneGrad.addColorStop(0.6, 'rgba(46, 204, 113, 0.25)');
+            const coneGrad = ctx.createRadialGradient(lampX + 16, lampY + 8, 3, lampX + 16, 54, 90);
+            coneGrad.addColorStop(0, 'rgba(255, 230, 150, 0.48)');
+            coneGrad.addColorStop(0.55, 'rgba(46, 204, 113, 0.19)');
             coneGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = coneGrad;
             ctx.beginPath();
             ctx.moveTo(lampX + 8, lampY + 5);
-            ctx.lineTo(lampX - 55, dy + 12);
-            ctx.lineTo(lampX + 90, dy + 12);
+            ctx.lineTo(lampX - 55, 18);
+            ctx.lineTo(lampX + 90, 18);
             ctx.closePath();
             ctx.fill();
             ctx.restore();
+            ctx.restore();
         }
 
-        drawShelfBooks(ctx, dx, dy) {
+        drawShelfBooks(ctx, dx, dy, shelfWidth, perspective) {
             const bookPalette = [
-                { spine: '#962D3E', foil: '#F4D03F' }, // Crimson + Gold
-                { spine: '#2471A3', foil: '#EBF5FB' }, // Royal Blue + Silver
-                { spine: '#196F3D', foil: '#F1C40F' }, // Emerald + Gold
-                { spine: '#B7950B', foil: '#7D6608' }, // Amber Leather
-                { spine: '#6C3483', foil: '#F5EEF8' }, // Purple Velvet
-                { spine: '#D35400', foil: '#EDBB99' }  // Terracotta
+                { spine: '#962D3E', foil: '#F4D03F' },
+                { spine: '#2471A3', foil: '#EBF5FB' },
+                { spine: '#196F3D', foil: '#F1C40F' },
+                { spine: '#B7950B', foil: '#F8D879' },
+                { spine: '#6C3483', foil: '#F5EEF8' },
+                { spine: '#D35400', foil: '#EDBB99' }
             ];
+            const scale = perspective;
+            const left = dx + 12 * scale;
+            const right = dx + shelfWidth - 12 * scale;
+            const clipLeft = dx;
+            const clipRight = dx + shelfWidth;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(clipLeft, dy - 52 * scale, shelfWidth, 52 * scale);
+            ctx.clip();
 
-            let cx = dx + 12;
-            while (cx < dx + this.w - 24) {
-                const bW = 10 + ((cx * 5) % 11);
-                const bH = 26 + ((cx * 7) % 22);
-                const bData = bookPalette[Math.abs(Math.floor(cx * 0.1)) % bookPalette.length];
-
-                const isLeaning = (cx % 90 < 15);
+            let index = 0;
+            let cx = left;
+            while (cx < right) {
+                const seed = Math.floor(this.x / 31) + index * 17;
+                const bookW = (10 + Math.abs(seed * 7 % 11)) * scale;
+                const bookH = (26 + Math.abs(seed * 13 % 22)) * scale;
+                const bData = bookPalette[Math.abs(seed) % bookPalette.length];
+                const gap = 3 * scale;
+                const leaning = index % 9 === 4;
                 ctx.save();
-                if (isLeaning) {
+                if (leaning) {
                     ctx.translate(cx, dy);
-                    ctx.rotate(0.12);
+                    ctx.rotate(0.1);
                     ctx.translate(-cx, -dy);
                 }
-
-                // Spine
-                ctx.fillStyle = bData.spine;
-                ctx.fillRect(cx, dy - bH, bW, bH);
-
-                // Gold leaf embossing lines
+                const cover = ctx.createLinearGradient(cx, 0, cx + bookW, 0);
+                cover.addColorStop(0, 'rgba(0,0,0,0.36)');
+                cover.addColorStop(0.2, bData.spine);
+                cover.addColorStop(0.78, bData.spine);
+                cover.addColorStop(1, 'rgba(255,255,255,0.26)');
+                ctx.fillStyle = cover;
+                ctx.fillRect(cx, dy - bookH, bookW, bookH);
+                ctx.fillStyle = 'rgba(255,239,192,0.16)';
+                ctx.fillRect(cx + bookW * 0.15, dy - bookH + 2 * scale, Math.max(1, bookW * 0.12), Math.max(1, bookH - 4 * scale));
                 ctx.fillStyle = bData.foil;
-                ctx.fillRect(cx + 2, dy - bH + 5, bW - 4, 2);
-                ctx.fillRect(cx + 2, dy - bH + 11, bW - 4, 1.5);
-                ctx.fillRect(cx + 2, dy - 6, bW - 4, 1.5);
-
+                ctx.fillRect(cx + 2 * scale, dy - bookH + 5 * scale, Math.max(1, bookW - 4 * scale), Math.max(1, 1.5 * scale));
+                ctx.fillRect(cx + 2 * scale, dy - bookH + 10 * scale, Math.max(1, bookW - 4 * scale), Math.max(1, scale));
+                ctx.fillRect(cx + 2 * scale, dy - 4 * scale, Math.max(1, bookW - 4 * scale), Math.max(1, scale));
                 ctx.restore();
 
-                cx += bW + 4;
-                if (cx % 140 === 0) cx += 22; // gap for bookend
+                cx += bookW + gap;
+                index++;
             }
+            ctx.restore();
         }
     }
 
@@ -976,6 +1057,21 @@
             const topY = dy - spriteH;
 
             drawContactShadow(ctx, dx + spriteW * 0.5, dy + 4, spriteW * 0.85, 15 * depth, 0.42);
+            const edge = Math.max(3, 8 * depth);
+            const shell = ctx.createLinearGradient(dx, topY, dx + spriteW + edge, dy);
+            shell.addColorStop(0, '#101521');
+            shell.addColorStop(0.52, '#3D5268');
+            shell.addColorStop(1, '#090D18');
+            ctx.fillStyle = shell;
+            ctx.beginPath();
+            ctx.moveTo(dx + edge, topY + edge);
+            ctx.lineTo(dx + spriteW + edge, topY);
+            ctx.lineTo(dx + spriteW + edge, dy - edge);
+            ctx.lineTo(dx + spriteW, dy);
+            ctx.lineTo(dx, dy);
+            ctx.lineTo(dx, topY + edge);
+            ctx.closePath();
+            ctx.fill();
             ctx.save();
             const rim = ctx.createLinearGradient(dx, topY, dx + spriteW, topY);
             rim.addColorStop(0, 'rgba(255,213,148,0.35)');
@@ -990,11 +1086,11 @@
             ctx.fill();
             ctx.restore();
 
-            // Desk contact soft shadow
+            // Desk contact shadow follows the depth-scaled terminal footprint.
             ctx.save();
             ctx.fillStyle = 'rgba(5, 8, 20, 0.55)';
             ctx.beginPath();
-            ctx.ellipse(dx + this.w / 2, dy, this.w * 0.42, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(dx + spriteW / 2, dy, spriteW * 0.42, 7 * depth, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
@@ -1041,6 +1137,33 @@
                 this.drawProceduralTerminal(ctx, -this.w / 2, this.h / 2);
                 ctx.restore();
             }
+
+            // A narrow beveled casing is deliberately drawn over the sprite edge to
+            // make the monoblock read as a solid object, not a rectangular decal.
+            const caseDepth = Math.max(3, 8 * depth);
+            const caseSide = ctx.createLinearGradient(dx + spriteW, 0, dx + spriteW + caseDepth, 0);
+            caseSide.addColorStop(0, '#687786');
+            caseSide.addColorStop(0.35, '#263444');
+            caseSide.addColorStop(1, '#080D17');
+            ctx.fillStyle = caseSide;
+            ctx.beginPath();
+            ctx.moveTo(dx + spriteW, topY + caseDepth * 0.45);
+            ctx.lineTo(dx + spriteW + caseDepth, topY);
+            ctx.lineTo(dx + spriteW + caseDepth, dy - caseDepth);
+            ctx.lineTo(dx + spriteW, dy);
+            ctx.closePath();
+            ctx.fill();
+            const caseTop = ctx.createLinearGradient(0, topY, 0, topY + caseDepth);
+            caseTop.addColorStop(0, 'rgba(242,248,255,0.72)');
+            caseTop.addColorStop(1, 'rgba(73,105,128,0.22)');
+            ctx.fillStyle = caseTop;
+            ctx.beginPath();
+            ctx.moveTo(dx, topY + caseDepth * 0.45);
+            ctx.lineTo(dx + caseDepth, topY);
+            ctx.lineTo(dx + spriteW + caseDepth, topY);
+            ctx.lineTo(dx + spriteW, topY + caseDepth * 0.45);
+            ctx.closePath();
+            ctx.fill();
 
             // Holographic Progress Bar or Repair Prompt
             if (!this.fixed) {
@@ -1213,18 +1336,55 @@
             const cartY = -this.h * 0.5;
 
             // Vintage Metal Cart with Brass Detailing
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(cartX + 5, cartY + 6, this.w - 10, this.h - 18);
-            ctx.strokeStyle = '#94A3B8';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(cartX + 5, cartY + 6, this.w - 10, this.h - 18);
+            const cartMetal = ctx.createLinearGradient(cartX, cartY, cartX + this.w, cartY + this.h);
+            cartMetal.addColorStop(0, '#D1D9E4');
+            cartMetal.addColorStop(0.24, '#68798D');
+            cartMetal.addColorStop(0.58, '#344354');
+            cartMetal.addColorStop(1, '#111A28');
+            ctx.fillStyle = cartMetal;
+            ctx.beginPath();
+            ctx.moveTo(cartX + 5, cartY + 7);
+            ctx.lineTo(cartX + this.w - 5, cartY + 7);
+            ctx.lineTo(cartX + this.w - 9, cartY + this.h - 12);
+            ctx.lineTo(cartX + 9, cartY + this.h - 12);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#D4AF72';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(12,19,31,0.72)';
+            ctx.fillRect(cartX + 9, cartY + 14, this.w - 18, this.h - 29);
+            ctx.strokeStyle = 'rgba(210,223,236,0.75)';
+            ctx.lineWidth = 1;
+            for (let slat = 0; slat < 3; slat++) {
+                const slatY = cartY + 18 + slat * 5;
+                ctx.beginPath();
+                ctx.moveTo(cartX + 11, slatY);
+                ctx.lineTo(cartX + this.w - 11, slatY);
+                ctx.stroke();
+            }
 
-            // Stacks of Encyclopedias Inside Cart (Wobbling with speed)
+            // Stacks of clothbound books with gold page edges and foil bands.
             const wobble = Math.sin(Date.now() / 80) * 2;
-            ctx.fillStyle = '#B91C1C';
-            ctx.fillRect(cartX + 10, cartY + 10 + wobble, 18, 14);
-            ctx.fillStyle = '#1D4ED8';
-            ctx.fillRect(cartX + 30, cartY + 8 - wobble, 18, 16);
+            const books = [
+                { x: 10, y: 10 + wobble, w: 19, h: 14, color: '#8D2639' },
+                { x: 29, y: 8 - wobble, w: 19, h: 16, color: '#24558B' },
+                { x: 16, y: 0 + wobble * 0.5, w: 21, h: 9, color: '#266044' }
+            ];
+            for (const book of books) {
+                const bookGradient = ctx.createLinearGradient(cartX + book.x, cartY + book.y, cartX + book.x, cartY + book.y + book.h);
+                bookGradient.addColorStop(0, '#E9C980');
+                bookGradient.addColorStop(0.16, book.color);
+                bookGradient.addColorStop(0.82, book.color);
+                bookGradient.addColorStop(1, '#261927');
+                ctx.fillStyle = bookGradient;
+                ctx.fillRect(cartX + book.x, cartY + book.y, book.w, book.h);
+                ctx.fillStyle = 'rgba(255,224,151,0.88)';
+                ctx.fillRect(cartX + book.x + 2, cartY + book.y + 3, book.w - 4, 1);
+                ctx.fillRect(cartX + book.x + 2, cartY + book.y + book.h - 3, book.w - 4, 1);
+                ctx.fillStyle = 'rgba(255,239,196,0.32)';
+                ctx.fillRect(cartX + book.x + 2, cartY + book.y + 1, 1, book.h - 2);
+            }
 
             // Handlebars
             ctx.strokeStyle = '#D4AF37';
@@ -1241,18 +1401,18 @@
                 ctx.save();
                 ctx.translate(wx, wy);
                 ctx.rotate(this.wheelRot);
-                ctx.fillStyle = '#1E293B';
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#D4AF37';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(-7, 0); ctx.lineTo(7, 0);
-                ctx.moveTo(0, -7); ctx.lineTo(0, 7);
-                ctx.stroke();
+                const tire = ctx.createRadialGradient(-2, -3, 1, 0, 0, 9);
+                tire.addColorStop(0, '#596477'); tire.addColorStop(0.55, '#1C2736'); tire.addColorStop(1, '#080D16');
+                ctx.fillStyle = tire;
+                ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 1.8; ctx.stroke();
+                ctx.strokeStyle = '#F6D98A'; ctx.lineWidth = 1;
+                for (let spoke = 0; spoke < 4; spoke++) {
+                    ctx.rotate(Math.PI / 2);
+                    ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(0, -7); ctx.stroke();
+                }
+                ctx.fillStyle = '#FFE8A6';
+                ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
             };
 
@@ -1302,23 +1462,84 @@
             ctx.scale(depth, depth);
 
             const wingFlap = Math.sin(this.timer * 4) * 0.45;
-            ctx.rotate(wingFlap);
+            const bank = Math.sin(this.timer * 1.7) * 0.08;
+            ctx.rotate(bank);
 
-            // Ancient Leather Book Cover
-            ctx.fillStyle = '#581C87';
-            ctx.fillRect(-18, -12, 36, 24);
+            // Layered parchment wings hinge from the spine and flex as the book flies.
+            for (const side of [-1, 1]) {
+                ctx.save();
+                ctx.translate(side * 9, -1);
+                ctx.rotate(side * wingFlap);
+                const wing = ctx.createLinearGradient(0, -13, 0, 12);
+                wing.addColorStop(0, '#FFF8D6');
+                wing.addColorStop(0.6, '#FDE68A');
+                wing.addColorStop(1, '#B77932');
+                ctx.fillStyle = wing;
+                ctx.shadowColor = '#FDE047';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.moveTo(0, -8);
+                ctx.quadraticCurveTo(side * 18, -20, side * 22, -10);
+                ctx.lineTo(side * 18, 10);
+                ctx.quadraticCurveTo(side * 8, 4, 0, 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = 'rgba(125,75,28,0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(side * 12, -2, side * 19, -11);
+                ctx.stroke();
+                ctx.restore();
+            }
 
-            // Glowing Parchment Wings
-            ctx.fillStyle = '#FEF08A';
-            ctx.shadowColor = '#FDE047';
-            ctx.shadowBlur = 10;
-            ctx.fillRect(-15, -9, 30, 18);
-            ctx.shadowBlur = 0;
-
-            // Red Cyber Eye
-            ctx.fillStyle = '#EF4444';
+            // Leather cover with embossed corners, page block and a raised spine.
+            const cover = ctx.createLinearGradient(-18, -13, 18, 13);
+            cover.addColorStop(0, '#E2A64A');
+            cover.addColorStop(0.22, '#6D293C');
+            cover.addColorStop(0.78, '#35172D');
+            cover.addColorStop(1, '#120F21');
+            ctx.fillStyle = cover;
             ctx.beginPath();
-            ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+            ctx.roundRect(-19, -13, 38, 26, 3);
+            ctx.fill();
+            ctx.fillStyle = '#F4E2B5';
+            ctx.fillRect(-14, -10, 28, 19);
+            const pages = ctx.createLinearGradient(-14, -10, 14, 9);
+            pages.addColorStop(0, '#FFF8E5');
+            pages.addColorStop(1, '#B99B6B');
+            ctx.fillStyle = pages;
+            ctx.fillRect(-13, -9, 26, 18);
+            ctx.strokeStyle = 'rgba(80,50,45,0.36)';
+            ctx.lineWidth = 1;
+            for (let line = -5; line <= 5; line += 4) {
+                ctx.beginPath();
+                ctx.moveTo(-9, line);
+                ctx.lineTo(8, line);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#5D1E35';
+            ctx.fillRect(-2, -13, 4, 26);
+            ctx.strokeStyle = '#E8C66A';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(-17, -11, 34, 22);
+
+            // Enchanted crimson eye with a hot core and specular pin-light.
+            ctx.fillStyle = '#7F1D2D';
+            ctx.shadowColor = '#FB3B59';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 5.5, 4.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FF4B62';
+            ctx.beginPath();
+            ctx.arc(0, 0, 2.7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFF4D2';
+            ctx.beginPath();
+            ctx.arc(-0.8, -1, 0.9, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
@@ -1395,31 +1616,104 @@
             const h = this.h * depth;
             const dx = this.x - camX + (this.w - w) * 0.5;
             const dy = this.y - camY;
-            drawContactShadow(ctx, dx + w * 0.5, dy + h, w * 1.4, 10 * depth, 0.3, '8, 35, 49');
+            const bob = Math.sin(this.timer * 2.2) * 3 * depth;
+            const color = this.type === 'coffee' ? '#FFB347' : this.type === 'book' ? '#C69BFF' : this.type === 'shield' ? '#59F2FF' : '#63E8FF';
+            drawContactShadow(ctx, dx + w * 0.5, dy + h + 12 * depth, w * 1.55, 11 * depth, 0.32, '8, 35, 49');
 
             ctx.save();
-            ctx.translate(dx + w / 2, dy + h / 2);
+            ctx.translate(dx + w / 2, dy + h / 2 + bob);
             ctx.scale(depth, depth);
 
-            // Pulsing Holographic Ring
+            // Layered holographic rings, animated orbit nodes and glass capsule.
+            const pulse = 1 + Math.sin(this.timer * 2.5) * 0.07;
+            ctx.rotate(this.timer * 0.35);
+            ctx.strokeStyle = `${color}88`;
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([5, 4]);
             ctx.beginPath();
-            ctx.arc(0, 0, 22 + Math.sin(this.timer * 2.5) * 3, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+            ctx.ellipse(0, 0, 25 * pulse, 13 / pulse, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(24 * pulse, 0, 2.4, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = (this.type === 'coffee') ? '#FFB347' : '#00F0FF';
-            ctx.lineWidth = 1.8;
+            ctx.shadowBlur = 0;
+            ctx.rotate(-this.timer * 0.35);
+
+            const orb = ctx.createRadialGradient(-5, -7, 1, 0, 0, 23);
+            orb.addColorStop(0, 'rgba(255,255,255,0.96)');
+            orb.addColorStop(0.24, `${color}E8`);
+            orb.addColorStop(0.72, `${color}88`);
+            orb.addColorStop(1, `${color}00`);
+            ctx.fillStyle = orb;
+            ctx.beginPath();
+            ctx.arc(0, 0, 22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `${color}CC`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 17, 0, Math.PI * 2);
             ctx.stroke();
 
-            ctx.font = '24px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            let icon = '☕';
-            if (this.type === 'flash') icon = '💾';
-            if (this.type === 'book') icon = '📚';
-            if (this.type === 'shield') icon = '🛡️';
-
-            ctx.fillText(icon, 0, 2);
+            // Draw a compact custom pictogram so pickups look consistent on every OS.
+            ctx.save();
+            ctx.strokeStyle = '#102033';
+            ctx.fillStyle = '#102033';
+            ctx.lineWidth = 2.4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            if (this.type === 'coffee') {
+                ctx.beginPath();
+                ctx.roundRect(-8, -6, 13, 13, 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(6, -1, 4, -Math.PI / 2, Math.PI / 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-5, -10); ctx.quadraticCurveTo(-8, -13, -5, -15);
+                ctx.moveTo(1, -10); ctx.quadraticCurveTo(-2, -13, 1, -15);
+                ctx.stroke();
+            } else if (this.type === 'flash') {
+                ctx.beginPath();
+                ctx.roundRect(-10, -8, 20, 16, 3);
+                ctx.stroke();
+                ctx.fillRect(-4, -4, 8, 8);
+                ctx.fillRect(-13, -4, 3, 2);
+                ctx.fillRect(10, -4, 3, 2);
+                ctx.fillRect(-2, -11, 2, 3);
+                ctx.fillRect(4, -11, 2, 3);
+            } else if (this.type === 'book') {
+                ctx.beginPath();
+                ctx.moveTo(0, -8);
+                ctx.quadraticCurveTo(-9, -12, -12, -7);
+                ctx.lineTo(-12, 8);
+                ctx.quadraticCurveTo(-5, 5, 0, 10);
+                ctx.quadraticCurveTo(5, 5, 12, 8);
+                ctx.lineTo(12, -7);
+                ctx.quadraticCurveTo(6, -12, 0, -8);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, -7); ctx.lineTo(0, 8);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.lineTo(10, -8);
+                ctx.lineTo(9, 2);
+                ctx.quadraticCurveTo(7, 9, 0, 12);
+                ctx.quadraticCurveTo(-7, 9, -9, 2);
+                ctx.lineTo(-10, -8);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-5, 0); ctx.lineTo(-1, 4); ctx.lineTo(6, -4);
+                ctx.stroke();
+            }
+            ctx.restore();
             ctx.restore();
         }
     }
@@ -1658,10 +1952,19 @@
                 ctx.restore();
             }
 
-            // 3. Draw Player Body with Kinematics (240x280)
+            // 3. Draw the mascot as a lit, depth-scaled character rather than a flat cutout.
             ctx.save();
             ctx.translate(cx, cy + this.h * (1 - depth) * 0.5);
             ctx.scale(depth, depth);
+            const auraColor = this.isFixing ? '0, 240, 255' : this.speedBoostTimer > 0 ? '0, 255, 157' : '100, 180, 255';
+            const characterAura = ctx.createRadialGradient(0, 10, 18, 0, 10, 145);
+            characterAura.addColorStop(0, `rgba(${auraColor},0.19)`);
+            characterAura.addColorStop(0.52, `rgba(${auraColor},0.075)`);
+            characterAura.addColorStop(1, `rgba(${auraColor},0)`);
+            ctx.fillStyle = characterAura;
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 100, 142, 0, 0, Math.PI * 2);
+            ctx.fill();
 
             if (!this.facingRight) ctx.scale(-1, 1);
             if (this.flipRotation !== 0) ctx.rotate(this.flipRotation);
@@ -1679,6 +1982,12 @@
                 const spriteW = 240;
                 const spriteH = 280;
                 const bobY = this.grounded ? Math.sin(this.runAnimTimer) * 8 : -4;
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.shadowColor = this.isFixing ? '#00F0FF' : '#68CFFF';
+                ctx.shadowBlur = 18;
+                drawMascotSpriteCentered(ctx, spriteImg, 0, bobY - 6, spriteW, spriteH);
+                ctx.restore();
                 drawMascotSpriteCentered(ctx, spriteImg, 0, bobY - 6, spriteW, spriteH);
             } else {
                 this.drawProceduralCosmo(ctx);
@@ -1691,13 +2000,13 @@
                 ctx.shadowColor = '#00F0FF';
                 ctx.shadowBlur = 25;
                 ctx.beginPath();
-                ctx.arc(0, 0, (140 + Math.sin(Date.now() / 140) * 5) * depth, 0, Math.PI * 2);
+                ctx.arc(0, 0, 140 + Math.sin(Date.now() / 140) * 5, 0, Math.PI * 2);
                 ctx.stroke();
 
                 ctx.strokeStyle = 'rgba(0, 255, 157, 0.4)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(0, 0, (130 + Math.cos(Date.now() / 180) * 4) * depth, 0, Math.PI * 2);
+                ctx.arc(0, 0, 130 + Math.cos(Date.now() / 180) * 4, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
@@ -1779,25 +2088,57 @@
             ctx.save();
             ctx.scale(4, 4);
             const bounce = this.grounded ? Math.abs(Math.sin(this.runAnimTimer)) * 2 : 0;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath(); ctx.arc(0, -6 + bounce, 22, 0, Math.PI * 2); ctx.fill();
 
-            ctx.fillStyle = '#00FF9D';
-            ctx.beginPath(); ctx.arc(0, 6 + bounce, 16, 0, Math.PI); ctx.fill();
+            // Short articulated legs and soft magnetic boots ground the fallback model.
+            ctx.strokeStyle = '#8BA2C1';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-8, 13 + bounce); ctx.lineTo(-10, 20 + bounce);
+            ctx.moveTo(8, 13 + bounce); ctx.lineTo(10, 20 + bounce);
+            ctx.stroke();
+            const boot = ctx.createLinearGradient(0, 18 + bounce, 0, 25 + bounce);
+            boot.addColorStop(0, '#DDEBFF'); boot.addColorStop(1, '#526B92');
+            ctx.fillStyle = boot;
+            ctx.beginPath(); ctx.roundRect(-16, 18 + bounce, 12, 7, 3); ctx.roundRect(4, 18 + bounce, 12, 7, 3); ctx.fill();
 
-            ctx.fillStyle = '#090E1A';
-            ctx.beginPath(); ctx.roundRect(-14, -16 + bounce, 28, 18, 5); ctx.fill();
+            // Enamel shell, with a dark lower-body shadow and a cool rim highlight.
+            const shell = ctx.createLinearGradient(-18, -24 + bounce, 18, 18 + bounce);
+            shell.addColorStop(0, '#FFFFFF'); shell.addColorStop(0.32, '#DCEBFF');
+            shell.addColorStop(0.7, '#7892B7'); shell.addColorStop(1, '#263A5D');
+            ctx.fillStyle = shell;
+            ctx.beginPath(); ctx.roundRect(-17, -21 + bounce, 34, 39, 13); ctx.fill();
+            ctx.strokeStyle = 'rgba(111,235,255,0.8)'; ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            ctx.fillStyle = '#FFD15C';
-            ctx.shadowColor = '#FFD15C';
-            ctx.shadowBlur = 8;
-            ctx.beginPath(); ctx.arc(-6, -8 + bounce, 4, 0, Math.PI * 2); ctx.arc(6, -8 + bounce, 4, 0, Math.PI * 2); ctx.fill();
+            // Chest reactor and a tiny service badge add readable robot details.
+            const reactor = ctx.createRadialGradient(-2, 6 + bounce, 1, 0, 7 + bounce, 10);
+            reactor.addColorStop(0, '#FFFFFF'); reactor.addColorStop(0.25, '#76FFFF');
+            reactor.addColorStop(1, '#087A96');
+            ctx.fillStyle = reactor; ctx.shadowColor = '#00F0FF'; ctx.shadowBlur = 10;
+            ctx.beginPath(); ctx.arc(0, 7 + bounce, 6, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
+            ctx.fillStyle = '#E4C27A';
+            ctx.beginPath(); ctx.arc(-11, 0 + bounce, 2, 0, Math.PI * 2); ctx.fill();
 
-            ctx.strokeStyle = '#9BB0D4'; ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.moveTo(0, -28 + bounce); ctx.lineTo(0, -38 + bounce); ctx.stroke();
-            ctx.fillStyle = this.isFixing ? '#FF3366' : '#00F0FF';
-            ctx.beginPath(); ctx.arc(0, -40 + bounce, 4, 0, Math.PI * 2); ctx.fill();
+            // Rounded glass visor and expressive twin optics.
+            const visor = ctx.createLinearGradient(0, -18 + bounce, 0, 3 + bounce);
+            visor.addColorStop(0, '#14243E'); visor.addColorStop(1, '#050B18');
+            ctx.fillStyle = visor;
+            ctx.beginPath(); ctx.roundRect(-14, -17 + bounce, 28, 19, 6); ctx.fill();
+            ctx.strokeStyle = 'rgba(106,227,255,0.8)'; ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#FFD15C'; ctx.shadowColor = '#FFD15C'; ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.arc(-6, -8 + bounce, 3.4, 0, Math.PI * 2); ctx.arc(6, -8 + bounce, 3.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#FFFFFF'; ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(-7, -9 + bounce, 1, 0, Math.PI * 2); ctx.arc(5, -9 + bounce, 1, 0, Math.PI * 2); ctx.fill();
+
+            // Antenna beacon and its tiny halo.
+            ctx.strokeStyle = '#B7C9E6'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, -20 + bounce); ctx.lineTo(0, -29 + bounce); ctx.stroke();
+            ctx.fillStyle = this.isFixing ? '#FF5478' : '#00F0FF';
+            ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;
+            ctx.beginPath(); ctx.arc(0, -31 + bounce, 3, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
     }
