@@ -2366,6 +2366,9 @@ function initCanvas(w, h) {
       }
     });
   }
+
+  // По умолчанию активируем инструмент «Стрелка выделения (V)»
+  activateSelectTool(false);
 }
 
 function addTemplateObj(def) {
@@ -4010,6 +4013,62 @@ function applyPickedColor(hex) {
 let _pencilColor = '#0d99ff';
 let _pencilWidth = 4;
 
+/**
+ * Активация инструмента «Стрелка выделения и перемещения» (Move / Select Tool V, Esc).
+ * Переводит холст в классический интерактивный режим выделения объектов и прямоугольной резиновой рамки (Marquee Box Selection).
+ */
+function activateSelectTool(showToast = false) {
+  if (!canvas) return;
+
+  // 1. Выключаем режим свободного рисования
+  if (canvas.isDrawingMode) {
+    canvas.isDrawingMode = false;
+    $('#tool-pencil')?.classList.remove('is-active', 'active');
+    $('#pencil-toolbar')?.classList.add('hidden');
+  }
+
+  // 2. Выключаем режим ластика
+  if (typeof _eraserMode !== 'undefined' && _eraserMode) {
+    toggleEraserMode();
+  }
+
+  // 3. Выключаем пипетку если активна
+  if (window._eyedropperActive && typeof window._cancelEyedropper === 'function') {
+    window._cancelEyedropper();
+  }
+
+  // 4. Включаем интерактивность и групповое выделение резиновой рамкой (Marquee Selection)
+  canvas.selection = true;
+  canvas.skipTargetFind = false;
+  canvas.defaultCursor = 'default';
+  canvas.hoverCursor = 'move';
+
+  // 5. Обновляем визуальное состояние кнопок стрелочки во всех панелях
+  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+    el.classList.add('is-active', 'active');
+  });
+
+  // 6. Снимаем активный статус с других взаимоисключающих инструментов
+  document.querySelectorAll('#tool-pencil, #tool-eyedropper, #btn-bg-eraser').forEach(el => {
+    el.classList.remove('is-active', 'active');
+  });
+
+  // 7. Восстанавливаем selectable/evented для всех незаблокированных объектов
+  canvas.forEachObject(obj => {
+    if (!obj.__locked) {
+      obj.selectable = true;
+      obj.evented = true;
+    }
+  });
+
+  canvas.requestRenderAll();
+
+  if (showToast && typeof window.toast === 'function') {
+    window.toast('Курсор: Стрелка / Выбор (V)');
+  }
+}
+window.activateSelectTool = activateSelectTool;
+
 function toggleDrawingMode(forcedState) {
   if (!canvas) return;
   const newState = typeof forcedState === 'boolean' ? forcedState : !canvas.isDrawingMode;
@@ -4031,10 +4090,17 @@ function toggleDrawingMode(forcedState) {
 
     toolBtn?.classList.add('is-active');
     toolbar?.classList.remove('hidden');
+
+    // Деактивируем стрелку
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
+
     toast('Карандаш включен (Рисуйте на холсте, Esc — выход)');
   } else {
     toolBtn?.classList.remove('is-active');
     toolbar?.classList.add('hidden');
+    activateSelectTool(false);
     toast('Режим рисования завершён');
   }
 }
@@ -4965,6 +5031,7 @@ function updateLayersList() {
         canvas.setActiveObject(obj);
         canvas.requestRenderAll();
         onSelection();
+        activateSelectTool(false);
       }
     });
   });
@@ -8798,6 +8865,21 @@ function bindEvents() {
         pasteCopiedObject();
       }
     }
+    // Инструмент выделения (Select / Move Tool) по клавише V / М (как в Photoshop/Figma)
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')) {
+      if (inInput) return;
+      e.preventDefault();
+      activateSelectTool();
+    }
+
+    // Сброс режимов и возврат в инструмент выделения по Escape
+    if (e.key === 'Escape') {
+      if (inInput) return;
+      if (typeof activateSelectTool === 'function') {
+        activateSelectTool(true);
+      }
+    }
+
     if ((e.ctrlKey||e.metaKey) && (e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В')) {
       e.preventDefault();
       duplicateActiveObject();
@@ -8850,13 +8932,11 @@ function bindEvents() {
         toggleDrawingMode();
         return;
       }
-      // V / м -> Выбор (отключение режима рисования)
+      // V / м -> Выбор (стрелка выделения и перемещения объектов, как в Photoshop/Figma)
       if (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М') {
-        if (canvas?.isDrawingMode) {
-          e.preventDefault();
-          toggleDrawingMode(false);
-          return;
-        }
+        e.preventDefault();
+        activateSelectTool(true);
+        return;
       }
       // [ / х -> Слой назад (Send Backwards)
       if (e.key === '[' || e.key === 'х' || e.key === 'Х') {
@@ -8932,11 +9012,12 @@ function bindEvents() {
       }
     }
 
-    // Escape -> выход из режима рисования или сброс выделения
+    // Escape -> выход из режима рисования или сброс выделения (возврат к стрелке)
     if (e.key === 'Escape') {
       if (canvas?.isDrawingMode) {
         e.preventDefault();
         toggleDrawingMode(false);
+        activateSelectTool(false);
         return;
       }
       if (canvas?.getActiveObject()) {
@@ -8944,8 +9025,10 @@ function bindEvents() {
         canvas.discardActiveObject();
         canvas.requestRenderAll();
         onSelection();
+        activateSelectTool(false);
         return;
       }
+      activateSelectTool(false);
     }
   });
 
@@ -9008,6 +9091,18 @@ function bindEvents() {
   $('#btn-ungroup')       ?.addEventListener('click', ungroupSelected);
   $('#btn-header-ungroup')?.addEventListener('click', ungroupSelected);
   $('#btn-lock-obj')      ?.addEventListener('click', toggleLockObject);
+
+  /* Главный инструмент: Стрелка выделения и перемещения (V, Esc, как в Photoshop/Figma) */
+  $('#tool-select')?.addEventListener('click', () => activateSelectTool(true));
+  $('#btn-header-select')?.addEventListener('click', () => activateSelectTool(true));
+  $('#mtool-select')?.addEventListener('click', () => {
+    activateSelectTool(true);
+    closeMobileDrawer();
+  });
+  $('#dock-btn-select')?.addEventListener('click', () => {
+    activateSelectTool(true);
+    closeMobileDrawer();
+  });
 
   /* Инструменты текста */
   $('#tool-heading')   ?.addEventListener('click', () => addText('Заголовок', { fontSize:48, fontFamily:'Unbounded', fontWeight:'bold' }));

@@ -1,26 +1,28 @@
 /**
  * ===================================================================
- * AURORA DESIGN — AI ELEMENT & STICKER GENERATOR CORE
+ * AURORA DESIGN — AI ELEMENT & PHOTO GENERATOR CORE
  * Файл: vk-miniapp/poster/ai_elements.js
  * 
  * Архитектура модуля:
- * 1. AI API Клиент с каскадным Fallback:
- *    - Эндпоинт: https://api.xkiro.com/v1/chat/completions
- *    - Основная модель: minimax/minimax-m3:free
- *    - Резервная модель 1: qwen/qwen3.6-35b-a3b:free
- *    - Резервная модель 2: qwen/qwen3.5-397b-a17b:free
+ * 1. Два режима генерации:
+ *    - «Фотография (Растр 8K)» (mode: 'raster'):
+ *      * Промпт-инжиниринг через xKiro LLM (Minimax M3 / Qwen)
+ *      * Превращение пользовательского запроса в мастер-промпт студийной фотографии:
+ *        Hasselblad H6D-100c 100MP, 85mm f/1.4, cinematic rim lighting, 8k uhd,
+ *        isolated on pure solid white studio backdrop.
+ *      * Рендеринг ультра-детализированного растрового фото через FLUX фото-движок (1024x1024).
+ *      * Smart Auto Cutout: Multi-seed Chroma + BFS Flood-Fill + Defringing + Alpha Feathering
+ *        для получения 100% прозрачного фона в браузере!
+ *      * Добавление на холст как fabric.Image с именем [AI Photo] ...
+ *    - «Вектор (SVG)» (mode: 'vector'):
+ *      * Strict SVG с удалением фоновых подложек и добавлением в виде fabric.Group.
  * 2. Учет токенов (Token Quota Tracker):
  *    - Лимит: 1 000 000 токенов в сутки
  *    - Персистентность в localStorage ('aurora_ai_token_tracker_v1')
- *    - Таймер обратного отсчета до сброса (24-часовой скользящий интервал)
- * 3. Token-Economy Prompt Engine:
- *    - Компактный системный промпт, max_tokens: 1200
- *    - Strict SVG Output без лишних оберток и пояснений
- *    - 100% прозрачный фон (гарантированное удаление подложек)
- * 4. Fabric.js Интеграция:
- *    - Добавление векторного элемента (fabric.Group / fabric.Path)
- *    - Автоматическое центрирование в видимой области viewport
- *    - Регистрация в истории отмены (undo/redo) и списке слоев
+ *    - 24-часовой скользящий таймер обратного отсчета
+ * 3. Анимация крутящегося кружка Авроры (Aurora Loader):
+ *    - Запуск при генерации
+ *    - Плавное исчезновение ровно в момент попадания фото/вектора на холст
  * ===================================================================
  */
 
@@ -61,7 +63,7 @@
     STORAGE_KEY: 'aurora_ai_token_tracker_v1',
     HISTORY_KEY: 'aurora_ai_recent_stickers_v1',
     DAILY_TOKEN_LIMIT: 1000000,
-    DEFAULT_SIZE: 220
+    DEFAULT_SIZE: 260
   };
 
   /* ══════════════════════════════════════════════════════════════
@@ -73,7 +75,7 @@
     hideAuroraLoader();
 
     // 1. Отображение поверх холста в рабочей зоне
-    const viewport = document.getElementById('canvas-viewport') || document.getElementById('canvas-stage') || document.body;
+    const viewport = document.getElementById('canvas-viewport') || document.getElementById('canvas-stage') || document.getElementById('canvas-area') || document.body;
     if (viewport) {
       const loader = document.createElement('div');
       loader.className = 'aurora-canvas-loader';
@@ -84,8 +86,8 @@
           <div class="aurora-spinner-core"></div>
         </div>
         <div class="aurora-loader-text-wrap">
-          <div class="aurora-loader-title">${title}</div>
-          <div class="aurora-loader-sub">${sub}</div>
+          <div class="aurora-loader-title">${escapeHtml(title)}</div>
+          <div class="aurora-loader-sub">${escapeHtml(sub)}</div>
         </div>
       `;
       viewport.appendChild(loader);
@@ -138,8 +140,18 @@
     }
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   /* ══════════════════════════════════════════════════════════════
      КЛАСС УЧЕТА ТОКЕНОВ (TOKEN QUOTA TRACKER)
+     Лимит: 1 000 000 токенов в сутки с таймером сброса
      ══════════════════════════════════════════════════════════════ */
   class TokenTracker {
     constructor() {
@@ -148,6 +160,7 @@
       this.resetAt = Date.now() + 24 * 60 * 60 * 1000;
       this.listeners = new Set();
       this.timerId = null;
+
       this._load();
       this._startTicker();
     }
@@ -174,7 +187,6 @@
       } catch (err) {
         console.warn('[AI TokenTracker] Ошибка загрузки состояния из localStorage:', err);
       }
-      // Инициализация по умолчанию
       this.used = 0;
       this.resetAt = Date.now() + 24 * 60 * 60 * 1000;
       this._save();
@@ -217,7 +229,6 @@
       this._save();
       this._notify();
 
-      // Сохраняем краткую историю использования
       try {
         const logKey = 'aurora_ai_token_log_v1';
         const rawLogs = safeGetItem(logKey);
@@ -231,7 +242,7 @@
         });
         safeSetItem(logKey, JSON.stringify(logs.slice(0, 50)));
       } catch (e) {
-        // игнорируем
+        // ignore
       }
     }
 
@@ -299,7 +310,64 @@
   const tracker = new TokenTracker();
 
   /* ══════════════════════════════════════════════════════════════
-     СТИЛИ И ШАБЛОНЫ ЭЛЕМЕНТОВ
+     ПРЕСЕТЫ И СТИЛИ СТУДИЙНОЙ ФОТОГРАФИИ (РАСТР 8K)
+     ══════════════════════════════════════════════════════════════ */
+  const PHOTO_PRESETS = {
+    studio: {
+      name: 'Студийный свет',
+      desc: 'Софтбокс 3 точки, rim-light, мягкие тени',
+      pill: 'Pro Light',
+      prompt: 'Shot on Hasselblad H6D-100c medium format camera, 100 megapixels, 85mm f/1.4 lens, ISO 64. Professional 3-point softbox studio lighting, cinematic rim lighting highlighting contours, pure solid seamless white studio backdrop, photorealistic commercial product photography, 8k uhd, exquisite micro-textures, crisp sharp separation edges.'
+    },
+    macro: {
+      name: 'Макро 8K',
+      desc: 'Сверхдетализация текстур, поры, волокна',
+      pill: '8K UHD',
+      prompt: 'Shot on Hasselblad H6D-100c with 100mm f/2.8 Macro lens, extreme depth of detail, microscopic tactile textures, glistening water droplets, hyper-focused subject, pure seamless solid white studio backdrop, sharp distinct silhouette, commercial macro photography masterpiece, 8k.'
+    },
+    vogue: {
+      name: 'Глянец / Vogue',
+      desc: 'Модный глянец, вспышка, сочные цвета',
+      pill: 'Fashion',
+      prompt: 'Vogue editorial commercial lighting, beauty dish and silver umbrella diffusion, high-fashion specular reflections, vibrant rich colors, pure solid seamless white studio backdrop, crisp clean silhouette boundary, 8k hyper-realistic commercial shot.'
+    },
+    bokeh: {
+      name: 'Боке f/1.4',
+      desc: 'Оптическое размытие фона, мягкие диски',
+      pill: 'f/1.4 Lens',
+      prompt: 'Shot with 85mm f/1.4 prime lens at wide open aperture, ultra-shallow depth of field, razor-sharp focus on subject center with smooth creamy falloff, isolated on pure solid white seamless backdrop, commercial hero photography, 8k.'
+    },
+    cinema: {
+      name: 'Кинокадр',
+      desc: '35mm Anamorphic, Teal & Orange киногамма',
+      pill: 'Cinema',
+      prompt: 'Cinematic dramatic lighting, 35mm anamorphic prime lens, subtle cyan and amber rim highlights, sculptural shadow contrast, pure solid seamless clean white studio backdrop, cinematic commercial still, sharp crisp contour, 8k resolution.'
+    },
+    isolated3d: {
+      name: '3D Изоляция',
+      desc: 'Octane 3D, идеальные тени, левитация',
+      pill: 'Octane 3D',
+      prompt: 'Octane 3D photorealistic studio render, subsurface scattering, physically based rendering materials, floating isolated hero element, soft ambient occlusion, pure white infinity studio background, raytraced reflections, 8k.'
+    }
+  };
+
+  const PHOTO_PROMPT_PRESETS = [
+    { label: '🍎 Рубиновое яблоко с росой', prompt: 'Crisp fresh ruby red apple with delicate morning dew droplets on skin', preset: 'macro' },
+    { label: '☕ Чашка капучино с латте-артом', prompt: 'Artisan porcelain cup of cappuccino with intricate heart latte art and subtle steam', preset: 'studio' },
+    { label: '📖 Старинная книга в коже', prompt: 'Antique leather-bound tome book with embossed golden leaf ornaments and aged parchment pages', preset: 'vogue' },
+    { label: '🎧 Премиум наушники', prompt: 'High-end sleek wireless audiophile headphones with brushed aluminum and leather earcups', preset: 'studio' },
+    { label: '🌿 Тропический лист монстеры', prompt: 'Vibrant glossy emerald green monstera deliciosa leaf with translucent veins and water drops', preset: 'macro' },
+    { label: '🍔 Сочный гурме-бургер', prompt: 'Gourmet artisan burger with melted aged cheddar, crisp lettuce, brioche bun and sesame seeds', preset: 'vogue' },
+    { label: '🏆 Золотой кубок победителя', prompt: 'Gleaming polished 24k gold champion trophy cup with filigree handles and brilliant reflections', preset: 'studio' },
+    { label: '🚀 Ретро-футуристичная ракета', prompt: 'Vintage aerodynamic space rocket model with polished chrome fuselage and red wing fins', preset: 'isolated3d' },
+    { label: '🌸 Ветка сакуры в цвету', prompt: 'Delicate blooming Japanese cherry blossom sakura branch with soft pink petals', preset: 'macro' },
+    { label: '🎸 Электрогитара Sunburst', prompt: 'Classic vintage 1959 electric guitar with glossy tobacco sunburst lacquer and chrome hardware', preset: 'vogue' },
+    { label: '🕯️ Античный бронзовый подсвечник', prompt: 'Ornate antique baroque bronze candlestick with burning wax candle and glowing flame', preset: 'cinema' },
+    { label: '💎 Бриллиант круглой огранки', prompt: 'Flawless 5-carat round brilliant cut diamond with kaleidoscopic rainbow light dispersion prism facets', preset: 'macro' }
+  ];
+
+  /* ══════════════════════════════════════════════════════════════
+     СТИЛИ И ШАБЛОНЫ ВЕКТОРНЫХ СТИКЕРОВ (SVG)
      ══════════════════════════════════════════════════════════════ */
   const STYLE_MODIFIERS = {
     neon: {
@@ -340,26 +408,230 @@
   ];
 
   /* ══════════════════════════════════════════════════════════════
+     АЛГОРИТМЫ SMART AUTO CUTOUT (100% ПРОЗРАЧНЫЙ ФОН)
+     Multi-seed Chroma + BFS Flood-Fill + Defringing + Feathering
+     ══════════════════════════════════════════════════════════════ */
+  function _perceptualColorDist(r1, g1, b1, r2, g2, b2) {
+    const rMean = (r1 + r2) * 0.5;
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt((2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db);
+  }
+
+  function _sampleBackgroundColors(data, iw, ih) {
+    const samples = [];
+    const step = Math.max(4, Math.floor(Math.min(iw, ih) / 40));
+
+    // 1. Угловые блоки 5x5
+    const cornerCoords = [
+      [0, 0], [iw - 1, 0], [0, ih - 1], [iw - 1, ih - 1]
+    ];
+    for (const [cx, cy] of cornerCoords) {
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      for (let dy = 0; dy < 5; dy++) {
+        for (let dx = 0; dx < 5; dx++) {
+          const x = Math.min(Math.max(0, cx + (cx === 0 ? dx : -dx)), iw - 1);
+          const y = Math.min(Math.max(0, cy + (cy === 0 ? dy : -dy)), ih - 1);
+          const idx = (y * iw + x) * 4;
+          if (data[idx + 3] > 10) {
+            rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2]; count++;
+          }
+        }
+      }
+      if (count > 0) {
+        samples.push({ r: Math.round(rSum / count), g: Math.round(gSum / count), b: Math.round(bSum / count) });
+      }
+    }
+
+    // 2. Верхняя и нижняя кромки
+    for (let x = 0; x < iw; x += step) {
+      const idxTop = x * 4;
+      const idxBot = ((ih - 1) * iw + x) * 4;
+      if (data[idxTop + 3] > 10) samples.push({ r: data[idxTop], g: data[idxTop + 1], b: data[idxTop + 2] });
+      if (data[idxBot + 3] > 10) samples.push({ r: data[idxBot], g: data[idxBot + 1], b: data[idxBot + 2] });
+    }
+
+    // 3. Левая и правая кромки
+    for (let y = 0; y < ih; y += step) {
+      const idxLeft = (y * iw) * 4;
+      const idxRight = (y * iw + (iw - 1)) * 4;
+      if (data[idxLeft + 3] > 10) samples.push({ r: data[idxLeft], g: data[idxLeft + 1], b: data[idxLeft + 2] });
+      if (data[idxRight + 3] > 10) samples.push({ r: data[idxRight], g: data[idxRight + 1], b: data[idxRight + 2] });
+    }
+
+    return samples;
+  }
+
+  function _minDistToBgSamples(r, g, b, samples) {
+    let minD = 999999;
+    for (let i = 0; i < samples.length; i++) {
+      const s = samples[i];
+      const d = _perceptualColorDist(r, g, b, s.r, s.g, s.b);
+      if (d < minD) {
+        minD = d;
+        if (minD < 5) break;
+      }
+    }
+    return minD;
+  }
+
+  function _defringeAndFeatherAlpha(data, iw, ih, featherRadius = 2) {
+    const fth = Math.max(1, Math.min(6, featherRadius || 2));
+    const totalPixels = iw * ih;
+    const newAlpha = new Uint8ClampedArray(totalPixels);
+    for (let i = 0; i < totalPixels; i++) {
+      newAlpha[i] = data[i * 4 + 3];
+    }
+
+    // 1. Defringing
+    for (let y = 0; y < ih; y++) {
+      for (let x = 0; x < iw; x++) {
+        const idx = (y * iw + x) * 4;
+        const a = data[idx + 3];
+        if (a > 0 && a < 240) {
+          let solidR = 0, solidG = 0, solidB = 0, solidCount = 0;
+          for (let dy = -2; dy <= 2; dy++) {
+            const ny = y + dy;
+            if (ny < 0 || ny >= ih) continue;
+            for (let dx = -2; dx <= 2; dx++) {
+              const nx = x + dx;
+              if (nx < 0 || nx >= iw) continue;
+              const nIdx = (ny * iw + nx) * 4;
+              if (data[nIdx + 3] >= 240) {
+                solidR += data[nIdx];
+                solidG += data[nIdx + 1];
+                solidB += data[nIdx + 2];
+                solidCount++;
+              }
+            }
+          }
+          if (solidCount > 0) {
+            data[idx]     = Math.round(solidR / solidCount);
+            data[idx + 1] = Math.round(solidG / solidCount);
+            data[idx + 2] = Math.round(solidB / solidCount);
+          }
+        }
+      }
+    }
+
+    // 2. Alpha Feathering
+    if (fth > 0) {
+      for (let y = 0; y < ih; y++) {
+        for (let x = 0; x < iw; x++) {
+          const pIdx = y * iw + x;
+          const curA = data[pIdx * 4 + 3];
+          let hasZero = false;
+          let hasSolid = false;
+          let sumA = 0;
+          let count = 0;
+
+          for (let dy = -fth; dy <= fth; dy++) {
+            const ny = y + dy;
+            if (ny < 0 || ny >= ih) continue;
+            for (let dx = -fth; dx <= fth; dx++) {
+              const nx = x + dx;
+              if (nx < 0 || nx >= iw) continue;
+              const val = data[(ny * iw + nx) * 4 + 3];
+              if (val === 0) hasZero = true;
+              if (val >= 250) hasSolid = true;
+              sumA += val;
+              count++;
+            }
+          }
+
+          if (hasZero && hasSolid) {
+            newAlpha[pIdx] = Math.round(sumA / count);
+          } else if (hasZero && curA < 180) {
+            newAlpha[pIdx] = Math.max(0, Math.round(curA * 0.35));
+          } else {
+            newAlpha[pIdx] = curA;
+          }
+        }
+      }
+
+      for (let i = 0; i < totalPixels; i++) {
+        data[i * 4 + 3] = newAlpha[i];
+      }
+    }
+  }
+
+  function smartAutoCutout(img, options = {}) {
+    const tolerance = options.tolerance || 28;
+    const feather = options.feather || 2;
+    const iw = img.naturalWidth || img.width || 1024;
+    const ih = img.naturalHeight || img.height || 1024;
+
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = iw;
+    tmpCanvas.height = ih;
+    const ctx = tmpCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, iw, ih);
+
+    const imgData = ctx.getImageData(0, 0, iw, ih);
+    const data = imgData.data;
+
+    const bgSamples = _sampleBackgroundColors(data, iw, ih);
+    if (!bgSamples.length) {
+      bgSamples.push({ r: 255, g: 255, b: 255 });
+    }
+
+    const tolDist = (tolerance / 100) * 440 + 10;
+    const softTol = tolDist + 24;
+
+    const visited = new Uint8Array(iw * ih);
+    const queue = new Int32Array(iw * ih);
+    let head = 0;
+    let tail = 0;
+
+    function pushQueue(x, y) {
+      if (x < 0 || y < 0 || x >= iw || y >= ih) return;
+      const idx = y * iw + x;
+      if (visited[idx]) return;
+      visited[idx] = 1;
+      queue[tail++] = idx;
+    }
+
+    for (let x = 0; x < iw; x++) { pushQueue(x, 0); pushQueue(x, ih - 1); }
+    for (let y = 0; y < ih; y++) { pushQueue(0, y); pushQueue(iw - 1, y); }
+
+    while (head < tail) {
+      const idx = queue[head++];
+      const pi = idx * 4;
+      const r = data[pi], g = data[pi + 1], b = data[pi + 2];
+      const dist = _minDistToBgSamples(r, g, b, bgSamples);
+
+      if (dist <= tolDist) {
+        data[pi + 3] = 0;
+        const x = idx % iw;
+        const y = Math.floor(idx / iw);
+        pushQueue(x + 1, y);
+        pushQueue(x - 1, y);
+        pushQueue(x, y + 1);
+        pushQueue(x, y - 1);
+      } else if (dist <= softTol) {
+        const alphaFactor = (dist - tolDist) / (softTol - tolDist);
+        data[pi + 3] = Math.round(data[pi + 3] * alphaFactor);
+      }
+    }
+
+    _defringeAndFeatherAlpha(data, iw, ih, feather);
+
+    ctx.putImageData(imgData, 0, 0);
+    return tmpCanvas.toDataURL('image/png');
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      ОЧИСТКА И ОБЕСПЕЧЕНИЕ 100% ПРОЗРАЧНОГО ФОНА SVG
      ══════════════════════════════════════════════════════════════ */
-  /**
-   * Извлекает чистый SVG из любого ответа нейросети,
-   * удаляет случайные фоновые прямоугольники и нормализует viewBox.
-   *
-   * @param {string} rawText
-   * @returns {string}
-   */
   function sanitizeAndExtractSvg(rawText) {
     if (!rawText || typeof rawText !== 'string') {
       throw new Error('Пустой ответ от нейросети');
     }
 
     let text = rawText.trim();
-
-    // 1. Извлечение содержимого между <svg ...> и </svg>
     const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
     if (!svgMatch) {
-      // Попробуем распаковать JSON, если модель завернула результат в JSON
       try {
         const parsed = JSON.parse(text);
         if (parsed.svg) return sanitizeAndExtractSvg(parsed.svg);
@@ -372,22 +644,15 @@
     }
 
     let svg = svgMatch[0];
-
-    // 2. Гарантируем корректный заголовок с namespace
     if (!svg.includes('xmlns="http://www.w3.org/2000/svg"')) {
       svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
     }
 
-    // 3. УДАЛЕНИЕ ФОНОВЫХ ПОДЛОЖЕК (100% ПРОЗРАЧНЫЙ ФОН):
-    // Модели иногда вставляют <rect width="100%" height="100%" fill="#..."/>
-    // Удаляем любые начальные rect, которые пытаются закрасить фон холста:
+    // Удаление фоновых прямоугольников
     svg = svg.replace(/<rect[^>]*width=["'](?:100%|100vw|100|200|300|400|500|800|1024)["'][^>]*height=["'](?:100%|100vh|100|200|300|400|500|800|1024)["'][^>]*fill=["'](?:#(?:[0-9a-fA-F]{3,8})|black|white|rgb\([^)]+\)|rgba\([^)]+\))["'][^>]*\/?>/gi, '');
     svg = svg.replace(/<rect[^>]*fill=["'](?:#(?:[0-9a-fA-F]{3,8})|black|white|rgb\([^)]+\))["'][^>]*width=["'](?:100%|100vw|100|200|300|400|500|800|1024)["'][^>]*height=["'](?:100%|100vh|100|200|300|400|500|800|1024)["'][^>]*\/?>/gi, '');
-
-    // Удаляем inline стиль background у самого тега <svg>
     svg = svg.replace(/(<svg[^>]*)\sstyle=["'][^"']*background[^"']*["']/gi, '$1');
 
-    // Гарантируем наличие viewBox
     if (!svg.includes('viewBox=')) {
       const wMatch = svg.match(/width=["'](\d+)["']/i);
       const hMatch = svg.match(/height=["'](\d+)["']/i);
@@ -400,23 +665,9 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     КЛИЕНТ API С КАСКАДНЫМ FALLBACK
+     КЛИЕНТ xKiro LLM С КАСКАДНЫМ FALLBACK И УЧЕТОМ ТОКЕНОВ
      ══════════════════════════════════════════════════════════════ */
-  /**
-   * Выполняет генерацию элемента через каскад моделей:
-   * Minimax M3 -> Qwen 3.6 35B -> Qwen 3.5 397B
-   *
-   * @param {string} userPrompt - Текстовое описание стикера/элемента
-   * @param {string} styleKey - Ключ стиля ('neon', 'flat', 'hologram', 'stamp', 'glossy3d')
-   * @param {object} [options] - Колбэки прогресса и отмены
-   * @returns {Promise<{ svg: string, model: string, usage: object }>}
-   */
-  async function generateAiElement(userPrompt, styleKey = 'neon', options = {}) {
-    if (!userPrompt || !userPrompt.trim()) {
-      throw new Error('Пожалуйста, введите описание элемента для генерации');
-    }
-
-    // Проверка суточного лимита токенов
+  async function callLlmCascade(systemPrompt, userPrompt, options = {}) {
     if (!tracker.canGenerate(CONFIG.MAX_TOKENS)) {
       const cd = tracker.getCountdown();
       throw new Error(`Превышен суточный лимит 1 000 000 токенов. Сброс лимита через ${cd.human}.`);
@@ -424,50 +675,22 @@
 
     const onStatusUpdate = typeof options.onStatus === 'function' ? options.onStatus : () => {};
     const abortSignal = options.signal || null;
-
-    const style = STYLE_MODIFIERS[styleKey] || STYLE_MODIFIERS.neon;
-
-    // Компактный системный промпт (строгая экономия токенов, strict SVG, 100% прозрачный фон)
-    const systemPrompt = 
-      "You are an expert SVG graphic designer for modern poster stickers and badges.\n" +
-      "Task: Generate ONLY standalone, valid vector SVG code for the requested icon/sticker element.\n" +
-      "STRICT RULES:\n" +
-      "1. Output ONLY raw <svg>...</svg> XML. NO Markdown backticks, NO explanations, NO HTML tags.\n" +
-      "2. 100% TRANSPARENT BACKGROUND: Never include any backdrop <rect> or full-bleed background shape.\n" +
-      "3. Use viewBox='0 0 300 300' and preserveAspectRatio='xMidYMid meet'.\n" +
-      "4. Include rich visuals: <defs>, <linearGradient>, <radialGradient>, glowing neon filters (<feGaussianBlur>).\n" +
-      "5. Use high-contrast vivid colors (#00f0ff, #ff007f, #a855f7, #ffd700, #10b981) suitable for dark and light posters.\n" +
-      "6. All text tags inside must have font-family='sans-serif' and font-weight='bold'.";
-
-    const promptText = `Generate SVG sticker: "${userPrompt.trim()}". ${style.prompt}. Keep SVG compact, sharp and beautiful. Output raw <svg> only.`;
-
     const errors = [];
 
-    // Каскадный перебор моделей (Waterfall Fallback)
     for (let i = 0; i < CONFIG.MODELS.length; i++) {
       const modelMeta = CONFIG.MODELS[i];
-      const isPrimary = (i === 0);
       const isFallback = (i > 0);
 
-      if (isFallback) {
-        onStatusUpdate({
-          status: 'fallback',
-          model: modelMeta.id,
-          modelName: modelMeta.name,
-          attempt: i + 1,
-          total: CONFIG.MODELS.length,
-          message: `Переключение на резервную модель ${modelMeta.name}...`
-        });
-      } else {
-        onStatusUpdate({
-          status: 'requesting',
-          model: modelMeta.id,
-          modelName: modelMeta.name,
-          attempt: 1,
-          total: CONFIG.MODELS.length,
-          message: `Генерация через ${modelMeta.name}...`
-        });
-      }
+      onStatusUpdate({
+        status: isFallback ? 'fallback' : 'requesting',
+        model: modelMeta.id,
+        modelName: modelMeta.name,
+        attempt: i + 1,
+        total: CONFIG.MODELS.length,
+        message: isFallback 
+          ? `Переключение на резервную модель ${modelMeta.name}...` 
+          : `Запрос через ${modelMeta.name}...`
+      });
 
       try {
         const timeoutController = new AbortController();
@@ -475,7 +698,6 @@
           timeoutController.abort(new Error(`Превышено время ожидания ответа (${CONFIG.REQUEST_TIMEOUT_MS / 1000}с)`));
         }, CONFIG.REQUEST_TIMEOUT_MS);
 
-        // Объединение сигналов отмены
         const combinedSignal = abortSignal 
           ? (abortSignal.aborted ? abortSignal : timeoutController.signal) 
           : timeoutController.signal;
@@ -487,7 +709,7 @@
         let data = null;
         let lastErrText = '';
 
-        // Попытка 1: через локальный серверный прокси (полный обход CORS и серверная ротация 3 ключей)
+        // Попытка 1: через ai_proxy.php
         try {
           const proxyResp = await fetch(CONFIG.API_PROXY_URL, {
             method: 'POST',
@@ -496,10 +718,10 @@
               model: modelMeta.id,
               messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: promptText }
+                { role: 'user', content: userPrompt }
               ],
               max_tokens: CONFIG.MAX_TOKENS,
-              temperature: 0.35
+              temperature: 0.4
             }),
             signal: combinedSignal
           });
@@ -518,7 +740,7 @@
           lastErrText = proxyErr.message || String(proxyErr);
         }
 
-        // Попытка 2: прямой запрос к xkiro с перебором всех 3 ключей
+        // Попытка 2: прямой запрос с ротацией 3 ключей
         if (!data) {
           for (let k = 0; k < CONFIG.API_KEYS.length; k++) {
             const currentKey = CONFIG.API_KEYS[k];
@@ -533,10 +755,10 @@
                   model: modelMeta.id,
                   messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: promptText }
+                    { role: 'user', content: userPrompt }
                   ],
                   max_tokens: CONFIG.MAX_TOKENS,
-                  temperature: 0.35
+                  temperature: 0.4
                 }),
                 signal: combinedSignal
               });
@@ -562,42 +784,19 @@
 
         const rawContent = data.choices?.[0]?.message?.content;
         if (!rawContent || !rawContent.trim()) {
-          throw new Error('Пустой ответ содержимого от модели');
+          throw new Error('Пустой ответ от модели');
         }
 
-        // Извлечение и валидация SVG
-        onStatusUpdate({
-          status: 'processing',
-          model: modelMeta.id,
-          modelName: modelMeta.name,
-          message: 'Проверка прозрачности и сборка векторных слоёв...'
-        });
-
-        const cleanSvg = sanitizeAndExtractSvg(rawContent);
-
-        // Учет токенов
         const usage = data.usage || {
-          prompt_tokens: Math.round(promptText.length / 4) + 120,
-          completion_tokens: Math.round(cleanSvg.length / 4),
-          total_tokens: Math.round((promptText.length + cleanSvg.length) / 4) + 120
+          prompt_tokens: Math.round(userPrompt.length / 4) + 140,
+          completion_tokens: Math.round(rawContent.length / 4),
+          total_tokens: Math.round((userPrompt.length + rawContent.length) / 4) + 140
         };
-
         const totalTokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
         tracker.recordUsage(totalTokens, modelMeta.id, userPrompt);
 
-        // Сохраняем в недавнюю историю
-        saveToRecentHistory(cleanSvg, userPrompt, styleKey, modelMeta.name);
-
-        onStatusUpdate({
-          status: 'success',
-          model: modelMeta.id,
-          modelName: modelMeta.name,
-          usage: usage,
-          message: `Элемент успешно сгенерирован (${totalTokens} токенов)!`
-        });
-
         return {
-          svg: cleanSvg,
+          text: rawContent,
           model: modelMeta.id,
           modelName: modelMeta.name,
           usage: usage,
@@ -608,12 +807,10 @@
         console.warn(`[Aurora AI Elements] Ошибка на модели ${modelMeta.id}:`, err);
         errors.push({ model: modelMeta.id, error: err.message || String(err) });
 
-        // Если отменено пользователем вручную, не пробуем дальше
         if (abortSignal && abortSignal.aborted) {
           throw new Error('Генерация отменена пользователем');
         }
 
-        // Если это была последняя модель в списке, выбрасываем сводную ошибку
         if (i === CONFIG.MODELS.length - 1) {
           const detail = errors.map(e => `• ${e.model}: ${e.error}`).join('\n');
           throw new Error(`Все AI модели вернули сбой:\n${detail}`);
@@ -623,15 +820,192 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
+     ПРОМПТ-ИНЖИНИРИНГ И РЕНДЕРИНГ ФОТО (FLUX + CUTOUT)
+     ══════════════════════════════════════════════════════════════ */
+  async function engineerPhotographicMasterPrompt(userPrompt, presetKey = 'studio', options = {}) {
+    const preset = PHOTO_PRESETS[presetKey] || PHOTO_PRESETS.studio;
+
+    const systemPrompt =
+      "You are an elite photographic prompt engineer and director of photography.\n" +
+      "Task: Transform the user's element request into a world-class, ultra-detailed English prompt for the FLUX.1 photorealistic image engine.\n" +
+      "CRITICAL MANDATORY SPECIFICATIONS:\n" +
+      "1. Pure isolated studio photography: The subject MUST be placed isolated on a pure seamless solid white studio background (pure #ffffff solid studio backdrop), perfectly lit with clean separation edges for background removal.\n" +
+      "2. Camera & Optics: Shot on Hasselblad H6D-100c medium format camera, 100 megapixels, 85mm f/1.4 lens, ISO 64, 1/250s shutter.\n" +
+      "3. Lighting: Professional 3-point studio lighting setup with soft key light, gentle fill, and crisp rim/edge lighting highlighting subject contours.\n" +
+      "4. Render Quality: 8k UHD resolution, extreme photorealism, tactile surface textures, micro-details, sharp crisp borders, commercial product photography masterpiece.\n" +
+      "5. NO distractions: NO background scenery, NO gradients, NO shadows touching the frame edges, NO floor texture, NO text, NO watermarks, NO cropped parts.\n" +
+      "Output ONLY the raw English prompt string, without quotation marks, markdown backticks, or conversational text.";
+
+    const promptText = `Create studio photo prompt for: "${userPrompt.trim()}". Style specifications: ${preset.prompt}. Output English prompt only.`;
+
+    const res = await callLlmCascade(systemPrompt, promptText, options);
+    let cleaned = res.text.replace(/^["'`]+|["'`]+$/g, '').trim();
+    cleaned = cleaned.replace(/```[a-z]*\n?([\s\S]*?)```/gi, '$1').trim();
+
+    return {
+      masterPrompt: cleaned,
+      model: res.model,
+      modelName: res.modelName,
+      usage: res.usage,
+      totalTokens: res.totalTokens
+    };
+  }
+
+  function renderFluxImage(masterPrompt) {
+    return new Promise((resolve, reject) => {
+      const seed = Math.floor(Math.random() * 10000000);
+      const encoded = encodeURIComponent(masterPrompt);
+      const fluxUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      const timeoutId = setTimeout(() => {
+        img.src = '';
+        reject(new Error('Превышено время ожидания FLUX фото-движка (45с)'));
+      }, 45000);
+
+      img.onload = () => {
+        clearTimeout(timeoutId);
+        resolve(img);
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeoutId);
+        const proxyUrl = `ai_proxy.php?action=image_proxy&url=${encodeURIComponent(fluxUrl)}`;
+        const pImg = new Image();
+        pImg.crossOrigin = 'anonymous';
+        pImg.onload = () => resolve(pImg);
+        pImg.onerror = () => reject(new Error('Не удалось загрузить сгенерированное фото от FLUX фото-движка'));
+        pImg.src = proxyUrl;
+      };
+
+      img.src = fluxUrl;
+    });
+  }
+
+  async function generateAiPhoto(userPrompt, presetKey = 'studio', options = {}) {
+    const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {};
+
+    // 1. Промпт-инжиниринг через xKiro LLM
+    onStatus({
+      status: 'prompt_engineering',
+      message: 'Промпт-инжиниринг xKiro LLM (Hasselblad 100MP, 85mm f/1.4, студийный свет)...'
+    });
+
+    const llmResult = await engineerPhotographicMasterPrompt(userPrompt, presetKey, options);
+
+    // 2. Рендеринг через FLUX
+    onStatus({
+      status: 'flux_rendering',
+      message: 'Рендеринг фото в FLUX 8K движке (1024x1024 photorealistic)...'
+    });
+
+    const rawImg = await renderFluxImage(llmResult.masterPrompt);
+
+    // 3. Smart Auto Cutout на 100% прозрачный фон
+    onStatus({
+      status: 'smart_cutout',
+      message: 'Smart Auto Cutout: Multi-seed Chroma + Defringing + Alpha Feathering (100% прозрачный фон)...'
+    });
+
+    const transparentPngUrl = smartAutoCutout(rawImg, { tolerance: 28, feather: 2 });
+
+    // Сохранение в историю сессии
+    saveToRecentHistory({
+      type: 'raster',
+      dataUrl: transparentPngUrl,
+      prompt: userPrompt,
+      presetKey,
+      modelName: llmResult.modelName
+    });
+
+    onStatus({
+      status: 'success',
+      message: `Фотография 8K успешно создана! (Токены: ${llmResult.totalTokens})`
+    });
+
+    return {
+      type: 'raster',
+      dataUrl: transparentPngUrl,
+      prompt: userPrompt,
+      masterPrompt: llmResult.masterPrompt,
+      model: llmResult.model,
+      modelName: llmResult.modelName,
+      usage: llmResult.usage,
+      totalTokens: llmResult.totalTokens
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     ГЕНЕРАЦИЯ ВЕКТОРНОГО SVG
+     ══════════════════════════════════════════════════════════════ */
+  async function generateAiVectorElement(userPrompt, styleKey = 'neon', options = {}) {
+    const onStatusUpdate = typeof options.onStatus === 'function' ? options.onStatus : () => {};
+    const style = STYLE_MODIFIERS[styleKey] || STYLE_MODIFIERS.neon;
+
+    const systemPrompt = 
+      "You are an expert SVG graphic designer for modern poster stickers and badges.\n" +
+      "Task: Generate ONLY standalone, valid vector SVG code for the requested icon/sticker element.\n" +
+      "STRICT RULES:\n" +
+      "1. Output ONLY raw <svg>...</svg> XML. NO Markdown backticks, NO explanations, NO HTML tags.\n" +
+      "2. 100% TRANSPARENT BACKGROUND: Never include any backdrop <rect> or full-bleed background shape.\n" +
+      "3. Use viewBox='0 0 300 300' and preserveAspectRatio='xMidYMid meet'.\n" +
+      "4. Include rich visuals: <defs>, <linearGradient>, <radialGradient>, glowing neon filters (<feGaussianBlur>).\n" +
+      "5. Use high-contrast vivid colors (#00f0ff, #ff007f, #a855f7, #ffd700, #10b981) suitable for dark and light posters.\n" +
+      "6. All text tags inside must have font-family='sans-serif' and font-weight='bold'.";
+
+    const promptText = `Generate SVG sticker: "${userPrompt.trim()}". ${style.prompt}. Keep SVG compact, sharp and beautiful. Output raw <svg> only.`;
+
+    const res = await callLlmCascade(systemPrompt, promptText, options);
+
+    onStatusUpdate({
+      status: 'processing',
+      model: res.model,
+      modelName: res.modelName,
+      message: 'Проверка прозрачности и сборка векторных слоёв...'
+    });
+
+    const cleanSvg = sanitizeAndExtractSvg(res.text);
+
+    saveToRecentHistory({
+      type: 'vector',
+      svg: cleanSvg,
+      prompt: userPrompt,
+      styleKey,
+      modelName: res.modelName
+    });
+
+    onStatusUpdate({
+      status: 'success',
+      model: res.model,
+      modelName: res.modelName,
+      usage: res.usage,
+      message: `Векторный элемент создан (${res.totalTokens} токенов)!`
+    });
+
+    return {
+      type: 'vector',
+      svg: cleanSvg,
+      prompt: userPrompt,
+      model: res.model,
+      modelName: res.modelName,
+      usage: res.usage,
+      totalTokens: res.totalTokens
+    };
+  }
+
+  // Общая точка входа: SVG или Растр
+  async function generateAiElement(userPrompt, styleOrPreset = 'studio', options = {}) {
+    if (options.mode === 'raster') {
+      return generateAiPhoto(userPrompt, styleOrPreset, options);
+    }
+    return generateAiVectorElement(userPrompt, styleOrPreset, options);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      ИНТЕГРАЦИЯ В ХОЛСТ FABRIC.JS (СЛОИ И ЦЕНТРИРОВАНИЕ)
      ══════════════════════════════════════════════════════════════ */
-  /**
-   * Вычисляет центр текущей видимой области (viewport) холста
-   * с учетом экранного зума и CANVAS_PADDING.
-   *
-   * @param {fabric.Canvas} [c]
-   * @returns {{ x: number, y: number }}
-   */
   function getVisibleViewportCenter(c) {
     const canvasInst = c || window.canvas;
     if (!canvasInst) return { x: 300, y: 400 };
@@ -645,13 +1019,9 @@
       if (vpt && canvasInst.getWidth && canvasInst.getHeight) {
         const screenCenterX = canvasInst.getWidth() / 2;
         const screenCenterY = canvasInst.getHeight() / 2;
-
-        // Обратное преобразование экранных координат в координаты артборда:
-        // screenX = ptX * vpt[0] + vpt[4]  ==>  ptX = (screenX - vpt[4]) / vpt[0]
         const ptX = (screenCenterX - vpt[4]) / (vpt[0] || 1);
         const ptY = (screenCenterY - vpt[5]) / (vpt[3] || 1);
 
-        // Если полученная точка находится в разумных пределах листа
         if (ptX >= -80 && ptX <= dims.w + 80 && ptY >= -80 && ptY <= dims.h + 80) {
           return {
             x: Math.max(30, Math.min(dims.w - 30, Math.round(ptX))),
@@ -666,14 +1036,6 @@
     return { x: Math.round(dims.w / 2), y: Math.round(dims.h / 2) };
   }
 
-  /**
-   * Загружает SVG строку и СРАЗУ добавляет ее новым слоем (fabric.Group)
-   * в центр видимой области холста.
-   *
-   * @param {string} svgText - Валидный SVG код
-   * @param {object} [options] - Дополнительные параметры размещения
-   * @returns {Promise<fabric.Group|fabric.Object>}
-   */
   function addSvgElementToCanvas(svgText, options = {}) {
     return new Promise((resolve, reject) => {
       const canvasInst = options.canvas || window.canvas;
@@ -691,13 +1053,11 @@
             return reject(new Error('Не удалось преобразовать SVG в векторные объекты Fabric.js'));
           }
 
-          // Группировка всех элементов SVG в единый составной объект
           const group = fabric.util.groupSVGElements(objects, opts);
           if (!group) {
             return reject(new Error('Сбой группировки элементов SVG'));
           }
 
-          // Вычисление подходящего масштаба под размеры текущего листа
           const dims = (typeof window.getArtboardDimensions === 'function')
             ? window.getArtboardDimensions(canvasInst)
             : { w: (window.currentSize?.w || 595), h: (window.currentSize?.h || 842) };
@@ -705,12 +1065,9 @@
           const origW = group.width || 200;
           const origH = group.height || 200;
           const maxDim = Math.max(origW, origH, 1);
-
-          // Целевой размер стикера на холсте (~28-36% от меньшей стороны листа, max 260px)
           const targetSize = Math.min(Math.min(dims.w, dims.h) * 0.34, CONFIG.DEFAULT_SIZE);
           const scale = targetSize / maxDim;
 
-          // Определение центра видимой области
           const center = getVisibleViewportCenter(canvasInst);
 
           group.set({
@@ -731,36 +1088,105 @@
             padding: 6
           });
 
-          // Пользовательские метаданные слоя
           group.__isAiElement = true;
           group.__aiPrompt = options.prompt || 'AI Sticker';
           group.__aiSvg = svgText;
           group.name = options.prompt ? `AI: ${options.prompt.slice(0, 20)}` : 'AI Стикер';
 
-          // Добавление на холст
           canvasInst.add(group);
           canvasInst.setActiveObject(group);
           canvasInst.requestRenderAll ? canvasInst.requestRenderAll() : canvasInst.renderAll();
 
-          // Скрываем анимацию вращающегося кружка Авроры (как изображение попадает на холст — анимация пропадает)
+          // ── Анимация исчезает ровно в момент попадания на холст ──
           hideAuroraLoader();
 
-          // Регистрация в истории Undo и обновление панели слоев
-          if (typeof window.saveHistory === 'function') {
-            window.saveHistory();
-          }
-          if (typeof window.updateLayersList === 'function') {
-            window.updateLayersList();
-          }
-          if (typeof window.toast === 'function') {
-            window.toast('✨ AI элемент добавлен на холст!');
-          }
+          if (typeof window.saveHistory === 'function') window.saveHistory();
+          if (typeof window.updateLayersList === 'function') window.updateLayersList();
+          if (typeof window.toast === 'function') window.toast('✨ AI вектор добавлен на холст!');
 
           resolve(group);
         } catch (err) {
+          hideAuroraLoader();
           reject(err);
         }
       });
+    });
+  }
+
+  function addPhotoImageElementToCanvas(transparentDataUrl, options = {}) {
+    return new Promise((resolve, reject) => {
+      const canvasInst = options.canvas || window.canvas;
+      if (!canvasInst) {
+        return reject(new Error('Холст афиши не инициализирован. Выберите шаблон.'));
+      }
+
+      if (typeof fabric === 'undefined' || !fabric.Image) {
+        return reject(new Error('Библиотека Fabric.js не найдена на странице'));
+      }
+
+      fabric.Image.fromURL(transparentDataUrl, fabricImg => {
+        try {
+          if (!fabricImg || !fabricImg.width) {
+            return reject(new Error('Не удалось создать fabric.Image из вырезанной фотографии'));
+          }
+
+          const dims = (typeof window.getArtboardDimensions === 'function')
+            ? window.getArtboardDimensions(canvasInst)
+            : { w: (window.currentSize?.w || 595), h: (window.currentSize?.h || 842) };
+
+          const origW = fabricImg.width || 1024;
+          const origH = fabricImg.height || 1024;
+          const maxDim = Math.max(origW, origH, 1);
+
+          // Целевой размер фото на холсте (~38% от меньшей стороны листа, max 340px)
+          const targetSize = Math.min(Math.min(dims.w, dims.h) * 0.38, 340);
+          const scale = targetSize / maxDim;
+
+          const center = getVisibleViewportCenter(canvasInst);
+          const promptText = options.prompt || 'Студийное фото';
+          const layerTitle = `[AI Photo] ${promptText.slice(0, 24)}`;
+
+          fabricImg.set({
+            left: center.x,
+            top: center.y,
+            originX: 'center',
+            originY: 'center',
+            scaleX: scale,
+            scaleY: scale,
+            selectable: true,
+            hasControls: true,
+            hasBorders: true,
+            transparentCorners: false,
+            cornerColor: '#00f0ff',
+            cornerStrokeColor: '#ffffff',
+            borderColor: '#00f0ff',
+            cornerSize: 10,
+            padding: 6
+          });
+
+          fabricImg.__isAiElement = true;
+          fabricImg.__isAiPhoto = true;
+          fabricImg.__aiPrompt = promptText;
+          fabricImg.name = layerTitle;
+          fabricImg.layerName = layerTitle;
+
+          canvasInst.add(fabricImg);
+          canvasInst.setActiveObject(fabricImg);
+          canvasInst.requestRenderAll ? canvasInst.requestRenderAll() : canvasInst.renderAll();
+
+          // ── Плавное исчезновение кружка Авроры ровно в момент попадания фото на холст ──
+          hideAuroraLoader();
+
+          if (typeof window.saveHistory === 'function') window.saveHistory();
+          if (typeof window.updateLayersList === 'function') window.updateLayersList();
+          if (typeof window.toast === 'function') window.toast(`📸 ${layerTitle} добавлено на холст!`);
+
+          resolve(fabricImg);
+        } catch (err) {
+          hideAuroraLoader();
+          reject(err);
+        }
+      }, { crossOrigin: 'anonymous' });
     });
   }
 
@@ -776,20 +1202,17 @@
     }
   }
 
-  function saveToRecentHistory(svg, prompt, styleKey, modelName) {
+  function saveToRecentHistory(item) {
     try {
       const history = getRecentHistory();
       history.unshift({
         id: 'ai_' + Date.now(),
         timestamp: Date.now(),
-        svg,
-        prompt,
-        styleKey,
-        modelName
+        ...item
       });
       safeSetItem(CONFIG.HISTORY_KEY, JSON.stringify(history.slice(0, 16)));
     } catch (e) {
-      // игнорируем квоты localStorage
+      // ignore
     }
   }
 
@@ -805,6 +1228,7 @@
     const btnClose = document.getElementById('ai-modal-close');
     const promptInput = document.getElementById('ai-prompt-input');
     const btnGenerate = document.getElementById('btn-ai-generate');
+    const btnGenerateLabel = document.getElementById('btn-ai-generate-label');
     const btnInsert = document.getElementById('btn-ai-insert-canvas');
     const btnCancel = document.getElementById('btn-ai-cancel');
     const previewContainer = document.getElementById('ai-svg-preview-box');
@@ -814,11 +1238,19 @@
     const tokenProgress = document.getElementById('ai-token-bar-fill');
     const tokenCountdown = document.getElementById('ai-token-countdown');
     const chipsContainer = document.getElementById('ai-prompt-chips');
-    const styleChips = document.querySelectorAll('.ai-style-chip');
     const historyStrip = document.getElementById('ai-recent-strip');
+    const tabRaster = document.getElementById('tab-ai-mode-raster');
+    const tabVector = document.getElementById('tab-ai-mode-vector');
+    const groupPhotoPresets = document.getElementById('group-photo-presets');
+    const groupVectorStyles = document.getElementById('group-vector-styles');
+    const promptLabelText = document.getElementById('ai-prompt-label-text');
+    const photoPresetCards = document.querySelectorAll('.ai-preset-card');
+    const styleChips = document.querySelectorAll('.ai-style-chip');
 
-    let currentSvg = '';
-    let currentStyle = 'neon';
+    let currentMode = 'raster'; // 'raster' | 'vector'
+    let currentPhotoPreset = 'studio';
+    let currentVectorStyle = 'neon';
+    let currentResult = null; // { type: 'raster'|'vector', dataUrl?: string, svg?: string, prompt: string }
 
     // 1. Привязка трекера токенов к UI
     function updateTokenUI(state) {
@@ -849,27 +1281,87 @@
     tracker.subscribe(tokenListener);
 
     // 2. Отрисовка быстрых подсказок-промптов
-    if (chipsContainer) {
-      chipsContainer.innerHTML = PROMPT_PRESETS.map(p => `
-        <button type="button" class="ai-chip-btn" data-prompt="${encodeURIComponent(p.prompt)}" data-style="${p.style}">
+    function renderPromptChips() {
+      if (!chipsContainer) return;
+      const presets = currentMode === 'raster' ? PHOTO_PROMPT_PRESETS : PROMPT_PRESETS;
+      chipsContainer.innerHTML = presets.map(p => `
+        <button type="button" class="ai-chip-btn" data-prompt="${encodeURIComponent(p.prompt)}" data-preset="${p.preset || p.style || ''}">
           ${p.label}
         </button>
       `).join('');
+    }
 
+    if (chipsContainer) {
       chipsContainer.addEventListener('click', e => {
         const btn = e.target.closest('.ai-chip-btn');
         if (!btn) return;
         const p = decodeURIComponent(btn.dataset.prompt);
-        const st = btn.dataset.style;
+        const preset = btn.dataset.preset;
         if (promptInput) promptInput.value = p;
-        if (st) selectStyle(st);
+
+        if (currentMode === 'raster' && preset) {
+          selectPhotoPreset(preset);
+        } else if (currentMode === 'vector' && preset) {
+          selectVectorStyle(preset);
+        }
+
         if (promptInput) promptInput.focus();
       });
     }
 
-    // 3. Выбор стиля
-    function selectStyle(key) {
-      currentStyle = key;
+    // 3. Переключение режимов Фото (Растр 8K) vs Вектор (SVG)
+    function setMode(mode) {
+      currentMode = mode;
+      if (tabRaster) {
+        tabRaster.classList.toggle('is-active', mode === 'raster');
+        tabRaster.setAttribute('aria-selected', mode === 'raster');
+      }
+      if (tabVector) {
+        tabVector.classList.toggle('is-active', mode === 'vector');
+        tabVector.setAttribute('aria-selected', mode === 'vector');
+      }
+
+      if (mode === 'raster') {
+        groupPhotoPresets?.classList.remove('hidden');
+        groupVectorStyles?.classList.add('hidden');
+        if (btnGenerateLabel) btnGenerateLabel.textContent = 'Сгенерировать Студийное Фото 8K';
+        if (promptLabelText) promptLabelText.textContent = 'Описание объекта для студийной съемки (Растр 8K)';
+        if (promptInput && (!promptInput.value || promptInput.value.includes('стрелка') || promptInput.value.includes('штамп'))) {
+          promptInput.placeholder = 'Например: Сочное рубиновое яблоко с капельками росы или античный бронзовый подсвечник...';
+        }
+      } else {
+        groupPhotoPresets?.classList.add('hidden');
+        groupVectorStyles?.classList.remove('hidden');
+        if (btnGenerateLabel) btnGenerateLabel.textContent = 'Сгенерировать Векторный SVG';
+        if (promptLabelText) promptLabelText.textContent = 'Описание векторного элемента / стикера';
+        if (promptInput && (!promptInput.value || promptInput.value.includes('яблоко') || promptInput.value.includes('наушники'))) {
+          promptInput.placeholder = 'Например: Неоновая золотая стрелка с кибер-градиентом или библиотечный винтажный штамп...';
+        }
+      }
+
+      renderPromptChips();
+    }
+
+    tabRaster?.addEventListener('click', () => setMode('raster'));
+    tabVector?.addEventListener('click', () => setMode('vector'));
+
+    // 4. Выбор фото-пресетов
+    function selectPhotoPreset(key) {
+      currentPhotoPreset = key;
+      photoPresetCards.forEach(c => {
+        c.classList.toggle('is-active', c.dataset.preset === key);
+      });
+    }
+
+    photoPresetCards.forEach(card => {
+      card.addEventListener('click', () => {
+        selectPhotoPreset(card.dataset.preset);
+      });
+    });
+
+    // 5. Выбор векторного стиля
+    function selectVectorStyle(key) {
+      currentVectorStyle = key;
       styleChips.forEach(c => {
         c.classList.toggle('is-active', c.dataset.style === key);
       });
@@ -877,22 +1369,26 @@
 
     styleChips.forEach(chip => {
       chip.addEventListener('click', () => {
-        selectStyle(chip.dataset.style);
+        selectVectorStyle(chip.dataset.style);
       });
     });
 
-    // 4. Отрисовка недавних генераций
+    // 6. Отрисовка недавних генераций
     function renderHistory() {
       if (!historyStrip) return;
       const list = getRecentHistory();
       if (!list.length) {
-        historyStrip.innerHTML = '<span class="ai-history-empty">История пуста. Сгенерируйте первый стикер!</span>';
+        historyStrip.innerHTML = '<span class="ai-history-empty">История пуста. Сгенерируйте первое изображение!</span>';
         return;
       }
       historyStrip.innerHTML = list.map(item => `
-        <div class="ai-history-thumb" data-id="${item.id}" title="${item.prompt}">
-          <div class="ai-thumb-inner">${item.svg}</div>
-          <span class="ai-thumb-label">${item.prompt.slice(0, 16)}...</span>
+        <div class="ai-history-thumb" data-id="${item.id}" title="${escapeHtml(item.prompt)}">
+          <div class="ai-thumb-inner">
+            ${item.type === 'raster' 
+              ? `<img src="${item.dataUrl}" style="width:100%;height:100%;object-fit:contain;" alt="Photo">` 
+              : (item.svg || '<span class="material-symbols-rounded">category</span>')}
+          </div>
+          <span class="ai-thumb-label">${escapeHtml((item.prompt || '').slice(0, 16))}...</span>
         </div>
       `).join('');
     }
@@ -904,22 +1400,28 @@
         const id = thumb.dataset.id;
         const item = getRecentHistory().find(x => x.id === id);
         if (item) {
-          currentSvg = item.svg;
-          setPreviewSvg(item.svg);
+          currentResult = item;
+          if (item.type === 'raster') {
+            setPreviewRaster(item.dataUrl);
+            setMode('raster');
+          } else {
+            setPreviewSvg(item.svg);
+            setMode('vector');
+          }
           if (btnInsert) btnInsert.disabled = false;
           if (statusText) statusText.textContent = `Загружен из истории: "${item.prompt}"`;
         }
       });
     }
 
-    // 5. Превью SVG
+    // 7. Управление превью
     function setPreviewSvg(svgStr) {
       if (!previewContainer) return;
       if (!svgStr) {
         previewContainer.innerHTML = `
           <div class="ai-preview-placeholder">
-            <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.35;">auto_awesome</span>
-            <p>Здесь появится сгенерированный векторный элемент на 100% прозрачном фоне</p>
+            <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.35;">draw</span>
+            <p>Здесь появится векторный элемент на 100% прозрачном фоне</p>
           </div>
         `;
         if (btnInsert) btnInsert.disabled = true;
@@ -929,11 +1431,31 @@
       if (btnInsert) btnInsert.disabled = false;
     }
 
-    // 6. Запуск генерации
+    function setPreviewRaster(imgDataUrl) {
+      if (!previewContainer) return;
+      if (!imgDataUrl) {
+        previewContainer.innerHTML = `
+          <div class="ai-preview-placeholder">
+            <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.35;">photo_camera</span>
+            <p>Здесь появится студийная фотография на 100% прозрачном фоне</p>
+          </div>
+        `;
+        if (btnInsert) btnInsert.disabled = true;
+        return;
+      }
+      previewContainer.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:12px;">
+          <img src="${imgDataUrl}" class="ai-raster-preview-img" alt="8K Transparent Photo">
+        </div>
+      `;
+      if (btnInsert) btnInsert.disabled = false;
+    }
+
+    // 8. Запуск генерации
     async function doGenerate() {
       const val = promptInput ? promptInput.value.trim() : '';
       if (!val) {
-        if (typeof window.toast === 'function') window.toast('Введите описание элемента');
+        if (typeof window.toast === 'function') window.toast('Введите описание элемента для генерации');
         if (promptInput) promptInput.focus();
         return;
       }
@@ -941,26 +1463,42 @@
       if (btnGenerate) btnGenerate.disabled = true;
       if (btnCancel) btnCancel.classList.remove('hidden');
       if (statusPill) statusPill.className = 'ai-status-pill is-loading';
-      if (statusText) statusText.textContent = 'Подключение к AI эндпоинту...';
+      if (statusText) statusText.textContent = 'Инициализация AI генерации...';
 
-      // Запуск вращающегося кружка в стиле Авроры (на холсте и в превью)
-      showAuroraLoader('Нейросеть генерирует элемент...', 'Подбор композиции и прозрачного фона в стиле Авроры');
+      const isRaster = (currentMode === 'raster');
+      const loaderTitle = isRaster
+        ? 'Нейросеть создаёт студийное фото 8K...'
+        : 'Нейросеть генерирует векторный SVG...';
+      const loaderSub = isRaster
+        ? 'Hasselblad 100MP · FLUX Рендеринг · 100% Transparent Cutout'
+        : 'Создание векторных слоёв на 100% прозрачном фоне';
 
+      showAuroraLoader(loaderTitle, loaderSub);
       activeAbortController = new AbortController();
 
       try {
-        const res = await generateAiElement(val, currentStyle, {
-          signal: activeAbortController.signal,
-          onStatus: info => {
-            if (statusText) statusText.textContent = info.message;
-            if (info.status === 'fallback') {
-              if (statusPill) statusPill.className = 'ai-status-pill is-warning';
-            }
-          }
-        });
+        let res = null;
 
-        currentSvg = res.svg;
-        setPreviewSvg(res.svg);
+        if (isRaster) {
+          res = await generateAiPhoto(val, currentPhotoPreset, {
+            signal: activeAbortController.signal,
+            onStatus: info => {
+              if (statusText) statusText.textContent = info.message;
+            }
+          });
+          currentResult = res;
+          setPreviewRaster(res.dataUrl);
+        } else {
+          res = await generateAiVectorElement(val, currentVectorStyle, {
+            signal: activeAbortController.signal,
+            onStatus: info => {
+              if (statusText) statusText.textContent = info.message;
+            }
+          });
+          currentResult = res;
+          setPreviewSvg(res.svg);
+        }
+
         renderHistory();
 
         if (statusPill) statusPill.className = 'ai-status-pill is-success';
@@ -971,8 +1509,11 @@
         // Автоматическая подстановка на холст при чекбоксе авто-вставки
         const chkAuto = document.getElementById('ai-chk-auto-insert');
         if (chkAuto && chkAuto.checked) {
-          await addSvgElementToCanvas(res.svg, { prompt: val });
-          // addSvgElementToCanvas автоматически вызывает hideAuroraLoader() как только элемент добавлен на холст
+          if (res.type === 'raster') {
+            await addPhotoImageElementToCanvas(res.dataUrl, { prompt: val });
+          } else {
+            await addSvgElementToCanvas(res.svg, { prompt: val });
+          }
           closeModal();
         }
 
@@ -986,7 +1527,7 @@
         if (btnCancel) btnCancel.classList.add('hidden');
         activeAbortController = null;
         const chkAuto = document.getElementById('ai-chk-auto-insert');
-        if (!chkAuto || !chkAuto.checked || !currentSvg) {
+        if (!chkAuto || !chkAuto.checked || !currentResult) {
           hideAuroraLoader();
         }
       }
@@ -1006,19 +1547,23 @@
       btnCancel.addEventListener('click', () => {
         if (activeAbortController) {
           activeAbortController.abort();
-          if (statusText) statusText.textContent = 'Генерация отменена';
+          if (statusText) statusText.textContent = 'Генерация отменена пользователем';
         }
         hideAuroraLoader();
       });
     }
 
-    // 7. Вставка на холст
+    // 9. Ручная вставка на холст
     if (btnInsert) {
       btnInsert.addEventListener('click', async () => {
-        if (!currentSvg) return;
+        if (!currentResult) return;
         try {
-          const val = promptInput ? promptInput.value.trim() : 'AI Sticker';
-          await addSvgElementToCanvas(currentSvg, { prompt: val });
+          const val = promptInput ? promptInput.value.trim() : currentResult.prompt;
+          if (currentResult.type === 'raster') {
+            await addPhotoImageElementToCanvas(currentResult.dataUrl, { prompt: val });
+          } else {
+            await addSvgElementToCanvas(currentResult.svg, { prompt: val });
+          }
           hideAuroraLoader();
           closeModal();
         } catch (err) {
@@ -1031,6 +1576,7 @@
     function openModal() {
       modalOverlay.classList.remove('hidden');
       renderHistory();
+      renderPromptChips();
       if (promptInput) promptInput.focus();
     }
 
@@ -1040,6 +1586,7 @@
         activeAbortController.abort();
         activeAbortController = null;
       }
+      hideAuroraLoader();
     }
 
     if (btnClose) btnClose.addEventListener('click', closeModal);
@@ -1053,12 +1600,13 @@
       }
     });
 
-    // Экспорт функции открытия модалки
     window.openAiGeneratorModal = openModal;
     window.openAiElementModal = openModal;
+
+    // Первичная инициализация чипсов
+    renderPromptChips();
   }
 
-  // Автоинициализация при загрузке DOM
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initModalUI);
@@ -1072,6 +1620,11 @@
      ══════════════════════════════════════════════════════════════ */
   return {
     generateAiElement,
+    generateAiPhoto,
+    generateAiVectorElement,
+    engineerPhotographicMasterPrompt,
+    smartAutoCutout,
+    addPhotoImageElementToCanvas,
     addSvgElementToCanvas,
     sanitizeAndExtractSvg,
     getVisibleViewportCenter,
@@ -1082,6 +1635,8 @@
     },
     tracker,
     CONFIG,
+    PHOTO_PRESETS,
+    PHOTO_PROMPT_PRESETS,
     STYLE_MODIFIERS,
     PROMPT_PRESETS,
     getRecentHistory

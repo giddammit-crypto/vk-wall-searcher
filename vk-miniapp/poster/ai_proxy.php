@@ -34,6 +34,32 @@ $defaultModels = [
 ];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
+    if (($_GET['action'] ?? '') === 'image_proxy' && !empty($_GET['url'])) {
+        $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
+        if ($url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT => 45,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 AuroraDesign/5.1.0'
+            ]);
+            $data = curl_exec($ch);
+            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: 'image/jpeg';
+            curl_close($ch);
+            if ($data !== false) {
+                header('Content-Type: ' . $contentType);
+                echo $data;
+                exit;
+            }
+        }
+        http_response_code(400);
+        echo json_encode(['error' => 'Failed to proxy image']);
+        exit;
+    }
+
     echo json_encode([
         'status' => 'ok',
         'service' => 'Aurora AI Proxy',
