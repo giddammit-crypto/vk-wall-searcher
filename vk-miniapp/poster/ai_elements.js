@@ -1828,7 +1828,12 @@
         const chkAuto = document.getElementById('ai-chk-auto-insert');
         if (chkAuto && chkAuto.checked) {
           if (res.type === 'raster') {
-            await addPhotoImageElementToCanvas(res.dataUrl, { prompt: val });
+            const isCutout = (currentBgMode === 'cutout');
+            await addPhotoImageElementToCanvas(res.dataUrl, { 
+              prompt: val,
+              isCutout: isCutout,
+              cornerRadius: isCutout ? 0 : 16
+            });
           } else {
             await addSvgElementToCanvas(res.svg, { prompt: val });
           }
@@ -1878,7 +1883,12 @@
         try {
           const val = promptInput ? promptInput.value.trim() : currentResult.prompt;
           if (currentResult.type === 'raster') {
-            await addPhotoImageElementToCanvas(currentResult.dataUrl, { prompt: val });
+            const isCutout = (currentBgMode === 'cutout');
+            await addPhotoImageElementToCanvas(currentResult.dataUrl, { 
+              prompt: val,
+              isCutout: isCutout,
+              cornerRadius: isCutout ? 0 : 16
+            });
           } else {
             await addSvgElementToCanvas(currentResult.svg, { prompt: val });
           }
