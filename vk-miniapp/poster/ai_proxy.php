@@ -84,9 +84,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
                     exit;
                 }
                 
-                // If failed or rate limited, rotate seed and try free fallback model (flux -> flux-realism -> turbo)
+                // If failed or rate limited, rotate seed and try free fallback model (flux-realism -> flux -> turbo)
                 $newSeed = rand(100000, 9999999);
-                $fallbackFreeModels = ['flux', 'flux-realism', 'turbo'];
+                $fallbackFreeModels = ['flux-realism', 'flux', 'turbo'];
                 $nextModel = $fallbackFreeModels[$attempt % count($fallbackFreeModels)];
                 $currentUrl = preg_replace('/model=[a-zA-Z0-9_-]+/', 'model=' . $nextModel, $url);
                 $currentUrl = preg_replace('/seed=\d+/', 'seed=' . $newSeed, $currentUrl);

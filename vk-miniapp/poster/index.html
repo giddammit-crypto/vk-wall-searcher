@@ -8,10 +8,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- 20+ шрифтов с полной кириллической поддержкой (включая 400 normal и 700/800 bold) + ofont.ru -->
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Comfortaa:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Dela+Gothic+One&family=Jura:wght@400;600;700&family=Kelly+Slab&family=Lobster&family=Marck+Script&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Neucha&family=Oswald:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Podkova:wght@400;600;700&family=Press+Start+2P&family=Roboto+Slab:wght@400;500;700&family=Rubik:wght@400;500;600;700&family=Ruslan+Display&family=Unbounded:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&subset=cyrillic&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=5.2.6">
-<link rel="stylesheet" href="enhancer.css?v=5.2.6">
-<link rel="stylesheet" href="ai_elements.css?v=5.2.6">
-<link rel="stylesheet" href="retouch_engine.css?v=5.2.6">
+<link rel="stylesheet" href="style.css?v=5.2.7">
+<link rel="stylesheet" href="enhancer.css?v=5.2.7">
+<link rel="stylesheet" href="ai_elements.css?v=5.2.7">
+<link rel="stylesheet" href="retouch_engine.css?v=5.2.7">
 </head>
 <body>
 
@@ -1097,6 +1097,7 @@
             <span>РАЗРЕШЕНИЕ И HDR</span>
           </div>
           <div class="figma-export-presets" id="export-res-group">
+            <button class="figma-preset-btn" data-res="original" id="btn-inspector-res-original" title="Как на экране (100% исходный размер холста 1:1, без 4K и апскейла)">1x Экран</button>
             <button class="figma-preset-btn" data-res="1k" title="1K Full HD (~1920px)">1K</button>
             <button class="figma-preset-btn is-active" data-res="2k" title="2K Quad HD (~2560px, стандарт)">2K</button>
             <button class="figma-preset-btn" data-res="4k" title="4K Ultra HD (~3840px)">4K</button>
@@ -1116,6 +1117,11 @@
           <button class="figma-main-export-btn" id="btn-inspector-export-png" title="Экспортировать афишу в выбранном формате" style="margin-top: 10px;">
             <span class="material-symbols-rounded">download</span>
             <span id="inspector-export-label">Экспорт афиши (PNG)</span>
+          </button>
+
+          <button type="button" class="figma-preset-btn" id="btn-inspector-export-screen" title="Мгновенно скачать афишу 1:1 ровно как на экране (без 4K и HDR)" style="width: 100%; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; font-size: 12px; font-weight: 600; color: #7dd3fc; cursor: pointer;">
+            <span class="material-symbols-rounded" style="font-size: 16px;">screenshot_monitor</span>
+            <span>Сохранить как на экране (1:1)</span>
           </button>
 
           <button type="button" class="figma-preset-btn" id="btn-inspector-copy-clipboard" title="Скопировать изображение афиши в буфер обмена" style="width: 100%; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; font-size: 12px; font-weight: 600; color: #f8fafc; cursor: pointer;">
@@ -2131,6 +2137,16 @@
             </div>
           </div>
           <div class="enhancer-res-grid" id="enhancer-res-selector">
+            <!-- 1x (Как на экране) -->
+            <div class="enhancer-res-chip" data-res="original">
+              <div class="enhancer-res-chip-head">
+                <span class="enhancer-res-name">Оригинал (1x)</span>
+                <span class="enhancer-res-badge">Экран</span>
+              </div>
+              <span class="enhancer-res-dim">100% размер холста</span>
+              <span class="enhancer-res-desc">Как на экране, без 4K и масштабирования</span>
+            </div>
+
             <!-- 1K (Full HD) -->
             <div class="enhancer-res-chip" data-res="1k">
               <div class="enhancer-res-chip-head">
@@ -2509,7 +2525,7 @@
         <div class="ai-input-group">
           <div class="ai-label">
             <span id="ai-prompt-label-text">Описание элемента / объекта</span>
-            <span style="font-size:11px; text-transform:none; color:#64748b;">max ~1200 токенов</span>
+            <span id="ai-token-cost-hint" style="font-size:11px; text-transform:none; color:#38bdf8; font-weight:600;">Глубокий анализ: 45 000–60 000 токенов</span>
           </div>
           <textarea class="ai-textarea" id="ai-prompt-input" placeholder="Например: Неоновая золотая стрелка с кибер-градиентом или библиотечный винтажный штамп 'КНИЖНЫЙ КЛУБ'..." rows="3"></textarea>
         </div>
@@ -2902,10 +2918,10 @@ if (typeof QRCode === 'undefined') {
 </script>
 <script src="../chronograph/data.js"></script>
 <script src="../chronograph/poster_templates.js"></script>
-<script src="ai_elements.js?v=5.2.6"></script>
-<script src="retouch_engine.js?v=5.2.6"></script>
-<script src="enhancer.js?v=5.2.6"></script>
-<script src="editor.js?v=5.2.6"></script>
+<script src="ai_elements.js?v=5.2.7"></script>
+<script src="retouch_engine.js?v=5.2.7"></script>
+<script src="enhancer.js?v=5.2.7"></script>
+<script src="editor.js?v=5.2.7"></script>
 </body>
 </html>
 

@@ -5954,6 +5954,74 @@ async function exportWebp() {
   }
 }
 
+/**
+ * Экспорт афиши ровно как на экране (1:1, 100% размер холста без 4K, без апскейла и без HDR искажений)
+ */
+async function exportAsOnScreen(format = null) {
+  if (!canvas || isExportRunning) return;
+  isExportRunning = true;
+  const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
+  const filename = (rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша') + '_screen';
+  const dims = getArtboardDimensions(canvas);
+  const chosenFmt = (format || currentExportFormat || 'png').toLowerCase();
+
+  showExportLoader(`Экспорт как на экране (1:1)`, `Рендеринг ${dims.w} × ${dims.h} px (100% оригинал)...`, 20);
+
+  try {
+    await new Promise(r => setTimeout(r, 20));
+    updateExportProgress(60, 'Рендеринг холста без апскейла...');
+
+    // Чистый рендеринг строго в масштабе 1.0 (ровно как на экране, без 4K и без HDR)
+    const buffer = renderCleanArtboardCanvas(canvas, 1.0);
+
+    updateExportProgress(85, 'Кодирование файла...');
+    await new Promise(r => setTimeout(r, 20));
+
+    let ext = 'png';
+    let url = '';
+
+    if (chosenFmt === 'jpg' || chosenFmt === 'jpeg') {
+      ext = 'jpg';
+      const jpgCanvas = document.createElement('canvas');
+      jpgCanvas.width = buffer.width;
+      jpgCanvas.height = buffer.height;
+      const jCtx = jpgCanvas.getContext('2d');
+      const canvasBg = canvas.__artboardBg || ((typeof canvas.backgroundColor === 'string' && canvas.backgroundColor) ? canvas.backgroundColor : '#ffffff');
+      jCtx.fillStyle = canvasBg;
+      jCtx.fillRect(0, 0, jpgCanvas.width, jpgCanvas.height);
+      jCtx.drawImage(buffer, 0, 0);
+      url = jpgCanvas.toDataURL('image/jpeg', 0.98);
+      jpgCanvas.width = 0;
+      jpgCanvas.height = 0;
+    } else if (chosenFmt === 'webp') {
+      ext = 'webp';
+      url = buffer.toDataURL('image/webp', 0.94);
+    } else {
+      ext = 'png';
+      url = buffer.toDataURL('image/png');
+    }
+
+    buffer.width = 0;
+    buffer.height = 0;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    hideExportLoader(`Сохранено как на экране (${dims.w} × ${dims.h} px)`);
+    toast(`✅ Сохранено как на экране (${dims.w} × ${dims.h} px, 1:1)`);
+  } catch (err) {
+    console.error('[AURORA Export Screen] Error:', err);
+    hideExportLoader();
+    toast(`Ошибка сохранения как на экране: ${err.message || err}`);
+  } finally {
+    isExportRunning = false;
+  }
+}
+
 async function copyCanvasImageToClipboard() {
   if (!canvas) {
     toast('Холст не инициализирован');
@@ -9724,6 +9792,7 @@ function bindEvents() {
   };
 
   $('#btn-inspector-export-png')?.addEventListener('click', exportBySelectedFormat);
+  $('#btn-inspector-export-screen')?.addEventListener('click', () => exportAsOnScreen());
   $('#btn-inspector-copy-clipboard')?.addEventListener('click', copyCanvasImageToClipboard);
   $('#btn-inspector-png')?.addEventListener('click', () => setExportFormat('png', true));
   $('#btn-inspector-jpg')?.addEventListener('click', () => setExportFormat('jpg', true));
@@ -10967,6 +11036,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.activateSelectTool = activateSelectTool;
   window.getArtboardDimensions = getArtboardDimensions;
   window.exportWebp = exportWebp;
+  window.exportAsOnScreen = exportAsOnScreen;
   window.copyCanvasImageToClipboard = copyCanvasImageToClipboard;
 
   // Инициализация хранилища черновиков и проектов (IndexedDB + кэш)
