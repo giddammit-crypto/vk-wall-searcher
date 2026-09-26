@@ -1797,7 +1797,7 @@ const CUSTOM_PROPS_TO_SAVE = [
   'lockMovementX', 'lockMovementY', 'lockScalingX', 'lockScalingY', 'lockRotation',
   '__filterValues', '__isUppercase', '__origText', '__isHdrEnhanced', '__currentHdrPreset',
   'layerName', '__originalSrc', '__bgRemoved', '__cornerRadius', 'clipPath',
-  'isAiElement', 'aiPrompt', 'aiType', 'rx', 'ry'
+  'isAiElement', '__isAiElement', 'isAiPhoto', '__isAiPhoto', 'aiPrompt', '__aiPrompt', 'aiType', '__aiSvg', 'rx', 'ry'
 ];
 
 /**
@@ -2025,8 +2025,16 @@ function initCanvas(w, h) {
   });
   canvas.on('object:rotating',    () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   
-  // Обработчики мыши для инструментов Волшебной палочки и Ластика
+  // Обработчики мыши: Панорамирование (Hand tool / Space drag / колесо мыши), Волшебная палочка и Ластик
   canvas.on('mouse:down', opt => {
+    if (isSpacePressed || isPanningMode || (opt.e && opt.e.button === 1)) {
+      isCanvasDragging = true;
+      canvas.selection = false;
+      lastPanPosX = opt.e.clientX;
+      lastPanPosY = opt.e.clientY;
+      canvas.defaultCursor = 'grabbing';
+      return;
+    }
     if (typeof _eraserMode !== 'undefined' && _eraserMode) {
       _eraserMouseDownHandler(opt);
     } else {
@@ -2034,11 +2042,34 @@ function initCanvas(w, h) {
     }
   });
   canvas.on('mouse:move', opt => {
+    if (isCanvasDragging && canvas) {
+      const vpt = canvas.viewportTransform;
+      if (vpt) {
+        vpt[4] += (opt.e.clientX - lastPanPosX);
+        vpt[5] += (opt.e.clientY - lastPanPosY);
+        canvas.requestRenderAll();
+      }
+      lastPanPosX = opt.e.clientX;
+      lastPanPosY = opt.e.clientY;
+      return;
+    }
     if (typeof _eraserMode !== 'undefined' && _eraserMode) {
       _eraserMouseMoveHandler(opt);
     }
   });
   canvas.on('mouse:up', opt => {
+    if (isCanvasDragging && canvas) {
+      isCanvasDragging = false;
+      canvas.setViewportTransform(canvas.viewportTransform);
+      if (isSpacePressed || isPanningMode) {
+        canvas.defaultCursor = 'grab';
+        canvas.selection = false;
+      } else {
+        canvas.defaultCursor = 'default';
+        if (currentTool === 'select') canvas.selection = true;
+      }
+      return;
+    }
     if (typeof _eraserMode !== 'undefined' && _eraserMode) {
       _eraserMouseUpHandler(opt);
     }
@@ -3937,10 +3968,23 @@ async function activateEyedropper() {
   }
 }
 
+let _activeEyedropperCleanup = null;
+
+function cancelCanvasEyedropper() {
+  if (typeof _activeEyedropperCleanup === 'function') {
+    _activeEyedropperCleanup();
+    _activeEyedropperCleanup = null;
+  }
+  $('#tool-eyedropper')?.classList.remove('is-active', 'active');
+}
+
 function startCanvasEyedropperFallback() {
   if (!canvas) return;
   const btn = $('#tool-eyedropper');
   btn?.classList.add('is-active');
+  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+    el.classList.remove('is-active', 'active');
+  });
   toast('Кликните на холст, чтобы взять цвет (Esc — отмена)');
   const origCursor = canvas.defaultCursor;
   canvas.defaultCursor = 'crosshair';
@@ -3952,11 +3996,13 @@ function startCanvasEyedropperFallback() {
     const px = ctx.getImageData(Math.round(ptr.x), Math.round(ptr.y), 1, 1).data;
     const hex = '#' + [px[0], px[1], px[2]].map(x => x.toString(16).padStart(2, '0')).join('');
     applyPickedColor(hex);
+    setActiveTool('select', false);
   };
 
   const onKey = function(e) {
     if (e.key === 'Escape') {
       cleanup();
+      setActiveTool('select', false);
       toast('Пипетка отменена');
     }
   };
@@ -3965,9 +4011,11 @@ function startCanvasEyedropperFallback() {
     canvas.off('mouse:down', onMouseDown);
     window.removeEventListener('keydown', onKey);
     canvas.defaultCursor = origCursor;
-    btn?.classList.remove('is-active');
+    btn?.classList.remove('is-active', 'active');
+    _activeEyedropperCleanup = null;
   }
 
+  _activeEyedropperCleanup = cleanup;
   canvas.on('mouse:down', onMouseDown);
   window.addEventListener('keydown', onKey);
 }
@@ -4013,60 +4061,107 @@ function applyPickedColor(hex) {
 let _pencilColor = '#0d99ff';
 let _pencilWidth = 4;
 
-/**
- * Активация инструмента «Стрелка выделения и перемещения» (Move / Select Tool V, Esc).
- * Переводит холст в классический интерактивный режим выделения объектов и прямоугольной резиновой рамки (Marquee Box Selection).
- */
-function activateSelectTool(showToast = false) {
-  if (!canvas) return;
+let currentTool = 'select';
+let isPanningMode = false;
+let isSpacePressed = false;
+let isCanvasDragging = false;
+let lastPanPosX = 0;
+let lastPanPosY = 0;
 
-  // 1. Выключаем режим свободного рисования
-  if (canvas.isDrawingMode) {
+/**
+ * Активация и управление активным инструментом редактора (Select / Pencil / Eyedropper / Pan).
+ * Гарантирует сброс конфликтующих режимов и корректное включение рамки выделения (box select).
+ * @param {'select'|'pencil'|'eyedropper'|'pan'} [toolName='select']
+ * @param {boolean} [showToast=false]
+ */
+function setActiveTool(toolName = 'select', showToast = false) {
+  if (!canvas) return;
+  const targetTool = toolName || 'select';
+
+  // 1. Сброс режима свободного рисования (карандаш)
+  if (targetTool !== 'pencil' && canvas.isDrawingMode) {
     canvas.isDrawingMode = false;
     $('#tool-pencil')?.classList.remove('is-active', 'active');
     $('#pencil-toolbar')?.classList.add('hidden');
   }
 
-  // 2. Выключаем режим ластика
-  if (typeof _eraserMode !== 'undefined' && _eraserMode) {
-    toggleEraserMode();
+  // 2. Сброс режима пипетки (eyedropper)
+  if (targetTool !== 'eyedropper') {
+    cancelCanvasEyedropper();
   }
 
-  // 3. Выключаем пипетку если активна
-  if (window._eyedropperActive && typeof window._cancelEyedropper === 'function') {
-    window._cancelEyedropper();
+  // 3. Сброс панорамирования (pan / hand)
+  isPanningMode = (targetTool === 'pan');
+  isCanvasDragging = false;
+  if (targetTool !== 'pan') {
+    isSpacePressed = false;
   }
 
-  // 4. Включаем интерактивность и групповое выделение резиновой рамкой (Marquee Selection)
-  canvas.selection = true;
-  canvas.skipTargetFind = false;
-  canvas.defaultCursor = 'default';
-  canvas.hoverCursor = 'move';
-
-  // 5. Обновляем визуальное состояние кнопок стрелочки во всех панелях
-  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
-    el.classList.add('is-active', 'active');
-  });
-
-  // 6. Снимаем активный статус с других взаимоисключающих инструментов
-  document.querySelectorAll('#tool-pencil, #tool-eyedropper, #btn-bg-eraser').forEach(el => {
-    el.classList.remove('is-active', 'active');
-  });
-
-  // 7. Восстанавливаем selectable/evented для всех незаблокированных объектов
-  canvas.forEachObject(obj => {
-    if (!obj.__locked) {
-      obj.selectable = true;
-      obj.evented = true;
+  // 4. Сброс специальных режимов (волшебная палочка, ластик)
+  if (targetTool === 'select') {
+    if (typeof _magicWandMode !== 'undefined' && _magicWandMode) {
+      _magicWandMode = false;
+      $('#btn-bg-magic-wand')?.classList.remove('is-active', 'active');
     }
-  });
-
-  canvas.requestRenderAll();
-
-  if (showToast && typeof window.toast === 'function') {
-    window.toast('Курсор: Стрелка / Выбор (V)');
+    if (typeof _eraserMode !== 'undefined' && _eraserMode) {
+      _eraserMode = false;
+      $('#eraser-toolbar')?.classList.add('hidden');
+      $('#btn-bg-manual-eraser')?.classList.remove('is-active', 'active');
+    }
   }
+
+  // 5. Конфигурация Fabric.js для выбранного инструмента
+  if (targetTool === 'select') {
+    canvas.selection = true; // Fabric.js рамка выделения (marquee / box select)
+    canvas.skipTargetFind = false;
+    canvas.defaultCursor = 'default';
+    canvas.hoverCursor = 'move';
+
+    // Гарантируем, что незаблокированные объекты доступны для кликов и рамки
+    canvas.forEachObject(obj => {
+      if (obj && !obj.__isArtboardBg && !obj.__locked && !obj.isLocked) {
+        obj.selectable = true;
+        obj.evented = true;
+      }
+    });
+    canvas.requestRenderAll();
+
+    // Визуальное состояние кнопок стрелочки (десктоп тулбар, мобильный тулбар)
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+      el.classList.add('is-active', 'active');
+    });
+    document.querySelectorAll('#tool-pencil, #tool-eyedropper, #btn-bg-eraser').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
+
+    if (showToast && typeof window.toast === 'function') {
+      window.toast('Курсор: Стрелка / Выбор (V)');
+    }
+  } else if (targetTool === 'pan') {
+    canvas.selection = false;
+    canvas.defaultCursor = 'grab';
+    canvas.hoverCursor = 'grab';
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
+    if (showToast && typeof window.toast === 'function') {
+      window.toast('Панорамирование (пробел + перетаскивание)');
+    }
+  } else {
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
+  }
+
+  window.currentTool = targetTool;
 }
+
+// Алиас для обратной совместимости
+function activateSelectTool(showToast = false) {
+  return setActiveTool('select', showToast);
+}
+
+window.setActiveTool = setActiveTool;
 window.activateSelectTool = activateSelectTool;
 
 function toggleDrawingMode(forcedState) {

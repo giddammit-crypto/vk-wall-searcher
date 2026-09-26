@@ -2534,6 +2534,34 @@ input, select, textarea {
   font-size: 13px !important;
 }
 
+.layer-thumb.is-ai {
+  position: relative;
+  border-color: rgba(192, 132, 252, 0.5) !important;
+}
+
+.layer-thumb.is-ai-photo {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+}
+
+.layer-ai-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 1px 2px;
+  background: linear-gradient(135deg, #00f0ff, #a855f7);
+  color: #000;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.layer-thumb.is-ai-photo .layer-ai-badge {
+  background: linear-gradient(135deg, #38bdf8, #ec4899);
+  color: #fff;
+}
+
 .layer-name {
   flex: 1;
   min-width: 0;
