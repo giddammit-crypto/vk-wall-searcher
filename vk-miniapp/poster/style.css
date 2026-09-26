@@ -3491,15 +3491,32 @@ input, select, textarea {
   .ed-header {
     gap: 6px;
     padding: 0 8px;
+    overflow-x: hidden;
   }
   .ed-header-left {
     gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
+  /* На мобильных центральный блок шапки скрывается (доступен через нижний док и тулбар) */
   .ed-header-center {
-    gap: 2px;
+    display: none !important;
   }
   .ed-header-right {
     gap: 4px;
+    flex-shrink: 0;
+  }
+  /* Скрываем второстепенные кнопки шапки на мобильных экранах — доступны в доке и меню */
+  #btn-figma-import,
+  #btn-tilda-export,
+  #btn-print,
+  #btn-save,
+  #btn-open-drafts,
+  #btn-save-project-json,
+  #btn-load-project-json,
+  #btn-open-ai-element,
+  #btn-open-instagram-retouch {
+    display: none !important;
   }
   .ed-title-wrap {
     flex: 0 1 120px;

@@ -2030,6 +2030,7 @@ function initCanvas(w, h) {
     if (isSpacePressed || isPanningMode || (opt.e && opt.e.button === 1)) {
       isCanvasDragging = true;
       canvas.selection = false;
+      canvas._currentTransform = null;
       lastPanPosX = opt.e.clientX;
       lastPanPosY = opt.e.clientY;
       canvas.defaultCursor = 'grabbing';
@@ -2416,6 +2417,7 @@ function addTemplateObj(def) {
   let obj = null;
   switch(type) {
     case 'text': {
+      if (d.fontFamily) ensureFontAvailable(d.fontFamily);
       obj = new fabric.Textbox(d.text || 'Текст', { ...d, editable: true });
       break;
     }
@@ -5885,6 +5887,93 @@ async function exportPdf() {
   }
 }
 
+async function exportWebp() {
+  if (!canvas) { toast('Холст не готов'); return; }
+  if (isExportRunning) {
+    toast('Экспорт уже запущен, сбрасываю...');
+    isExportRunning = false;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  isExportRunning = true;
+  const enhancer = window.PosterEnhancer;
+  const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
+  const filename = rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша';
+  const resName = currentExportResolution.toUpperCase();
+  const formatTitle = `Ultra-WebP (${resName}${isExportHdrEnabled ? ' + HDR' : ''})`;
+
+  showExportLoader(`Экспорт ${formatTitle}`, 'Подготовка холста...', 10);
+
+  try {
+    if (enhancer && typeof enhancer.exportPoster === 'function') {
+      await enhancer.exportPoster(canvas, {
+        resolution: currentExportResolution,
+        format: 'webp',
+        hdr: getEnhancerHdrConfig(),
+        filename: filename,
+        onProgress: (p, msg) => updateExportProgress(p, msg)
+      });
+      hideExportLoader(`Ultra-WebP (${resName}) успешно сохранён`);
+      toast(`✅ Ultra-WebP (${resName}) сохранён в «Загрузки»`);
+      return;
+    }
+
+    updateExportProgress(60, 'Рендеринг холста...');
+    await new Promise(r => setTimeout(r, 30));
+
+    const mult = currentExportResolution === '8k' ? 8 : currentExportResolution === '4k' ? 4 : currentExportResolution === '2k' ? 2 : currentExportResolution === '1k' ? 1.5 : 1;
+    const buffer = renderCleanArtboardCanvas(canvas, mult);
+
+    updateExportProgress(85, 'Кодирование WebP...');
+    const url = buffer.toDataURL('image/webp', 0.94);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.webp';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    hideExportLoader(`Ultra-WebP (${resName}) успешно сохранён`);
+    toast(`✅ Ultra-WebP (${resName}) сохранён в «Загрузки»`);
+  } catch (err) {
+    console.error('Export WebP error:', err);
+    hideExportLoader();
+    toast(`Ошибка экспорта WebP: ${err.message || err}`);
+  } finally {
+    isExportRunning = false;
+  }
+}
+
+async function copyCanvasImageToClipboard() {
+  if (!canvas) {
+    toast('Холст не инициализирован');
+    return;
+  }
+  toast('📋 Подготовка изображения для буфера обмена...');
+  try {
+    const buffer = renderCleanArtboardCanvas(canvas, 1.5);
+    buffer.toBlob(async blob => {
+      if (!blob) {
+        toast('Ошибка создания растрового изображения');
+        return;
+      }
+      if (navigator.clipboard && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          toast('✅ Афиша скопирована в буфер обмена как PNG!');
+        } catch (clipErr) {
+          console.warn('Clipboard write error:', clipErr);
+          toast('Не удалось записать в буфер: ' + clipErr.message);
+        }
+      } else {
+        toast('Буфер обмена не поддерживается вашим браузером');
+      }
+    }, 'image/png');
+  } catch (err) {
+    toast('Ошибка копирования в буфер: ' + err.message);
+  }
+}
+
 function openHdrCompareModal() {
   if (!canvas || !window.PosterEnhancer) return;
   const overlay = $('#hdr-compare-modal-overlay');
@@ -8995,7 +9084,8 @@ function bindEvents() {
     if (!confirm('Вернуться к шаблонам? Несохранённые изменения будут потеряны.')) return;
     $('#screen-editor').classList.add('hidden');
     $('#screen-templates').classList.remove('hidden');
-    clearInterval(autosaveT);
+    clearInterval(_autosaveTimer);
+    clearTimeout(_debounceSaveTimer);
     canvas?.dispose(); canvas = null;
     history = []; historyIdx = -1;
   });
@@ -9015,6 +9105,8 @@ function bindEvents() {
   /* История */
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-redo').addEventListener('click', redo);
+
+  let _nudgeHistoryTimer = null;
 
   document.addEventListener('keydown', e => {
     // Не перехватываем Ctrl+Z/Y когда фокус в текстовом поле — там работает нативный undo
@@ -9094,9 +9186,22 @@ function bindEvents() {
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && canvas) {
       const el = document.activeElement;
-      if (['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return;
+      if (el && (['INPUT','TEXTAREA','SELECT'].includes(el.tagName) || el.isContentEditable)) return;
       const obj = canvas.getActiveObject();
-      if (obj) { canvas.remove(obj); canvas.discardActiveObject(); canvas.renderAll(); clearProps(); }
+      if (!obj || obj.isEditing) return;
+      e.preventDefault();
+      if (obj.type === 'activeSelection') {
+        obj.getObjects().forEach(o => canvas.remove(o));
+        canvas.discardActiveObject();
+      } else {
+        canvas.remove(obj);
+        canvas.discardActiveObject();
+      }
+      canvas.requestRenderAll();
+      clearProps();
+      saveHistory();
+      updateLayersList();
+      scheduleAutosave();
     }
 
     // ── Горячие клавиши Figma ──
@@ -9187,16 +9292,43 @@ function bindEvents() {
         });
         activeObj.setCoords();
         canvas.requestRenderAll();
-        saveHistory();
+        clearTimeout(_nudgeHistoryTimer);
+        _nudgeHistoryTimer = setTimeout(() => {
+          saveHistory();
+          scheduleAutosave();
+        }, 300);
         syncUI();
         return;
       }
     }
 
-    // Escape -> выход из режима рисования, пипетки, панорамирования, сброс выделения и возврат к стрелке выбора
+    // Escape -> закрытие активных модалок, либо сброс выделения и возврат к стрелке выбора
     if (e.key === 'Escape') {
       if (inInput) return;
       e.preventDefault();
+
+      // 1. Проверяем открытые модальные окна и закрываем верхнее
+      const openModals = [
+        { id: '#drafts-modal-overlay', close: closeDraftsModal },
+        { id: '#ofont-modal-overlay', close: closeOfontModal },
+        { id: '#retouch-modal-overlay', close: closeInstagramRetouchModal },
+        { id: '#ai-generator-modal-overlay', close: () => { if (typeof window.AuroraAiElements?.closeModal === 'function') window.AuroraAiElements.closeModal(); else $('#ai-generator-modal-overlay')?.classList.add('hidden'); } },
+        { id: '#ai-element-modal-overlay', close: closeAiElementModal },
+        { id: '#badge-modal-overlay', close: closeBadgeModal },
+        { id: '#cosmo-modal-overlay', close: closeCosmoModal },
+        { id: '#logo-modal-overlay', close: closeLogoModal },
+        { id: '#qrcode-modal-overlay', close: closeQrModal },
+        { id: '#hdr-compare-modal-overlay', close: closeHdrCompareModal }
+      ];
+      for (const m of openModals) {
+        const modalEl = $(m.id);
+        if (modalEl && !modalEl.classList.contains('hidden')) {
+          if (typeof m.close === 'function') m.close();
+          return;
+        }
+      }
+
+      // 2. Сброс выделения на холсте и возврат к инструменту стрелки
       if (canvas?.getActiveObject()) {
         canvas.discardActiveObject();
         canvas.requestRenderAll();
@@ -9519,6 +9651,7 @@ function bindEvents() {
     const formatButtons = {
       'png': '#btn-inspector-png',
       'jpg': '#btn-inspector-jpg',
+      'webp': '#btn-inspector-webp',
       'pdf': '#btn-inspector-pdf',
       'svg': '#btn-inspector-svg'
     };
@@ -9527,7 +9660,7 @@ function bindEvents() {
     });
     const btnExport = $('#btn-inspector-export-png');
     if (btnExport) {
-      const formatLabels = { png: 'PNG', jpg: 'JPG', pdf: 'PDF (Печать)', svg: 'SVG (Вектор)' };
+      const formatLabels = { png: 'PNG', jpg: 'JPG', webp: 'WebP', pdf: 'PDF (Печать)', svg: 'SVG (Вектор)' };
       const lbl = formatLabels[currentExportFormat] || currentExportFormat.toUpperCase();
       const labelEl = $('#inspector-export-label');
       if (labelEl) {
@@ -9547,19 +9680,28 @@ function bindEvents() {
       case 'jpeg':
         await exportJpg();
         break;
+      case 'webp':
+        await exportWebp();
+        break;
       case 'pdf':
         await exportPdf();
         break;
       case 'svg': {
-        const svgStr = buildFigmaSVG();
-        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = ($('#poster-title')?.value || 'poster') + '.svg';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('✅ Векторный SVG скачан');
+        try {
+          await embedAllImagesToBase64(canvas);
+          const svgStr = buildFigmaSVG();
+          const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = ($('#poster-title')?.value || 'poster') + '.svg';
+          a.click();
+          URL.revokeObjectURL(url);
+          toast('✅ Векторный SVG скачан');
+        } catch (err) {
+          console.error('SVG export error:', err);
+          toast('Ошибка экспорта SVG: ' + err.message);
+        }
         break;
       }
       case 'png':
@@ -9570,8 +9712,10 @@ function bindEvents() {
   };
 
   $('#btn-inspector-export-png')?.addEventListener('click', exportBySelectedFormat);
+  $('#btn-inspector-copy-clipboard')?.addEventListener('click', copyCanvasImageToClipboard);
   $('#btn-inspector-png')?.addEventListener('click', () => setExportFormat('png', true));
   $('#btn-inspector-jpg')?.addEventListener('click', () => setExportFormat('jpg', true));
+  $('#btn-inspector-webp')?.addEventListener('click', () => setExportFormat('webp', true));
   $('#btn-inspector-pdf')?.addEventListener('click', () => setExportFormat('pdf', true));
   $('#btn-inspector-svg')?.addEventListener('click', () => setExportFormat('svg', true));
 
@@ -10074,13 +10218,20 @@ function bindEvents() {
         if (img && img.width) {
           placeDroppedImage(img, dropEvent);
         } else {
-          // Fallback: allorigins proxy
-          const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+          // Primary fallback: ai_proxy.php, secondary: allorigins proxy
+          const proxyUrl = 'ai_proxy.php?action=image_proxy&url=' + encodeURIComponent(url);
           fabric.Image.fromURL(proxyUrl, imgProxy => {
             if (imgProxy && imgProxy.width) {
               placeDroppedImage(imgProxy, dropEvent);
             } else {
-              toast('⚠️ Не удалось загрузить изображение по URL (CORS ограничение)');
+              const extProxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+              fabric.Image.fromURL(extProxy, imgExt => {
+                if (imgExt && imgExt.width) {
+                  placeDroppedImage(imgExt, dropEvent);
+                } else {
+                  toast('⚠️ Не удалось загрузить изображение по URL (CORS ограничение)');
+                }
+              }, { crossOrigin: 'anonymous' });
             }
           }, { crossOrigin: 'anonymous' });
         }
@@ -10794,6 +10945,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.setImageCornerRadius = setImageCornerRadius;
   window.setActiveTool = setActiveTool;
   window.activateSelectTool = activateSelectTool;
+  window.getArtboardDimensions = getArtboardDimensions;
+  window.exportWebp = exportWebp;
+  window.copyCanvasImageToClipboard = copyCanvasImageToClipboard;
 
   // Инициализация хранилища черновиков и проектов (IndexedDB + кэш)
   await initDraftsStorage();
