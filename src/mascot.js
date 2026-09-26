@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-import { resolveApiUrl } from './api.js?v=4.23.2';
+import { resolveApiUrl } from './api.js?v=4.62.0';
 import { CosmoChatModal } from './cosmo_chat.js?v=4.64.2';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');

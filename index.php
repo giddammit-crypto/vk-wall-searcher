@@ -11,4 +11,10 @@ if (isset($_REQUEST['action']) && in_array($_REQUEST['action'], ['update', 'stat
     exit;
 }
 
+// Базовые заголовки безопасности для HTML-документа.
+// CSP и rest-политики уже заданы мета-тегами внутри index.html — не дублируем их здесь.
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('X-Frame-Options: SAMEORIGIN');
+
 require_once __DIR__ . '/index.html';

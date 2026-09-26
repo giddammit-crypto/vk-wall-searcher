@@ -25,7 +25,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.21.0';
+import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { WarpGLRenderer } from './warp_gl.js?v=4.21.0';
 import { WarpHud } from './warp_hud.js?v=4.21.0';
 

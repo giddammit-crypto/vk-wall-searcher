@@ -13,10 +13,17 @@
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
 
-header('Access-Control-Allow-Origin: *');
+// CORS-политика:
+//  • GET (чтение истории) — открытый доступ: витрины и VK Mini App читают данные отовсюду.
+//  • POST (save/reset) — разрешение кросс-доменным страницам НЕ выдаётся: same-origin
+//    запросам нашего приложения CORS не нужен, а чужим сайтам мутировать историю нельзя.
+header('Vary: Origin');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json; charset=UTF-8');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Access-Control-Allow-Origin: *');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -73,6 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'history') {
 // POST — изменения
 // ---------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Защита от кросс-доменных мутаций: если Origin указывает на чужой хост — отказ.
+    // Свои запросы идут с того же origin (браузер шлёт Origin и для same-origin POST),
+    // серверные вызовы (curl, VK вебхуки) Origin не передают.
+    $origin = isset($_SERVER['HTTP_ORIGIN']) ? trim((string)$_SERVER['HTTP_ORIGIN']) : '';
+    if ($origin !== '') {
+        $originHost = parse_url($origin, PHP_URL_HOST);
+        $selfHost = isset($_SERVER['HTTP_HOST']) ? preg_replace('/:\\d+$/', '', (string)$_SERVER['HTTP_HOST']) : '';
+        if ($originHost && $selfHost && strcasecmp($originHost, $selfHost) !== 0) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'Кросс-доменная запись запрещена'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
     $body = json_decode((string)file_get_contents('php://input'), true);
     if (!is_array($body)) {
         http_response_code(400);

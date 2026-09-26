@@ -11,8 +11,8 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.23.3';
-import { computeAllRadarScores } from './radar.js?v=4.23.2';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.51.0';
+import { computeAllRadarScores } from './radar.js?v=4.25.4';
 import { extractNum } from './analytics.js?v=4.62.0';
 
 export const LEAGUE_DIVISIONS = {

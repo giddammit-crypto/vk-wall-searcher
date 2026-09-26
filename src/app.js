@@ -12,7 +12,8 @@ import {
     cacheAuthor,
     getAuthorFromCache,
     resolveMissingAuthors,
-    resolveApiUrl
+    resolveApiUrl,
+    verifySettingsPassword
 } from './api.js?v=4.62.0';
 
 import {
@@ -359,7 +360,7 @@ function initApp() {
         settingsVkBotWebhookUrl: document.getElementById('settings-vk-bot-webhook-url'),
         settingsVkBotCopyBtn: document.getElementById('settings-vk-bot-copy-btn'),
 
-        // Settings Auth Modal (1Radio14881!)
+        // Settings Auth Modal (пароль проверяется на сервере)
         settingsAuthOverlay: document.getElementById('settings-auth-overlay'),
         settingsAuthClose: document.getElementById('settings-auth-close'),
         settingsAuthCancel: document.getElementById('settings-auth-cancel'),
@@ -3808,10 +3809,11 @@ function initApp() {
     }
 
     // =========================================================================
-    // Settings Password Protection (1Radio14881!)
-    // При обновлении страницы пароль повторно не запрашивается (сохраняется в localStorage)
+    // Settings Password Protection
+    // Пароль НЕ хранится в клиентском коде: сверка выполняется на сервере
+    // (api/vk-proxy.php, ключ settings_password в api/config.php).
+    // При обновлении страницы повторный ввод не требуется (флаг в localStorage).
     // =========================================================================
-    const SETTINGS_AUTH_PASSWORD = '1Radio14881!';
     const SETTINGS_AUTH_STORAGE_KEY = 'aurora_settings_unlocked_v1';
 
     function isSettingsUnlocked() {
@@ -3858,10 +3860,16 @@ function initApp() {
     }
 
     if (elements.settingsAuthForm) {
-        elements.settingsAuthForm.addEventListener('submit', (e) => {
+        elements.settingsAuthForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const val = elements.settingsAuthInput ? elements.settingsAuthInput.value.trim() : '';
-            if (val === SETTINGS_AUTH_PASSWORD) {
+            if (val === '') {
+                if (elements.settingsAuthError) elements.settingsAuthError.classList.remove('hidden');
+                showToast('Введите пароль', 'error');
+                return;
+            }
+            const ok = await verifySettingsPassword(val);
+            if (ok) {
                 try {
                     localStorage.setItem(SETTINGS_AUTH_STORAGE_KEY, 'true');
                 } catch (err) {}
@@ -4092,7 +4100,8 @@ function initApp() {
             return;
         }
 
-        if (pwd !== SETTINGS_AUTH_PASSWORD) {
+        const ok = await verifySettingsPassword(pwd);
+        if (!ok) {
             showForceUpdateStatus('Неверный пароль администратора. Попробуйте ещё раз.', 'error');
             if (elements.forceUpdateInput) {
                 elements.forceUpdateInput.select();

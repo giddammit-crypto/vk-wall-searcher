@@ -1013,10 +1013,106 @@ input, select, textarea {
   display: none;
 }
 
-@media (min-width: 1100px) {
-  .ed-header-left .hbtn-label,
-  .ed-header-right .hbtn-label {
+@media (min-width: 1700px) {
+  #btn-figma-export .hbtn-label,
+  #btn-figma-import .hbtn-label,
+  #btn-save .hbtn-label,
+  #btn-open-enhancer .enh-btn-label,
+  #btn-back .hbtn-label {
     display: inline;
+  }
+  .ed-title-wrap {
+    flex: 0 1 220px;
+  }
+}
+
+/* ── Адаптивная плотность топбара редактора ────────────────
+   Базово лейблы скрыты (иконки + title). Полные подписи —
+   только на очень широких экранах ≥1700px. На средних
+   показываем только ключевые: Экспорт / Импорт / 4K HDR,
+   иначе топбар переполняется и уезжает за экран. */
+@media (min-width: 1501px) and (max-width: 1699px) {
+  #btn-figma-export .hbtn-label,
+  #btn-figma-import .hbtn-label {
+    display: inline;
+  }
+  #btn-open-enhancer .enh-btn-label {
+    display: inline;
+  }
+}
+@media (min-width: 1101px) and (max-width: 1450px) {
+  #btn-tilda-export .hbtn-label,
+  #btn-print .hbtn-label,
+  #btn-save .hbtn-label,
+  #btn-open-drafts .hbtn-label,
+  #btn-save-project-json .hbtn-label,
+  #btn-load-project-json .hbtn-label {
+    display: none;
+  }
+  .hbtn-mobile-panel {
+    display: none;
+  }
+}
+
+/* Компактный десктоп 1101–1500px: скрываем лейблы второстепенных и AI/Ретуши,
+   оставляя текст только у «Экспорт», «Импорт» и «4K HDR» */
+@media (min-width: 1101px) and (max-width: 1500px) {
+  #btn-open-ai-element .hbtn-label,
+  #btn-open-instagram-retouch .hbtn-label {
+    display: none;
+  }
+  /* Ужимаем центр: убираем текстовые лейблы у 4K HDR и Импорта,
+     оставляем у главного «Экспорт» */
+  #btn-figma-import .hbtn-label,
+  #btn-open-enhancer .enh-btn-label {
+    display: none;
+  }
+  /* Кнопка «Назад» без текста, заголовок уже */
+  #btn-back .hbtn-label {
+    display: none;
+  }
+  .ed-title-wrap {
+    flex: 0 1 130px;
+  }
+  .ed-title {
+    max-width: 120px;
+  }
+}
+
+/* 1101–1330px: центр топбара компактнее (скрываем вторичные кнопки центра) */
+@media (min-width: 1101px) and (max-width: 1330px) {
+  .ed-header-center .hbtn:not(.hbtn-select):not(.is-active) {
+    padding: 0 5px;
+  }
+  .figma-zoom-group {
+    gap: 2px;
+  }
+  .ed-header {
+    gap: 4px;
+    padding: 0 6px;
+  }
+  .ed-header-right {
+    gap: 2px;
+  }
+  .ed-header-left {
+    gap: 5px;
+  }
+}
+
+/* 641–1100px (планшет): центрскую группу инструментов скрываем целиком —
+   зум доступен колесом и жестами, инструмент выбирается в левой панели */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .ed-header-center {
+    display: none !important;
+  }
+  #btn-back .hbtn-label {
+    display: none;
+  }
+  .ed-title-wrap {
+    flex: 0 1 110px;
+  }
+  .ed-title {
+    max-width: 100px;
   }
 }
 /* ══════════════════════════════════════════════════════

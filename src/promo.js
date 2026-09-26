@@ -10,7 +10,7 @@
  * Разработка: Амброзиев О.А.
  */
 
-import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.23.3';
+import { CANONICAL_BRANCHES, escapeHtml } from './branches.js?v=4.51.0';
 import { createQrSvg } from './qrcode.js?v=4.23.3';
 
 export const PROMO_SLOGANS = [

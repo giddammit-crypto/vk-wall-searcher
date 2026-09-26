@@ -506,6 +506,30 @@ export async function getServerTokenStatus() {
 }
 
 /**
+ * Server-side verification of the settings password.
+ * Пароль никогда не хранится в клиентском коде: сверка происходит на сервере
+ * (api/vk-proxy.php → method '__verify_settings_password__', api/config.php → settings_password).
+ * @param {string} password
+ * @returns {Promise<boolean>} true — пароль верный; false — неверный или сервер недоступен
+ */
+export async function verifySettingsPassword(password) {
+    try {
+        const response = await sendProxyRequest({
+            method: '__verify_settings_password__',
+            params: {},
+            password: String(password || '')
+        });
+        if (response && response.ok) {
+            const data = await response.json();
+            return !!(data && data.ok === true);
+        }
+    } catch (e) {
+        // fallthrough
+    }
+    return false;
+}
+
+/**
  * Resolve VK screen name or numeric ID to target object
  */
 export async function resolveTarget(targetName, token) {

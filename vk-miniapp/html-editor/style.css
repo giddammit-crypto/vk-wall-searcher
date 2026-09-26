@@ -174,6 +174,143 @@ button, input, select, textarea {
   border-radius: var(--radius-sm);
   padding: 2px;
 }
+
+/* ─── 1.1 АДАПТИВНАЯ ПЛОТНОСТЬ TOPBAR ─────────────────────────
+   На 1201–1450px прячем текст у второстепенных кнопок справа
+   (Сетка/Шрифты/Импорт/Экспорт ZIP) и у пилюль режимов,
+   оставляя иконки с tooltip. Иначе топбар переполняется.
+   На ≤1200px bp-group (брейкпоинты) скрывается — он нужен
+   только при работе с холстом, доступен через меню Zero. */
+@media (min-width: 1201px) and (max-width: 1450px) {
+  #btn-toggle-grid span:last-child,
+  #btn-open-ofont span:last-child,
+  #btn-import-project span:last-child,
+  #btn-export-project span:last-child,
+  .mode-pill span:last-child {
+    display: none;
+  }
+  .mode-pill {
+    padding: 5px 8px;
+  }
+  .topbar-right {
+    gap: 5px;
+  }
+}
+
+@media (min-width: 991px) and (max-width: 1200px) {
+  #btn-toggle-grid span:last-child,
+  #btn-open-ofont span:last-child,
+  #btn-import-project span:last-child,
+  #btn-export-project span:last-child,
+  #btn-save-project span:last-child,
+  .mode-pill span:last-child {
+    display: none;
+  }
+  .mode-pill {
+    padding: 5px 8px;
+  }
+  .topbar-right {
+    gap: 5px;
+  }
+  .project-title-input {
+    max-width: 120px;
+  }
+  .tilda-brand-badge span:last-child {
+    display: none;
+  }
+}
+
+@media (max-width: 990px) {
+  #btn-toggle-grid span:last-child,
+  #btn-open-ofont span:last-child,
+  #btn-import-project span:last-child,
+  #btn-export-project span:last-child,
+  #btn-save-project span:last-child,
+  #btn-publish-cloud span:last-child,
+  .mode-pill span:last-child,
+  .tilda-brand-badge span:last-child {
+    display: none;
+  }
+  .bp-group {
+    display: none;
+  }
+  .mode-pill {
+    padding: 5px 8px;
+  }
+  .topbar-right {
+    gap: 5px;
+  }
+  .topbar-left {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .project-title-input {
+    flex: 1 1 60px;
+    min-width: 0;
+    max-width: none;
+  }
+  .topbar-center {
+    flex: 0 0 auto;
+  }
+}
+
+/* ≤900px: undo/redo переезжает к правым кнопкам не помещаясь —
+   прячем заголовок проекта, оставляя бейдж и кнопки */
+@media (max-width: 900px) {
+  .project-title-input {
+    display: none;
+  }
+  .tilda-topbar {
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .topbar-right .topbar-action-btn {
+    padding: 6px 8px;
+  }
+}
+
+/* ≤780px: прячем undo/redo в топбаре (доступны Ctrl+Z/Ctrl+Y
+   и контекстное меню), чтобы правые кнопки гарантированно влезали */
+@media (max-width: 780px) {
+  #btn-undo,
+  #btn-redo {
+    display: none;
+  }
+}
+
+/* ≤620px: топбар в две строки — режимы на первой, действия на второй.
+   Гарантирует доступность всех функций на телефоне без обрезки. */
+@media (max-width: 620px) {
+  .tilda-topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    row-gap: 6px;
+  }
+  .topbar-left {
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .project-title-input {
+    display: block;
+    flex: 1 1 auto;
+  }
+  .topbar-center {
+    order: 2;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topbar-center::-webkit-scrollbar { display: none; }
+  .topbar-right {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topbar-right::-webkit-scrollbar { display: none; }
+}
 .bp-btn {
   display: flex;
   align-items: center;

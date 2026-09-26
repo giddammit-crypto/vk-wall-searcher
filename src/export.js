@@ -4,9 +4,9 @@
  */
 
 import { extractNum, formatViews } from './analytics.js?v=4.62.0';
-import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js?v=4.21.0';
+import { escapeHtml, declOfNum, findCanonicalBranch } from './branches.js?v=4.51.0';
 import { resolveApiUrl } from './api.js?v=4.62.0';
-import { resolveRepostAuthor } from './render.js?v=4.21.0';
+import { resolveRepostAuthor } from './render.js?v=4.23.2';
 
 /** Дельта для DOC-таблиц: «+12» / «−3» / «база» / «±0» */
 function fmtDocDelta(v) {

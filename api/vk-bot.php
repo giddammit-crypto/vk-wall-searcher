@@ -631,7 +631,8 @@ $event = vk_bot_json_decode($rawInput);
 if (is_array($event) && isset($event['action']) && $event['action'] === 'sync_config') {
     header('Content-Type: application/json; charset=UTF-8');
     $adminToken = (string)($event['token'] ?? '');
-    $validToken = (string)($config['update_token'] ?? '1Radio14881!');
+    // Секрет задается только в api/config.php; публичный fallback запрещен.
+    $validToken = (string)($config['update_token'] ?? '');
     if ($adminToken === '' || !hash_equals($validToken, $adminToken)) {
         http_response_code(403);
         echo json_encode(['ok' => false, 'error' => 'Forbidden: invalid admin token'], JSON_UNESCAPED_UNICODE);

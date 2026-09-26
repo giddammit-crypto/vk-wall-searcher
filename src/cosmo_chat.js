@@ -13,7 +13,7 @@
  */
 
 import { resolveApiUrl } from './api.js?v=4.62.0';
-import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.44.0';
+import { CANONICAL_BRANCHES, resolveBranchBySigla, declOfNum } from './branches.js?v=4.51.0';
 
 const AI_PROXY_URL = resolveApiUrl('api/ai-proxy.php');
 const TTS_PROXY_URL = resolveApiUrl('api/tts-proxy.php');

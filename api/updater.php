@@ -47,7 +47,9 @@ if (is_readable($vkConfigFile)) {
 
 $repo       = isset($vkConfig['github_repo']) ? (string)$vkConfig['github_repo'] : 'giddammit-crypto/vk-wall-searcher';
 $branch     = isset($vkConfig['github_branch']) ? (string)$vkConfig['github_branch'] : 'main';
-$updateToken = isset($vkConfig['update_token']) ? (string)$vkConfig['update_token'] : '';
+// Пароль обновления: api/config.php → переменная окружения. Никаких хардкодов.
+$updateToken = isset($vkConfig['update_token']) ? (string)$vkConfig['update_token']
+    : (string)(getenv('VK_UPDATE_TOKEN') ?: '');
 $ghToken     = isset($vkConfig['github_token']) ? (string)$vkConfig['github_token'] : '';
 
 $dataDir = VKWS_APP_ROOT . DIRECTORY_SEPARATOR . 'data';
@@ -318,7 +320,9 @@ if ($action === 'check') {
 // --- UPDATE: скачать и применить новую версию -------------------------------
 if ($action === 'update') {
     $provided = isset($body['token']) ? (string)$body['token'] : '';
-    $validTokens = array_filter(array_unique([$updateToken, '1Radio14881!', '399993f71ed0e6c1ddec47d958faa2cc083519c4']));
+    // Пароль обновления задается ТОЛЬКО в api/config.php (ключ update_token).
+    // Хардкод секретов здесь запрещен: репозиторий публичный.
+    $validTokens = array_filter(array_unique([$updateToken]));
     $tokenMatch = false;
     foreach ($validTokens as $t) {
         if ($t !== '' && hash_equals($t, $provided)) {

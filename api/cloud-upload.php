@@ -41,7 +41,8 @@ if (stripos($contentType, 'application/json') !== false) {
     $rawInput = file_get_contents('php://input');
     $data = json_decode($rawInput, true);
 
-    if (!$data || (empty($data['html']) && empty($data['code']))) {
+    // Клиенты шлют html | code | content (AURORA WEB публикует поле content)
+    if (!$data || (empty($data['html']) && empty($data['code']) && empty($data['content']))) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Отсутствуют данные HTML для сохранения']);
         exit;
@@ -51,7 +52,7 @@ if (stripos($contentType, 'application/json') !== false) {
     if ($title === '') $title = 'Сайт Аврора';
     $safeTitle = preg_replace('/[^\p{L}\p{N}\s\-_.]/u', '', $title);
 
-    $html = (string)($data['html'] ?? $data['code'] ?? '');
+    $html = (string)($data['html'] ?? $data['code'] ?? $data['content'] ?? '');
     $css  = (string)($data['css'] ?? '');
     $js   = (string)($data['js'] ?? '');
 

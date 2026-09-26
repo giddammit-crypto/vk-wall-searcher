@@ -19,7 +19,7 @@
  * ============================================================================
  */
 
-import { SpaceAudio } from './space_audio.js?v=4.21.0';
+import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { EARTH_CONFIG, EARTH_CENTER } from './iss_station.js?v=4.21.0';
 
 const DEG_TO_RAD = Math.PI / 180;

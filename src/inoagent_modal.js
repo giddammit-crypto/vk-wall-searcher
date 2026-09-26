@@ -14,7 +14,7 @@
  * ======================================================================================
  */
 
-import { escapeHtml as extEscapeHtml } from './branches.js?v=4.44.0';
+import { escapeHtml as extEscapeHtml } from './branches.js?v=4.51.0';
 import { resolveApiUrl as extResolveApiUrl } from './api.js?v=4.62.0';
 
 // Безопасный фолбэк экранирования HTML

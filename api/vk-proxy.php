@@ -20,9 +20,12 @@ ini_set('display_errors', '0');
 // ---------------------------------------------------------------------------
 // 0. Server Configuration (service keys live HERE, never in the browser)
 // ---------------------------------------------------------------------------
-// Проверенные сервисные ключи VK по умолчанию (работают из коробки без ручной настройки)
-$defaultServerToken   = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
-$defaultFallbackToken = 'd306a4b4d306a4b4d306a4b46ad0389840dd306d306a4b4ba56aeabaf84c50097d998b5';
+// Секретные ключи НЕ хардкодятся в коде: они задаются в api/config.php
+// (не коммитится) или в переменных окружения. Для локальной разработки
+// заполните api/config.php по шаблону api/config.example.php.
+$defaultServerToken   = (string)(getenv('VK_SERVICE_TOKEN') ?: '');
+$defaultFallbackToken = (string)(getenv('VK_SERVICE_TOKEN_FALLBACK') ?: '');
+$defaultUpdateToken   = (string)(getenv('VK_UPDATE_TOKEN') ?: '');
 
 $vkConfig = [];
 $vkConfigFile = __DIR__ . '/config.php';
@@ -32,8 +35,8 @@ if (is_readable($vkConfigFile)) {
         $vkConfig = $vkLoaded;
     }
 } elseif (!file_exists($vkConfigFile) && is_writable(__DIR__)) {
-    // Автоматически создаём рабочий config.php при первом запуске на хостинге
-    @file_put_contents($vkConfigFile, "<?php\nreturn [\n    'vk_service_token' => '{$defaultServerToken}',\n    'vk_service_token_fallback' => '{$defaultFallbackToken}',\n    'api_version' => '5.131',\n    'github_repo' => 'giddammit-crypto/vk-wall-searcher',\n    'github_branch' => 'main',\n    'update_token' => '399993f71ed0e6c1ddec47d958faa2cc083519c4',\n    'github_token' => '',\n];\n");
+    // Создаём шаблон конфига с пустыми ключами — значения заполняет администратор.
+    @file_put_contents($vkConfigFile, "<?php\nreturn [\n    'vk_service_token' => '',\n    'vk_service_token_fallback' => '',\n    'api_version' => '5.131',\n    'github_repo' => 'giddammit-crypto/vk-wall-searcher',\n    'github_branch' => 'main',\n    'update_token' => '',\n    'github_token' => '',\n];\n");
 }
 
 $serverToken   = isset($vkConfig['vk_service_token']) ? trim((string)$vkConfig['vk_service_token']) : '';
@@ -283,6 +286,18 @@ if (empty($method)) {
 if ($method === '__server_status__') {
     http_response_code(200);
     echo vk_server_status_payload($serverToken, $fallbackToken, $apiVersion);
+    exit;
+}
+
+// Server-side settings password verification (no secrets sent to the client).
+// Пароль берется из api/config.php (settings_password) или переменной окружения.
+if ($method === '__verify_settings_password__') {
+    $settingsPassword = isset($vkConfig['settings_password']) ? (string)$vkConfig['settings_password']
+        : (string)(getenv('AURORA_SETTINGS_PASSWORD') ?: '');
+    $provided = isset($data['password']) ? (string)$data['password'] : '';
+    $ok = $settingsPassword !== '' && $provided !== '' && hash_equals($settingsPassword, $provided);
+    http_response_code(200);
+    echo json_encode(['ok' => $ok], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
