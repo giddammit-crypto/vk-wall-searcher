@@ -18,6 +18,7 @@
                 document.documentElement.classList.add('reader-shelf-standalone');
             }
             var t = p.get('theme') || p.get('preview_theme') || localStorage.getItem('aurora_theme') || 'light';
+            if (!['dark', 'light', 'figma'].includes(t)) t = 'light';
             document.documentElement.setAttribute('data-theme', t);
             if (sessionStorage.getItem('aurora_splash_seen') === 'true' && !p.has('splash')) {
                 document.documentElement.classList.add('aurora-splash-skip-early');
@@ -214,6 +215,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Unbounded:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Material Symbols Outlined (icons) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -222,6 +224,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <link rel="stylesheet" href="style.css?v=4.25.4">
+    <link rel="stylesheet" href="src/theme_figma.css?v=5.0.0">
     <link rel="stylesheet" href="src/iss_hud.css?v=4.25.4">
     <link rel="stylesheet" href="src/space_ui.css?v=4.25.4">
     <link rel="stylesheet" href="src/warp_hud.css?v=4.25.4">
@@ -744,7 +747,7 @@
                     <span id="mascot-toggle-text" class="settings-btn-text">Космо: Выкл</span>
                 </button>
 
-                <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему оформления">
+                <button type="button" id="theme-toggle-btn" class="btn btn-tonal" title="Сменить тему (Светлая / Тёмная / Figma)">
                     <span id="theme-toggle-icon" class="material-symbols-outlined theme-icon">light_mode</span>
                     <span id="theme-toggle-text">Светлая</span>
                 </button>
@@ -2582,12 +2585,20 @@
         const themeIcon = document.getElementById('theme-toggle-icon');
         const themeText = document.getElementById('theme-toggle-text');
 
+        const THEMES = ['light', 'dark', 'figma'];
+        const THEME_META = {
+            'light': { icon: 'light_mode',      text: 'Светлая' },
+            'dark':  { icon: 'dark_mode',       text: 'Тёмная'  },
+            'figma': { icon: 'design_services',  text: 'Figma'   }
+        };
+
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('aurora_theme', theme);
             if (themeText && themeIcon) {
-                themeText.textContent = theme === 'dark' ? 'Тёмная' : 'Светлая';
-                themeIcon.textContent = theme === 'dark' ? 'dark_mode' : 'light_mode';
+                const meta = THEME_META[theme] || THEME_META['light'];
+                themeText.textContent = meta.text;
+                themeIcon.textContent = meta.icon;
             }
         }
 
@@ -2599,7 +2610,9 @@
         if (themeBtn) {
             themeBtn.addEventListener('click', () => {
                 const cur = document.documentElement.getAttribute('data-theme') || 'light';
-                applyTheme(cur === 'light' ? 'dark' : 'light');
+                const idx = THEMES.indexOf(cur);
+                const next = THEMES[(idx + 1) % THEMES.length];
+                applyTheme(next);
             });
         }
 

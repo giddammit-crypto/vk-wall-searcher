@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.2.8",
+  "version": "5.3.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-26T20:51:00+03:00",
-  "release_name": "AURORA DESIGN 5.2.8 — 4-Stage Cinematic Ultra-Master Photographic Pipeline (100k-150k Tokens) & 2M Daily Quota"
+  "commit_date": "2026-09-26T23:44:00+03:00",
+  "release_name": "AURORA DESIGN 5.3.0 — Figma Dark Theme Integration (Inter font, 600+ lines CSS, 3-state switcher)"
 }

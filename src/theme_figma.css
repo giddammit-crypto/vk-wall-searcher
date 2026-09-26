@@ -1,0 +1,601 @@
+/* ==========================================================================
+   Figma Dark Theme — Third Aurora Theme
+   Inspired by Figma's editor UI design language
+   Font: Inter, Backgrounds: #1e1e1e/#2c2c2c, Accent: #0d99ff
+   ========================================================================== */
+
+/* Inter font is loaded via <link> in index.html head */
+
+[data-theme="figma"] {
+    /* Backgrounds — Figma editor dark */
+    --bg-page: #1e1e1e;
+    --bg-page-gradient: none;
+    --bg-card: #2c2c2c;
+    --bg-card-hover: #333333;
+    --surface: #383838;
+    --surface-hover: #424242;
+    --surface-glass: #2c2c2c;
+    --surface-glass-hover: #333333;
+
+    /* Figma Blue Accent */
+    --color-primary: #1e1e1e;
+    --color-secondary: #383838;
+    --color-tertiary: #8b8b8b;
+    --color-aurora-cyan: #0d99ff;
+    --color-aurora-blue: #0d99ff;
+    --color-aurora-purple: #9747ff;
+    --color-aurora-pink: #f24e1e;
+    --color-aurora-gold: #ffcd29;
+    --accent: #0d99ff;
+    --accent-hover: #1ea7ff;
+    --accent-soft: rgba(13, 153, 255, 0.15);
+    --accent-medium: rgba(13, 153, 255, 0.25);
+    --accent-purple: #9747ff;
+    --accent-purple-soft: rgba(151, 71, 255, 0.15);
+    --accent-gradient: linear-gradient(135deg, #0d99ff 0%, #9747ff 100%);
+
+    /* Typography */
+    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+    --text-primary: #e6e6e6;
+    --text-secondary: #b3b3b3;
+    --text-tertiary: #8b8b8b;
+    --text-on-accent: #ffffff;
+    --muted: #8b8b8b;
+
+    /* Borders — Figma thin lines */
+    --hairline: rgba(255, 255, 255, 0.10);
+    --border-color: rgba(255, 255, 255, 0.12);
+    --divider-color: rgba(255, 255, 255, 0.08);
+    --glass-card-border-top: rgba(255, 255, 255, 0.08);
+    --surface-border-top: rgba(255, 255, 255, 0.08);
+
+    /* Semantic Status */
+    --color-success: #1bc47d;
+    --color-success-bg: rgba(27, 196, 125, 0.15);
+    --color-danger: #f24e1e;
+    --color-danger-bg: rgba(242, 78, 30, 0.15);
+    --color-warning: #ffcd29;
+    --color-warning-bg: rgba(255, 205, 41, 0.15);
+    --color-purple: #9747ff;
+    --color-purple-bg: rgba(151, 71, 255, 0.15);
+
+    /* Buttons — flat Figma style */
+    --btn-primary-bg: #0d99ff;
+    --btn-primary-text: #ffffff;
+    --btn-primary-shadow: 0 2px 8px rgba(13, 153, 255, 0.35);
+    --btn-primary-hover-shadow: 0 4px 16px rgba(13, 153, 255, 0.50);
+
+    /* Elevations — Figma minimal shadows */
+    --elevation-0: inset 0 1px 2px rgba(0, 0, 0, 0.40);
+    --elevation-1: 0 1px 4px rgba(0, 0, 0, 0.30);
+    --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.40);
+    --elevation-3: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --elevation-4: 0 8px 32px rgba(0, 0, 0, 0.50);
+    --elevation-focus: 0 0 0 2px #0d99ff;
+    --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.30);
+    --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.40);
+    --shadow-button: 0 1px 4px rgba(0, 0, 0, 0.25);
+    --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.50);
+    --input-focus-halo: 0 0 0 2px rgba(13, 153, 255, 0.60);
+
+    /* Badges & Logos */
+    --badge-selected-bg: #0d99ff;
+    --badge-selected-text: #ffffff;
+    --badge-selected-shadow: 0 2px 8px rgba(13, 153, 255, 0.40);
+    --logo-gradient: linear-gradient(135deg, #ffffff 0%, #0d99ff 50%, #9747ff 100%);
+    --logo-shadow: 0 0 16px rgba(13, 153, 255, 0.20);
+    --card-border-top: rgba(255, 255, 255, 0.06);
+    --aurora-card-border-top: rgba(255, 255, 255, 0.06);
+    --switch-active-bg: #0d99ff;
+    --switch-active-shadow: 0 0 8px rgba(13, 153, 255, 0.40);
+
+    /* Radius — Figma uses smaller radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 9999px;
+    --radius: 12px;
+}
+
+/* ============================================================
+   FIGMA THEME — Global Body Font
+   ============================================================ */
+[data-theme="figma"] body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1e1e1e;
+    color: #e6e6e6;
+}
+
+/* ============================================================
+   FIGMA THEME — Disable Aurora Animations (flat style)
+   ============================================================ */
+[data-theme="figma"] .aurora-waves {
+    display: none !important;
+}
+[data-theme="figma"] #aurora-particles {
+    opacity: 0.04;
+    filter: grayscale(0.5);
+}
+
+/* ============================================================
+   FIGMA THEME — Header Toolbar
+   ============================================================ */
+[data-theme="figma"] .header,
+[data-theme="figma"] .app-header {
+    background: #2c2c2c !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="figma"] .logo-icon-wrap {
+    color: #0d99ff;
+}
+[data-theme="figma"] .brand-aurora {
+    background: linear-gradient(135deg, #ffffff 0%, #0d99ff 60%, #9747ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+[data-theme="figma"] .aurora-pill-badge {
+    background: rgba(13, 153, 255, 0.18);
+    color: #0d99ff;
+    border: 1px solid rgba(13, 153, 255, 0.28);
+}
+[data-theme="figma"] .badge-pulse-dot {
+    background: #0d99ff;
+    box-shadow: 0 0 6px rgba(13, 153, 255, 0.60);
+}
+
+/* ============================================================
+   FIGMA THEME — Cards
+   ============================================================ */
+[data-theme="figma"] .card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.30);
+}
+[data-theme="figma"] .card:hover {
+    background: #303030;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.40);
+}
+[data-theme="figma"] .card::before {
+    background: linear-gradient(90deg, rgba(13,153,255,0.15) 0%, rgba(151,71,255,0.10) 100%) !important;
+    height: 1px !important;
+}
+
+/* ============================================================
+   FIGMA THEME — Form Controls
+   ============================================================ */
+[data-theme="figma"] input,
+[data-theme="figma"] select,
+[data-theme="figma"] textarea,
+[data-theme="figma"] .search-input {
+    background: #383838 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e6e6e6 !important;
+    border-radius: 6px;
+}
+[data-theme="figma"] input::placeholder,
+[data-theme="figma"] textarea::placeholder {
+    color: #6b6b6b;
+}
+[data-theme="figma"] input:focus,
+[data-theme="figma"] select:focus,
+[data-theme="figma"] textarea:focus {
+    border-color: #0d99ff !important;
+    box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.30) !important;
+    outline: none;
+}
+
+/* ============================================================
+   FIGMA THEME — Buttons
+   ============================================================ */
+[data-theme="figma"] .btn-primary {
+    background: #0d99ff !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: none;
+    box-shadow: 0 2px 8px rgba(13, 153, 255, 0.35) !important;
+    border-radius: 6px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+}
+[data-theme="figma"] .btn-primary:hover {
+    background: #1ea7ff !important;
+    box-shadow: 0 4px 16px rgba(13, 153, 255, 0.50) !important;
+    transform: translateY(-1px);
+}
+[data-theme="figma"] .btn-tonal {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #e6e6e6 !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    border-radius: 6px;
+}
+[data-theme="figma"] .btn-tonal:hover {
+    background: rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
+}
+[data-theme="figma"] .btn-secondary {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #b3b3b3 !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    border-radius: 6px;
+}
+[data-theme="figma"] .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.10) !important;
+    color: #e6e6e6 !important;
+}
+
+/* ============================================================
+   FIGMA THEME — Settings & Modals
+   ============================================================ */
+[data-theme="figma"] .settings-panel {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-top: none;
+}
+[data-theme="figma"] .search-modal-overlay {
+    background: rgba(0, 0, 0, 0.70);
+    backdrop-filter: blur(4px);
+}
+[data-theme="figma"] .search-motion-modal,
+[data-theme="figma"] .modal-content {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.60);
+}
+
+/* ============================================================
+   FIGMA THEME — Post Cards
+   ============================================================ */
+[data-theme="figma"] .post-card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+[data-theme="figma"] .post-card:hover {
+    background: #333333;
+    border-color: rgba(13, 153, 255, 0.25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.40);
+}
+
+/* ============================================================
+   FIGMA THEME — Analytics
+   ============================================================ */
+[data-theme="figma"] .analytics-card,
+[data-theme="figma"] .kpi-card,
+[data-theme="figma"] .stat-card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="figma"] .progress-fill {
+    background: linear-gradient(90deg, #0d99ff, #9747ff);
+}
+
+/* ============================================================
+   FIGMA THEME — Figma-style Scrollbar
+   ============================================================ */
+[data-theme="figma"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+[data-theme="figma"] ::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+[data-theme="figma"] ::-webkit-scrollbar-thumb {
+    background: #525252;
+    border-radius: 4px;
+}
+[data-theme="figma"] ::-webkit-scrollbar-thumb:hover {
+    background: #6b6b6b;
+}
+
+/* ============================================================
+   FIGMA THEME — Selection Color
+   ============================================================ */
+[data-theme="figma"] ::selection {
+    background: rgba(13, 153, 255, 0.35);
+    color: #ffffff;
+}
+
+/* ============================================================
+   FIGMA THEME — Navigation Tabs
+   ============================================================ */
+[data-theme="figma"] .nav-tab,
+[data-theme="figma"] .tab-item {
+    color: #8b8b8b;
+}
+[data-theme="figma"] .nav-tab.active,
+[data-theme="figma"] .tab-item.active,
+[data-theme="figma"] .nav-tab:hover,
+[data-theme="figma"] .tab-item:hover {
+    color: #e6e6e6;
+}
+[data-theme="figma"] .nav-tab.active::after,
+[data-theme="figma"] .tab-item.active::after {
+    background: #0d99ff;
+}
+
+/* ============================================================
+   FIGMA THEME — Chips & Badges
+   ============================================================ */
+[data-theme="figma"] .chip,
+[data-theme="figma"] .badge {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #b3b3b3;
+    border-radius: 4px;
+}
+[data-theme="figma"] .chip.active,
+[data-theme="figma"] .badge.active,
+[data-theme="figma"] .chip-selected {
+    background: rgba(13, 153, 255, 0.18);
+    border-color: rgba(13, 153, 255, 0.35);
+    color: #0d99ff;
+}
+
+/* ============================================================
+   FIGMA THEME — Token/Key Display
+   ============================================================ */
+[data-theme="figma"] code,
+[data-theme="figma"] .token-badge,
+[data-theme="figma"] .mono-code {
+    background: #383838;
+    color: #1bc47d;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* ============================================================
+   FIGMA THEME — Result Count & Stats
+   ============================================================ */
+[data-theme="figma"] .result-count {
+    color: #0d99ff;
+    font-weight: 600;
+}
+[data-theme="figma"] .stat-value {
+    color: #e6e6e6;
+}
+[data-theme="figma"] .stat-label {
+    color: #8b8b8b;
+}
+
+/* ============================================================
+   FULLSTACK ENGINEER ADDITIONS — Extended Figma Components
+   ============================================================ */
+
+/* Source showcase cards (group cards) */
+[data-theme="figma"] .source-showcase-card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 2px solid #0d99ff;
+}
+[data-theme="figma"] .source-showcase-card:hover {
+    background: #333333;
+    border-color: rgba(13, 153, 255, 0.30);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.40);
+}
+
+/* Feed modal / post modal */
+[data-theme="figma"] .feed-modal-overlay {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+}
+[data-theme="figma"] .feed-modal,
+[data-theme="figma"] .modal-overlay .modal-card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.60);
+}
+[data-theme="figma"] .modal-header {
+    background: #252525;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+[data-theme="figma"] .modal-footer {
+    background: #252525;
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* KPI / Stats section */
+[data-theme="figma"] .subs-kpi {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="figma"] .kpi-value {
+    color: #0d99ff;
+    font-weight: 700;
+}
+[data-theme="figma"] .kpi-label {
+    color: #8b8b8b;
+}
+
+/* Date filter chips */
+[data-theme="figma"] .date-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #b3b3b3;
+    border-radius: 4px;
+}
+[data-theme="figma"] .date-chip:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #e6e6e6;
+}
+[data-theme="figma"] .date-chip.active,
+[data-theme="figma"] .date-chip.selected {
+    background: rgba(13, 153, 255, 0.18);
+    border-color: rgba(13, 153, 255, 0.40);
+    color: #0d99ff;
+}
+
+/* Search section */
+[data-theme="figma"] .search-section,
+[data-theme="figma"] .search-box {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+[data-theme="figma"] .search-input-wrap {
+    background: #383838;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+}
+[data-theme="figma"] .search-input-wrap:focus-within {
+    border-color: #0d99ff;
+    box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.25);
+}
+
+/* Results table */
+[data-theme="figma"] .results-table th {
+    background: #252525;
+    color: #8b8b8b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+}
+[data-theme="figma"] .results-table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: #e6e6e6;
+}
+[data-theme="figma"] .results-table tr:hover td {
+    background: rgba(13, 153, 255, 0.06);
+}
+
+/* Scanning / loading states */
+[data-theme="figma"] .scan-progress {
+    background: #383838;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+[data-theme="figma"] .scan-progress-bar {
+    background: linear-gradient(90deg, #0d99ff, #9747ff);
+}
+[data-theme="figma"] .scan-status-text {
+    color: #0d99ff;
+}
+
+/* Loader skeleton */
+[data-theme="figma"] .skeleton {
+    background: linear-gradient(90deg, #2c2c2c 25%, #383838 50%, #2c2c2c 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+@keyframes figma-skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+[data-theme="figma"] .skeleton {
+    animation: figma-skeleton-loading 1.5s infinite;
+}
+
+/* Toasts / notifications */
+[data-theme="figma"] .toast,
+[data-theme="figma"] .notification {
+    background: #383838;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e6e6e6;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.50);
+}
+
+/* Dropdown menus */
+[data-theme="figma"] .dropdown-menu,
+[data-theme="figma"] .context-menu {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.50);
+    border-radius: 8px;
+}
+[data-theme="figma"] .dropdown-item {
+    color: #b3b3b3;
+}
+[data-theme="figma"] .dropdown-item:hover {
+    background: rgba(13, 153, 255, 0.10);
+    color: #e6e6e6;
+}
+
+/* Tooltip */
+[data-theme="figma"] [title]:hover::after,
+[data-theme="figma"] .tooltip {
+    background: #383838;
+    color: #e6e6e6;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+}
+
+/* Advice cards */
+[data-theme="figma"] .advice-card {
+    background: #2c2c2c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid #0d99ff;
+}
+
+/* Inoagent badges */
+[data-theme="figma"] .inoagent-badge {
+    background: rgba(242, 78, 30, 0.15);
+    border-color: rgba(242, 78, 30, 0.30);
+    color: #f24e1e;
+}
+
+/* Switch toggle */
+[data-theme="figma"] .switch-track {
+    background: rgba(255, 255, 255, 0.15);
+}
+[data-theme="figma"] .switch-track.active,
+[data-theme="figma"] input:checked + .switch-track {
+    background: #0d99ff;
+    box-shadow: 0 0 8px rgba(13, 153, 255, 0.40);
+}
+
+/* Panel body */
+[data-theme="figma"] .panel-body {
+    background: #252525;
+}
+[data-theme="figma"] .panel-header {
+    background: #2c2c2c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Section headings */
+[data-theme="figma"] .section-title,
+[data-theme="figma"] h2,
+[data-theme="figma"] h3 {
+    color: #e6e6e6;
+}
+[data-theme="figma"] .section-subtitle {
+    color: #8b8b8b;
+}
+
+/* Tags */
+[data-theme="figma"] .tag {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #b3b3b3;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Figma theme indicator in footer/about */
+[data-theme="figma"] .theme-badge::before {
+    content: '🎨 Figma Theme';
+    color: #0d99ff;
+}
+
+/* Dividers */
+[data-theme="figma"] hr,
+[data-theme="figma"] .divider {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Focus visible — Figma 2px outline */
+[data-theme="figma"] *:focus-visible {
+    outline: 2px solid #0d99ff;
+    outline-offset: 2px;
+}

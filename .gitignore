@@ -60,3 +60,4 @@ cache/*
 !cache/.gitkeep
 !cache/tts/.gitkeep
 !cache/inoagent_snapshot.json
+.freebuff/
