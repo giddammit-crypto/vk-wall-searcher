@@ -21,9 +21,8 @@
         INVULNERABLE_DURATION: 1.6,
         MAX_PARTICLES: 450,
         HIT_STOP_DURATION: 0.05 // 50ms freeze frame for impactful juice
-    };
+    };        // Preloaded Photorealistic Game Textures
 
-    // Preloaded Photorealistic Game Textures
     const GAME_TEXTURE_URLS = {
         bg: 'assets/bg_library.jpg',
         shelf: 'assets/shelf_photoreal.jpg',
@@ -40,44 +39,29 @@
         img.onerror = () => { gameTextures[key] = null; };
     }
 
-    // Preloaded Mascot Sprites
+    // Load the supplied mascot art from the shared site assets. Trim transparent
+    // padding once so the little robot stays crisp and clearly visible in-game.
     const MASCOT_SPRITES = {
-        idle: '../assets/images/mascot/robot_idle.png',
-        smile: '../assets/images/mascot/robot_smile.png',
-        shock: '../assets/images/mascot/robot_shock.png',
-        party: '../assets/images/mascot/robot_party.png',
-        cool: '../assets/images/mascot/robot_cool.png',
-        idea: '../assets/images/mascot/robot_idea.png',
-        read: '../assets/images/mascot/robot_read.png',
-        wink: '../assets/images/mascot/robot_wink.png',
-        thinking: '../assets/images/mascot/robot_thinking.png',
-        sad: '../assets/images/mascot/robot_sad.png'
+        idle: '../assets/images/mascot_vk/robot_idle.png',
+        smile: '../assets/images/mascot_vk/robot_smile.png',
+        shock: '../assets/images/mascot_vk/robot_shock.png',
+        party: '../assets/images/mascot_vk/robot_party.png',
+        cool: '../assets/images/mascot_vk/robot_cool.png',
+        idea: '../assets/images/mascot_vk/robot_idea.png',
+        read: '../assets/images/mascot_vk/robot_read.png',
+        wink: '../assets/images/mascot_vk/robot_wink.png',
+        thinking: '../assets/images/mascot_vk/robot_idea.png',
+        sad: '../assets/images/mascot_vk/robot_sad.png'
     };
-
+    const MODAL_SPRITES = {
+        smile: '../assets/images/mascot_vk/robot_smile.png',
+        party: '../assets/images/mascot_vk/robot_party.png',
+        shock: '../assets/images/mascot_vk/robot_shock.png',
+        read: '../assets/images/mascot_vk/robot_read.png'
+    };
     const loadedImages = {};
-    for (const [key, src] of Object.entries(MASCOT_SPRITES)) {
-        const img = new Image();
-        img.src = src;
-        img.onload = () => { loadedImages[key] = img; };
-        img.onerror = () => { loadedImages[key] = null; };
-    }
+    const spriteBounds = {};
 
-    // Canvas & Viewport Setup
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    let vw = window.innerWidth;
-    let vh = window.innerHeight;
-
-    function resizeCanvas() {
-        vw = window.innerWidth;
-        vh = window.innerHeight;
-        canvas.width = vw;
-        canvas.height = vh;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    // Input Controller
     const input = {
         left: false,
         right: false,
@@ -88,7 +72,153 @@
         fix: false
     };
 
+    function findMascotBounds(img) {
+        const scratch = document.createElement('canvas');
+        scratch.width = img.naturalWidth;
+        scratch.height = img.naturalHeight;
+        const scratchCtx = scratch.getContext('2d', { willReadFrequently: true });
+        scratchCtx.drawImage(img, 0, 0);
+
+        let pixels;
+        try {
+            pixels = scratchCtx.getImageData(0, 0, scratch.width, scratch.height).data;
+        } catch (_) {
+            return { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+        }
+
+        let left = scratch.width;
+        let top = scratch.height;
+        let right = -1;
+        let bottom = -1;
+        for (let y = 0; y < scratch.height; y++) {
+            for (let x = 0; x < scratch.width; x++) {
+                if (pixels[(y * scratch.width + x) * 4 + 3] > 12) {
+                    if (x < left) left = x;
+                    if (x > right) right = x;
+                    if (y < top) top = y;
+                    if (y > bottom) bottom = y;
+                }
+            }
+        }
+
+        if (right < left || bottom < top) {
+            return { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+        }
+
+        const padX = Math.ceil((right - left + 1) * 0.045);
+        const padY = Math.ceil((bottom - top + 1) * 0.035);
+        left = Math.max(0, left - padX);
+        top = Math.max(0, top - padY);
+        right = Math.min(scratch.width - 1, right + padX);
+        bottom = Math.min(scratch.height - 1, bottom + padY);
+        return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+    }
+
+    function drawMascotSprite(context, img, x, y, width, height) {
+        if (!img || !img.complete || !img.naturalWidth) return false;
+        const bounds = spriteBounds[img.src] || { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
+        const scale = Math.min(width / bounds.width, height / bounds.height);
+        const drawWidth = bounds.width * scale;
+        const drawHeight = bounds.height * scale;
+        context.drawImage(
+            img,
+            bounds.x, bounds.y, bounds.width, bounds.height,
+            x - drawWidth / 2, y - drawHeight / 2, drawWidth, drawHeight
+        );
+        return true;
+    }
+
+    for (const [key, src] of Object.entries(MASCOT_SPRITES)) {
+        const img = new Image();
+        img.onload = () => {
+            loadedImages[key] = img;
+            if (!spriteBounds[img.src]) {
+                spriteBounds[img.src] = findMascotBounds(img);
+                const bounds = spriteBounds[img.src];
+                const crop = document.createElement('canvas');
+                crop.width = bounds.width;
+                crop.height = bounds.height;
+                crop.getContext('2d').drawImage(
+                    img,
+                    bounds.x, bounds.y, bounds.width, bounds.height,
+                    0, 0, bounds.width, bounds.height
+                );
+                const croppedSprite = crop.toDataURL('image/png');
+                if (MODAL_SPRITES[key]) {
+                    document.querySelectorAll('.modal-mascot-img[data-mascot="' + key + '"]').forEach((modalImg) => {
+                        modalImg.src = croppedSprite;
+                    });
+                }
+            }
+        };
+        img.onerror = () => { loadedImages[key] = null; };
+        img.src = src;
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let vw = window.innerWidth;
+    let vh = window.innerHeight;
+    let pixelRatio = 1;
+    let gameState;
+    let resizeNeedsHUDRefresh = false;
+
+    function releaseAllInputs() {
+        input.left = false;
+        input.right = false;
+        input.up = false;
+        input.down = false;
+        input.jump = false;
+        input.jumpPressed = false;
+        input.fix = false;
+        document.querySelectorAll('.touch-btn.active').forEach((button) => button.classList.remove('active'));
+    }
+
+    window.addEventListener('blur', releaseAllInputs);
+    window.addEventListener('resize', () => {
+        updateCanvasResolution();
+        if (gameState && gameState.player && gameState.platforms.length > 0) {
+            resizeNeedsHUDRefresh = true;
+            const floor = gameState.platforms[0];
+            floor.y = vh - 55;
+            if (gameState.player.grounded) gameState.player.y = floor.y - gameState.player.h;
+            for (const platform of gameState.platforms) {
+                if (platform.type === 'desk') platform.y = floor.y - 260;
+                else if (platform.type === 'shelf') platform.y = floor.y - 500;
+            }
+            for (const computer of gameState.computers) {
+                const platform = gameState.platforms.find((item) => Math.abs(item.x + item.w / 2 - (computer.x + computer.w / 2)) < 1);
+                if (platform) computer.y = platform.y;
+            }
+        }
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            releaseAllInputs();
+            if (gameState && gameState.state === STATE_PLAYING) togglePause();
+        }
+    });
+
+    function updateCanvasResolution() {
+        vw = window.innerWidth;
+        vh = window.innerHeight;
+        pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(vw * pixelRatio);
+        canvas.height = Math.round(vh * pixelRatio);
+        canvas.style.width = `${vw}px`;
+        canvas.style.height = `${vh}px`;
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    }
+
+    updateCanvasResolution();
+
+    function drawMascotSpriteCentered(context, img, centerX, centerY, width, height) {
+        return drawMascotSprite(context, img, centerX, centerY, width, height);
+    }
+
+    // A held key should not repeat menu actions or repeatedly toggle pause.
     window.addEventListener('keydown', (e) => {
+        if (e.repeat && ['KeyP', 'Escape', 'KeyM'].includes(e.code)) return;
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
             e.preventDefault();
         }
@@ -116,13 +246,15 @@
         if (e.code === 'Space' || e.code === 'KeyE') input.fix = false;
     });
 
-    // Touch Controls Binding
+    // Bind accessible buttons with pointer events, so holding a repair button
+    // works reliably on touchscreens, pens, and mouse without synthetic clicks.
     function bindTouch(id, action) {
         const el = document.getElementById(id);
         if (!el) return;
 
         const start = (e) => {
             e.preventDefault();
+            if (e.button !== undefined && e.button !== 0) return;
             el.classList.add('active');
             if (action === 'jump') {
                 if (!input.jump) input.jumpPressed = true;
@@ -132,10 +264,13 @@
                 input[action] = true;
             }
             if (window.navigator.vibrate) window.navigator.vibrate(12);
+            if (el.setPointerCapture && e.pointerId !== undefined) {
+                el.setPointerCapture(e.pointerId);
+            }
         };
 
         const end = (e) => {
-            e.preventDefault();
+            if (e) e.preventDefault();
             el.classList.remove('active');
             if (action === 'jump') {
                 input.jump = false;
@@ -145,12 +280,10 @@
             }
         };
 
-        el.addEventListener('touchstart', start, { passive: false });
-        el.addEventListener('touchend', end, { passive: false });
-        el.addEventListener('touchcancel', end, { passive: false });
-        el.addEventListener('mousedown', start);
-        el.addEventListener('mouseup', end);
-        el.addEventListener('mouseleave', end);
+        el.addEventListener('pointerdown', start);
+        el.addEventListener('pointerup', end);
+        el.addEventListener('pointercancel', end);
+        el.addEventListener('lostpointercapture', end);
     }
 
     bindTouch('btn-left', 'left');
@@ -301,6 +434,173 @@
         ctx.restore();
     }
 
+    const SCENE_DEPTH = {
+        horizonY: 0.18,
+        floorFar: 0.5,
+        floorNear: 1
+    };
+
+    function getDepthPerspective(worldY) {
+        const groundY = vh - 55;
+        const roomDepth = Math.max(240, Math.min(580, vh * 0.68));
+        const ratio = Math.max(0, Math.min(1, (worldY - (groundY - roomDepth)) / roomDepth));
+        return SCENE_DEPTH.floorFar + (SCENE_DEPTH.floorNear - SCENE_DEPTH.floorFar) * ratio;
+    }
+
+    function drawPerspectiveFloor(ctx, cameraX, groundY) {
+        const screenOffsetX = 0;
+        const horizonY = vh * SCENE_DEPTH.horizonY;
+        const screenW = vw;
+        const floorGradient = ctx.createLinearGradient(0, horizonY, 0, groundY + 90);
+        floorGradient.addColorStop(0, '#17233a');
+        floorGradient.addColorStop(0.48, '#503323');
+        floorGradient.addColorStop(1, '#150f12');
+        ctx.fillStyle = floorGradient;
+        ctx.fillRect(screenOffsetX, horizonY, screenW, groundY + 90 - horizonY);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(screenOffsetX, horizonY, screenW, groundY + 90 - horizonY);
+        ctx.clip();
+
+        const vanishX = screenOffsetX + screenW * 0.5;
+        const offset = ((cameraX * 0.58) % 220 + 220) % 220;
+        ctx.lineWidth = 1;
+        for (let line = -9; line <= 9; line++) {
+
+            const distantX = vanishX + line * 14;
+            const nearbyX = vanishX + line * (screenW / 8) - offset * (line / 9);
+            ctx.strokeStyle = line % 3 === 0 ? 'rgba(238, 185, 119, 0.19)' : 'rgba(182, 142, 102, 0.11)';
+            ctx.beginPath();
+            ctx.moveTo(distantX, horizonY);
+            ctx.lineTo(nearbyX, groundY + 100);
+
+            ctx.stroke();
+        }
+
+        for (let row = 0; row < 10; row++) {
+            const fraction = (row + 1) / 10;
+            const y = horizonY + (groundY + 80 - horizonY) * fraction * fraction + ((offset * fraction) % 24);
+            ctx.strokeStyle = `rgba(222, 165, 109, ${0.06 + fraction * 0.1})`;
+            ctx.beginPath();
+            ctx.moveTo(screenOffsetX, y);
+            ctx.lineTo(screenOffsetX + screenW, y);
+            ctx.stroke();
+        }
+
+        const reflectedLight = ctx.createLinearGradient(0, horizonY, 0, groundY);
+        reflectedLight.addColorStop(0, 'rgba(43, 131, 157, 0.13)');
+        reflectedLight.addColorStop(0.62, 'rgba(219, 154, 86, 0.07)');
+        reflectedLight.addColorStop(1, 'rgba(4, 8, 19, 0.22)');
+        ctx.fillStyle = reflectedLight;
+        ctx.fillRect(screenOffsetX, horizonY, screenW, groundY - horizonY);
+        ctx.restore();
+    }
+
+    function drawLibraryDepth(ctx, cameraX) {
+        const horizonY = vh * SCENE_DEPTH.horizonY;
+        const centerX = vw * 0.5;
+
+        const drift = ((cameraX * 0.08) % 560 + 560) % 560;
+        const zPlanes = 8;
+        const panelColors = ['#4b192b', '#17394c', '#23533d', '#67451d', '#46305d', '#802f32'];
+
+        ctx.save();
+        ctx.globalAlpha = 0.86;
+        for (let i = 0; i < zPlanes; i++) {
+            const t = (i + 1) / zPlanes;
+            const y = horizonY + (vh * 0.67 - horizonY) * t * t;
+            const halfWidth = vw * (0.13 + 0.37 * t);
+            const shelfHeight = Math.max(5, (vh * 0.095) * t);
+            const bookScale = 0.32 + t * 0.68;
+            const scroll = drift * t;
+
+            for (const side of [-1, 1]) {
+                const x = centerX + side * (vw * 0.52 - halfWidth);
+                const panelWidth = halfWidth * 0.66;
+                const panelGradient = ctx.createLinearGradient(x, y - shelfHeight, x + panelWidth, y);
+                panelGradient.addColorStop(0, side < 0 ? '#160f22' : '#201023');
+                panelGradient.addColorStop(0.45, side < 0 ? '#594026' : '#473322');
+                panelGradient.addColorStop(1, '#100d18');
+                ctx.fillStyle = panelGradient;
+                ctx.fillRect(x, y - shelfHeight, panelWidth, shelfHeight);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y - shelfHeight, panelWidth, shelfHeight);
+                ctx.clip();
+                const bookW = Math.max(1.5, (4 + t * 10) * bookScale);
+                const gap = Math.max(1.5, 2 * bookScale);
+                const columns = Math.ceil(panelWidth / (bookW + gap)) + 2;
+                for (let book = 0; book < columns; book++) {
+                    const bookX = x + book * (bookW + gap) - (scroll % (bookW + gap));
+                    const hash = (book * 13 + i * 17 + (side + 1) * 5) % panelColors.length;
+                    const color = panelColors[hash];
+                    const bookH = shelfHeight * (0.48 + ((book * 19 + i * 7) % 37) / 100);
+                    ctx.fillStyle = color;
+                    ctx.fillRect(bookX, y - bookH - 2 * bookScale, bookW, bookH);
+                    if (t > 0.4 && bookW > 5) {
+                        ctx.fillStyle = 'rgba(248,211,133,0.72)';
+                        ctx.fillRect(bookX + bookW * 0.18, y - bookH + 5 * bookScale, bookW * 0.64, Math.max(1, bookScale));
+                        ctx.fillRect(bookX + bookW * 0.18, y - 4 * bookScale, bookW * 0.64, Math.max(1, bookScale));
+                    }
+                }
+                const shelfEdge = ctx.createLinearGradient(0, y - 2, 0, y + 7 * t);
+                shelfEdge.addColorStop(0, '#D1A362');
+                shelfEdge.addColorStop(0.24, '#50331f');
+                shelfEdge.addColorStop(1, '#120d14');
+                ctx.fillStyle = shelfEdge;
+                ctx.fillRect(x, y - 3 * t, panelWidth, Math.max(3, 7 * t));
+                ctx.restore();
+            }
+        }
+
+        const overhead = ctx.createLinearGradient(0, 0, 0, horizonY + 90);
+        overhead.addColorStop(0, 'rgba(3,6,18,0.98)');
+        overhead.addColorStop(0.76, 'rgba(15,20,37,0.77)');
+        overhead.addColorStop(1, 'rgba(15,20,37,0)');
+        ctx.fillStyle = overhead;
+        ctx.fillRect(0, 0, vw, horizonY + 90);
+        for (const side of [-1, 1]) {
+            const topX = centerX + side * vw * 0.1;
+            const bottomX = centerX + side * vw * 0.64;
+            const beamGradient = ctx.createLinearGradient(topX, 0, bottomX, vh * 0.77);
+            beamGradient.addColorStop(0, 'rgba(209,172,117,0)');
+            beamGradient.addColorStop(0.42, 'rgba(119,196,208,0.16)');
+            beamGradient.addColorStop(1, 'rgba(209,172,117,0)');
+            ctx.fillStyle = beamGradient;
+            ctx.beginPath();
+            ctx.moveTo(topX - 8, horizonY * 0.2);
+            ctx.lineTo(topX + 8, horizonY * 0.2);
+            ctx.lineTo(bottomX + vw * 0.08, vh * 0.76);
+            ctx.lineTo(bottomX - vw * 0.08, vh * 0.76);
+            ctx.closePath();
+            ctx.fill();
+        }
+        const distantGlow = ctx.createRadialGradient(centerX, horizonY, 5, centerX, horizonY, vw * 0.4);
+        distantGlow.addColorStop(0, 'rgba(74,190,217,0.24)');
+        distantGlow.addColorStop(0.42, 'rgba(74,190,217,0.06)');
+        distantGlow.addColorStop(1, 'rgba(74,190,217,0)');
+        ctx.fillStyle = distantGlow;
+        ctx.fillRect(centerX - vw * 0.42, 0, vw * 0.84, horizonY * 2.1);
+        ctx.restore();
+    }
+
+    function drawContactShadow(ctx, x, groundY, width, height, alpha = 0.38, tint = '4, 6, 13') {
+        const lift = Math.max(0, Math.min(1, height / 280));
+        const radius = Math.max(8, width * (0.64 - lift * 0.28));
+        const shadowGradient = ctx.createRadialGradient(x, groundY, 1, x, groundY, radius);
+        shadowGradient.addColorStop(0, `rgba(${tint}, ${alpha * (1 - lift * 0.55)})`);
+        shadowGradient.addColorStop(0.58, `rgba(${tint}, ${alpha * 0.56 * (1 - lift * 0.45)})`);
+        shadowGradient.addColorStop(1, `rgba(${tint}, 0)`);
+        ctx.save();
+        ctx.fillStyle = shadowGradient;
+        ctx.beginPath();
+        ctx.ellipse(x, groundY, radius, Math.max(4, radius * 0.22), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
     // Floating Text with Spring Easing
     class FloatingText {
         constructor(x, y, text, color = '#FFB347', size = 20) {
@@ -351,157 +651,129 @@
         }
 
         draw(ctx, camX, camY) {
+            const perspective = this.type === 'floor' ? 1 : getDepthPerspective(this.y);
             const dx = this.x - camX;
             const dy = this.y - camY;
+            const depthW = this.w * perspective;
+            const depthH = this.h * perspective;
+            const depthX = dx + (this.w - depthW) / 2;
 
             if (this.type === 'floor') {
+                const groundY = dy;
+                const worldOffset = Math.max(0, Math.floor(camX / 90) - 2);
+                drawPerspectiveFloor(ctx, camX, groundY);
+
                 const tex = gameTextures.floor;
                 if (tex && tex.complete && tex.naturalWidth > 0) {
-                    // Tiled photo-realistic parquet floor
                     ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(dx, dy, this.w, this.h);
-                    ctx.clip();
-
-                    const tileH = this.h;
-                    const tileW = (tex.naturalWidth / tex.naturalHeight) * tileH;
-                    const offset = ((dx % tileW) + tileW) % tileW;
-                    for (let px = dx - offset; px < dx + this.w; px += tileW) {
-                        ctx.drawImage(tex, px, dy, tileW, tileH);
-                    }
-
-                    // Cyber overlay gradient for rich contrast
-                    const floorOverlay = ctx.createLinearGradient(0, dy, 0, dy + this.h);
-                    floorOverlay.addColorStop(0, 'rgba(0, 15, 35, 0.25)');
-                    floorOverlay.addColorStop(1, 'rgba(3, 6, 15, 0.7)');
-                    ctx.fillStyle = floorOverlay;
-                    ctx.fillRect(dx, dy, this.w, this.h);
-
-                    // Polished neon cyber floor top glow line
-                    const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
-                    floorGrad.addColorStop(0, '#00F0FF');
-                    floorGrad.addColorStop(0.5, '#00FF9D');
-                    floorGrad.addColorStop(1, '#00F0FF');
-                    ctx.fillStyle = floorGrad;
-                    ctx.shadowColor = '#00F0FF';
-                    ctx.shadowBlur = 10;
-                    ctx.fillRect(dx, dy, this.w, 3.5);
-                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 0.24;
+                    ctx.globalCompositeOperation = 'multiply';
+                    ctx.drawImage(tex, 0, groundY, vw, this.h + 55);
                     ctx.restore();
-                } else {
-                    // Fallback: Polished Dark Parquet Floor
-                    ctx.fillStyle = '#10172B';
-                    ctx.fillRect(dx, dy, this.w, this.h);
-
-                    // Floor glow line
-                    const floorGrad = ctx.createLinearGradient(dx, dy, dx + this.w, dy);
-                    floorGrad.addColorStop(0, '#00F0FF');
-                    floorGrad.addColorStop(0.5, '#00FF9D');
-                    floorGrad.addColorStop(1, '#00F0FF');
-                    ctx.fillStyle = floorGrad;
-                    ctx.shadowColor = '#00F0FF';
-                    ctx.shadowBlur = 10;
-                    ctx.fillRect(dx, dy, this.w, 3);
-                    ctx.shadowBlur = 0;
-
-                    // Parquet plank dividers
-                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
-                    ctx.lineWidth = 1.5;
-                    for (let px = 0; px < this.w; px += 90) {
-                        ctx.beginPath();
-                        ctx.moveTo(dx + px, dy + 3);
-                        ctx.lineTo(dx + px, dy + this.h);
-                        ctx.stroke();
-                    }
                 }
+
+                ctx.save();
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.10)';
+                ctx.lineWidth = 1;
+                for (let plank = worldOffset; plank * 90 < camX + vw + 180; plank++) {
+                    const worldX = plank * 90;
+                    const screenX = worldX - camX;
+                    ctx.beginPath();
+                    ctx.moveTo(vw * 0.5 + (screenX - vw * 0.5) * 0.12, vh * SCENE_DEPTH.horizonY);
+                    ctx.lineTo(screenX, groundY + 85);
+                    ctx.stroke();
+                }
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.32)';
+                ctx.shadowColor = '#00F0FF';
+                ctx.shadowBlur = 12;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(0, groundY);
+                ctx.lineTo(vw, groundY);
+                ctx.stroke();
+                ctx.restore();
             } else if (this.type === 'desk') {
-                const shelfTex = gameTextures.shelf;
-                if (shelfTex && shelfTex.complete && shelfTex.naturalWidth > 0) {
-                    // Photo-realistic Desk Platform
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.roundRect(dx, dy, this.w, this.h, [4, 4, 0, 0]);
-                    ctx.clip();
+                const slabDepth = Math.max(8, 22 * perspective);
+                drawContactShadow(ctx, dx + this.w * 0.5, dy + this.h + slabDepth, this.w * 0.62, 8, 0.3);
+                const top = dy - slabDepth;
+                const scaledW = depthW;
+                const bevel = Math.max(5, 15 * perspective);
+                const front = ctx.createLinearGradient(depthX, top, depthX, dy + depthH);
+                front.addColorStop(0, '#986438');
+                front.addColorStop(0.24, '#51321f');
+                front.addColorStop(1, '#211511');
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.55)';
+                ctx.shadowBlur = 18 * perspective;
+                ctx.fillStyle = front;
+                ctx.fillRect(depthX, top, scaledW, depthH + slabDepth);
+                ctx.restore();
 
-                    const sw = shelfTex.naturalWidth;
-                    const sh = shelfTex.naturalHeight;
-                    ctx.drawImage(shelfTex, 0, sh - 150, sw, 150, dx, dy, this.w, this.h);
+                // Layered bevels give the desktop a thick, polished cut edge.
+                ctx.fillStyle = '#C0894B';
+                ctx.beginPath();
+                ctx.moveTo(depthX - bevel, top);
+                ctx.lineTo(depthX, top - slabDepth);
+                ctx.lineTo(depthX + scaledW, top - slabDepth);
+                ctx.lineTo(depthX + scaledW + bevel, top);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#81502C';
+                ctx.beginPath();
+                ctx.moveTo(depthX + scaledW, top - slabDepth);
+                ctx.lineTo(depthX + scaledW + bevel, top);
+                ctx.lineTo(depthX + scaledW + bevel, top + depthH);
+                ctx.lineTo(depthX + scaledW, top + depthH + slabDepth);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#D0A163';
+                ctx.fillRect(depthX - bevel, top - 2, scaledW + bevel * 2, 3 * perspective);
+                ctx.fillStyle = 'rgba(255,224,172,0.48)';
+                ctx.fillRect(depthX + 5, top - slabDepth + 3, Math.max(8, scaledW * 0.44), Math.max(1, perspective * 2));
+                const brass = ctx.createLinearGradient(depthX, top, depthX + scaledW, top);
+                brass.addColorStop(0, '#785228');
+                brass.addColorStop(0.24, '#F3D68B');
+                brass.addColorStop(0.5, '#AD792F');
+                brass.addColorStop(0.76, '#FFE9AB');
+                brass.addColorStop(1, '#79562E');
+                ctx.fillStyle = brass;
+                ctx.fillRect(depthX - bevel, top - slabDepth + 1, scaledW + bevel * 2, Math.max(1, perspective * 1.3));
 
-                    // Rich varnish overlay
-                    ctx.fillStyle = 'rgba(65, 35, 18, 0.35)';
-                    ctx.fillRect(dx, dy, this.w, this.h);
-                    ctx.restore();
-
-                    // Gold Leaf Trim on edge
-                    ctx.fillStyle = '#D4AF37';
-                    ctx.fillRect(dx, dy, this.w, 3);
-
-                    // Brass Corner Brackets & Rivets
-                    ctx.fillStyle = '#D4AF37';
-                    ctx.fillRect(dx + 4, dy + 2, 10, 5);
-                    ctx.fillRect(dx + this.w - 14, dy + 2, 10, 5);
-
-                    // Desk Carved Legs reaching to floor
-                    ctx.fillStyle = '#1A0F09';
-                    ctx.fillRect(dx + 22, dy + this.h, 16, 260);
-                    ctx.fillRect(dx + this.w - 38, dy + this.h, 16, 260);
-
-                    // Classic Emerald Banker's Lamp
-                    if (this.hasLamp) {
-                        this.drawBankersLamp(ctx, dx, dy);
-                    }
-                } else {
-                    // Fallback: Polished Mahogany Library Desk
-                    ctx.fillStyle = '#2A180E';
-                    ctx.fillRect(dx, dy, this.w, this.h);
-                    ctx.fillStyle = '#4E2C17';
-                    ctx.fillRect(dx, dy, this.w, 5);
-
-                    // Brass Corner Brackets & Rivets
-                    ctx.fillStyle = '#D4AF37';
-                    ctx.fillRect(dx + 4, dy + 2, 8, 4);
-                    ctx.fillRect(dx + this.w - 12, dy + 2, 8, 4);
-
-                    // Desk Carved Legs
-                    ctx.fillStyle = '#1A0F09';
-                    ctx.fillRect(dx + 20, dy + this.h, 14, 260);
-                    ctx.fillRect(dx + this.w - 34, dy + this.h, 14, 260);
-
-                    if (this.hasLamp) {
-                        this.drawBankersLamp(ctx, dx, dy);
-                    }
+                if (perspective > 0.32) {
+                    ctx.fillStyle = 'rgba(8, 8, 14, 0.7)';
+                    ctx.fillRect(depthX + 16, top + depthH, 10 * perspective, Math.max(0, Math.min(245, vh - 55 - top - depthH)));
+                    ctx.fillRect(depthX + scaledW - 24, top + depthH, 10 * perspective, Math.max(0, Math.min(245, vh - 55 - top - depthH)));
                 }
+                if (this.hasLamp && perspective > 0.35) this.drawBankersLamp(ctx, depthX + 36 * perspective, top - slabDepth);
             } else {
-                // Grand Wooden Bookshelf Platform
-                const shelfTex = gameTextures.shelf;
-                if (shelfTex && shelfTex.complete && shelfTex.naturalWidth > 0) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.roundRect(dx, dy, this.w, this.h, [4, 4, 0, 0]);
-                    ctx.clip();
-
-                    const sw = shelfTex.naturalWidth;
-                    ctx.drawImage(shelfTex, 0, 0, sw, 140, dx, dy, this.w, this.h);
-
-                    ctx.fillStyle = 'rgba(45, 26, 14, 0.4)';
-                    ctx.fillRect(dx, dy, this.w, this.h);
-                    ctx.restore();
-
-                    // Shelf edge highlight
-                    ctx.fillStyle = '#8B5A2B';
-                    ctx.fillRect(dx, dy, this.w, 3.5);
-
-                    // Richly Detailed Books Standing on Shelf
-                    this.drawShelfBooks(ctx, dx, dy);
-                } else {
-                    // Fallback: Grand Wooden Bookshelf Platform
-                    ctx.fillStyle = '#362113';
-                    ctx.fillRect(dx, dy, this.w, this.h);
-                    ctx.fillStyle = '#5A371F';
-                    ctx.fillRect(dx, dy, this.w, 4);
-
-                    this.drawShelfBooks(ctx, dx, dy);
-                }
+                const ledgeDepth = Math.max(8, 20 * perspective);
+                drawContactShadow(ctx, dx + this.w * 0.5, dy + this.h + ledgeDepth, this.w * 0.65, 8, 0.35);
+                const top = dy - ledgeDepth;
+                const frontGradient = ctx.createLinearGradient(depthX, top, depthX, dy + depthH + ledgeDepth);
+                frontGradient.addColorStop(0, '#624029');
+                frontGradient.addColorStop(0.35, '#30251f');
+                frontGradient.addColorStop(1, '#141525');
+                ctx.fillStyle = frontGradient;
+                ctx.fillRect(depthX, top, depthW, depthH + ledgeDepth);
+                ctx.fillStyle = '#79512e';
+                ctx.beginPath();
+                ctx.moveTo(depthX, top);
+                ctx.lineTo(depthX + 9 * perspective, top - ledgeDepth);
+                ctx.lineTo(depthX + depthW + 8 * perspective, top - ledgeDepth);
+                ctx.lineTo(depthX + depthW, top);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#40281c';
+                ctx.beginPath();
+                ctx.moveTo(depthX + depthW, top);
+                ctx.lineTo(depthX + depthW + 8 * perspective, top - ledgeDepth);
+                ctx.lineTo(depthX + depthW + 8 * perspective, dy + depthH - ledgeDepth);
+                ctx.lineTo(depthX + depthW, dy + depthH);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#C59B5A';
+                ctx.fillRect(depthX, top - 1, depthW, Math.max(1, perspective * 3));
+                if (perspective > 0.28) this.drawShelfBooks(ctx, depthX, top);
             }
         }
 
@@ -598,6 +870,7 @@
             this.glitchTimer = 0;
             this.smokeTimer = 0;
             this.sparkTimer = 0;
+            this.playerNearby = false;
         }
 
         update(dt, player) {
@@ -636,11 +909,14 @@
             const distCenterY = Math.abs((player.y + player.h / 2) - (this.y - this.h / 2));
 
             const isNear = distX < 190 && (distY < 130 || distCenterY < 130);
+            this.playerNearby = isNear;
+            this.depthScale = getDepthPerspective(this.y);
 
             if (isNear && input.fix) {
                 player.isFixing = true;
                 player.fixTargetX = cCenterX;
-                player.fixTargetY = this.y - this.h / 2;
+                player.fixTargetY = this.y - this.h / 2 * this.depthScale;
+                player.facingRight = cCenterX >= pCenterX;
 
                 this.fixProgress += dt / CONFIG.FIX_TIME_REQUIRED;
 
@@ -648,8 +924,8 @@
                 if (Math.random() < 0.25) window.gameAudio.playRepairHum();
 
                 // Rich repair spark fountain at monitor center
-                emitParticles(cCenterX, this.y - this.h / 2, 4, '#00F0FF', 160, 0.5, 'spark', 180);
-                emitParticles(cCenterX, this.y - this.h / 2, 2, '#FFB347', 120, 0.4, 'circle', 130);
+                emitParticles(cCenterX, player.fixTargetY, 4, '#00F0FF', 160, 0.5, 'spark', 180);
+                emitParticles(cCenterX, player.fixTargetY, 2, '#FFB347', 120, 0.4, 'circle', 130);
 
                 if (this.fixProgress >= 1) {
                     this.completeFix(player);
@@ -660,8 +936,10 @@
         }
 
         completeFix(player) {
+            if (this.fixed) return;
             this.fixed = true;
             this.fixProgress = 1;
+            const perspective = getDepthPerspective(this.y);
 
             window.gameAudio.playFixComplete();
 
@@ -670,7 +948,7 @@
             triggerScreenShake(12);
 
             const cCenterX = this.x + this.w / 2;
-            const cCenterY = this.y - this.h / 2;
+            const cCenterY = this.y - this.h / 2 * perspective;
 
             // Celebration sparks & confetti
             emitParticles(cCenterX, cCenterY, 60, '#00FF9D', 260, 1.2, 'circle', 80);
@@ -680,16 +958,37 @@
             gameState.score += bonus;
             gameState.gameTime = Math.min(120, gameState.gameTime + 14);
             gameState.fixedCount++;
+            player.emotion = 'party';
+            player.emotionTimer = 1.1;
 
-            floatingTexts.push(new FloatingText(this.x + 20, this.y - this.h - 30, `+${bonus} ОЧКОВ!`, '#00FF9D', 26));
-            floatingTexts.push(new FloatingText(this.x + 35, this.y - this.h - 60, `+14 СЕК`, '#FFB347', 18));
+            floatingTexts.push(new FloatingText(this.x + 20, this.y - this.h * perspective - 30 * perspective, `+${bonus} ОЧКОВ!`, '#00FF9D', 26 * perspective));
+            floatingTexts.push(new FloatingText(this.x + 35, this.y - this.h * perspective - 60 * perspective, `+14 СЕК`, '#FFB347', 18 * perspective));
 
             checkLevelProgression();
         }
 
         draw(ctx, camX, camY) {
-            const dx = this.x - camX;
+            const depth = this.depthScale || getDepthPerspective(this.y);
+            const dx = this.x - camX + (this.w - this.w * depth) * 0.5;
             const dy = this.y - camY;
+            const spriteW = this.w * depth;
+            const spriteH = this.h * depth;
+            const topY = dy - spriteH;
+
+            drawContactShadow(ctx, dx + spriteW * 0.5, dy + 4, spriteW * 0.85, 15 * depth, 0.42);
+            ctx.save();
+            const rim = ctx.createLinearGradient(dx, topY, dx + spriteW, topY);
+            rim.addColorStop(0, 'rgba(255,213,148,0.35)');
+            rim.addColorStop(0.32, 'rgba(255,255,255,0)');
+            rim.addColorStop(0.78, 'rgba(80,241,255,0.23)');
+            rim.addColorStop(1, 'rgba(0,0,0,0.5)');
+            ctx.fillStyle = rim;
+            ctx.shadowColor = this.fixed ? 'rgba(0,255,157,0.52)' : 'rgba(255,51,102,0.42)';
+            ctx.shadowBlur = (this.fixed ? 20 : 11) * depth;
+            ctx.beginPath();
+            ctx.ellipse(dx + spriteW / 2, topY + spriteH * 0.46, spriteW * 0.72, spriteH * 0.72, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
 
             // Desk contact soft shadow
             ctx.save();
@@ -706,37 +1005,41 @@
                 // Draw photo-realistic terminal monoblock (w: 160, h: 140)
                 ctx.save();
                 if (!this.fixed && Math.sin(this.glitchTimer * 2) > 0.85) {
-                    ctx.translate((Math.random() - 0.5) * 3, 0);
+                    ctx.translate((Math.random() - 0.5) * 3 * depth, 0);
                 }
-                ctx.drawImage(tex, dx, dy - this.h, this.w, this.h);
+                ctx.drawImage(tex, dx, dy - spriteH, spriteW, spriteH);
 
                 // Broken state: dynamic screen glitch overlay
                 if (!this.fixed) {
                     if (Math.sin(this.glitchTimer * 4) > 0.6) {
                         ctx.fillStyle = 'rgba(255, 51, 102, 0.18)';
-                        ctx.fillRect(dx + 16, dy - this.h + 14, this.w - 32, this.h - 48);
+                        ctx.fillRect(dx + 16 * depth, dy - spriteH + 14 * depth, spriteW - 32 * depth, spriteH - 48 * depth);
                     }
-                    const scanY = dy - this.h + 14 + (Math.floor(this.glitchTimer * 24) % (this.h - 52));
+                    const scanY = dy - spriteH + 14 * depth + (Math.floor(this.glitchTimer * 24) % (this.h - 52)) * depth;
                     ctx.fillStyle = 'rgba(255, 51, 102, 0.45)';
-                    ctx.fillRect(dx + 16, scanY, this.w - 32, 2.5);
+                    ctx.fillRect(dx + 16 * depth, scanY, spriteW - 32 * depth, Math.max(1, 2.5 * depth));
                 } else {
                     // Repaired state: subtle ambient cyber-glow on screen
                     ctx.save();
                     ctx.globalCompositeOperation = 'screen';
                     const glowGrad = ctx.createRadialGradient(
-                        dx + this.w / 2, dy - this.h / 2, 10,
-                        dx + this.w / 2, dy - this.h / 2, 70
+                        dx + spriteW / 2, dy - spriteH / 2, 10 * depth,
+                        dx + spriteW / 2, dy - spriteH / 2, 70 * depth
                     );
                     glowGrad.addColorStop(0, 'rgba(0, 255, 157, 0.22)');
                     glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
                     ctx.fillStyle = glowGrad;
-                    ctx.fillRect(dx + 10, dy - this.h, this.w - 20, this.h - 20);
+                    ctx.fillRect(dx + 10 * depth, dy - spriteH, spriteW - 20 * depth, spriteH - 20 * depth);
                     ctx.restore();
                 }
                 ctx.restore();
             } else {
-                // Fallback: procedural high-tech monoblock
-                this.drawProceduralTerminal(ctx, dx, dy);
+                // Keep the hand-drawn emergency fallback aligned with the depth-scaled terminal.
+                ctx.save();
+                ctx.translate(dx + spriteW / 2, dy - spriteH / 2);
+                ctx.scale(depth, depth);
+                this.drawProceduralTerminal(ctx, -this.w / 2, this.h / 2);
+                ctx.restore();
             }
 
             // Holographic Progress Bar or Repair Prompt
@@ -744,10 +1047,10 @@
                 if (this.fixProgress > 0) {
                     // Holographic Cyber Progress Bar
                     ctx.save();
-                    const barW = this.w + 20;
-                    const barH = 12;
-                    const barX = dx - 10;
-                    const barY = dy - this.h - 28;
+                    const barW = (this.w + 20) * depth;
+                    const barH = Math.max(5, 12 * depth);
+                    const barX = dx - 10 * depth;
+                    const barY = dy - spriteH - 28 * depth;
 
                     // Glowing container
                     ctx.fillStyle = 'rgba(6, 12, 28, 0.88)';
@@ -764,7 +1067,7 @@
                     ctx.shadowColor = '#00FF9D';
                     ctx.shadowBlur = 12;
                     ctx.beginPath();
-                    ctx.roundRect(barX + 2, barY + 2, (barW - 4) * this.fixProgress, barH - 4, 3);
+                    ctx.roundRect(barX + 2 * depth, barY + 2 * depth, Math.max(1, (barW - 4 * depth) * this.fixProgress), Math.max(1, barH - 4 * depth), Math.max(1, 3 * depth));
                     ctx.fill();
                     ctx.shadowBlur = 0;
 
@@ -781,22 +1084,28 @@
                     ctx.textAlign = 'center';
                     ctx.fillText(`РЕМОНТ: ${Math.floor(this.fixProgress * 100)}%`, barX + barW / 2, barY - 4);
                     ctx.restore();
-                } else {
-                    // Floating repair callout
+                } else if (this.playerNearby) {
+                    // Only show the repair prompt when the player is in range.
                     ctx.save();
-                    const calloutY = dy - this.h - 16 + Math.sin(Date.now() / 250) * 4;
-                    ctx.fillStyle = 'rgba(5, 10, 25, 0.85)';
+                    const calloutY = dy - spriteH - 16 * depth + Math.sin(Date.now() / 250) * 4 * depth;
+                    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+                    const prompt = isTouch ? '⚡ КОСМО: ЧИНИТЬ' : '[ ПРОБЕЛ / E ]';
+                    const calloutW = Math.max(58, (isTouch ? 138 : 112) * depth);
+                    ctx.fillStyle = 'rgba(5, 10, 25, 0.94)';
                     ctx.beginPath();
-                    ctx.roundRect(dx + this.w / 2 - 46, calloutY - 14, 92, 20, 5);
+                    ctx.roundRect(dx + spriteW / 2 - calloutW / 2, calloutY - 17 * depth, calloutW, 25 * depth, 8 * depth);
                     ctx.fill();
                     ctx.strokeStyle = '#00F0FF';
-                    ctx.lineWidth = 1.2;
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowColor = '#00F0FF';
+                    ctx.shadowBlur = 12;
                     ctx.stroke();
+                    ctx.shadowBlur = 0;
 
-                    ctx.fillStyle = '#00F0FF';
-                    ctx.font = 'bold 11px monospace';
+                    ctx.fillStyle = '#8CFBFF';
+                    ctx.font = `bold ${Math.max(7, 11 * depth)}px monospace`;
                     ctx.textAlign = 'center';
-                    ctx.fillText('[ПРОБЕЛ / E]', dx + this.w / 2, calloutY);
+                    ctx.fillText(prompt, dx + spriteW / 2, calloutY);
                     ctx.restore();
                 }
             } else {
@@ -807,7 +1116,7 @@
                 ctx.textAlign = 'center';
                 ctx.shadowColor = '#00FF9D';
                 ctx.shadowBlur = 10;
-                ctx.fillText('✔ СИСТЕМА АВРОРА ОК', dx + this.w / 2, dy - this.h - 12);
+                ctx.fillText('✔ СИСТЕМА АВРОРА ОК', dx + spriteW / 2, dy - spriteH - 12 * depth);
                 ctx.restore();
             }
         }
@@ -891,31 +1200,40 @@
         }
 
         draw(ctx, camX, camY) {
-            const dx = this.x - camX;
+            const depth = getDepthPerspective(this.y + this.h);
+            const w = this.w * depth;
+            const h = this.h * depth;
+            const dx = this.x - camX + (this.w - w) * 0.5;
             const dy = this.y - camY;
+            drawContactShadow(ctx, dx + w * 0.5, dy + h - 3, w * 1.3, 14 * depth, 0.44);
+            ctx.save();
+            ctx.translate(dx + w * 0.5, dy + h * 0.5);
+            ctx.scale(depth, depth);
+            const cartX = -this.w * 0.5;
+            const cartY = -this.h * 0.5;
 
             // Vintage Metal Cart with Brass Detailing
             ctx.fillStyle = '#475569';
-            ctx.fillRect(dx + 5, dy + 6, this.w - 10, this.h - 18);
+            ctx.fillRect(cartX + 5, cartY + 6, this.w - 10, this.h - 18);
             ctx.strokeStyle = '#94A3B8';
             ctx.lineWidth = 2;
-            ctx.strokeRect(dx + 5, dy + 6, this.w - 10, this.h - 18);
+            ctx.strokeRect(cartX + 5, cartY + 6, this.w - 10, this.h - 18);
 
             // Stacks of Encyclopedias Inside Cart (Wobbling with speed)
             const wobble = Math.sin(Date.now() / 80) * 2;
             ctx.fillStyle = '#B91C1C';
-            ctx.fillRect(dx + 10, dy + 10 + wobble, 18, 14);
+            ctx.fillRect(cartX + 10, cartY + 10 + wobble, 18, 14);
             ctx.fillStyle = '#1D4ED8';
-            ctx.fillRect(dx + 30, dy + 8 - wobble, 18, 16);
+            ctx.fillRect(cartX + 30, cartY + 8 - wobble, 18, 16);
 
             // Handlebars
             ctx.strokeStyle = '#D4AF37';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(dx + 5, dy + 12);
-            ctx.lineTo(dx - 5, dy - 5);
-            ctx.moveTo(dx + this.w - 5, dy + 12);
-            ctx.lineTo(dx + this.w + 5, dy - 5);
+            ctx.moveTo(cartX + 5, cartY + 12);
+            ctx.lineTo(cartX - 5, cartY - 5);
+            ctx.moveTo(cartX + this.w - 5, cartY + 12);
+            ctx.lineTo(cartX + this.w + 5, cartY - 5);
             ctx.stroke();
 
             // Wheels with Brass Spokes
@@ -938,8 +1256,9 @@
                 ctx.restore();
             };
 
-            drawCartWheel(dx + 14, dy + this.h - 6);
-            drawCartWheel(dx + this.w - 14, dy + this.h - 6);
+            drawCartWheel(cartX + 14, cartY + this.h - 6);
+            drawCartWheel(cartX + this.w - 14, cartY + this.h - 6);
+            ctx.restore();
         }
     }
 
@@ -949,10 +1268,10 @@
             this.startX = x;
             this.startY = y;
             this.x = x;
-            this.y = y;
-            this.w = 40;
-            this.h = 26;
-            this.vx = speed;
+            this.y = y;        this.w = 40;
+        this.h = 26;
+        this.vx = speed;
+
             this.rangeY = rangeY;
             this.timer = Math.random() * 10;
         }
@@ -971,11 +1290,16 @@
         }
 
         draw(ctx, camX, camY) {
-            const dx = this.x - camX;
+            const depth = getDepthPerspective(this.y + this.h);
+            const w = this.w * depth;
+            const h = this.h * depth;
+            const dx = this.x - camX + (this.w - w) * 0.5;
             const dy = this.y - camY;
+            drawContactShadow(ctx, dx + w * 0.5, dy + h, w * 1.5, 12 * depth, 0.34, '27, 17, 42');
 
             ctx.save();
-            ctx.translate(dx + this.w / 2, dy + this.h / 2);
+            ctx.translate(dx + w / 2, dy + h / 2);
+            ctx.scale(depth, depth);
 
             const wingFlap = Math.sin(this.timer * 4) * 0.45;
             ctx.rotate(wingFlap);
@@ -1066,11 +1390,16 @@
 
         draw(ctx, camX, camY) {
             if (this.collected) return;
-            const dx = this.x - camX;
+            const depth = getDepthPerspective(this.y + this.h);
+            const w = this.w * depth;
+            const h = this.h * depth;
+            const dx = this.x - camX + (this.w - w) * 0.5;
             const dy = this.y - camY;
+            drawContactShadow(ctx, dx + w * 0.5, dy + h, w * 1.4, 10 * depth, 0.3, '8, 35, 49');
 
             ctx.save();
-            ctx.translate(dx + 17, dy + 17);
+            ctx.translate(dx + w / 2, dy + h / 2);
+            ctx.scale(depth, depth);
 
             // Pulsing Holographic Ring
             ctx.beginPath();
@@ -1119,6 +1448,8 @@
             this.fixTargetY = 0;
 
             this.runAnimTimer = 0;
+            this.emotion = '';
+            this.emotionTimer = 0;
             this.squashStretch = 1.0;
             this.flipRotation = 0; // for double jump 360° flip
             this.ghostTrails = []; // speed trail silhouettes
@@ -1135,12 +1466,16 @@
                 this.invulnerableTimer = 1.0;
                 window.gameAudio.playHit();
                 floatingTexts.push(new FloatingText(cx - 60, this.y - 20, 'ЩИТ РАЗБИТ!', '#00F0FF', 24));
+                this.emotion = 'shock';
+                this.emotionTimer = 0.7;
                 emitParticles(cx, cy, 35, '#00F0FF', 240, 0.9, 'circle', 60);
                 return;
             }
 
             this.lives--;
             this.invulnerableTimer = CONFIG.INVULNERABLE_DURATION;
+            this.emotion = 'sad';
+            this.emotionTimer = 0.9;
             this.vy = -520;
             this.vx = this.facingRight ? -340 : 340;
 
@@ -1158,6 +1493,8 @@
 
         update(dt) {
             if (this.invulnerableTimer > 0) this.invulnerableTimer -= dt;
+            if (this.emotionTimer > 0) this.emotionTimer -= dt;
+            else this.emotion = '';
 
             // Speed Boost Handling & Ghost Trail Emitter
             let currentSpeed = CONFIG.MOVE_SPEED;
@@ -1297,46 +1634,42 @@
         draw(ctx, camX, camY) {
             if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) return;
 
+            const depth = getDepthPerspective(this.y + this.h);
             const drawX = this.x - camX;
             const drawY = this.y - camY;
             const cx = drawX + this.w / 2;
             const cy = drawY + this.h / 2;
 
             // 1. Draw Soft Dynamic Platform Shadow (80x20)
-            ctx.save();
-            ctx.fillStyle = 'rgba(5, 8, 20, 0.55)';
             const shadowY = drawY + this.h - 2;
             const shadowScale = Math.max(0.4, 1.0 - Math.abs(this.vy) * 0.0008);
-            ctx.beginPath();
-            ctx.ellipse(cx, shadowY, 80 * shadowScale, 20 * shadowScale, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            drawContactShadow(ctx, cx, shadowY, 110 * shadowScale * depth, 18 * shadowScale, 0.48);
 
             // 2. Draw Ghost Trails (Speed Boost) scaled to 240x280
             for (let trail of this.ghostTrails) {
                 ctx.save();
                 ctx.globalAlpha = trail.alpha * 0.45;
                 const tx = trail.x - camX + this.w / 2;
-                const ty = trail.y - camY + this.h / 2;
+                const ty = trail.y - camY + this.h / 2 + this.h * (1 - depth) * 0.5;
                 ctx.translate(tx, ty);
                 if (!trail.facingRight) ctx.scale(-1, 1);
                 const spr = loadedImages['cool'] || loadedImages['idle'];
-                if (spr && spr.complete && spr.naturalWidth > 0) {
-                    ctx.drawImage(spr, -120, -140, 240, 280);
-                }
+                drawMascotSprite(ctx, spr, -120 * depth, -140 * depth, 240 * depth, 280 * depth);
                 ctx.restore();
             }
 
             // 3. Draw Player Body with Kinematics (240x280)
             ctx.save();
-            ctx.translate(cx, cy);
+            ctx.translate(cx, cy + this.h * (1 - depth) * 0.5);
+            ctx.scale(depth, depth);
 
             if (!this.facingRight) ctx.scale(-1, 1);
             if (this.flipRotation !== 0) ctx.rotate(this.flipRotation);
             ctx.scale(1 / this.squashStretch, this.squashStretch);
 
             let spriteKey = 'idle';
-            if (this.isFixing) spriteKey = 'thinking';
+            if (this.emotionTimer > 0 && loadedImages[this.emotion]) spriteKey = this.emotion;
+            else if (this.isFixing) spriteKey = 'thinking';
             else if (this.speedBoostTimer > 0) spriteKey = 'cool';
             else if (!this.grounded) spriteKey = 'idea';
             else if (Math.abs(this.vx) > 30) spriteKey = (Math.sin(this.runAnimTimer) > 0) ? 'smile' : 'idle';
@@ -1346,7 +1679,7 @@
                 const spriteW = 240;
                 const spriteH = 280;
                 const bobY = this.grounded ? Math.sin(this.runAnimTimer) * 8 : -4;
-                ctx.drawImage(spriteImg, -spriteW / 2, -spriteH / 2 + bobY - 6, spriteW, spriteH);
+                drawMascotSpriteCentered(ctx, spriteImg, 0, bobY - 6, spriteW, spriteH);
             } else {
                 this.drawProceduralCosmo(ctx);
             }
@@ -1358,13 +1691,13 @@
                 ctx.shadowColor = '#00F0FF';
                 ctx.shadowBlur = 25;
                 ctx.beginPath();
-                ctx.arc(0, 0, 140 + Math.sin(Date.now() / 140) * 5, 0, Math.PI * 2);
+                ctx.arc(0, 0, (140 + Math.sin(Date.now() / 140) * 5) * depth, 0, Math.PI * 2);
                 ctx.stroke();
 
                 ctx.strokeStyle = 'rgba(0, 255, 157, 0.4)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(0, 0, 130 + Math.cos(Date.now() / 180) * 4, 0, Math.PI * 2);
+                ctx.arc(0, 0, (130 + Math.cos(Date.now() / 180) * 4) * depth, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
             }
@@ -1476,11 +1809,20 @@
     const STATE_LEVEL_WIN = 3;
     const STATE_GAMEOVER = 4;
 
-    const gameState = {
+    function readHighScore() {
+        try {
+            const stored = Number.parseInt(localStorage.getItem('cosmo_runner_highscore') || '0', 10);
+            return Number.isFinite(stored) && stored > 0 ? stored : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    gameState = {
         state: STATE_MENU,
         level: 1,
         score: 0,
-        highScore: parseInt(localStorage.getItem('cosmo_runner_highscore') || '0', 10),
+        highScore: readHighScore(),
         gameTime: 90,
         fixedCount: 0,
         targetComputers: 3,
@@ -1678,7 +2020,12 @@
 
         gameState.level = 1;
         gameState.score = 0;
+        gameState.cameraX = 0;
+        gameState.cameraY = 0;
+        gameState.screenShake = 0;
+        gameState.hitStopTimer = 0;
         gameState.state = STATE_PLAYING;
+        releaseAllInputs();
 
         const floorY = vh - 55;
         gameState.player = new Player(140, floorY - 240);
@@ -1712,7 +2059,11 @@
 
         if (gameState.score > gameState.highScore) {
             gameState.highScore = gameState.score;
-            localStorage.setItem('cosmo_runner_highscore', gameState.highScore);
+            try {
+                localStorage.setItem('cosmo_runner_highscore', String(gameState.highScore));
+            } catch (_) {
+                // Saving records is optional when browser storage is disabled.
+            }
         }
 
         document.getElementById('go-final-score').innerText = gameState.score;
@@ -1722,6 +2073,7 @@
 
     function togglePause() {
         if (gameState.state === STATE_PLAYING) {
+            releaseAllInputs();
             gameState.state = STATE_PAUSED;
             document.getElementById('modal-pause').classList.remove('hidden');
         } else if (gameState.state === STATE_PAUSED) {
@@ -1864,6 +2216,12 @@
         }
 
         // 1. UPDATE
+        if (resizeNeedsHUDRefresh && gameState.state === STATE_PLAYING) {
+            resizeNeedsHUDRefresh = false;
+            updateHUDLives();
+            for (const terminal of gameState.computers) terminal.playerNearby = false;
+        }
+
         if (gameState.state === STATE_PLAYING) {
             gameState.gameTime -= dt;
 
@@ -1927,22 +2285,70 @@
 
         // Parallax Architecture & Celestial Windows
         drawParallaxBackground(gameState.cameraX);
+        drawLibraryDepth(ctx, gameState.cameraX);
+        const worldFloorY = vh - 55 - gameState.cameraY;
+        const foregroundDepthShift = 38;
+        drawPerspectiveFloor(ctx, gameState.cameraX, worldFloorY);
 
         if (gameState.state !== STATE_MENU) {
-            // Platforms & Bankers Lamps
-            for (let plat of gameState.platforms) plat.draw(ctx, gameState.cameraX, gameState.cameraY);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, vh * SCENE_DEPTH.horizonY, vw, vh - vh * SCENE_DEPTH.horizonY);
+            ctx.clip();
+            ctx.save();
+            ctx.translate(0, foregroundDepthShift);
+            ctx.globalAlpha = 0.64;
+            drawPerspectiveFloor(ctx, gameState.cameraX, worldFloorY);
+            ctx.restore();
 
-            // Computers
-            for (let comp of gameState.computers) comp.draw(ctx, gameState.cameraX, gameState.cameraY);
+            const groundShadowX = gameState.player.x + gameState.player.w / 2 - gameState.cameraX;
+            const jumpHeight = Math.max(0, worldFloorY - gameState.player.y - gameState.player.h);
+            drawContactShadow(ctx, groundShadowX, worldFloorY + 2, 220, 28 + jumpHeight * 0.14, 0.55);
 
-            // Hazards
-            for (let hazard of gameState.hazards) hazard.draw(ctx, gameState.cameraX, gameState.cameraY);
+            // Rear desks and bookshelves recede toward the vanishing point.
+            const depthPlatforms = gameState.platforms
+                .filter((platform) => platform.type !== 'floor')
+                .sort((a, b) => a.y - b.y);
+            for (const platform of depthPlatforms) {
+                if (platform.y <= worldFloorY - 270) platform.draw(ctx, gameState.cameraX, gameState.cameraY);
+            }
 
-            // Powerups
-            for (let item of gameState.powerups) item.draw(ctx, gameState.cameraX, gameState.cameraY);
+            // Sort moving actors against the library shelves to create clear occlusion.
+            const depthActors = [
+                ...gameState.computers.map((item) => ({ item, y: item.y, draw: () => item.draw(ctx, gameState.cameraX, gameState.cameraY) })),
+                ...gameState.hazards.map((item) => ({ item, y: item.y, draw: () => item.draw(ctx, gameState.cameraX, gameState.cameraY) })),
+                ...gameState.powerups.filter((item) => !item.collected).map((item) => ({ item, y: item.y + item.h, draw: () => item.draw(ctx, gameState.cameraX, gameState.cameraY) }))
+            ].sort((a, b) => a.y - b.y);
+            // Depth-sort the player alongside terminals, items and hazards.
+            depthActors.push({ y: gameState.player.y + gameState.player.h, draw: () => gameState.player.draw(ctx, gameState.cameraX, gameState.cameraY) });
+            depthActors.sort((a, b) => a.y - b.y);
+            const foregroundDepth = worldFloorY - 270;
+            for (const actor of depthActors) {
+                if (actor.y <= foregroundDepth) actor.draw();
+            }
 
-            // Player (Cosmo)
-            if (gameState.player) gameState.player.draw(ctx, gameState.cameraX, gameState.cameraY);
+            // Foreground desk slabs occlude only actors that are farther away.
+            for (const platform of depthPlatforms) {
+                if (platform.y <= foregroundDepth) continue;
+                platform.draw(ctx, gameState.cameraX, gameState.cameraY);
+            }
+            for (const actor of depthActors) {
+                if (actor.y > foregroundDepth) actor.draw();
+            }
+
+            // Close foreground characters and their stage lip anchor the scene.
+            const foregroundRail = ctx.createLinearGradient(0, worldFloorY - 10, 0, worldFloorY + 36);
+            foregroundRail.addColorStop(0, 'rgba(229,177,110,0.12)');
+            foregroundRail.addColorStop(0.42, 'rgba(25,26,41,0.76)');
+            foregroundRail.addColorStop(1, 'rgba(6,9,21,0.97)');
+            ctx.fillStyle = foregroundRail;
+            ctx.fillRect(0, worldFloorY - 8, vw, 44);
+            ctx.fillStyle = 'rgba(89, 223, 255, 0.68)';
+            ctx.shadowColor = '#00DDF6';
+            ctx.shadowBlur = 14;
+            ctx.fillRect(0, worldFloorY - 8, vw, 2);
+            ctx.shadowBlur = 0;
+            ctx.restore();
 
             // Particles
             for (let p of particlePool) {

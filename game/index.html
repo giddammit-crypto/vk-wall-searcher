@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>КОСМО: Спасатель Библиотеки 33 — Кибер-Игра</title>
     <meta name="description" content="Помоги роботу Космо починить все сломанные компьютеры в библиотеках Владимира до того, как истечет время!">
+    <meta name="theme-color" content="#030612">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="style.css?v=2.2.0">
+    <link rel="stylesheet" href="style.css?v=2.3.0">
 </head>
 <body>
     <div id="game-container">
@@ -70,26 +71,26 @@
         <!-- Mobile Touch Controls -->
         <div id="touch-controls">
             <div class="touch-dpad">
-                <div class="touch-btn" id="btn-left" role="button" aria-label="Бег влево">
+                <button type="button" class="touch-btn" id="btn-left" aria-label="Бежать влево">
                     <svg class="touch-svg" viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
                         <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
                     </svg>
-                </div>
-                <div class="touch-btn" id="btn-right" role="button" aria-label="Бег вправо">
+                </button>
+                <button type="button" class="touch-btn" id="btn-right" aria-label="Бежать вправо">
                     <svg class="touch-svg" viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
                         <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
                     </svg>
-                </div>
+                </button>
             </div>
             <div class="touch-actions">
-                <div class="touch-btn btn-fix" id="btn-fix" role="button" aria-label="Починить терминал">
+                <button type="button" class="touch-btn btn-fix" id="btn-fix" aria-label="Починить терминал">
                     <span class="touch-icon">⚡</span>
                     <span class="touch-sub-lbl">ЧИНИТЬ</span>
-                </div>
-                <div class="touch-btn btn-jump" id="btn-jump" role="button" aria-label="Прыжок">
+                </button>
+                <button type="button" class="touch-btn btn-jump" id="btn-jump" aria-label="Прыжок">
                     <span class="touch-icon">▲</span>
                     <span class="touch-sub-lbl">ПРЫЖОК</span>
-                </div>
+                </button>
             </div>
         </div>
 
@@ -98,7 +99,7 @@
             <div class="modal-box modal-start-box">
                 <div class="modal-mascot-wrap">
                     <div class="modal-mascot-aura"></div>
-                    <img src="assets/mascot/robot_smile.png" alt="Космо" class="modal-mascot-img" onerror="this.src='../assets/images/mascot/robot_smile.png'; this.onerror=function(){this.src='../vk-miniapp/assets/images/mascot/robot_smile.png'};">
+                    <img src="../assets/images/mascot_vk/robot_smile.png" data-mascot="smile" alt="Космо улыбается" class="modal-mascot-img">
                 </div>
                 <div class="modal-title">КОСМО: СПАСАТЕЛЬ ПК</div>
                 <div class="modal-subtitle">
@@ -134,7 +135,7 @@
             <div class="modal-box modal-win-box">
                 <div class="modal-mascot-wrap">
                     <div class="modal-mascot-aura aura-win"></div>
-                    <img src="assets/mascot/robot_party.png" alt="Победа" class="modal-mascot-img mascot-win" onerror="this.src='../assets/images/mascot/robot_party.png'; this.onerror=function(){this.src='../vk-miniapp/assets/images/mascot/robot_party.png'};">
+                    <img src="../assets/images/mascot_vk/robot_party.png" data-mascot="party" alt="Космо празднует победу" class="modal-mascot-img mascot-win">
                 </div>
                 <div class="modal-title modal-title-win" id="win-level-title">СЕКТОР ЗАЩИЩЁН!</div>
                 <div class="modal-subtitle">Все компьютеры филиала восстановлены. Читатели снова могут искать редкие книги!</div>
@@ -164,7 +165,7 @@
             <div class="modal-box modal-gameover-box">
                 <div class="modal-mascot-wrap">
                     <div class="modal-mascot-aura aura-gameover"></div>
-                    <img src="assets/mascot/robot_shock.png" alt="Ой" class="modal-mascot-img mascot-gameover" onerror="this.src='../assets/images/mascot/robot_shock.png'; this.onerror=function(){this.src='../vk-miniapp/assets/images/mascot/robot_shock.png'};">
+                    <img src="../assets/images/mascot_vk/robot_shock.png" data-mascot="shock" alt="Космо удивлён" class="modal-mascot-img mascot-gameover">
                 </div>
                 <div class="modal-title modal-title-gameover">СВЯЗЬ ПОТЕРЯНА</div>
                 <div class="modal-subtitle">Закончилось время или батарея Космо разрядилась. Но библиотекари всегда верят в тебя!</div>
@@ -194,7 +195,7 @@
             <div class="modal-box modal-pause-box">
                 <div class="modal-mascot-wrap">
                     <div class="modal-mascot-aura"></div>
-                    <img src="assets/mascot/robot_read.png" alt="Пауза" class="modal-mascot-img" onerror="this.src='../assets/images/mascot/robot_read.png'; this.onerror=function(){this.src='../vk-miniapp/assets/images/mascot/robot_read.png'};">
+                    <img src="../assets/images/mascot_vk/robot_read.png" data-mascot="read" alt="Космо читает на паузе" class="modal-mascot-img">
                 </div>
                 <div class="modal-title">ПАУЗА</div>
                 <div class="modal-subtitle">Космо читает редкий формуляр. Отдохни и продолжим спасение библиотечной сети!</div>
@@ -210,7 +211,7 @@
     </div>
 
     <!-- Audio & Game Engine Scripts -->
-    <script src="audio.js?v=2.2.0"></script>
-    <script src="game.js?v=2.2.0"></script>
+    <script src="audio.js?v=2.3.0"></script>
+    <script src="game.js?v=2.3.0"></script>
 </body>
 </html>
