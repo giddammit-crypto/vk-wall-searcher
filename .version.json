@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.2.5",
+  "version": "5.2.6",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-26T08:37:00+03:00",
-  "release_name": "AURORA DESIGN 5.2.5 — Fix PHP 7.4 Polyfills & Qwen Free Tier Proxy, Zero-Clip AI Generator Modal & Content Adaptivity Overhaul"
+  "commit_date": "2026-09-26T08:55:00+03:00",
+  "release_name": "AURORA DESIGN 5.2.6 — Modal Opener Recursion Fix, Tone Grade Export Preservation, WebP & Clipboard Export, Mobile Header Overflow Fix"
 }
