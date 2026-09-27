@@ -3096,20 +3096,22 @@ export const TILDA_BLOCKS = [
       const els = c.elements || [];
       let elsMarkup = '';
       const responsiveRules = [];
-      const scopeClass = d.responsiveScope ? ` ${String(d.responsiveScope).replace(/[^a-zA-Z0-9_-]/g, '')}` : '';
-      const responsiveSelector = scopeClass ? `.t-zero-block${scopeClass}` : '.t-zero-block';
+      const scopeToken = d.responsiveScope ? String(d.responsiveScope).replace(/[^a-zA-Z0-9_-]/g, '') : '';
+      const scopeClass = scopeToken ? ` ${scopeToken}` : '';
+      const responsiveSelector = scopeToken ? `.t-zero-block.${scopeToken}` : '.t-zero-block';
       const responsivePropertyMap = {
         x: 'left', y: 'top', width: 'width', height: 'height', rotation: 'transform',
         opacity: 'opacity', zIndex: 'z-index', fontSize: 'font-size', fontWeight: 'font-weight',
         fontFamily: 'font-family', color: 'color', bgColor: 'background-color', borderRadius: 'border-radius',
+        borderWidth: 'border-width', borderColor: 'border-color',
         textAlign: 'text-align', lineHeight: 'line-height', letterSpacing: 'letter-spacing'
       };
       const cssValue = value => String(value).replace(/[;{}<>]/g, '').replace(/\r|\n/g, '');
       const cssLength = value => typeof value === 'number' ? `${cssValue(value)}px` : cssValue(value);
-      const unusedCssValue = value => String(value).replace(/[;{}<>\\r\\n]/g, '');
+
       els.forEach((el, index) => {
         const p = el.props || {};
-        Object.entries(el.responsiveProps || {}).forEach(([bp, overrides]) => {
+        Object.entries(el.responsiveProps || {}).sort(([a], [b]) => Number(b) - Number(a)).forEach(([bp, overrides]) => {
           if (!overrides || typeof overrides !== 'object') return;
           const declarations = Object.entries(overrides).flatMap(([key, value]) => {
             const property = responsivePropertyMap[key];
@@ -3124,6 +3126,14 @@ export const TILDA_BLOCKS = [
               : (['fontSize', 'fontWeight', 'fontFamily', 'color', 'textAlign', 'lineHeight', 'letterSpacing'].includes(key)
                 ? `${selector} > *,${selector} > * *`
                 : selector);
+            if (key === 'bgColor') return [`${target}{background-color:${cssValue(value)} !important;background:${cssValue(value)} !important}`];
+            if (key === 'borderWidth' || key === 'borderColor') {
+              const elProps = el.props || {};
+              const borderWidth = key === 'borderWidth' ? value : (overrides.borderWidth ?? elProps.borderWidth ?? '0px');
+              const borderColor = key === 'borderColor' ? value : (overrides.borderColor ?? elProps.borderColor ?? 'transparent');
+              const borderStyle = elProps.borderStyle || 'solid';
+              return [`${selector} > *{border:${cssValue(borderWidth)} ${cssValue(borderStyle)} ${cssValue(borderColor)} !important}`];
+            }
             return [`${target}{${css} !important}`];
           });
           if (declarations.length) responsiveRules.push(`@media(max-width:${cssValue(bp)}px){${declarations.join('')}}`);
@@ -3173,7 +3183,7 @@ export const TILDA_BLOCKS = [
       });
 
       const hPx = parseInt(d.height, 10) || 560;
-      Object.entries(c.responsiveSettings || {}).forEach(([bp, settings]) => {
+      Object.entries(c.responsiveSettings || {}).sort(([a], [b]) => Number(b) - Number(a)).forEach(([bp, settings]) => {
         if (!settings || typeof settings !== 'object') return;
         const declarations = [];
         if (settings.height !== undefined) declarations.push(`height:${cssLength(settings.height)} !important`, `min-height:${cssLength(settings.height)} !important`);
