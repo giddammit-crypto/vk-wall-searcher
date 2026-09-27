@@ -734,14 +734,39 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    font: inherit;
     font-size: 11px;
     font-weight: 700;
+    color: var(--space-text);
     padding: 5px 10px;
+    border: 1px solid var(--space-line);
     border-radius: 999px;
+    background: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
     transition: transform 0.18s var(--space-ease), border-color 0.18s ease, background 0.18s ease;
 }
 
-.space-quick-branches .space-branch-chip:hover {
+.space-quick-branches .space-branch-chip:focus-visible {
+    outline: 2px solid var(--space-accent-2);
+    outline-offset: 2px;
+}
+
+@media (hover: none) {
+    .space-quick-branches .space-branch-chip:hover { transform: none; }
+}
+
+.space-quick-branches .space-branch-chip:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.space-quick-branches .space-branch-chip.active {
+    border-color: var(--space-accent-2);
+    background: rgba(56, 189, 248, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+}
+
+.space-quick-branches .space-branch-chip:not(:disabled):hover {
     transform: translateY(-2px);
     border-color: var(--space-line-strong);
     background: rgba(236, 72, 153, 0.14);

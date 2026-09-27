@@ -125,6 +125,7 @@ export class Space3DEngine {
         this.feedSearchQuery = '';
         this.feedSortBy = 'views';
         this.subsData = null;
+        this.internalStationListeners = new WeakMap();
 
         // Bind handlers
         this.onPointerDown = this.onPointerDown.bind(this);
@@ -430,34 +431,84 @@ export class Space3DEngine {
     bindInternalStationActions() {
         if (!this.world) return;
 
-        // 1. Поиск: инпут, запуск и чипы филиалов
+        const bindOnce = (element, eventName, handler) => {
+            if (!element) return;
+            let boundEvents = this.internalStationListeners.get(element);
+            if (!boundEvents) {
+                boundEvents = new Set();
+                this.internalStationListeners.set(element, boundEvents);
+            }
+            if (boundEvents.has(eventName)) return;
+            boundEvents.add(eventName);
+            element.addEventListener(eventName, handler);
+        };
+        const syncQuickBranchChips = () => {
+            const chips = this.world?.querySelectorAll('.space-branch-chip');
+            if (!chips?.length) return;
+
+            const branchSelect = document.getElementById('branch-select');
+            const selectedValue = branchSelect?.value;
+            const isAllSelected = document.getElementById('branches-toggle')?.checked || selectedValue === 'all';
+            const selectedOption = branchSelect?.selectedOptions?.[0];
+            const selectedBranch = !isAllSelected && selectedOption
+                ? findCanonicalBranch({ name: selectedOption.textContent, link: selectedOption.value })
+                : null;
+            const selectedCode = isAllSelected ? 'ALL' : selectedBranch?.branchNum;
+
+            chips.forEach(chip => {
+                const isActive = Boolean(selectedCode) && chip.dataset.code === selectedCode;
+                chip.classList.toggle('active', isActive);
+                chip.setAttribute('aria-pressed', String(isActive));
+            });
+        };
+        bindOnce(document, 'change', (event) => {
+            if (event.target?.id === 'branch-select' || event.target?.id === 'branches-toggle') {
+                syncQuickBranchChips();
+            }
+        });
+        // 1. Поиск: используем форму главной страницы как единый источник логики.
+        // Это сохраняет совместимость с фильтрами, клавиатурной отправкой и валидацией.
         const searchBtn = this.world.querySelector('#space-search-submit');
         const searchInput = this.world.querySelector('#space-search-input');
         if (searchBtn && searchInput) {
             const executeSearch = () => {
-                const query = searchInput.value.trim();
-                const mainInput = document.getElementById('search-input');
-                if (mainInput) {
-                    mainInput.value = query;
-                    mainInput.dispatchEvent(new Event('input', { bubbles: true }));
+                const mainForm = document.getElementById('search-form');
+                const mainInput = document.getElementById('keyword-input');
+                const mainSubmit = document.getElementById('submit-search-btn');
+
+                const isScanning = window.__VK_APP__?.state?.isScanning;
+                if (!mainForm || !mainInput || !mainSubmit || mainSubmit.disabled || isScanning) {
+                    this.showSpatialToast(isScanning || mainSubmit?.disabled ? 'Поиск уже выполняется' : 'Форма поиска недоступна');
+                    return;
                 }
-                const mainSubmit = document.getElementById('search-btn');
-                if (mainSubmit) mainSubmit.click();
+
+                const query = searchInput.value.trim();
+                mainInput.value = query;
+                mainInput.dispatchEvent(new Event('input', { bubbles: true }));
+                if (typeof mainForm.requestSubmit === 'function') {
+                    mainForm.requestSubmit(mainSubmit);
+                } else {
+                    mainSubmit.click();
+                }
 
                 this.triggerSupernova();
-                this.showSpatialToast(`Поиск запущен: «${query || 'Все записи'}»`);
+                this.showSpatialToast(`Поиск запущен: «${query || 'без фильтра по словам'}»`);
                 setTimeout(() => this.refreshAllDynamicStations(), 2200);
             };
 
-            searchBtn.addEventListener('click', executeSearch);
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') executeSearch();
+            bindOnce(searchBtn, 'click', executeSearch);
+            bindOnce(searchInput, 'keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    executeSearch();
+                }
             });
         }
 
         // Поисковые темы
         this.world.querySelectorAll('.space-search-tag').forEach(tag => {
-            tag.addEventListener('click', () => {
+            tag.setAttribute('aria-label', `Подставить запрос: ${tag.textContent.trim()}`);
+            bindOnce(tag, 'click', () => {
                 const q = tag.dataset.query || '';
                 if (searchInput) {
                     searchInput.value = q;
@@ -466,22 +517,62 @@ export class Space3DEngine {
             });
         });
 
-        // Чипы филиалов в поиске
+        // Чипы филиалов: выбор синхронизирует настоящий селектор главной формы.
         this.world.querySelectorAll('.space-branch-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
+            chip.setAttribute('aria-label', chip.dataset.code === 'ALL' ? 'Выбрать все филиалы' : `Выбрать библиотеку ${chip.title || chip.dataset.code}`);
+            chip.setAttribute('aria-pressed', String(chip.classList.contains('active')));
+            bindOnce(chip, 'click', () => {
                 const code = chip.dataset.code;
-                this.world.querySelectorAll('.space-branch-chip').forEach(c => c.classList.remove('active'));
-                chip.classList.add('active');
-                if (code) {
-                    this.showSpatialToast(`Выбран филиал: ${code}`);
+                const branchSelect = document.getElementById('branch-select');
+                const branchesToggle = document.getElementById('branches-toggle');
+
+                if (code === 'ALL') {
+                    if (branchSelect) {
+                        branchSelect.value = 'all';
+                        branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else if (branchesToggle && !branchesToggle.checked) {
+                        branchesToggle.checked = true;
+                        branchesToggle.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    syncQuickBranchChips();
+                    this.showSpatialToast('Выбран поиск по всем филиалам');
+                    return;
                 }
+
+                const selectedBranch = CANONICAL_BRANCHES.find(branch => branch.branchNum === code);
+                const option = selectedBranch && Array.from(branchSelect?.options || []).find(item => {
+                    const canonicalBranch = findCanonicalBranch({ name: item.textContent, link: item.value });
+                    return canonicalBranch?.branchNum === selectedBranch.branchNum;
+                });
+
+                if (!selectedBranch || !option || !branchSelect) {
+                    syncQuickBranchChips();
+                    this.showSpatialToast(`Библиотека ${chip.title || code || ''} недоступна в списке поиска`);
+                    return;
+                }
+
+                if (branchesToggle?.checked) {
+                    branchesToggle.checked = false;
+                    branchesToggle.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                branchSelect.value = option.value;
+                branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                syncQuickBranchChips();
+                this.showSpatialToast(`Выбрана библиотека: ${option.textContent.split(' (')[0]}`);
             });
         });
+
+        syncQuickBranchChips();
+        if (searchInput) searchInput.setAttribute('aria-label', 'Ключевые слова для поиска публикаций');
+        if (searchBtn) {
+            searchBtn.setAttribute('aria-label', 'Запустить поиск публикаций');
+            searchBtn.setAttribute('aria-keyshortcuts', 'Enter');
+        }
 
         // 2. Радар: селектор филиала с реактивной перерисовкой
         const radarSelect = this.world.querySelector('#space-radar-branch-select');
         if (radarSelect) {
-            radarSelect.addEventListener('change', (e) => {
+            bindOnce(radarSelect, 'change', (e) => {
                 this.selectedRadarBranch = e.target.value;
                 this.refreshRadarStation();
                 this.showSpatialToast(`Радар переключен: ${this.selectedRadarBranch}`);
@@ -492,7 +583,7 @@ export class Space3DEngine {
         const feedFilter = this.world.querySelector('#space-feed-filter');
         if (feedFilter) {
             let spaceDebounce;
-            feedFilter.addEventListener('input', (e) => {
+            bindOnce(feedFilter, 'input', (e) => {
                 clearTimeout(spaceDebounce);
                 spaceDebounce = setTimeout(() => {
                     this.feedSearchQuery = e.target.value.toLowerCase().trim();
@@ -502,7 +593,7 @@ export class Space3DEngine {
         }
 
         this.world.querySelectorAll('.feed-sort-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
+            bindOnce(pill, 'click', () => {
                 this.feedSortBy = pill.dataset.sort || 'views';
                 this.world.querySelectorAll('.feed-sort-pill').forEach(p => p.classList.remove('active'));
                 pill.classList.add('active');
@@ -512,7 +603,7 @@ export class Space3DEngine {
 
         // Клик по карточке поста — открытие полного модального окна поста
         this.world.querySelectorAll('.space-feed-card').forEach(card => {
-            card.addEventListener('click', (e) => {
+            bindOnce(card, 'click', (e) => {
                 if (e.target.closest('a')) return;
                 const postId = card.dataset.postId;
                 const posts = window.__VK_APP__?.state?.lastPosts || [];
@@ -525,7 +616,7 @@ export class Space3DEngine {
 
         // 4. Лидерборд: переключение сортировки
         this.world.querySelectorAll('.rank-tab-btn').forEach(tab => {
-            tab.addEventListener('click', () => {
+            bindOnce(tab, 'click', () => {
                 this.selectedLeaderboardSort = tab.dataset.sort || 'er';
                 this.world.querySelectorAll('.rank-tab-btn').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
@@ -536,7 +627,7 @@ export class Space3DEngine {
         // 5. QR Промо: смена формата, шаблона, филиала и прямая печать
         const promoFormatPills = this.world.querySelectorAll('.p-chip-btn');
         promoFormatPills.forEach(pill => {
-            pill.addEventListener('click', () => {
+            bindOnce(pill, 'click', () => {
                 this.selectedPromoFormat = pill.dataset.format;
                 this.refreshPromoStation();
             });
@@ -544,7 +635,7 @@ export class Space3DEngine {
 
         const promoTplSelect = this.world.querySelector('#space-promo-tpl-select');
         if (promoTplSelect) {
-            promoTplSelect.addEventListener('change', (e) => {
+            bindOnce(promoTplSelect, 'change', (e) => {
                 this.selectedPromoTemplate = e.target.value;
                 this.refreshPromoStation();
             });
@@ -552,7 +643,7 @@ export class Space3DEngine {
 
         const promoBranchSelect = this.world.querySelector('#space-promo-branch-select');
         if (promoBranchSelect) {
-            promoBranchSelect.addEventListener('change', (e) => {
+            bindOnce(promoBranchSelect, 'change', (e) => {
                 this.selectedPromoBranch = e.target.value;
                 this.refreshPromoStation();
             });
@@ -560,7 +651,7 @@ export class Space3DEngine {
 
         const promoPrintBtn = this.world.querySelector('#space-print-promo-btn');
         if (promoPrintBtn) {
-            promoPrintBtn.addEventListener('click', () => {
+            bindOnce(promoPrintBtn, 'click', () => {
                 const branch = CANONICAL_BRANCHES.find(b => b.shortCode === this.selectedPromoBranch) || CANONICAL_BRANCHES[0];
                 const tpl = PROMO_TEMPLATES.find(t => t.id === this.selectedPromoTemplate) || PROMO_TEMPLATES[0];
                 this.triggerSupernova();
@@ -570,7 +661,7 @@ export class Space3DEngine {
 
         const open2dPromoBtn = this.world.querySelector('#space-open-2d-promo');
         if (open2dPromoBtn) {
-            open2dPromoBtn.addEventListener('click', () => {
+            bindOnce(open2dPromoBtn, 'click', () => {
                 const trigger = document.getElementById('promo-modal-btn');
                 if (trigger) trigger.click();
             });
@@ -578,7 +669,7 @@ export class Space3DEngine {
 
         // 6. Подписчики: переключение периода
         this.world.querySelectorAll('.subs-tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            bindOnce(btn, 'click', () => {
                 this.selectedSubsScale = btn.dataset.scale || 'month';
                 this.world.querySelectorAll('.subs-tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -588,7 +679,7 @@ export class Space3DEngine {
 
         // 7. Советы: фильтр важности
         this.world.querySelectorAll('.adv-filter-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
+            bindOnce(pill, 'click', () => {
                 this.selectedAdviceFilter = pill.dataset.level || 'all';
                 this.world.querySelectorAll('.adv-filter-pill').forEach(p => p.classList.remove('active'));
                 pill.classList.add('active');
@@ -605,8 +696,8 @@ export class Space3DEngine {
             <div class="space-search-box">
                 <div class="space-input-wrap">
                     <span class="material-symbols-outlined search-ico">manage_search</span>
-                    <input type="text" id="space-search-input" class="space-cosmic-input" placeholder="Поиск по публикациям библиотек Владимира..." value="">
-                    <button type="button" id="space-search-submit" class="space-action-pill">
+                    <input type="text" id="space-search-input" class="space-cosmic-input" placeholder="Поиск по публикациям библиотек Владимира..." value="" aria-label="Ключевые слова для поиска публикаций">
+                    <button type="button" id="space-search-submit" class="space-action-pill" aria-label="Запустить поиск публикаций">
                         <span class="material-symbols-outlined">rocket_launch</span>
                         <span>Поиск</span>
                     </button>
@@ -620,17 +711,21 @@ export class Space3DEngine {
                     <button type="button" class="space-search-tag" data-query="краеведение">#Краеведение</button>
                 </div>
                 <div class="space-quick-branches">
-                    <div class="space-sec-title">Филиалы Владимира (18 библиотек):</div>
+                    <div class="space-sec-title">Доступны ${CANONICAL_BRANCHES.filter(branch => branch.vkLink || branch.screenName).length} из ${CANONICAL_BRANCHES.length} библиотек Владимира:</div>
                     <div class="space-branches-chips">
-                        <span class="space-branch-chip active" data-code="ALL">
+                        <button type="button" class="space-branch-chip active" data-code="ALL" aria-label="Выбрать все филиалы" aria-pressed="true">
                             <span class="chip-num">Все</span>
-                        </span>
-                        ${CANONICAL_BRANCHES.map(b => `
-                            <span class="space-branch-chip" data-code="${b.shortCode}" title="${escapeHtml(b.canonicalName)}">
-                                <span class="chip-avatar" style="background-image: url('${b.avatar || ''}');"></span>
-                                <span class="chip-num">${b.shortCode}</span>
-                            </span>
-                        `).join('')}
+                        </button>
+                        ${CANONICAL_BRANCHES.map(b => {
+                            const isSearchable = Boolean(b.vkLink || b.screenName);
+                            const unavailableLabel = isSearchable ? '' : ' — нет источника ВКонтакте';
+                            return `
+                                <button type="button" class="space-branch-chip" data-code="${b.branchNum}" title="${escapeHtml(b.canonicalName + unavailableLabel)}" aria-label="${isSearchable ? 'Выбрать библиотеку' : 'Недоступна для поиска: библиотека'} ${escapeHtml(b.canonicalName)}" aria-pressed="false"${isSearchable ? '' : ' disabled aria-disabled="true"'}>
+                                    <span class="chip-avatar" style="background-image: url('${b.avatar || ''}');"></span>
+                                    <span class="chip-num">${b.shortCode}</span>
+                                </button>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
                 <div class="search-live-status-bar">

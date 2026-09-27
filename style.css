@@ -14048,13 +14048,13 @@ select:hover { border-color: var(--accent-medium); }
         width: 100%;
         justify-content: center;
         padding: 8px 6px;
-        min-height: 40px;
+        min-height: 44px;
         font-size: 0.8rem;
     }
     .header-actions > .btn {
         flex: 1 1 calc(50% - 4px);
         justify-content: center;
-        min-height: 40px;
+        min-height: 44px;
         padding: 8px 10px;
         font-size: 0.8rem;
     }

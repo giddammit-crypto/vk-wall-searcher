@@ -130,13 +130,13 @@ import {
     renderRadarSection
 } from './radar.js?v=4.25.4';
 
-import { Space3D } from './space3d.js?v=4.25.4';
+import { Space3D } from './space3d.js?v=5.4.5';
 import { SpaceWarp } from './space_warp.js?v=4.25.4';
 import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.68.0';
 
 /** Единая версия приложения (синхронизирована с .version.json) */
-export const APP_VERSION = '4.75.3';
+export const APP_VERSION = '5.4.5';
 
 function initApp() {
 
@@ -1036,8 +1036,18 @@ function initApp() {
         }
 
         const dayFilter = elements.daySelect?.value || 'all';
-        const keywords = elements.keywordInput?.value.trim().toLowerCase().split(/\s+/).filter(Boolean) || [];
-        const excludeWords = elements.excludeInput?.value.trim().toLowerCase().split(/\s+/).filter(Boolean) || [];
+        const parseSearchTerms = (value = '') => {
+            const terms = [];
+            const termPattern = /"([^"]*)"|'([^']*)'|([^,\s"']+)/g;
+            let match;
+            while ((match = termPattern.exec(value.toLowerCase())) !== null) {
+                const term = (match[1] || match[2] || match[3] || '').trim();
+                if (term) terms.push(term);
+            }
+            return terms;
+        };
+        const keywords = parseSearchTerms(elements.keywordInput?.value || '');
+        const excludeWords = parseSearchTerms(elements.excludeInput?.value || '');
         const hashtagRaw = elements.hashtagInput?.value.trim().toLowerCase() || '';
         const hashtagFilter = hashtagRaw.replace(/^#/, '');
 
@@ -1094,7 +1104,7 @@ function initApp() {
             if (btnText) btnText.textContent = 'Сканирование...';
         }
 
-        const searchKeywordStr = keywords.join(' ');
+        const searchKeywordStr = elements.keywordInput?.value.trim() || '';
         try { Mascot.onScanStart(searchKeywordStr); } catch (e) { console.warn('[Mascot] onScanStart error:', e); }
 
         if (elements.searchModalOverlay) {
@@ -1677,7 +1687,7 @@ function initApp() {
 
             // 4. Render All Results & Reports (ready in background)
             renderAllResults();
-            saveSearchHistory(rawTargetInput || '16 филиалов', keywords.join(' '));
+            saveSearchHistory(rawTargetInput || '16 филиалов', searchKeywordStr);
 
         } catch (err) {
             CosmicUniverse.setWarp(false);
