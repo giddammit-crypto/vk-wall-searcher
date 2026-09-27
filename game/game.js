@@ -24,7 +24,7 @@
     };        // Preloaded Photorealistic Game Textures
 
     const GAME_TEXTURE_URLS = {
-        bg: 'assets/bg_library_atrium.svg',
+        bg: 'assets/bg_library_atrium.png',
         shelf: 'assets/shelf_photoreal.jpg',
         terminal_broken: 'assets/terminal_broken.jpg',
         terminal_repaired: 'assets/terminal_repaired.jpg',
@@ -36,7 +36,12 @@
         const img = new Image();
         img.onload = () => { gameTextures[key] = img; };
         img.onerror = () => {
-            if (key === 'bg' && src !== 'assets/bg_library.jpg') {
+            if (key === 'bg' && src === 'assets/bg_library_atrium.png') {
+                const fallback = new Image();
+                fallback.onload = () => { gameTextures[key] = fallback; };
+                fallback.onerror = () => { gameTextures[key] = null; };
+                fallback.src = 'assets/bg_library_atrium.svg';
+            } else if (key === 'bg' && src !== 'assets/bg_library.jpg') {
                 const fallback = new Image();
                 fallback.onload = () => { gameTextures[key] = fallback; };
                 fallback.onerror = () => { gameTextures[key] = null; };
@@ -710,6 +715,7 @@
         }
 
         draw(ctx, camX, camY) {
+            if (this.type === 'desk' && window.CosmoScene3D?.hasModel('desk')) return;
             const perspective = this.type === 'floor' ? 1 : getDepthPerspective(this.y);
             const dx = this.x - camX;
             const dy = this.y - camY;
@@ -1066,6 +1072,46 @@
         }
 
         draw(ctx, camX, camY) {
+            if (window.CosmoScene3D?.hasModel('terminal')) {
+                const depth = this.depthScale || getDepthPerspective(this.y);
+                const dx = this.x - camX + (this.w - this.w * depth) * 0.5;
+                const dy = this.y - camY;
+                const width = this.w * depth;
+                const topY = dy - this.h * depth;
+                ctx.save();
+                if (!this.fixed && this.fixProgress > 0) {
+                    const barWidth = width * 0.82;
+                    const barHeight = Math.max(5, 10 * depth);
+                    const barX = dx + (width - barWidth) * 0.5;
+                    const barY = topY - 22 * depth;
+                    ctx.fillStyle = 'rgba(6, 12, 28, 0.92)';
+                    ctx.beginPath();
+                    ctx.roundRect(barX, barY, barWidth, barHeight, 4);
+                    ctx.fill();
+                    ctx.fillStyle = '#00FF9D';
+                    ctx.fillRect(barX + 2, barY + 2, Math.max(1, (barWidth - 4) * this.fixProgress), Math.max(1, barHeight - 4));
+                    ctx.strokeStyle = '#00F0FF';
+                    ctx.stroke();
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = `bold ${Math.max(8, 10 * depth)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`РЕМОНТ: ${Math.floor(this.fixProgress * 100)}%`, dx + width / 2, barY - 4);
+                } else if (!this.fixed && this.playerNearby) {
+                    const prompt = window.matchMedia('(pointer: coarse)').matches ? '⚡ КОСМО: ЧИНИТЬ' : '[ ПРОБЕЛ / E ]';
+                    ctx.font = `bold ${Math.max(8, 11 * depth)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = 'rgba(5, 10, 25, 0.94)';
+                    ctx.fillText(prompt, dx + width / 2, topY - 8 * depth);
+                } else if (this.fixed) {
+                    ctx.font = `bold ${Math.max(8, 11 * depth)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#00FF9D';
+                    ctx.fillText('✔ СИСТЕМА АВРОРА ОК', dx + width / 2, topY - 8 * depth);
+                }
+                ctx.restore();
+                return;
+            }
+
             const depth = this.depthScale || getDepthPerspective(this.y);
             const dx = this.x - camX + (this.w - this.w * depth) * 0.5;
             const dy = this.y - camY;
@@ -1943,6 +1989,22 @@
         }
 
         draw(ctx, camX, camY) {
+            if (window.CosmoScene3D?.hasModel('character')) {
+                if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) return;
+                if (this.isFixing) {
+                    const depth = getDepthPerspective(this.y + this.h);
+                    const centerX = this.x - camX + this.w / 2;
+                    const centerY = this.y - camY + this.h / 2 + this.h * (1 - depth) * 0.5;
+                    this.drawProceduralLightningArc(
+                        ctx,
+                        centerX + (this.facingRight ? 75 : -75) * depth,
+                        centerY + 20 * depth,
+                        this.fixTargetX - camX,
+                        this.fixTargetY - camY
+                    );
+                }
+                return;
+            }
             if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) return;
 
             const depth = getDepthPerspective(this.y + this.h);
@@ -2812,6 +2874,10 @@
         }
 
         ctx.restore();
+
+        if (window.CosmoScene3D) {
+            window.CosmoScene3D.render(gameState, vh - 55 - gameState.cameraY);
+        }
 
         requestAnimationFrame(gameLoop);
     }

@@ -7,12 +7,13 @@
     <meta name="description" content="Помоги роботу Космо починить все сломанные компьютеры в библиотеках Владимира до того, как истечет время!">
     <meta name="theme-color" content="#030612">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="style.css?v=2.4.0">
+    <link rel="stylesheet" href="style.css?v=2.5.0">
 </head>
 <body>
     <div id="game-container">
-        <!-- Render Canvas -->
+        <!-- 2D gameplay and transparent real-time 3D model overlay -->
         <canvas id="gameCanvas"></canvas>
+        <canvas id="game3dCanvas" aria-hidden="true"></canvas>
 
         <!-- Ambient Screen Vignette, Backdrop Gradient & Scanlines -->
         <div id="hud-backdrop-gradient"></div>
@@ -210,8 +211,11 @@
         </div>
     </div>
 
-    <!-- Audio & Game Engine Scripts -->
-    <script src="audio.js?v=2.4.0"></script>
-    <script src="game.js?v=2.4.0"></script>
+    <!-- Three.js GLB rendering stays optional; Canvas remains the gameplay fallback. -->
+    <script src="../assets/vendor/three/three.min.js"></script>
+    <script src="../assets/vendor/three/GLTFLoader.js"></script>
+    <script src="scene3d.js?v=1.0.0"></script>
+    <script src="audio.js?v=2.5.0"></script>
+    <script src="game.js?v=2.5.0"></script>
 </body>
 </html>

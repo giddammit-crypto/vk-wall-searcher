@@ -1,0 +1,7 @@
+COSMO | Aurora Library Atrium environment
+Blender 4.2.0
+Scene objects: 110
+Robot objects: 66
+Bookcase objects: 1
+Environment meshes: 2
+Exports: assets/bg_library_atrium.png, assets/library_props.glb, assets/cosmo_3d.glb

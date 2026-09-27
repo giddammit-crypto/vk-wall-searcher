@@ -1876,6 +1876,8 @@ function initCanvas(w, h) {
   if (typeof window !== 'undefined') {
     window.currentSize = currentSize;
   }
+  // Figma Pro: синхронизируем размер холста
+  window.AuroraFigmaPro?.setCurrentSize(currentSize);
 
   // Устанавливаем матрицу отображения: лист центрирован внутри padding
   canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
@@ -2401,6 +2403,34 @@ function initCanvas(w, h) {
 
   // По умолчанию активируем инструмент «Стрелка выделения (V)»
   activateSelectTool(false);
+
+  // ── Установка Figma Pro Tools (недостающие инструменты как в Figma) ──
+  if (typeof window.AuroraFigmaProInstall === 'function') {
+    window.AuroraFigmaProInstall({
+      canvas,
+      currentSize,
+      CANVAS_PADDING,
+      CUSTOM_PROPS_TO_SAVE,
+      hooks: {
+        toast,
+        saveHistory,
+        updateLayersList,
+        onSelection,
+        applyZoom,
+        activateSelectTool,
+        getZoom: () => zoom,
+        updateFigmaDimensionsUI,
+        isSnappingEnabled: () => isSnappingEnabled,
+        setSmartGuideX: v => { smartGuides.x = v; },
+        setSmartGuideY: v => { smartGuides.y = v; },
+        getPencilColor: () => _pencilColor,
+        getPencilWidth: () => _pencilWidth,
+        getClipboard: () => _clipboard,
+        pasteCopiedObject,
+        getCurrentSize: () => currentSize
+      }
+    });
+  }
 }
 
 function addTemplateObj(def) {
@@ -3891,6 +3921,11 @@ function flipActiveObject(axis) {
 function alignActiveObject(alignment) {
   const obj = canvas?.getActiveObject();
   if (!obj) return;
+  // Figma Pro: при выделении 2+ объектов — выравнивание внутри общей границы
+  if (obj.type === 'activeSelection' && window.AuroraFigmaPro?.alignSelection) {
+    const map = { 'left': 'left', 'right': 'right', 'center-h': 'center-h', 'top': 'top', 'bottom': 'bottom', 'center-v': 'center-v' };
+    if (window.AuroraFigmaPro.alignSelection(map[alignment] || alignment)) return;
+  }
   const w = currentSize.w;
   const h = currentSize.h;
   const ow = obj.getScaledWidth();
@@ -4689,6 +4724,13 @@ function onSelection() {
   if ($('#btn-header-group')) $('#btn-header-group').disabled = !isSelection;
   if ($('#btn-ungroup')) $('#btn-ungroup').disabled = !isGroup;
   if ($('#btn-header-ungroup')) $('#btn-header-ungroup').disabled = !isGroup;
+
+  // Figma Pro: синхронизация типа линии (сплошная/пунктир/точки)
+  if (window.AuroraFigmaPro?.syncStrokeStyleUI) {
+    window.AuroraFigmaPro.syncStrokeStyleUI(
+      (isShape || isImage) ? (window.AuroraFigmaPro.getStrokeKind(obj)) : 'solid'
+    );
+  }
 
   // Состояние блокировки
   updateLockBtnUI(!!obj.lockMovementX);
@@ -9570,6 +9612,30 @@ function bindEvents() {
   $('#tool-ribbon') ?.addEventListener('click', addRibbon);
   $('#tool-bubble') ?.addEventListener('click', addSpeechBubble);
   $('#tool-hexagon')?.addEventListener('click', addHexagon);
+  /* Figma Pro: новые фигуры */
+  $('#tool-ellipse')   ?.addEventListener('click', () => window.AuroraFigmaPro?.addEllipse());
+  $('#tool-triangle')  ?.addEventListener('click', () => window.AuroraFigmaPro?.addTriangle());
+  $('#tool-diamond')   ?.addEventListener('click', () => window.AuroraFigmaPro?.addDiamond());
+  $('#tool-pentagon')  ?.addEventListener('click', () => window.AuroraFigmaPro?.addPentagon());
+  $('#tool-semicircle')?.addEventListener('click', () => window.AuroraFigmaPro?.addSemiCircle());
+
+  /* Figma Pro: тип обводки выделенного объекта */
+  $$('.stroke-style-btn').forEach(btn => {
+    btn.addEventListener('click', () => window.AuroraFigmaPro?.setStrokeStyle(btn.dataset.strokeStyle));
+  });
+
+  /* Figma Pro: выбор кисти карандаша (карандаш / маркер / распылитель) */
+  $$('.brush-kind-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.brush-kind-btn').forEach(b => {
+        b.classList.toggle('is-active', b === btn);
+        b.style.background = b === btn ? '#0d99ff22' : 'transparent';
+        b.style.color = b === btn ? '#0d99ff' : '#9ca3af';
+        b.style.borderColor = b === btn ? '#0d99ff55' : '#ffffff22';
+      });
+      window.AuroraFigmaPro?.applyBrushKind(btn.dataset.brush);
+    });
+  });
 
   /* Графика и библиотека */
   $('#tool-ai-element')       ?.addEventListener('click', openAiElementModal);
@@ -10903,6 +10969,11 @@ function bindEvents() {
   /* Мобильные карточки фигур */
   $('#mtool-rect')   ?.addEventListener('click', () => { addRect(); closeMobileDrawer(); });
   $('#mtool-circle') ?.addEventListener('click', () => { addCircle(); closeMobileDrawer(); });
+  $('#mtool-ellipse')   ?.addEventListener('click', () => { window.AuroraFigmaPro?.addEllipse(); closeMobileDrawer(); });
+  $('#mtool-triangle')  ?.addEventListener('click', () => { window.AuroraFigmaPro?.addTriangle(); closeMobileDrawer(); });
+  $('#mtool-diamond')   ?.addEventListener('click', () => { window.AuroraFigmaPro?.addDiamond(); closeMobileDrawer(); });
+  $('#mtool-pentagon')  ?.addEventListener('click', () => { window.AuroraFigmaPro?.addPentagon(); closeMobileDrawer(); });
+  $('#mtool-semicircle')?.addEventListener('click', () => { window.AuroraFigmaPro?.addSemiCircle(); closeMobileDrawer(); });
   $('#mtool-line')   ?.addEventListener('click', () => { addLine(); closeMobileDrawer(); });
   $('#mtool-dashed') ?.addEventListener('click', () => { addDashedLine(); closeMobileDrawer(); });
   $('#mtool-arrow')  ?.addEventListener('click', () => { addArrow(); closeMobileDrawer(); });

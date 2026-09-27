@@ -341,6 +341,26 @@
           <span class="material-symbols-rounded">circle</span>
           <span>Круг</span>
         </button>
+        <button class="tool-btn" id="tool-ellipse" title="Эллипс (овал)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="6.5"/></svg>
+          <span>Эллипс</span>
+        </button>
+        <button class="tool-btn" id="tool-triangle" title="Треугольник">
+          <span class="material-symbols-rounded">change_history</span>
+          <span>Треугольник</span>
+        </button>
+        <button class="tool-btn" id="tool-diamond" title="Ромб">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 L21.5 12 L12 21.5 L2.5 12 Z"/></svg>
+          <span>Ромб</span>
+        </button>
+        <button class="tool-btn" id="tool-pentagon" title="Пятиугольник">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 L21.6 9.4 L18 20.5 L6 20.5 L2.4 9.4 Z"/></svg>
+          <span>Пятиугольник</span>
+        </button>
+        <button class="tool-btn" id="tool-semicircle" title="Полукруг">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 16 A 9 9 0 0 1 21 16 Z"/></svg>
+          <span>Полукруг</span>
+        </button>
         <button class="tool-btn" id="tool-line" title="Сплошная линия">
           <span class="material-symbols-rounded">horizontal_rule</span>
           <span>Линия</span>
@@ -474,7 +494,12 @@
       <!-- Floating Pencil Bar (active when drawing mode is ON) -->
       <div id="pencil-toolbar" class="pencil-toolbar hidden" style="position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e1e1e; border: 1px solid rgba(255,255,255,0.18); border-radius: 24px; padding: 6px 14px; display: flex; align-items: center; gap: 10px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); backdrop-filter: blur(16px);">
         <span class="material-symbols-rounded" style="font-size: 18px; color: #0d99ff;">edit</span>
-        <span style="font-size: 12px; font-weight: 600; color: #fff;">Карандаш</span>
+        <span style="font-size: 12px; font-weight: 600; color: #fff;">Кисть:</span>
+        <div class="brush-kind-row" id="brush-kind-row" style="display: flex; align-items: center; gap: 4px;">
+          <button class="pbtn pbtn-xs brush-kind-btn is-active" data-brush="pencil" title="Карандаш — тонкая чёткая линия" style="padding: 3px 8px; background: #0d99ff22; color: #0d99ff; border: 1px solid #0d99ff55; border-radius: 10px; cursor: pointer; font-size: 10px; font-weight: 600;">✏️</button>
+          <button class="pbtn pbtn-xs brush-kind-btn" data-brush="marker" title="Маркер — широкая полупрозрачная линия" style="padding: 3px 8px; background: transparent; color: #9ca3af; border: 1px solid #ffffff22; border-radius: 10px; cursor: pointer; font-size: 10px; font-weight: 600;">🖍️</button>
+          <button class="pbtn pbtn-xs brush-kind-btn" data-brush="spray" title="Распылитель — аэрограф" style="padding: 3px 8px; background: transparent; color: #9ca3af; border: 1px solid #ffffff22; border-radius: 10px; cursor: pointer; font-size: 10px; font-weight: 600;">💨</button>
+        </div>
         <input type="color" id="pencil-color-picker" value="#0d99ff" title="Цвет линии" style="width: 26px; height: 26px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
         <div style="display: flex; align-items: center; gap: 6px;">
           <span style="font-size: 11px; color: #9ca3af;">Толщина</span>
@@ -895,6 +920,24 @@
             </div>
             <input type="range" class="prop-range" id="stroke-width-slider" min="0" max="24" value="0">
           </div>
+          <!-- Тип обводки (Figma: Solid / Dash / Dot / Dash-dot) -->
+          <div class="figma-control-group" id="stroke-style-group">
+            <label class="figma-sublabel">Тип линии</label>
+            <div class="prop-btn-row stroke-style-row">
+              <button class="pbtn toggle-btn stroke-style-btn is-active" data-stroke-style="solid" title="Сплошная линия">
+                <svg width="22" height="10" viewBox="0 0 22 10"><line x1="1" y1="5" x2="21" y2="5" stroke="currentColor" stroke-width="2"/></svg>
+              </button>
+              <button class="pbtn toggle-btn stroke-style-btn" data-stroke-style="dashed" title="Пунктир">
+                <svg width="22" height="10" viewBox="0 0 22 10"><line x1="1" y1="5" x2="21" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="5 3"/></svg>
+              </button>
+              <button class="pbtn toggle-btn stroke-style-btn" data-stroke-style="dotted" title="Точки">
+                <svg width="22" height="10" viewBox="0 0 22 10"><line x1="2" y1="5" x2="20" y2="5" stroke="currentColor" stroke-width="2.5" stroke-dasharray="1 4" stroke-linecap="round"/></svg>
+              </button>
+              <button class="pbtn toggle-btn stroke-style-btn" data-stroke-style="dashdot" title="Штрих-пунктир">
+                <svg width="22" height="10" viewBox="0 0 22 10"><line x1="1" y1="5" x2="21" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="7 3 1.5 3"/></svg>
+              </button>
+            </div>
+          </div>
           <div class="color-row figma-palette-row" id="stroke-color-row"></div>
 
           <!-- Скругление углов (для прямоугольников) -->
@@ -1267,6 +1310,26 @@
           <button class="drawer-card" id="mtool-circle">
             <span class="material-symbols-rounded">circle</span>
             <span>Круг</span>
+          </button>
+          <button class="drawer-card" id="mtool-ellipse">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="6.5"/></svg>
+            <span>Эллипс</span>
+          </button>
+          <button class="drawer-card" id="mtool-triangle">
+            <span class="material-symbols-rounded">change_history</span>
+            <span>Треугольник</span>
+          </button>
+          <button class="drawer-card" id="mtool-diamond">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 L21.5 12 L12 21.5 L2.5 12 Z"/></svg>
+            <span>Ромб</span>
+          </button>
+          <button class="drawer-card" id="mtool-pentagon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 L21.6 9.4 L18 20.5 L6 20.5 L2.4 9.4 Z"/></svg>
+            <span>Пятиугольник</span>
+          </button>
+          <button class="drawer-card" id="mtool-semicircle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 16 A 9 9 0 0 1 21 16 Z"/></svg>
+            <span>Полукруг</span>
           </button>
           <button class="drawer-card" id="mtool-line">
             <span class="material-symbols-rounded">horizontal_rule</span>
@@ -2908,6 +2971,7 @@
 
 <!-- Библиотеки: Canvas, PDF, QR-код, JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="figma_pro_tools.js?v=1.0.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="qrcode.min.js?v=2.1.1"></script>

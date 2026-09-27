@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.3.4",
+  "version": "5.4.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-27T02:50:00+03:00",
-  "release_name": "AURORA DESIGN 5.3.4 — Cosmo Cyber-Game: Vector Atrium BG, Multi-Plane Parallax Architecture & Parquet Tiling"
+  "commit_date": "2026-09-27T03:42:00+03:00",
+  "release_name": "AURORA DESIGN 5.4.0 — 3D WebGL Scene3D Engine, GLB Assets & Figma Pro Tools Poster Suite"
 }
