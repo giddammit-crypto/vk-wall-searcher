@@ -26,6 +26,11 @@
             this.playerRoot = null;
             this.playerShadow = null;
             this.playerShield = null;
+            this.characterRig = null;
+            this.characterWalkPhase = 0;
+            this.characterWasGrounded = null;
+            this.characterLandingPulse = 0;
+            this.lastAnimationTime = 0;
             this.lastFrameTime = 0;
             this.warnings = new Set();
         }
@@ -260,6 +265,87 @@
             }
         }
 
+        createAnimationPivot(model, meshes, x, y) {
+            if (!meshes.length) return null;
+            const pivot = new THREE.Group();
+            pivot.position.set(x, y, 0);
+            for (const mesh of meshes) {
+                const originalPosition = mesh.position.clone();
+                model.remove(mesh);
+                mesh.position.set(
+                    originalPosition.x - x,
+                    originalPosition.y - y,
+                    originalPosition.z
+                );
+                pivot.add(mesh);
+            }
+            model.add(pivot);
+            return pivot;
+        }
+
+        createCharacterRig(model) {
+            const meshes = [];
+            model.traverse((object) => {
+                if (object.isMesh && object.name) meshes.push(object);
+            });
+
+            const collect = (side, parts) => meshes.filter((mesh) => {
+                if (!mesh.name.startsWith(`COSMO ${side} |`)) return false;
+                return parts.some((part) => mesh.name.toLowerCase().includes(part));
+            });
+
+            const rig = { arms: {}, legs: {} };
+            for (const [side, sign] of [['L', -1], ['R', 1]]) {
+                const armMeshes = collect(side, [
+                    'shoulder pauldron', 'shoulder swivel', 'upper arm', 'elbow pivot',
+                    'forearm', 'magnetic glove', 'articulated fingertip'
+                ]);
+                const legMeshes = collect(side, [
+                    'magnetic boot', 'ceramic boot toe', 'luminous sole', 'ankle bearing',
+                    'knee joint', 'shin armor', 'shin cobalt'
+                ]);
+                rig.arms[side] = this.createAnimationPivot(model, armMeshes, sign * 0.68, 1.8);
+                rig.legs[side] = this.createAnimationPivot(model, legMeshes, sign * 0.34, 1.0);
+            }
+            return rig;
+        }
+
+        animatePivot(pivot, targetAngle, blend) {
+            if (!pivot) return;
+            pivot.rotation.z += (targetAngle - pivot.rotation.z) * blend;
+        }
+
+        animateCharacter(player, deltaTime) {
+            if (!this.characterRig) return;
+            const dt = Math.max(0, Math.min(deltaTime, 0.05));
+            const grounded = Boolean(player.grounded);
+            const speed = Math.min(1, Math.abs(player.vx || 0) / 350);
+            const moving = grounded ? speed : 0;
+
+            if (this.characterWasGrounded === false && grounded) this.characterLandingPulse = 1;
+            this.characterWasGrounded = grounded;
+            this.characterLandingPulse *= Math.exp(-dt * 9);
+            if (grounded && moving > 0.03) {
+                this.characterWalkPhase += dt * (8 + moving * 7);
+            }
+
+            const stride = Math.sin(this.characterWalkPhase) * 0.56 * moving;
+            const rising = !grounded && player.vy < 0;
+            const airborne = !grounded;
+            const jumpArms = rising ? 0.48 : airborne ? 0.24 : 0;
+            const jumpLegs = airborne ? 0.2 : 0;
+            const blend = 1 - Math.exp(-dt * 14);
+
+            this.animatePivot(this.characterRig.arms.L, -stride * 0.78 - jumpArms, blend);
+            this.animatePivot(this.characterRig.arms.R, stride * 0.78 + jumpArms, blend);
+            this.animatePivot(this.characterRig.legs.L, stride * 0.82 - jumpLegs, blend);
+            this.animatePivot(this.characterRig.legs.R, -stride * 0.82 + jumpLegs, blend);
+
+            const runBob = grounded ? Math.abs(Math.sin(this.characterWalkPhase * 2)) * 0.045 * moving : 0;
+            const landingSquash = this.characterLandingPulse * 0.12;
+            return { runBob, landingSquash, lean: grounded ? -Math.sign(player.vx || 0) * speed * 0.035 : (rising ? -0.055 : 0.035) };
+        }
+
         getDepthPerspective(worldY) {
             const screenHeight = window.innerHeight || 1;
             const ground = screenHeight - 55;
@@ -280,11 +366,17 @@
                 const model = this.models.character.clone(true);
                 this.centerModel(model);
                 this.playerRoot.add(model);
+                this.characterRig = this.createCharacterRig(model);
                 this.characterBaseScale = player.h / (this.models.character.userData.height * PIXELS_PER_UNIT);
             }
 
             const depth = this.getDepthPerspective(player.y + player.h);
-            const squash = player.squashStretch;
+            const animationDelta = this.lastAnimationTime
+                ? Math.min((performance.now() - this.lastAnimationTime) / 1000, 0.05)
+                : 0;
+            this.lastAnimationTime = performance.now();
+            const motion = this.animateCharacter(player, animationDelta);
+            const squash = Math.max(0.2, player.squashStretch || 1) * (1 - (motion?.landingSquash || 0));
             const scale = this.characterBaseScale * depth;
             const worldFloor = (window.innerHeight || 1) - 55;
             const footY = worldFloor - (player.y + player.h);
@@ -297,7 +389,8 @@
             this.playerRoot.scale.set(scale / squash, scale * squash, scale);
             this.playerRoot.rotation.y = player.facingRight ? -0.48 : 0.48;
             this.playerRoot.rotation.x = player.flipRotation;
-            if (player.grounded) this.playerRoot.position.y += Math.abs(Math.sin(player.runAnimTimer)) * 0.075;
+            this.playerRoot.rotation.z = motion?.lean || 0;
+            this.playerRoot.position.y += motion?.runBob || 0;
 
             this.playerShadow.position.set(
                 (player.x + player.w * 0.5) / PIXELS_PER_UNIT,
