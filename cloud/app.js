@@ -144,7 +144,7 @@
     dropzone && dropzone.classList.add('has-pass-error');
     // Прокручиваем поле пароля в зону видимости
     cloudPassRow && cloudPassRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    showToast('Введите пароль загрузки (скачивание по ссылке — без пароля)', 'warning', 5000);
+    showToast('Введите пароль загрузки (скачивание по ссылке — без пароля)', 'warning');
   }
 
   // ─── Drag & Drop ────────────────────────────────────────────────────────────
@@ -218,7 +218,6 @@
       indicatePasswordNeeded();
       return;
     }
-    rememberPassword(pass);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -242,6 +241,7 @@
         try {
           const res = JSON.parse(xhr.responseText);
           if (res.ok) {
+            rememberPassword(pass); // запоминаем только после успешной загрузки
             hideProgress();
             handleUploadSuccess(res);
           } else {
@@ -264,6 +264,7 @@
           needPass = xhr.status === 401;
         }
         if (needPass) {
+          sessionStorage.removeItem(PASS_STORAGE_KEY); // неверный сохранённый пароль — сбрасываем
           indicatePasswordNeeded();
         } else {
           showToast(errMsg, 'error');
@@ -490,7 +491,6 @@
         indicatePasswordNeeded();
         return;
       }
-      rememberPassword(pass);
 
       modalPaste.classList.remove('is-open');
       showProgress(title, code.length);
@@ -511,9 +511,11 @@
         try { data = await res.json(); } catch (e) {}
         hideProgress();
         if (res.ok && data && data.ok) {
+          rememberPassword(pass); // только после успеха
           handleUploadSuccess(data);
           pasteCodeInput.value = '';
         } else if (res.status === 401 || (data && data.need_password)) {
+          sessionStorage.removeItem(PASS_STORAGE_KEY);
           modalPaste.classList.add('is-open');
           indicatePasswordNeeded();
         } else {

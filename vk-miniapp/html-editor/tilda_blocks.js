@@ -3095,30 +3095,61 @@ export const TILDA_BLOCKS = [
     html: (c, d) => {
       const els = c.elements || [];
       let elsMarkup = '';
-      els.forEach(el => {
+      const responsiveRules = [];
+      const scopeClass = d.responsiveScope ? ` ${String(d.responsiveScope).replace(/[^a-zA-Z0-9_-]/g, '')}` : '';
+      const responsiveSelector = scopeClass ? `.t-zero-block${scopeClass}` : '.t-zero-block';
+      const responsivePropertyMap = {
+        x: 'left', y: 'top', width: 'width', height: 'height', rotation: 'transform',
+        opacity: 'opacity', zIndex: 'z-index', fontSize: 'font-size', fontWeight: 'font-weight',
+        fontFamily: 'font-family', color: 'color', bgColor: 'background-color', borderRadius: 'border-radius',
+        textAlign: 'text-align', lineHeight: 'line-height', letterSpacing: 'letter-spacing'
+      };
+      const cssValue = value => String(value).replace(/[;{}<>]/g, '').replace(/\r|\n/g, '');
+      const cssLength = value => typeof value === 'number' ? `${cssValue(value)}px` : cssValue(value);
+      const unusedCssValue = value => String(value).replace(/[;{}<>\\r\\n]/g, '');
+      els.forEach((el, index) => {
         const p = el.props || {};
+        Object.entries(el.responsiveProps || {}).forEach(([bp, overrides]) => {
+          if (!overrides || typeof overrides !== 'object') return;
+          const declarations = Object.entries(overrides).flatMap(([key, value]) => {
+            const property = responsivePropertyMap[key];
+            if (!property || value === '' || value === null || value === undefined) return [];
+            let css;
+            if (key === 'rotation') css = `transform:rotate(${cssValue(value)}deg)`;
+            else if (['x', 'y', 'width', 'height', 'fontSize', 'letterSpacing'].includes(key)) css = `${property}:${cssLength(value)}`;
+            else css = `${property}:${cssValue(value)}`;
+            const selector = `${responsiveSelector} [data-zb-index="${index}"]`;
+            const target = ['bgColor', 'borderRadius', 'borderWidth', 'borderColor'].includes(key)
+              ? `${selector} > *`
+              : (['fontSize', 'fontWeight', 'fontFamily', 'color', 'textAlign', 'lineHeight', 'letterSpacing'].includes(key)
+                ? `${selector} > *,${selector} > * *`
+                : selector);
+            return [`${target}{${css} !important}`];
+          });
+          if (declarations.length) responsiveRules.push(`@media(max-width:${cssValue(bp)}px){${declarations.join('')}}`);
+        });
         let inner = '';
         const borderStyle = `${p.borderWidth || '0px'} ${p.borderStyle || 'solid'} ${p.borderColor || 'transparent'}`;
         const shadowStyle = p.boxShadow && p.boxShadow !== 'none' ? `box-shadow:${p.boxShadow};` : '';
 
         if (el.type === 'img') {
           const lbAttr = p.lightbox ? 'data-lightbox="true" data-caption="Zero Block Photo" style="cursor:zoom-in;' : 'style="';
-          inner = `<img src="${p.content || ''}" alt="" ${lbAttr}width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius || '0px'};${shadowStyle}border:${borderStyle};" />`;
+          inner = `<img src="${escapeBlockHtml(p.content || '')}" alt="" ${lbAttr}width:100%;height:100%;object-fit:cover;border-radius:${cssValue(p.borderRadius || '0px')};${shadowStyle}border:${cssValue(borderStyle)};" />`;
         } else if (el.type === 'shape') {
           inner = `<div style="width:100%;height:100%;border-radius:${p.borderRadius || '0px'};background:${p.bgColor || 'rgba(13,153,255,0.15)'};border:${borderStyle};${shadowStyle}box-sizing:border-box;"></div>`;
         } else if (el.type === 'btn') {
           const targetAttr = p.targetBlank ? 'target="_blank" rel="noopener noreferrer"' : '';
-          inner = `<a href="${p.url || '#'}" ${targetAttr} class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor || '#0d99ff'};color:${p.color || '#fff'};border-radius:${p.borderRadius || '8px'};font-size:${p.fontSize || 15}px;font-weight:${p.fontWeight || '700'};font-family:'${p.fontFamily || 'Montserrat'}',sans-serif;text-decoration:none;user-select:none;border:${borderStyle};${shadowStyle}letter-spacing:${p.letterSpacing || 0}px;">${p.content || 'Кнопка'}</a>`;
+          inner = `<a href="${escapeBlockHtml(p.url || '#')}" ${targetAttr} class="t-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${cssValue(p.bgColor || '#0d99ff')};color:${cssValue(p.color || '#fff')};border-radius:${cssValue(p.borderRadius || '8px')};font-size:${cssValue(p.fontSize || 15)}px;font-weight:${cssValue(p.fontWeight || '700')};font-family:'${cssValue(p.fontFamily || 'Montserrat')}',sans-serif;text-decoration:none;user-select:none;border:${cssValue(borderStyle)};${shadowStyle}letter-spacing:${cssValue(p.letterSpacing || 0)}px;">${escapeBlockHtml(p.content || 'Кнопка')}</a>`;
         } else if (el.type === 'icon') {
           inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.color || '#0d99ff'};font-size:${p.fontSize || 32}px;background:${p.bgColor || 'transparent'};border-radius:${p.borderRadius || '0px'};border:${borderStyle};${shadowStyle}"><span class="material-symbols-rounded" style="font-size:inherit;">${p.icon || p.content || 'star'}</span></div>`;
         } else if (el.type === 'form') {
           inner = `
-            <div style="width:100%;height:100%;padding:16px;background:${p.bgColor || '#1e293b'};border-radius:${p.borderRadius || '12px'};border:${borderStyle};${shadowStyle}display:flex;flex-direction:column;gap:8px;box-sizing:border-box;">
-              <div style="font-size:14px;font-weight:700;color:${p.color || '#fff'};">${p.content || 'Оставить заявку'}</div>
-              <input type="text" placeholder="Ваше имя" style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
-              <input type="tel" placeholder="+7 (999) 000-00-00" style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
-              <button type="button" style="padding:8px 16px;background:#0d99ff;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Отправить</button>
-            </div>
+            <form class="tilda-form" data-tilda-form="zero-${escapeBlockHtml(el.id)}" style="width:100%;height:100%;padding:16px;background:${cssValue(p.bgColor || '#1e293b')};border-radius:${cssValue(p.borderRadius || '12px')};border:${cssValue(borderStyle)};${shadowStyle}display:flex;flex-direction:column;gap:8px;box-sizing:border-box;">
+              <div style="font-size:14px;font-weight:700;color:${cssValue(p.color || '#fff')};">${escapeBlockHtml(p.content || 'Оставить заявку')}</div>
+              <input name="name" type="text" placeholder="Ваше имя" required style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+              <input name="phone" type="tel" placeholder="+7 (999) 000-00-00" required style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+              <button type="submit" style="padding:8px 16px;background:#0d99ff;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Отправить</button>
+            </form>
           `;
         } else if (el.type === 'code') {
           inner = `<div style="width:100%;height:100%;overflow:hidden;">${p.content || ''}</div>`;
@@ -3127,7 +3158,7 @@ export const TILDA_BLOCKS = [
           const targetAttr = p.url ? (p.targetBlank ? 'target="_blank" rel="noopener noreferrer"' : '') : '';
           const tagOpen = p.url ? `<a href="${p.url}" ${targetAttr} style="text-decoration:none;color:inherit;display:block;width:100%;height:100%;">` : '';
           const tagClose = p.url ? `</a>` : '';
-          inner = `${tagOpen}<div style="font-size:${p.fontSize || 16}px;font-weight:${p.fontWeight || '500'};color:${p.color || '#fff'};line-height:${p.lineHeight || 1.3};text-align:${p.textAlign || 'left'};font-family:'${p.fontFamily || 'Inter'}',sans-serif;letter-spacing:${p.letterSpacing || 0}px;word-break:break-word;">${p.content || ''}</div>${tagClose}`;
+          inner = `${tagOpen}<div style="font-size:${cssValue(p.fontSize || 16)}px;font-weight:${cssValue(p.fontWeight || '500')};color:${cssValue(p.color || '#fff')};line-height:${cssValue(p.lineHeight || 1.3)};text-align:${cssValue(p.textAlign || 'left')};font-family:'${cssValue(p.fontFamily || 'Inter')}',sans-serif;letter-spacing:${cssValue(p.letterSpacing || 0)}px;word-break:break-word;">${escapeBlockHtml(p.content || '')}</div>${tagClose}`;
         }
 
         const animAttr = (p.animation && p.animation.type && p.animation.type !== 'none')
@@ -3135,15 +3166,28 @@ export const TILDA_BLOCKS = [
           : '';
 
         elsMarkup += `
-          <div class="zero-canvas-element" data-zb-el-id="${el.id}"${animAttr} style="position:absolute;left:${p.x || 0}px;top:${p.y || 0}px;width:${p.width || 200}px;height:${p.height || 50}px;transform:rotate(${p.rotation || 0}deg);z-index:${p.zIndex || 1};opacity:${p.opacity !== undefined ? p.opacity : 1};box-sizing:border-box;">
+          <div class="zero-canvas-element" data-zb-el-id="${escapeBlockHtml(el.id || '')}" data-zb-index="${index}"${animAttr} style="position:absolute;left:${cssValue(p.x || 0)}px;top:${cssValue(p.y || 0)}px;width:${cssValue(p.width || 200)}px;height:${cssValue(p.height || 50)}px;transform:rotate(${cssValue(p.rotation || 0)}deg);z-index:${cssValue(p.zIndex || 1)};opacity:${cssValue(p.opacity !== undefined ? p.opacity : 1)};box-sizing:border-box;">
             ${inner}
           </div>
         `;
       });
 
       const hPx = parseInt(d.height, 10) || 560;
+      Object.entries(c.responsiveSettings || {}).forEach(([bp, settings]) => {
+        if (!settings || typeof settings !== 'object') return;
+        const declarations = [];
+        if (settings.height !== undefined) declarations.push(`height:${cssLength(settings.height)} !important`, `min-height:${cssLength(settings.height)} !important`);
+        if (settings.background) declarations.push(`background-color:${cssValue(settings.background)} !important`);
+        if (settings.backgroundImage) declarations.push(`background-image:url("${cssValue(settings.backgroundImage).replace(/"/g, '%22')}") !important`, 'background-size:cover !important', 'background-position:center !important');
+        if (declarations.length) responsiveRules.push(`@media(max-width:${cssValue(bp)}px){${responsiveSelector}{${declarations.join(';')}}}`);
+      });
+      const backgroundColor = cssValue(d.background || '#070a13');
+      const backgroundImage = d.backgroundImage
+        ? `background-image:url("${cssValue(d.backgroundImage).replace(/"/g, '%22')}");background-size:cover;background-position:center;`
+        : '';
       return `
-        <div class="t-block t-zero-block" style="position:relative;width:100%;min-height:${hPx}px;height:${hPx}px;background:${d.background || '#070a13'};overflow:hidden;">
+        <div class="t-block t-zero-block${scopeClass}" style="position:relative;width:100%;min-height:${hPx}px;height:${hPx}px;background-color:${backgroundColor};${backgroundImage}overflow:hidden;">
+          ${responsiveRules.length ? `<style>${responsiveRules.join('')}</style>` : ''}
           <div class="t-zero-container" style="position:relative;width:100%;max-width:1200px;height:100%;margin:0 auto;">
             ${elsMarkup}
           </div>

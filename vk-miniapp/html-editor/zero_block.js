@@ -65,8 +65,7 @@ export class ZeroBlockElement {
         duration: 0.6,
         delay: 0,
         trigger: 'scroll' // 'scroll' | 'hover' | 'load'
-      },
-      ...initialProps
+      }
     };
 
     if (type === 'h1') {
@@ -145,6 +144,7 @@ export class ZeroBlockElement {
       this.props.content = '<div style="padding:20px;background:#1e293b;border-radius:12px;color:#38bdf8;text-align:center;">✨ Кастомный HTML код / Виджет</div>';
     }
 
+    Object.assign(this.props, initialProps);
     this.responsiveProps = {};
     BREAKPOINTS.forEach(bp => this.responsiveProps[bp] = {});
   }
@@ -204,6 +204,11 @@ export class ZeroBlock {
       x: orig.props.x + 24,
       y: orig.props.y + 24,
       zIndex: (orig.props.zIndex || 1) + 1
+    });
+    clone.responsiveProps = JSON.parse(JSON.stringify(orig.responsiveProps || {}));
+    Object.values(clone.responsiveProps).forEach(props => {
+      if (props.x !== undefined) props.x += 24;
+      if (props.y !== undefined) props.y += 24;
     });
     this.elements.push(clone);
     return clone;
@@ -312,6 +317,38 @@ export class ZeroBlockEditor {
     }
   }
 
+  getElementProps(element, breakpoint = this.activeBreakpoint) {
+    return { ...element.props, ...(breakpoint === 1200 ? {} : (element.responsiveProps?.[breakpoint] || {})) };
+  }
+
+  getArtboardSettings(breakpoint = this.activeBreakpoint) {
+    return {
+      ...this.block.settings,
+      ...(breakpoint === 1200 ? {} : (this.block.responsiveSettings?.[breakpoint] || {}))
+    };
+  }
+
+  setArtboardSetting(key, value, breakpoint = this.activeBreakpoint) {
+    if (breakpoint === 1200) {
+      this.block.settings[key] = value;
+      return;
+    }
+    this.block.responsiveSettings = this.block.responsiveSettings || {};
+    this.block.responsiveSettings[breakpoint] = {
+      ...(this.block.responsiveSettings[breakpoint] || {}),
+      [key]: value
+    };
+  }
+
+  setElementProps(element, values, breakpoint = this.activeBreakpoint) {
+    if (breakpoint === 1200) {
+      Object.assign(element.props, values);
+      return;
+    }
+    element.responsiveProps = element.responsiveProps || {};
+    element.responsiveProps[breakpoint] = { ...(element.responsiveProps[breakpoint] || {}), ...values };
+  }
+
   selectElement(id) {
     this.selectedElementId = id;
     this.updateSelectionClasses();
@@ -346,17 +383,21 @@ export class ZeroBlockEditor {
   alignSelected(alignType) {
     const selected = this.getSelectedElement();
     if (!selected) return;
-    const artboardW = Math.min(this.block.settings.gridWidth, this.activeBreakpoint);
-    const artboardH = this.block.settings.height;
+    const props = this.getElementProps(selected);
+    const artboardW = Math.min(this.getArtboardSettings().gridWidth || this.block.settings.gridWidth, this.activeBreakpoint);
+    const artboardH = this.getArtboardSettings().height;
+    const values = {};
 
     switch (alignType) {
-      case 'left': selected.props.x = 24; break;
-      case 'center': selected.props.x = Math.max(0, Math.round((artboardW - selected.props.width) / 2)); break;
-      case 'right': selected.props.x = Math.max(0, artboardW - selected.props.width - 24); break;
-      case 'top': selected.props.y = 24; break;
-      case 'middle': selected.props.y = Math.max(0, Math.round((artboardH - selected.props.height) / 2)); break;
-      case 'bottom': selected.props.y = Math.max(0, artboardH - selected.props.height - 24); break;
+      case 'left': values.x = 24; break;
+      case 'center': values.x = Math.max(0, Math.round((artboardW - props.width) / 2)); break;
+      case 'right': values.x = Math.max(0, artboardW - props.width - 24); break;
+      case 'top': values.y = 24; break;
+      case 'middle': values.y = Math.max(0, Math.round((artboardH - props.height) / 2)); break;
+      case 'bottom': values.y = Math.max(0, artboardH - props.height - 24); break;
+      default: return;
     }
+    this.setElementProps(selected, values);
     this.saveHistory();
     this.render();
     this.onSelectionChange?.(selected);
@@ -367,10 +408,14 @@ export class ZeroBlockEditor {
     const contentWidth = Math.max(280, bp - 36);
     let currentY = 32;
 
-    const sorted = [...this.block.elements].sort((a, b) => (a.props.y || 0) - (b.props.y || 0));
+    const sorted = [...this.block.elements].sort((a, b) => this.getElementProps(a, 1200).y - this.getElementProps(b, 1200).y);
+    sorted.forEach(el => {
+      el.responsiveProps = el.responsiveProps || {};
+      el.responsiveProps[bp] = { ...(el.responsiveProps[bp] || {}) };
+    });
 
     sorted.forEach(el => {
-      const p = el.props;
+      const p = this.getElementProps(el, bp);
       if (['h1', 'h2', 'h3', 'text'].includes(el.type)) {
         if (el.type === 'h1') {
           p.fontSize = bp <= 320 ? 24 : (bp <= 480 ? 28 : 34);
@@ -379,53 +424,43 @@ export class ZeroBlockEditor {
         } else if (el.type === 'text') {
           p.fontSize = Math.min(p.fontSize || 16, 15);
         }
+        this.setElementProps(el, { fontSize: p.fontSize }, bp);
         const elW = Math.min(p.width || contentWidth, contentWidth);
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
-        p.width = elW;
+        this.setElementProps(el, { x: elX, y: currentY, width: elW }, bp);
         currentY += (p.height || 50) + 18;
       } else if (el.type === 'btn') {
         const elW = Math.min(p.width || 240, contentWidth);
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
-        p.width = elW;
+        this.setElementProps(el, { x: elX, y: currentY, width: elW }, bp);
         currentY += (p.height || 48) + 22;
       } else if (el.type === 'img' || el.type === 'shape') {
         const elW = Math.min(p.width || contentWidth, contentWidth);
         const ratio = (p.height && p.width) ? (p.height / p.width) : 0.65;
         const elH = Math.round(elW * Math.min(1.2, Math.max(0.4, ratio)));
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
-        p.width = elW;
-        p.height = Math.max(120, elH);
-        currentY += p.height + 22;
+        const layoutHeight = Math.max(120, elH);
+        this.setElementProps(el, { x: elX, y: currentY, width: elW, height: layoutHeight }, bp);
+        currentY += layoutHeight + 22;
       } else if (el.type === 'form' || el.type === 'code') {
         const elW = Math.min(p.width || contentWidth, contentWidth);
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
-        p.width = elW;
+        this.setElementProps(el, { x: elX, y: currentY, width: elW }, bp);
         currentY += (p.height || 220) + 24;
       } else if (el.type === 'icon') {
         const elW = p.width || 48;
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
+        this.setElementProps(el, { x: elX, y: currentY }, bp);
         currentY += (p.height || 48) + 16;
       } else {
         const elW = Math.min(p.width || contentWidth, contentWidth);
         const elX = Math.max(16, Math.round((bp - elW) / 2));
-        p.x = elX;
-        p.y = currentY;
-        p.width = elW;
+        this.setElementProps(el, { x: elX, y: currentY, width: elW }, bp);
         currentY += (p.height || 40) + 18;
       }
     });
 
-    this.block.settings.height = Math.max(currentY + 40, 460);
+    this.setArtboardSetting('height', Math.max(currentY + 40, 460), bp);
     this.activeBreakpoint = bp;
     this.saveHistory();
     this.render();
@@ -478,18 +513,22 @@ export class ZeroBlockEditor {
       const step = e.shiftKey ? 10 : 1;
       let handled = false;
 
-      if (e.key === 'ArrowLeft') { selected.props.x -= step; handled = true; }
-      else if (e.key === 'ArrowRight') { selected.props.x += step; handled = true; }
-      else if (e.key === 'ArrowUp') { selected.props.y -= step; handled = true; }
-      else if (e.key === 'ArrowDown') { selected.props.y += step; handled = true; }
+      const props = this.getElementProps(selected);
+      const next = {};
+      if (e.key === 'ArrowLeft') { next.x = props.x - step; handled = true; }
+      else if (e.key === 'ArrowRight') { next.x = props.x + step; handled = true; }
+      else if (e.key === 'ArrowUp') { next.y = props.y - step; handled = true; }
+      else if (e.key === 'ArrowDown') { next.y = props.y + step; handled = true; }
 
       if (handled) {
         e.preventDefault();
+        this.setElementProps(selected, next);
         const elDom = this.container?.querySelector(`[data-el-id="${selected.id}"]`);
         if (elDom) {
-          elDom.style.left = selected.props.x + 'px';
-          elDom.style.top = selected.props.y + 'px';
+          if (next.x !== undefined) elDom.style.left = `${next.x}px`;
+          if (next.y !== undefined) elDom.style.top = `${next.y}px`;
         }
+        this.saveHistory();
         this.onSelectionChange?.(selected);
       }
     });
@@ -507,30 +546,37 @@ export class ZeroBlockEditor {
 
   render() {
     if (!this.container) return;
-    const gridW = Math.min(this.block.settings.gridWidth, this.activeBreakpoint);
+    const artboardSettings = this.getArtboardSettings();
+    const gridW = Math.min(artboardSettings.gridWidth || this.block.settings.gridWidth, this.activeBreakpoint);
+    const artboardHeight = Number(artboardSettings.height) || 600;
+    const bgColor = escapeHtml(artboardSettings.background || '#070a13');
+    const bgImage = artboardSettings.backgroundImage
+      ? `url("${String(artboardSettings.backgroundImage).replace(/\\/g, '%5C').replace(/"/g, '%22').replace(/[<>\r\n]/g, '')}")`
+      : 'none';
 
     let elementsHtml = '';
     // Sort elements by zIndex for correct rendering stack
     const sortedElements = [...this.block.elements].sort((a, b) => (a.props.zIndex || 1) - (b.props.zIndex || 1));
-
     sortedElements.forEach(el => {
       const isSelected = el.id === this.selectedElementId;
-      const p = el.props;
+      const p = this.getElementProps(el);
 
       let innerContent = '';
       if (el.type === 'img') {
-        innerContent = `
-          <img src="${p.content}" style="width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius};box-shadow:${p.boxShadow || 'none'};pointer-events:none;border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};" alt="" />
-        `;
+        const targetAttr = p.targetBlank ? 'target="_blank" rel="noopener noreferrer"' : '';
+        const image = `<img src="${escapeHtml(p.content || '')}" style="width:100%;height:100%;object-fit:cover;border-radius:${p.borderRadius};box-shadow:${p.boxShadow || 'none'};pointer-events:none;border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};" alt="" />`;
+        innerContent = p.lightbox
+          ? `<a href="${escapeHtml(p.content || '')}" data-lightbox="true" data-caption="${escapeHtml(p.content || '')}" style="display:block;width:100%;height:100%;cursor:zoom-in;">${image}</a>`
+          : (p.url ? `<a href="${escapeHtml(p.url)}" ${targetAttr} style="display:block;width:100%;height:100%;">${image}</a>` : image);
       } else if (el.type === 'shape') {
         innerContent = `
           <div style="width:100%;height:100%;border-radius:${p.borderRadius};background:${p.bgColor};border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};box-shadow:${p.boxShadow || 'none'};box-sizing:border-box;"></div>
         `;
       } else if (el.type === 'btn') {
         innerContent = `
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor};color:${p.color};border-radius:${p.borderRadius};font-size:${p.fontSize}px;font-weight:${p.fontWeight};font-family:'${p.fontFamily}',sans-serif;user-select:none;box-sizing:border-box;border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};box-shadow:${p.boxShadow || 'none'};letter-spacing:${p.letterSpacing || 0}px;cursor:pointer;">
+          <a href="${escapeHtml(p.url || '#')}" ${p.targetBlank ? 'target="_blank" rel="noopener noreferrer"' : ''} style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${p.bgColor};color:${p.color};border-radius:${p.borderRadius};font-size:${p.fontSize}px;font-weight:${p.fontWeight};font-family:'${p.fontFamily}',sans-serif;text-decoration:none;user-select:none;box-sizing:border-box;border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};box-shadow:${p.boxShadow || 'none'};letter-spacing:${p.letterSpacing || 0}px;cursor:pointer;">
             ${escapeHtml(p.content)}
-          </div>
+          </a>
         `;
       } else if (el.type === 'icon') {
         innerContent = `
@@ -540,12 +586,13 @@ export class ZeroBlockEditor {
         `;
       } else if (el.type === 'form') {
         innerContent = `
-          <div style="width:100%;height:100%;padding:16px;background:${p.bgColor};border-radius:${p.borderRadius};border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};box-shadow:${p.boxShadow || 'none'};display:flex;flex-direction:column;gap:8px;box-sizing:border-box;pointer-events:none;">
+          <form class="zero-block-form" style="width:100%;height:100%;padding:16px;background:${p.bgColor};border-radius:${p.borderRadius};border:${p.borderWidth} ${p.borderStyle || 'solid'} ${p.borderColor};box-shadow:${p.boxShadow || 'none'};display:flex;flex-direction:column;gap:8px;box-sizing:border-box;" novalidate>
             <div style="font-size:14px;font-weight:700;color:${p.color};">${escapeHtml(p.content || 'Оставить заявку')}</div>
-            <input type="text" placeholder="Ваше имя" style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
-            <input type="tel" placeholder="+7 (999) 000-00-00" style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
-            <button type="button" style="padding:8px 16px;background:#0d99ff;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;">Отправить</button>
-          </div>
+            <input name="name" type="text" placeholder="Ваше имя" required style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+            <input name="phone" type="tel" placeholder="+7 (999) 000-00-00" required style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#fff;font-size:12px;" />
+            <button type="submit" style="padding:8px 16px;background:#0d99ff;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;">Отправить</button>
+            <span class="zero-form-status" aria-live="polite" style="font-size:12px;color:#94a3b8;"></span>
+          </form>
         `;
       } else if (el.type === 'code') {
         innerContent = `
@@ -595,7 +642,7 @@ export class ZeroBlockEditor {
     });
 
     this.container.innerHTML = `
-      <div class="zero-editor-artboard" style="position:relative;width:100%;max-width:${gridW}px;margin:0 auto;height:${this.block.settings.height}px;background:${this.block.settings.background};box-shadow:0 24px 64px rgba(0,0,0,0.7);overflow:${this.block.settings.isOverflowHidden ? 'hidden' : 'visible'};border:1px solid rgba(255,255,255,0.12);border-radius:8px;transition:max-width 0.25s ease;">
+      <div class="zero-editor-artboard" style="position:relative;width:100%;max-width:${gridW}px;margin:0 auto;height:${artboardHeight}px;background-color:${bgColor};background-image:${bgImage};background-size:cover;background-position:center;overflow:${artboardSettings.isOverflowHidden ? 'hidden' : 'visible'};border:1px solid rgba(255,255,255,0.12);border-radius:8px;transition:max-width 0.25s ease;">
         <!-- Сетка колонок Tilda 12 cols -->
         <div class="zero-grid-guides" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(12, 1fr);gap:16px;padding:0 20px;pointer-events:none;opacity:${this.showGridGuides ? '0.05' : '0'};transition:opacity 0.2s;">
           ${Array(12).fill('<div style="background:#0d99ff;height:100%;"></div>').join('')}
@@ -616,6 +663,14 @@ export class ZeroBlockEditor {
 
     const guideX = artboard.querySelector('.zero-guide-x');
     const guideY = artboard.querySelector('.zero-guide-y');
+
+    artboard.addEventListener('submit', e => {
+      const form = e.target.closest('.zero-block-form');
+      if (!form) return;
+      e.preventDefault();
+      const status = form.querySelector('.zero-form-status');
+      if (status) status.textContent = 'Настройте отправку формы в параметрах сайта после публикации.';
+    });
 
     artboard.addEventListener('mousedown', e => {
       if (e.target === artboard || e.target.classList.contains('zero-grid-guides')) {
@@ -695,7 +750,8 @@ export class ZeroBlockEditor {
         if (!selected) return;
 
         const dimBadge = elWrapper.querySelector('.zero-dim-badge');
-        this.elStartPos = { x: selected.props.x, y: selected.props.y };
+        const selectedProps = this.getElementProps(selected);
+        this.elStartPos = { x: selectedProps.x, y: selectedProps.y };
 
         const onMouseMove = ev => {
           if (!this.isDragging) return;
@@ -718,8 +774,9 @@ export class ZeroBlockEditor {
             // Magnetic snapping to Artboard Center & Neighboring Elements
             const artboardW = artboard.clientWidth;
             const artboardH = artboard.clientHeight;
-            const w = selected.props.width;
-            const h = selected.props.height;
+            const selectedProps = this.getElementProps(selected);
+            const w = selectedProps.width;
+            const h = selectedProps.height;
 
             let snappedX = false;
             let snappedY = false;
@@ -741,10 +798,11 @@ export class ZeroBlockEditor {
             // 2. Neighboring Elements Snapping (< 6px)
             for (const other of this.block.elements) {
               if (other.id === selected.id) continue;
-              const ox = other.props.x;
-              const oy = other.props.y;
-              const ow = other.props.width;
-              const oh = other.props.height;
+              const otherProps = this.getElementProps(other);
+              const ox = otherProps.x;
+              const oy = otherProps.y;
+              const ow = otherProps.width;
+              const oh = otherProps.height;
               const oRight = ox + ow;
               const oBottom = oy + oh;
               const oCenterX = ox + ow / 2;
@@ -804,8 +862,7 @@ export class ZeroBlockEditor {
               }
             }
 
-            selected.props.x = nx;
-            selected.props.y = ny;
+            this.setElementProps(selected, { x: nx, y: ny });
             elWrapper.style.left = nx + 'px';
             elWrapper.style.top = ny + 'px';
 
@@ -847,10 +904,11 @@ export class ZeroBlockEditor {
 
         const elWrapper = handle.closest('.zero-el-wrapper');
         const dimBadge = elWrapper?.querySelector('.zero-dim-badge');
-        const startW = selected.props.width;
-        const startH = selected.props.height;
-        const startX = selected.props.x;
-        const startY = selected.props.y;
+        const startProps = this.getElementProps(selected);
+        const startW = startProps.width;
+        const startH = startProps.height;
+        const startX = startProps.x;
+        const startY = startProps.y;
         const startMouseX = e.clientX;
         const startMouseY = e.clientY;
 
@@ -882,10 +940,7 @@ export class ZeroBlockEditor {
               nh = potentialH;
             }
 
-            selected.props.width = nw;
-            selected.props.height = nh;
-            selected.props.x = nx;
-            selected.props.y = ny;
+            this.setElementProps(selected, { width: nw, height: nh, x: nx, y: ny });
 
             if (elWrapper) {
               elWrapper.style.width = nw + 'px';
@@ -933,7 +988,7 @@ export class ZeroBlockEditor {
             let deg = Math.round(rad * (180 / Math.PI) - 90);
             if (deg < 0) deg += 360;
             if (ev.shiftKey) deg = Math.round(deg / 15) * 15; // 15-deg step with Shift
-            selected.props.rotation = deg;
+            this.setElementProps(selected, { rotation: deg });
             if (elWrapper) elWrapper.style.transform = `rotate(${deg}deg)`;
             if (dimBadge) dimBadge.textContent = `${deg}°`;
           });
@@ -960,6 +1015,7 @@ export class ZeroBlockEditor {
 
     if (!selected) {
       // Artboard Settings
+      const artboardSettings = this.getArtboardSettings();
       panelEl.innerHTML = `
         <div class="tilda-inspector-header">
           <div class="insp-title">
@@ -971,13 +1027,13 @@ export class ZeroBlockEditor {
           <div class="insp-section-title">Размер и фон холста</div>
           <div class="insp-field">
             <label>Высота холста (px)</label>
-            <input type="number" id="zb-artboard-height" min="200" max="2400" step="20" value="${this.block.settings.height}" />
+            <input type="number" id="zb-artboard-height" min="200" max="2400" step="20" value="${artboardSettings.height}" />
           </div>
           <div class="insp-field">
             <label>Цвет фона</label>
             <div style="display:flex;gap:8px;align-items:center;">
-              <input type="color" id="zb-bg-color-picker" value="${this.block.settings.background || '#070a13'}" />
-              <input type="text" id="zb-bg-color-text" value="${this.block.settings.background || '#070a13'}" style="flex:1;" />
+              <input type="color" id="zb-bg-color-picker" value="${artboardSettings.background || '#070a13'}" />
+              <input type="text" id="zb-bg-color-text" value="${artboardSettings.background || '#070a13'}" style="flex:1;" />
             </div>
             <div class="color-presets-row">
               <span class="color-swatch-chip" style="background:#070a13;" data-color="#070a13" title="#070a13"></span>
@@ -989,7 +1045,7 @@ export class ZeroBlockEditor {
           </div>
           <div class="insp-field">
             <label>Фоновое изображение (URL)</label>
-            <input type="text" id="zb-bg-img-input" value="${escapeHtml(this.block.settings.backgroundImage || '')}" placeholder="https://..." />
+            <input type="text" id="zb-bg-img-input" value="${escapeHtml(artboardSettings.backgroundImage || '')}" placeholder="https://..." />
           </div>
           <div class="insp-field" style="margin-top:16px;">
             <label class="insp-checkbox">
@@ -1003,28 +1059,33 @@ export class ZeroBlockEditor {
       `;
 
       panelEl.querySelector('#zb-artboard-height')?.addEventListener('input', e => {
-        this.block.settings.height = parseInt(e.target.value) || 600;
+        this.setArtboardSetting('height', parseInt(e.target.value) || 600);
+        this.saveHistory();
         this.render();
       });
       panelEl.querySelector('#zb-bg-color-picker')?.addEventListener('input', e => {
-        this.block.settings.background = e.target.value;
+        this.setArtboardSetting('background', e.target.value);
+        this.saveHistory();
         const txt = panelEl.querySelector('#zb-bg-color-text');
         if (txt) txt.value = e.target.value;
         this.render();
       });
       panelEl.querySelector('#zb-bg-color-text')?.addEventListener('input', e => {
-        this.block.settings.background = e.target.value;
+        this.setArtboardSetting('background', e.target.value);
+        this.saveHistory();
         this.render();
       });
       panelEl.querySelectorAll('.color-swatch-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-          this.block.settings.background = chip.dataset.color;
+          this.setArtboardSetting('background', chip.dataset.color);
+          this.saveHistory();
           this.render();
           this.renderInspector(panelEl, pageAnchorsList);
         });
       });
       panelEl.querySelector('#zb-bg-img-input')?.addEventListener('input', e => {
-        this.block.settings.backgroundImage = e.target.value;
+        this.setArtboardSetting('backgroundImage', e.target.value);
+        this.saveHistory();
         this.render();
       });
       panelEl.querySelector('#zb-chk-grid-guides')?.addEventListener('change', e => {
@@ -1038,8 +1099,8 @@ export class ZeroBlockEditor {
     if (!selected.props.animation) {
       selected.props.animation = { type: 'none', duration: 0.6, delay: 0, trigger: 'scroll' };
     }
-    const p = selected.props;
-    const anim = p.animation;
+    const p = this.getElementProps(selected);
+    const anim = p.animation || { type: 'none', duration: 0.6, delay: 0 };
     const typeLabel = {
       h1: '🏷️ Заголовок H1',
       h2: '🏷️ Заголовок H2',
@@ -1261,122 +1322,103 @@ export class ZeroBlockEditor {
     panelEl.innerHTML = html;
 
     // Bind inputs
-    const syncProp = (key, val) => {
-      selected.props[key] = val;
-      const elDom = this.container?.querySelector(`[data-el-id="${selected.id}"]`);
-      if (key === 'x' && elDom) elDom.style.left = val + 'px';
-      if (key === 'y' && elDom) elDom.style.top = val + 'px';
-      if (key === 'width' && elDom) elDom.style.width = val + 'px';
-      if (key === 'height' && elDom) elDom.style.height = val + 'px';
-      if (key === 'rotation' && elDom) elDom.style.transform = `rotate(${val}deg)`;
+    const syncResponsiveProp = (key, value, render = true) => {
+      this.setElementProps(selected, { [key]: value });
+      if (render) this.render();
+      else {
+        const elDom = this.container?.querySelector(`[data-el-id="${selected.id}"]`);
+        if (key === 'x' && elDom) elDom.style.left = `${value}px`;
+        if (key === 'y' && elDom) elDom.style.top = `${value}px`;
+        if (key === 'rotation' && elDom) elDom.style.transform = `rotate(${value}deg)`;
+      }
       this.saveHistory();
     };
-
-    panelEl.querySelector('#zb-el-x')?.addEventListener('input', e => syncProp('x', parseInt(e.target.value) || 0));
-    panelEl.querySelector('#zb-el-y')?.addEventListener('input', e => syncProp('y', parseInt(e.target.value) || 0));
-    panelEl.querySelector('#zb-el-w')?.addEventListener('input', e => { syncProp('width', parseInt(e.target.value) || 20); this.render(); });
-    panelEl.querySelector('#zb-el-h')?.addEventListener('input', e => { syncProp('height', parseInt(e.target.value) || 20); this.render(); });
-    panelEl.querySelector('#zb-el-rot')?.addEventListener('input', e => syncProp('rotation', parseInt(e.target.value) || 0));
-    panelEl.querySelector('#zb-el-z')?.addEventListener('input', e => syncProp('zIndex', parseInt(e.target.value) || 1));
+    const syncUniversalProp = (key, value, render = true) => {
+      selected.props[key] = value;
+      if (render) this.render();
+      this.saveHistory();
+    };
+    panelEl.querySelector('#zb-el-x')?.addEventListener('input', e => syncResponsiveProp('x', parseInt(e.target.value) || 0, false));
+    panelEl.querySelector('#zb-el-y')?.addEventListener('input', e => syncResponsiveProp('y', parseInt(e.target.value) || 0, false));
+    panelEl.querySelector('#zb-el-w')?.addEventListener('input', e => syncResponsiveProp('width', parseInt(e.target.value) || 20));
+    panelEl.querySelector('#zb-el-h')?.addEventListener('input', e => syncResponsiveProp('height', parseInt(e.target.value) || 20));
+    panelEl.querySelector('#zb-el-rot')?.addEventListener('input', e => syncResponsiveProp('rotation', parseInt(e.target.value) || 0, false));
+    panelEl.querySelector('#zb-el-z')?.addEventListener('input', e => syncResponsiveProp('zIndex', parseInt(e.target.value) || 1));
 
     panelEl.querySelectorAll('.zb-align-btn').forEach(b => {
       b.addEventListener('click', () => this.alignSelected(b.dataset.align));
     });
 
-    panelEl.querySelector('#zb-el-content')?.addEventListener('input', e => {
-      selected.props.content = e.target.value;
-      this.render();
-    });
-    panelEl.querySelector('#zb-el-font-family')?.addEventListener('change', e => {
-      selected.props.fontFamily = e.target.value;
-      this.render();
-    });
-    panelEl.querySelector('#zb-el-font-size')?.addEventListener('input', e => {
-      selected.props.fontSize = parseInt(e.target.value) || 16;
-      this.render();
-    });
-    panelEl.querySelector('#zb-el-font-weight')?.addEventListener('change', e => {
-      selected.props.fontWeight = e.target.value;
-      this.render();
-    });
-    panelEl.querySelector('#zb-el-text-align')?.addEventListener('change', e => {
-      selected.props.textAlign = e.target.value;
-      this.render();
-    });
+    panelEl.querySelector('#zb-el-content')?.addEventListener('input', e => syncUniversalProp('content', e.target.value));
+    panelEl.querySelector('#zb-el-font-family')?.addEventListener('change', e => syncResponsiveProp('fontFamily', e.target.value));
+    panelEl.querySelector('#zb-el-font-size')?.addEventListener('input', e => syncResponsiveProp('fontSize', parseInt(e.target.value) || 16));
+    panelEl.querySelector('#zb-el-font-weight')?.addEventListener('change', e => syncResponsiveProp('fontWeight', e.target.value));
+    panelEl.querySelector('#zb-el-text-align')?.addEventListener('change', e => syncResponsiveProp('textAlign', e.target.value));
     panelEl.querySelector('#zb-el-color-picker')?.addEventListener('input', e => {
-      selected.props.color = e.target.value;
+      syncResponsiveProp('color', e.target.value);
       const txt = panelEl.querySelector('#zb-el-color-text');
       if (txt) txt.value = e.target.value;
-      this.render();
     });
     panelEl.querySelector('#zb-el-color-text')?.addEventListener('input', e => {
-      selected.props.color = e.target.value;
-      this.render();
+      syncResponsiveProp('color', e.target.value);
     });
 
     panelEl.querySelector('#zb-el-img-url')?.addEventListener('input', e => {
-      selected.props.content = e.target.value;
-      this.render();
+      syncUniversalProp('content', e.target.value);
     });
     panelEl.querySelector('#zb-el-lightbox')?.addEventListener('change', e => {
-      selected.props.lightbox = e.target.checked;
+      syncUniversalProp('lightbox', e.target.checked);
     });
 
     panelEl.querySelector('#zb-el-icon-name')?.addEventListener('input', e => {
-      selected.props.icon = e.target.value;
-      selected.props.content = e.target.value;
+      syncUniversalProp('icon', e.target.value, false);
+      syncUniversalProp('content', e.target.value, false);
       this.render();
     });
     panelEl.querySelectorAll('.zb-icon-chip').forEach(c => {
       c.addEventListener('click', () => {
-        selected.props.icon = c.dataset.icon;
-        selected.props.content = c.dataset.icon;
+        syncUniversalProp('icon', c.dataset.icon, false);
+        syncUniversalProp('content', c.dataset.icon, false);
         this.render();
         this.renderInspector(panelEl, pageAnchorsList);
       });
     });
 
     panelEl.querySelector('#zb-el-bg-color')?.addEventListener('input', e => {
-      selected.props.bgColor = e.target.value;
+      syncResponsiveProp('bgColor', e.target.value);
       const txt = panelEl.querySelector('#zb-el-bg-text');
       if (txt) txt.value = e.target.value;
-      this.render();
     });
     panelEl.querySelector('#zb-el-bg-text')?.addEventListener('input', e => {
-      selected.props.bgColor = e.target.value;
-      this.render();
+      syncResponsiveProp('bgColor', e.target.value);
     });
     panelEl.querySelector('#zb-el-radius')?.addEventListener('input', e => {
-      selected.props.borderRadius = e.target.value;
-      this.render();
+      syncResponsiveProp('borderRadius', e.target.value);
     });
     panelEl.querySelector('#zb-el-border-w')?.addEventListener('input', e => {
-      selected.props.borderWidth = e.target.value;
-      this.render();
+      syncResponsiveProp('borderWidth', e.target.value);
     });
     panelEl.querySelector('#zb-el-border-color')?.addEventListener('input', e => {
-      selected.props.borderColor = e.target.value;
+      syncResponsiveProp('borderColor', e.target.value);
       const txt = panelEl.querySelector('#zb-el-border-text');
       if (txt) txt.value = e.target.value;
-      this.render();
     });
     panelEl.querySelector('#zb-el-border-text')?.addEventListener('input', e => {
-      selected.props.borderColor = e.target.value;
-      this.render();
+      syncResponsiveProp('borderColor', e.target.value);
     });
 
     panelEl.querySelector('#zb-el-url')?.addEventListener('input', e => {
-      selected.props.url = e.target.value;
+      syncUniversalProp('url', e.target.value);
     });
     panelEl.querySelector('#zb-el-anchor-select')?.addEventListener('change', e => {
       if (e.target.value) {
-        selected.props.url = e.target.value;
+        syncUniversalProp('url', e.target.value);
         const inp = panelEl.querySelector('#zb-el-url');
         if (inp) inp.value = e.target.value;
       }
     });
     panelEl.querySelector('#zb-el-target-blank')?.addEventListener('change', e => {
-      selected.props.targetBlank = e.target.checked;
+      syncUniversalProp('targetBlank', e.target.checked, false);
     });
 
     const playZeroElAnim = () => {
@@ -1422,10 +1464,12 @@ export class ZeroBlockEditor {
     panelEl.querySelector('#zb-el-anim-duration')?.addEventListener('input', e => {
       selected.props.animation.duration = parseFloat(e.target.value) || 0.6;
       this.saveHistory();
+      playZeroElAnim();
     });
     panelEl.querySelector('#zb-el-anim-delay')?.addEventListener('input', e => {
       selected.props.animation.delay = parseFloat(e.target.value) || 0;
       this.saveHistory();
+      playZeroElAnim();
     });
     panelEl.querySelector('#zb-btn-test-anim')?.addEventListener('click', () => {
       playZeroElAnim();

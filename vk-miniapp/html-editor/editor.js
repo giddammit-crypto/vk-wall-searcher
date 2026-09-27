@@ -1066,6 +1066,7 @@ window.openZeroEditorForBlock = function(instanceId) {
       backgroundImage: blk.design?.bgImage || '',
       gridWidth: 1200
     },
+    responsiveSettings: blk.content?.responsiveSettings || {},
     elements: blk.content?.elements || []
   };
 
@@ -1176,7 +1177,7 @@ function bindZeroBlockToolbar() {
       if (page) {
         let blk = window.activeEditingZeroBlockId
           ? page.blocks.find(b => b.instanceId === window.activeEditingZeroBlockId)
-          : page.blocks.find(b => b.typeId === 'zero-1');
+          : page.blocks.find(b => b.isZero || b.blockDefId === 'zero-1');
         if (!blk) {
           blk = tildaEngine.createBlockInstance('zero-1');
           if (blk) {
@@ -1185,17 +1186,21 @@ function bindZeroBlockToolbar() {
           }
         }
         if (blk) {
+          blk.isZero = true;
+          blk.blockDefId = 'zero-1';
           blk.content = blk.content || {};
           blk.content.elements = zeroBlockEditor.block.elements.map(e => ({
             id: e.id,
             type: e.type,
             props: { ...e.props },
-            responsiveProps: { ...e.responsiveProps }
+            responsiveProps: JSON.parse(JSON.stringify(e.responsiveProps || {}))
           }));
+          blk.content.responsiveSettings = JSON.parse(JSON.stringify(zeroBlockEditor.block.responsiveSettings || {}));
           blk.design = blk.design || {};
           blk.design.height = parseInt(zeroBlockEditor.block.settings.height, 10) || 560;
           blk.design.background = zeroBlockEditor.block.settings.background;
           blk.design.bgColor = zeroBlockEditor.block.settings.background;
+          blk.design.bgImage = zeroBlockEditor.block.settings.backgroundImage || '';
 
           tildaEngine.saveHistory();
           tildaEngine.renderArtboard();
@@ -1889,19 +1894,47 @@ async function exportProjectZip() {
 }
 
 // ─── Облачная публикация ──────────────────────────────────────
+const CLOUD_PASS_KEY = 'aurora_cloud_upload_pass';
+
+function askCloudPassword() {
+  // Пароль запоминаем в рамках сессии вкладки
+  let pass = sessionStorage.getItem(CLOUD_PASS_KEY) || '';
+  if (!pass) {
+    pass = window.prompt('Публикация в облако защищена паролем.\nВведите пароль загрузки (скачивание по ссылке — без пароля):', '');
+    if (pass === null) return null; // пользователь отменил
+    pass = pass.trim();
+    if (!pass) return null;
+  }
+  return pass;
+}
+
 async function publishSiteToCloud() {
-  showToast('🚀 Публикация сайта в облаке Аврора...');
   const fullHtml = tildaEngine.generateStandaloneHtml();
   const title = tildaEngine.project.name || 'AURORA WEB Site';
+
+  const pass = askCloudPassword();
+  if (!pass) {
+    showToast('❌ Публикация отменена: требуется пароль загрузки в облако');
+    return;
+  }
+
+  showToast('🚀 Публикация сайта в облаке Аврора...');
 
   try {
     const res = await fetch('/api/cloud-upload.php', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: `${title}.html`, content: fullHtml, ttl: 86400 })
+      headers: { 'Content-Type': 'application/json', 'X-Cloud-Password': pass },
+      body: JSON.stringify({ filename: `${title}.html`, content: fullHtml, ttl: 86400, password: pass })
     });
     const data = await res.json();
+    if (res.status === 401 || data.need_password) {
+      // Сбрасываем неверный пароль сессии и просим заново
+      sessionStorage.removeItem(CLOUD_PASS_KEY);
+      showToast('🔒 Неверный пароль облака. Повторите публикацию и введите правильный пароль');
+      return;
+    }
     if (data.ok && (data.view_url || data.url)) {
+      sessionStorage.setItem(CLOUD_PASS_KEY, pass);
       const siteUrl = data.view_url || data.url;
       const modal = document.getElementById('cloud-modal');
       if (modal) {
@@ -1910,7 +1943,7 @@ async function publishSiteToCloud() {
         document.getElementById('cloud-site-url').value = siteUrl;
         document.getElementById('btn-open-cloud-url').href = siteUrl;
       }
-      showToast('🎉 Сайт успешно опубликован онлайн!');
+      showToast('🎉 Сайт успешно опубликован онлайн! Скачивание по ссылке — без пароля');
     } else {
       showToast('✅ Проект готов к выгрузке (Экспорт HTML)');
     }

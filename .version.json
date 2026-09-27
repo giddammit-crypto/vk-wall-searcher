@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.4.2",
+  "version": "5.4.3",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-27T03:48:00+03:00",
-  "release_name": "AURORA DESIGN 5.4.2 — Cloud Upload Password Gate (Free Downloads, Session Remember & Cyber UI)"
+  "commit_date": "2026-09-27T04:06:00+03:00",
+  "release_name": "AURORA DESIGN 5.4.3 — Zero Block Responsive Architecture, Cloud Password Session Auth & Test Suite"
 }

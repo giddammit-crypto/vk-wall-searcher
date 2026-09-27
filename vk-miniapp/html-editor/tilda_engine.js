@@ -214,6 +214,14 @@ export class TildaEngine {
   createBlockInstance(blockDefId) {
     const def = getBlockById(blockDefId) || TILDA_BLOCKS[0];
     const defaultData = extractBlockDefaultData(def);
+    const zeroData = def.isZero ? new ZeroBlock({
+      settings: {
+        ...def.defaultDesign,
+        height: parseInt(def.defaultDesign?.height, 10) || 560,
+        background: def.defaultDesign?.background || def.defaultDesign?.bgColor || '#070a13'
+      },
+      elements: defaultData.content.elements || []
+    }) : null;
     return {
       instanceId: 'blk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       anchor: '',
@@ -221,7 +229,7 @@ export class TildaEngine {
       name: def.name,
       cat: def.cat || def.category || 'cover',
       isZero: !!def.isZero,
-      zeroData: def.isZero ? new ZeroBlock() : null,
+      zeroData,
       isHidden: false,
       isLocked: false,
       content: { ...defaultData.content },
@@ -413,6 +421,7 @@ export class TildaEngine {
   applyBlockStyles(el, blk) {
     const d = blk.design || {};
     const bg = d.bgColor || d.background || '';
+    if (!bg && !d.bgGradient && !d.bgImage) el.style.background = '';
     if (bg) {
       el.style.backgroundColor = bg;
       const innerBlock = el.querySelector('.t-block') || el.querySelector('.tilda-block-inner');
@@ -421,26 +430,30 @@ export class TildaEngine {
         innerBlock.style.background = bg;
       }
     }
-    if (d.bgImage) {
-      el.style.backgroundImage = `url(${d.bgImage})`;
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-      const innerBlock = el.querySelector('.t-block');
-      if (innerBlock) {
-        innerBlock.style.backgroundImage = `url(${d.bgImage})`;
-        innerBlock.style.backgroundSize = 'cover';
-        innerBlock.style.backgroundPosition = 'center';
-      }
+    const innerBlock = el.querySelector('.t-block') || el.querySelector('.tilda-block-inner');
+    const backgroundLayers = [
+      d.bgGradient || '',
+      d.bgImage ? `url("${String(d.bgImage).replace(/\\/g, '%5C').replace(/"/g, '%22').replace(/[<>\r\n]/g, '')}")` : ''
+    ].filter(Boolean).join(', ');
+    el.style.backgroundColor = bg || 'transparent';
+    el.style.backgroundImage = backgroundLayers || 'none';
+    el.style.backgroundSize = backgroundLayers ? 'cover' : '';
+    el.style.backgroundPosition = backgroundLayers ? 'center' : '';
+    if (innerBlock) {
+      if (bg) innerBlock.style.backgroundColor = bg;
+      innerBlock.style.backgroundImage = backgroundLayers || 'none';
+      innerBlock.style.backgroundSize = backgroundLayers ? 'cover' : '';
+      innerBlock.style.backgroundPosition = backgroundLayers ? 'center' : '';
     }
-    if (d.paddingTop) {
-      el.style.paddingTop = d.paddingTop;
-      const innerBlock = el.querySelector('.t-block');
-      if (innerBlock) innerBlock.style.paddingTop = d.paddingTop;
-    }
-    if (d.paddingBottom) {
-      el.style.paddingBottom = d.paddingBottom;
-      const innerBlock = el.querySelector('.t-block');
-      if (innerBlock) innerBlock.style.paddingBottom = d.paddingBottom;
+    if (d.height !== undefined && d.height !== '') el.style.minHeight = typeof d.height === 'number' ? `${d.height}px` : d.height;
+    else el.style.removeProperty('min-height');
+    const paddingTop = d.paddingTop === undefined || d.paddingTop === '' ? '' : (typeof d.paddingTop === 'number' ? `${d.paddingTop}px` : d.paddingTop);
+    const paddingBottom = d.paddingBottom === undefined || d.paddingBottom === '' ? '' : (typeof d.paddingBottom === 'number' ? `${d.paddingBottom}px` : d.paddingBottom);
+    el.style.paddingTop = paddingTop;
+    el.style.paddingBottom = paddingBottom;
+    if (innerBlock) {
+      innerBlock.style.paddingTop = paddingTop;
+      innerBlock.style.paddingBottom = paddingBottom;
     }
     if (d.textColor) {
       el.style.color = d.textColor;
@@ -644,6 +657,7 @@ export class TildaEngine {
     blk.name = 'Zero: ' + blk.name;
     blk.content = { elements };
     blk.design = { height: Math.max(540, curY + 120), background: blk.design.bgColor || '#070a13' };
+    blk.zeroData = new ZeroBlock({ settings: blk.design, elements });
 
     this.saveHistory();
     this.renderArtboard();
@@ -795,7 +809,23 @@ export class TildaEngine {
     const original = page.blocks[idx];
     const clone = JSON.parse(JSON.stringify(original));
     clone.instanceId = 'blk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    clone.anchor = '';
     clone.name = original.name + ' (Копия)';
+    if (clone.content?.elements) {
+      clone.content.elements.forEach(element => {
+        element.id = `zb_el_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      });
+    }
+    if (clone.content?.customElements) {
+      clone.content.customElements.forEach(element => {
+        element.id = `cust_el_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      });
+    }
+    if (clone.zeroData?.elements) {
+      clone.zeroData.elements.forEach(element => {
+        element.id = `zb_el_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      });
+    }
 
     page.blocks.splice(idx + 1, 0, clone);
     this.saveHistory();
@@ -1112,11 +1142,11 @@ export class TildaEngine {
     this.activeCustomElementId = null;
     if (preferredTab) this.activeInspectorTab = preferredTab;
 
-    document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
+    if (typeof document !== 'undefined') document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
       el.classList.toggle('is-selected', el.dataset.blockId === instanceId);
     });
 
-    document.querySelectorAll('.block-custom-element').forEach(el => {
+    if (typeof document !== 'undefined') document.querySelectorAll('.block-custom-element').forEach(el => {
       el.classList.remove('is-selected-element', 'is-selected');
       el.querySelectorAll('.custom-el-action-bar, .custom-el-resizer, .custom-el-dim-badge').forEach(n => n.remove());
     });
@@ -1132,7 +1162,7 @@ export class TildaEngine {
     this.activeBlockId = blockId;
     this.activeCustomElementId = customElId;
 
-    document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
+    if (typeof document !== 'undefined') document.querySelectorAll('.tilda-block-wrapper').forEach(el => {
       el.classList.toggle('is-selected', el.dataset.blockId === blockId);
     });
 
@@ -3412,7 +3442,24 @@ export class TildaEngine {
       const blockId = blk.anchor || blk.instanceId;
       let innerHtml = renderBlockHtml(def, blk.content, blk.design);
 
-      if (typeof document !== 'undefined' && blk.content) {
+      if (blk.isZero || blk.blockDefId === 'zero-1') {
+        const zeroContent = {
+          ...blk.content,
+          elements: (blk.content?.elements || []).map(element => ({
+            ...element,
+            props: element.props || {},
+            responsiveProps: element.responsiveProps || {}
+          }))
+        };
+        innerHtml = renderBlockHtml(def, zeroContent, {
+          ...blk.design,
+          background: blk.design?.background || blk.design?.bgColor || '#070a13',
+          backgroundImage: blk.design?.bgImage || '',
+          responsiveScope: `zb-${String(blk.instanceId).replace(/[^a-zA-Z0-9_-]/g, '')}`
+        });
+      }
+
+      if (!(blk.isZero || blk.blockDefId === 'zero-1') && typeof document !== 'undefined' && blk.content) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = innerHtml;
         const hasInline = blk.content.inlineEdits && Object.keys(blk.content.inlineEdits).length > 0;
@@ -3481,9 +3528,11 @@ export class TildaEngine {
       if (d.bgColor) sectionStyles.push(`background-color:${d.bgColor}`);
       if (d.bgGradient) sectionStyles.push(`background-image:${d.bgGradient}`);
       if (d.textColor) sectionStyles.push(`color:${d.textColor}`);
-      if (d.paddingTop !== undefined && d.paddingTop !== '') sectionStyles.push(`padding-top:${d.paddingTop}px`);
-      if (d.paddingBottom !== undefined && d.paddingBottom !== '') sectionStyles.push(`padding-bottom:${d.paddingBottom}px`);
-      if (d.minHeight) sectionStyles.push(`min-height:${d.minHeight}px`);
+      if (d.bgImage && !d.bgGradient) sectionStyles.push(`background-image:url("${String(d.bgImage).replace(/\\/g, '%5C').replace(/"/g, '%22').replace(/[<>\r\n]/g, '')}")`, 'background-size:cover', 'background-position:center');
+      if (d.height !== undefined && d.height !== '' && !(blk.isZero || blk.blockDefId === 'zero-1')) sectionStyles.push(`min-height:${typeof d.height === 'number' ? `${d.height}px` : d.height}`);
+      if (d.paddingTop !== undefined && d.paddingTop !== '') sectionStyles.push(`padding-top:${typeof d.paddingTop === 'number' ? `${d.paddingTop}px` : d.paddingTop}`);
+      if (d.paddingBottom !== undefined && d.paddingBottom !== '') sectionStyles.push(`padding-bottom:${typeof d.paddingBottom === 'number' ? `${d.paddingBottom}px` : d.paddingBottom}`);
+      if (d.minHeight) sectionStyles.push(`min-height:${typeof d.minHeight === 'number' ? `${d.minHeight}px` : d.minHeight}`);
       const styleAttr = sectionStyles.length ? ` style="${sectionStyles.join(';')}"` : '';
 
       return `<section id="${blockId}" class="tilda-block"${anchorAttr}${animAttr}${styleAttr}>\n${innerHtml}\n</section>`;
