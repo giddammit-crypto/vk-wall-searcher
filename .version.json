@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.4.1",
+  "version": "5.4.2",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-27T03:43:00+03:00",
-  "release_name": "AURORA DESIGN 5.4.1 — Cosmo 3D Skeletal Rigging, Stride Physics & Kinetic Motion"
+  "commit_date": "2026-09-27T03:48:00+03:00",
+  "release_name": "AURORA DESIGN 5.4.2 — Cloud Upload Password Gate (Free Downloads, Session Remember & Cyber UI)"
 }

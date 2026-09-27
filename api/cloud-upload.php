@@ -21,6 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/cloud-common.php';
 
+// ─── Пароль-гейт: загрузка только с паролем, скачивание — свободное ───
+cloud_require_upload_password_or_die();
+
 // Фоновая автоматическая очистка устаревших файлов (>24 часов)
 cloud_cleanup_expired();
 

@@ -8,6 +8,77 @@ define('AURORA_CLOUD_TTL', 86400); // 24 часа в секундах
 define('AURORA_CLOUD_MAX_SIZE', 250 * 1024 * 1024); // 250 МБ
 
 /**
+ * Пароль на ЗАГРУЗКУ файлов в облако.
+ * Скачивание остаётся свободным — по прямой ссылке без пароля.
+ * Пароль можно переопределить через api/config.php (ключ cloud_upload_password)
+ * или переменную окружения AURORA_CLOUD_UPLOAD_PASSWORD.
+ */
+define('AURORA_CLOUD_UPLOAD_PASSWORD', 'vladcgb33');
+
+/**
+ * Проверяет пароль загрузки в облако.
+ * Принимает пароль из JSON-тела (password) или multipart-поля (password)
+ * или заголовка X-Cloud-Password. Поддерживает переопределение в api/config.php.
+ *
+ * @param string|null $provided Пароль из запроса (если уже извлечён)
+ * @return bool true — пароль верный
+ */
+function cloud_verify_upload_password(?string $provided = null): bool {
+    // Разрешаем переопределить пароль в api/config.php без правки кода
+    $expected = AURORA_CLOUD_UPLOAD_PASSWORD;
+    $configFile = __DIR__ . '/config.php';
+    if (is_readable($configFile)) {
+        $cfg = include $configFile;
+        if (is_array($cfg) && !empty($cfg['cloud_upload_password'])) {
+            $expected = (string)$cfg['cloud_upload_password'];
+        }
+    }
+    $expected = (string)(getenv('AURORA_CLOUD_UPLOAD_PASSWORD') ?: $expected);
+
+    if ($expected === '') return true; // пароль не задан — загрузка открыта
+    if ($provided === null || $provided === '') return false;
+    return hash_equals($expected, (string)$provided);
+}
+
+/**
+ * Извлекает пароль загрузки из текущего запроса (multipart или JSON).
+ */
+function cloud_extract_upload_password(): ?string {
+    // 1. Заголовок (для API-клиентов)
+    $hdr = $_SERVER['HTTP_X_CLOUD_PASSWORD'] ?? '';
+    if ($hdr !== '') return (string)$hdr;
+    // 2. Multipart-поле
+    if (isset($_POST['password']) && $_POST['password'] !== '') return (string)$_POST['password'];
+    // 3. JSON-тело
+    $ct = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+    if (stripos($ct, 'application/json') !== false) {
+        $body = json_decode((string)file_get_contents('php://input'), true);
+        if (is_array($body) && isset($body['password'])) return (string)$body['password'];
+    }
+    // 4. GET-параметр (fallback для простых клиентов)
+    if (isset($_GET['password']) && $_GET['password'] !== '') return (string)$_GET['password'];
+    return null;
+}
+
+/**
+ * Отвечает 401 JSON и завершает скрипт при неверном пароле загрузки.
+ */
+function cloud_require_upload_password_or_die(): void {
+    $provided = cloud_extract_upload_password();
+    if (!cloud_verify_upload_password($provided)) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Требуется пароль загрузки',
+            'need_password' => true,
+            'hint' => 'Загрузка файлов в облако защищена паролем. Скачивание по ссылке — свободное.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
+/**
  * Инициализирует и возвращает путь к директории облачного хранилища
  */
 function cloud_get_storage_dir(): string {

@@ -1476,3 +1476,111 @@ body {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ПАРОЛЬ ЗАГРУЗКИ В ОБЛАКО (скачивание — без пароля)
+   ═══════════════════════════════════════════════════════════ */
+.cloud-pass-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 0 8px;
+}
+.cloud-pass-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(320px, 100%);
+}
+.cloud-pass-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: rgba(148, 163, 184, 0.7);
+  pointer-events: none;
+  transition: color 0.2s;
+}
+.cloud-pass-input {
+  width: 100%;
+  padding: 11px 44px 11px 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(10, 15, 30, 0.6);
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  letter-spacing: 0.06em;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.cloud-pass-input::placeholder {
+  color: rgba(148, 163, 184, 0.55);
+  letter-spacing: 0.02em;
+}
+.cloud-pass-input:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.cloud-pass-input:focus {
+  border-color: #38bdf8;
+  background: rgba(10, 15, 30, 0.85);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15), 0 0 18px rgba(56, 189, 248, 0.12);
+}
+.cloud-pass-input.is-error {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+  animation: passShake 0.4s ease;
+}
+@keyframes passShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.cloud-pass-eye {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.75);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.cloud-pass-eye:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+.cloud-pass-eye .material-symbols-rounded { font-size: 20px; }
+.cloud-pass-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.8);
+}
+.cloud-pass-hint .material-symbols-rounded { font-size: 15px; color: rgba(56, 189, 248, 0.7); }
+
+/* Всплывающая подсказка у дропзоны при 401 */
+.dropzone.has-pass-error {
+  border-color: rgba(248, 113, 113, 0.5) !important;
+  box-shadow: 0 0 30px rgba(248, 113, 113, 0.15);
+}
+
+/* Адаптив: узкие экраны */
+@media (max-width: 560px) {
+  .cloud-pass-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cloud-pass-field { width: 100%; }
+  .cloud-pass-hint { font-size: 11px; }
+}

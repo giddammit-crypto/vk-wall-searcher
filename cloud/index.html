@@ -127,6 +127,23 @@
           </button>
         </div>
 
+        <!-- Пароль загрузки (скачивание по ссылке — без пароля) -->
+        <div class="cloud-pass-row" id="cloud-pass-row">
+          <div class="cloud-pass-field">
+            <span class="material-symbols-rounded cloud-pass-icon">lock</span>
+            <input type="password" class="cloud-pass-input" id="cloud-pass-input"
+                   placeholder="Пароль загрузки" autocomplete="current-password"
+                   title="Загрузка защищена паролем. Получите его у администратора. Скачивание по ссылке — свободное.">
+            <button type="button" class="cloud-pass-eye" id="cloud-pass-eye" title="Показать / скрыть пароль" aria-label="Показать пароль">
+              <span class="material-symbols-rounded">visibility</span>
+            </button>
+          </div>
+          <span class="cloud-pass-hint">
+            <span class="material-symbols-rounded">info</span>
+            Скачивание по ссылке — без пароля
+          </span>
+        </div>
+
         <input type="file" id="file-input" style="display: none;">
 
         <div class="drop-hints">
@@ -355,6 +372,10 @@
         <div class="form-group">
           <label class="form-label" for="paste-code">Содержимое (текст, код, HTML)</label>
           <textarea class="form-textarea" id="paste-code" placeholder="Вставьте любой текст, заметку или код..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="modal-cloud-pass">Пароль загрузки</label>
+          <input type="password" class="form-input" id="modal-cloud-pass" placeholder="Пароль загрузки в облако" autocomplete="current-password">
         </div>
       </div>
       <div class="modal-foot">

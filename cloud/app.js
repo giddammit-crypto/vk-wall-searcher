@@ -9,6 +9,7 @@
   // Константы
   const API_UPLOAD_URL = '../api/cloud-upload.php';
   const STORAGE_KEY = 'aurora_cloud_history_v1';
+  const PASS_STORAGE_KEY = 'aurora_cloud_upload_pass';
   const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250 MB
 
   // DOM Элементы
@@ -59,6 +60,12 @@
 
   const toastContainer = document.getElementById('toast-container');
 
+  // Пароль загрузки (скачивание по ссылке — без пароля)
+  const cloudPassInput = document.getElementById('cloud-pass-input');
+  const cloudPassEye = document.getElementById('cloud-pass-eye');
+  const cloudPassRow = document.getElementById('cloud-pass-row');
+  const modalCloudPass = document.getElementById('modal-cloud-pass');
+
   // Переменные состояния
   let activeCountdownInterval = null;
   let activeExpiresAt = null;
@@ -70,8 +77,74 @@
     setupFileInput();
     setupModalPaste();
     setupActionButtons();
+    setupPasswordUI();
     renderHistory();
     startHistoryTick();
+  }
+
+  // ─── Пароль загрузки ────────────────────────────────────────────────────────
+  function getUploadPassword() {
+    const fromModal = modalCloudPass && modalCloudPass.value.trim();
+    const fromMain = cloudPassInput && cloudPassInput.value.trim();
+    // Синхронизируем оба поля между собой
+    if (fromModal && cloudPassInput && !fromMain) cloudPassInput.value = fromModal;
+    if (fromMain && modalCloudPass && !fromModal) modalCloudPass.value = fromMain;
+    return fromModal || fromMain || sessionStorage.getItem(PASS_STORAGE_KEY) || '';
+  }
+
+  function rememberPassword(pass) {
+    // Помним пароль только в рамках сессии вкладки (не localStorage — безопаснее)
+    try { sessionStorage.setItem(PASS_STORAGE_KEY, pass); } catch (e) {}
+  }
+
+  function setupPasswordUI() {
+    // Восстанавливаем пароль сессии при загрузке страницы
+    if (cloudPassInput) {
+      const saved = sessionStorage.getItem(PASS_STORAGE_KEY);
+      if (saved) cloudPassInput.value = saved;
+    }
+    if (modalCloudPass) {
+      const saved = sessionStorage.getItem(PASS_STORAGE_KEY);
+      if (saved) modalCloudPass.value = saved;
+    }
+    // Глаз: показать/скрыть
+    if (cloudPassEye) {
+      cloudPassEye.addEventListener('click', () => {
+        const isHidden = cloudPassInput.type === 'password';
+        cloudPassInput.type = isHidden ? 'text' : 'password';
+        cloudPassEye.querySelector('.material-symbols-rounded').textContent = isHidden ? 'visibility_off' : 'visibility';
+      });
+    }
+    // Снимаем ошибку при вводе
+    [cloudPassInput, modalCloudPass].forEach(inp => {
+      if (!inp) return;
+      inp.addEventListener('input', () => {
+        inp.classList.remove('is-error');
+        dropzone && dropzone.classList.remove('has-pass-error');
+      });
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && inp === cloudPassInput) {
+          e.preventDefault();
+          fileInput && fileInput.click();
+        }
+      });
+    });
+  }
+
+  /**
+   * Показывает ошибку «нужен пароль»: подсвечивает поля и фокусирует ввод.
+   */
+  function indicatePasswordNeeded() {
+    [cloudPassInput, modalCloudPass].forEach(inp => {
+      if (inp) {
+        inp.classList.add('is-error');
+        inp.focus({ preventScroll: true });
+      }
+    });
+    dropzone && dropzone.classList.add('has-pass-error');
+    // Прокручиваем поле пароля в зону видимости
+    cloudPassRow && cloudPassRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast('Введите пароль загрузки (скачивание по ссылке — без пароля)', 'warning', 5000);
   }
 
   // ─── Drag & Drop ────────────────────────────────────────────────────────────
@@ -140,8 +213,16 @@
   }
 
   function uploadFile(file) {
+    const pass = getUploadPassword();
+    if (!pass) {
+      indicatePasswordNeeded();
+      return;
+    }
+    rememberPassword(pass);
+
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('password', pass);
 
     // Сбрасываем и показываем прогресс
     showProgress(file.name, file.size);
@@ -174,11 +255,19 @@
       } else {
         hideProgress();
         let errMsg = 'Ошибка загрузки (код ' + xhr.status + ')';
+        let needPass = false;
         try {
           const res = JSON.parse(xhr.responseText);
           if (res.error) errMsg = res.error;
-        } catch (e) {}
-        showToast(errMsg, 'error');
+          needPass = !!res.need_password || xhr.status === 401;
+        } catch (e) {
+          needPass = xhr.status === 401;
+        }
+        if (needPass) {
+          indicatePasswordNeeded();
+        } else {
+          showToast(errMsg, 'error');
+        }
       }
     };
 
@@ -391,11 +480,17 @@
     btnSubmitPaste.addEventListener('click', () => {
       const code = pasteCodeInput.value.trim();
       const title = pasteTitleInput.value.trim() || 'Заметка Аврора';
+      const pass = getUploadPassword();
 
       if (!code) {
         showToast('Пожалуйста, введите текст или код для сохранения', 'warning');
         return;
       }
+      if (!pass) {
+        indicatePasswordNeeded();
+        return;
+      }
+      rememberPassword(pass);
 
       modalPaste.classList.remove('is-open');
       showProgress(title, code.length);
@@ -407,17 +502,22 @@
         },
         body: JSON.stringify({
           title: title,
-          html: code
+          html: code,
+          password: pass
         })
       })
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
         hideProgress();
-        if (data.ok) {
+        if (res.ok && data && data.ok) {
           handleUploadSuccess(data);
           pasteCodeInput.value = '';
+        } else if (res.status === 401 || (data && data.need_password)) {
+          modalPaste.classList.add('is-open');
+          indicatePasswordNeeded();
         } else {
-          showToast(data.error || 'Ошибка публикации', 'error');
+          showToast((data && data.error) || 'Ошибка публикации', 'error');
         }
       })
       .catch(err => {
