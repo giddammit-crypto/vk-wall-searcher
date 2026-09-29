@@ -109,18 +109,6 @@ return [
     // Отображать ли статус «Космо печатает...» в диалоге во время генерации ответа:
     'vk_bot_typing'        => true,
 
-    // -------------------------------------------------------------------------
-    // Электронный каталог OPAC-Global (api/opac.php)
-    // -------------------------------------------------------------------------
-    'opac_base_url'        => 'https://opac.lib33.ru',
-    'opac_login'           => 'CGBRD',
-    'opac_password'        => 'MNBVCXZ',
-    'opac_type_access'     => 'PayAccess',
-    'opac_db_id'           => '62',
-    'opac_rate_limit_ms'             => 350,     // 350мс безопасный интервал для защиты OPAC от падения
-    'opac_circuit_breaker_enabled'   => true,     // Автоматический предохранитель при сбоях
-    'opac_circuit_breaker_threshold' => 2,        // 2 ошибки подряд активируют кулдаун
-    'opac_circuit_breaker_cooldown'  => 60,       // 60 секунд на остывание OPAC-Global
 
     // -------------------------------------------------------------------------
     // Продление книг по NFC (api/nfc-renew.php, VK Mini App «АВРОРА • Космо»)

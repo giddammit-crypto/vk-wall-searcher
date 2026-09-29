@@ -278,7 +278,7 @@ const TEMPLATES = [
     size: 'a4_v',
     category: 'books',
     name: 'Книжная выставка / Новинки',
-    desc: 'Журнальная верстка с обзором новинок, фондами и OPAC',
+    desc: 'Журнальная верстка с обзором новинок, книжными рекомендациями и фондами',
     fmt: 'A4',
     bg: '#0c1222',
     previewBg: '#0c1222',
@@ -886,7 +886,7 @@ const TILDA_TEMPLATES = [
       // Карточка 1 (Фонд)
       { type:'rect', left:260, top:920, width:320, height:310, rx:16, ry:16, fill:'#111832', stroke:'rgba(56,189,248,0.25)', strokeWidth:1.5, originX:'center', originY:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 фон' },
       { type:'text', text:'📚', left:260, top:795, fontSize:44, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 иконка' },
-      { type:'text', text:'Книжный фонд\nи электронный OPAC', left:260, top:855, width:280, fontSize:18, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.25, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 заголовок' },
+      { type:'text', text:'Книжный фонд\nи рекомендации', left:260, top:855, width:280, fontSize:18, fontFamily:'Unbounded', fontWeight:'700', fill:'#ffffff', textAlign:'center', originX:'center', lineHeight:1.25, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 заголовок' },
       { type:'text', text:'Классика, новинки бестселлеров, научная литература, редкие фолианты и полнотекстовый электронный каталог с поиском онлайн.', left:260, top:920, width:270, fontSize:13, fontFamily:'Montserrat', fill:'#94a3b8', textAlign:'center', originX:'center', lineHeight:1.6, blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 текст' },
       { type:'text', text:'120 000+ ЭКЗЕМПЛЯРОВ', left:260, top:1025, width:240, fontSize:10, fontFamily:'Unbounded', fontWeight:'700', fill:'#38BDF8', backgroundColor:'rgba(56,189,248,0.12)', padding:6, textAlign:'center', originX:'center', blockId:'block_features', blockTitle:'[Блок 3: Features] 3 карточки услуг', layerName:'[Features] Карточка 1 бейдж' },
       // Карточка 2 (Коворкинг)
@@ -1103,7 +1103,7 @@ const TILDA_TEMPLATES = [
       { type:'text', text:'Один из главных романов русской литературы XX века. Философский роман о добре и зле, свете и тьме, любви и предательстве.', left:300, top:588, width:400, fontSize:16, fontFamily:'Montserrat', fill:'#cbd5e1', textAlign:'center', originX:'center', lineHeight:1.65 },
       { type:'rect', left:300, top:700, width:340, height:56, rx:28, ry:28, fill:'#FBBF24', originX:'center', originY:'center' },
       { type:'text', text:'Найти в каталоге →', left:300, top:683, width:320, fontSize:18, fontFamily:'Unbounded', fontWeight:'bold', fill:'#0f172a', textAlign:'center', originX:'center' },
-      { type:'text', text:'biblioteka33.ru/opac', left:300, top:770, width:440, fontSize:15, fontFamily:'Montserrat', fill:'#475569', textAlign:'center', originX:'center' },
+      { type:'text', text:'biblioteka33.ru', left:300, top:770, width:440, fontSize:15, fontFamily:'Montserrat', fill:'#475569', textAlign:'center', originX:'center' },
     ],
   },
 ];

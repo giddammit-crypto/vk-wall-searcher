@@ -138,27 +138,20 @@ class ChatTriggersTestSuite
 
     private function testOpacVsGroupSearchSeparation(): void
     {
-        echo "\n2. Разделение поиска книг в OPAC и поиска по группам ВК:\n";
+        echo "\n2. Поиск книг (OPAC удалён — все запросы идут в ИИ Космо):\n";
 
-        // Поиск книг в OPAC
-        $opacQuery1 = vk_bot_parse_book_query('/книга Мастер и Маргарита');
-        $this->recordResult("Команда /книга распознается OPAC", ($opacQuery1 !== null && strpos($opacQuery1['query'], 'Мастер') !== false));
+        // vk_bot_parse_book_query() удалён вместе с модулем OPAC.
+        // Теперь книжные запросы в боте обрабатываются ИИ без маршрутизации через OPAC.
+        // Тест обновлён: проверяем, что бот вообще откликается на /книга как на обычное сообщение.
 
-        $opacQuery2 = vk_bot_parse_book_query('/поиск Чехов');
-        $this->recordResult("Команда /поиск [автор] распознается OPAC", ($opacQuery2 !== null && strpos($opacQuery2['query'], 'Чехов') !== false));
+        $bookTrigger1 = $this->evaluateShouldRespond('/книга Мастер и Маргарита');
+        $this->recordResult("/книга попадает в бот (обрабатывается ИИ)", $bookTrigger1);
 
-        $opacQuery3 = vk_bot_parse_book_query('Космо, найди книгу Война и мир');
-        $this->recordResult("Речевой запрос книги распознается OPAC", ($opacQuery3 !== null && strpos($opacQuery3['query'], 'Война и мир') !== false));
+        $bookTrigger2 = $this->evaluateShouldRespond('Космо, найди книгу Война и мир');
+        $this->recordResult("'Космо, найди книгу …' попадает в бот (ИИ)", $bookTrigger2);
 
-        // Поиск по группам НЕ должен перехватываться OPAC
-        $groupQuery1 = vk_bot_parse_book_query('/поиск по группам');
-        $this->recordResult("'/поиск по группам' не перехватывается OPAC", ($groupQuery1 === null));
-
-        $groupQuery2 = vk_bot_parse_book_query('/поиск в группах Пушкин');
-        $this->recordResult("'/поиск в группах Пушкин' не перехватывается OPAC", ($groupQuery2 === null));
-
-        $groupQuery3 = vk_bot_parse_book_query('поиск по группам мастер-класс');
-        $this->recordResult("'поиск по группам мастер-класс' не перехватывается OPAC", ($groupQuery3 === null));
+        $bookTrigger3 = $this->evaluateShouldRespond('/поиск Чехов');
+        $this->recordResult("/поиск попадает в бот (ИИ)", $bookTrigger3);
     }
 
     private function testGroupSearchPatternMatching(): void

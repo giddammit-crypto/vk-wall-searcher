@@ -28,11 +28,9 @@ const BASE = getBaseUrl();
 const MASCOT_BASE = 'https://biblioteka33.ru/stat/assets/images/mascot';
 
 const APP_IN_DEVELOPMENT = true;
-const OPAC_MAINTENANCE = true;
 
 const API = {
     base: BASE,
-    opac: BASE + '/api/opac.php',
     chat: BASE + '/api/ai-proxy.php',
     ino: BASE + '/api/inoagent.php',
     miniapp: BASE + '/api/miniapp.php',
@@ -47,7 +45,6 @@ let vkUser = null;
 let bridgeReady = false;
 let currentBookOfDay = null;
 let currentSearchItems = [];
-let opacItemsMap = {};
 
 /* ── Вспомогательные функции VK Bridge ── */
 function withTimeout(promise, ms = 3500) {
@@ -284,9 +281,6 @@ function goto(screenName, pushHistory = true) {
     if (screenName === 'news' && !newsState.loaded && !newsState.loading) {
         loadBranchNews();
     }
-    if (screenName === 'catalog' && typeof OPAC_MAINTENANCE !== 'undefined' && OPAC_MAINTENANCE) {
-        toast('Каталог OPAC временно на техобслуживании');
-    }
 }
 
 $$('[data-goto]').forEach(el => el.addEventListener('click', () => goto(el.dataset.goto)));
@@ -364,13 +358,8 @@ async function initHome() {
     $('#quote-find-btn')?.addEventListener('click', () => {
         if (!currentBookOfDay) return;
         haptic('medium');
-        goto('catalog');
-        const q = currentBookOfDay.title.replace(/[«»"]/g, '').trim();
-        $('#opac-query').value = q;
-        opacState.query = q;
-        $('#opac-clear')?.classList.remove('hidden');
-        opacState.page = 1;
-        runSearch();
+        goto('chat');
+        sendChat(`Расскажи о книге «${currentBookOfDay.title}» автора ${currentBookOfDay.author || ''}: о чём она, почему интересна читателям?`);
     });
 
     $('#quote-ask-btn')?.addEventListener('click', () => {
@@ -403,7 +392,7 @@ async function initHome() {
     });
 }
 
-/* ── Каталог OPAC заархивирован в archive/opac-vk-miniapp.zip ── */
+/* ── Каталог (модуль удалён; архив: archive/opac-vk-miniapp.zip) ── */
 function initCatalog() {}
 function closeBookSheet() {}
 
@@ -1768,25 +1757,8 @@ async function buildBranchList() {
             btn.addEventListener('click', () => {
                 haptic('medium');
                 const branchStr = btn.dataset.filterBranch;
-                goto('catalog');
-                let chipVal = '';
-                const lower = branchStr.toLowerCase();
-                if (lower.includes('цгб') || lower.includes('центральная городская')) chipVal = 'цгб';
-                else if (lower.includes('цдб') || lower.includes('детская')) chipVal = 'цдб';
-                else if (lower.includes('доброе') || lower.includes('филиал 4')) chipVal = 'ф4';
-                else if (lower.includes('филиал 1') || lower.includes('ф-1')) chipVal = 'ф1';
-                else if (lower.includes('филиал 10') || lower.includes('ф-10')) chipVal = 'ф10';
-                else if (lower.includes('филиал 13') || lower.includes('ф-13')) chipVal = 'ф13';
-
-                selectBranchChip(chipVal);
-                opacState.branch = chipVal;
-                opacState.page = 1;
-                const input = $('#opac-query');
-                if (input) input.focus();
-                toast(`Выбран филиал: ${branchStr} 📚 Введите запрос для поиска`);
-                if (opacState.query.trim()) {
-                    runSearch();
-                }
+                goto('chat');
+                sendChat(`Расскажи о книжном фонде и новинках библиотеки «${branchStr}»`);
             });
         });
 
@@ -1917,7 +1889,7 @@ const nfcState = {
     scanning: null,  // 'reader' | 'book' | null
     person: null,    // { name, email } — заполняется в карточке «Данные читателя»
     consent: false,  // согласие на обработку ПДн по 152-ФЗ
-    opacBook: null,  // данные книги из OPAC после поиска по инв. номеру
+    bookMeta: null,  // данные книги после поиска по инв. номеру (без OPAC)
     selectedBranch: '', // код филиала, выбранного пользователем
     opacLoading: false,
 };
@@ -2005,14 +1977,6 @@ async function runNfcScan(side) {
     if (res) {
         nfcState[side] = { source: 'nfc', uid: res.uid, payload: res.payload };
         haptic('notification-success');
-        // Если отсканирована книга — пытаемся извлечь инв. номер из payload и ищем в OPAC
-        if (side === 'book' && res.payload) {
-            const invMatch = res.payload.match(/(?:INV|инв|инвентар|№)\s*[-–:]?\s*(\d{4,})/i);
-            const invFromPayload = invMatch ? invMatch[1] : res.payload.replace(/\D/g, '');
-            if (invFromPayload.length >= 4) {
-                lookupBookInOpac(invFromPayload);
-            }
-        }
     } else {
         haptic('notification-error');
         toast(side === 'reader' ? 'Билет не прочитан — попробуйте ещё раз или введите номер вручную' : 'Книга не прочитана — попробуйте ещё раз или введите инв. номер');
@@ -2020,86 +1984,7 @@ async function runNfcScan(side) {
     updateNfcUi();
 }
 
-/* ── OPAC-поиск книги по инвентарному номеру ── */
-async function lookupBookInOpac(invNumber) {
-    const opacCard = $('#nfc-opac-card');
-    if (!opacCard) return;
-    if (typeof OPAC_MAINTENANCE !== 'undefined' && OPAC_MAINTENANCE) {
-        opacCard.classList.remove('hidden', 'is-loading');
-        opacCard.classList.add('is-not-found');
-        $('#nfc-opac-title').textContent = 'Каталог на техобслуживании';
-        $('#nfc-opac-author').textContent = 'Связь с OPAC временно отключена';
-        $('#nfc-opac-meta').textContent = 'Инв. номер: ' + invNumber;
-        await fillBranchSelector([]);
-        return;
-    }
-    nfcState.opacLoading = true;
-    opacCard.classList.remove('hidden');
-    opacCard.classList.add('is-loading');
-    $('#nfc-opac-title').textContent = 'Ищем в каталоге…';
-    $('#nfc-opac-author').textContent = '';
-    $('#nfc-opac-meta').textContent = 'Инв. номер: ' + invNumber;
-    try {
-        // 1. Ищем книгу по инвентарному номеру; шлюз сам нормализует «инв …» → «IN …»
-        const params = new URLSearchParams({
-            action: 'search',
-            query: 'инв ' + invNumber,
-            page: '1',
-            length: '3',
-            include_copies: '1',
-        });
-        const r = await withTimeout(fetch(`${API.opac}?${params}`), 12000);
-        const data = await r.json();
-        if (data.rate_limited || r.status === 429) {
-            $('#nfc-opac-title').textContent = 'Каталог временно перегружен';
-            $('#nfc-opac-author').textContent = 'Повторите попытку через минуту';
-            opacCard.classList.remove('is-loading');
-            opacCard.classList.add('is-not-found');
-            return;
-        }
-        const items = (data.ok && Array.isArray(data.items)) ? data.items : [];
-        if (!items.length) {
-            $('#nfc-opac-title').textContent = 'Книга не найдена в каталоге';
-            $('#nfc-opac-author').textContent = 'Проверьте инвентарный номер или обратитесь к библиотекарю';
-            opacCard.classList.remove('is-loading');
-            opacCard.classList.add('is-not-found');
-            return;
-        }
-        const book = items[0];
-        nfcState.opacBook = book;
-        $('#nfc-opac-title').textContent = book.title || 'Без названия';
-        $('#nfc-opac-author').textContent = book.author || '';
-        const metaParts = [];
-        if (book.year) metaParts.push('Год: ' + book.year);
-        if (book.shelfmark) metaParts.push('Шифр: ' + book.shelfmark);
-        if (book.imprint) metaParts.push(book.imprint);
-        $('#nfc-opac-meta').textContent = metaParts.join(' • ');
-        opacCard.classList.remove('is-loading', 'is-not-found');
-        opacCard.classList.add('is-found');
-        haptic('notification-success');
-        toast('Книга найдена в каталоге ✓');
 
-        // 2. Заполняем селектор филиалов: сначала из экземпляров книги, затем общим списком
-        await fillBranchSelector(book.copies || []);
-    } catch (e) {
-        $('#nfc-opac-title').textContent = 'Ошибка поиска в каталоге';
-        $('#nfc-opac-author').textContent = e.message || 'Сбой сети';
-        opacCard.classList.remove('is-loading');
-        opacCard.classList.add('is-not-found');
-    }
-}
-
-function hideOpacCard() {
-    const opacCard = $('#nfc-opac-card');
-    if (opacCard) {
-        opacCard.classList.add('hidden');
-        opacCard.classList.remove('is-loading', 'is-found', 'is-not-found');
-    }
-    nfcState.opacBook = null;
-    nfcState.selectedBranch = '';
-    const sel = $('#nfc-branch-select');
-    if (sel) sel.value = '';
-}
 
 async function fillBranchSelector(copies) {
     const sel = $('#nfc-branch-select');
@@ -2197,7 +2082,7 @@ function resetRenew() {
     nfcState.book = null;
     nfcState.person = null;
     nfcState.consent = false;
-    nfcState.opacBook = null;
+    nfcState.bookMeta = null;
     nfcState.selectedBranch = '';
     const ri = $('#nfc-reader-manual');
     const bi = $('#nfc-book-manual');
@@ -2209,7 +2094,6 @@ function resetRenew() {
     if (pn) pn.value = '';
     if (pe) pe.value = '';
     if (pc) pc.checked = false;
-    hideOpacCard();
     updateNfcUi();
 }
 
@@ -2229,12 +2113,12 @@ async function submitRenewal() {
                 secret: NFC_RENEW_SECRET,
                 reader: nfcState.reader,
                 book: nfcState.book,
-                opac_book: nfcState.opacBook ? {
-                    title: nfcState.opacBook.title || '',
-                    author: nfcState.opacBook.author || '',
-                    year: nfcState.opacBook.year || '',
-                    shelfmark: nfcState.opacBook.shelfmark || '',
-                    inventory: nfcState.opacBook.inventory || '',
+                book_meta: nfcState.bookMeta ? {
+                    title: nfcState.bookMeta.title || '',
+                    author: nfcState.bookMeta.author || '',
+                    year: nfcState.bookMeta.year || '',
+                    shelfmark: nfcState.bookMeta.shelfmark || '',
+                    inventory: nfcState.bookMeta.inventory || '',
                 } : null,
                 branch: nfcState.selectedBranch || '',
                 person: {
@@ -2282,18 +2166,10 @@ function initRenew() {
         nfcState.reader = v ? { source: 'manual', uid: '', payload: '', number: v } : null;
         updateNfcUi();
     });
-    let bookDebounce = null;
     $('#nfc-book-manual')?.addEventListener('input', (e) => {
         const v = e.target.value.trim();
         nfcState.book = v ? { source: 'manual', uid: '', payload: '', inventory: v } : null;
         updateNfcUi();
-        // Авто-поиск в OPAC по инвентарному номеру (с дебаунсом 600мс)
-        clearTimeout(bookDebounce);
-        if (v.length >= 4) {
-            bookDebounce = setTimeout(() => lookupBookInOpac(v), 600);
-        } else {
-            hideOpacCard();
-        }
     });
     $('#nfc-branch-select')?.addEventListener('change', (e) => {
         nfcState.selectedBranch = e.target.value;

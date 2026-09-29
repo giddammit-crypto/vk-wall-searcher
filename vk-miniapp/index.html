@@ -60,11 +60,11 @@
         <div class="maint-cards">
             <div class="maint-card">
                 <div class="maint-card-icon icon-cyan">
-                    <span class="material-symbols-rounded">menu_book</span>
+                    <span class="material-symbols-rounded">auto_stories</span>
                 </div>
                 <div class="maint-card-body">
-                    <div class="maint-card-title">Электронный каталог OPAC</div>
-                    <div class="maint-card-sub">Поиск по фондам 18 библиотек города и проверка наличия</div>
+                    <div class="maint-card-title">Книжные рекомендации</div>
+                    <div class="maint-card-sub">ИИ-подборки и рекомендации Космо по фондам 18 библиотек</div>
                 </div>
                 <span class="maint-tag">Скоро</span>
             </div>
@@ -264,8 +264,6 @@
         <div id="news-results" class="news-feed-list"></div>
     </main>
 
-    <!-- ЭКРАН: КАТАЛОГ OPAC (заархивирован в archive/opac-vk-miniapp.zip) -->
-
     <!-- ЭКРАН: ПРОДЛЕНИЕ КНИГИ ПО NFC -->
     <main class="screen" data-screen="renew">
         <div class="page-head">
@@ -322,25 +320,6 @@
                 <input id="nfc-book-manual" class="nfc-manual-input" type="text" placeholder="…или инвентарный номер книги" autocomplete="off">
             </div>
             <div class="nfc-data hidden" id="nfc-book-data"></div>
-
-            <!-- OPAC-карточка книги: появляется после поиска по инв. номеру -->
-            <div class="nfc-opac-card hidden" id="nfc-opac-card">
-                <div class="nfc-opac-head">
-                    <span class="material-symbols-rounded">auto_stories</span>
-                    <span class="nfc-opac-label">Данные из каталога OPAC</span>
-                </div>
-                <div class="nfc-opac-title" id="nfc-opac-title">—</div>
-                <div class="nfc-opac-author" id="nfc-opac-author"></div>
-                <div class="nfc-opac-meta" id="nfc-opac-meta"></div>
-
-                <label class="nfc-branch-label" for="nfc-branch-select">
-                    <span class="material-symbols-rounded">local_library</span>
-                    Филиал, в котором была взята книга
-                </label>
-                <select id="nfc-branch-select" class="nfc-branch-select">
-                    <option value="">— Выберите филиал —</option>
-                </select>
-            </div>
         </div>
 
         <div class="nfc-card" id="nfc-card-person">
@@ -460,7 +439,7 @@
             <div class="about-card">
                 <img src="assets/images/mascot/robot_cool.png?v=4.64.2" onerror="this.onerror=null;this.src='https://biblioteka33.ru/stat/assets/images/mascot/robot_cool.png?v=4.64.2'" alt="Космо" class="about-cosmo">
                 <p><strong>АВРОРА • Космо</strong> — мини-приложение сервиса мониторинга и аналитики ВКонтакте 16 библиотек г. Владимира (biblioteka33.ru).</p>
-                <p class="fine-print">Данные каталога: OPAC-Global ЦГБ. ИИ-помощник может ошибаться — проверяйте важное.</p>
+                <p class="fine-print">ИИ-помощник Космо может ошибаться — проверяйте важное у библиотекарей.</p>
             </div>
         </section>
     </main>
@@ -472,7 +451,7 @@
                 <div class="sheet-handle"></div>
             </div>
             <div class="sheet-top-bar">
-                <span class="sheet-category" id="sheet-category">Книга из каталога OPAC</span>
+                <span class="sheet-category" id="sheet-category">Книга дня от Космо</span>
                 <button id="book-sheet-close" class="sheet-close" aria-label="Закрыть">
                     <span class="material-symbols-rounded">close</span>
                 </button>
