@@ -2662,7 +2662,20 @@ function initCanvas(w, h) {
         getClipboard: () => _clipboard,
         pasteCopiedObject,
         getCurrentSize: () => currentSize,
-        alignActiveObject
+        alignActiveObject,
+        syncOpacityUI: p => {
+          const s1 = $('#opacity-slider-common');
+          const v1 = $('#opacity-val-common');
+          if (s1) s1.value = p;
+          if (v1) v1.textContent = p;
+          const s2 = $('#opacity-slider');
+          const v2 = $('#opacity-val');
+          if (s2) s2.value = p;
+          if (v2) v2.textContent = p;
+        },
+        updateLockBtnUI: isLocked => {
+          if (typeof updateLockBtnUI === 'function') updateLockBtnUI(isLocked);
+        }
       }
     });
   }
@@ -4137,6 +4150,31 @@ function duplicateActiveObject() {
     saveHistory();
     updateLayersList();
     toast('Объект продублирован 📋');
+  }, CUSTOM_PROPS_TO_SAVE);
+}
+
+function duplicateAndNudgeActiveObject(dx, dy) {
+  const obj = canvas?.getActiveObject();
+  if (!obj) return;
+  obj.clone(cloned => {
+    cloned.set({
+      left: (obj.left || 0) + dx,
+      top: (obj.top || 0) + dy,
+      evented: true,
+    });
+    if (cloned.type === 'activeSelection') {
+      cloned.canvas = canvas;
+      cloned.forEachObject(o => canvas.add(o));
+      cloned.setCoords();
+    } else {
+      canvas.add(cloned);
+    }
+    canvas.setActiveObject(cloned);
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    syncUI();
+    toast('Объект продублирован и сдвинут (Alt+Стрелка) 📋');
   }, CUSTOM_PROPS_TO_SAVE);
 }
 
@@ -9865,7 +9903,19 @@ function bindEvents() {
         return;
       }
     }
-    // ── Клавиатурный Nudge (стрелки: 1px, Shift + стрелки: 10px) как в Figma ──
+    // ── Figma Enter: быстрый вход в редактирование текста ──
+    if (e.key === 'Enter' && !inInput && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const activeObj = canvas?.getActiveObject();
+      if (activeObj && (activeObj.type === 'textbox' || activeObj.type === 'i-text' || activeObj.type === 'text') && !activeObj.isEditing) {
+        e.preventDefault();
+        activeObj.enterEditing();
+        activeObj.selectAll();
+        canvas.requestRenderAll();
+        return;
+      }
+    }
+
+    // ── Клавиатурный Nudge (стрелки: 1px, Shift + стрелки: 10px, Alt + стрелки: дублирование) как в Figma ──
     if (!inInput && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       const activeObj = canvas?.getActiveObject();
       if (activeObj && !activeObj.isEditing) {
@@ -9877,6 +9927,11 @@ function bindEvents() {
         else if (e.key === 'ArrowDown') dy = step;
         else if (e.key === 'ArrowLeft') dx = -step;
         else if (e.key === 'ArrowRight') dx = step;
+
+        if (e.altKey) {
+          duplicateAndNudgeActiveObject(dx, dy);
+          return;
+        }
 
         activeObj.set({
           left: (activeObj.left || 0) + dx,
@@ -10355,6 +10410,11 @@ function bindEvents() {
 
   $('#btn-inspector-export-png')?.addEventListener('click', exportBySelectedFormat);
   $('#btn-inspector-export-screen')?.addEventListener('click', () => exportAsOnScreen());
+  $('#btn-inspector-export-selection')?.addEventListener('click', () => {
+    if (window.AuroraFigmaPro?.exportSelectedObject) {
+      window.AuroraFigmaPro.exportSelectedObject('png');
+    }
+  });
   $('#btn-inspector-copy-clipboard')?.addEventListener('click', copyCanvasImageToClipboard);
   $('#btn-inspector-png')?.addEventListener('click', () => setExportFormat('png', true));
   $('#btn-inspector-jpg')?.addEventListener('click', () => setExportFormat('jpg', true));

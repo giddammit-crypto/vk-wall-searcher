@@ -713,7 +713,212 @@
           return;
         }
       }
+
+      // Ctrl+Shift+L — заблокировать/разблокировать (Figma)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'l' || e.key === 'L' || e.key === 'д' || e.key === 'Д')) {
+        if (inInput) return;
+        e.preventDefault(); e.stopPropagation();
+        toggleLockSelection();
+        return;
+      }
+
+      // Ctrl+Shift+H — скрыть/показать (Figma)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р')) {
+        if (inInput) return;
+        e.preventDefault(); e.stopPropagation();
+        toggleHideSelection();
+        return;
+      }
+
+      // F2 или Ctrl+R — переименование слоя (Figma)
+      if (e.key === 'F2' || ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') && canvas()?.getActiveObject())) {
+        if (inInput) return;
+        e.preventDefault(); e.stopPropagation();
+        triggerLayerRename();
+        return;
+      }
     }, true); // capture: перехватываем ДО хендлера editor.js
+  }
+
+  function triggerLayerRename(targetObj) {
+    const c = canvas();
+    if (!c) return;
+    const obj = targetObj || c.getActiveObject();
+    if (!obj) return;
+    const idx = c.getObjects().indexOf(obj);
+    if (idx === -1) return;
+    const row = document.querySelector(`.layer-row[data-idx="${idx}"]`);
+    if (!row) return;
+    const nameEl = row.querySelector('.layer-name');
+    if (!nameEl) return;
+
+    const current = obj.layerName || nameEl.textContent || '';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.className = 'layer-name-input';
+    input.style.cssText = 'flex:1;min-width:0;background:#0d1526;border:1px solid #0d99ff;border-radius:6px;color:#fff;font-size:12px;padding:2px 6px;outline:none;';
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const val = input.value.trim();
+      if (val && val !== current) {
+        obj.set('layerName', val);
+        saveHistory();
+        updateLayersList();
+        toast('Слой переименован ✏️');
+      } else {
+        updateLayersList();
+      }
+    };
+    input.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      if (ev.key === 'Escape') { ev.stopPropagation(); updateLayersList(); }
+      ev.stopPropagation();
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  function toggleLockSelection() {
+    const c = canvas();
+    if (!c) return;
+    const active = c.getActiveObject();
+    if (!active) return;
+    const isLocked = !!active.lockMovementX;
+    const nextLock = !isLocked;
+
+    const setObjLock = o => {
+      o.set({
+        lockMovementX: nextLock, lockMovementY: nextLock,
+        lockScalingX: nextLock, lockScalingY: nextLock,
+        lockRotation: nextLock, hasControls: !nextLock
+      });
+    };
+
+    if (active.type === 'activeSelection') {
+      active.getObjects().forEach(setObjLock);
+    } else {
+      setObjLock(active);
+    }
+    c.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    if (typeof Pro.hooks.updateLockBtnUI === 'function') Pro.hooks.updateLockBtnUI(nextLock);
+    toast(nextLock ? 'Объект заблокирован 🔒 (Ctrl+Shift+L)' : 'Объект разблокирован 🔓 (Ctrl+Shift+L)');
+  }
+
+  function toggleHideSelection() {
+    const c = canvas();
+    if (!c) return;
+    const active = c.getActiveObject();
+    if (!active) return;
+    const nextVis = (active.visible === false);
+
+    if (active.type === 'activeSelection') {
+      active.getObjects().forEach(o => o.set('visible', nextVis));
+      if (!nextVis) c.discardActiveObject();
+    } else {
+      active.set('visible', nextVis);
+      if (!nextVis) c.discardActiveObject();
+    }
+    c.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    toast(nextVis ? 'Слой показан 👁️ (Ctrl+Shift+H)' : 'Слой скрыт 🙈 (Ctrl+Shift+H)');
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     15. ЦИФРОВЫЕ КЛАВИШИ 0-9 ДЛЯ ПРОЗРАЧНОСТИ (Figma Opacity)
+     ──────────────────────────────────────────────────────────── */
+  let _opacityKeyBuffer = '';
+  let _opacityKeyTimer = null;
+
+  function installNumberOpacity() {
+    window.addEventListener('keydown', e => {
+      const ae = document.activeElement;
+      const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
+      if (inInput) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const c = canvas();
+      if (!c) return;
+      const active = c.getActiveObject();
+      if (!active || active.isEditing) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        _opacityKeyBuffer += e.key;
+        clearTimeout(_opacityKeyTimer);
+
+        if (_opacityKeyBuffer.length === 2) {
+          const val = parseInt(_opacityKeyBuffer, 10);
+          _opacityKeyBuffer = '';
+          applyOpacityValue(val);
+        } else {
+          _opacityKeyTimer = setTimeout(() => {
+            if (_opacityKeyBuffer.length === 1) {
+              const val = _opacityKeyBuffer === '0' ? 100 : parseInt(_opacityKeyBuffer, 10) * 10;
+              _opacityKeyBuffer = '';
+              applyOpacityValue(val);
+            }
+          }, 350);
+        }
+      }
+    });
+  }
+
+  function applyOpacityValue(percentVal) {
+    const c = canvas();
+    if (!c) return;
+    const active = c.getActiveObject();
+    if (!active) return;
+    const p = Math.max(0, Math.min(100, Math.round(percentVal)));
+    const frac = p / 100;
+
+    if (active.type === 'activeSelection') {
+      active.getObjects().forEach(o => o.set('opacity', frac));
+    } else {
+      active.set('opacity', frac);
+    }
+    c.requestRenderAll();
+    saveHistory();
+
+    if (typeof Pro.hooks.syncOpacityUI === 'function') {
+      Pro.hooks.syncOpacityUI(p);
+    }
+    toast(`Прозрачность: ${p}% (клавиша ${p === 100 ? '0' : (p % 10 === 0 ? p/10 : p)})`);
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     16. ЭКСПОРТ ВЫДЕЛЕННОГО ОБЪЕКТА (Figma Selection Export)
+     ──────────────────────────────────────────────────────────── */
+  function exportSelectedObject(fmt = 'png') {
+    const c = canvas();
+    if (!c) return;
+    const active = c.getActiveObject();
+    if (!active) {
+      toast('Выделите объект или группу для экспорта (Figma Selection)');
+      return;
+    }
+    const prevVpt = c.viewportTransform;
+    c.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+    const dataUrl = active.toDataURL({
+      format: fmt === 'jpg' ? 'jpeg' : 'png',
+      multiplier: 2,
+      enableRetinaScaling: true
+    });
+    c.setViewportTransform(prevVpt);
+    c.requestRenderAll();
+
+    const name = (active.layerName || 'aurora-selection').replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]/g, '_');
+    const a = document.createElement('a');
+    a.download = `${name}-2x.${fmt}`;
+    a.href = dataUrl;
+    a.click();
+    toast(`Выделенный слой экспортирован (${fmt.toUpperCase()} 2x) 📥`);
   }
 
   /* ────────────────────────────────────────────────────────────
@@ -910,6 +1115,7 @@
     installLayerRename();
     installHotkeys();
     installAltMeasurement();
+    installNumberOpacity();
 
     // Встраиваем peer-snap в object:moving (после родного хендлера editor.js)
     const c = ctx.canvas;
@@ -923,6 +1129,8 @@
       addTriangle, addEllipse, addSemiCircle, addPentagon, addDiamond,
       setStrokeStyle, getStrokeKind, syncStrokeStyleUI, DASH_PRESETS,
       applyBrushKind, peerSnap,
+      triggerLayerRename, toggleLockSelection, toggleHideSelection,
+      exportSelectedObject, applyOpacityValue,
       setCurrentSize(s) { Pro.currentSize = s; },
       setCanvas(c2) { Pro.canvas = c2; }
     };
