@@ -1457,7 +1457,13 @@ input, select, textarea {
   background: rgba(13, 153, 255, 0.22) !important;
   border-color: #0d99ff !important;
   color: #ffffff !important;
-  box-shadow: 0 0 10px rgba(13, 153, 255, 0.3);
+  /* BUG FIX #3: Заметное выделение активного инструмента (eyedropper, pencil, transparent canvas) */
+  box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.4), 0 0 10px rgba(13, 153, 255, 0.25);
+}
+
+/* Иконки активных tool-btn также подсвечиваем */
+.tool-btn.is-active .material-symbols-rounded {
+  color: #0d99ff !important;
 }
 
 .figma-select {
@@ -1473,13 +1479,50 @@ input, select, textarea {
   cursor: pointer;
   transition: border-color var(--trans-fast);
 }
+/* BUG FIX #2: hover-состояние для blend-mode-select и прочих .figma-select */
+.figma-select:hover {
+  border-color: var(--figma-blue, #0d99ff);
+}
 .figma-select:focus {
   border-color: var(--figma-blue, #0d99ff);
+  outline: 2px solid rgba(13, 153, 255, 0.35);
+  outline-offset: 1px;
   box-shadow: 0 0 0 1px var(--figma-blue, #0d99ff);
 }
 .figma-select option {
   background: #1e1e1e;
   color: #f3f4f6;
+}
+
+/* BUG FIX #1: Изоляция шрифта в селекторе шрифтов — предотвращает
+   «заражение» интерфейса выбранным декоративным шрифтом */
+#font-family-select {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+#font-family-select option {
+  font-family: inherit;
+}
+
+/* BUG FIX #4: Стили состояний кнопки переключения тени */
+#btn-toggle-shadow:hover {
+  opacity: 0.85;
+}
+#btn-toggle-shadow.is-active {
+  background: var(--figma-blue, #0d99ff) !important;
+  border-color: var(--figma-blue, #0d99ff) !important;
+  color: #ffffff !important;
+}
+
+/* BUG FIX #6: Pencil toolbar — CSS-класс для z-index (переопределяет inline z-index:100) */
+.pencil-toolbar {
+  /* Floating toolbar: выше холста, но ниже модалок (z-index: 1000) и мобильного дока (250) */
+  z-index: 200 !important;
+}
+
+/* BUG FIX #8: .figma-hex-val — моноширинный шрифт и letter-spacing */
+.figma-hex-val {
+  font-family: 'Courier New', 'JetBrains Mono', 'Fira Code', monospace !important;
+  letter-spacing: 1px;
 }
 
 /* Градиентные кнопки фона */
@@ -1591,6 +1634,7 @@ input, select, textarea {
   overflow: visible !important;
   background: transparent;
   box-shadow: none;
+  transition: box-shadow var(--trans-fast);
 }
 
 .canvas-frame .canvas-container,
@@ -4952,3 +4996,188 @@ input, select, textarea {
     max-width: 220px;
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   AURORA CSS AUDIT FIXES v1.0 — 2026-09-29
+   ══════════════════════════════════════════════════════ */
+
+/* ── BUG FIX #7: Адаптивность инспектора на узких экранах (1100–1200px) ──
+   При ширине около 1200px суммарная ширина sidebar+panel сжимает canvas.
+   Уменьшаем --panel-w, чтобы canvas получал минимум 300px. */
+@media (max-width: 1200px) and (min-width: 1101px) {
+  :root {
+    --panel-w: 260px;
+    --sidebar-w: 220px;
+  }
+}
+
+/* ── BUG FIX #7b: Сжатый инспектор при 1000–1100px ── */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .ed-canvas-area {
+    min-width: 280px;
+  }
+}
+
+/* ── BUG FIX #9: Панель слоёв (#tab-layers) — overflow-y auto ──
+   Список слоёв должен прокручиваться внутри tab-content.
+   layers-list не ограничен по высоте — распирает контейнер. */
+#tab-layers {
+  display: flex;
+  flex-direction: column;
+}
+
+#tab-layers .layers-header {
+  flex-shrink: 0;
+}
+
+.layers-list.figma-layers-tree,
+#layers-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── z-index MAP (комментарий-документация) ─────────────────────────
+   screen-editor  / .screen-templates : z-index    1
+   .ed-sidebar / .ed-panel            : z-index   20
+   .ed-header                         : z-index   50
+   .canvas-drop-overlay (absolute)    : z-index   50
+   .pencil-toolbar (CSS override)     : z-index  200  ← was 100 inline
+   .mobile-drawer-backdrop            : z-index  210
+   .mobile-drawer                     : z-index  220
+   .mobile-dock                       : z-index  250
+   .modal-overlay                     : z-index 1000
+   .toast                             : z-index 9999
+   ─────────────────────────────────────────────────────────────────── */
+
+/* ── Keyboard focus-visible accessibility fix ── */
+.tool-btn:focus-visible,
+.figma-icon-btn:focus-visible,
+.pbtn:focus-visible,
+.hbtn:focus-visible,
+.panel-tab:focus-visible {
+  outline: 2px solid var(--figma-blue, #0d99ff);
+  outline-offset: 2px;
+}
+
+/* ── Предпросмотр шрифта и визуальный выпадающий список шрифтов ── */
+.font-preview-sample {
+  margin-top: 5px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-xs, 4px);
+  color: var(--text-1, #f3f4f6);
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.font-preview-sample:hover {
+  border-color: var(--figma-blue, #0d99ff);
+  background: rgba(13, 153, 255, 0.08);
+}
+
+.font-visual-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #1c1c1f;
+  border: 1px solid rgba(13, 153, 255, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+  z-index: 300;
+  padding: 4px;
+  scrollbar-width: thin;
+}
+
+.font-visual-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #f3f4f6;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.font-visual-item:hover,
+.font-visual-item.is-active {
+  background: rgba(13, 153, 255, 0.22);
+}
+
+.font-visual-item-sample {
+  font-size: 14px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-visual-item-meta {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif !important;
+}
+
+/* ── Улучшения панели слоёв (бейджи, метаданные, переименование) ── */
+.layers-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 9px;
+}
+
+.layer-info-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.layer-meta-sub {
+  font-size: 9.5px;
+  color: var(--text-3, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.layer-rename-input {
+  width: 100%;
+  height: 20px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  color: #ffffff;
+  background: #111827;
+  border: 1px solid var(--figma-blue, #0d99ff);
+  border-radius: 3px;
+  outline: none;
+}
+

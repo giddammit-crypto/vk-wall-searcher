@@ -19,10 +19,9 @@ const SIZES = {
 
 /* ── 21+ кириллический шрифт + ofont.ru ────────────────────── */
 const FONTS = [
-  { id: 'Shoptronic SP',      name: 'Shoptronic SP',      desc: 'Космический акцидентный [ofont.ru]' },
-  { id: 'Dela Gothic One',    name: 'Dela Gothic One',    desc: 'Мощный плакатный гротеск [ofont.ru]' },
   { id: 'Unbounded',          name: 'Unbounded',          desc: 'Заголовочный, ультрасовременный' },
   { id: 'Montserrat',        name: 'Montserrat',        desc: 'Универсальный гротеск' },
+  { id: 'Dela Gothic One',    name: 'Dela Gothic One',    desc: 'Мощный плакатный гротеск [ofont.ru]' },
   { id: 'Cormorant Garamond', name: 'Cormorant Garamond', desc: 'Литературный, благородная антиква' },
   { id: 'Playfair Display',   name: 'Playfair Display',   desc: 'Элегантный, парадный' },
   { id: 'Oswald',             name: 'Oswald',             desc: 'Узкий плакатный гротеск' },
@@ -38,11 +37,21 @@ const FONTS = [
   { id: 'Press Start 2P',     name: 'Press Start 2P',     desc: 'Ретро 8-bit, квизы и игры' },
   { id: 'Lobster',            name: 'Lobster',            desc: 'Яркий ретро-курсив' },
   { id: 'Podkova',            name: 'Podkova',            desc: 'Широкая выразительная подкова' },
+  { id: 'Shoptronic SP',      name: 'Shoptronic SP',      desc: 'Космический акцидентный [ofont.ru]' },
   { id: 'Georgia',            name: 'Georgia',            desc: 'Классическая книга' },
   { id: 'Arial',              name: 'Arial',              desc: 'Стандартный чёткий гротеск' },
 ];
 
 const figmaLoadedFonts = new Set(FONTS.map(f => f.id));
+
+/* ── Единый список кастомных свойств Fabric для сериализации ── */
+const CANVAS_SERIALIZE_PROPS = [
+  'selectable','hasControls','editable','visible','evented',
+  'lockMovementX','lockMovementY','lockScalingX','lockScalingY','lockRotation',
+  '__filterValues','__isUppercase','__origText','__isHdrEnhanced','__currentHdrPreset',
+  '__originalSrc','__bgRemoved','layerName','__cornerRadius','clipPath','globalCompositeOperation',
+  'isAiElement','__isAiElement','isAiPhoto','__isAiPhoto','aiPrompt','__aiPrompt','aiType','__aiSvg','rx','ry'
+];
 
 /* ── Цветовые палитры ───────────────────────────────────────── */
 const PALETTE = [
@@ -62,9 +71,11 @@ const PALETTE = [
 
 const TEXT_COLORS = [
   '#ffffff','#0f172a','#38BDF8','#8A6CFF','#FBBF24','#F472B6','#10B981','#EF4444',
+  '#F97316','#EC4899','#A855F7','#06B6D4','#EAB308','#34D399','#E2E8F0','#FDE047',
 ];
 const SHAPE_COLORS = [
   'transparent','#ffffff','#0f172a','#38BDF8','#8A6CFF','#FBBF24','#F472B6','#10B981',
+  '#EF4444','#F97316','#EC4899','#A855F7','#06B6D4','#EAB308','#34D399','#1E293B',
 ];
 
 const GRADIENTS = {
@@ -1249,67 +1260,181 @@ async function loadSavedFonts() {
   }
 }
 
+function normalizeFontName(rawFont) {
+  if (!rawFont || typeof rawFont !== 'string') return 'Unbounded';
+  return rawFont.split(',')[0].replace(/['"]/g, '').trim() || 'Unbounded';
+}
+
 function buildFontSelect() {
   const sel = $('#font-family-select');
   if (!sel) return;
 
+  const activeObj = canvas?.getActiveObject();
+  const prevVal = (activeObj && ['textbox','text','i-text'].includes(activeObj.type) && activeObj.fontFamily)
+    ? normalizeFontName(activeObj.fontFamily)
+    : (sel.value ? normalizeFontName(sel.value) : 'Unbounded');
+
   let html = `<optgroup label="⭐ Кириллические шрифты (встроены)">`;
-  html += FONTS.map(f => `
-    <option value="${f.id}" style="font-family:'${f.id}',sans-serif;">
-      ${f.name} — ${f.desc}
-    </option>
-  `).join('');
+  html += FONTS.map(f => `<option value="${f.id}">${f.name} — ${f.desc}</option>`).join('');
   html += `</optgroup>`;
 
   if (customFonts && customFonts.length > 0) {
     html += `<optgroup label="✨ Загруженные шрифты с ofont.ru">`;
-    html += customFonts.map(f => `
-      <option value="${f.name}" style="font-family:'${f.name}',sans-serif;">
-        ${f.name} [ofont.ru]
-      </option>
-    `).join('');
+    html += customFonts.map(f => `<option value="${f.name}">${f.name} [ofont.ru]</option>`).join('');
     html += `</optgroup>`;
   }
 
   sel.innerHTML = html;
+  buildVisualFontDropdown();
+  syncFontSelectUI(prevVal);
 }
 
+function buildVisualFontDropdown() {
+  const dd = $('#font-visual-dropdown');
+  if (!dd) return;
+  const allFonts = [
+    ...FONTS.map(f => ({ id: f.id, name: f.name, desc: f.desc })),
+    ...(customFonts || []).map(f => ({ id: f.name, name: f.name, desc: 'Пользовательский шрифт [ofont.ru]' }))
+  ];
+  dd.innerHTML = allFonts.map(f => `
+    <button type="button" class="font-visual-item" data-font="${escapeHtml(f.id)}">
+      <span class="font-visual-item-sample" style="font-family:'${escapeHtml(f.id)}', sans-serif;">${escapeHtml(f.name)} — Аврора</span>
+      <span class="font-visual-item-meta">${escapeHtml(f.desc)}</span>
+    </button>
+  `).join('');
+
+  dd.querySelectorAll('.font-visual-item').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const chosen = btn.dataset.font;
+      if (chosen) {
+        syncFontSelectUI(chosen);
+        setFontFamily(chosen);
+      }
+      dd.classList.add('hidden');
+    });
+  });
+}
+
+function syncFontSelectUI(rawFontFamily) {
+  const sel = $('#font-family-select');
+  if (!sel) return;
+  const cleanFont = normalizeFontName(rawFontFamily);
+
+  // Ищем совпадение без учёта регистра
+  const options = Array.from(sel.options);
+  const matchedOpt = options.find(o => o.value.toLowerCase() === cleanFont.toLowerCase());
+  if (matchedOpt) {
+    sel.value = matchedOpt.value;
+  } else if (cleanFont) {
+    let dynOpt = document.createElement('option');
+    dynOpt.value = cleanFont;
+    dynOpt.textContent = `${cleanFont} [из шаблона]`;
+    dynOpt.dataset.dynamic = '1';
+    sel.insertBefore(dynOpt, sel.firstChild);
+    sel.value = cleanFont;
+  }
+
+  sel.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Inter', 'Montserrat', sans-serif";
+
+  const previewEl = $('#font-preview-sample');
+  if (previewEl) {
+    previewEl.style.fontFamily = `'${sel.value || cleanFont}', sans-serif`;
+    previewEl.textContent = `${sel.value || cleanFont} — Аа Бб Вв 123`;
+  }
+
+  const dd = $('#font-visual-dropdown');
+  if (dd) {
+    dd.querySelectorAll('.font-visual-item').forEach(item => {
+      item.classList.toggle('is-active', item.dataset.font?.toLowerCase() === (sel.value || cleanFont).toLowerCase());
+    });
+  }
+}
+
+function cycleFontFamily(delta = 1) {
+  const sel = $('#font-family-select');
+  if (!sel || !sel.options.length) return;
+  const len = sel.options.length;
+  const nextIdx = ((sel.selectedIndex >= 0 ? sel.selectedIndex : 0) + delta + len) % len;
+  sel.selectedIndex = nextIdx;
+  const chosen = sel.options[nextIdx].value;
+  syncFontSelectUI(chosen);
+  setFontFamily(chosen);
+}
+
+function toggleVisualFontDropdown(forceState) {
+  const dd = $('#font-visual-dropdown');
+  if (!dd) return;
+  const show = typeof forceState === 'boolean' ? forceState : dd.classList.contains('hidden');
+  dd.classList.toggle('hidden', !show);
+}
+
+let _fontApplySeq = 0;
+
 async function setFontFamily(fontFamily) {
+  const cleanFont = normalizeFontName(fontFamily);
+  syncFontSelectUI(cleanFont);
+
   const obj = canvas?.getActiveObject();
-  if (!obj || !fontFamily) return;
+  if (!obj) return;
 
-  // 1. Предзагружаем/регистрируем шрифт в фоне без блокировки
-  ensureFontAvailable(fontFamily);
+  const reqSeq = ++_fontApplySeq;
+  ensureFontAvailable(cleanFont);
 
-  // 2. МГНОВЕННО (0 мс) применяем шрифт к объекту и запрашиваем рендер
-  obj.set('fontFamily', fontFamily);
-  try { fabric.util?.clearFabricFontCache?.(fontFamily); } catch(e) {}
-  obj.initDimensions?.();
-  obj.setCoords?.();
-  obj.dirty = true;
+  const applyToTarget = (target) => {
+    if (!target) return;
+    if (['textbox','text','i-text'].includes(target.type)) {
+      if (target.isEditing && target.selectionStart !== target.selectionEnd) {
+        target.setSelectionStyles({ fontFamily: cleanFont });
+      } else {
+        target.set('fontFamily', cleanFont);
+        // Очищаем посимвольные переопределения fontFamily в styles, чтобы шрифт применился ко всему тексту
+        if (target.styles && typeof target.styles === 'object') {
+          Object.values(target.styles).forEach(lineStyles => {
+            if (lineStyles && typeof lineStyles === 'object') {
+              Object.values(lineStyles).forEach(charStyle => {
+                if (charStyle && charStyle.fontFamily) delete charStyle.fontFamily;
+              });
+            }
+          });
+        }
+      }
+      if (window.fabric?.util?.clearFabricFontCache) {
+        window.fabric.util.clearFabricFontCache(cleanFont);
+      }
+      target.initDimensions?.();
+      target.setCoords?.();
+      target.dirty = true;
+    } else if (target.type === 'activeSelection' || target.type === 'group') {
+      (target.getObjects?.() || []).forEach(applyToTarget);
+      target.dirty = true;
+    }
+  };
+
+  // Мгновенно применяем шрифт, обновляем список слоёв и сохраняем в историю без ожидания сети
+  applyToTarget(obj);
   canvas.requestRenderAll();
   saveHistory();
   updateLayersList();
 
-  // 3. Если глифы ещё не подгружены браузером, догружаем в фоне и обновляем метрики
-  if (document.fonts && !document.fonts.check(`16px "${fontFamily}"`)) {
-    Promise.allSettled([
-      document.fonts.load(`400 32px "${fontFamily}"`),
-      document.fonts.load(`700 32px "${fontFamily}"`)
-    ]).then(() => {
-      try { fabric.util?.clearFabricFontCache?.(fontFamily); } catch(e) {}
-      if (canvas?.getActiveObject() === obj) {
-        obj.initDimensions?.();
-        obj.setCoords?.();
-        obj.dirty = true;
-        canvas.requestRenderAll();
+  // Догружаем глифы веб-шрифта с таймаутом (не более 1200 мс), проверяя актуальность запроса
+  try {
+    if (document.fonts && document.fonts.load) {
+      await Promise.race([
+        Promise.allSettled([
+          document.fonts.load(`400 32px "${cleanFont}"`),
+          document.fonts.load(`700 32px "${cleanFont}"`)
+        ]),
+        new Promise(res => setTimeout(res, 1200))
+      ]);
+      if (reqSeq !== _fontApplySeq) return;
+      if (window.fabric?.util?.clearFabricFontCache) {
+        window.fabric.util.clearFabricFontCache(cleanFont);
       }
-    });
-  }
-
-  // Фикс: сбрасываем inline font-family у самого <select>
-  const sel = $('#font-family-select');
-  if (sel) sel.style.fontFamily = "'Montserrat', system-ui, sans-serif";
+      applyToTarget(obj);
+      canvas.requestRenderAll();
+    }
+  } catch (e) {}
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1667,6 +1792,117 @@ function applyGlow(obj, color, blur) {
   }));
 }
 
+function syncTextColorUI(color) {
+  if (!color || color === 'transparent') return;
+  const hx = colorToHex(color);
+  const cp = $('#text-color-picker');
+  if (cp) cp.value = hx;
+  const hexInput = $('#text-hex-val');
+  if (hexInput) hexInput.value = hx.toUpperCase();
+  const chip = $('#text-color-chip');
+  if (chip) chip.style.backgroundColor = hx;
+  syncSwatches('#text-color-row', color);
+}
+
+function applyTextColor(color, saveToHistory = false) {
+  if (!color) return;
+  syncTextColorUI(color);
+  const obj = canvas?.getActiveObject();
+  if (!obj) return;
+
+  const setObjFill = (target) => {
+    if (!target) return;
+    if (['textbox','text','i-text'].includes(target.type)) {
+      if (target.isEditing && target.selectionStart !== target.selectionEnd) {
+        target.setSelectionStyles({ fill: color });
+      } else {
+        target.set('fill', color);
+        // Очищаем посимвольный fill в styles, если выделен весь текстовый блок
+        if (target.styles && typeof target.styles === 'object') {
+          Object.values(target.styles).forEach(lineStyles => {
+            if (lineStyles && typeof lineStyles === 'object') {
+              Object.values(lineStyles).forEach(charStyle => {
+                if (charStyle && charStyle.fill) delete charStyle.fill;
+              });
+            }
+          });
+        }
+      }
+      target.dirty = true;
+    } else if (target.type === 'activeSelection' || target.type === 'group') {
+      (target.getObjects?.() || []).forEach(setObjFill);
+      target.dirty = true;
+    } else {
+      target.set('fill', color);
+      target.dirty = true;
+    }
+  };
+
+  setObjFill(obj);
+  canvas.requestRenderAll();
+  updateLayersList();
+  if (saveToHistory) saveHistory();
+}
+
+function syncShapeFillColorUI(color) {
+  const isTrans = !color || color === 'transparent';
+  const hx = isTrans ? '#0d99ff' : colorToHex(color);
+  if (!isTrans && $('#fill-color-picker')) $('#fill-color-picker').value = hx;
+  if ($('#fill-hex-input')) $('#fill-hex-input').value = isTrans ? 'NONE' : hx.toUpperCase();
+  const chip = $('#fill-color-chip-preview');
+  if (chip) {
+    chip.style.background = isTrans
+      ? 'conic-gradient(#ccc 90deg,#fff 90deg 180deg,#ccc 180deg 270deg,#fff 270deg)'
+      : hx;
+  }
+  syncSwatches('#fill-color-row', isTrans ? 'transparent' : color);
+}
+
+function applyShapeFillColor(color, saveToHistory = false) {
+  syncShapeFillColorUI(color);
+  const obj = canvas?.getActiveObject();
+  if (obj) {
+    obj.set('fill', color);
+    obj.dirty = true;
+    canvas.requestRenderAll();
+    updateLayersList();
+    if (saveToHistory) saveHistory();
+  }
+}
+
+function syncShapeStrokeColorUI(color) {
+  const isTrans = !color || color === 'transparent';
+  const hx = isTrans ? '#ffffff' : colorToHex(color);
+  if (!isTrans && $('#stroke-color-picker')) $('#stroke-color-picker').value = hx;
+  if ($('#stroke-hex-input')) $('#stroke-hex-input').value = isTrans ? 'NONE' : hx.toUpperCase();
+  const chip = $('#stroke-color-chip-preview');
+  if (chip) {
+    chip.style.background = isTrans
+      ? 'conic-gradient(#ccc 90deg,#fff 90deg 180deg,#ccc 180deg 270deg,#fff 270deg)'
+      : hx;
+  }
+  syncSwatches('#stroke-color-row', isTrans ? 'transparent' : color);
+}
+
+function applyShapeStrokeColor(color, saveToHistory = false) {
+  const isTrans = !color || color === 'transparent';
+  syncShapeStrokeColorUI(color);
+  const obj = canvas?.getActiveObject();
+  if (obj) {
+    obj.set('stroke', isTrans ? null : color);
+    if (!isTrans && (!obj.strokeWidth || obj.strokeWidth <= 0)) {
+      obj.set('strokeWidth', 2);
+      if ($('#stroke-width-slider')) $('#stroke-width-slider').value = 2;
+      if ($('#stroke-width-val')) $('#stroke-width-val').textContent = 2;
+      if ($('#dim-stroke-w')) $('#dim-stroke-w').value = 2;
+    }
+    obj.dirty = true;
+    canvas.requestRenderAll();
+    updateLayersList();
+    if (saveToHistory) saveHistory();
+  }
+}
+
 function buildColorRows() {
   const mkSwatches = (containerId, colors, onPick) => {
     const el = $('#' + containerId);
@@ -1675,7 +1911,7 @@ function buildColorRows() {
       const style = c === 'transparent'
         ? 'background:conic-gradient(#ccc 90deg,#fff 90deg 180deg,#ccc 180deg 270deg,#fff 270deg);'
         : `background:${c};`;
-      const border = c === '#ffffff' ? 'border-color:rgba(0,0,0,0.2);' : '';
+      const border = c.toLowerCase() === '#ffffff' ? 'border-color:rgba(0,0,0,0.2);' : '';
       return `<button class="cswatch" data-color="${c}" style="${style}${border}" title="${c}"></button>`;
     }).join('');
     el.addEventListener('click', e => {
@@ -1689,21 +1925,15 @@ function buildColorRows() {
   };
 
   mkSwatches('text-color-row', TEXT_COLORS, c => {
-    const obj = canvas?.getActiveObject();
-    if (obj) { obj.set('fill', c); canvas.renderAll(); saveHistory(); }
-    if (c !== 'transparent') $('#text-color-picker').value = c;
+    applyTextColor(c, true);
   });
 
   mkSwatches('fill-color-row', SHAPE_COLORS, c => {
-    const obj = canvas?.getActiveObject();
-    if (obj) { obj.set('fill', c); canvas.renderAll(); saveHistory(); }
-    if (c !== 'transparent') $('#fill-color-picker').value = c;
+    applyShapeFillColor(c, true);
   });
 
   mkSwatches('stroke-color-row', SHAPE_COLORS, c => {
-    const obj = canvas?.getActiveObject();
-    if (obj) { obj.set('stroke', c === 'transparent' ? null : c); canvas.renderAll(); saveHistory(); }
-    if (c !== 'transparent') $('#stroke-color-picker').value = c;
+    applyShapeStrokeColor(c, true);
   });
 
   const GLOW_COLORS = ['#38BDF8', '#8A6CFF', '#F43F5E', '#10B981', '#FBBF24', '#EC4899', '#06B6D4', '#ffffff'];
@@ -1850,10 +2080,11 @@ const CANVAS_PADDING = 320; // Безопасное поле (px) вокруг �
 
 function initCanvas(w, h) {
   if (canvas) canvas.dispose();
+  // Сбрасываем стек истории при создании нового холста (новый сеанс)
+  history = []; historyIdx = -1;
 
   const totalW = (w + CANVAS_PADDING * 2) * zoom;
   const totalH = (h + CANVAS_PADDING * 2) * zoom;
-
   canvas = new fabric.Canvas('poster-canvas', {
     width: totalW,
     height: totalH,
@@ -2101,14 +2332,17 @@ function initCanvas(w, h) {
   canvas.on('object:added',       () => updateLayersList());
   canvas.on('object:removed',     () => { saveHistory(); updateLayersList(); });
   canvas.on('path:created', e => {
-    if (e.path) {
-      e.path.set({
-        strokeLineCap: 'round',
-        strokeLineJoin: 'round'
-      });
-      saveHistory();
-      updateLayersList();
+    if (!e.path) return;
+    e.path.set({
+      strokeLineCap: 'round',
+      strokeLineJoin: 'round'
+    });
+    // Присваиваем имя нарисованному пути для панели слоёв
+    if (!e.path.layerName) {
+      e.path.layerName = 'Рисунок ' + canvas.getObjects().length;
     }
+    saveHistory();
+    updateLayersList();
   });
 
   // Магнитные направляющие и примагничивание к сетке
@@ -2707,39 +2941,35 @@ function toggleSnapping() {
 
 async function pickColorWithEyeDropper(targetProp) {
   if (!window.EyeDropper) {
-    toast('Инструмент пипетки поддерживается в Chrome/Edge');
+    startCanvasEyedropperFallback(targetProp);
     return;
   }
   try {
     const eyeDropper = new EyeDropper();
     const result = await eyeDropper.open();
     if (!result || !result.sRGBHex) return;
-    const color = result.sRGBHex;
+    const color = colorToHex(result.sRGBHex);
     const obj = canvas?.getActiveObject();
     if (!obj) {
-      toast(`Выбран цвет: ${color}`);
+      syncTextColorUI(color);
+      syncShapeFillColorUI(color);
+      toast(`Выбран цвет: ${color.toUpperCase()}`);
       return;
     }
 
     if (targetProp === 'text-fill') {
-      obj.set('fill', color);
-      const cp = $('#text-color-picker');
-      if (cp) cp.value = color;
-      syncSwatches('#text-color-row', color);
+      applyTextColor(color, true);
     } else if (targetProp === 'text-bg') {
       obj.set('backgroundColor', color);
       const cp = $('#text-bg-color-picker');
       if (cp) cp.value = color;
       syncSwatches('#text-bg-color-row', color);
+      canvas.requestRenderAll();
+      saveHistory();
     } else if (targetProp === 'shape-fill') {
-      obj.set('fill', color);
-      const cp = $('#fill-color-picker');
-      if (cp) cp.value = color;
-      syncSwatches('#fill-color-row', color);
+      applyShapeFillColor(color, true);
     }
-    canvas.renderAll();
-    saveHistory();
-    toast(`Цвет ${color} применён!`);
+    toast(`Цвет ${color.toUpperCase()} применён!`);
   } catch (err) {
     // User cancelled eye dropper
   }
@@ -3984,7 +4214,7 @@ function fitActiveObjectToCanvas() {
    ══════════════════════════════════════════════════════════════ */
 
 // 1. ПИПЕТКА (Eyedropper - Горячая клавиша I)
-async function activateEyedropper() {
+async function activateEyedropper(targetProp = null) {
   const btn = $('#tool-eyedropper');
   btn?.classList.add('is-active');
 
@@ -3993,7 +4223,7 @@ async function activateEyedropper() {
       const eyeDropper = new window.EyeDropper();
       const result = await eyeDropper.open();
       if (result && result.sRGBHex) {
-        applyPickedColor(result.sRGBHex);
+        applyPickedColor(result.sRGBHex, targetProp);
       }
     } catch (e) {
       console.log('[Eyedropper] Canceled or error:', e);
@@ -4001,7 +4231,7 @@ async function activateEyedropper() {
       btn?.classList.remove('is-active');
     }
   } else {
-    startCanvasEyedropperFallback();
+    startCanvasEyedropperFallback(targetProp);
   }
 }
 
@@ -4015,7 +4245,7 @@ function cancelCanvasEyedropper() {
   $('#tool-eyedropper')?.classList.remove('is-active', 'active');
 }
 
-function startCanvasEyedropperFallback() {
+function startCanvasEyedropperFallback(targetProp = null) {
   if (!canvas) return;
   const btn = $('#tool-eyedropper');
   btn?.classList.add('is-active');
@@ -4028,11 +4258,25 @@ function startCanvasEyedropperFallback() {
 
   const onMouseDown = function(opt) {
     cleanup();
-    const ptr = canvas.getPointer(opt.e);
+    const el = canvas.lowerCanvasEl;
     const ctx = canvas.getContext();
-    const px = ctx.getImageData(Math.round(ptr.x), Math.round(ptr.y), 1, 1).data;
-    const hex = '#' + [px[0], px[1], px[2]].map(x => x.toString(16).padStart(2, '0')).join('');
-    applyPickedColor(hex);
+    let x = 0, y = 0;
+    if (el && opt.e) {
+      const rect = el.getBoundingClientRect();
+      const clientX = opt.e.touches ? opt.e.touches[0].clientX : opt.e.clientX;
+      const clientY = opt.e.touches ? opt.e.touches[0].clientY : opt.e.clientY;
+      x = Math.round(((clientX - rect.left) / Math.max(1, rect.width)) * el.width);
+      y = Math.round(((clientY - rect.top) / Math.max(1, rect.height)) * el.height);
+      x = Math.max(0, Math.min(el.width - 1, x));
+      y = Math.max(0, Math.min(el.height - 1, y));
+    } else {
+      const ptr = canvas.getPointer(opt.e);
+      x = Math.round(ptr.x);
+      y = Math.round(ptr.y);
+    }
+    const px = ctx.getImageData(x, y, 1, 1).data;
+    const hex = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    applyPickedColor(hex, targetProp);
     setActiveTool('select', false);
   };
 
@@ -4057,9 +4301,9 @@ function startCanvasEyedropperFallback() {
   window.addEventListener('keydown', onKey);
 }
 
-function applyPickedColor(hex) {
+function applyPickedColor(hex, targetProp = null) {
   if (!hex) return;
-  hex = hex.toLowerCase();
+  hex = colorToHex(hex);
 
   // Копируем цвет в буфер обмена
   try {
@@ -4071,25 +4315,21 @@ function applyPickedColor(hex) {
   const obj = canvas?.getActiveObject();
   if (obj) {
     const isText = ['textbox','text','i-text'].includes(obj.type);
-    if (isText) {
-      obj.set({ fill: hex });
-      if ($('#text-color-picker')) $('#text-color-picker').value = hex;
-      syncSwatches('#text-color-row', hex);
+    if (targetProp === 'text-bg' && isText) {
+      obj.set('backgroundColor', hex);
+      if ($('#text-bg-color-picker')) $('#text-bg-color-picker').value = hex;
+      syncSwatches('#text-bg-color-row', hex);
+      canvas.requestRenderAll();
+      saveHistory();
+    } else if (targetProp === 'text-fill' || (!targetProp && isText)) {
+      applyTextColor(hex, true);
     } else {
-      obj.set({ fill: hex });
-      if ($('#fill-color-picker')) $('#fill-color-picker').value = hex;
-      syncSwatches('#fill-color-row', hex);
+      applyShapeFillColor(hex, true);
     }
-    const fillHex = $('#fill-hex-input');
-    if (fillHex) fillHex.value = hex.toUpperCase();
-    const fillChip = $('#fill-color-chip-preview');
-    if (fillChip) fillChip.style.backgroundColor = hex;
-    canvas.requestRenderAll();
-    saveHistory();
     toast(`Пипетка: цвет ${hex.toUpperCase()} применён к объекту`);
   } else {
-    if ($('#fill-color-picker')) $('#fill-color-picker').value = hex;
-    if ($('#text-color-picker')) $('#text-color-picker').value = hex;
+    syncTextColorUI(hex);
+    syncShapeFillColorUI(hex);
     toast(`Пипетка: скопирован цвет ${hex.toUpperCase()}`);
   }
 }
@@ -4743,10 +4983,8 @@ function onSelection() {
     const fsVal = $('#font-size-val');
     if (fsVal) fsVal.textContent = fs;
 
-    if (obj.fontFamily && $('#font-family-select')) {
-      // Очищаем кавычки: obj.fontFamily может быть "'Montserrat'" из некоторых шаблонов
-      const cleanFont = obj.fontFamily.replace(/['"]/g, '').trim();
-      $('#font-family-select').value = cleanFont;
+    if (obj.fontFamily) {
+      syncFontSelectUI(obj.fontFamily);
     }
     // Нормализуем: fontWeight может быть 700, '700', 'bold', '800' и т.д.
     const fw = obj.fontWeight;
@@ -4783,7 +5021,7 @@ function onSelection() {
       const tgBlurVal = $('#text-glow-blur-val');
       if (tgBlurVal) tgBlurVal.textContent = gBlur;
       const tgCp = $('#text-glow-color-picker');
-      if (tgCp && gColor.startsWith('#')) tgCp.value = gColor;
+      if (tgCp) tgCp.value = colorToHex(gColor);
       syncSwatches('#text-glow-color-row', gColor);
     }
 
@@ -4796,12 +5034,12 @@ function onSelection() {
 
     const strokeColor = obj.stroke || '#000000';
     const scp = $('#text-stroke-color-picker');
-    if (scp && strokeColor.startsWith?.('#')) scp.value = strokeColor;
+    if (scp) scp.value = colorToHex(strokeColor);
     syncSwatches('#text-stroke-color-row', strokeColor);
     $('#text-stroke-color-wrap')?.classList.toggle('hidden', sw <= 0);
 
-    syncSwatches('#text-color-row', obj.fill);
-    if (obj.fill?.startsWith?.('#') && $('#text-color-picker')) $('#text-color-picker').value = obj.fill;
+    // Цвет текста (чип + пикер + HEX + свотчи)
+    syncTextColorUI(obj.fill || '#ffffff');
 
     // Цветная подложка / плашка текста
     const hasBg = !!obj.backgroundColor && obj.backgroundColor !== 'transparent';
@@ -4815,7 +5053,7 @@ function onSelection() {
       if (padVal) padVal.textContent = pad;
       const bgCol = obj.backgroundColor || '#e11d48';
       const bgCp = $('#text-bg-color-picker');
-      if (bgCp && bgCol.startsWith?.('#')) bgCp.value = bgCol;
+      if (bgCp) bgCp.value = colorToHex(bgCol);
       syncSwatches('#text-bg-color-row', bgCol);
     }
   }
@@ -4857,14 +5095,12 @@ function onSelection() {
       const sgBlurVal = $('#shape-glow-blur-val');
       if (sgBlurVal) sgBlurVal.textContent = gBlur;
       const sgCp = $('#shape-glow-color-picker');
-      if (sgCp && gColor.startsWith('#')) sgCp.value = gColor;
+      if (sgCp) sgCp.value = colorToHex(gColor);
       syncSwatches('#shape-glow-color-row', gColor);
     }
 
-    syncSwatches('#fill-color-row', obj.fill);
-    syncSwatches('#stroke-color-row', obj.stroke || 'transparent');
-    if (obj.fill?.startsWith?.('#') && $('#fill-color-picker')) $('#fill-color-picker').value = obj.fill;
-    if (obj.stroke?.startsWith?.('#') && $('#stroke-color-picker')) $('#stroke-color-picker').value = obj.stroke;
+    syncShapeFillColorUI(obj.fill);
+    syncShapeStrokeColorUI(obj.stroke || 'transparent');
   }
 
   if (isImage) {
@@ -4953,38 +5189,50 @@ function updateFigmaDimensionsUI(obj) {
     });
   }
 
-  // Sync Fill hex & preview
-  const fillHex = $('#fill-hex-input');
-  if (fillHex && obj.fill && typeof obj.fill === 'string') {
-    fillHex.value = obj.fill.startsWith('#') ? obj.fill.toUpperCase() : obj.fill;
-  }
-  const fillChip = $('#fill-color-chip-preview');
-  if (fillChip && obj.fill) {
-    fillChip.style.backgroundColor = obj.fill;
-  }
-
-  // Sync Stroke hex & preview
-  const strokeHex = $('#stroke-hex-input');
-  if (strokeHex && obj.stroke && typeof obj.stroke === 'string') {
-    strokeHex.value = obj.stroke.startsWith('#') ? obj.stroke.toUpperCase() : obj.stroke;
-  }
-  const strokeChip = $('#stroke-color-chip-preview');
-  if (strokeChip && obj.stroke) {
-    strokeChip.style.backgroundColor = obj.stroke;
-  }
+  // Sync Fill & Stroke chips via unified helpers if shape
   const strokeW = $('#dim-stroke-w');
   if (strokeW) strokeW.value = obj.strokeWidth || 0;
+}
 
-  // Text hex
-  const textHex = $('#text-hex-val');
-  if (textHex && obj.fill && typeof obj.fill === 'string') {
-    textHex.value = obj.fill.startsWith('#') ? obj.fill.toUpperCase() : obj.fill;
+function colorToHex(color) {
+  if (!color || typeof color !== 'string') return '#000000';
+  color = color.trim();
+  if (color.startsWith('#')) {
+    // Нормализуем до 6-значного hex
+    if (color.length === 4) {
+      return ('#' + color[1]+color[1]+color[2]+color[2]+color[3]+color[3]).toLowerCase();
+    }
+    return color.slice(0, 7).toLowerCase();
   }
+  // rgb() или rgba()
+  const m = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (m) {
+    const r = parseInt(m[1]).toString(16).padStart(2,'0');
+    const g = parseInt(m[2]).toString(16).padStart(2,'0');
+    const b = parseInt(m[3]).toString(16).padStart(2,'0');
+    return '#' + r + g + b;
+  }
+  // Именованные цвета — через canvas
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 1;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = color;
+    ctx.fillRect(0,0,1,1);
+    const d = ctx.getImageData(0,0,1,1).data;
+    return '#' + d[0].toString(16).padStart(2,'0') + d[1].toString(16).padStart(2,'0') + d[2].toString(16).padStart(2,'0');
+  } catch(e) { return '#000000'; }
 }
 
 function syncToggle(id, active) { $('#'+id)?.classList.toggle('is-active', !!active); }
 function syncSwatches(sel, color) {
-  $$(sel + ' .cswatch').forEach(s => s.classList.toggle('is-active', s.dataset.color === color));
+  const isTrans = !color || color === 'transparent';
+  const targetHex = isTrans ? 'transparent' : colorToHex(String(color));
+  $$(sel + ' .cswatch').forEach(s => {
+    const swCol = s.dataset.color || '';
+    const swHex = swCol === 'transparent' ? 'transparent' : colorToHex(swCol);
+    s.classList.toggle('is-active', swHex === targetHex);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4994,7 +5242,7 @@ const LAYER_ICONS = {
   textbox: 'title', text: 'title', 'i-text': 'title',
   rect: 'rectangle', circle: 'circle', ellipse: 'circle',
   line: 'horizontal_rule', image: 'image',
-  group: 'folder', polyline: 'polyline', path: 'gesture',
+  group: 'folder', polyline: 'polyline', polygon: 'hexagon', path: 'gesture',
 };
 
 function getObjLabel(obj, idx) {
@@ -5025,10 +5273,30 @@ function getObjLabel(obj, idx) {
     return txt.length > 24 ? txt.slice(0, 24) + '…' : txt || 'Текст';
   }
   if (obj.type === 'image') return 'Изображение / QR';
-  const map = { rect:'Прямоугольник / Рамка', circle:'Круг', ellipse:'Эллипс', line:'Линия', group:'Группа', path:'Фигура / Звезда' };
+  const map = { rect:'Прямоугольник / Рамка', circle:'Круг', ellipse:'Эллипс', line:'Линия', group:'Группа', polygon:'Многоугольник', path:'Фигура / Контур' };
   return map[obj.type] || obj.type;
 }
 
+function getObjMetaSubtitle(obj) {
+  if (!obj) return '';
+  if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
+    const ff = normalizeFontName(obj.fontFamily || 'Montserrat');
+    const fs = Math.round((obj.fontSize || 36) * (obj.scaleY || 1));
+    return `${ff} · ${fs}px`;
+  }
+  if (obj.type === 'image') {
+    const w = Math.round(obj.getScaledWidth?.() || obj.width || 0);
+    const h = Math.round(obj.getScaledHeight?.() || obj.height || 0);
+    return `Фото · ${w}×${h}`;
+  }
+  if (obj.type === 'group') {
+    const cnt = obj.getObjects?.()?.length || 0;
+    return `Группа (${cnt} эл.)`;
+  }
+  const w = Math.round(obj.getScaledWidth?.() || obj.width || 0);
+  const h = Math.round(obj.getScaledHeight?.() || obj.height || 0);
+  return `${w}×${h}px`;
+}
 
 function renderLayerThumb(obj) {
   const isAiPhoto = !!(obj.isAiPhoto || obj.__isAiPhoto || obj.aiType === 'photo');
@@ -5060,16 +5328,16 @@ function renderLayerThumb(obj) {
   let color = 'var(--text-3)';
 
   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
-    color = (obj.fill && obj.fill !== 'transparent') ? obj.fill : 'var(--text-1)';
-    return `<div class="layer-thumb" style="background:rgba(255,255,255,0.04)" title="Текст">
+    color = (obj.fill && obj.fill !== 'transparent') ? colorToHex(obj.fill) : 'var(--text-1)';
+    return `<div class="layer-thumb" style="background:rgba(255,255,255,0.04)" title="Текст (${color.toUpperCase()})">
       <span class="material-symbols-rounded" style="color:${color}">title</span>
     </div>`;
   }
 
-  if (obj.fill && obj.fill !== 'transparent') {
-    color = obj.fill;
-  } else if (obj.stroke && obj.stroke !== 'transparent') {
-    color = obj.stroke;
+  if (obj.fill && obj.fill !== 'transparent' && typeof obj.fill === 'string') {
+    color = colorToHex(obj.fill);
+  } else if (obj.stroke && obj.stroke !== 'transparent' && typeof obj.stroke === 'string') {
+    color = colorToHex(obj.stroke);
   }
   return `<div class="layer-thumb" style="background:rgba(255,255,255,0.04)">
     <span class="material-symbols-rounded" style="color:${color}">${icon}</span>
@@ -5131,26 +5399,109 @@ function layerSendToBack(obj) {
   updateLayersList();
 }
 
+function startInlineLayerRename(rowEl, obj) {
+  if (!rowEl || !obj) return;
+  const nameEl = rowEl.querySelector('.layer-name');
+  if (!nameEl || nameEl.querySelector('input')) return;
+  const currentLabel = getObjLabel(obj);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'layer-rename-input';
+  input.value = currentLabel;
+  nameEl.innerHTML = '';
+  nameEl.appendChild(input);
+  input.focus();
+  input.select();
+
+  let committed = false;
+  const commit = (save) => {
+    if (committed) return;
+    committed = true;
+    if (save) {
+      const val = input.value.trim();
+      obj.layerName = val || undefined;
+      saveHistory();
+    }
+    updateLayersList();
+  };
+
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); commit(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); commit(false); }
+  });
+  input.addEventListener('blur', () => commit(true));
+  input.addEventListener('click', e => e.stopPropagation());
+}
+
+function showAllLayers() {
+  if (!canvas) return;
+  let changed = 0;
+  canvas.getObjects().forEach(o => {
+    if (o.visible === false) { o.set('visible', true); changed++; }
+  });
+  if (changed > 0) {
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    toast(`Показано скрытых слоёв: ${changed}`);
+  } else {
+    toast('Все слои уже видимы');
+  }
+}
+
+function unlockAllLayers() {
+  if (!canvas) return;
+  let changed = 0;
+  canvas.getObjects().forEach(o => {
+    if (!o.selectable || o.lockMovementX) {
+      o.set({
+        selectable: true, evented: true,
+        lockMovementX: false, lockMovementY: false,
+        lockScalingX: false, lockScalingY: false, lockRotation: false
+      });
+      changed++;
+    }
+  });
+  if (changed > 0) {
+    canvas.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    updateLockBtnUI(false);
+    toast(`Разблокировано слоёв: ${changed}`);
+  } else {
+    toast('Заблокированных слоёв нет');
+  }
+}
+
 function updateLayersList() {
   const list = $('#layers-list');
   if (!list || !canvas) return;
 
   const objs = canvas.getObjects();
+  const countBadge = $('#layers-count-badge');
+  if (countBadge) countBadge.textContent = objs.length;
+
   if (!objs.length) {
     list.innerHTML = '<div class="layers-empty">Холст пуст.<br>Добавьте текст или фигуру.</div>';
     return;
   }
 
   const activeObj = canvas.getActiveObject();
-  const activeObjects = activeObj ? (activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]) : [];
+  const activeSet = new Set(
+    activeObj?.type === 'activeSelection'
+      ? (activeObj.getObjects?.() || [])
+      : (activeObj ? [activeObj] : [])
+  );
 
   // Рисуем в порядке: верхний слой сверху (обратный от z-индекса в canvas)
   list.innerHTML = [...objs].reverse().map((obj, revIdx) => {
     const realIdx = objs.length - 1 - revIdx;
-    const isActive  = activeObjects.includes(obj);
+    const isActive  = activeSet.has(obj);
     const isHidden  = obj.visible === false;
-    const isLocked  = !obj.selectable;
+    const isLocked  = !obj.selectable || !!obj.lockMovementX;
     const label = escapeHtml(getObjLabel(obj, realIdx));
+    const metaSub = escapeHtml(getObjMetaSubtitle(obj));
     const isTop = realIdx === objs.length - 1;
     const isBottom = realIdx === 0;
 
@@ -5159,16 +5510,25 @@ function updateLayersList() {
          data-idx="${realIdx}" draggable="true">
       <span class="material-symbols-rounded layer-drag-handle" title="Перетащите для изменения порядка слоя">drag_indicator</span>
       ${renderLayerThumb(obj)}
-      <div class="layer-name" title="${label}">${label}</div>
+      <div class="layer-info-col">
+        <div class="layer-name" title="Двойной клик для переименования: ${label}">${label}</div>
+        ${metaSub ? `<div class="layer-meta-sub">${metaSub}</div>` : ''}
+      </div>
       <div class="layer-order-btns">
-        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять на уровень выше" ${isTop ? 'disabled' : ''}>
+        <button class="layer-order-btn" data-action="up" data-idx="${realIdx}" title="Поднять выше (Shift+клик — на передний план)" ${isTop ? 'disabled' : ''}>
           <span class="material-symbols-rounded">keyboard_arrow_up</span>
         </button>
-        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить на уровень ниже" ${isBottom ? 'disabled' : ''}>
+        <button class="layer-order-btn" data-action="down" data-idx="${realIdx}" title="Опустить ниже (Shift+клик — на задний план)" ${isBottom ? 'disabled' : ''}>
           <span class="material-symbols-rounded">keyboard_arrow_down</span>
         </button>
       </div>
       <div class="layer-actions">
+        <button class="layer-action-btn" data-action="rename" data-idx="${realIdx}" title="Переименовать слой">
+          <span class="material-symbols-rounded">edit</span>
+        </button>
+        <button class="layer-action-btn" data-action="dup" data-idx="${realIdx}" title="Дублировать слой">
+          <span class="material-symbols-rounded">content_copy</span>
+        </button>
         <button class="layer-action-btn ${isHidden?'is-off':''}" data-action="vis" data-idx="${realIdx}"
           title="${isHidden?'Показать слой':'Скрыть слой'}">
           <span class="material-symbols-rounded">${isHidden?'visibility_off':'visibility'}</span>
@@ -5186,19 +5546,55 @@ function updateLayersList() {
 
   const rows = list.querySelectorAll('.layer-row');
 
-  /* Клик для выделения */
+  /* Клик для выделения (поддержка Shift/Ctrl мультивыбора) и двойной клик для переименования */
   rows.forEach(row => {
     row.addEventListener('click', e => {
       if (isLayerDragging) return;
+      if (e.target.closest('button') || e.target.closest('input')) return;
+      const idx = +row.dataset.idx;
+      const obj = canvas.getObjects()[idx];
+      if (!obj) return;
+      if (!obj.selectable || obj.lockMovementX) {
+        toast('🔒 Слой заблокирован. Нажмите на замок для разблокировки');
+        return;
+      }
+
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        const cur = canvas.getActiveObject();
+        let selected = [];
+        if (cur?.type === 'activeSelection') {
+          selected = [...cur.getObjects()];
+        } else if (cur) {
+          selected = [cur];
+        }
+        if (selected.includes(obj)) {
+          selected = selected.filter(x => x !== obj);
+        } else {
+          selected.push(obj);
+        }
+        canvas.discardActiveObject();
+        if (selected.length === 1) {
+          canvas.setActiveObject(selected[0]);
+        } else if (selected.length > 1) {
+          const sel = new fabric.ActiveSelection(selected, { canvas });
+          canvas.setActiveObject(sel);
+        }
+        canvas.requestRenderAll();
+        return;
+      }
+
+      if (canvas.getActiveObject() !== obj) {
+        canvas.setActiveObject(obj);
+        canvas.requestRenderAll();
+        if (typeof activateSelectTool === 'function') activateSelectTool(false);
+      }
+    });
+
+    row.addEventListener('dblclick', e => {
       if (e.target.closest('button')) return;
       const idx = +row.dataset.idx;
       const obj = canvas.getObjects()[idx];
-      if (obj && obj.selectable) {
-        canvas.setActiveObject(obj);
-        canvas.requestRenderAll();
-        onSelection();
-        activateSelectTool(false);
-      }
+      if (obj) startInlineLayerRename(row, obj);
     });
   });
 
@@ -5207,6 +5603,7 @@ function updateLayersList() {
 
   rows.forEach(row => {
     row.addEventListener('dragstart', e => {
+      if (row.querySelector('input')) { e.preventDefault(); return; }
       isLayerDragging = true;
       list.classList.add('is-sorting');
       draggedRowIdx = +row.dataset.idx;
@@ -5302,48 +5699,76 @@ function updateLayersList() {
       if (!obj) return;
 
       switch(btn.dataset.action) {
+        case 'rename': {
+          const rowEl = btn.closest('.layer-row');
+          startInlineLayerRename(rowEl, obj);
+          break;
+        }
+
+        case 'dup': {
+          obj.clone(cloned => {
+            cloned.set({
+              left: (obj.left || 0) + 20,
+              top: (obj.top || 0) + 20,
+              evented: true,
+              selectable: true
+            });
+            if (obj.layerName) cloned.layerName = obj.layerName + ' (копия)';
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            canvas.requestRenderAll();
+            saveHistory();
+            updateLayersList();
+            toast('Слой дублирован');
+          }, CANVAS_SERIALIZE_PROPS);
+          break;
+        }
+
         case 'vis':
           obj.set('visible', !obj.visible);
           canvas.requestRenderAll(); saveHistory(); updateLayersList(); break;
 
-        case 'lock':
-          obj.set({ selectable: !obj.selectable, evented: !obj.evented });
-          if (!obj.selectable && canvas.getActiveObject() === obj) {
+        case 'lock': {
+          const willLock = obj.selectable && !obj.lockMovementX;
+          obj.set({
+            selectable: !willLock, evented: !willLock,
+            lockMovementX: willLock, lockMovementY: willLock,
+            lockScalingX: willLock, lockScalingY: willLock, lockRotation: willLock
+          });
+          if (willLock && canvas.getActiveObject() === obj) {
             canvas.discardActiveObject(); clearProps();
           }
-          canvas.requestRenderAll(); saveHistory(); updateLayersList(); break;
+          canvas.renderAll(); saveHistory(); updateLayersList(); break;
+        }
 
         case 'del':
-          if (confirm('Удалить этот слой?')) {
-            canvas.remove(obj);
+          if (canvas.getActiveObject() === obj) {
             canvas.discardActiveObject();
-            canvas.requestRenderAll();
             clearProps();
-            saveHistory();
-            updateLayersList();
           }
+          canvas.remove(obj);
+          canvas.renderAll();
+          saveHistory();
+          updateLayersList();
+          toast('Слой удалён (Ctrl+Z — отменить)');
           break;
 
         case 'up':
-          if (idx < canvas.getObjects().length - 1) {
+          if (e.shiftKey) {
+            obj.bringToFront();
+          } else if (idx < canvas.getObjects().length - 1) {
             obj.bringForward();
-            canvas.setActiveObject(obj);
-            canvas.requestRenderAll();
-            saveHistory();
-            updateLayersList();
-            onSelection();
           }
+          canvas.renderAll(); saveHistory(); updateLayersList();
           break;
 
         case 'down':
-          if (idx > 0) {
+          if (e.shiftKey) {
+            obj.sendToBack();
+          } else if (idx > 0) {
             obj.sendBackwards();
-            canvas.setActiveObject(obj);
-            canvas.requestRenderAll();
-            saveHistory();
-            updateLayersList();
-            onSelection();
           }
+          canvas.renderAll(); saveHistory(); updateLayersList();
           break;
       }
     });
@@ -5357,11 +5782,16 @@ function updateLayersList() {
 function saveHistory() {
   if (savingHistory || !canvas) return;
   savingHistory = true;
-  if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
   const prevBg = canvas.backgroundColor;
   if (canvas.__artboardBg) canvas.backgroundColor = canvas.__artboardBg;
-  history.push(JSON.stringify(canvas.toJSON(CUSTOM_PROPS_TO_SAVE)));
+  const snap = JSON.stringify(canvas.toJSON(CANVAS_SERIALIZE_PROPS));
   canvas.backgroundColor = prevBg;
+  if (historyIdx >= 0 && history[historyIdx] === snap) {
+    savingHistory = false;
+    return;
+  }
+  if (historyIdx < history.length - 1) history = history.slice(0, historyIdx + 1);
+  history.push(snap);
   if (history.length > MAX_HISTORY) history.shift();
   historyIdx = history.length - 1;
   updateHistoryBtns();
@@ -5402,8 +5832,8 @@ function restoreHistory() {
 
 function updateHistoryBtns() {
   const undoBtn = $('#btn-undo');
-  if (undoBtn) undoBtn.disabled = historyIdx <= 0;
   const redoBtn = $('#btn-redo');
+  if (undoBtn) undoBtn.disabled = historyIdx <= 0;
   if (redoBtn) redoBtn.disabled = historyIdx >= history.length - 1;
 }
 
@@ -7825,6 +8255,7 @@ function manualSave() {
    ══════════════════════════════════════════════════════════════ */
 function toast(text) {
   const el = $('#toast');
+  if (!el) { console.warn('[toast]', text); return; }
   el.textContent = text;
   el.classList.remove('hidden');
   clearTimeout(toast._t);
@@ -9206,8 +9637,9 @@ function bindEvents() {
     if (!confirm('Вернуться к шаблонам? Несохранённые изменения будут потеряны.')) return;
     $('#screen-editor').classList.add('hidden');
     $('#screen-templates').classList.remove('hidden');
-    clearInterval(_autosaveTimer);
-    clearTimeout(_debounceSaveTimer);
+    clearInterval(_autosaveTimer); _autosaveTimer = null;
+    clearTimeout(_debounceSaveTimer); _debounceSaveTimer = null;
+    if (canvas?.isDrawingMode) toggleDrawingMode(false);
     canvas?.dispose(); canvas = null;
     history = []; historyIdx = -1;
   });
@@ -9691,7 +10123,9 @@ function bindEvents() {
     });
   });
 
-  $('#btn-layers-refresh').addEventListener('click', updateLayersList);
+  $('#btn-layers-refresh')?.addEventListener('click', updateLayersList);
+  $('#btn-layers-show-all')?.addEventListener('click', showAllLayers);
+  $('#btn-layers-unlock-all')?.addEventListener('click', unlockAllLayers);
 
   /* ── Figma Inspector: Dimensions (X, Y, W, H, ∠, ⌜) ── */
   $('#dim-x')?.addEventListener('input', e => {
@@ -9751,33 +10185,46 @@ function bindEvents() {
   });
   $('#dim-radius')?.addEventListener('change', () => saveHistory());
 
-  $('#fill-hex-input')?.addEventListener('change', e => {
-    const obj = canvas?.getActiveObject(); if (!obj) return;
+  const handleFillHexCommit = (e, commitHistory = true) => {
     let val = e.target.value.trim();
-    if (!val.startsWith('#')) val = '#' + val;
-    if (/^#[0-9A-Fa-f]{3,8}$/.test(val)) {
-      obj.set({ fill: val });
-      if ($('#fill-color-picker')) $('#fill-color-picker').value = val.slice(0, 7);
-      if ($('#text-color-picker')) $('#text-color-picker').value = val.slice(0, 7);
-      const fillChip = $('#fill-color-chip-preview');
-      if (fillChip) fillChip.style.backgroundColor = val;
-      canvas.requestRenderAll();
-      saveHistory();
+    if (!val) return;
+    if (val.toUpperCase() === 'NONE' || val.toLowerCase() === 'transparent') {
+      applyShapeFillColor('transparent', commitHistory);
+      return;
     }
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(val)) {
+      applyShapeFillColor(colorToHex(val), commitHistory);
+    }
+  };
+  $('#fill-hex-input')?.addEventListener('input', e => {
+    const raw = e.target.value.trim();
+    if (/^#?[0-9A-Fa-f]{6}$/.test(raw)) handleFillHexCommit(e, false);
+  });
+  $('#fill-hex-input')?.addEventListener('change', e => handleFillHexCommit(e, true));
+  $('#fill-hex-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); handleFillHexCommit(e, true); }
   });
 
-  $('#stroke-hex-input')?.addEventListener('change', e => {
-    const obj = canvas?.getActiveObject(); if (!obj) return;
+  const handleStrokeHexCommit = (e, commitHistory = true) => {
     let val = e.target.value.trim();
-    if (!val.startsWith('#')) val = '#' + val;
-    if (/^#[0-9A-Fa-f]{3,8}$/.test(val)) {
-      obj.set({ stroke: val });
-      if ($('#stroke-color-picker')) $('#stroke-color-picker').value = val.slice(0, 7);
-      const strokeChip = $('#stroke-color-chip-preview');
-      if (strokeChip) strokeChip.style.backgroundColor = val;
-      canvas.requestRenderAll();
-      saveHistory();
+    if (!val) return;
+    if (val.toUpperCase() === 'NONE' || val.toLowerCase() === 'transparent') {
+      applyShapeStrokeColor('transparent', commitHistory);
+      return;
     }
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(val)) {
+      applyShapeStrokeColor(colorToHex(val), commitHistory);
+    }
+  };
+  $('#stroke-hex-input')?.addEventListener('input', e => {
+    const raw = e.target.value.trim();
+    if (/^#?[0-9A-Fa-f]{6}$/.test(raw)) handleStrokeHexCommit(e, false);
+  });
+  $('#stroke-hex-input')?.addEventListener('change', e => handleStrokeHexCommit(e, true));
+  $('#stroke-hex-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); handleStrokeHexCommit(e, true); }
   });
 
   $('#dim-stroke-w')?.addEventListener('input', e => {
@@ -9974,8 +10421,30 @@ function bindEvents() {
   });
   $('#font-size-slider').addEventListener('change', () => saveHistory());
 
-  $('#font-family-select').addEventListener('change', e => {
+  $('#font-family-select')?.addEventListener('change', e => {
+    $$('#font-family-select option[data-dynamic]').forEach(o => {
+      if (o.value !== e.target.value) o.remove();
+    });
     setFontFamily(e.target.value);
+  });
+
+  $('#btn-font-prev')?.addEventListener('click', () => cycleFontFamily(-1));
+  $('#btn-font-next')?.addEventListener('click', () => cycleFontFamily(1));
+  $('#btn-font-visual-toggle')?.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleVisualFontDropdown();
+  });
+  $('#font-preview-sample')?.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleVisualFontDropdown();
+  });
+  document.addEventListener('click', e => {
+    const dd = $('#font-visual-dropdown');
+    if (dd && !dd.classList.contains('hidden')) {
+      if (!e.target.closest('#font-visual-dropdown') && !e.target.closest('#btn-font-visual-toggle') && !e.target.closest('#font-preview-sample')) {
+        dd.classList.add('hidden');
+      }
+    }
   });
 
   ['bold','italic','underline'].forEach(style => {
@@ -10089,6 +10558,7 @@ function bindEvents() {
     const obj = canvas?.getActiveObject();
     if (obj && obj.shadow) {
       obj.shadow.color = e.target.value;
+      syncSwatches('#text-glow-color-row', e.target.value);
       canvas.renderAll();
     }
   });
@@ -10112,15 +10582,35 @@ function bindEvents() {
     const obj = canvas?.getActiveObject();
     if (obj && ['textbox','text','i-text'].includes(obj.type)) {
       obj.set('stroke', e.target.value);
+      syncSwatches('#text-stroke-color-row', e.target.value);
       canvas.renderAll();
     }
   });
   $('#text-stroke-color-picker')?.addEventListener('change', () => saveHistory());
 
-  $('#text-color-picker').addEventListener('input', e => {
-    const obj = canvas?.getActiveObject(); if (obj) { obj.set('fill', e.target.value); canvas.renderAll(); }
+  $('#text-color-picker')?.addEventListener('input', e => {
+    applyTextColor(e.target.value, false);
   });
-  $('#text-color-picker').addEventListener('change', () => saveHistory());
+  $('#text-color-picker')?.addEventListener('change', e => {
+    applyTextColor(e.target.value, true);
+  });
+
+  const handleTextHexCommit = (e, commitHistory = true) => {
+    let val = e.target.value.trim();
+    if (!val) return;
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(val)) {
+      applyTextColor(colorToHex(val), commitHistory);
+    }
+  };
+  $('#text-hex-val')?.addEventListener('input', e => {
+    const raw = e.target.value.trim();
+    if (/^#?[0-9A-Fa-f]{6}$/.test(raw)) handleTextHexCommit(e, false);
+  });
+  $('#text-hex-val')?.addEventListener('change', e => handleTextHexCommit(e, true));
+  $('#text-hex-val')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); handleTextHexCommit(e, true); }
+  });
 
   /* Цветная подложка / плашка текста */
   $('#btn-text-bg-toggle')?.addEventListener('click', () => {
@@ -10485,22 +10975,27 @@ function bindEvents() {
     }
   });
 
-  $('#stroke-width-slider').addEventListener('input', e => {
+  $('#stroke-width-slider')?.addEventListener('input', e => {
     const obj = canvas?.getActiveObject(); const v = +e.target.value;
-    $('#stroke-width-val').textContent = v;
+    if ($('#stroke-width-val')) $('#stroke-width-val').textContent = v;
+    if ($('#dim-stroke-w')) $('#dim-stroke-w').value = v;
     if (obj) { obj.set('strokeWidth', v); canvas.renderAll(); }
   });
-  $('#stroke-width-slider').addEventListener('change', () => saveHistory());
+  $('#stroke-width-slider')?.addEventListener('change', () => saveHistory());
 
-  $('#fill-color-picker').addEventListener('input', e => {
-    const obj = canvas?.getActiveObject(); if (obj) { obj.set('fill', e.target.value); canvas.renderAll(); }
+  $('#fill-color-picker')?.addEventListener('input', e => {
+    applyShapeFillColor(e.target.value, false);
   });
-  $('#fill-color-picker').addEventListener('change', () => saveHistory());
+  $('#fill-color-picker')?.addEventListener('change', e => {
+    applyShapeFillColor(e.target.value, true);
+  });
 
-  $('#stroke-color-picker').addEventListener('input', e => {
-    const obj = canvas?.getActiveObject(); if (obj) { obj.set('stroke', e.target.value); canvas.renderAll(); }
+  $('#stroke-color-picker')?.addEventListener('input', e => {
+    applyShapeStrokeColor(e.target.value, false);
   });
-  $('#stroke-color-picker').addEventListener('change', () => saveHistory());
+  $('#stroke-color-picker')?.addEventListener('change', e => {
+    applyShapeStrokeColor(e.target.value, true);
+  });
 
   /* ── Скругление углов изображения (Corner Radius) ── */
   $('#img-corner-radius-slider')?.addEventListener('input', e => {

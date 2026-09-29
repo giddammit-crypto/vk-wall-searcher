@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.4.5",
+  "version": "5.4.6",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-09-27T04:20:00+03:00",
-  "release_name": "AURORA 5.4.5 — Search Controls and Phrase Filtering"
+  "commit_date": "2026-09-29T13:50:00+03:00",
+  "release_name": "AURORA 5.4.6 — Улучшенная работа со слоями (переименование, дублирование, мультивыбор, метаданные шрифта/цвета), стабилизация выбора шрифтов и визуальный каталог, фикс работы с цветом текста (HEX, чип, RGBA, частичное выделение) и общий аудит"
 }
