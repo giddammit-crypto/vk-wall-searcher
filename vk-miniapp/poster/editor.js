@@ -2661,7 +2661,8 @@ function initCanvas(w, h) {
         getPencilWidth: () => _pencilWidth,
         getClipboard: () => _clipboard,
         pasteCopiedObject,
-        getCurrentSize: () => currentSize
+        getCurrentSize: () => currentSize,
+        alignActiveObject
       }
     });
   }
@@ -4166,13 +4167,14 @@ function alignActiveObject(alignment) {
   const setLeft = l => obj.set('left', ox === 'center' ? l + ow / 2 : l);
   const setTop  = t => obj.set('top',  oy === 'center' ? t + oh / 2 : t);
 
+  const margin = (window.event && (window.event.altKey || window.event.shiftKey)) ? 24 : 0;
   switch(alignment) {
     case 'center-h': setLeft((w - ow) / 2); break;
     case 'center-v': setTop((h - oh) / 2); break;
-    case 'left':     setLeft(24); break;
-    case 'right':    setLeft(w - ow - 24); break;
-    case 'top':      setTop(24); break;
-    case 'bottom':   setTop(h - oh - 24); break;
+    case 'left':     setLeft(margin); break;
+    case 'right':    setLeft(w - ow - margin); break;
+    case 'top':      setTop(margin); break;
+    case 'bottom':   setTop(h - oh - margin); break;
   }
   obj.setCoords();
   canvas.requestRenderAll();
@@ -4581,12 +4583,13 @@ function groupSelected() {
   const activeObj = canvas?.getActiveObject();
   if (!activeObj) return;
   if (activeObj.type === 'activeSelection') {
-    activeObj.toGroup();
+    const grp = activeObj.toGroup();
+    if (grp) grp.subTargetCheck = true;
     canvas.requestRenderAll();
     saveHistory();
     updateLayersList();
     onSelection();
-    toast('Объекты сгруппированы 📁');
+    toast('Объекты сгруппированы 📁 (Ctrl+G)');
   }
 }
 
@@ -6922,7 +6925,11 @@ function openAiElementModal() {
 }
 
 function closeAiElementModal() {
+  if (typeof window.AuroraAiElements?.closeModal === 'function') {
+    window.AuroraAiElements.closeModal();
+  }
   $('#ai-element-modal-overlay')?.classList.add('hidden');
+  $('#ai-generator-modal-overlay')?.classList.add('hidden');
 }
 
 function renderAiElementsGrid(category = 'all') {
@@ -9760,6 +9767,37 @@ function bindEvents() {
 
     // ── Горячие клавиши Figma ──
     if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const activeObj = canvas?.getActiveObject();
+      const isEditingText = activeObj && activeObj.isEditing;
+      if (isEditingText) return;
+
+      // T / е -> Текст
+      if (e.key === 't' || e.key === 'T' || e.key === 'е' || e.key === 'Е') {
+        e.preventDefault();
+        addText('Новый текст', { fontSize: 24, fontFamily: 'Montserrat', fill: '#ffffff' });
+        toast('Текст добавлен (T) ✍️');
+        return;
+      }
+      // R / к -> Прямоугольник
+      if (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') {
+        e.preventDefault();
+        addRect();
+        toast('Прямоугольник добавлен (R) ▭');
+        return;
+      }
+      // O / щ -> Круг / Эллипс
+      if (e.key === 'o' || e.key === 'O' || e.key === 'щ' || e.key === 'Щ') {
+        e.preventDefault();
+        if (window.AuroraFigmaPro?.addEllipse) window.AuroraFigmaPro.addEllipse();
+        else addCircle();
+        return;
+      }
+      // H / р -> Рука (Hand/Pan tool)
+      if (e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р') {
+        e.preventDefault();
+        setActiveTool(isPanningMode ? 'select' : 'pan', true);
+        return;
+      }
       // I / ш -> Пипетка
       if (e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш') {
         e.preventDefault();
@@ -9872,7 +9910,13 @@ function bindEvents() {
         { id: '#cosmo-modal-overlay', close: closeCosmoModal },
         { id: '#logo-modal-overlay', close: closeLogoModal },
         { id: '#qrcode-modal-overlay', close: closeQrModal },
-        { id: '#hdr-compare-modal-overlay', close: closeHdrCompareModal }
+        { id: '#hdr-compare-modal-overlay', close: closeHdrCompareModal },
+        { id: '#figma-export-modal-overlay', close: closeFigmaExportModal },
+        { id: '#figma-import-modal-overlay', close: closeFigmaImportModal },
+        { id: '#tilda-export-modal-overlay', close: closeTildaExportModal },
+        { id: '#enhancer-modal-overlay', close: closeEnhancerModal },
+        { id: '#photo-import-modal-overlay', close: closePhotoImportModal },
+        { id: '#import-layer-dialog', close: () => $('#import-layer-dialog')?.classList.add('hidden') }
       ];
       for (const m of openModals) {
         const modalEl = $(m.id);
@@ -9880,6 +9924,11 @@ function bindEvents() {
           if (typeof m.close === 'function') m.close();
           return;
         }
+      }
+      const genericModal = document.querySelector('.modal-overlay:not(.hidden)');
+      if (genericModal) {
+        genericModal.classList.add('hidden');
+        return;
       }
 
       // 2. Сброс выделения на холсте и возврат к инструменту стрелки
@@ -11134,6 +11183,10 @@ function bindEvents() {
         const ratio = newZoom / prevZoom;
         canvasArea.scrollLeft = (mouseX * ratio) - (clientX - rect.left);
         canvasArea.scrollTop  = (mouseY * ratio) - (clientY - rect.top);
+      } else if (e.shiftKey) {
+        // Figma-like горизонтальная прокрутка при зажатом Shift
+        e.preventDefault();
+        canvasArea.scrollLeft += e.deltaY;
       }
     }, { passive: false });
 
@@ -11253,20 +11306,14 @@ function bindEvents() {
   $('#btn-import-split-layers')?.addEventListener('click', handleImportSplit);
 
   /* ── Общие ── */
-  $('#btn-center-h').addEventListener('click', () => {
-    const obj = canvas?.getActiveObject(); if (!obj) return;
-    obj.set('left', (currentSize.w - obj.getScaledWidth()) / 2);
-    obj.setCoords(); canvas.renderAll(); saveHistory();
-  });
-  $('#btn-center-v').addEventListener('click', () => {
-    const obj = canvas?.getActiveObject(); if (!obj) return;
-    obj.set('top', (currentSize.h - obj.getScaledHeight()) / 2);
-    obj.setCoords(); canvas.renderAll(); saveHistory();
-  });
+  $('#btn-center-h')?.addEventListener('click', () => alignActiveObject('center-h'));
+  $('#btn-center-v')?.addEventListener('click', () => alignActiveObject('center-v'));
   $('#btn-align-left-canvas')  ?.addEventListener('click', () => alignActiveObject('left'));
   $('#btn-align-right-canvas') ?.addEventListener('click', () => alignActiveObject('right'));
   $('#btn-align-top-canvas')   ?.addEventListener('click', () => alignActiveObject('top'));
   $('#btn-align-bottom-canvas')?.addEventListener('click', () => alignActiveObject('bottom'));
+  $('#btn-distribute-h')?.addEventListener('click', () => window.AuroraFigmaPro?.distributeSelection('h'));
+  $('#btn-distribute-v')?.addEventListener('click', () => window.AuroraFigmaPro?.distributeSelection('v'));
 
   $('#btn-copy')?.addEventListener('click', copyActiveObject);
   $('#btn-paste')?.addEventListener('click', pasteCopiedObject);

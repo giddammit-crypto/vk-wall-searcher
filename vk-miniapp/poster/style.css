@@ -1895,6 +1895,8 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1px;
+  flex-wrap: nowrap;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

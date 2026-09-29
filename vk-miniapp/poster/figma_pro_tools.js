@@ -694,7 +694,206 @@
         if (inInput) return;
         e.preventDefault(); distributeSelection('v'); return;
       }
+
+      // Alt+A / Alt+D / Alt+W / Alt+S — выравнивание (Figma)
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const k = (e.key || '').toLowerCase();
+        let alignMode = null;
+        if (k === 'a' || k === 'ф') alignMode = 'left';
+        else if (k === 'd' || k === 'в') alignMode = 'right';
+        else if (k === 'w' || k === 'ц') alignMode = 'top';
+        else if (k === 's' || k === 'ы') alignMode = 'bottom';
+
+        if (alignMode) {
+          if (inInput) return;
+          e.preventDefault();
+          if (!alignSelection(alignMode) && typeof Pro.hooks.alignActiveObject === 'function') {
+            Pro.hooks.alignActiveObject(alignMode);
+          }
+          return;
+        }
+      }
     }, true); // capture: перехватываем ДО хендлера editor.js
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     14. ALT + НАВЕДЕНИЕ = ИЗМЕРЕНИЕ РАССТОЯНИЙ (Smart Distance / Measurement)
+     Как в Figma: при выделенном объекте зажимаем Alt — показываются
+     расстояния до границ артборда или до объекта под курсором
+     ──────────────────────────────────────────────────────────── */
+  let _isAltDown = false;
+  let _hoveredPeer = null;
+
+  function installAltMeasurement() {
+    const c = canvas();
+    if (!c) return;
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Alt') {
+        const ae = document.activeElement;
+        const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
+        if (inInput) return;
+        if (!_isAltDown) {
+          _isAltDown = true;
+          if (c.getActiveObject()) c.requestRenderAll();
+        }
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      if (e.key === 'Alt') {
+        if (_isAltDown) {
+          _isAltDown = false;
+          _hoveredPeer = null;
+          c.requestRenderAll();
+        }
+      }
+    });
+
+    c.on('mouse:move', opt => {
+      if (!_isAltDown) return;
+      const active = c.getActiveObject();
+      if (!active) return;
+
+      const p = c.getPointer(opt.e);
+      const objs = c.getObjects();
+      let found = null;
+      for (let i = objs.length - 1; i >= 0; i--) {
+        const o = objs[i];
+        if (o === active || !o.visible || o.__isArtboardBg || o.__isGuideLine) continue;
+        if (active.type === 'activeSelection' && active.getObjects().includes(o)) continue;
+        if (o.containsPoint(p)) {
+          found = o;
+          break;
+        }
+      }
+      if (_hoveredPeer !== found) {
+        _hoveredPeer = found;
+        c.requestRenderAll();
+      }
+    });
+
+    c.on('mouse:out', () => {
+      if (_hoveredPeer) {
+        _hoveredPeer = null;
+        c.requestRenderAll();
+      }
+    });
+
+    c.on('selection:cleared', () => {
+      _hoveredPeer = null;
+    });
+
+    c.on('after:render', opt => {
+      if (!_isAltDown) return;
+      const active = c.getActiveObject();
+      if (!active) return;
+      const ctx = opt.ctx;
+      if (!ctx) return;
+
+      const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
+      const isExporting = c._isExporting || (vpt[4] === 0 && vpt[5] === 0 && vpt[0] === 1);
+      if (isExporting) return;
+
+      const pad = (typeof Pro.hooks.CANVAS_PADDING === 'number') ? Pro.hooks.CANVAS_PADDING : 40;
+      const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
+      const size = Pro.currentSize || Pro.hooks.getCurrentSize?.() || { w: 595, h: 842 };
+
+      drawFigmaMeasurement(ctx, active, _hoveredPeer, size, z, pad);
+    });
+  }
+
+  function drawFigmaMeasurement(ctx, active, target, size, z, pad) {
+    const toScreenX = x => (pad + x) * z;
+    const toScreenY = y => (pad + y) * z;
+
+    const aL = active.left, aT = active.top;
+    const aW = active.getScaledWidth(), aH = active.getScaledHeight();
+    const aR = aL + aW, aB = aT + aH;
+    const aCX = aL + aW / 2, aCY = aT + aH / 2;
+
+    const pink = '#f43f5e';
+
+    ctx.save();
+
+    const drawBadge = (txt, sx, sy) => {
+      ctx.save();
+      ctx.font = 'bold 11px sans-serif';
+      const textWidth = ctx.measureText(txt).width;
+      const bw = textWidth + 8;
+      const bh = 18;
+      ctx.fillStyle = pink;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(sx - bw / 2, sy - bh / 2, bw, bh, 4);
+      } else {
+        ctx.rect(sx - bw / 2, sy - bh / 2, bw, bh);
+      }
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(txt, sx, sy);
+      ctx.restore();
+    };
+
+    const drawLineWithBadge = (x1, y1, x2, y2, val) => {
+      if (val <= 0) return;
+      const sx1 = toScreenX(x1), sy1 = toScreenY(y1);
+      const sx2 = toScreenX(x2), sy2 = toScreenY(y2);
+
+      ctx.strokeStyle = pink;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      if (Math.abs(sx1 - sx2) < 2) {
+        ctx.moveTo(sx1 - 4, sy1); ctx.lineTo(sx1 + 4, sy1);
+        ctx.moveTo(sx2 - 4, sy2); ctx.lineTo(sx2 + 4, sy2);
+      } else {
+        ctx.moveTo(sx1, sy1 - 4); ctx.lineTo(sx1, sy1 + 4);
+        ctx.moveTo(sx2, sy2 - 4); ctx.lineTo(sx2, sy2 + 4);
+      }
+      ctx.stroke();
+
+      drawBadge(String(Math.round(val)), (sx1 + sx2) / 2, (sy1 + sy2) / 2);
+    };
+
+    if (target) {
+      const tL = target.left, tT = target.top;
+      const tW = target.getScaledWidth(), tH = target.getScaledHeight();
+      const tR = tL + tW, tB = tT + tH;
+      const tCX = tL + tW / 2, tCY = tT + tH / 2;
+
+      ctx.strokeStyle = pink;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(toScreenX(tL), toScreenY(tT), tW * z, tH * z);
+
+      if (aR < tL) {
+        drawLineWithBadge(aR, (aCY + tCY) / 2, tL, (aCY + tCY) / 2, tL - aR);
+      } else if (aL > tR) {
+        drawLineWithBadge(tR, (aCY + tCY) / 2, aL, (aCY + tCY) / 2, aL - tR);
+      }
+
+      if (aB < tT) {
+        drawLineWithBadge((aCX + tCX) / 2, aB, (aCX + tCX) / 2, tT, tT - aB);
+      } else if (aT > tB) {
+        drawLineWithBadge((aCX + tCX) / 2, tB, (aCX + tCX) / 2, aT, aT - tB);
+      }
+    } else {
+      drawLineWithBadge(aCX, aT, aCX, 0, aT);
+      drawLineWithBadge(aCX, aB, aCX, size.h, size.h - aB);
+      drawLineWithBadge(aL, aCY, 0, aCY, aL);
+      drawLineWithBadge(aR, aCY, size.w, aCY, size.w - aR);
+    }
+
+    ctx.restore();
   }
 
   /* ────────────────────────────────────────────────────────────
@@ -710,6 +909,7 @@
     installAltDragDuplicate();
     installLayerRename();
     installHotkeys();
+    installAltMeasurement();
 
     // Встраиваем peer-snap в object:moving (после родного хендлера editor.js)
     const c = ctx.canvas;
