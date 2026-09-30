@@ -144,10 +144,18 @@ input, select, textarea {
 }
 
 .material-symbols-rounded {
+  font-family: 'Material Symbols Rounded', sans-serif;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   font-size: 18px;
   flex-shrink: 0;
   user-select: none;
   vertical-align: middle;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Стилизация скроллбаров под темный космос */
@@ -1901,13 +1909,20 @@ input, select, textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 2px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 
 .figma-icon-btn {
   width: 26px;
   height: 26px;
-  display: grid;
-  place-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-xs);
   color: var(--text-2);
   background: transparent;
@@ -1915,7 +1930,8 @@ input, select, textarea {
   cursor: pointer;
   transition: all var(--trans-fast);
   padding: 0;
-  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .figma-icon-btn:hover {
@@ -1929,8 +1945,18 @@ input, select, textarea {
   color: var(--figma-blue);
 }
 
+.figma-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
 .figma-icon-btn .material-symbols-rounded {
-  font-size: 17px !important;
+  font-size: 16px !important;
+  line-height: 1;
+  overflow: hidden;
 }
 
 .figma-toolbar-sep {

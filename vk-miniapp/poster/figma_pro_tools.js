@@ -2299,6 +2299,12 @@
 
     document.getElementById('btn-vector-done')?.addEventListener('click', () => finishPenPath(false));
     document.getElementById('btn-vector-close-path')?.addEventListener('click', () => finishPenPath(true));
+    // btn-vector-pen-mode — режим "Точка" (всегда активен пока перо включено, клик — подтверждение)
+    document.getElementById('btn-vector-pen-mode')?.addEventListener('click', () => {
+      // Оставляем перо активным, просто подсвечиваем кнопку
+      document.querySelectorAll('.figma-vector-subtool-btn').forEach(b => b.classList.remove('is-active'));
+      document.getElementById('btn-vector-pen-mode')?.classList.add('is-active');
+    });
   }
 
   /* ────────────────────────────────────────────────────────────
