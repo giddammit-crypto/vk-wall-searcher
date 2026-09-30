@@ -1148,6 +1148,7 @@ let currentSize = SIZES.a4_v;
 if (typeof window !== 'undefined') window.currentSize = currentSize;
 let zoom = 1.0;
 let isGridVisible = false;
+let gridMode = 0; // 0: Без сетки, 1: Крупная, 2: Мельче, 3: Еще мельче (циклический переключатель)
 let isSnappingEnabled = true;
 let smartGuides = { x: null, y: null };
 let history = [];
@@ -2027,7 +2028,10 @@ const CUSTOM_PROPS_TO_SAVE = [
   'lockMovementX', 'lockMovementY', 'lockScalingX', 'lockScalingY', 'lockRotation',
   '__filterValues', '__isUppercase', '__origText', '__isHdrEnhanced', '__currentHdrPreset',
   'layerName', '__originalSrc', '__bgRemoved', '__cornerRadius', 'clipPath',
-  'isAiElement', '__isAiElement', 'isAiPhoto', '__isAiPhoto', 'aiPrompt', '__aiPrompt', 'aiType', '__aiSvg', 'rx', 'ry'
+  'isAiElement', '__isAiElement', 'isAiPhoto', '__isAiPhoto', 'aiPrompt', '__aiPrompt', 'aiType', '__aiSvg', 'rx', 'ry',
+  'isAutoLayout', 'layoutDirection', 'itemSpacing', 'paddingX', 'paddingY', 'alignContent', 'resizeW', 'resizeH',
+  'isMasterComponent', 'isComponentInstance', 'componentId', 'masterComponentId', 'componentOverrides',
+  'colorTokenId', 'fontTokenId'
 ];
 
 /**
@@ -2354,13 +2358,19 @@ function initCanvas(w, h) {
     const ow = obj.getScaledWidth();
     const oh = obj.getScaledHeight();
 
-    // Сетка верстки: мягкое примагничивание к шагу 10px при активной сетке (Alt отключает)
+    // Сетка верстки: мягкое примагничивание к шагу активной сетки (Alt отключает)
     if (isGridVisible && !e.e?.altKey) {
-      const gStep = 10;
+      const isLargeCanvas = (cw >= 1000 || ch >= 1000);
+      let gStep = 10;
+      if (gridMode === 1) gStep = isLargeCanvas ? 60 : 40;
+      else if (gridMode === 2) gStep = isLargeCanvas ? 30 : 20;
+      else if (gridMode === 3) gStep = 10;
+
+      const snapThreshold = Math.min(8, Math.max(4, Math.round(gStep / 4)));
       const snapX = Math.round(obj.left / gStep) * gStep;
       const snapY = Math.round(obj.top  / gStep) * gStep;
-      if (Math.abs(obj.left - snapX) < 5) obj.set({ left: snapX });
-      if (Math.abs(obj.top  - snapY) < 5) obj.set({ top: snapY });
+      if (Math.abs(obj.left - snapX) < snapThreshold) obj.set({ left: snapX });
+      if (Math.abs(obj.top  - snapY) < snapThreshold) obj.set({ top: snapY });
     }
 
     if (!isSnappingEnabled) return;
@@ -2440,17 +2450,40 @@ function initCanvas(w, h) {
     ctx.strokeRect(pad * z, pad * z, cw * z, ch * z);
     ctx.restore();
 
-    // ── 2. ОТРИСОВКА СЕТКИ ВЕРСТКИ (GRID OVERLAY) ──
-    if (isGridVisible) {
+    // ── 2. ОТРИСОВКА СЕТКИ ВЕРСТКИ (GRID OVERLAY: 4-STEP CYCLE) ──
+    if (isGridVisible && gridMode > 0) {
       ctx.save();
 
       const isTildaFormat = (currentSize.name || '').toLowerCase().includes('tilda') || cw >= 1200;
-      const step = (cw >= 1000 || ch >= 1000) ? 40 : 20;
-      const majorStep = step * 5; // 100px или 200px
+      const isLargeCanvas = (cw >= 1000 || ch >= 1000);
+      let step = 20;
+      let majorStep = 100;
+      let thinAlpha = '0.14';
+      let majorAlpha = '0.32';
+
+      if (gridMode === 1) {
+        // 1. Крупная сетка
+        step = isLargeCanvas ? 60 : 40;
+        majorStep = step * 4; // 240px или 160px
+        thinAlpha = '0.16';
+        majorAlpha = '0.36';
+      } else if (gridMode === 2) {
+        // 2. Мельче сетка (средняя)
+        step = isLargeCanvas ? 30 : 20;
+        majorStep = step * 5; // 150px или 100px
+        thinAlpha = '0.13';
+        majorAlpha = '0.28';
+      } else if (gridMode === 3) {
+        // 3. Еще мельче сетка (мелкая)
+        step = 10;
+        majorStep = 50;
+        thinAlpha = '0.08';
+        majorAlpha = '0.22';
+      }
 
       // 1.1 Тонкие модульные линии
       ctx.lineWidth = 0.5;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+      ctx.strokeStyle = `rgba(56, 189, 248, ${thinAlpha})`;
       ctx.beginPath();
       for (let x = step; x < cw; x += step) {
         if (x % majorStep === 0) continue;
@@ -2466,10 +2499,10 @@ function initCanvas(w, h) {
       }
       ctx.stroke();
 
-      // 1.2 Основные линии сетки (каждые 100/200px)
+      // 1.2 Основные линии сетки (каждые majorStep пикселей)
       ctx.beginPath();
       ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.32)';
+      ctx.strokeStyle = `rgba(56, 189, 248, ${majorAlpha})`;
       for (let x = majorStep; x < cw; x += majorStep) {
         const px = Math.round((pad + x) * z) + 0.5;
         ctx.moveTo(px, pad * z);
@@ -2933,16 +2966,49 @@ function addHexagon() {
 }
 
 function toggleGrid() {
-  isGridVisible = !isGridVisible;
+  gridMode = (gridMode + 1) % 4; // 0: Без сетки -> 1: Крупная -> 2: Мельче -> 3: Еще мельче -> 0: Без сетки
+  isGridVisible = (gridMode !== 0);
+
   const frame = $('#canvas-frame');
   const btn = $('#btn-toggle-grid');
-  if (frame) frame.classList.toggle('has-grid', isGridVisible);
+  const label = $('#grid-btn-label') || btn?.querySelector('.hbtn-label');
+
+  if (frame) {
+    frame.classList.toggle('has-grid', isGridVisible);
+    frame.classList.remove('has-grid-large', 'has-grid-medium', 'has-grid-fine');
+    if (gridMode === 1) frame.classList.add('has-grid-large');
+    else if (gridMode === 2) frame.classList.add('has-grid-medium');
+    else if (gridMode === 3) frame.classList.add('has-grid-fine');
+  }
+
   if (btn) {
     btn.classList.toggle('is-active', isGridVisible);
-    btn.title = isGridVisible ? 'Выключить сетку верстки' : 'Включить сетку верстки';
+    if (gridMode === 0) {
+      btn.title = 'Сетка: Без сетки (клик — крупная сетка)';
+      if (label) label.textContent = 'Сетка';
+    } else if (gridMode === 1) {
+      btn.title = 'Сетка: Крупная (~50px) (клик — мельче)';
+      if (label) label.textContent = 'Крупная';
+    } else if (gridMode === 2) {
+      btn.title = 'Сетка: Мельче (~20px) (клик — еще мельче)';
+      if (label) label.textContent = 'Мельче';
+    } else if (gridMode === 3) {
+      btn.title = 'Сетка: Еще мельче (~10px) (клик — выключить)';
+      if (label) label.textContent = 'Мелкая';
+    }
   }
+
   if (canvas) canvas.requestRenderAll();
-  toast(isGridVisible ? 'Сетка верстки включена' : 'Сетка верстки выключена');
+
+  if (gridMode === 0) {
+    toast('Сетка верстки: Без сетки (выкл) ⬜');
+  } else if (gridMode === 1) {
+    toast('Сетка верстки: Крупная сетка 📐');
+  } else if (gridMode === 2) {
+    toast('Сетка верстки: Мельче сетка 📏');
+  } else if (gridMode === 3) {
+    toast('Сетка верстки: Еще мельче сетка 🎯');
+  }
 }
 
 
@@ -4926,6 +4992,9 @@ function clearProps() {
 
   updateLockBtnUI(false);
   updateLayersList();
+  $('#props-autolayout')?.classList.add('hidden');
+  $('#props-component')?.classList.add('hidden');
+  window.AuroraFigmaPro?.renderDesignTokensUI?.();
 }
 
 function onSelection() {
@@ -4934,6 +5003,9 @@ function onSelection() {
 
   $('#props-empty')?.classList.add('hidden');
   $('#props-common')?.classList.remove('hidden');
+
+  window.AuroraFigmaPro?.syncComponentUI?.();
+  window.AuroraFigmaPro?.syncAutoLayoutUI?.();
 
   // ── Универсальный ползунок прозрачности (для ВСЕХ типов объектов) ──
   const opCommon = Math.round((obj.opacity !== undefined ? obj.opacity : 1) * 100);
@@ -5287,6 +5359,19 @@ const LAYER_ICONS = {
 };
 
 function getObjLabel(obj, idx) {
+  if (obj.isMasterComponent) {
+    const name = obj.componentName || obj.layerName || `Component ${idx + 1}`;
+    return `❖ ${name.replace(/^❖\s*/, '')}`;
+  }
+  if (obj.isComponentInstance) {
+    const name = obj.componentName || obj.layerName || `Component ${idx + 1}`;
+    return `◇ ${name.replace(/^◇\s*/, '')}`;
+  }
+  if (obj.isAutoLayout) {
+    const name = obj.layerName || `Auto-Layout Frame`;
+    return `⬚ ${name.replace(/^⬚\s*/, '')}`;
+  }
+
   const isPhoto = !!(obj.isAiPhoto || obj.__isAiPhoto || obj.aiType === 'photo');
   const isAi = !!(obj.isAiElement || obj.__isAiElement || isPhoto);
 
@@ -5320,6 +5405,10 @@ function getObjLabel(obj, idx) {
 
 function getObjMetaSubtitle(obj) {
   if (!obj) return '';
+  if (obj.isMasterComponent) return '❖ Master Component';
+  if (obj.isComponentInstance) return '◇ Instance';
+  if (obj.isAutoLayout) return `Auto-Layout · ${obj.layoutDirection === 'column' ? 'колонка' : 'строка'} · ${Math.round(obj.getScaledWidth?.() || obj.width || 0)}×${Math.round(obj.getScaledHeight?.() || obj.height || 0)}px`;
+
   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
     const ff = normalizeFontName(obj.fontFamily || 'Montserrat');
     const fs = Math.round((obj.fontSize || 36) * (obj.scaleY || 1));
@@ -5340,6 +5429,22 @@ function getObjMetaSubtitle(obj) {
 }
 
 function renderLayerThumb(obj) {
+  if (obj.isMasterComponent) {
+    return `<div class="layer-thumb" style="background:rgba(151,71,255,0.18);border:1px solid rgba(151,71,255,0.4)" title="Главный компонент ❖">
+      <span style="color:#9747ff;font-weight:700;font-size:14px">❖</span>
+    </div>`;
+  }
+  if (obj.isComponentInstance) {
+    return `<div class="layer-thumb" style="background:rgba(13,153,255,0.18);border:1px solid rgba(13,153,255,0.4)" title="Экземпляр компонента ◇">
+      <span style="color:#0d99ff;font-weight:700;font-size:14px">◇</span>
+    </div>`;
+  }
+  if (obj.isAutoLayout) {
+    return `<div class="layer-thumb" style="background:rgba(13,153,255,0.14);border:1px solid rgba(13,153,255,0.3)" title="Auto-Layout Frame">
+      <span class="material-symbols-rounded" style="color:#0d99ff;font-size:18px">auto_awesome_motion</span>
+    </div>`;
+  }
+
   const isAiPhoto = !!(obj.isAiPhoto || obj.__isAiPhoto || obj.aiType === 'photo');
   const isAi = !!(obj.isAiElement || obj.__isAiElement || isAiPhoto);
 
@@ -9903,6 +10008,15 @@ function bindEvents() {
         return;
       }
     }
+
+    // Ctrl + ' / Ctrl + э -> Циклическое переключение сетки верстки (Figma Grid Toggle: 4 шага)
+    if ((e.ctrlKey || e.metaKey) && (e.key === "'" || e.key === 'э' || e.key === 'Э')) {
+      if (inInput) return;
+      e.preventDefault();
+      toggleGrid();
+      return;
+    }
+
     // ── Figma Enter: быстрый вход в редактирование текста ──
     if (e.key === 'Enter' && !inInput && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const activeObj = canvas?.getActiveObject();
@@ -10154,6 +10268,12 @@ function bindEvents() {
   $('#tool-diamond')   ?.addEventListener('click', () => window.AuroraFigmaPro?.addDiamond());
   $('#tool-pentagon')  ?.addEventListener('click', () => window.AuroraFigmaPro?.addPentagon());
   $('#tool-semicircle')?.addEventListener('click', () => window.AuroraFigmaPro?.addSemiCircle());
+
+  /* Figma Pro: Векторное перо, Auto-Layout, Компоненты */
+  $('#tool-pen')?.addEventListener('click', () => window.AuroraFigmaPro?.activatePenTool());
+  $('#btn-header-pen')?.addEventListener('click', () => window.AuroraFigmaPro?.activatePenTool());
+  $('#btn-header-autolayout')?.addEventListener('click', () => window.AuroraFigmaPro?.toggleAutoLayout());
+  $('#btn-header-component')?.addEventListener('click', () => window.AuroraFigmaPro?.createMasterComponent());
 
   /* Figma Pro: тип обводки выделенного объекта */
   $$('.stroke-style-btn').forEach(btn => {

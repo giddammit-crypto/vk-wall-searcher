@@ -3697,7 +3697,16 @@ input, select, textarea {
   background-image: 
     linear-gradient(rgba(56, 189, 248, 0.14) 1px, transparent 1px),
     linear-gradient(90deg, rgba(56, 189, 248, 0.14) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-size: 20px 20px;
+}
+.canvas-frame.has-grid-large {
+  background-size: 40px 40px;
+}
+.canvas-frame.has-grid-medium {
+  background-size: 20px 20px;
+}
+.canvas-frame.has-grid-fine {
+  background-size: 10px 10px;
 }
 
 .hbtn.is-active {

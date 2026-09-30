@@ -1,0 +1,665 @@
+/* ============================================================
+   AURORA DESIGN — FIGMA PROFESSIONAL SUITE
+   Стили для Auto-Layout, Components, Design Tokens & Pen Tool
+   В стиле дизайн-системы Figma Dark UI (#1e1e1e / #2c2c2c)
+   ============================================================ */
+
+/* ════════════════════════════════════════════════════════════
+   1. AUTO-LAYOUT SECTION (#props-autolayout)
+   ════════════════════════════════════════════════════════════ */
+.figma-autolayout-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card, #2c2c2c);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.figma-section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-3, #757575);
+  font-family: -apple-system, BlinkMacSystemFont, monospace;
+}
+
+/* Переключатели направления Auto-Layout */
+.figma-al-dir-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input, #1e1e1e);
+  border: 1px solid var(--border, #383838);
+  border-radius: var(--radius-sm, 4px);
+  padding: 2px;
+  gap: 2px;
+}
+
+.figma-al-dir-btn {
+  flex: 1;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2, #b3b3b3);
+  border-radius: var(--radius-xs, 3px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-al-dir-btn:hover {
+  background: var(--bg-3, #383838);
+  color: var(--text-1, #ffffff);
+}
+
+.figma-al-dir-btn.is-active {
+  background: rgba(13, 153, 255, 0.15);
+  color: var(--figma-blue, #0d99ff);
+  font-weight: 600;
+}
+
+.figma-al-dir-btn .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+/* Комбинированный блок: Матрица выравнивания 3x3 + Распределение */
+.figma-al-layout-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* 3x3 Матрица выравнивания Figma */
+.figma-al-align-matrix {
+  width: 74px;
+  height: 74px;
+  background: var(--bg-input, #1e1e1e);
+  border: 1px solid var(--border, #383838);
+  border-radius: var(--radius-sm, 4px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 2px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.figma-al-matrix-point {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: background var(--trans-fast, 100ms ease);
+}
+
+.figma-al-matrix-point::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-3, #757575);
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-al-matrix-point:hover::after {
+  background: var(--text-1, #ffffff);
+  transform: scale(1.3);
+}
+
+.figma-al-matrix-point.is-active {
+  background: rgba(13, 153, 255, 0.18);
+}
+
+.figma-al-matrix-point.is-active::after {
+  background: var(--figma-blue, #0d99ff);
+  transform: scale(1.5);
+  box-shadow: 0 0 6px var(--figma-blue, #0d99ff);
+}
+
+/* Правая часть настроек отступов и распределения */
+.figma-al-controls-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* Переключатель Packed / Space between */
+.figma-al-dist-select {
+  height: 24px;
+  font-size: 11px;
+}
+
+/* Сетка инпутов Gap & Padding */
+.figma-al-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.figma-input-field.figma-al-field {
+  height: 26px;
+}
+
+.figma-input-field.figma-al-field .figma-input-tag {
+  font-size: 12px;
+  color: var(--text-3, #757575);
+  width: 16px;
+}
+
+/* Режим индивидуальных 4-сторонних отступов (Т, П, Н, Л) */
+.figma-al-individual-paddings {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+  animation: fadeIn 150ms ease;
+}
+
+.figma-al-individual-paddings .figma-input-field {
+  height: 26px;
+  padding: 0 4px;
+  gap: 2px;
+}
+
+.figma-al-individual-paddings .figma-input-tag {
+  font-size: 10px;
+  width: 10px;
+}
+
+.figma-al-individual-paddings input {
+  font-size: 11px;
+}
+
+/* Строка Resizing (Ширина / Высота: Hug, Fixed, Fill) */
+.figma-al-resizing-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   2. COMPONENT SECTION (#props-component)
+   ════════════════════════════════════════════════════════════ */
+.figma-component-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card, #2c2c2c);
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Фирменная кнопка создания компонента Figma (Ctrl+Alt+K) */
+.figma-btn-create-component {
+  width: 100%;
+  height: 32px;
+  background: rgba(151, 71, 255, 0.12);
+  border: 1px solid rgba(151, 71, 255, 0.35);
+  border-radius: var(--radius-sm, 4px);
+  color: #c4b5fd;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-btn-create-component:hover {
+  background: rgba(151, 71, 255, 0.22);
+  border-color: #9747ff;
+  color: #ffffff;
+}
+
+.figma-btn-create-component:active {
+  transform: scale(0.98);
+}
+
+.figma-component-icon-badge {
+  font-size: 14px;
+  line-height: 1;
+  color: #9747ff;
+}
+
+.figma-key-badge-purple {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(151, 71, 255, 0.25);
+  color: #e9d5ff;
+}
+
+/* Карточка активного компонента (Master или Instance) */
+.figma-comp-card {
+  border: 1px solid var(--border, #383838);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-input, #1e1e1e);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.figma-comp-card.is-master {
+  border-left: 3px solid #9747ff;
+}
+
+.figma-comp-card.is-instance {
+  border-left: 3px solid #0d99ff;
+}
+
+.figma-comp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.figma-comp-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.figma-comp-symbol-master {
+  color: #9747ff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.figma-comp-symbol-instance {
+  color: #0d99ff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.figma-comp-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-1, #ffffff);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 4px;
+  width: 140px;
+}
+
+.figma-comp-name-input:hover {
+  border-color: var(--border, #383838);
+}
+
+.figma-comp-name-input:focus {
+  background: var(--bg-2, #2c2c2c);
+  border-color: var(--figma-blue, #0d99ff);
+  outline: none;
+}
+
+.figma-comp-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.figma-comp-badge.badge-master {
+  background: rgba(151, 71, 255, 0.2);
+  color: #d8b4fe;
+}
+
+.figma-comp-badge.badge-instance {
+  background: rgba(13, 153, 255, 0.2);
+  color: #7dd3fc;
+}
+
+/* Панель действий экземпляра (Detach, Go to Master, Reset) */
+.figma-comp-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.figma-comp-btn {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  border-radius: var(--radius-xs, 3px);
+  background: var(--bg-2, #2c2c2c);
+  border: 1px solid var(--border, #383838);
+  color: var(--text-2, #b3b3b3);
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-comp-btn:hover {
+  background: var(--bg-3, #383838);
+  color: var(--text-1, #ffffff);
+}
+
+.figma-comp-btn-detach:hover {
+  border-color: #f24822;
+  color: #fca5a5;
+}
+
+/* Селекторы вариантов (Variants) */
+.figma-variant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.figma-variant-prop-label {
+  font-size: 11px;
+  color: var(--text-2, #b3b3b3);
+}
+
+/* ════════════════════════════════════════════════════════════
+   3. DESIGN TOKENS PANEL (Global Styles & Variables)
+   ════════════════════════════════════════════════════════════ */
+.figma-tokens-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.figma-tokens-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.figma-token-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3, #757575);
+}
+
+.figma-token-add-btn {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--figma-blue, #0d99ff);
+  background: rgba(13, 153, 255, 0.1);
+  border: 1px solid rgba(13, 153, 255, 0.25);
+  border-radius: var(--radius-xs, 3px);
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-token-add-btn:hover {
+  background: rgba(13, 153, 255, 0.2);
+  border-color: var(--figma-blue, #0d99ff);
+  color: #ffffff;
+}
+
+/* Список токенов */
+.figma-token-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.figma-token-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 6px;
+  background: var(--bg-input, #1e1e1e);
+  border: 1px solid var(--border, #383838);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-token-item:hover {
+  background: var(--bg-3, #383838);
+  border-color: var(--hairline-strong, #484848);
+}
+
+.figma-token-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* Превью свотча цвета токена */
+.figma-token-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.4);
+}
+
+/* Превью типографического токена "Ag" */
+.figma-token-typo-badge {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2, #b3b3b3);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.figma-token-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-1, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.figma-token-value {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-3, #757575);
+}
+
+.figma-token-actions {
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity var(--trans-fast, 100ms ease);
+}
+
+.figma-token-item:hover .figma-token-actions {
+  opacity: 1;
+}
+
+/* Кнопка связывания со стилем (4 точки Figma ::) в инспекторе заливки */
+.figma-style-bind-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  color: var(--text-3, #757575);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-style-bind-btn:hover {
+  background: var(--bg-3, #383838);
+  color: var(--figma-blue, #0d99ff);
+}
+
+.figma-style-bind-btn.is-bound {
+  color: var(--figma-blue, #0d99ff);
+}
+
+/* ════════════════════════════════════════════════════════════
+   4. PEN TOOL & BÉZIER VECTOR SUITE
+   ════════════════════════════════════════════════════════════ */
+/* Кнопка Пера в левом сайдбаре */
+.tool-btn.tool-btn-pen.is-active {
+  background: rgba(13, 153, 255, 0.18) !important;
+  color: var(--figma-blue, #0d99ff) !important;
+  font-weight: 600;
+}
+
+.tool-btn.tool-btn-pen .material-symbols-rounded {
+  color: var(--figma-blue, #0d99ff);
+}
+
+/* Верхняя плавающая панель векторного режима (Floating Vector Toolbar) */
+.figma-vector-bar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  height: 38px;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+  user-select: none;
+  animation: slideDownFade 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.figma-vector-mode-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--figma-blue, #0d99ff);
+  border-right: 1px solid var(--border, #383838);
+  margin-right: 2px;
+}
+
+.figma-vector-mode-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--figma-blue, #0d99ff);
+  box-shadow: 0 0 6px var(--figma-blue, #0d99ff);
+  animation: pulseDot 2s infinite;
+}
+
+.figma-vector-subtool-btn {
+  height: 26px;
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2, #b3b3b3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs, 3px);
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+}
+
+.figma-vector-subtool-btn:hover {
+  background: var(--bg-3, #383838);
+  color: var(--text-1, #ffffff);
+}
+
+.figma-vector-subtool-btn.is-active {
+  background: rgba(13, 153, 255, 0.18);
+  border-color: rgba(13, 153, 255, 0.4);
+  color: var(--figma-blue, #0d99ff);
+  font-weight: 600;
+}
+
+.figma-vector-subtool-btn .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+.figma-vector-done-btn {
+  height: 26px;
+  padding: 0 12px;
+  background: var(--figma-blue, #0d99ff);
+  border: none;
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--trans-fast, 100ms ease);
+  margin-left: 4px;
+}
+
+.figma-vector-done-btn:hover {
+  background: var(--figma-blue-hover, #0b85e0);
+  box-shadow: 0 0 10px rgba(13, 153, 255, 0.4);
+}
+
+.figma-vector-done-btn:active {
+  transform: scale(0.96);
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}

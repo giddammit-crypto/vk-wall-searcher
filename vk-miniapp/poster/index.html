@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="enhancer.css?v=5.4.7">
 <link rel="stylesheet" href="ai_elements.css?v=5.4.7">
 <link rel="stylesheet" href="retouch_engine.css?v=5.4.7">
+<link rel="stylesheet" href="figma_inspector.css?v=5.4.8">
 </head>
 <body>
 
@@ -164,9 +165,9 @@
       <div class="figma-topbar-divider"></div>
 
       <!-- Сетка и Магнит -->
-      <button class="hbtn" id="btn-toggle-grid" title="Включить / выключить сетку верстки">
+      <button class="hbtn" id="btn-toggle-grid" title="Сетка верстки: Без сетки (клик — крупная)">
         <span class="material-symbols-rounded">grid_on</span>
-        <span class="hbtn-label">Сетка</span>
+        <span class="hbtn-label" id="grid-btn-label">Сетка</span>
       </button>
       <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка)">
         <svg class="hbtn-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -186,6 +187,15 @@
       </button>
       <button class="hbtn" id="btn-header-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
         <span class="material-symbols-rounded">splitscreen</span>
+      </button>
+      <button class="hbtn" id="btn-header-autolayout" title="Auto-Layout (Shift+A) — автоматическая раскладка">
+        <span class="material-symbols-rounded">auto_awesome_motion</span>
+      </button>
+      <button class="hbtn" id="btn-header-component" title="Создать компонент ❖ (Ctrl+Alt+K)">
+        <span class="material-symbols-rounded">diamond</span>
+      </button>
+      <button class="hbtn" id="btn-header-pen" title="Векторное Перо ✒️ (Shift+P)">
+        <span class="material-symbols-rounded">ink_pen</span>
       </button>
     </div>
 
@@ -316,6 +326,10 @@
       <!-- Группа: Инструменты Figma -->
       <div class="sb-group">
         <div class="sb-label">FIGMA ИНСТРУМЕНТЫ</div>
+        <button class="tool-btn tool-btn-pen" id="tool-pen" title="Векторное Перо — кривые Безье и контуры (Shift+P)">
+          <span class="material-symbols-rounded">ink_pen</span>
+          <span>Перо (Shift+P)</span>
+        </button>
         <button class="tool-btn" id="tool-pencil" title="Карандаш / Свободное рисование (Горячая клавиша: P)">
           <span class="material-symbols-rounded">edit</span>
           <span>Карандаш (P)</span>
@@ -508,6 +522,17 @@
         </div>
         <button class="pbtn pbtn-xs" id="btn-pencil-done" style="padding: 4px 10px; background: #0d99ff; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-size: 11px; font-weight: 600;">Готово (Esc)</button>
       </div>
+
+      <!-- Floating Pen Bar (active when vector pen mode is ON) -->
+      <div id="figma-vector-bar" class="figma-vector-bar hidden">
+        <div class="figma-vector-mode-tag"><div class="figma-vector-mode-dot"></div><span>Векторный контур</span></div>
+        <button class="figma-vector-subtool-btn is-active" id="btn-vector-pen-mode" title="Перо — клик для добавления точек, драг для усов Безье"><span class="material-symbols-rounded">ink_pen</span><span>Точка</span></button>
+        <button class="figma-vector-subtool-btn" id="btn-vector-close-path" title="Замкнуть векторный контур"><span class="material-symbols-rounded">polyline</span><span>Замкнуть</span></button>
+        <div class="figma-toolbar-sep"></div>
+        <input type="color" id="vector-stroke-color" value="#0d99ff" style="width: 22px; height: 22px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
+        <input type="number" id="vector-stroke-w" value="3" min="1" max="40" class="figma-input-sm" style="width: 40px; height: 24px;" title="Толщина линии">
+        <button class="figma-vector-done-btn" id="btn-vector-done" title="Завершить векторный контур (Enter)"><span class="material-symbols-rounded" style="font-size: 15px;">check</span><span>Готово (Enter)</span></button>
+      </div>
     </main>
 
     <!-- ── Правая панель: Figma Design Inspector ── -->
@@ -553,9 +578,185 @@
               <span class="material-symbols-rounded" style="font-size: 15px;">texture</span>
               <span>Сделать фон прозрачным</span>
             </button>
+
+            <!-- ══════ DESIGN TOKENS & LOCAL STYLES (Figma Variables) ══════ -->
+            <div class="figma-tokens-panel" id="figma-design-tokens-panel" style="margin-top: 12px; border-top: 1px solid var(--border, rgba(255,255,255,0.08)); padding-top: 10px;">
+              <div class="figma-section-title">
+                <span>ЛОКАЛЬНЫЕ СТИЛИ И ТОКЕНЫ</span>
+                <button class="figma-token-add-btn" id="btn-add-global-token" title="Создать новый токен цвета">
+                  <span class="material-symbols-rounded" style="font-size: 14px;">add</span>
+                  <span>Токен</span>
+                </button>
+              </div>
+
+              <!-- Цветовые токены -->
+              <div class="figma-tokens-group">
+                <div class="figma-tokens-header">
+                  <span class="figma-token-section-label">Цветовые стили</span>
+                  <span style="font-size: 10px; color: var(--text-3);" id="color-tokens-count">4</span>
+                </div>
+                <div class="figma-token-list" id="tokens-color-list"></div>
+              </div>
+
+              <!-- Типографические токены -->
+              <div class="figma-tokens-group" style="margin-top: 8px;">
+                <div class="figma-tokens-header">
+                  <span class="figma-token-section-label">Стили типографики</span>
+                  <span style="font-size: 10px; color: var(--text-3);" id="text-tokens-count">3</span>
+                </div>
+                <div class="figma-token-list" id="tokens-text-list"></div>
+              </div>
+
+              <!-- Экспорт токенов -->
+              <div style="display: flex; gap: 6px; margin-top: 10px;">
+                <button class="pbtn pbtn-xs" id="btn-export-tokens-css" title="Скопировать в буфер как CSS Variables (:root)">
+                  <span class="material-symbols-rounded" style="font-size: 13px;">code</span>
+                  <span>CSS :root</span>
+                </button>
+                <button class="pbtn pbtn-xs" id="btn-export-tokens-json" title="Экспорт в дизайн-токены JSON">
+                  <span class="material-symbols-rounded" style="font-size: 13px;">file_download</span>
+                  <span>JSON</span>
+                </button>
+              </div>
+            </div>
+
             <div class="figma-empty-hint">
               <span class="material-symbols-rounded" style="font-size:26px; color:var(--text-3);">touch_app</span>
               <p>Выберите объект на холсте, чтобы настроить его параметры</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════ COMPONENT SECTION (Figma Ctrl+Alt+K) ══════ -->
+        <div class="prop-section figma-component-section hidden" id="props-component">
+          <!-- Состояние 1: Кнопка создания компонента -->
+          <div id="comp-create-state">
+            <button class="figma-btn-create-component" id="btn-create-component" title="Превратить выделенный объект в переиспользуемый мастер-компонент">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="figma-component-icon-badge">❖</span>
+                <span>Создать компонент</span>
+              </div>
+              <span class="figma-key-badge-purple">Ctrl+Alt+K</span>
+            </button>
+          </div>
+
+          <!-- Состояние 2: Выбран Главный Компонент (Master Component ◆) -->
+          <div class="figma-comp-card is-master hidden" id="comp-master-state">
+            <div class="figma-comp-header">
+              <div class="figma-comp-title-wrap">
+                <span class="figma-comp-symbol-master" title="Главный компонент">❖</span>
+                <input type="text" class="figma-comp-name-input" id="master-comp-name" value="Component 1" title="Переименовать компонент">
+              </div>
+              <span class="figma-comp-badge badge-master">Master</span>
+            </div>
+          </div>
+
+          <!-- Состояние 3: Выбран Экземпляр (Instance ◇) -->
+          <div class="figma-comp-card is-instance hidden" id="comp-instance-state">
+            <div class="figma-comp-header">
+              <div class="figma-comp-title-wrap">
+                <span class="figma-comp-symbol-instance" title="Экземпляр компонента">◇</span>
+                <span class="figma-token-name" id="instance-comp-name" style="font-weight: 600;">Component 1</span>
+              </div>
+              <span class="figma-comp-badge badge-instance">Instance</span>
+            </div>
+            <div class="figma-comp-actions-row">
+              <button class="figma-comp-btn" id="btn-comp-jump-main" title="Перейти на холсте к главному мастер-компоненту">
+                <span class="material-symbols-rounded" style="font-size: 14px;">center_focus_strong</span>
+                <span>К мастеру</span>
+              </button>
+              <button class="figma-comp-btn" id="btn-comp-reset-overrides" title="Сбросить все локальные оверрайды к мастеру">
+                <span class="material-symbols-rounded" style="font-size: 14px;">restart_alt</span>
+                <span>Сброс</span>
+              </button>
+              <button class="figma-comp-btn figma-comp-btn-detach" id="btn-comp-detach" title="Отсоединить экземпляр и превратить в обычные слои (Ctrl+Alt+B)">
+                <span class="material-symbols-rounded" style="font-size: 14px;">link_off</span>
+                <span>Detach</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════ AUTO LAYOUT SECTION (Figma Shift+A) ══════ -->
+        <div class="prop-section figma-autolayout-section hidden" id="props-autolayout">
+          <div class="figma-section-title">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>AUTO LAYOUT</span>
+              <span class="figma-section-badge">Shift+A</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 2px;">
+              <button class="figma-icon-btn" id="btn-al-remove" title="Удалить Auto-Layout">
+                <span class="material-symbols-rounded">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Направление: В строку / В колонку -->
+          <div class="figma-al-dir-group" id="al-direction-group">
+            <button class="figma-al-dir-btn is-active" id="btn-al-dir-horizontal" data-dir="horizontal" title="Горизонтальная раскладка (Row)">
+              <span class="material-symbols-rounded">arrow_forward</span>
+              <span>В строку</span>
+            </button>
+            <button class="figma-al-dir-btn" id="btn-al-dir-vertical" data-dir="vertical" title="Вертикальная раскладка (Column)">
+              <span class="material-symbols-rounded">arrow_downward</span>
+              <span>В колонку</span>
+            </button>
+          </div>
+
+          <!-- 3x3 Матрица выравнивания + Gap + Padding -->
+          <div class="figma-al-layout-row">
+            <div class="figma-al-align-matrix" id="al-align-matrix" title="Выравнивание дочерних элементов в контейнере">
+              <button class="figma-al-matrix-point" data-align="top-left" title="Сверху слева"></button>
+              <button class="figma-al-matrix-point" data-align="top" title="Сверху по центру"></button>
+              <button class="figma-al-matrix-point" data-align="top-right" title="Сверху справа"></button>
+              <button class="figma-al-matrix-point" data-align="left" title="По левому краю"></button>
+              <button class="figma-al-matrix-point is-active" data-align="center" title="По центру"></button>
+              <button class="figma-al-matrix-point" data-align="right" title="По правому краю"></button>
+              <button class="figma-al-matrix-point" data-align="bottom-left" title="Снизу слева"></button>
+              <button class="figma-al-matrix-point" data-align="bottom" title="Снизу по центру"></button>
+              <button class="figma-al-matrix-point" data-align="bottom-right" title="Снизу справа"></button>
+            </div>
+
+            <div class="figma-al-controls-col">
+              <div class="figma-al-inputs-grid">
+                <div class="figma-input-field figma-al-field" title="Расстояние между объектами (Gap, px)">
+                  <span class="figma-input-tag" title="Gap">⬌</span>
+                  <input type="number" id="al-gap-input" class="figma-input-sm" value="12" min="0" max="200">
+                </div>
+                <div class="figma-input-field figma-al-field" id="al-padding-toggle-wrap" title="Внутренние отступы (Padding)">
+                  <span class="figma-input-tag" title="Padding">⧈</span>
+                  <input type="number" id="al-padding-unified" class="figma-input-sm" value="16" min="0" max="200">
+                </div>
+              </div>
+              <div class="figma-al-inputs-grid" style="margin-top: 4px;">
+                <div class="figma-input-field figma-al-field" title="Горизонтальный отступ (Padding X)">
+                  <span class="figma-input-tag">↔</span>
+                  <input type="number" id="al-padding-x" class="figma-input-sm" value="16" min="0" max="200">
+                </div>
+                <div class="figma-input-field figma-al-field" title="Вертикальный отступ (Padding Y)">
+                  <span class="figma-input-tag">↕</span>
+                  <input type="number" id="al-padding-y" class="figma-input-sm" value="12" min="0" max="200">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Поведение размеров -->
+          <div class="figma-sub-title" style="margin-top: 8px;">ПОВЕДЕНИЕ РАЗМЕРОВ</div>
+          <div class="figma-al-resizing-row">
+            <div style="display: flex; flex-direction: column; gap: 3px; flex: 1;">
+              <span class="figma-sublabel" style="font-size: 10px;">Ширина (W)</span>
+              <select id="al-resize-w" class="figma-select" style="height: 26px; font-size: 11px;">
+                <option value="hug">Hug contents</option>
+                <option value="fixed">Fixed width</option>
+              </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px; flex: 1;">
+              <span class="figma-sublabel" style="font-size: 10px;">Высота (H)</span>
+              <select id="al-resize-h" class="figma-select" style="height: 26px; font-size: 11px;">
+                <option value="hug">Hug contents</option>
+                <option value="fixed">Fixed height</option>
+              </select>
             </div>
           </div>
         </div>
