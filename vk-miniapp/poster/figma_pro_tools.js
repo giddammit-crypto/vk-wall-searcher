@@ -2042,6 +2042,7 @@
   let _penPoints = [];
   let _penDragIndex = -1;
   let _isDraggingPenHandle = false;
+  let _penCursorPos = null; // позиция курсора для ghost-линии предпросмотра
 
   function activatePenTool() {
     const c = canvas();
@@ -2050,6 +2051,14 @@
     _penPoints = [];
     _penDragIndex = -1;
     _isDraggingPenHandle = false;
+    _penCursorPos = null;
+
+    // Деактивируем карандаш (свободное рисование) если он был активен
+    if (c.isDrawingMode) {
+      c.isDrawingMode = false;
+      document.getElementById('tool-pencil')?.classList.remove('is-active', 'active');
+      document.getElementById('pencil-toolbar')?.classList.add('hidden');
+    }
 
     c.defaultCursor = 'crosshair';
     c.hoverCursor = 'crosshair';
@@ -2060,8 +2069,10 @@
     const bar = document.getElementById('figma-vector-bar');
     if (bar) bar.classList.remove('hidden');
 
-    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('is-active'));
-    document.getElementById('tool-pen')?.classList.add('is-active');
+    // Снимаем активность со ВСЕХ инструментов и ставим перо активным
+    document.querySelectorAll('.tool-btn, [id^="tool-"], [id^="mtool-"]').forEach(b => b.classList.remove('is-active', 'active'));
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => el.classList.remove('is-active', 'active'));
+    document.getElementById('tool-pen')?.classList.add('is-active', 'active');
 
     c.requestRenderAll();
     toast('Векторное Перо активно ✒️ Клик — точка, драг — кривая Безье, Enter — завершить');
@@ -2074,6 +2085,7 @@
     _penPoints = [];
     _penDragIndex = -1;
     _isDraggingPenHandle = false;
+    _penCursorPos = null;
 
     c.defaultCursor = 'default';
     c.hoverCursor = 'move';
@@ -2089,7 +2101,10 @@
 
     const bar = document.getElementById('figma-vector-bar');
     if (bar) bar.classList.add('hidden');
-    document.getElementById('tool-pen')?.classList.remove('is-active');
+    document.getElementById('tool-pen')?.classList.remove('is-active', 'active');
+
+    // Восстанавливаем инструмент «Выделение» через хук editor.js
+    activateSelectTool(false);
 
     c.requestRenderAll();
   }
@@ -2173,16 +2188,21 @@
     });
 
     c.on('mouse:move', opt => {
-      if (!_isPenActive || !_isDraggingPenHandle || _penDragIndex < 0) return;
+      if (!_isPenActive) return;
       const p = c.getPointer(opt.e);
-      const anchor = _penPoints[_penDragIndex];
-      if (!anchor) return;
-
-      anchor.cpOut = { x: p.x, y: p.y };
-      anchor.cpIn = {
-        x: anchor.x - (p.x - anchor.x),
-        y: anchor.y - (p.y - anchor.y)
-      };
+      // Всегда обновляем позицию курсора для ghost-линии предпросмотра
+      _penCursorPos = { x: p.x, y: p.y };
+      // Если тянем ручку безье — обновляем контрольные точки
+      if (_isDraggingPenHandle && _penDragIndex >= 0) {
+        const anchor = _penPoints[_penDragIndex];
+        if (anchor) {
+          anchor.cpOut = { x: p.x, y: p.y };
+          anchor.cpIn = {
+            x: anchor.x - (p.x - anchor.x),
+            y: anchor.y - (p.y - anchor.y)
+          };
+        }
+      }
       c.requestRenderAll();
     });
 
@@ -2224,6 +2244,19 @@
         }
       }
       ctx.stroke();
+
+      // Ghost-линия от последней точки до курсора (как в Figma)
+      if (_penCursorPos && _penPoints.length > 0) {
+        const last = _penPoints[_penPoints.length - 1];
+        ctx.strokeStyle = 'rgba(13, 153, 255, 0.5)';
+        ctx.lineWidth = 1.5 * z;
+        ctx.setLineDash([4 * z, 4 * z]);
+        ctx.beginPath();
+        ctx.moveTo(toScreenX(last.x), toScreenY(last.y));
+        ctx.lineTo(toScreenX(_penCursorPos.x), toScreenY(_penCursorPos.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       _penPoints.forEach(pt => {
         if (pt.cpOut) {
@@ -2323,6 +2356,10 @@
     Pro.canvas = ctx.canvas;
     Pro.currentSize = ctx.currentSize || Pro.currentSize;
     Pro.hooks = ctx.hooks || {};
+    // Сохраняем CANVAS_PADDING из ctx (в editor.js это 320, а не 40)
+    if (typeof ctx.CANVAS_PADDING === 'number') {
+      Pro.hooks.CANVAS_PADDING = ctx.CANVAS_PADDING;
+    }
 
     installAltDragDuplicate();
     installLayerRename();
