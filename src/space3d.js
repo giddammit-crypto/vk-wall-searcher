@@ -69,6 +69,12 @@ export class Space3DEngine {
         this.freeDragEnabled = true;
         this.currentLayout = 'orbit'; // 'orbit' | 'arc' | 'grid'
 
+        // Multi-touch gestures (Pinch-to-zoom & two-finger pan)
+        this.activePointers = new Map();
+        this.initialPinchDistance = 0;
+        this.initialPinchZoom = 1.0;
+        this.initialPinchCenter = null;
+
         // Object Drag & Drop State
         this.activeDraggedObject = null;
         this.dragObjectStartPointer = { x: 0, y: 0 };
@@ -1476,34 +1482,69 @@ export class Space3DEngine {
     }
 
     onPointerDown(e) {
-        if (e.target.closest('.space-station-card') || e.target.closest('.space-3d-hud-dock') || e.target.closest('.space-3d-hud-top') || e.target.closest('.space-3d-hint')) {
+        if (e.target.closest('.space-station-card') || e.target.closest('.space-3d-hud-dock') || e.target.closest('.space-3d-hud-top') || e.target.closest('.space-3d-hint') || e.target.closest('.cosmo-expanded')) {
             return;
         }
 
-        this.isDraggingWorld = true;
-        this.lastInteractionTime = performance.now();
-        this.camTween = null; // пользователь перехватывает камеру — tween отменяется
-        this.dragStartX = e.clientX;
-        this.dragStartY = e.clientY;
-        this.dragStartYaw = this.yaw;
-        this.dragStartPitch = this.pitch;
-        this.lastPointerX = e.clientX;
-        this.lastPointerY = e.clientY;
-        this.viewport.classList.add('is-panning');
+        this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (this.isAutoTour) {
-            this.isAutoTour = false;
-            const btn = document.getElementById('space-dock-auto-tour');
-            if (btn) btn.classList.remove('active');
+        if (this.activePointers.size === 1) {
+            this.isDraggingWorld = true;
+            this.lastInteractionTime = performance.now();
+            this.camTween = null; // пользователь перехватывает камеру — tween отменяется
+            this.dragStartX = e.clientX;
+            this.dragStartY = e.clientY;
+            this.dragStartYaw = this.yaw;
+            this.dragStartPitch = this.pitch;
+            this.lastPointerX = e.clientX;
+            this.lastPointerY = e.clientY;
+            if (this.viewport) this.viewport.classList.add('is-panning');
+
+            if (this.isAutoTour) {
+                this.isAutoTour = false;
+                const btn = document.getElementById('space-dock-auto-tour');
+                if (btn) btn.classList.remove('active');
+            }
+        } else if (this.activePointers.size === 2) {
+            const pts = Array.from(this.activePointers.values());
+            this.initialPinchDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+            this.initialPinchZoom = this.targetZoom;
+            this.initialPinchCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
         }
     }
 
     onPointerMove(e) {
         // Параллакс мыши: лёгкое смещение взгляда от позиции курсора
         // (отключается во время драга мира/объекта)
-        if (this.isOpen && !this.isDraggingWorld) {
+        if (this.isOpen && !this.isDraggingWorld && this.activePointers.size === 0) {
             this.mouseNX = e.clientX / Math.max(1, window.innerWidth) - 0.5;
             this.mouseNY = e.clientY / Math.max(1, window.innerHeight) - 0.5;
+        }
+
+        if (this.activePointers.has(e.pointerId)) {
+            this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
+
+        if (this.activePointers.size >= 2) {
+            // Двупальцевый жест: масштабирование (pinch zoom) и панорамирование
+            const pts = Array.from(this.activePointers.values());
+            const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+            if (this.initialPinchDistance > 10 && currentDist > 10) {
+                const scaleFactor = currentDist / this.initialPinchDistance;
+                this.targetZoom = Math.max(this.zoomMin, Math.min(this.zoomMax, this.initialPinchZoom * scaleFactor));
+                this.updateHudTelemetry();
+                this.lastInteractionTime = performance.now();
+            }
+
+            const currentCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+            if (this.initialPinchCenter) {
+                const panDx = currentCenter.x - this.initialPinchCenter.x;
+                const panDy = currentCenter.y - this.initialPinchCenter.y;
+                this.targetYaw -= panDx * 0.15;
+                this.targetPitch = this.softPitchLimit(this.targetPitch + panDy * 0.15);
+                this.initialPinchCenter = currentCenter;
+            }
+            return;
         }
 
         if (!this.isDraggingWorld) return;
@@ -1528,15 +1569,30 @@ export class Space3DEngine {
         }
     }
 
-    onPointerUp() {
-        if (this.isDraggingWorld) {
-            const rotDist = Math.hypot(this.yaw - (this.dragStartYaw ?? this.yaw), this.pitch - (this.dragStartPitch ?? this.pitch));
-            if (rotDist > 25) {
-                SpaceAudio.playVoice('cam_rotate');
-            }
+    onPointerUp(e) {
+        if (e && e.pointerId !== undefined) {
+            this.activePointers.delete(e.pointerId);
+        } else {
+            this.activePointers.clear();
         }
-        this.isDraggingWorld = false;
-        if (this.viewport) this.viewport.classList.remove('is-panning');
+
+        if (this.activePointers.size === 1) {
+            const remaining = Array.from(this.activePointers.values())[0];
+            this.lastPointerX = remaining.x;
+            this.lastPointerY = remaining.y;
+            return;
+        }
+
+        if (this.activePointers.size === 0) {
+            if (this.isDraggingWorld) {
+                const rotDist = Math.hypot(this.yaw - (this.dragStartYaw ?? this.yaw), this.pitch - (this.dragStartPitch ?? this.pitch));
+                if (rotDist > 25) {
+                    SpaceAudio.playVoice('cam_rotate');
+                }
+            }
+            this.isDraggingWorld = false;
+            if (this.viewport) this.viewport.classList.remove('is-panning');
+        }
     }
 
     onWheel(e) {
@@ -1559,6 +1615,11 @@ export class Space3DEngine {
 
     onKeyDown(e) {
         if (!this.isOpen) return;
+
+        // Игнорируем нажатия при вводе текста в полях формы
+        const isInput = e.target && (e.target.matches('input, textarea, select') || e.target.isContentEditable);
+        if (isInput) return;
+
         this.lastInteractionTime = performance.now();
 
         if (e.key === 'Escape') {
@@ -1568,14 +1629,59 @@ export class Space3DEngine {
             } else {
                 this.close();
             }
-        } else if ((e.key === '3' || e.key === 'з' || e.key === 'З') && !e.target.matches('input, textarea, select')) {
-            this.toggle360Mode();
-        } else if ((e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'ч') && !e.target.matches('input, textarea, select')) {
-            this.triggerSupernova();
-        } else if (e.key.toLowerCase() === 'r' && !e.target.matches('input, textarea, select')) {
-            this.resetCamera();
-        } else if (e.key.toLowerCase() === 't' && !e.target.matches('input, textarea, select')) {
+            return;
+        }
+
+        // Клавиатурная 3D навигация (Стрелки, WASD, ЦФЫВ, зум +/- и авто-тур)
+        let handled = false;
+        const key = e.key.toLowerCase();
+
+        if (e.key === 'ArrowLeft' || key === 'a' || key === 'ф') {
+            this.targetYaw += 3.5;
+            handled = true;
+        } else if (e.key === 'ArrowRight' || key === 'd' || key === 'в') {
+            this.targetYaw -= 3.5;
+            handled = true;
+        } else if (e.key === 'ArrowUp' || key === 'w' || key === 'ц') {
+            this.targetPitch = this.softPitchLimit(this.targetPitch + 2.5);
+            handled = true;
+        } else if (e.key === 'ArrowDown' || key === 's' || key === 'ы') {
+            this.targetPitch = this.softPitchLimit(this.targetPitch - 2.5);
+            handled = true;
+        } else if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+            this.targetZoom = Math.min(this.zoomMax, this.targetZoom + 0.1);
+            this.updateHudTelemetry();
+            SpaceAudio.playVoice('zoom_in');
+            handled = true;
+        } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+            this.targetZoom = Math.max(this.zoomMin, this.targetZoom - 0.1);
+            this.updateHudTelemetry();
+            SpaceAudio.playVoice('zoom_out');
+            handled = true;
+        } else if (e.code === 'Space') {
             this.toggleAutoTour();
+            handled = true;
+        } else if (key === '3' || key === 'з') {
+            this.toggle360Mode();
+            handled = true;
+        } else if (key === 'x' || key === 'ч') {
+            this.triggerSupernova();
+            handled = true;
+        } else if (key === 'r' || key === 'к') {
+            this.resetCamera();
+            handled = true;
+        } else if (key === 't' || key === 'е') {
+            this.toggleAutoTour();
+            handled = true;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            this.camTween = null;
+            if (!this.is360Mode) {
+                this.targetYaw = Math.max(-38, Math.min(38, this.targetYaw));
+                this.targetPitch = Math.max(-18, Math.min(18, this.targetPitch));
+            }
         }
     }
 
@@ -2666,7 +2772,10 @@ export class Space3DEngine {
             );
         }
 
-        // Сброс камеры
+        // Сброс камеры и указателей
+        this.activePointers.clear();
+        this.isDraggingWorld = false;
+        if (this.viewport) this.viewport.classList.remove('is-panning');
         this.targetYaw = 0;
         this.targetPitch = 0;
         this.targetZoom = 1.0;
@@ -2770,7 +2879,11 @@ export class Space3DEngine {
 
         cancelAnimationFrame(this.animId);
 
+        this.activePointers.clear();
+        this.isDraggingWorld = false;
+
         if (this.viewport) {
+            this.viewport.classList.remove('is-panning');
             this.viewport.classList.add('hidden');
             this.viewport.setAttribute('aria-hidden', 'true');
         }

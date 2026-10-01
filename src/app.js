@@ -127,7 +127,7 @@ import {
     renderRadarSection
 } from './radar.js?v=4.25.4';
 
-import { Space3D } from './space3d.js?v=5.4.5';
+import { Space3D } from './space3d.js?v=5.5.0';
 import { SpaceWarp } from './space_warp.js?v=4.25.4';
 import { SpaceAudio } from './space_audio.js?v=4.25.4';
 import { Mascot } from './mascot.js?v=4.68.0';

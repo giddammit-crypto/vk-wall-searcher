@@ -461,7 +461,7 @@
 .space-adv-card.success { border-left: 2px solid rgba(104, 238, 160, 0.70); background: linear-gradient(135deg, rgba(104, 238, 160, 0.06), rgba(4, 10, 20, 0.80)); }
 
 
-.v)\ace-adv-card.info { border-left: 2px solid rgba(0, 212, 200, 0.70); background: linear-gradient(135deg, rgba(0, 212, 200, 0.06), rgba(4, 10, 20, 0.80)); }
+.space-adv-card.info { border-left: 2px solid rgba(0, 212, 200, 0.70); background: linear-gradient(135deg, rgba(0, 212, 200, 0.06), rgba(4, 10, 20, 0.80)); }
 
 .space-adv-card.warn { border-left: 2px solid rgba(232, 161, 53, 0.70); background: linear-gradient(135deg, rgba(232, 161, 53, 0.08), rgba(4, 10, 20, 0.80)); }
 
@@ -521,13 +521,142 @@
 .qr-spec-tag { color: var(--nms-amber); background: rgba(232, 161, 53, 0.12); border-color: rgba(232, 161, 53, 0.35); }
 
 
-space-dock-divider { background: linear-gradient(180deg, transparent, rgba(232, 161, 53, 0.25), transparent); }
+.space-dock-divider { background: linear-gradient(180deg, transparent, rgba(232, 161, 53, 0.25), transparent); }
 
 
 .space-card-foot { background: linear-gradient(180deg, rgba(5, 12, 24, 0.92), rgba(3, 8, 18, 0.98)); border-top-color: rgba(232, 161, 53, 0.14); color: rgba(0, 212, 200, 0.55); }
 
+/* ==========================================================================
+   NMS ATLAS CYBERNETIC UPGRADES: COSMONAUT RING & ORBITAL CARDS
+   ========================================================================== */
+
+.cosmo-ring-card-inner {
+    background: linear-gradient(145deg, rgba(8, 16, 32, 0.90) 0%, rgba(3, 8, 18, 0.96) 100%) !important;
+    border: 1px solid rgba(232, 161, 53, 0.35) !important;
+    box-shadow: 
+        0 30px 80px rgba(0, 0, 0, 0.92),
+        0 0 40px rgba(232, 161, 53, 0.16),
+        inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Эпическая голографическая сканирующая сетка NMS */
+.cosmo-ring-card-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 212, 200, 0) 0%,
+        rgba(0, 212, 200, 0.05) 50%,
+        rgba(0, 212, 200, 0) 100%
+    );
+    background-size: 100% 8px;
+    opacity: 0.45;
+}
+
+/* Кибернетический угол-маркер в стиле Atlas Terminal */
+.cosmo-ring-card.is-front .cosmo-ring-card-inner {
+    border-color: rgba(232, 161, 53, 0.75) !important;
+    box-shadow:
+        0 46px 120px rgba(0, 0, 0, 0.96),
+        0 0 65px rgba(232, 161, 53, 0.42),
+        0 0 25px rgba(0, 212, 200, 0.25),
+        inset 0 1px 2px rgba(255, 255, 255, 0.4) !important;
+}
+
+.cosmo-ring-card:hover .cosmo-ring-card-inner {
+    border-color: rgba(0, 212, 200, 0.85) !important;
+    box-shadow:
+        0 42px 115px rgba(0, 0, 0, 0.95),
+        0 0 55px rgba(0, 212, 200, 0.45),
+        inset 0 1px 2px rgba(255, 255, 255, 0.35) !important;
+}
+
+.cosmo-ring-callsign {
+    font-family: 'Space Grotesk', system-ui, sans-serif !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+    background: rgba(232, 161, 53, 0.16) !important;
+    border: 1px solid rgba(232, 161, 53, 0.48) !important;
+    color: #FFE4B0 !important;
+    text-shadow: 0 0 10px rgba(232, 161, 53, 0.6) !important;
+}
+
+.cosmo-ring-index {
+    color: var(--nms-teal) !important;
+    letter-spacing: 0.12em !important;
+    text-shadow: 0 0 8px rgba(0, 212, 200, 0.6) !important;
+}
+
+.cosmo-ring-name {
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 0 20px rgba(232, 161, 53, 0.25) !important;
+    letter-spacing: -0.01em !important;
+}
+
+.cosmo-ring-stat {
+    background: rgba(5, 14, 28, 0.75) !important;
+    border: 1px solid rgba(0, 212, 200, 0.18) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.cosmo-ring-stat-lbl {
+    color: var(--nms-teal) !important;
+    letter-spacing: 0.1em !important;
+}
+
+.cosmo-ring-stat-val {
+    color: #FFFFFF !important;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5) !important;
+}
+
+.cosmo-ring-hud {
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+}
+
+.cosmo-ring-actions {
+    background: linear-gradient(135deg, rgba(8, 16, 32, 0.92), rgba(3, 8, 18, 0.96)) !important;
+    border: 1px solid rgba(232, 161, 53, 0.4) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 32px rgba(232, 161, 53, 0.2) !important;
+}
+
+.cosmo-ring-btn {
+    border: 1px solid rgba(232, 161, 53, 0.25) !important;
+    color: #E4CFFF !important;
+    background: rgba(232, 161, 53, 0.08) !important;
+}
+
+.cosmo-ring-btn:hover {
+    border-color: var(--nms-amber) !important;
+    background: rgba(232, 161, 53, 0.22) !important;
+    color: #FFF !important;
+    box-shadow: 0 0 16px rgba(232, 161, 53, 0.45) !important;
+}
+
+.cosmo-ring-btn-main {
+    background: linear-gradient(135deg, rgba(232, 161, 53, 0.35), rgba(139, 60, 247, 0.35)) !important;
+    border-color: rgba(232, 161, 53, 0.65) !important;
+    color: #FFE4B0 !important;
+    text-shadow: 0 0 10px rgba(232, 161, 53, 0.6) !important;
+}
+
+.cosmo-ring-progress {
+    background: rgba(3, 8, 18, 0.8) !important;
+    border: 1px solid rgba(232, 161, 53, 0.3) !important;
+}
+
+.cosmo-ring-progress i {
+    background: linear-gradient(90deg, var(--nms-amber), var(--nms-teal), var(--nms-violet)) !important;
+    box-shadow: 0 0 14px var(--nms-teal) !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
+    .cosmo-ring-card-inner::before { animation: none !important; }
     .space-station-card::before, #space-3d-viewport::after, #space-3d-world::before {
         animation: none !important;
     }
