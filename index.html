@@ -223,6 +223,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://api.vk.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="preload" href="assets/fonts/material-symbols-outlined.woff2" as="font" type="font/woff2" crossorigin>
 
     <link rel="stylesheet" href="style.css?v=5.5.0">
     <link rel="stylesheet" href="src/theme_figma.css?v=5.0.0">
@@ -2782,5 +2783,17 @@
         </svg>
         <span class="material-symbols-outlined scroll-icon">arrow_upward</span>
     </button>
+    <!-- P-5: Service Worker Registration -->
+    <script>
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js').then(function(reg) {
+                console.debug('[SW] Registered successfully:', reg.scope);
+            }).catch(function(err) {
+                console.debug('[SW] Registration failed:', err);
+            });
+        });
+    }
+    </script>
 </body>
 </html>

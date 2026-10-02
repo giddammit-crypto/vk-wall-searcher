@@ -5,6 +5,17 @@
 /* ==========================================================================
    Космический акцидентный шрифт Shoptronic SP (ofont.ru/view/6037)
    ========================================================================== */
+/* ==========================================================================
+   P-1: Self-hosted Material Symbols Outlined
+   ========================================================================== */
+@font-face {
+    font-family: 'Material Symbols Outlined';
+    font-style: normal;
+    font-weight: 100 700;
+    src: url('assets/fonts/material-symbols-outlined.woff2') format('woff2');
+    font-display: block;
+}
+
 @font-face {
     font-family: 'Shoptronic SP';
     src: url('assets/fonts/ShoptronicSP-Regular.woff2') format('woff2'),
