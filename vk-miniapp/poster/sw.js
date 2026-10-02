@@ -3,7 +3,7 @@
  * Provides resilient offline caching for static assets, styles, scripts and templates.
  */
 
-const CACHE_NAME = 'aurora-poster-v5.7.1';
+const CACHE_NAME = 'aurora-poster-v5.7.2';
 
 const PRECACHE_ASSETS = [
   './',
@@ -15,6 +15,7 @@ const PRECACHE_ASSETS = [
   './figma_inspector.css',
   './bg-removal-panel.css',
   './editor.js',
+  './a11y.js',
   './figma_pro_tools.js',
   './ai_elements.js',
   './enhancer.js',

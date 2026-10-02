@@ -7,10 +7,31 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-// CORS Headers
-header('Access-Control-Allow-Origin: *');
+// ── CORS: только разрешённые origins (п. P1-4 плана аудита) ────────────────
+// Раньше стоял 'Access-Control-Allow-Origin: *' — любой сайт мог дёргать наш
+// прокси и расходовать квоту ИИ. Редактор работает same-origin (ai_proxy.php
+// лежит рядом с index.html), поэтому ACAO нужен только для явного кросс-origin
+// (локальная разработка, отладка внутри ВК).
+$allowedOrigins = [
+    'https://biblioteka33.ru',
+    'https://www.biblioteka33.ru',
+    'http://localhost:8410',
+    'http://localhost:8412',
+    'http://127.0.0.1:8410',
+    'http://127.0.0.1:8412',
+];
+$clientOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($clientOrigin !== '' && in_array($clientOrigin, $allowedOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $clientOrigin);
+    header('Vary: Origin');
+    header('Access-Control-Allow-Credentials: false');
+}
+// Без совпадения ACAO не отправляется: браузер заблокирует кросс-origin запрос,
+// а same-origin-запросы редактора продолжают работать как раньше.
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);

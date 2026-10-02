@@ -3152,7 +3152,8 @@
       bindCanvas,
       setCanvas: bindCanvas,
       updateBrushParams: updateActiveBrushParams,
-      getActiveBrushKind: () => _currentBrushKind,
+      // getActiveBrushKind объявлен выше в списке (именованная функция с фолбэком
+      // 'pencil'); дубль-стрелка удалена — ESLint no-dupe-keys.
       hexToRgba,
       setCurrentSize(s) { Pro.currentSize = s; },
       install
@@ -3168,7 +3169,7 @@
     copyObjectStyle, applyObjectStyle, pasteInPlace,
     addTriangle, addEllipse, addSemiCircle, addPentagon, addDiamond,
     setStrokeStyle, getStrokeKind, syncStrokeStyleUI, DASH_PRESETS,
-    applyBrushKind, updateActiveBrushParams, getActiveBrushKind: () => _currentBrushKind, peerSnap,
+    applyBrushKind, updateActiveBrushParams, getActiveBrushKind, peerSnap,
     triggerLayerRename, toggleLockSelection, toggleHideSelection,
     exportSelectedObject, applyOpacityValue,
     // Auto-Layout
@@ -3191,7 +3192,7 @@
     bindCanvas,
     setCanvas: bindCanvas,
     updateBrushParams: updateActiveBrushParams,
-    getActiveBrushKind: () => _currentBrushKind,
+    // дубль getActiveBrushKind удалён (см. список выше) — ESLint no-dupe-keys
     hexToRgba,
     setCurrentSize(s) { Pro.currentSize = s; },
     install

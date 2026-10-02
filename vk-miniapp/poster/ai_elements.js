@@ -58,13 +58,13 @@
       return 'ai_proxy.php';
     })(),
     MODELS: [
-      { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (100% Free)' },
-      { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (100% Free)' },
-      { id: 'qwen/qwen3.7-plus:free', name: 'Qwen 3.7 Plus (100% Free)' },
-      { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus (100% Free)' },
-      { id: 'qwen/qwen3.7-flash:free', name: 'Qwen 3.7 Flash (100% Free)' },
-      { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen 3.8 Omni Flash (100% Free)' },
-      { id: 'qwen/qwen3.5-flash:free', name: 'Qwen 3.5 Flash (100% Free)' }
+      { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max' },
+      { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max' },
+      { id: 'qwen/qwen3.7-plus:free', name: 'Qwen 3.7 Plus' },
+      { id: 'qwen/qwen3.6-plus:free', name: 'Qwen 3.6 Plus' },
+      { id: 'qwen/qwen3.7-flash:free', name: 'Qwen 3.7 Flash' },
+      { id: 'qwen/qwen3.8-omni-flash:free', name: 'Qwen 3.8 Omni Flash' },
+      { id: 'qwen/qwen3.5-flash:free', name: 'Qwen 3.5 Flash' }
     ],
     MAX_TOKENS: 8192,
     REQUEST_TIMEOUT_MS: 45000,
@@ -1216,7 +1216,7 @@
       throw new Error(`Недостаточно токенов для глубокого фото-анализа (требуется от 100 000 до 150 000 токенов). Доступно: ${tracker.getRemaining().toLocaleString('ru-RU')} токенов. Сброс лимита через ${cd.human}.`);
     }
 
-    // 1. Четырехэтапный промпт-инжиниринг через Qwen 3.8 Max (100% Free, 100 000 - 150 000 токенов)
+    // 1. Четырехэтапный промпт-инжиниринг через Qwen 3.8 Max (100 000 - 150 000 токенов)
     const llmResult = await engineerPhotographicMasterPrompt(userPrompt, presetKey, {
       ...options,
       onStatus

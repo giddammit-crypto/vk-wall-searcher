@@ -5377,3 +5377,33 @@ input, select, textarea {
 }
 
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   P2-3 ДОСТУПНОСТЬ: глобальное кольцо фокуса + reduced-motion
+   В style.css 14 правил с `outline: none`, а :focus-visible описан лишь для
+   5 селекторов — Tab «проглатывал» фокус. Правило стоит в самом конце файла,
+   поэтому перекрывает все предыдущие сбросы.
+   ══════════════════════════════════════════════════════════════════════════ */
+:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--figma-blue, #0d99ff) !important;
+  outline-offset: 2px !important;
+}
+
+/* Отключаем анимации для пользователей с prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -4341,7 +4341,9 @@ function duplicateAndNudgeActiveObject(dx, dy) {
     canvas.requestRenderAll();
     saveHistory();
     updateLayersList();
-    syncUI();
+    // ESLint no-undef: раньше здесь стояла несуществующая syncUI() — ReferenceError
+    // обрывал колбэк и тост не показывался. Синхронизируем инспектор существующей onSelection().
+    onSelection();
     toast('Объект продублирован и сдвинут (Alt+Стрелка) 📋');
   }, CUSTOM_PROPS_TO_SAVE);
 }
@@ -9959,7 +9961,8 @@ function bindEvents() {
           saveHistory();
           scheduleAutosave();
         }, 300);
-        syncUI();
+        // Было syncUI() (не объявлена) — ReferenceError обрывал обработчик клавиш.
+        onSelection();
         return;
       }
     }
