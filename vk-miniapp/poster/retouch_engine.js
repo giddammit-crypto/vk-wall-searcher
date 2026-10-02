@@ -32,9 +32,15 @@
   }
   if (root) {
     root.AuroraRetouchEngine = exportsObj;
+    root.openRetouchModal = exportsObj.openRetouchModal;
+    root.openInstagramRetouchModal = exportsObj.openInstagramRetouchModal;
+    root.closeRetouchModal = exportsObj.closeRetouchModal;
   }
   if (typeof window !== 'undefined') {
     window.AuroraRetouchEngine = exportsObj;
+    window.openRetouchModal = exportsObj.openRetouchModal;
+    window.openInstagramRetouchModal = exportsObj.openInstagramRetouchModal;
+    window.closeRetouchModal = exportsObj.closeRetouchModal;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this), function () {
   'use strict';
@@ -595,13 +601,19 @@
     imgObj.filters = [];
 
     if (k <= 0.001) {
-      imgObj.applyFilters();
+      if (imgObj.__originalFilters && imgObj.__originalFilters.length) {
+        imgObj.filters = [...imgObj.__originalFilters];
+      }
+      if (typeof imgObj.applyFilters === 'function') {
+        imgObj.applyFilters();
+      }
+      imgObj.dirty = true;
       if (imgObj.canvas) imgObj.canvas.requestRenderAll();
       return;
     }
 
     // 1. ColorMatrix фильтр Fabric.js
-    if (preset.colorMatrix && fabric.Image.filters.ColorMatrix) {
+    if (preset.colorMatrix && fabric.Image?.filters?.ColorMatrix) {
       const pMatrix = preset.colorMatrix;
       const interpMatrix = [];
       for (let i = 0; i < 20; i++) {
@@ -613,23 +625,23 @@
     }
 
     // 2. Brightness
-    if (preset.brightness && fabric.Image.filters.Brightness) {
+    if (preset.brightness && fabric.Image?.filters?.Brightness) {
       imgObj.filters.push(new fabric.Image.filters.Brightness({ brightness: preset.brightness * k }));
     }
 
     // 3. Contrast (с учетом пользовательской подстройки)
     const effectiveContrast = (preset.contrast || 0) * k + (userContrast / 100.0) * 0.35;
-    if (effectiveContrast !== 0 && fabric.Image.filters.Contrast) {
+    if (effectiveContrast !== 0 && fabric.Image?.filters?.Contrast) {
       imgObj.filters.push(new fabric.Image.filters.Contrast({ contrast: effectiveContrast }));
     }
 
     // 4. Saturation
-    if (preset.saturation && fabric.Image.filters.Saturation) {
+    if (preset.saturation && fabric.Image?.filters?.Saturation) {
       imgObj.filters.push(new fabric.Image.filters.Saturation({ saturation: preset.saturation * k }));
     }
 
     // 5. Convolve
-    if (preset.convolve && fabric.Image.filters.Convolve) {
+    if (preset.convolve && fabric.Image?.filters?.Convolve) {
       imgObj.filters.push(new fabric.Image.filters.Convolve({
         matrix: preset.convolve,
         opaque: false
@@ -637,7 +649,7 @@
     }
 
     // 6. BlendColor
-    if (preset.blendColor && fabric.Image.filters.BlendColor) {
+    if (preset.blendColor && fabric.Image?.filters?.BlendColor) {
       imgObj.filters.push(new fabric.Image.filters.BlendColor({
         color: preset.blendColor,
         mode: preset.blendMode || 'tint',
@@ -645,14 +657,17 @@
       }));
     }
 
-    imgObj.applyFilters();
+    imgObj.dirty = true;
+    if (typeof imgObj.applyFilters === 'function') {
+      imgObj.applyFilters();
+    }
     if (imgObj.canvas) imgObj.canvas.requestRenderAll();
   }
 
   /**
-   * Накладывает глобальную ретушь на весь холст Fabric.js в реальном времени.
+   * Накладывает глобальную ретушь на холст Fabric.js в реальном времени.
    * Применяет фильтры ко всем растровым слоям (включая вложенные в fabric.Group и фон),
-   * накладывает стилизованный глобальный оверлей тонирования листа (__artboardGradeOverlay),
+   * аккуратно тонирует лист подложкой (__artboardGradeOverlay) БЕЗ перекрытия текста и элементов,
    * и сохраняет действие в историю (Ctrl+Z).
    *
    * @param {fabric.Canvas} fabricCanvas
@@ -686,9 +701,9 @@
       applyFabricImageRetouch(c.backgroundImage, preset, intensity, fineTune);
     }
 
-    // 3. Создаем или обновляем глобальный оверлей тонирования листа (__artboardGradeOverlay)
+    // 3. Создаем или обновляем деликатный оверлей тонирования листа (__artboardGradeOverlay)
     let overlay = c.__artboardGradeOverlay;
-    if (k <= 0.001) {
+    if (k <= 0.001 || !preset.blendColor) {
       if (overlay) {
         c.remove(overlay);
         c.__artboardGradeOverlay = null;
@@ -703,7 +718,9 @@
       : { w: (window.currentSize?.w || 595), h: (window.currentSize?.h || 842) };
 
     const overlayColor = preset.blendColor || '#f59e0b';
-    const overlayAlpha = (preset.blendAlpha || 0.12) * k;
+    // Аккуратная тонкая прозрачность тонирования (не глушит и не перекрывает макет)
+    const overlayAlpha = Math.min(0.12, (preset.blendAlpha || 0.08) * k);
+    const blendMode = preset.blendMode || 'soft-light';
 
     if (!overlay || !c.contains(overlay)) {
       overlay = new fabric.Rect({
@@ -713,23 +730,46 @@
         height: dims.h,
         fill: overlayColor,
         opacity: overlayAlpha,
+        globalCompositeOperation: blendMode,
         selectable: false,
         evented: false,
+        hoverCursor: 'default',
         excludeFromLayers: true,
         __isHelper: true,
         __isGradeOverlay: true
       });
       c.__artboardGradeOverlay = overlay;
       c.add(overlay);
-      c.bringToFront(overlay);
     } else {
       overlay.set({
         width: dims.w,
         height: dims.h,
         fill: overlayColor,
-        opacity: overlayAlpha
+        opacity: overlayAlpha,
+        globalCompositeOperation: blendMode,
+        selectable: false,
+        evented: false
       });
-      c.bringToFront(overlay);
+    }
+
+    // ВАЖНО: Размещаем оверлей НЕ на самом верху (bringToFront),
+    // а непосредственно над фоном и растровыми фото, не перекрывая текстовые слои!
+    const allObjs = c.getObjects ? c.getObjects() : [];
+    let maxBaseIdx = -1;
+    for (let i = 0; i < allObjs.length; i++) {
+      const o = allObjs[i];
+      if (o === overlay) continue;
+      if (o.__isArtboardBg || o.type === 'image' || o.__isBackground) {
+        maxBaseIdx = i;
+      }
+    }
+
+    if (maxBaseIdx >= 0) {
+      const targetIdx = Math.min(allObjs.length - 1, maxBaseIdx + 1);
+      c.moveTo(overlay, targetIdx);
+    } else {
+      const targetIdx = allObjs.length > 1 ? 1 : 0;
+      c.moveTo(overlay, targetIdx);
     }
 
     c.requestRenderAll();
@@ -779,7 +819,7 @@
       vignette: Number(options.vignette || 0)
     };
 
-    // 1. Получаем чистый растровый артборд афиши в 2x качестве
+    // 1. Получаем чистый растровый артборд афиши (1x для легковесного превью, 2x для чистового экспорта)
     const renderArtboard = (typeof window.renderCleanArtboardCanvas === 'function')
       ? window.renderCleanArtboardCanvas
       : (window.PosterEnhancer?.renderCleanArtboardCanvas || null);
@@ -788,14 +828,30 @@
       throw new Error('Функция renderCleanArtboardCanvas недоступна');
     }
 
-    // Рендерим артборд без служебных рамок и монтажного стола с множителем 2.0
-    const cleanArtboard = renderArtboard(c, 2.0);
+    const isPreview = !!options.previewMode;
+    const artboardScale = isPreview ? 1.0 : 2.0;
+    const cleanArtboard = renderArtboard(c, artboardScale);
     const origW = cleanArtboard.width;
     const origH = cleanArtboard.height;
 
-    // Целевые размеры Instagram
-    const targetW = formatMeta.width || origW;
-    const targetH = formatMeta.height || origH;
+    // Целевые размеры Instagram: для превью оптимизируем ширину ~540px, для скачивания — полное разрешение
+    let targetW, targetH;
+    if (isPreview) {
+      if (formatKey === 'original') {
+        const pScale = Math.min(1.0, 540 / (origW || 540));
+        targetW = Math.max(320, Math.round(origW * pScale));
+        targetH = Math.max(320, Math.round(origH * pScale));
+      } else {
+        const fullW = formatMeta.width || 1080;
+        const fullH = formatMeta.height || 1350;
+        const pScale = 540 / fullW;
+        targetW = 540;
+        targetH = Math.round(fullH * pScale);
+      }
+    } else {
+      targetW = formatMeta.width || origW;
+      targetH = formatMeta.height || origH;
+    }
 
     // Создаем целевой Canvas
     const outCanvas = document.createElement('canvas');
@@ -822,7 +878,7 @@
 
       ctx.save();
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = isPreview ? 'medium' : 'high';
       ctx.drawImage(cleanArtboard, cropX, cropY, cropW, cropH);
       ctx.restore();
 
@@ -838,7 +894,7 @@
       ctx.fillStyle = typeof artboardBg === 'string' ? artboardBg : '#0c1222';
       ctx.fillRect(0, 0, targetW, targetH);
 
-      const margin = 50;
+      const margin = isPreview ? 25 : 50;
       const fitScale = Math.min((targetW - margin * 2) / origW, (targetH - margin * 2) / origH);
       const fitW = origW * fitScale;
       const fitH = origH * fitScale;
@@ -848,8 +904,8 @@
       // Тень для отделения афиши от фона
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-      ctx.shadowBlur = 32;
-      ctx.shadowOffsetY = 12;
+      ctx.shadowBlur = isPreview ? 16 : 32;
+      ctx.shadowOffsetY = isPreview ? 6 : 12;
       ctx.drawImage(cleanArtboard, fitX, fitY, fitW, fitH);
       ctx.restore();
 
@@ -867,8 +923,9 @@
     const bgX = (targetW - bgW) / 2;
     const bgY = (targetH - bgH) / 2;
 
+    const blurRadius = isPreview ? 20 : 42;
     ctx.save();
-    ctx.filter = 'blur(42px) brightness(0.68) saturate(1.25)';
+    ctx.filter = `blur(${blurRadius}px) brightness(0.68) saturate(1.25)`;
     ctx.drawImage(cleanArtboard, bgX, bgY, bgW, bgH);
     ctx.restore();
 
@@ -883,7 +940,7 @@
     ctx.fillRect(0, 0, targetW, targetH);
 
     // 2. Размещаем резкий макет по центру с отступами и аккуратной тенью
-    const pad = targetW > 1080 ? 64 : 48;
+    const pad = isPreview ? (targetW > 540 ? 32 : 24) : (targetW > 1080 ? 64 : 48);
     const fitScale = Math.min((targetW - pad * 2) / origW, (targetH - pad * 2) / origH);
     const fitW = Math.round(origW * fitScale);
     const fitH = Math.round(origH * fitScale);
@@ -892,15 +949,15 @@
 
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.60)';
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetY = 16;
+    ctx.shadowBlur = isPreview ? 20 : 40;
+    ctx.shadowOffsetY = isPreview ? 8 : 16;
     ctx.drawImage(cleanArtboard, fitX, fitY, fitW, fitH);
     ctx.restore();
 
     // Тонкая рамка вокруг постера
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = isPreview ? 1.0 : 1.5;
     ctx.strokeRect(fitX, fitY, fitW, fitH);
     ctx.restore();
 
@@ -915,12 +972,19 @@
   /**
    * Скачивание готового Instagram файла
    */
+  /**
+   * Скачивание готового Instagram файла (в максимальном 1080p разрешении)
+   */
   async function downloadInstagramPoster(fabricCanvas, options = {}) {
     const fileType = options.fileType || 'jpg'; // 'jpg' | 'png'
     const formatKey = options.formatKey || 'portrait';
     const presetKey = options.presetKey || 'warm_glow';
 
-    const canvasBuffer = await renderInstagramPosterCanvas(fabricCanvas, options);
+    // Явно отключаем previewMode для скачивания в сверхчетком оригинальном качестве
+    const canvasBuffer = await renderInstagramPosterCanvas(fabricCanvas, {
+      ...options,
+      previewMode: false
+    });
 
     const titleInput = document.getElementById('poster-title');
     const safeTitle = (titleInput ? titleInput.value.trim() : 'Афиша')
@@ -950,55 +1014,239 @@
   /* ══════════════════════════════════════════════════════════════
      МОДАЛЬНЫЙ ИНТЕРФЕЙС И СОБЫТИЯ (FIGMA STUDIO UI)
      ══════════════════════════════════════════════════════════════ */
+  let isModalInitialized = false;
+  let modalOverlayEl = null;
+
+  let currentPreset = 'warm_glow';
+  let currentFormat = 'portrait';
+  let currentFraming = 'blur';
+  let currentIntensity = 85;
+  let currentWarmth = 0;
+  let currentContrast = 0;
+  let currentVignette = 0;
+
+  let isSplitMode = true;
+  let splitRatio = 0.50; // 0..1
+  let isDraggingSplit = false;
+
+  let cachedRawCanvas = null;
+  let cachedBeforeCanvas = null;
+  let cachedAfterCanvas = null;
+  let renderDebounceTimer = null;
+  let isRendering = false;
+
+  // DOM Elements cache
+  let elPreviewCanvas = null;
+  let elSplitViewport = null;
+  let elSplitDivider = null;
+  let elBtnToggleSplit = null;
+  let elSplitToggleText = null;
+  let elPresetsGrid = null;
+  let elIntensitySlider = null;
+  let elIntensityValLabel = null;
+  let elWarmthSlider = null;
+  let elWarmthValLabel = null;
+  let elContrastSlider = null;
+  let elContrastValLabel = null;
+  let elVignetteSlider = null;
+  let elVignetteValLabel = null;
+  let elMetaFormatLabel = null;
+  let elLoaderWrap = null;
+
+  function updateMetaLabel() {
+    if (!elMetaFormatLabel) {
+      elMetaFormatLabel = document.getElementById('retouch-meta-format');
+    }
+    if (!elMetaFormatLabel) return;
+    const meta = INSTAGRAM_FORMATS[currentFormat];
+    if (meta && meta.width) {
+      elMetaFormatLabel.textContent = `${meta.name} · ${meta.width} × ${meta.height} px`;
+    } else {
+      elMetaFormatLabel.textContent = 'Оригинальный размер листа';
+    }
+  }
+
+  function drawSplitPreview() {
+    if (!elPreviewCanvas) elPreviewCanvas = document.getElementById('retouch-preview-canvas');
+    if (!elSplitDivider) elSplitDivider = document.getElementById('retouch-split-divider');
+    if (!elSplitViewport) elSplitViewport = document.getElementById('retouch-split-viewport');
+    if (!elPreviewCanvas || !cachedAfterCanvas) return;
+
+    const pw = cachedAfterCanvas.width;
+    const ph = cachedAfterCanvas.height;
+
+    if (elPreviewCanvas.width !== pw || elPreviewCanvas.height !== ph) {
+      elPreviewCanvas.width = pw;
+      elPreviewCanvas.height = ph;
+    }
+
+    const ctx = elPreviewCanvas.getContext('2d');
+    ctx.clearRect(0, 0, pw, ph);
+
+    if (!isSplitMode || !cachedBeforeCanvas) {
+      ctx.drawImage(cachedAfterCanvas, 0, 0);
+      if (elSplitDivider) elSplitDivider.style.display = 'none';
+      if (elSplitViewport) {
+        elSplitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'none');
+      }
+      return;
+    }
+
+    if (elSplitDivider) elSplitDivider.style.display = 'block';
+    if (elSplitViewport) {
+      elSplitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'flex');
+    }
+
+    const splitX = Math.round(pw * splitRatio);
+
+    // Левая часть: До (Оригинал)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, splitX, ph);
+    ctx.clip();
+    ctx.drawImage(cachedBeforeCanvas, 0, 0);
+    ctx.restore();
+
+    // Правая часть: После (Ретушь)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(splitX, 0, pw - splitX, ph);
+    ctx.clip();
+    ctx.drawImage(cachedAfterCanvas, 0, 0);
+    ctx.restore();
+
+    // Тонкая разделительная линия на холсте
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(splitX, 0);
+    ctx.lineTo(splitX, ph);
+    ctx.stroke();
+    ctx.restore();
+
+    if (elSplitDivider) {
+      elSplitDivider.style.left = `${(splitRatio * 100).toFixed(2)}%`;
+    }
+  }
+
+  function schedulePreviewUpdate(delay = 16, forceRaw = false) {
+    if (forceRaw) {
+      cachedRawCanvas = null;
+    }
+    if (renderDebounceTimer) clearTimeout(renderDebounceTimer);
+    renderDebounceTimer = setTimeout(() => {
+      updatePreview(forceRaw);
+    }, delay);
+  }
+
+  async function updatePreview(forceRawRebuild = false) {
+    const modal = modalOverlayEl || document.getElementById('retouch-modal-overlay');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    if (!elLoaderWrap) elLoaderWrap = document.getElementById('retouch-loader-wrap');
+
+    const needsRaw = forceRawRebuild || !cachedRawCanvas;
+
+    if (needsRaw) {
+      if (isRendering) return;
+      isRendering = true;
+      if (elLoaderWrap) elLoaderWrap.classList.remove('hidden');
+
+      try {
+        cachedRawCanvas = await renderInstagramPosterCanvas(window.canvas, {
+          formatKey: currentFormat,
+          framingMode: currentFraming,
+          rawOnly: true,
+          previewMode: true
+        });
+      } catch (err) {
+        console.warn('[Retouch Preview] Ошибка рендеринга базы:', err);
+        isRendering = false;
+        if (elLoaderWrap) elLoaderWrap.classList.add('hidden');
+        return;
+      } finally {
+        isRendering = false;
+        if (elLoaderWrap) elLoaderWrap.classList.add('hidden');
+      }
+    }
+
+    if (!cachedRawCanvas) return;
+
+    if (!cachedAfterCanvas || cachedAfterCanvas.width !== cachedRawCanvas.width || cachedAfterCanvas.height !== cachedRawCanvas.height) {
+      cachedAfterCanvas = document.createElement('canvas');
+      cachedAfterCanvas.width = cachedRawCanvas.width;
+      cachedAfterCanvas.height = cachedRawCanvas.height;
+    }
+
+    const actx = cachedAfterCanvas.getContext('2d');
+    actx.drawImage(cachedRawCanvas, 0, 0);
+
+    applyRetouchToCanvas(cachedAfterCanvas, currentPreset, currentIntensity, {
+      warmth: currentWarmth,
+      contrast: currentContrast,
+      vignette: currentVignette
+    });
+
+    cachedBeforeCanvas = cachedRawCanvas;
+    drawSplitPreview();
+  }
+
+  function openModal() {
+    if (!isModalInitialized) {
+      initModalUI();
+    }
+    const modal = modalOverlayEl || document.getElementById('retouch-modal-overlay');
+    if (modal) {
+      modal.classList.remove('hidden');
+      updateMetaLabel();
+      cachedRawCanvas = null;
+      schedulePreviewUpdate(10, true);
+    }
+  }
+
+  function closeModal() {
+    const modal = modalOverlayEl || document.getElementById('retouch-modal-overlay');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    if (renderDebounceTimer) clearTimeout(renderDebounceTimer);
+  }
+
   function initModalUI() {
-    const modalOverlay = document.getElementById('retouch-modal-overlay');
-    if (!modalOverlay) return;
+    if (isModalInitialized) return;
+    modalOverlayEl = document.getElementById('retouch-modal-overlay');
+    if (!modalOverlayEl) return;
+    isModalInitialized = true;
 
     const btnClose = document.getElementById('retouch-modal-close');
-    const previewCanvas = document.getElementById('retouch-preview-canvas');
-    const splitViewport = document.getElementById('retouch-split-viewport');
-    const splitDivider = document.getElementById('retouch-split-divider');
-    const btnToggleSplit = document.getElementById('btn-retouch-toggle-split');
-    const splitToggleText = document.getElementById('retouch-split-toggle-text');
+    elPreviewCanvas = document.getElementById('retouch-preview-canvas');
+    elSplitViewport = document.getElementById('retouch-split-viewport');
+    elSplitDivider = document.getElementById('retouch-split-divider');
+    elBtnToggleSplit = document.getElementById('btn-retouch-toggle-split');
+    elSplitToggleText = document.getElementById('retouch-split-toggle-text');
 
-    const presetsGrid = document.getElementById('retouch-presets-grid');
-    const intensitySlider = document.getElementById('retouch-intensity-slider');
-    const intensityValLabel = document.getElementById('retouch-intensity-val');
-    const warmthSlider = document.getElementById('retouch-warmth-slider');
-    const warmthValLabel = document.getElementById('retouch-warmth-val');
-    const contrastSlider = document.getElementById('retouch-contrast-slider');
-    const contrastValLabel = document.getElementById('retouch-contrast-val');
-    const vignetteSlider = document.getElementById('retouch-vignette-slider');
-    const vignetteValLabel = document.getElementById('retouch-vignette-val');
+    elPresetsGrid = document.getElementById('retouch-presets-grid');
+    elIntensitySlider = document.getElementById('retouch-intensity-slider');
+    elIntensityValLabel = document.getElementById('retouch-intensity-val');
+    elWarmthSlider = document.getElementById('retouch-warmth-slider');
+    elWarmthValLabel = document.getElementById('retouch-warmth-val');
+    elContrastSlider = document.getElementById('retouch-contrast-slider');
+    elContrastValLabel = document.getElementById('retouch-contrast-val');
+    elVignetteSlider = document.getElementById('retouch-vignette-slider');
+    elVignetteValLabel = document.getElementById('retouch-vignette-val');
 
     const formatTabs = document.querySelectorAll('.retouch-format-chip');
     const framingTabs = document.querySelectorAll('.retouch-framing-chip');
     const btnDownloadJpg = document.getElementById('btn-retouch-download-jpg');
     const btnDownloadPng = document.getElementById('btn-retouch-download-png');
     const btnApplyArtboard = document.getElementById('btn-retouch-apply-canvas');
-    const metaFormatLabel = document.getElementById('retouch-meta-format');
-    const loaderWrap = document.getElementById('retouch-loader-wrap');
-
-    let currentPreset = 'warm_glow';
-    let currentFormat = 'portrait';
-    let currentFraming = 'blur';
-    let currentIntensity = 85;
-    let currentWarmth = 0;
-    let currentContrast = 0;
-    let currentVignette = 0;
-
-    let isSplitMode = true;
-    let splitRatio = 0.50; // 0..1
-    let isDraggingSplit = false;
-
-    let cachedBeforeCanvas = null;
-    let cachedAfterCanvas = null;
-    let renderDebounceTimer = null;
-    let isRendering = false;
+    elMetaFormatLabel = document.getElementById('retouch-meta-format');
+    elLoaderWrap = document.getElementById('retouch-loader-wrap');
 
     // 1. Отрисовка карточек 12 пресетов в стиле Figma
-    if (presetsGrid) {
-      presetsGrid.innerHTML = Object.values(RETOUCH_PRESETS).map(p => `
+    if (elPresetsGrid) {
+      elPresetsGrid.innerHTML = Object.values(RETOUCH_PRESETS).map(p => `
         <div class="retouch-preset-card ${p.id === currentPreset ? 'is-active' : ''}" data-preset="${p.id}">
           <div class="retouch-card-swatch" style="background: ${p.colorSwatch};">
             <span class="retouch-card-badge">${p.badge}</span>
@@ -1010,58 +1258,58 @@
         </div>
       `).join('');
 
-      presetsGrid.addEventListener('click', e => {
+      elPresetsGrid.addEventListener('click', e => {
         const card = e.target.closest('.retouch-preset-card');
         if (!card) return;
         const pid = card.dataset.preset;
         if (pid && pid !== currentPreset) {
           currentPreset = pid;
-          presetsGrid.querySelectorAll('.retouch-preset-card').forEach(c => {
+          elPresetsGrid.querySelectorAll('.retouch-preset-card').forEach(c => {
             c.classList.toggle('is-active', c.dataset.preset === currentPreset);
           });
-          schedulePreviewUpdate();
+          schedulePreviewUpdate(0, false);
         }
       });
     }
 
     // 2. Слайдеры настройки
-    if (intensitySlider) {
-      intensitySlider.value = currentIntensity;
-      if (intensityValLabel) intensityValLabel.textContent = `${currentIntensity}%`;
-      intensitySlider.addEventListener('input', e => {
+    if (elIntensitySlider) {
+      elIntensitySlider.value = currentIntensity;
+      if (elIntensityValLabel) elIntensityValLabel.textContent = `${currentIntensity}%`;
+      elIntensitySlider.addEventListener('input', e => {
         currentIntensity = Number(e.target.value);
-        if (intensityValLabel) intensityValLabel.textContent = `${currentIntensity}%`;
-        schedulePreviewUpdate(60);
+        if (elIntensityValLabel) elIntensityValLabel.textContent = `${currentIntensity}%`;
+        schedulePreviewUpdate(16, false);
       });
     }
 
-    if (warmthSlider) {
-      warmthSlider.value = currentWarmth;
-      if (warmthValLabel) warmthValLabel.textContent = `${currentWarmth}`;
-      warmthSlider.addEventListener('input', e => {
+    if (elWarmthSlider) {
+      elWarmthSlider.value = currentWarmth;
+      if (elWarmthValLabel) elWarmthValLabel.textContent = `${currentWarmth}`;
+      elWarmthSlider.addEventListener('input', e => {
         currentWarmth = Number(e.target.value);
-        if (warmthValLabel) warmthValLabel.textContent = (currentWarmth > 0 ? `+${currentWarmth}` : `${currentWarmth}`);
-        schedulePreviewUpdate(60);
+        if (elWarmthValLabel) elWarmthValLabel.textContent = (currentWarmth > 0 ? `+${currentWarmth}` : `${currentWarmth}`);
+        schedulePreviewUpdate(16, false);
       });
     }
 
-    if (contrastSlider) {
-      contrastSlider.value = currentContrast;
-      if (contrastValLabel) contrastValLabel.textContent = `${currentContrast}`;
-      contrastSlider.addEventListener('input', e => {
+    if (elContrastSlider) {
+      elContrastSlider.value = currentContrast;
+      if (elContrastValLabel) elContrastValLabel.textContent = `${currentContrast}`;
+      elContrastSlider.addEventListener('input', e => {
         currentContrast = Number(e.target.value);
-        if (contrastValLabel) contrastValLabel.textContent = (currentContrast > 0 ? `+${currentContrast}` : `${currentContrast}`);
-        schedulePreviewUpdate(60);
+        if (elContrastValLabel) elContrastValLabel.textContent = (currentContrast > 0 ? `+${currentContrast}` : `${currentContrast}`);
+        schedulePreviewUpdate(16, false);
       });
     }
 
-    if (vignetteSlider) {
-      vignetteSlider.value = currentVignette;
-      if (vignetteValLabel) vignetteValLabel.textContent = `${currentVignette}%`;
-      vignetteSlider.addEventListener('input', e => {
+    if (elVignetteSlider) {
+      elVignetteSlider.value = currentVignette;
+      if (elVignetteValLabel) elVignetteValLabel.textContent = `${currentVignette}%`;
+      elVignetteSlider.addEventListener('input', e => {
         currentVignette = Number(e.target.value);
-        if (vignetteValLabel) vignetteValLabel.textContent = `${currentVignette}%`;
-        schedulePreviewUpdate(60);
+        if (elVignetteValLabel) elVignetteValLabel.textContent = `${currentVignette}%`;
+        schedulePreviewUpdate(16, false);
       });
     }
 
@@ -1071,7 +1319,7 @@
         currentFormat = tab.dataset.format;
         formatTabs.forEach(t => t.classList.toggle('is-active', t.dataset.format === currentFormat));
         updateMetaLabel();
-        schedulePreviewUpdate();
+        schedulePreviewUpdate(0, true);
       });
     });
 
@@ -1080,173 +1328,55 @@
       tab.addEventListener('click', () => {
         currentFraming = tab.dataset.framing;
         framingTabs.forEach(t => t.classList.toggle('is-active', t.dataset.framing === currentFraming));
-        schedulePreviewUpdate();
+        schedulePreviewUpdate(0, true);
       });
     });
 
-    function updateMetaLabel() {
-      if (!metaFormatLabel) return;
-      const meta = INSTAGRAM_FORMATS[currentFormat];
-      if (meta && meta.width) {
-        metaFormatLabel.textContent = `${meta.name} · ${meta.width} × ${meta.height} px`;
-      } else {
-        metaFormatLabel.textContent = 'Оригинальный размер листа';
-      }
-    }
-
-    // 5. Интерактивная отрисовка сплит-превью До / После
-    function drawSplitPreview() {
-      if (!previewCanvas || !cachedAfterCanvas) return;
-      const pw = cachedAfterCanvas.width;
-      const ph = cachedAfterCanvas.height;
-
-      if (previewCanvas.width !== pw || previewCanvas.height !== ph) {
-        previewCanvas.width = pw;
-        previewCanvas.height = ph;
-      }
-
-      const ctx = previewCanvas.getContext('2d');
-      ctx.clearRect(0, 0, pw, ph);
-
-      if (!isSplitMode || !cachedBeforeCanvas) {
-        // Режим "Только результат"
-        ctx.drawImage(cachedAfterCanvas, 0, 0);
-        if (splitDivider) splitDivider.style.display = 'none';
-        if (splitViewport) {
-          splitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'none');
-        }
-        return;
-      }
-
-      // Режим сплит-сравнения
-      if (splitDivider) splitDivider.style.display = 'block';
-      if (splitViewport) {
-        splitViewport.querySelectorAll('.retouch-split-badge').forEach(b => b.style.display = 'flex');
-      }
-
-      const splitX = Math.round(pw * splitRatio);
-
-      // Левая часть: До (Оригинал)
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, splitX, ph);
-      ctx.clip();
-      ctx.drawImage(cachedBeforeCanvas, 0, 0);
-      ctx.restore();
-
-      // Правая часть: После (Ретушь)
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(splitX, 0, pw - splitX, ph);
-      ctx.clip();
-      ctx.drawImage(cachedAfterCanvas, 0, 0);
-      ctx.restore();
-
-      // Тонкая разделительная линия на холсте
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(splitX, 0);
-      ctx.lineTo(splitX, ph);
-      ctx.stroke();
-      ctx.restore();
-
-      // Обновляем позицию визуального разделителя в DOM
-      if (splitDivider) {
-        splitDivider.style.left = `${(splitRatio * 100).toFixed(2)}%`;
-      }
-    }
-
-    // 6. Перетаскивание разделителя сплита (Mouse + Touch / Pointer Events)
+    // 5. Перетаскивание разделителя сплита (Mouse + Touch / Pointer Events)
     function updateSplitFromPointer(clientX) {
-      if (!splitViewport) return;
-      const rect = splitViewport.getBoundingClientRect();
+      if (!elSplitViewport) return;
+      const rect = elSplitViewport.getBoundingClientRect();
       if (rect.width <= 0) return;
       const ratio = (clientX - rect.left) / rect.width;
       splitRatio = Math.max(0.04, Math.min(0.96, ratio));
       drawSplitPreview();
     }
 
-    if (splitViewport) {
-      splitViewport.addEventListener('pointerdown', e => {
+    if (elSplitViewport) {
+      elSplitViewport.addEventListener('pointerdown', e => {
         isDraggingSplit = true;
-        splitViewport.setPointerCapture(e.pointerId);
+        try { elSplitViewport.setPointerCapture(e.pointerId); } catch (ex) {}
         updateSplitFromPointer(e.clientX);
       });
-      splitViewport.addEventListener('pointermove', e => {
+      elSplitViewport.addEventListener('pointermove', e => {
         if (isDraggingSplit) {
           updateSplitFromPointer(e.clientX);
         }
       });
-      splitViewport.addEventListener('pointerup', e => {
+      elSplitViewport.addEventListener('pointerup', e => {
         if (isDraggingSplit) {
           isDraggingSplit = false;
-          try { splitViewport.releasePointerCapture(e.pointerId); } catch (ex) {}
+          try { elSplitViewport.releasePointerCapture(e.pointerId); } catch (ex) {}
         }
       });
-      splitViewport.addEventListener('pointercancel', () => {
+      elSplitViewport.addEventListener('pointercancel', () => {
         isDraggingSplit = false;
       });
     }
 
-    // 7. Кнопка переключения режима сплита
-    if (btnToggleSplit) {
-      btnToggleSplit.addEventListener('click', () => {
+    // 6. Кнопка переключения режима сплита
+    if (elBtnToggleSplit) {
+      elBtnToggleSplit.addEventListener('click', () => {
         isSplitMode = !isSplitMode;
-        btnToggleSplit.classList.toggle('is-active', isSplitMode);
-        if (splitToggleText) {
-          splitToggleText.textContent = isSplitMode ? 'Сравнение До / После' : 'Только результат';
+        elBtnToggleSplit.classList.toggle('is-active', isSplitMode);
+        if (elSplitToggleText) {
+          elSplitToggleText.textContent = isSplitMode ? 'Сравнение До / После' : 'Только результат';
         }
         drawSplitPreview();
       });
     }
 
-    // 8. Обновление превью с дебаунсом
-    function schedulePreviewUpdate(delay = 120) {
-      if (renderDebounceTimer) clearTimeout(renderDebounceTimer);
-      renderDebounceTimer = setTimeout(() => {
-        updatePreview();
-      }, delay);
-    }
-
-    async function updatePreview() {
-      if (!modalOverlay || modalOverlay.classList.contains('hidden')) return;
-      if (isRendering) return;
-
-      isRendering = true;
-      if (loaderWrap) loaderWrap.classList.remove('hidden');
-
-      try {
-        const [rawCanvas, retouchedCanvas] = await Promise.all([
-          renderInstagramPosterCanvas(window.canvas, {
-            formatKey: currentFormat,
-            framingMode: currentFraming,
-            rawOnly: true
-          }),
-          renderInstagramPosterCanvas(window.canvas, {
-            formatKey: currentFormat,
-            presetKey: currentPreset,
-            intensity: currentIntensity,
-            framingMode: currentFraming,
-            warmth: currentWarmth,
-            contrast: currentContrast,
-            vignette: currentVignette
-          })
-        ]);
-
-        cachedBeforeCanvas = rawCanvas;
-        cachedAfterCanvas = retouchedCanvas;
-        drawSplitPreview();
-      } catch (err) {
-        console.warn('[Retouch Preview] Ошибка обновления:', err);
-      } finally {
-        isRendering = false;
-        if (loaderWrap) loaderWrap.classList.add('hidden');
-      }
-    }
-
-    // 9. Кнопки экспорта
+    // 7. Кнопки экспорта
     if (btnDownloadJpg) {
       btnDownloadJpg.addEventListener('click', async () => {
         btnDownloadJpg.disabled = true;
@@ -1259,7 +1389,8 @@
             warmth: currentWarmth,
             contrast: currentContrast,
             vignette: currentVignette,
-            fileType: 'jpg'
+            fileType: 'jpg',
+            previewMode: false
           });
         } catch (err) {
           if (typeof window.toast === 'function') window.toast(`Сбой экспорта: ${err.message}`);
@@ -1281,7 +1412,8 @@
             warmth: currentWarmth,
             contrast: currentContrast,
             vignette: currentVignette,
-            fileType: 'png'
+            fileType: 'png',
+            previewMode: false
           });
         } catch (err) {
           if (typeof window.toast === 'function') window.toast(`Сбой экспорта: ${err.message}`);
@@ -1291,7 +1423,7 @@
       });
     }
 
-    // 10. Кнопка «Применить ретушь к холсту»
+    // 8. Кнопка «Применить ретушь к холсту»
     if (btnApplyArtboard) {
       btnApplyArtboard.addEventListener('click', () => {
         applyRetouchToArtboard(window.canvas, currentPreset, currentIntensity, {
@@ -1300,37 +1432,38 @@
           vignette: currentVignette
         });
         if (typeof window.toast === 'function') {
-          window.toast(`✨ Пресет «${RETOUCH_PRESETS[currentPreset].name}» применен к афише!`);
+          window.toast(`✨ Пресет «${RETOUCH_PRESETS[currentPreset]?.name || currentPreset}» применен к афише!`);
         }
         closeModal();
       });
     }
 
-    function openModal() {
-      modalOverlay.classList.remove('hidden');
-      updateMetaLabel();
-      schedulePreviewUpdate(30);
-    }
-
-    function closeModal() {
-      modalOverlay.classList.add('hidden');
-      if (renderDebounceTimer) clearTimeout(renderDebounceTimer);
-    }
-
     if (btnClose) btnClose.addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', e => {
-      if (e.target === modalOverlay) closeModal();
+    modalOverlayEl.addEventListener('click', e => {
+      if (e.target === modalOverlayEl) closeModal();
     });
 
     window.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
+      if (e.key === 'Escape' && !modalOverlayEl.classList.contains('hidden')) {
         closeModal();
       }
     });
 
-    // Экспорт функции открытия
+    // 9. Привязываем кнопки запуска интерфейса ретуши
+    ['btn-open-instagram-retouch', 'tool-instagram-retouch', 'mtool-instagram-retouch'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.__retouchBound) {
+        el.__retouchBound = true;
+        el.addEventListener('click', openModal);
+      }
+    });
+  }
+
+  // Немедленный глобальный экспорт функций открытия модалки
+  if (typeof window !== 'undefined') {
     window.openRetouchModal = openModal;
     window.openInstagramRetouchModal = openModal;
+    window.closeRetouchModal = closeModal;
   }
 
   // Автоинициализация при загрузке DOM
@@ -1348,6 +1481,9 @@
   return {
     RETOUCH_PRESETS,
     INSTAGRAM_FORMATS,
+    openRetouchModal: openModal,
+    openInstagramRetouchModal: openModal,
+    closeRetouchModal: closeModal,
     applyRetouchToImageData,
     applyRetouchToCanvas,
     applyFabricImageRetouch,

@@ -6,16 +6,35 @@
 
 // Model ID for RMBG in Transformers.js
 const MODEL_ID = 'briaai/RMBG-1.4';
+const MODEL_LOAD_TIMEOUT = 2800; // Strict timeout (2.8s) for HuggingFace model download
 
 let transformers = null;
 let model = null;
 let processor = null;
 let isModelLoading = false;
 let modelLoadFailed = false;
+let currentModelLoadPromise = null;
 
 // Progress notification helper
 function sendProgress(pct, msg) {
   self.postMessage({ type: 'progress', pct: Math.round(pct), msg: msg || '' });
+}
+
+function withTimeout(promise, ms, errorMsg) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(errorMsg || `Превышен лимит времени ожидания (${ms}мс)`));
+    }, ms);
+    promise
+      .then(res => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch(err => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
 }
 
 /**
@@ -45,23 +64,21 @@ async function getTransformers() {
 }
 
 /**
- * Load the RMBG-1.4 model
+ * Load the RMBG-1.4 model with a strict timeout
  */
 async function loadModel(progressCb) {
   if (model && processor) return { model, processor };
-  if (isModelLoading) {
-    // Wait for ongoing load
-    while (isModelLoading) {
-      await new Promise(r => setTimeout(r, 100));
-    }
-    if (model && processor) return { model, processor };
-    throw new Error('Ошибка загрузки модели');
+  if (modelLoadFailed) {
+    throw new Error('Модель RMBG-1.4 недоступна (таймаут или сбой загрузки)');
+  }
+  if (isModelLoading && currentModelLoadPromise) {
+    return await currentModelLoadPromise;
   }
 
   isModelLoading = true;
   modelLoadFailed = false;
 
-  try {
+  const loadOperation = (async () => {
     progressCb(5, 'Подключение к AI библиотеке...');
     const tf = await getTransformers();
     const { AutoModel, AutoProcessor } = tf;
@@ -108,12 +125,25 @@ async function loadModel(progressCb) {
     }
 
     progressCb(100, 'Нейросеть готова');
-    isModelLoading = false;
     return { model, processor };
+  })();
+
+  currentModelLoadPromise = withTimeout(
+    loadOperation,
+    MODEL_LOAD_TIMEOUT,
+    'Таймаут загрузки модели RMBG-1.4 (сеть HuggingFace недоступна или заблокирована)'
+  );
+
+  try {
+    const res = await currentModelLoadPromise;
+    isModelLoading = false;
+    currentModelLoadPromise = null;
+    return res;
   } catch (err) {
     isModelLoading = false;
     modelLoadFailed = true;
-    console.error('[RMBG Worker] Error loading model:', err);
+    currentModelLoadPromise = null;
+    console.warn('[RMBG Worker] Model load error/timeout, using fallback:', err.message);
     throw err;
   }
 }
@@ -312,9 +342,9 @@ self.onmessage = async (e) => {
         await loadModel(sendProgress);
         finalData = await removeBgML(imageData, width, height, sendProgress);
       } catch (mlErr) {
-        console.warn('[RMBG Worker] ML inference failed, using perceptual fallback:', mlErr);
+        console.warn('[RMBG Worker] ML inference failed or timed out, using perceptual fallback:', mlErr.message || mlErr);
         sendProgress(50, 'Применение адаптивного AI-контура (fallback)...');
-        finalData = algorithmicFallbackRemoveBg(imageData, width, height, options?.tolerance, options?.feather);
+        finalData = algorithmicFallbackRemoveBg(imageData, width, height, options?.tolerance ?? 28, options?.feather ?? 2);
         usedMethod = 'fallback';
       }
 

@@ -3294,14 +3294,21 @@ function removeImageBackground(tolerance = 28, feather = 2) {
   }
 
   // Use the advanced 3-tier ML pipeline if available
-  if (window.AuroraBgRemoval && typeof window.AuroraBgRemoval.removeBackground === 'function') {
-    window.AuroraBgRemoval.removeBackground(obj, {
+  if (typeof window.removeBackground === 'function') {
+    return window.removeBackground(obj, {
       tier: 'auto',
       alphaMatting: true,
       tolerance,
       feather
     });
-    return;
+  }
+  if (window.AuroraBgRemoval && typeof window.AuroraBgRemoval.removeBackground === 'function') {
+    return window.AuroraBgRemoval.removeBackground(obj, {
+      tier: 'auto',
+      alphaMatting: true,
+      tolerance,
+      feather
+    });
   }
 
   // Сохраняем оригинал для возможности отмены
@@ -7695,534 +7702,35 @@ function initAiElementModal() {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ✨ РЕТУШЬ INSTAGRAM (МОДАЛЬНОЕ ОКНО И ФИЛЬТРЫ)
+/* /* ══════════════════════════════════════════════════════════════
+   ✨ РЕТУШЬ INSTAGRAM (МОДАЛЬНОЕ ОКНО И COLOR GRADE)
    ══════════════════════════════════════════════════════════════ */
-const INSTAGRAM_FILTERS = [
-  { id: 'normal',   name: 'Normal',    desc: 'Оригинал',           gradient: 'linear-gradient(135deg, #64748b, #94a3b8)' },
-  { id: 'clarendon',name: 'Clarendon', desc: 'Контраст & Тени',     gradient: 'linear-gradient(135deg, #0284c7, #38bdf8)' },
-  { id: 'juno',     name: 'Juno',      desc: 'Теплые лица & Сочность', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
-  { id: 'ludwig',   name: 'Ludwig',    desc: 'Чистый музейный свет', gradient: 'linear-gradient(135deg, #f97316, #fbbf24)' },
-  { id: 'lark',     name: 'Lark',      desc: 'Свежий изумруд & Циан', gradient: 'linear-gradient(135deg, #10b981, #06b6d4)' },
-  { id: 'valencia', name: 'Valencia',  desc: 'Винтаж 70-х',         gradient: 'linear-gradient(135deg, #d97706, #fde047)' },
-  { id: 'moon',     name: 'Moon',      desc: 'Контрастный ч/б нуар', gradient: 'linear-gradient(135deg, #1e293b, #f1f5f9)' },
-  { id: 'crema',    name: 'Crema',     desc: 'Кремовый матовый тон', gradient: 'linear-gradient(135deg, #a16207, #fef08a)' },
-  { id: 'reyes',    name: 'Reyes',     desc: 'Пыльный солнечный тон', gradient: 'linear-gradient(135deg, #ca8a04, #e2e8f0)' },
-  { id: 'slumber',  name: 'Slumber',   desc: 'Вечерняя дымка',       gradient: 'linear-gradient(135deg, #7c3aed, #f472b6)' },
-  { id: 'lofi',     name: 'Lo-Fi',     desc: 'Насыщенный ретро 2010', gradient: 'linear-gradient(135deg, #e11d48, #fbbf24)' },
-  { id: 'xpro2',    name: 'X-Pro II',  desc: 'Кросс-процессинг & Виньетка', gradient: 'linear-gradient(135deg, #059669, #eab308)' },
-  { id: 'gingham',  name: 'Gingham',   desc: 'Хипстерский фотофильтр', gradient: 'linear-gradient(135deg, #475569, #cbd5e1)' },
-  { id: 'aden',     name: 'Aden',      desc: 'Пастельный бьюти-тон', gradient: 'linear-gradient(135deg, #ec4899, #fbcfe8)' }
-];
-
-let isInstaModalInit = false;
-let currentInstaFilter = 'clarendon';
-let isInstaSplitDragging = false;
-let instaSrcCanvas = null;
-
 function openInstagramRetouchModal() {
   if (typeof window.openRetouchModal === 'function' && window.openRetouchModal !== openInstagramRetouchModal) {
     window.openRetouchModal();
-    return;
-  }
-  if (typeof window.AuroraRetouchEngine?.openRetouchModal === 'function') {
+  } else if (window.AuroraRetouchEngine && typeof window.AuroraRetouchEngine.openRetouchModal === 'function') {
     window.AuroraRetouchEngine.openRetouchModal();
-    return;
+  } else if (typeof window.openRetouchModal === 'function') {
+    window.openRetouchModal();
+  } else {
+    document.getElementById('retouch-modal-overlay')?.classList.remove('hidden');
   }
-  initInstagramRetouchModal();
-  prepareInstaSourceCanvas();
-  renderInstaSplitPreview();
-  $('#instagram-retouch-modal-overlay')?.classList.remove('hidden');
 }
 
 function closeInstagramRetouchModal() {
-  $('#instagram-retouch-modal-overlay')?.classList.add('hidden');
-}
-
-function prepareInstaSourceCanvas() {
-  const targetMode = $('#insta-target-selected')?.classList.contains('is-active') ? 'selected' : 'canvas';
-  const activeObj = canvas?.getActiveObject();
-
-  instaSrcCanvas = document.createElement('canvas');
-  const maxPrevDim = 600;
-
-  if (targetMode === 'selected' && activeObj && activeObj.type === 'image') {
-    const el = activeObj.__originalElement || activeObj.getElement();
-    const nw = el.naturalWidth || el.width || 800;
-    const nh = el.naturalHeight || el.height || 600;
-    const scale = Math.min(1.0, maxPrevDim / Math.max(nw, nh));
-    instaSrcCanvas.width = Math.round(nw * scale);
-    instaSrcCanvas.height = Math.round(nh * scale);
-    const ctx = instaSrcCanvas.getContext('2d');
-    ctx.drawImage(el, 0, 0, instaSrcCanvas.width, instaSrcCanvas.height);
+  if (typeof window.closeRetouchModal === 'function' && window.closeRetouchModal !== closeInstagramRetouchModal) {
+    window.closeRetouchModal();
+  } else if (window.AuroraRetouchEngine && typeof window.AuroraRetouchEngine.closeRetouchModal === 'function') {
+    window.AuroraRetouchEngine.closeRetouchModal();
+  } else if (typeof window.closeRetouchModal === 'function') {
+    window.closeRetouchModal();
   } else {
-    const cleanArtboard = window.renderCleanArtboardCanvas 
-      ? window.renderCleanArtboardCanvas(canvas)
-      : null;
-    if (cleanArtboard) {
-      const scale = Math.min(1.0, maxPrevDim / Math.max(cleanArtboard.width, cleanArtboard.height));
-      instaSrcCanvas.width = Math.round(cleanArtboard.width * scale);
-      instaSrcCanvas.height = Math.round(cleanArtboard.height * scale);
-      const ctx = instaSrcCanvas.getContext('2d');
-      ctx.drawImage(cleanArtboard, 0, 0, instaSrcCanvas.width, instaSrcCanvas.height);
-    } else {
-      instaSrcCanvas.width = 400;
-      instaSrcCanvas.height = 560;
-      const ctx = instaSrcCanvas.getContext('2d');
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(0, 0, 400, 560);
-    }
+    document.getElementById('retouch-modal-overlay')?.classList.add('hidden');
   }
 }
 
-function renderInstaSplitPreview() {
-  if (!instaSrcCanvas) prepareInstaSourceCanvas();
-  const w = instaSrcCanvas.width;
-  const h = instaSrcCanvas.height;
-
-  const canvasBefore = $('#insta-canvas-before');
-  const canvasAfter = $('#insta-canvas-after');
-  if (!canvasBefore || !canvasAfter) return;
-
-  canvasBefore.width = w;
-  canvasBefore.height = h;
-  canvasAfter.width = w;
-  canvasAfter.height = h;
-
-  const bCtx = canvasBefore.getContext('2d');
-  bCtx.drawImage(instaSrcCanvas, 0, 0);
-
-  const aCtx = canvasAfter.getContext('2d');
-  aCtx.drawImage(instaSrcCanvas, 0, 0);
-
-  const imgData = aCtx.getImageData(0, 0, w, h);
-  const opts = {
-    filterKey: currentInstaFilter,
-    intensity: parseInt($('#insta-slider-intensity')?.value || '100', 10) / 100,
-    warmth: parseInt($('#insta-slider-warmth')?.value || '0', 10),
-    vibrance: parseInt($('#insta-slider-vibrance')?.value || '0', 10),
-    contrast: parseInt($('#insta-slider-contrast')?.value || '0', 10),
-    vignette: parseInt($('#insta-slider-vignette')?.value || '0', 10),
-    grain: parseInt($('#insta-slider-grain')?.value || '0', 10)
-  };
-
-  applyInstagramEngineToImageData(imgData, opts);
-  aCtx.putImageData(imgData, 0, 0);
-
-  const activeFilter = INSTAGRAM_FILTERS.find(x => x.id === currentInstaFilter);
-  if ($('#insta-active-filter-name') && activeFilter) {
-    $('#insta-active-filter-name').textContent = activeFilter.name;
-  }
-}
-
-function applyInstagramEngineToImageData(imageData, opts) {
-  const { data, width, height } = imageData;
-  const totalPixels = width * height;
-  if (!totalPixels) return;
-
-  const filter = opts.filterKey || 'normal';
-  const intensity = opts.intensity !== undefined ? opts.intensity : 1.0;
-  const warmth = opts.warmth || 0;
-  const vibrance = opts.vibrance || 0;
-  const contrast = opts.contrast || 0;
-  const vignette = opts.vignette || 0;
-  const grain = opts.grain || 0;
-
-  const cFactor = contrast !== 0 ? (259 * (contrast + 255)) / (255 * (259 - contrast)) : 1;
-  const cx = width / 2;
-  const cy = height / 2;
-  const maxDistSq = (cx * cx + cy * cy) || 1;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const origR = data[i];
-    const origG = data[i + 1];
-    const origB = data[i + 2];
-
-    let r = origR;
-    let g = origG;
-    let b = origB;
-
-    switch (filter) {
-      case 'clarendon': {
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-        r = r + (r - 128) * 0.22;
-        g = g + (g - 128) * 0.22;
-        b = b + (b - 128) * 0.22;
-        if (luma < 128) {
-          b += 14 * (1 - luma / 128);
-          g += 4 * (1 - luma / 128);
-        } else {
-          r += 12 * ((luma - 128) / 128);
-          g += 8 * ((luma - 128) / 128);
-        }
-        break;
-      }
-      case 'juno': {
-        r = r * 1.08 + 12;
-        g = g * 1.04 + 6;
-        b = b * 0.94;
-        break;
-      }
-      case 'ludwig': {
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-        r = r + (r - 128) * 0.14;
-        g = g + (g - 128) * 0.14;
-        b = b + (b - 128) * 0.14;
-        if (luma < 100) { r += 8; g += 8; b += 8; }
-        break;
-      }
-      case 'lark': {
-        r = r * 0.92;
-        g = g * 1.10 + 6;
-        b = b * 1.12 + 10;
-        break;
-      }
-      case 'valencia': {
-        r = r * 1.08 + 18;
-        g = g * 1.04 + 12;
-        b = b * 0.88 + 8;
-        if (r < 30) r = 30;
-        if (g < 25) g = 25;
-        if (b < 20) b = 20;
-        break;
-      }
-      case 'moon': {
-        let l = 0.299 * r + 0.587 * g + 0.114 * b;
-        l = ((l / 255 - 0.5) * 1.3 + 0.5) * 255;
-        r = l; g = l; b = l + 4;
-        break;
-      }
-      case 'crema': {
-        r = r * 1.04 + 16;
-        g = g * 1.02 + 10;
-        b = b * 0.92 + 14;
-        if (r < 28) r = 28;
-        if (g < 28) g = 28;
-        if (b < 28) b = 28;
-        break;
-      }
-      case 'reyes': {
-        r = (r - 128) * 0.88 + 128 + 18;
-        g = (g - 128) * 0.88 + 128 + 12;
-        b = (b - 128) * 0.88 + 128 + 4;
-        break;
-      }
-      case 'slumber': {
-        r = r * 0.96 + 14;
-        g = g * 0.92;
-        b = b * 1.06 + 18;
-        if (r < 24) r = 24;
-        if (g < 24) g = 24;
-        if (b < 24) b = 24;
-        break;
-      }
-      case 'lofi': {
-        r = ((r - 128) * 1.28 + 128) * 1.15;
-        g = ((g - 128) * 1.28 + 128) * 1.15;
-        b = ((b - 128) * 1.28 + 128) * 1.10;
-        break;
-      }
-      case 'xpro2': {
-        r = (r - 128) * 1.22 + 128 + 14;
-        g = (g - 128) * 1.22 + 128 + 16;
-        b = (b - 128) * 1.22 + 128 - 10;
-        break;
-      }
-      case 'gingham': {
-        r = (r - 128) * 0.9 + 128 + 12;
-        g = (g - 128) * 0.9 + 128 + 10;
-        b = (b - 128) * 0.9 + 128 + 6;
-        if (r < 22) r = 22;
-        if (g < 22) g = 22;
-        break;
-      }
-      case 'aden': {
-        r = r * 1.06 + 14;
-        g = g * 1.02 + 8;
-        b = b * 0.98 + 12;
-        break;
-      }
-    }
-
-    if (intensity < 1.0) {
-      r = origR + (r - origR) * intensity;
-      g = origG + (g - origG) * intensity;
-      b = origB + (b - origB) * intensity;
-    }
-
-    if (warmth !== 0) {
-      r += warmth * 0.5;
-      b -= warmth * 0.5;
-    }
-
-    if (vibrance !== 0) {
-      const maxC = Math.max(r, g, b);
-      const minC = Math.min(r, g, b);
-      const sat = (maxC - minC) / (maxC || 1);
-      const vMult = (1 - sat) * (vibrance / 100);
-      r += (r - maxC) * vMult * 0.8;
-      g += (g - maxC) * vMult * 0.8;
-      b += (b - maxC) * vMult * 0.8;
-    }
-
-    if (contrast !== 0) {
-      r = cFactor * (r - 128) + 128;
-      g = cFactor * (g - 128) + 128;
-      b = cFactor * (b - 128) + 128;
-    }
-
-    if (vignette > 0) {
-      const px = (i / 4) % width;
-      const py = Math.floor((i / 4) / width);
-      const dx = px - cx;
-      const dy = py - cy;
-      const dSq = dx * dx + dy * dy;
-      const vRatio = Math.min(1.0, dSq / maxDistSq);
-      const vDim = 1.0 - (vignette / 100) * 0.75 * vRatio;
-      r *= vDim;
-      g *= vDim;
-      b *= vDim;
-    }
-
-    if (grain > 0) {
-      const noise = (Math.random() - 0.5) * (grain * 0.7);
-      r += noise;
-      g += noise;
-      b += noise;
-    }
-
-    data[i]     = Math.max(0, Math.min(255, r));
-    data[i + 1] = Math.max(0, Math.min(255, g));
-    data[i + 2] = Math.max(0, Math.min(255, b));
-  }
-}
-
-function initInstagramRetouchModal() {
-  if (isInstaModalInit) return;
-  isInstaModalInit = true;
-
-  const grid = $('#insta-filters-grid');
-  if (grid) {
-    grid.innerHTML = INSTAGRAM_FILTERS.map(f => `
-      <div class="insta-filter-chip ${f.id === currentInstaFilter ? 'is-active' : ''}" data-filter="${f.id}" title="${f.desc}">
-        <div class="insta-filter-swatch" style="background: ${f.gradient};"></div>
-        <div class="insta-filter-name">${f.name}</div>
-      </div>
-    `).join('');
-
-    grid.querySelectorAll('.insta-filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        grid.querySelectorAll('.insta-filter-chip').forEach(c => c.classList.remove('is-active'));
-        chip.classList.add('is-active');
-        currentInstaFilter = chip.dataset.filter || 'normal';
-        renderInstaSplitPreview();
-      });
-    });
-  }
-
-  const vp = $('#insta-split-viewport');
-  if (vp) {
-    const setRatio = (ratio) => {
-      const pct = Math.max(0, Math.min(100, ratio * 100));
-      vp.style.setProperty('--split-pos', pct + '%');
-    };
-
-    vp.addEventListener('mousedown', e => {
-      isInstaSplitDragging = true;
-      const rect = vp.getBoundingClientRect();
-      setRatio((e.clientX - rect.left) / rect.width);
-    });
-
-    window.addEventListener('mousemove', e => {
-      if (!isInstaSplitDragging) return;
-      const rect = vp.getBoundingClientRect();
-      setRatio((e.clientX - rect.left) / rect.width);
-    });
-
-    window.addEventListener('mouseup', () => {
-      isInstaSplitDragging = false;
-    });
-
-    vp.addEventListener('touchstart', e => {
-      isInstaSplitDragging = true;
-      const rect = vp.getBoundingClientRect();
-      const t = e.touches[0];
-      if (t) setRatio((t.clientX - rect.left) / rect.width);
-    }, { passive: true });
-
-    window.addEventListener('touchmove', e => {
-      if (!isInstaSplitDragging) return;
-      const rect = vp.getBoundingClientRect();
-      const t = e.touches[0];
-      if (t) setRatio((t.clientX - rect.left) / rect.width);
-    }, { passive: true });
-
-    window.addEventListener('touchend', () => {
-      isInstaSplitDragging = false;
-    });
-  }
-
-  const bindInstaSlider = (sliderId, valId, suffix = '%') => {
-    const s = $(`#${sliderId}`);
-    const v = $(`#${valId}`);
-    if (!s) return;
-    s.addEventListener('input', () => {
-      if (v) v.textContent = s.value + suffix;
-      renderInstaSplitPreview();
-    });
-  };
-
-  bindInstaSlider('insta-slider-intensity', 'insta-val-intensity');
-  bindInstaSlider('insta-slider-warmth', 'insta-val-warmth');
-  bindInstaSlider('insta-slider-vibrance', 'insta-val-vibrance');
-  bindInstaSlider('insta-slider-contrast', 'insta-val-contrast');
-  bindInstaSlider('insta-slider-vignette', 'insta-val-vignette');
-  bindInstaSlider('insta-slider-grain', 'insta-val-grain');
-
-  $('#insta-target-selected')?.addEventListener('click', () => {
-    $('#insta-target-selected')?.classList.add('is-active');
-    $('#insta-target-canvas')?.classList.remove('is-active');
-    prepareInstaSourceCanvas();
-    renderInstaSplitPreview();
-  });
-
-  $('#insta-target-canvas')?.addEventListener('click', () => {
-    $('#insta-target-canvas')?.classList.add('is-active');
-    $('#insta-target-selected')?.classList.remove('is-active');
-    prepareInstaSourceCanvas();
-    renderInstaSplitPreview();
-  });
-
-  $('#btn-insta-apply')?.addEventListener('click', applyInstagramRetouch);
-  $('#btn-insta-revert')?.addEventListener('click', revertInstagramRetouch);
-  $('#instagram-retouch-modal-close')?.addEventListener('click', closeInstagramRetouchModal);
-  $('#instagram-retouch-modal-overlay')?.addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeInstagramRetouchModal();
-  });
-}
-
-async function applyInstagramRetouch() {
-  const isSelected = $('#insta-target-selected')?.classList.contains('is-active');
-  const opts = {
-    filterKey: currentInstaFilter,
-    intensity: parseInt($('#insta-slider-intensity')?.value || '100', 10) / 100,
-    warmth: parseInt($('#insta-slider-warmth')?.value || '0', 10),
-    vibrance: parseInt($('#insta-slider-vibrance')?.value || '0', 10),
-    contrast: parseInt($('#insta-slider-contrast')?.value || '0', 10),
-    vignette: parseInt($('#insta-slider-vignette')?.value || '0', 10),
-    grain: parseInt($('#insta-slider-grain')?.value || '0', 10)
-  };
-
-  if (isSelected) {
-    const obj = canvas?.getActiveObject();
-    if (!obj || obj.type !== 'image') {
-      toast('Сначала выделите изображение на холсте или выберите «Весь холст»');
-      return;
-    }
-    applyInstagramToFabricImage(obj, opts);
-    canvas.requestRenderAll();
-    saveHistory();
-    updateLayersList();
-    onSelection();
-    closeInstagramRetouchModal();
-    toast(`✨ Ретушь Instagram (${currentInstaFilter}) применена к фото!`);
-  } else {
-    const images = canvas.getObjects().filter(o => o.type === 'image');
-    if (!images.length) {
-      toast('На холсте нет изображений для ретуши');
-      return;
-    }
-    images.forEach(img => applyInstagramToFabricImage(img, opts));
-    canvas.requestRenderAll();
-    saveHistory();
-    updateLayersList();
-    closeInstagramRetouchModal();
-    toast(`✨ Ретушь Instagram (${currentInstaFilter}) применена к макету!`);
-  }
-}
-
-function applyInstagramToFabricImage(fabricImage, opts) {
-  if (!fabricImage || fabricImage.type !== 'image') return;
-  const el = fabricImage.getElement();
-  if (!el) return;
-
-  if (!fabricImage.__originalElement) {
-    fabricImage.__originalElement = el;
-    fabricImage.__originalSrc = el.src || '';
-  }
-
-  const baseEl = fabricImage.__originalElement || el;
-  const w = baseEl.naturalWidth || baseEl.width || 800;
-  const h = baseEl.naturalHeight || baseEl.height || 600;
-
-  const offCanvas = document.createElement('canvas');
-  offCanvas.width = w;
-  offCanvas.height = h;
-  const ctx = offCanvas.getContext('2d');
-  ctx.drawImage(baseEl, 0, 0, w, h);
-
-  const imgData = ctx.getImageData(0, 0, w, h);
-  applyInstagramEngineToImageData(imgData, opts);
-  ctx.putImageData(imgData, 0, 0);
-
-  fabricImage.setElement(offCanvas);
-  fabricImage.__isInstaFiltered = true;
-  fabricImage.__currentInstaFilter = opts.filterKey;
-  fabricImage.dirty = true;
-  if (typeof fabricImage.applyFilters === 'function') {
-    fabricImage.applyFilters();
-  }
-}
-
-function revertInstagramRetouch() {
-  const obj = canvas?.getActiveObject();
-  if (obj && obj.type === 'image' && obj.__originalElement) {
-    obj.setElement(obj.__originalElement);
-    obj.__isInstaFiltered = false;
-    obj.dirty = true;
-    canvas.requestRenderAll();
-    saveHistory();
-    onSelection();
-    toast('Исходное фото восстановлено ↺');
-  } else {
-    currentInstaFilter = 'normal';
-    $$('#insta-filters-grid .insta-filter-chip').forEach(c => {
-      c.classList.toggle('is-active', c.dataset.filter === 'normal');
-    });
-    const sInt = $('#insta-slider-intensity');
-    const vInt = $('#insta-val-intensity');
-    if (sInt) sInt.value = 100;
-    if (vInt) vInt.textContent = '100%';
-
-    const sW = $('#insta-slider-warmth');
-    const vW = $('#insta-val-warmth');
-    if (sW) sW.value = 0;
-    if (vW) vW.textContent = '0%';
-
-    const sV = $('#insta-slider-vibrance');
-    const vV = $('#insta-val-vibrance');
-    if (sV) sV.value = 0;
-    if (vV) vV.textContent = '0%';
-
-    const sC = $('#insta-slider-contrast');
-    const vC = $('#insta-val-contrast');
-    if (sC) sC.value = 0;
-    if (vC) vC.textContent = '0%';
-
-    const sVg = $('#insta-slider-vignette');
-    const vVg = $('#insta-val-vignette');
-    if (sVg) sVg.value = 0;
-    if (vVg) vVg.textContent = '0%';
-
-    const sGr = $('#insta-slider-grain');
-    const vGr = $('#insta-val-grain');
-    if (sGr) sGr.value = 0;
-    if (vGr) vGr.textContent = '0%';
-
-    renderInstaSplitPreview();
-    toast('Фильтры ретуши сброшены');
-  }
-}
+window.openInstagramRetouchModal = openInstagramRetouchModal;
+window.closeInstagramRetouchModal = closeInstagramRetouchModal;
 
 
 /* ══════════════════════════════════════════════════════════════
@@ -11743,22 +11251,55 @@ function bindEvents() {
       toast('⚠️ Выберите изображение на холсте');
       return;
     }
-    if (typeof window.removeBackground === 'function') {
+
+    const btnRemove = $('#btn-remove-bg');
+    const btnAuto = $('#btn-bg-remove-auto');
+    const origHtml = btnRemove ? btnRemove.innerHTML : '';
+    const origAutoHtml = btnAuto ? btnAuto.innerHTML : '';
+
+    if (btnRemove) {
+      btnRemove.disabled = true;
+      btnRemove.innerHTML = '<span>⏳ Обработка...</span>';
+    }
+    if (btnAuto) {
+      btnAuto.disabled = true;
+      btnAuto.innerHTML = '<span>⏳ Обработка...</span>';
+    }
+
+    try {
       const tier = document.querySelector('[name="bg-quality"]:checked')?.value || 'auto';
       const alphaMatting = !!$('#alpha-matting')?.checked;
-      await window.removeBackground(obj, { tier, alphaMatting });
-    } else {
-      removeImageBackground(28, 2);
+
+      if (typeof window.removeBackground === 'function') {
+        await window.removeBackground(obj, { tier, alphaMatting, tolerance: 28, feather: 2 });
+      } else if (window.AuroraBgRemoval && typeof window.AuroraBgRemoval.removeBackground === 'function') {
+        await window.AuroraBgRemoval.removeBackground(obj, { tier, alphaMatting, tolerance: 28, feather: 2 });
+      } else {
+        await removeImageBackground(28, 2);
+      }
+
+      // Раскрываем блок инструментов маски ТОЛЬКО после успешного завершения
+      const btnUndo = $('#btn-undo-bg');
+      const btnRefine = $('#btn-refine-edges');
+      const maskTools = $('#mask-tools');
+      const bgCompare = $('#bg-compare');
+      if (btnUndo) btnUndo.disabled = false;
+      if (btnRefine) btnRefine.disabled = false;
+      if (maskTools) maskTools.style.display = 'flex';
+      if (bgCompare) bgCompare.style.display = 'flex';
+    } catch (err) {
+      console.error('[editor] Background removal error:', err);
+      toast('❌ Ошибка при удалении фона: ' + (err.message || 'Сбой'));
+    } finally {
+      if (btnRemove) {
+        btnRemove.disabled = false;
+        btnRemove.innerHTML = origHtml;
+      }
+      if (btnAuto) {
+        btnAuto.disabled = false;
+        btnAuto.innerHTML = origAutoHtml;
+      }
     }
-    // Раскрываем блок инструментов маски
-    const btnUndo = $('#btn-undo-bg');
-    const btnRefine = $('#btn-refine-edges');
-    const maskTools = $('#mask-tools');
-    const bgCompare = $('#bg-compare');
-    if (btnUndo) btnUndo.disabled = false;
-    if (btnRefine) btnRefine.disabled = false;
-    if (maskTools) maskTools.style.display = 'flex';
-    if (bgCompare) bgCompare.style.display = 'flex';
   };
 
   $('#btn-remove-bg')?.addEventListener('click', handleBgRemovalClick);
@@ -12404,7 +11945,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildColorRows();
   bindEvents();
   initAiElementModal();
-  initInstagramRetouchModal();
 
   // Глобальные экспорты для внешних скриптов и тулбаров
   window.TEMPLATES = TEMPLATES;
@@ -12419,11 +11959,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (window.AuroraRetouchEngine?.openRetouchModal) {
     window.openInstagramRetouchModal = window.AuroraRetouchEngine.openRetouchModal;
-  } else if (!window.openInstagramRetouchModal) {
-    window.openInstagramRetouchModal = openInstagramRetouchModal;
-  }
-  if (!window.openRetouchModal) {
-    window.openRetouchModal = window.openInstagramRetouchModal;
+    window.openRetouchModal = window.AuroraRetouchEngine.openRetouchModal;
+  } else {
+    if (!window.openInstagramRetouchModal) {
+      window.openInstagramRetouchModal = openInstagramRetouchModal;
+    }
+    if (!window.openRetouchModal) {
+      window.openRetouchModal = window.openInstagramRetouchModal;
+    }
   }
   window.addAiElement = addAiElement;
   window.addAiPhotoElement = addAiPhotoElement;

@@ -135,14 +135,29 @@
         return reject(new Error('Недопустимый источник изображения (требуется Canvas или ImageData)'));
       }
 
+      let timeoutId = null;
+      const safeResolve = (res) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        resolve(res);
+      };
+      const safeReject = (err) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        reject(err);
+      };
+
+      // 8 second safety watchdog
+      timeoutId = setTimeout(() => {
+        safeReject(new Error('Таймаут выполнения в Web Worker'));
+      }, 8000);
+
       pendingTasks.push({
         imageData,
         width,
         height,
         options,
         onProgress: options.onProgress || (() => {}),
-        resolve,
-        reject
+        resolve: safeResolve,
+        reject: safeReject
       });
 
       _processNextTask();
