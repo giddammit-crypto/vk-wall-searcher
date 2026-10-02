@@ -61,3 +61,4 @@ cache/*
 !cache/tts/.gitkeep
 !cache/inoagent_snapshot.json
 .freebuff/
+.omnirush/

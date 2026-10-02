@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-10-02T16:50:00+03:00",
-  "release_name": "AURORA 5.6.0: Реализация плана задач AI и Figma Gap (Спринты 0–5: Булевы операции, Inspect Mode, Constraints, 4K Super-sampling, Drag-and-drop слоев, Серверный AI Rate Limiting)"
+  "commit_date": "2026-10-02T17:05:00+03:00",
+  "release_name": "AURORA 5.7.0: Клиентское AI удаление фона (100% In-Browser RMBG-1.4 Web Worker, WebGPU/WASM, Mask Painter, Edge Refinement, Undo)"
 }

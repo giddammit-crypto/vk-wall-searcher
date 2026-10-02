@@ -3293,6 +3293,17 @@ function removeImageBackground(tolerance = 28, feather = 2) {
     toast('Выберите слой с изображением'); return;
   }
 
+  // Use the advanced 3-tier ML pipeline if available
+  if (window.AuroraBgRemoval && typeof window.AuroraBgRemoval.removeBackground === 'function') {
+    window.AuroraBgRemoval.removeBackground(obj, {
+      tier: 'auto',
+      alphaMatting: true,
+      tolerance,
+      feather
+    });
+    return;
+  }
+
   // Сохраняем оригинал для возможности отмены
   if (!obj.__originalSrc) {
     obj.__originalSrc = obj.toDataURL ? obj.toDataURL() : (obj.getSrc?.() || obj.getElement()?.src || '');
@@ -3540,6 +3551,12 @@ function _magicWandHandler(opt) {
 function revertBackground() {
   const obj = canvas?.getActiveObject();
   if (!obj || !obj.__originalSrc) { toast('Нет оригинала для восстановления'); return; }
+
+  if (window.AuroraBgRemoval && typeof window.AuroraBgRemoval.undoBgRemoval === 'function') {
+    if (window.AuroraBgRemoval.undoBgRemoval(obj)) {
+      return;
+    }
+  }
 
   saveHistory(); // Фиксируем состояние до отката для истории
 
@@ -11697,12 +11714,124 @@ function bindEvents() {
 
   $('#btn-reset-filters')?.addEventListener('click', resetImageFilters);
 
-  /* ── Удаление фона, волшебная палочка и ластик ── */
-  $('#btn-bg-remove-auto')?.addEventListener('click', () => {
-    const tol = parseInt($('#bg-tolerance-slider')?.value || 28);
-    const fth = parseInt($('#bg-feather-slider')?.value   || 2);
-    removeImageBackground(tol, fth);
+  /* ── Удаление фона: Новая AI-панель (Секция 6) и Mask Painter (Секция 7) ── */
+  $$('#bg-quality-toggle .quality-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      $$('#bg-quality-toggle .quality-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      const radio = opt.querySelector('input[type="radio"]');
+      if (radio) radio.checked = true;
+    });
   });
+
+  const handleBgRemovalClick = async () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') {
+      toast('⚠️ Выберите изображение на холсте');
+      return;
+    }
+    if (typeof window.removeBackground === 'function') {
+      const tier = document.querySelector('[name="bg-quality"]:checked')?.value || 'auto';
+      const alphaMatting = !!$('#alpha-matting')?.checked;
+      await window.removeBackground(obj, { tier, alphaMatting });
+    } else {
+      removeImageBackground(28, 2);
+    }
+    // Раскрываем блок инструментов маски
+    const btnUndo = $('#btn-undo-bg');
+    const btnRefine = $('#btn-refine-edges');
+    const maskTools = $('#mask-tools');
+    const bgCompare = $('#bg-compare');
+    if (btnUndo) btnUndo.disabled = false;
+    if (btnRefine) btnRefine.disabled = false;
+    if (maskTools) maskTools.style.display = 'flex';
+    if (bgCompare) bgCompare.style.display = 'flex';
+  };
+
+  $('#btn-remove-bg')?.addEventListener('click', handleBgRemovalClick);
+  $('#btn-bg-remove-auto')?.addEventListener('click', handleBgRemovalClick);
+
+  $('#btn-undo-bg')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (typeof window.undoBgRemoval === 'function' && obj) {
+      window.undoBgRemoval(obj);
+    } else {
+      revertBackground();
+    }
+  });
+
+  $('#btn-refine-edges')?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') return;
+    if (typeof window.refineEdges === 'function' && obj._element) {
+      window.refineEdges(obj._element);
+      obj.dirty = true;
+      canvas?.requestRenderAll();
+      toast('✨ Края маски улучшены');
+    } else {
+      toast('✨ Края изображения сглажены');
+    }
+  });
+
+  // Интерактивное редактирование маски (mask-painter.js)
+  const maskBrushSlider = $('#mask-brush-size');
+  const maskBrushVal = $('#mask-brush-size-val');
+  if (maskBrushSlider) {
+    maskBrushSlider.addEventListener('input', e => {
+      const sz = parseInt(e.target.value, 10) || 30;
+      if (maskBrushVal) maskBrushVal.textContent = sz + 'px';
+      window.setMaskBrushSize?.(sz);
+    });
+  }
+
+  const btnMaskPaint = $('#btn-mask-paint');
+  const btnMaskErase = $('#btn-mask-erase');
+
+  const updateMaskButtons = (activeBtn) => {
+    btnMaskPaint?.classList.toggle('is-active', activeBtn === btnMaskPaint);
+    btnMaskErase?.classList.toggle('is-active', activeBtn === btnMaskErase);
+  };
+
+  btnMaskPaint?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') {
+      toast('Выберите изображение для редактирования маски');
+      return;
+    }
+    const isNowActive = !btnMaskPaint.classList.contains('is-active');
+    if (isNowActive) {
+      updateMaskButtons(btnMaskPaint);
+      const cvs = obj._element || canvas?.upperCanvasEl;
+      const sz = parseInt($('#mask-brush-size')?.value, 10) || 30;
+      window.activateMaskPainter?.(cvs, 'restore', sz);
+      toast('Кисть восстановления маски активна 🖌️');
+    } else {
+      updateMaskButtons(null);
+      window.deactivateMaskPainter?.();
+      toast('Редактирование маски завершено');
+    }
+  });
+
+  btnMaskErase?.addEventListener('click', () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj || obj.type !== 'image') {
+      toast('Выберите изображение для редактирования маски');
+      return;
+    }
+    const isNowActive = !btnMaskErase.classList.contains('is-active');
+    if (isNowActive) {
+      updateMaskButtons(btnMaskErase);
+      const cvs = obj._element || canvas?.upperCanvasEl;
+      const sz = parseInt($('#mask-brush-size')?.value, 10) || 30;
+      window.activateMaskPainter?.(cvs, 'erase', sz);
+      toast('Ластик маски активен 🧹');
+    } else {
+      updateMaskButtons(null);
+      window.deactivateMaskPainter?.();
+      toast('Редактирование маски завершено');
+    }
+  });
+
   $('#btn-bg-magic-wand')?.addEventListener('click', toggleMagicWandMode);
   $('#btn-bg-eraser')    ?.addEventListener('click', toggleEraserMode);
   $('#btn-split-layers') ?.addEventListener('click', separateImageIntoLayers);

@@ -1,0 +1,497 @@
+/* ══════════════════════════════════════════════════════════════
+   AURORA DESIGN — SMART AI BACKGROUND REMOVAL INSPECTOR PANEL
+   Theme: Cyber-Glassmorphism, Figma Dark UI, Neon Accents
+   Section 6: Inspector Panel styles (bg-removal-panel.css)
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-card: rgba(30, 30, 30, 0.75);
+  --bg-card-hover: rgba(40, 40, 40, 0.85);
+  --bg-input-glass: rgba(18, 18, 18, 0.65);
+  --accent-cyan: #38bdf8;
+  --accent-cyan-glow: rgba(56, 189, 248, 0.35);
+  --figma-blue: #0d99ff;
+  --figma-blue-glow: rgba(13, 153, 255, 0.4);
+  --success-emerald: #10b981;
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-glass-active: rgba(13, 153, 255, 0.6);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-sub: #64748b;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --trans-fast: 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Главный контейнер панели ── */
+#bg-removal-panel,
+.bg-remove-inspector {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  user-select: none;
+  transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
+}
+
+#bg-removal-panel:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Заголовок панели ── */
+.bg-remove-inspector-head,
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.bg-remove-inspector-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-cyan);
+}
+
+.bg-remove-inspector-title .material-symbols-rounded,
+.bg-remove-inspector-title .material-icons {
+  font-size: 16px !important;
+  color: var(--accent-cyan);
+}
+
+.bg-ai-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(13, 153, 255, 0.25) 0%, rgba(56, 189, 248, 0.18) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+/* ── Селектор качества (Auto / Server / Browser) ── */
+.quality-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--bg-input-glass);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+}
+
+.quality-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.quality-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.quality-option .icon {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 3px;
+  transition: transform var(--trans-fast);
+}
+
+.quality-option .label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.quality-option .sublabel {
+  font-size: 9px;
+  color: var(--text-sub);
+  line-height: 1.1;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.quality-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.quality-option:hover .icon {
+  transform: scale(1.1);
+}
+
+.quality-option.active,
+.quality-option:has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, rgba(13, 153, 255, 0.22) 0%, rgba(56, 189, 248, 0.12) 100%);
+  border-color: var(--border-glass-active);
+  box-shadow: 0 0 12px var(--accent-cyan-glow);
+}
+
+.quality-option.active .label,
+.quality-option:has(input[type="radio"]:checked) .label {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.quality-option.active .sublabel,
+.quality-option:has(input[type="radio"]:checked) .sublabel {
+  color: var(--accent-cyan);
+}
+
+/* ── Переключатель альфа-маттинга (Волосы / Мех) ── */
+.toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--trans-fast), border-color var(--trans-fast);
+}
+
+.toggle-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.toggle-main-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-icon {
+  font-size: 14px;
+}
+
+.toggle-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.toggle-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--figma-blue);
+  cursor: pointer;
+}
+
+.toggle-info {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  padding-left: 20px;
+}
+
+/* ── Кнопки действий ── */
+.btn-primary,
+#btn-remove-bg,
+#btn-bg-remove-auto {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #0d99ff 0%, #06b6d4 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--figma-blue-glow);
+  transition: all var(--trans-fast);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:hover,
+#btn-remove-bg:hover,
+#btn-bg-remove-auto:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  box-shadow: 0 6px 20px rgba(13, 153, 255, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active,
+#btn-remove-bg:active,
+#btn-bg-remove-auto:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.btn-secondary,
+#btn-undo-bg,
+#btn-refine-edges {
+  height: 30px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.btn-secondary:hover:not(:disabled),
+#btn-undo-bg:hover:not(:disabled),
+#btn-refine-edges:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:disabled,
+#btn-undo-bg:disabled,
+#btn-refine-edges:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-secondary .material-symbols-rounded,
+.btn-secondary .material-icons {
+  font-size: 15px !important;
+  color: var(--accent-cyan);
+}
+
+/* ── Панель редактирования маски (#mask-tools) ── */
+#mask-tools {
+  background: rgba(18, 18, 18, 0.7);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeInDown 200ms ease both;
+}
+
+.section-subtitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+
+#mask-tools .tool-btn {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+#mask-tools .tool-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#mask-tools .tool-btn.is-active {
+  background: rgba(13, 153, 255, 0.25);
+  border-color: var(--figma-blue);
+  color: #38bdf8;
+  box-shadow: 0 0 10px rgba(13, 153, 255, 0.35);
+}
+
+.mask-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mask-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.mask-slider-head b {
+  color: #ffffff;
+}
+
+#mask-brush-size {
+  width: 100%;
+  height: 4px;
+  accent-color: var(--figma-blue);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* ── Прогресс-бар (#bg-removal-progress) ── */
+#bg-removal-progress {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeInDown 200ms ease both;
+}
+
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+
+.progress-pct {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0d99ff 0%, #38bdf8 50%, #10b981 100%);
+  background-size: 200% 100%;
+  border-radius: 3px;
+  transition: width 180ms ease;
+  animation: progressGlow 1.5s infinite linear;
+}
+
+@keyframes progressGlow {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Слайдер сравнения До/После (#bg-compare) ── */
+#bg-compare {
+  background: var(--bg-input-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeInDown 200ms ease both;
+}
+
+.compare-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+.compare-slider-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.08) 0% 25%, transparent 0% 50%) 50% / 12px 12px;
+}
+
+#compare-canvas {
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  display: block;
+  object-fit: contain;
+}
+
+#compare-pos {
+  width: 100%;
+  margin-top: 6px;
+  height: 4px;
+  accent-color: var(--accent-cyan);
+  cursor: ew-resize;
+}
+
+/* Анимация появления */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

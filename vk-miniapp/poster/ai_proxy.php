@@ -123,12 +123,129 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
         exit;
     }
 
+    if (($_GET['action'] ?? '') === 'remove_bg') {
+        // Health check for rembg endpoint
+        $rembgHost = getenv('REMBG_API_URL') ?: 'http://127.0.0.1:8000';
+        $ch = curl_init(rtrim($rembgHost, '/') . '/health');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 3,
+            CURLOPT_CONNECTTIMEOUT => 2
+        ]);
+        $hRes = curl_exec($ch);
+        $hCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        header('Content-Type: application/json');
+        if ($hCode >= 200 && $hCode < 300) {
+            http_response_code(200);
+            echo $hRes ?: json_encode(['status' => 'ok', 'service' => 'rembg']);
+        } else {
+            // Standalone status if rembg microservice is not running
+            http_response_code(200);
+            echo json_encode([
+                'status' => 'available',
+                'service' => 'aurora-proxy-rembg',
+                'upstream' => 'offline',
+                'notice' => 'Configure REMBG_API_URL to proxy to external python rembg instance.'
+            ]);
+        }
+        exit;
+    }
+
     echo json_encode([
         'status' => 'ok',
         'service' => 'Aurora AI Proxy (100% Free Tier)',
         'keys_count' => count($apiKeys),
         'free_models' => $defaultModels
     ]);
+    exit;
+}
+
+// Handle remove_bg POST request
+if (($_GET['action'] ?? '') === 'remove_bg' || (isset($_POST['action']) && $_POST['action'] === 'remove_bg')) {
+    $rembgHost = getenv('REMBG_API_URL') ?: 'http://127.0.0.1:8000';
+    $targetUrl = rtrim($rembgHost, '/') . '/remove-bg';
+
+    $tempFilePath = null;
+    $postFields = [
+        'alpha_matting' => $_POST['alpha_matting'] ?? 'false',
+        'foreground_threshold' => $_POST['foreground_threshold'] ?? '240',
+        'background_threshold' => $_POST['background_threshold'] ?? '10',
+        'erode_size' => $_POST['erode_size'] ?? '10'
+    ];
+
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name'])) {
+        $cfile = new CURLFile($_FILES['file']['tmp_name'], $_FILES['file']['type'] ?: 'image/png', $_FILES['file']['name'] ?: 'image.png');
+        $postFields['file'] = $cfile;
+    } else {
+        // Try reading raw body or json base64 image
+        $raw = file_get_contents('php://input');
+        $imgData = null;
+        if (!empty($raw)) {
+            $parsed = json_decode($raw, true);
+            if (!empty($parsed['image'])) {
+                $base64 = $parsed['image'];
+                if (preg_match('/^data:image\/(\w+);base64,/', $base64, $m)) {
+                    $base64 = substr($base64, strpos($base64, ',') + 1);
+                }
+                $imgData = base64_decode($base64);
+                if (!empty($parsed['alpha_matting'])) $postFields['alpha_matting'] = (string)$parsed['alpha_matting'];
+                if (!empty($parsed['foreground_threshold'])) $postFields['foreground_threshold'] = (string)$parsed['foreground_threshold'];
+                if (!empty($parsed['background_threshold'])) $postFields['background_threshold'] = (string)$parsed['background_threshold'];
+                if (!empty($parsed['erode_size'])) $postFields['erode_size'] = (string)$parsed['erode_size'];
+            } elseif (str_starts_with($raw, "\x89PNG") || str_starts_with($raw, "\xFF\xD8\xFF")) {
+                $imgData = $raw;
+            }
+        }
+
+        if ($imgData !== null && strlen($imgData) > 0) {
+            $tempFilePath = tempnam(sys_get_temp_dir(), 'rembg_');
+            file_put_contents($tempFilePath, $imgData);
+            $postFields['file'] = new CURLFile($tempFilePath, 'image/png', 'image.png');
+        }
+    }
+
+    if (empty($postFields['file'])) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => ['message' => 'No image file or base64 data provided']]);
+        exit;
+    }
+
+    // Proxy request to rembg service
+    $ch = curl_init($targetUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $postFields,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_CONNECTTIMEOUT => 5
+    ]);
+    $result = curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($tempFilePath && file_exists($tempFilePath)) {
+        @unlink($tempFilePath);
+    }
+
+    if ($result !== false && $httpCode >= 200 && $httpCode < 300) {
+        header('Content-Type: ' . ($contentType ?: 'image/png'));
+        echo $result;
+        exit;
+    }
+
+    http_response_code($httpCode >= 400 ? $httpCode : 503);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'error' => [
+            'message' => 'rembg service unavailable: ' . ($curlErr ?: "HTTP $httpCode"),
+            'detail' => 'Ensure rembg service is running on ' . $rembgHost . ' or set REMBG_API_URL'
+        ]
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
