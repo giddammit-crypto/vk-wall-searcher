@@ -291,14 +291,20 @@ if ($method === '__server_status__') {
 
 // Server-side settings password verification (no secrets sent to the client).
 // Пароль берется из api/config.php (settings_password или update_token) или переменной окружения.
+// SEC-2: Поддержка как bcrypt-хешей (password_hash/password_verify), так и прямого сравнения (hash_equals).
 if ($method === '__verify_settings_password__') {
-    $settingsPassword = isset($vkConfig['settings_password']) && (string)$vkConfig['settings_password'] !== ''
+    $envPass = (string)(getenv('AURORA_SETTINGS_PASSWORD') ?: getenv('VK_UPDATE_TOKEN') ?: '');
+    $cfgPass = isset($vkConfig['settings_password']) && (string)$vkConfig['settings_password'] !== ''
         ? (string)$vkConfig['settings_password']
         : (isset($vkConfig['update_token']) && (string)$vkConfig['update_token'] !== ''
             ? (string)$vkConfig['update_token']
-            : (string)(getenv('AURORA_SETTINGS_PASSWORD') ?: getenv('VK_UPDATE_TOKEN') ?: ''));
+            : '');
+    $settingsPassword = $envPass !== '' ? $envPass : $cfgPass;
     $provided = isset($data['password']) ? (string)$data['password'] : '';
-    $ok = $settingsPassword !== '' && $provided !== '' && hash_equals($settingsPassword, $provided);
+    $ok = false;
+    if ($settingsPassword !== '' && $provided !== '') {
+        $ok = password_verify($provided, $settingsPassword) || hash_equals($settingsPassword, $provided);
+    }
     http_response_code(200);
     echo json_encode(['ok' => $ok], JSON_UNESCAPED_UNICODE);
     exit;

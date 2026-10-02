@@ -191,9 +191,10 @@ function vkws_fetch_remote_head($repo, $branch, $ghToken)
 /**
  * Рекурсивное копирование релиза поверх приложения.
  * Защищённые пути (никогда не затираются):
- *   data/            — локальная история и состояние;
- *   .git/            — служебный каталог;
- *   api/config.php   — секреты сервера (ключи, пароль обновления).
+ *   data/                  — локальная история и состояние;
+ *   .git/                  — служебный каталог;
+ *   api/config.php         — секреты сервера (ключи, пароль обновления);
+ *   api/config.local.php   — локальные переопределения конфигурации.
  */
 function vkws_copy_tree($src, $dst, $relBase = '')
 {
@@ -210,7 +211,7 @@ function vkws_copy_tree($src, $dst, $relBase = '')
             continue;
         }
         $rel = $relBase === '' ? $item : $relBase . '/' . $item;
-        if (in_array($rel, $protectedDirs, true) || $rel === 'api/config.php') {
+        if (in_array($rel, $protectedDirs, true) || $rel === 'api/config.php' || $rel === 'api/config.local.php' || $item === 'backup_meta.json') {
             continue;
         }
         $s = $src . DIRECTORY_SEPARATOR . $item;
@@ -222,6 +223,50 @@ function vkws_copy_tree($src, $dst, $relBase = '')
         }
     }
     closedir($dir);
+    return true;
+}
+
+/**
+ * SEC-3: Создание резервной копии текущих ключевых файлов перед обновлением
+ * в каталог data/backup_previous/.
+ */
+function vkws_create_backup($srcAppRoot, $backupDir, $releaseRoot)
+{
+    if (is_dir($backupDir)) {
+        vkws_rrmdir($backupDir);
+    }
+    @mkdir($backupDir, 0775, true);
+
+    $dir = @opendir($releaseRoot);
+    if (!$dir) {
+        return false;
+    }
+    while (($item = readdir($dir)) !== false) {
+        if ($item === '.' || $item === '..' || $item === 'data' || $item === '.git') {
+            continue;
+        }
+        $appPath = $srcAppRoot . DIRECTORY_SEPARATOR . $item;
+        $bkPath = $backupDir . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($appPath)) {
+            vkws_copy_tree($appPath, $bkPath, $item);
+        } elseif (is_file($appPath)) {
+            @copy($appPath, $bkPath);
+        }
+    }
+    closedir($dir);
+
+    // Обязательно сохраняем локальный .version.json в резервной копии
+    $vFile = $srcAppRoot . DIRECTORY_SEPARATOR . '.version.json';
+    if (is_file($vFile)) {
+        @copy($vFile, $backupDir . DIRECTORY_SEPARATOR . '.version.json');
+    }
+
+    $meta = [
+        'created_at' => date('c'),
+        'created_ts' => time(),
+        'from_version' => is_file($vFile) ? json_decode((string)@file_get_contents($vFile), true) : null
+    ];
+    @file_put_contents($backupDir . DIRECTORY_SEPARATOR . 'backup_meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     return true;
 }
 
@@ -257,6 +302,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($action !== 'status') {
         vkws_reply(['ok' => false, 'error' => 'Неизвестное действие'], 400);
     }
+    $backupDir = $dataDir . DIRECTORY_SEPARATOR . 'backup_previous';
+    $hasBackup = is_dir($backupDir) && (is_file($backupDir . DIRECTORY_SEPARATOR . 'index.html') || is_file($backupDir . DIRECTORY_SEPARATOR . '.version.json'));
     vkws_reply([
         'ok' => true,
         'repo' => $repo,
@@ -264,6 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'local' => $localVersion,
         'last_check' => isset($state['last_check']) ? $state['last_check'] : null,
         'last_update' => isset($state['last_update']) ? $state['last_update'] : null,
+        'last_rollback' => isset($state['last_rollback']) ? $state['last_rollback'] : null,
+        'has_backup' => $hasBackup,
         'token_required' => true
     ]);
 }
@@ -325,7 +374,7 @@ if ($action === 'update') {
     $validTokens = array_filter(array_unique([$updateToken]));
     $tokenMatch = false;
     foreach ($validTokens as $t) {
-        if ($t !== '' && hash_equals($t, $provided)) {
+        if ($t !== '' && (password_verify($provided, $t) || hash_equals($t, $provided))) {
             $tokenMatch = true;
             break;
         }
@@ -387,8 +436,12 @@ if ($action === 'update') {
         vkws_reply(['ok' => false, 'error' => 'Архив повреждён: корень приложения не найден'], 500);
     }
 
+    // SEC-3: Создание резервной копии перед применением обновления
+    $backupDir = $dataDir . DIRECTORY_SEPARATOR . 'backup_previous';
+    vkws_create_backup(VKWS_APP_ROOT, $backupDir, $releaseRoot);
+
     // 5. Применяем поверх текущих файлов
-    //    (data/, .git и api/config.php защищены внутри функции копирования)
+    //    (data/, .git, api/config.php и api/config.local.php защищены внутри функции копирования)
     $copied = vkws_copy_tree($releaseRoot, VKWS_APP_ROOT);
 
     // 6. Фиксируем новую версию
@@ -443,6 +496,67 @@ if ($action === 'update') {
         'sha' => $remote['sha'],
         'message' => $remote['message'],
         'note' => 'Новая версия применена. Обновите страницу (файлы уже заменены).'
+    ]);
+}
+
+// --- ROLLBACK: откат до резервной копии предыдущей версии (SEC-3) -------------
+if ($action === 'rollback') {
+    $provided = isset($body['token']) ? (string)$body['token'] : '';
+    $validTokens = array_filter(array_unique([$updateToken]));
+    $tokenMatch = false;
+    foreach ($validTokens as $t) {
+        if ($t !== '' && (password_verify($provided, $t) || hash_equals($t, $provided))) {
+            $tokenMatch = true;
+            break;
+        }
+    }
+    if (!$tokenMatch) {
+        vkws_reply(['ok' => false, 'error' => 'Неверный пароль обновления (требуется пароль администратора)'], 403);
+    }
+
+    $backupDir = $dataDir . DIRECTORY_SEPARATOR . 'backup_previous';
+    if (!is_dir($backupDir)) {
+        vkws_reply(['ok' => false, 'error' => 'Резервная копия не найдена (каталог data/backup_previous отсутствует). Откат невозможен.'], 404);
+    }
+
+    // Проверяем наличие ключевых файлов в backup_previous
+    $hasKeyFile = is_file($backupDir . DIRECTORY_SEPARATOR . 'index.html') || is_file($backupDir . DIRECTORY_SEPARATOR . '.version.json');
+    if (!$hasKeyFile) {
+        vkws_reply(['ok' => false, 'error' => 'Резервная копия пуста или повреждена'], 400);
+    }
+
+    // Восстанавливаем файлы из backup_previous поверх текущего приложения
+    $copied = vkws_copy_tree($backupDir, VKWS_APP_ROOT);
+    if (!$copied) {
+        vkws_reply(['ok' => false, 'error' => 'Ошибка при восстановлении файлов из резервной копии'], 500);
+    }
+
+    // Восстанавливаем .version.json если он есть в бэкапе
+    $bkVersionFile = $backupDir . DIRECTORY_SEPARATOR . '.version.json';
+    if (is_file($bkVersionFile)) {
+        @copy($bkVersionFile, VKWS_VERSION_FILE);
+    }
+
+    // Читаем восстановленную версию
+    $restoredVersion = vkws_read_local_version();
+
+    $state['last_rollback'] = [
+        'ts' => time(),
+        'ok' => true,
+        'restored_version' => $restoredVersion
+    ];
+    $state['last_check'] = [
+        'ts' => 0,
+        'ok' => true,
+        'update_available' => true
+    ];
+    vkws_write_state($stateFile, $state);
+
+    vkws_reply([
+        'ok' => true,
+        'rolled_back' => true,
+        'version' => $restoredVersion,
+        'message' => 'Предыдущая версия успешно восстановлена из резервной копии. Обновите страницу.'
     ]);
 }
 

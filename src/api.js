@@ -187,8 +187,10 @@ export async function resolveMissingAuthors(posts, token = '') {
     }
 }
 
-// Проверенный публичный сервисный ключ для прямого автономного режима (статический хостинг)
-export const DEFAULT_STANDALONE_TOKEN = '1543ce801543ce801543ce80d0167df366115431543ce807c1370050b48ab4c01eabc6a';
+// SEC-1: Сервисные ключи хранятся исключительно на сервере (api/config.php).
+// В клиентском коде по умолчанию токен не задан во избежание утечки в URL.
+// При работе без серверного прокси требуется указать собственный токен в Настройках.
+export const DEFAULT_STANDALONE_TOKEN = '';
 
 /**
  * Send JSON payload to VK Proxy backend with multi-candidate path fallback
@@ -248,6 +250,9 @@ export function callVkApiJsonp(method, params = {}, token = '') {
         }
 
         const activeToken = token || DEFAULT_STANDALONE_TOKEN;
+        if (!activeToken) {
+            return reject(new Error('Для прямого автономного режима (JSONP) без серверного прокси требуется указать VK токен в Настройках.'));
+        }
         const callbackName = 'vk_jsonp_cb_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
         const script = document.createElement('script');
         script.type = 'text/javascript';

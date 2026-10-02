@@ -37,7 +37,9 @@ function cloud_verify_upload_password(?string $provided = null): bool {
 
     if ($expected === '') return true; // пароль не задан — загрузка открыта
     if ($provided === null || $provided === '') return false;
-    return hash_equals($expected, (string)$provided);
+    // SEC-2: Поддержка как bcrypt-хешей (password_verify), так и прямого сравнения (hash_equals)
+    $providedStr = (string)$provided;
+    return password_verify($providedStr, $expected) || hash_equals($expected, $providedStr);
 }
 
 /**

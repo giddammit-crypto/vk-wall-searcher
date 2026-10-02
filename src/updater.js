@@ -78,6 +78,22 @@ export async function applyUpdate(token, force = false) {
 }
 
 /**
+ * Откат до резервной копии предыдущей версии (SEC-3).
+ */
+export async function rollbackUpdate(token) {
+    const res = await fetch(UPDATER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rollback', token })
+    });
+    const data = res ? await res.json() : null;
+    if (!res || !res.ok || !data || !data.ok) {
+        throw new Error(data && data.error ? data.error : `HTTP ${res ? res.status : '—'}`);
+    }
+    return data;
+}
+
+/**
  * Короткий хеш коммита для бейджей
  */
 export function shortSha(sha) {
