@@ -4522,6 +4522,11 @@ function setActiveTool(toolName = 'select', showToast = false) {
     cancelCanvasEyedropper();
   }
 
+  // Сброс режима пера если выбран любой другой инструмент
+  if (targetTool !== 'pen' && window.AuroraFigmaPro?.isPenActive?.()) {
+    window.AuroraFigmaPro.deactivatePenTool();
+  }
+
   // 4. Сброс панорамирования (pan / hand)
   isPanningMode = (targetTool === 'pan');
   isCanvasDragging = false;
@@ -10398,18 +10403,28 @@ function bindEvents() {
   $('#tool-semicircle')?.addEventListener('click', () => window.AuroraFigmaPro?.addSemiCircle());
 
   /* Figma Pro: Векторное перо, Auto-Layout, Компоненты */
-  $('#tool-pen')?.addEventListener('click', () => {
+  $('#tool-pen')?.addEventListener('click', (e) => {
+    e.preventDefault();
     cancelCanvasEyedropper();
-    if (canvas?.isDrawingMode) toggleDrawingMode(false);
+    if (canvas?.isDrawingMode) {
+      canvas.isDrawingMode = false;
+      $('#pencil-toolbar')?.classList.add('hidden');
+      $('#tool-pencil')?.classList.remove('is-active', 'active');
+    }
     if (window.AuroraFigmaPro?.isPenActive?.()) {
       window.AuroraFigmaPro.deactivatePenTool();
     } else {
       window.AuroraFigmaPro?.activatePenTool();
     }
   });
-  $('#btn-header-pen')?.addEventListener('click', () => {
+  $('#btn-header-pen')?.addEventListener('click', (e) => {
+    e.preventDefault();
     cancelCanvasEyedropper();
-    if (canvas?.isDrawingMode) toggleDrawingMode(false);
+    if (canvas?.isDrawingMode) {
+      canvas.isDrawingMode = false;
+      $('#pencil-toolbar')?.classList.add('hidden');
+      $('#tool-pencil')?.classList.remove('is-active', 'active');
+    }
     if (window.AuroraFigmaPro?.isPenActive?.()) {
       window.AuroraFigmaPro.deactivatePenTool();
     } else {

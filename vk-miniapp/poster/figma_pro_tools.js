@@ -37,7 +37,11 @@
      УТИЛИТЫ
      ──────────────────────────────────────────────────────────── */
   function canvas() {
-    return (typeof window !== 'undefined' && window.canvas) || Pro.canvas;
+    const c = (typeof window !== 'undefined' && window.canvas) || Pro.canvas;
+    if (c && Pro.canvas !== c) {
+      bindCanvas(c);
+    }
+    return c;
   }
   function toast(text) { if (typeof Pro.hooks.toast === 'function') Pro.hooks.toast(text); }
   function saveHistory() { if (typeof Pro.hooks.saveHistory === 'function') Pro.hooks.saveHistory(); }
@@ -728,7 +732,10 @@
   /* ────────────────────────────────────────────────────────────
      КЛАВИАТУРА
      ──────────────────────────────────────────────────────────── */
+  let _hotkeysInstalled = false;
   function installHotkeys() {
+    if (_hotkeysInstalled) return;
+    _hotkeysInstalled = true;
     document.addEventListener('keydown', e => {
       const ae = document.activeElement;
       const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
@@ -2111,7 +2118,13 @@
 
   function activatePenTool() {
     const c = canvas();
-    if (!c) return;
+    if (!c) {
+      document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => el?.classList.add('is-active', 'active'));
+      return;
+    }
+    if (Pro.canvas !== c) {
+      bindCanvas(c);
+    }
     _isPenActive = true;
     _penPoints = [];
     _penDragIndex = -1;
@@ -2443,7 +2456,21 @@
     document.getElementById('btn-vector-pen-mode')?.addEventListener('click', () => {
       document.querySelectorAll('.figma-vector-subtool-btn').forEach(b => b.classList.remove('is-active'));
       document.getElementById('btn-vector-pen-mode')?.classList.add('is-active');
+      if (!_isPenActive) activatePenTool();
     });
+
+    // Делегированный перехват клика по всем кнопкам пера (боковое меню, шапка, тулбар)
+    document.addEventListener('click', e => {
+      const btn = e.target && e.target.closest && e.target.closest('#tool-pen, #btn-header-pen, .tool-btn-pen, [data-tool="pen"]');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (_isPenActive) {
+        deactivatePenTool();
+      } else {
+        activatePenTool();
+      }
+    }, true);
   }
 
   /* ────────────────────────────────────────────────────────────
@@ -2583,7 +2610,7 @@
     bindCanvas(ctx.canvas);
 
     // Экспорт API
-    window.AuroraFigmaPro = {
+    const proApi = {
       selectAllObjects, cycleLayerSelection, zoomToSelection, zoomTo100,
       alignSelection, distributeSelection,
       copyObjectStyle, applyObjectStyle, pasteInPlace,
@@ -2609,9 +2636,55 @@
       updateBrushParams: updateActiveBrushParams,
       getActiveBrushKind: () => _currentBrushKind,
       hexToRgba,
-      setCurrentSize(s) { Pro.currentSize = s; }
+      setCurrentSize(s) { Pro.currentSize = s; },
+      install
     };
+    window.AuroraFigmaPro = window.AuroraFigmaPro ? Object.assign(window.AuroraFigmaPro, proApi) : proApi;
   }
 
+  // Экспорт API сразу при подключении скрипта (до вызова install)
+  const immediateProApi = {
+    selectAllObjects, cycleLayerSelection, zoomToSelection, zoomTo100,
+    alignSelection, distributeSelection,
+    copyObjectStyle, applyObjectStyle, pasteInPlace,
+    addTriangle, addEllipse, addSemiCircle, addPentagon, addDiamond,
+    setStrokeStyle, getStrokeKind, syncStrokeStyleUI, DASH_PRESETS,
+    applyBrushKind, updateActiveBrushParams, getActiveBrushKind: () => _currentBrushKind, peerSnap,
+    triggerLayerRename, toggleLockSelection, toggleHideSelection,
+    exportSelectedObject, applyOpacityValue,
+    // Auto-Layout
+    toggleAutoLayout, reflowAutoLayout, removeAutoLayout, syncAutoLayoutUI,
+    // Components
+    createMasterComponent, createComponentInstance, detachComponentInstance,
+    syncComponentInstances, jumpToMasterComponent, resetComponentOverrides, syncComponentUI,
+    // Design Tokens
+    initDesignTokens, getAllDesignTokens, getDesignToken, addDesignToken,
+    updateDesignToken, applyDesignToken, renderDesignTokensUI,
+    exportTokensToCSS, exportTokensToJSON,
+    // Pen Tool
+    activatePenTool, deactivatePenTool, finishPenPath,
+    isPenActive: () => _isPenActive,
+    bindCanvas,
+    setCanvas: bindCanvas,
+    updateBrushParams: updateActiveBrushParams,
+    getActiveBrushKind: () => _currentBrushKind,
+    hexToRgba,
+    setCurrentSize(s) { Pro.currentSize = s; },
+    install
+  };
+  window.AuroraFigmaPro = window.AuroraFigmaPro ? Object.assign(window.AuroraFigmaPro, immediateProApi) : immediateProApi;
   window.AuroraFigmaProInstall = install;
+
+  // Автоматическая установка слушателей кнопок и горячих клавиш сразу при готовности DOM
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        installHotkeys();
+        installVectorToolButtons();
+      });
+    } else {
+      installHotkeys();
+      installVectorToolButtons();
+    }
+  }
 })();
