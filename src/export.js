@@ -453,32 +453,38 @@ export function exportRatingToCsv(groupsStats = []) {
         '№',
         'Филиал библиотеки',
         'Адрес',
+        'Число подписчиков',
         'Количество публикаций',
         'Просмотры',
         'Лайки',
         'Репосты',
         'Комментарии',
         'Реакций на пост',
-        'Коэффициент вовлечения (ER %)'
+        'ER по охвату (%)',
+        'ER по подписчикам (%)'
     ];
 
     const rows = groupsStats.map((s, idx) => {
         const views = extractNum(s.views);
         const totalReactions = s.likes + s.reposts + s.comments;
         const avgReactions = s.postsCount > 0 ? (totalReactions / s.postsCount).toFixed(1) : '0.0';
-        const er = views > 0 ? ((totalReactions / views) * 100).toFixed(2) : '0.00';
+        const erReach = views > 0 ? ((totalReactions / views) * 100).toFixed(2) : '0.00';
+        const subscribers = s.subscribers || s.info?.members_count || 0;
+        const erSubs = (subscribers > 0) ? ((totalReactions / subscribers) * 100).toFixed(2) : '';
 
         return [
             idx + 1,
             esc(s.info?.canonicalName || s.info?.name || 'Источник'),
             esc(s.info?.address || ''),
+            subscribers || '',
             s.postsCount,
             s.views,
             s.likes,
             s.reposts,
             s.comments,
             avgReactions,
-            er
+            erReach,
+            erSubs
         ].join(';');
     });
 

@@ -318,6 +318,13 @@ export function callVkApiJsonp(method, params = {}, token = '') {
 }
 
 /**
+ * Asynchronous sleep helper
+ */
+export function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
  * Call a single VK API method via proxy with automatic direct JSONP fallback.
  */
 export async function callVkApi(method, params = {}, token = '') {
@@ -371,6 +378,109 @@ export async function callVkApi(method, params = {}, token = '') {
 
     // 2. Автономный режим прямого обращения к VK API (работает на любом хостинге)
     return await callVkApiJsonp(method, params, token);
+}
+
+/**
+ * S-4: Call VK API with exponential backoff retry mechanism for rate limits and transient errors
+ */
+export async function callVkApiWithRetry(method, params = {}, token = '', maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await callVkApi(method, params, token);
+        } catch (err) {
+            const msg = String(err?.message || '');
+            const isRateLimit = /лимит|too many|error_code.{0,4}6|\[6\]|\[29\]/i.test(msg);
+            const isTimeout = /504|timeout|таймаут|сетевая|gateway|failed to fetch/i.test(msg);
+
+            if ((isRateLimit || isTimeout) && attempt < maxRetries) {
+                const backoffMs = isRateLimit ? (1000 * attempt) : (500 * attempt);
+                console.warn(`VK API ${method} attempt ${attempt} failed (${msg}). Retrying in ${backoffMs}ms...`);
+                await sleep(backoffMs);
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
+/**
+ * S-2: Search posts on VK wall using wall.search
+ */
+export async function searchWallPosts(ownerId, query, offset = 0, count = 100, token = '') {
+    return await callVkApiWithRetry('wall.search', {
+        owner_id: ownerId,
+        query: query,
+        offset: offset,
+        count: Math.min(count, 100),
+        extended: 1
+    }, token);
+}
+
+/**
+ * S-5: SessionStorage Caching Layer for Group Wall Posts (15 min TTL)
+ */
+const POSTS_CACHE_TTL = 15 * 60 * 1000;
+const POSTS_CACHE_PREFIX = 'aurora_wall_cache_';
+
+export function getCachedGroupPosts(groupId, minTime = 0, maxTime = 0) {
+    try {
+        if (typeof sessionStorage === 'undefined') return null;
+        const key = `${POSTS_CACHE_PREFIX}${groupId}_${minTime || 0}_${maxTime || 0}`;
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.timestamp || !Array.isArray(parsed.posts)) {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+        if (Date.now() - parsed.timestamp > POSTS_CACHE_TTL) {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+        return parsed.posts;
+    } catch (e) {
+        return null;
+    }
+}
+
+export function setCachedGroupPosts(groupId, minTime = 0, maxTime = 0, posts = []) {
+    try {
+        if (typeof sessionStorage === 'undefined' || !posts || !Array.isArray(posts) || posts.length === 0) return;
+        const key = `${POSTS_CACHE_PREFIX}${groupId}_${minTime || 0}_${maxTime || 0}`;
+        // Store compact representation to save space and avoid QuotaExceededError
+        const compactPosts = posts.map(p => ({
+            id: p.id,
+            owner_id: p.owner_id,
+            from_id: p.from_id,
+            date: p.date,
+            text: p.text,
+            is_pinned: p.is_pinned,
+            likes: p.likes,
+            reposts: p.reposts,
+            views: p.views,
+            comments: p.comments,
+            attachments: p.attachments,
+            copy_history: p.copy_history
+        }));
+        sessionStorage.setItem(key, JSON.stringify({
+            timestamp: Date.now(),
+            posts: compactPosts
+        }));
+    } catch (e) {
+        // QuotaExceeded: clean up expired or older aurora cache keys
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                const keysToRemove = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const k = sessionStorage.key(i);
+                    if (k && k.startsWith(POSTS_CACHE_PREFIX)) {
+                        keysToRemove.push(k);
+                    }
+                }
+                keysToRemove.forEach(k => sessionStorage.removeItem(k));
+            }
+        } catch (cleanupErr) {}
+    }
 }
 
 /**
@@ -463,7 +573,7 @@ while (i < max_calls) {
 return { "count": total, "items": items, "profiles": profiles, "groups": groups, "has_more": has_more, "calls": i };
 `.trim();
 
-    return await callVkApi('execute', { code: code }, token);
+    return await callVkApiWithRetry('execute', { code: code }, token);
 }
 
 /**

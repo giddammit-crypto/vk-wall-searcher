@@ -35,7 +35,7 @@ export function formatViews(val) {
 /**
  * Calculate high-level KPIs across all posts
  */
-export function calculateKPIs(posts) {
+export function calculateKPIs(posts, targets = []) {
     let totalLikes = 0;
     let totalReposts = 0;
     let totalViews = 0;
@@ -54,8 +54,18 @@ export function calculateKPIs(posts) {
     const avgLikes = count > 0 ? Math.round(totalLikes / count) : 0;
     const avgReposts = count > 0 ? Math.round(totalReposts / count) : 0;
     const avgComments = count > 0 ? Math.round(totalComments / count) : 0;
-    const erViews = totalViews > 0 ? ((totalInteractions / totalViews) * 100).toFixed(2) : '0.00';
+    const erReachVal = totalViews > 0 ? ((totalInteractions / totalViews) * 100).toFixed(2) : '0.00';
     const erPosts = count > 0 ? ((totalInteractions / count)).toFixed(1) : '0.0';
+
+    let totalSubscribers = 0;
+    if (Array.isArray(targets) && targets.length > 0) {
+        targets.forEach(t => {
+            if (t && typeof t.members_count === 'number' && t.members_count > 0) {
+                totalSubscribers += t.members_count;
+            }
+        });
+    }
+    const erSubsVal = totalSubscribers > 0 ? ((totalInteractions / totalSubscribers) * 100).toFixed(2) : null;
 
     return {
         count,
@@ -64,11 +74,14 @@ export function calculateKPIs(posts) {
         totalViews,
         totalComments,
         totalInteractions,
+        totalSubscribers,
         avgViews,
         avgLikes,
         avgInteractions: erPosts,
         avgReactionsPerPost: erPosts,
-        erViews: `${erViews}%`,
+        erViews: `${erReachVal}%`,
+        erReach: `${erReachVal}%`,
+        erSubs: erSubsVal != null ? `${erSubsVal}%` : null,
         erPosts
     };
 }
@@ -134,6 +147,13 @@ export function calculateGroupStats(posts, targets = []) {
     const stats = Array.from(map.values()).map(s => {
         const totalInteractions = s.likes + s.reposts + s.comments;
         const erViews = s.views > 0 ? (totalInteractions / s.views) * 100 : 0;
+        const erReach = erViews; // ER по охвату (реакции / просмотры * 100)
+        const subscribers = (s.info && typeof s.info.members_count === 'number' && s.info.members_count > 0)
+            ? s.info.members_count
+            : null;
+        const erSubs = (subscribers && subscribers > 0)
+            ? (totalInteractions / subscribers) * 100
+            : null;
         const erPosts = s.postsCount > 0 ? (totalInteractions / s.postsCount) : 0;
         const avgViews = s.postsCount > 0 ? Math.round(s.views / s.postsCount) : 0;
         const avgLikes = s.postsCount > 0 ? Math.round(s.likes / s.postsCount) : 0;
@@ -142,7 +162,10 @@ export function calculateGroupStats(posts, targets = []) {
         return {
             ...s,
             totalInteractions,
+            subscribers,
             erViews,
+            erReach,
+            erSubs,
             erPosts,
             avgViews,
             avgLikes,

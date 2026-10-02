@@ -5,7 +5,12 @@
 
 import {
     callVkApi,
+    callVkApiWithRetry,
     callVkExecuteBatch,
+    searchWallPosts,
+    getCachedGroupPosts,
+    setCachedGroupPosts,
+    sleep,
     getServerTokenStatus,
     resolveTarget,
     authorCache,
@@ -1440,44 +1445,62 @@ function initApp() {
                 targetProgressMap.set(targetInfo.id, 0);
                 updateBatchProgressUI();
 
+                // S-5: Check sessionStorage cache
+                const cachedWallPosts = getCachedGroupPosts(targetInfo.id, minTime, maxTime);
+                const accumulatedTargetPosts = [];
+
                 let offset = 0;
                 let finished = false;
                 let wallTotalCount = 0;
                 let groupPostCount = 0;
                 let executeFailedForGroup = false;
                 let emptyBatchStreak = 0;
+                let isServingFromCache = false;
+
+                if (cachedWallPosts && cachedWallPosts.length > 0) {
+                    isServingFromCache = true;
+                }
 
                 while (!finished && !state.shouldCancel && state.scanSessionId === currentScanSession) {
                     let res;
-                    if (!executeFailedForGroup) {
-                        try {
-                            // Batch request: executes up to 10 x wall.get inside VK server
-                            res = await callVkExecuteBatch(targetInfo.id, offset, minTime, state.token, 10);
-                        } catch (batchErr) {
-                            console.warn(`Execute call failed for ${targetInfo.name}, fallback to sequential wall.get:`, batchErr.message);
-                            executeFailedForGroup = true;
-                        }
-                    }
-
-                    if (executeFailedForGroup) {
-                        if (elements.progressStatusMsg && !state.shouldCancel) {
-                            elements.progressStatusMsg.textContent = `Выгрузка записей ${targetInfo.canonicalName || targetInfo.name} (смещение ${offset})...`;
-                        }
-                        try {
-                            res = await callVkApi('wall.get', {
-                                owner_id: targetInfo.id,
-                                offset: offset,
-                                count: 100,
-                                extended: 1
-                            }, state.token);
-                            // Normalize structure
-                            if (res && res.items) {
-                                res.has_more = res.items.length >= 100 ? 1 : 0;
+                    if (isServingFromCache) {
+                        res = { items: cachedWallPosts, has_more: 0, count: cachedWallPosts.length };
+                        finished = true;
+                    } else {
+                        if (!executeFailedForGroup) {
+                            try {
+                                // Batch request: executes up to 10 x wall.get inside VK server
+                                res = await callVkExecuteBatch(targetInfo.id, offset, minTime, state.token, 10);
+                                // S-4: Rate limit delay between batch requests (3 req/sec)
+                                await sleep(250);
+                            } catch (batchErr) {
+                                console.warn(`Execute call failed for ${targetInfo.name}, fallback to sequential wall.get:`, batchErr.message);
+                                executeFailedForGroup = true;
                             }
-                        } catch (singleErr) {
-                            console.warn(`Wall unavailable for ${targetInfo.name}:`, singleErr.message);
-                            finished = true;
-                            break;
+                        }
+
+                        if (executeFailedForGroup) {
+                            if (elements.progressStatusMsg && !state.shouldCancel) {
+                                elements.progressStatusMsg.textContent = `Выгрузка записей ${targetInfo.canonicalName || targetInfo.name} (смещение ${offset})...`;
+                            }
+                            try {
+                                res = await callVkApiWithRetry('wall.get', {
+                                    owner_id: targetInfo.id,
+                                    offset: offset,
+                                    count: 100,
+                                    extended: 1
+                                }, state.token, 3);
+                                // Normalize structure
+                                if (res && res.items) {
+                                    res.has_more = res.items.length >= 100 ? 1 : 0;
+                                }
+                                // S-1 & S-4: Rate limit safety delay for sequential pagination
+                                await sleep(350);
+                            } catch (singleErr) {
+                                console.warn(`Wall unavailable for ${targetInfo.name}:`, singleErr.message);
+                                finished = true;
+                                break;
+                            }
                         }
                     }
 
@@ -1491,6 +1514,9 @@ function initApp() {
                         }
                     } else {
                         emptyBatchStreak = 0;
+                        if (!isServingFromCache) {
+                            accumulatedTargetPosts.push(...res.items);
+                        }
                     }
 
                     CosmicUniverse.pulse(6.5);
@@ -1639,6 +1665,10 @@ function initApp() {
                     }
 
                     offset += posts.length;
+                }
+
+                if (!isServingFromCache && !state.shouldCancel && state.scanSessionId === currentScanSession && accumulatedTargetPosts.length > 0) {
+                    setCachedGroupPosts(targetInfo.id, minTime, maxTime, accumulatedTargetPosts);
                 }
 
                 targetProgressMap.set(targetInfo.id, 1);
@@ -2496,17 +2526,68 @@ function initApp() {
         });
     }
 
+    let ratingSortKey = 'posts';
+    let ratingSortDir = 'desc';
+
     function renderAnalyticsRatingTable(stats) {
-        if (!elements.analyticsRatingTbody) return;
+        if (!elements.analyticsRatingTbody || !Array.isArray(stats)) return;
         elements.analyticsRatingTbody.innerHTML = '';
 
-        const sorted = [...stats].sort((a, b) => b.postsCount - a.postsCount || b.views - a.views);
+        const sorted = [...stats].sort((a, b) => {
+            let valA = 0, valB = 0;
+            switch (ratingSortKey) {
+                case 'name': {
+                    const nameA = (a.info.canonicalName || a.info.name || '').toLowerCase();
+                    const nameB = (b.info.canonicalName || b.info.name || '').toLowerCase();
+                    return ratingSortDir === 'asc' ? nameA.localeCompare(nameB, 'ru') : nameB.localeCompare(nameA, 'ru');
+                }
+                case 'views':
+                    valA = a.views || 0;
+                    valB = b.views || 0;
+                    break;
+                case 'likes':
+                    valA = a.likes || 0;
+                    valB = b.likes || 0;
+                    break;
+                case 'reposts':
+                    valA = a.reposts || 0;
+                    valB = b.reposts || 0;
+                    break;
+                case 'comments':
+                    valA = a.comments || 0;
+                    valB = b.comments || 0;
+                    break;
+                case 'reactions':
+                    valA = a.erPosts || 0;
+                    valB = b.erPosts || 0;
+                    break;
+                case 'erReach':
+                    valA = typeof a.erReach === 'number' ? a.erReach : (parseFloat(a.erReach) || a.erViews || 0);
+                    valB = typeof b.erReach === 'number' ? b.erReach : (parseFloat(b.erReach) || b.erViews || 0);
+                    break;
+                case 'erSubs':
+                    valA = a.erSubs || 0;
+                    valB = b.erSubs || 0;
+                    break;
+                case 'posts':
+                default:
+                    valA = a.postsCount || 0;
+                    valB = b.postsCount || 0;
+                    break;
+            }
+            if (valA === valB) {
+                return (b.views || 0) - (a.views || 0);
+            }
+            return ratingSortDir === 'asc' ? (valA - valB) : (valB - valA);
+        });
 
         sorted.forEach((item, index) => {
             const tr = document.createElement('tr');
             const displayName = item.info.canonicalName || item.info.name;
             const address = item.info.address ? `<div class="summary-source-sub">${escapeHtml(item.info.address)}</div>` : '';
-            const avgV = item.avgViews || (item.postsCount > 0 ? Math.round(item.views / item.postsCount) : 0);
+            const erReachNum = typeof item.erReach === 'number' ? item.erReach : (parseFloat(item.erReach) || item.erViews || 0);
+            const erSubsStr = (item.erSubs != null && !isNaN(item.erSubs)) ? `${item.erSubs.toFixed(2)}%` : '—';
+            const subsTitle = item.subscribers ? `Подписчиков: ${item.subscribers.toLocaleString('ru-RU')}` : 'Число подписчиков сообщества не получено';
 
             tr.innerHTML = `
                 <td style="text-align: center; font-weight: 700; color: var(--muted);">${index + 1}</td>
@@ -2527,9 +2608,59 @@ function initApp() {
                 <td style="text-align: right; font-family: var(--font-mono);">${item.reposts.toLocaleString('ru-RU')}</td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.comments.toLocaleString('ru-RU')}</td>
                 <td style="text-align: right; font-family: var(--font-mono);">${item.erPosts.toFixed(1)}</td>
-                <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;">${item.erViews.toFixed(2)}%</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;" title="ER охват: реакции / просмотры × 100%">${erReachNum.toFixed(2)}%</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;" title="${subsTitle}">${erSubsStr}</td>
             `;
             elements.analyticsRatingTbody.appendChild(tr);
+        });
+
+        // Update column sort indicators
+        if (typeof document !== 'undefined') {
+            document.querySelectorAll('#analytics-rating-table th[data-sort]').forEach(th => {
+                const key = th.dataset.sort;
+                const isCurrent = key === ratingSortKey;
+                th.classList.toggle('sorted-th', isCurrent);
+                let indicator = th.querySelector('.sort-arrow');
+                if (!indicator) {
+                    indicator = document.createElement('span');
+                    indicator.className = 'sort-arrow';
+                    indicator.style.marginLeft = '4px';
+                    indicator.style.opacity = '0.7';
+                    indicator.style.fontSize = '11px';
+                    th.appendChild(indicator);
+                }
+                indicator.textContent = isCurrent ? (ratingSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+            });
+        }
+    }
+
+    // UX-2: Bind sorting click events on table headers
+    if (typeof document !== 'undefined') {
+        const ratingTableHeaders = document.querySelectorAll('#analytics-rating-table th[data-sort]');
+        ratingTableHeaders.forEach(th => {
+            th.style.cursor = 'pointer';
+            th.setAttribute('role', 'button');
+            th.setAttribute('tabindex', '0');
+            th.title = 'Нажмите для сортировки по этой колонке';
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                if (!key) return;
+                if (ratingSortKey === key) {
+                    ratingSortDir = ratingSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    ratingSortKey = key;
+                    ratingSortDir = (key === 'name') ? 'asc' : 'desc';
+                }
+                if (state.lastGroupsStats && state.lastGroupsStats.length > 0) {
+                    renderAnalyticsRatingTable(state.lastGroupsStats);
+                }
+            });
+            th.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    th.click();
+                }
+            });
         });
     }
 
