@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.5.3",
+  "version": "5.6.0",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-10-02T14:55:00+03:00",
-  "release_name": "AURORA 5.5.3: Включение векторного пера кликом мыши и горячей клавишей, надежный перехват событий"
+  "commit_date": "2026-10-02T16:50:00+03:00",
+  "release_name": "AURORA 5.6.0: Реализация плана задач AI и Figma Gap (Спринты 0–5: Булевы операции, Inspect Mode, Constraints, 4K Super-sampling, Drag-and-drop слоев, Серверный AI Rate Limiting)"
 }

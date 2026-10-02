@@ -2585,20 +2585,32 @@ input, select, textarea {
   opacity: 0.65;
 }
 
-/* Drag-and-drop подсветка строки (Ghost) */
-.layer-row.is-dragging {
+/* Drag-and-drop подсветка строки (Ghost) — классы .is-dragging и .dragging (TASK 2.2) */
+.layer-row.is-dragging,
+.layer-row.dragging {
   opacity: 0.35 !important;
   transform: scale(0.98);
-  background: rgba(13, 153, 255, 0.1) !important;
-  border: 1px dashed rgba(56, 189, 248, 0.7) !important;
+  background: rgba(13, 153, 255, 0.12) !important;
+  border: 1px dashed rgba(13, 153, 255, 0.8) !important;
   box-shadow: none !important;
 }
 
-.layer-row.is-dragging * {
+.layer-row.is-dragging *,
+.layer-row.dragging * {
   cursor: grabbing !important;
 }
 
-/* ── Неоновый Drop Indicator в стиле Figma / Tilda (Линия с маркером-якорем) ── */
+/* ── Стилизованный маркер места вставки в стиле Figma (синяя линия-разделитель border-top: 2px solid #0d99ff) ── */
+.layer-row.drag-over-top {
+  border-top: 2px solid #0d99ff !important;
+  border-bottom-color: transparent !important;
+}
+
+.layer-row.drag-over-bottom {
+  border-bottom: 2px solid #0d99ff !important;
+  border-top-color: transparent !important;
+}
+
 .layer-row.drag-over-top::before,
 .layer-row.drag-over-bottom::before {
   content: '';
@@ -2606,8 +2618,8 @@ input, select, textarea {
   left: 0;
   right: 0;
   height: 2px;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8, 0 0 2px #38bdf8;
+  background: #0d99ff;
+  box-shadow: 0 0 8px #0d99ff, 0 0 3px rgba(13, 153, 255, 0.8);
   z-index: 30;
   pointer-events: none;
   border-radius: 1px;
@@ -2621,50 +2633,153 @@ input, select, textarea {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8, 0 0 12px rgba(56, 189, 248, 0.9);
+  background: #0d99ff;
+  box-shadow: 0 0 8px #0d99ff, 0 0 12px rgba(13, 153, 255, 0.9);
   z-index: 31;
   pointer-events: none;
 }
 
 /* Позиция сверху */
 .layer-row.drag-over-top::before {
-  top: -1px;
+  top: -2px;
 }
 .layer-row.drag-over-top::after {
-  top: -3.5px;
+  top: -4.5px;
 }
 
 /* Позиция снизу */
 .layer-row.drag-over-bottom::before {
-  bottom: -1px;
+  bottom: -2px;
 }
 .layer-row.drag-over-bottom::after {
-  bottom: -3.5px;
+  bottom: -4.5px;
 }
 
+/* Плавная эргономика для иконки drag_indicator */
 .layer-drag-handle {
-  font-size: 14px !important;
-  color: var(--text-3);
+  font-size: 15px !important;
+  color: var(--text-3, #94a3b8);
   cursor: grab;
   flex-shrink: 0;
-  transition: color var(--trans-fast);
+  padding: 2px 1px;
+  border-radius: 4px;
+  transition: color var(--trans-fast, 120ms ease), background var(--trans-fast, 120ms ease), transform var(--trans-fast, 120ms ease);
+  user-select: none;
 }
 
 .layer-drag-handle:hover {
-  color: #38bdf8;
+  color: var(--figma-blue, #0d99ff);
+  background: rgba(13, 153, 255, 0.15);
+  transform: scale(1.15);
 }
 
-.layer-drag-handle:active {
+.layer-drag-handle:active,
+.layer-row.is-dragging .layer-drag-handle,
+.layer-row.dragging .layer-drag-handle {
   cursor: grabbing !important;
+  color: #0d99ff !important;
 }
 
 #layers-list.is-sorting {
   cursor: grabbing !important;
 }
 
-#layers-list.is-sorting .layer-row:not(.is-dragging) {
+#layers-list.is-sorting .layer-row:not(.is-dragging):not(.dragging) {
   transition: none !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   TASK 4.2 UI — INSPECT MODE / КНОПКА КОПИРОВАНИЯ CSS
+   ══════════════════════════════════════════════════════ */
+.figma-inspect-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.figma-inspect-copy-btn {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(13, 153, 255, 0.12) 0%, rgba(56, 189, 248, 0.06) 100%);
+  border: 1px solid rgba(13, 153, 255, 0.35);
+  border-radius: 6px;
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--trans-fast, 120ms ease);
+}
+
+.figma-inspect-copy-btn:hover {
+  background: linear-gradient(135deg, rgba(13, 153, 255, 0.24) 0%, rgba(56, 189, 248, 0.16) 100%);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
+  transform: translateY(-1px);
+}
+
+.figma-inspect-copy-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.figma-inspect-copy-btn .figma-inspect-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.figma-inspect-copy-btn .figma-inspect-btn-icon {
+  font-size: 16px !important;
+  color: #38bdf8;
+  transition: transform var(--trans-fast, 120ms ease), color var(--trans-fast, 120ms ease);
+}
+
+.figma-inspect-copy-btn:hover .figma-inspect-btn-icon {
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.figma-inspect-copy-btn .figma-inspect-btn-badge {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(13, 153, 255, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  letter-spacing: 0.5px;
+}
+
+/* Анимация подтверждения скопированного состояния */
+.figma-inspect-copy-btn.is-copied {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(52, 211, 153, 0.12) 100%) !important;
+  border-color: #10b981 !important;
+  color: #34d399 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45) !important;
+  transform: scale(1.01);
+}
+
+.figma-inspect-copy-btn.is-copied .figma-inspect-btn-icon {
+  color: #34d399 !important;
+  animation: pulseSuccess 300ms ease;
+}
+
+.figma-inspect-copy-btn.is-copied .figma-inspect-btn-badge {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  color: #a7f3d0 !important;
+}
+
+@keyframes pulseSuccess {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
 
 .layer-order-btn:disabled,

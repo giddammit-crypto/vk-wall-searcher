@@ -2031,7 +2031,7 @@ const CUSTOM_PROPS_TO_SAVE = [
   'isAiElement', '__isAiElement', 'isAiPhoto', '__isAiPhoto', 'aiPrompt', '__aiPrompt', 'aiType', '__aiSvg', 'rx', 'ry',
   'isAutoLayout', 'layoutDirection', 'itemSpacing', 'paddingX', 'paddingY', 'alignContent', 'resizeW', 'resizeH',
   'isMasterComponent', 'isComponentInstance', 'componentId', 'masterComponentId', 'componentOverrides',
-  'colorTokenId', 'fontTokenId'
+  'colorTokenId', 'fontTokenId', 'constraintH', 'constraintV'
 ];
 
 /**
@@ -2244,7 +2244,7 @@ function initCanvas(w, h) {
 
   canvas.on('selection:created',  onSelection);
   canvas.on('selection:updated',  onSelection);
-  canvas.on('selection:cleared',  clearProps);
+  canvas.on('selection:cleared',  () => { clearProps(); updateLayersList(); });
   canvas.on('object:moving',      () => updateFigmaDimensionsUI(canvas?.getActiveObject()));
   canvas.on('object:scaling',     e => {
     const obj = e.target || canvas?.getActiveObject();
@@ -3298,6 +3298,9 @@ function removeImageBackground(tolerance = 28, feather = 2) {
     obj.__originalSrc = obj.toDataURL ? obj.toDataURL() : (obj.getSrc?.() || obj.getElement()?.src || '');
   }
 
+  // TASK 0.2: Сохраняем историю ДО начала вырезания фона, чтобы Undo (Ctrl+Z) мгновенно возвращал слой с фоном
+  saveHistory();
+
   toast('⏳ Анализ и вырезание фона...');
 
   const el = obj.getElement();
@@ -3461,6 +3464,7 @@ function _magicWandProcess(ctx, obj, iw, ih, tmpCanvas, px, py, tolerancePercent
   ctx.putImageData(imgData, 0, 0);
 
   if (!obj.__originalSrc) obj.__originalSrc = obj.toDataURL ? obj.toDataURL() : (obj.getSrc?.() || '');
+  saveHistory(); // Сохраняем состояние до применения палочки для Ctrl+Z
 
   fabric.Image.fromURL(tmpCanvas.toDataURL('image/png'), newImg => {
     newImg.set({
@@ -3537,6 +3541,8 @@ function revertBackground() {
   const obj = canvas?.getActiveObject();
   if (!obj || !obj.__originalSrc) { toast('Нет оригинала для восстановления'); return; }
 
+  saveHistory(); // Фиксируем состояние до отката для истории
+
   fabric.Image.fromURL(obj.__originalSrc, origImg => {
     origImg.set({
       left:       obj.left,
@@ -3547,7 +3553,9 @@ function revertBackground() {
       originX:    obj.originX || 'left',
       originY:    obj.originY || 'top',
       selectable: true,
-      layerName:  (obj.layerName || 'Фото').replace(' (без фона)', '')
+      evented:    true,
+      layerName:  (obj.layerName || 'Фото').replace(' (без фона)', ''),
+      __originalSrc: obj.__originalSrc
     });
     const idx = canvas.getObjects().indexOf(obj);
     canvas.remove(obj);
@@ -3568,6 +3576,8 @@ function revertBackground() {
 function separateImageIntoLayers() {
   const obj = canvas?.getActiveObject();
   if (!obj || obj.type !== 'image') { toast('Выберите слой с изображением'); return; }
+
+  saveHistory(); // Сохраняем состояние до разделения слоев для Ctrl+Z
 
   const tolerance = parseInt($('#bg-tolerance-slider')?.value || 28);
   const feather   = parseInt($('#bg-feather-slider')?.value   || 2);
@@ -4790,7 +4800,14 @@ function groupSelected() {
   if (!activeObj) return;
   if (activeObj.type === 'activeSelection') {
     const grp = activeObj.toGroup();
-    if (grp) grp.subTargetCheck = true;
+    if (grp) {
+      grp.subTargetCheck = true;
+      if (!grp.layerName) {
+        const grpCount = (canvas.getObjects().filter(o => o.type === 'group').length);
+        grp.layerName = `Группа ${grpCount}`;
+      }
+      canvas.setActiveObject(grp);
+    }
     canvas.requestRenderAll();
     saveHistory();
     updateLayersList();
@@ -4803,12 +4820,15 @@ function ungroupSelected() {
   const activeObj = canvas?.getActiveObject();
   if (!activeObj) return;
   if (activeObj.type === 'group') {
-    activeObj.toActiveSelection();
+    const sel = activeObj.toActiveSelection();
+    if (sel) {
+      canvas.setActiveObject(sel);
+    }
     canvas.requestRenderAll();
     saveHistory();
     updateLayersList();
     onSelection();
-    toast('Группа разделена ✂️');
+    toast('Группа разделена ✂️ (Ctrl+Shift+G)');
   }
 }
 
@@ -5097,6 +5117,19 @@ function clearProps() {
   $('#props-autolayout')?.classList.add('hidden');
   $('#props-component')?.classList.add('hidden');
   window.AuroraFigmaPro?.renderDesignTokensUI?.();
+
+  // Сброс состояния кнопки Копировать CSS и вкладки Inspect
+  const btnCopyCss = $('#btn-copy-css');
+  if (btnCopyCss) {
+    btnCopyCss.classList.remove('is-copied');
+    const iconEl = $('#inspect-btn-icon');
+    const textEl = $('#inspect-btn-text');
+    const badgeEl = $('#inspect-btn-badge');
+    if (iconEl) iconEl.textContent = 'code';
+    if (textEl) textEl.textContent = 'Копировать CSS';
+    if (badgeEl) badgeEl.textContent = 'CSS3';
+  }
+  updateInspectTabUI(null);
 }
 
 function onSelection() {
@@ -5105,6 +5138,7 @@ function onSelection() {
 
   $('#props-empty')?.classList.add('hidden');
   $('#props-common')?.classList.remove('hidden');
+  updateInspectTabUI(obj);
 
   window.AuroraFigmaPro?.syncComponentUI?.();
   window.AuroraFigmaPro?.syncAutoLayoutUI?.();
@@ -5407,6 +5441,16 @@ function updateFigmaDimensionsUI(obj) {
   // Sync Fill & Stroke chips via unified helpers if shape
   const strokeW = $('#dim-stroke-w');
   if (strokeW) strokeW.value = obj.strokeWidth || 0;
+
+  // Sync Figma Layer Constraints
+  if (window.AuroraFigmaPro?.syncConstraintsUI) {
+    window.AuroraFigmaPro.syncConstraintsUI(obj);
+  } else {
+    const sH = $('#layer-constraint-h');
+    const sV = $('#layer-constraint-v');
+    if (sH) sH.value = obj.constraintH || 'left';
+    if (sV) sV.value = obj.constraintV || 'top';
+  }
 }
 
 function colorToHex(color) {
@@ -5449,6 +5493,128 @@ function syncSwatches(sel, color) {
     s.classList.toggle('is-active', swHex === targetHex);
   });
 }
+
+/**
+ * TASK 4.2 UI — Inspect Mode: Генерация чистого CSS кода для выделенного объекта Fabric.js
+ * @param {fabric.Object} obj
+ * @returns {string}
+ */
+function generateCSSForObject(obj) {
+  if (!obj) return '';
+
+  const label = obj.layerName || obj.type || 'layer';
+  const lines = [
+    `/* ${label} */`,
+    `position: absolute;`,
+    `left: ${Math.round(obj.left || 0)}px;`,
+    `top: ${Math.round(obj.top || 0)}px;`,
+    `width: ${Math.round(obj.getScaledWidth ? obj.getScaledWidth() : (obj.width || 0))}px;`,
+    `height: ${Math.round(obj.getScaledHeight ? obj.getScaledHeight() : (obj.height || 0))}px;`
+  ];
+
+  // Угол поворота
+  if (obj.angle && Math.round(obj.angle) !== 0) {
+    const normAngle = ((Math.round(obj.angle) % 360) + 360) % 360;
+    lines.push(`transform: rotate(${normAngle}deg);`);
+  }
+
+  // Непрозрачность (opacity)
+  if (obj.opacity !== undefined && obj.opacity < 1) {
+    lines.push(`opacity: ${+obj.opacity.toFixed(2)};`);
+  }
+
+  // Режим наложения (blend mode)
+  if (obj.globalCompositeOperation && obj.globalCompositeOperation !== 'source-over') {
+    lines.push(`mix-blend-mode: ${obj.globalCompositeOperation};`);
+  }
+
+  // Текстовые объекты
+  const isText = ['textbox', 'text', 'i-text'].includes(obj.type);
+  if (isText) {
+    if (obj.fontFamily) lines.push(`font-family: '${obj.fontFamily}', sans-serif;`);
+    const scaledFontSize = Math.round((obj.fontSize || 16) * (obj.scaleY || 1));
+    lines.push(`font-size: ${scaledFontSize}px;`);
+    lines.push(`font-weight: ${obj.fontWeight || 400};`);
+    if (obj.fontStyle && obj.fontStyle !== 'normal') lines.push(`font-style: ${obj.fontStyle};`);
+    if (obj.lineHeight) lines.push(`line-height: ${+obj.lineHeight.toFixed(2)};`);
+    if (obj.letterSpacing) lines.push(`letter-spacing: ${obj.letterSpacing}px;`);
+    if (obj.textAlign) lines.push(`text-align: ${obj.textAlign};`);
+    if (obj.fill) lines.push(`color: ${colorToHex(String(obj.fill))};`);
+    if (obj.underline) lines.push(`text-decoration: underline;`);
+    else if (obj.linethrough) lines.push(`text-decoration: line-through;`);
+    if (obj.backgroundColor) lines.push(`background-color: ${colorToHex(String(obj.backgroundColor))};`);
+  } else {
+    // Фигуры и векторные контуры
+    if (obj.fill && obj.fill !== 'transparent') {
+      lines.push(`background-color: ${colorToHex(String(obj.fill))};`);
+    } else if (obj.fill === 'transparent') {
+      lines.push(`background-color: transparent;`);
+    }
+
+    // Скругление углов
+    if (obj.rx || obj.ry) {
+      lines.push(`border-radius: ${Math.round(obj.rx || obj.ry)}px;`);
+    } else if (obj.type === 'circle') {
+      lines.push(`border-radius: 50%;`);
+    }
+
+    // Обводка / Граница
+    if (obj.stroke && obj.stroke !== 'transparent' && obj.strokeWidth) {
+      const sw = Math.round(obj.strokeWidth * (obj.scaleX || 1));
+      if (sw > 0) {
+        lines.push(`border: ${sw}px solid ${colorToHex(String(obj.stroke))};`);
+      }
+    }
+  }
+
+  // Внешняя тень (Drop Shadow)
+  if (obj.shadow) {
+    const sx = Math.round(obj.shadow.offsetX || 0);
+    const sy = Math.round(obj.shadow.offsetY || 0);
+    const sblur = Math.round(obj.shadow.blur || 0);
+    const scol = obj.shadow.color || 'rgba(0, 0, 0, 0.4)';
+    if (isText) {
+      lines.push(`text-shadow: ${sx}px ${sy}px ${sblur}px ${scol};`);
+    } else {
+      lines.push(`box-shadow: ${sx}px ${sy}px ${sblur}px ${scol};`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+window.generateCSSForObject = generateCSSForObject;
+
+/**
+ * TASK 4.2 UI — Синхронизация вкладки Inspect (Dev Mode)
+ * @param {fabric.Object|null} obj
+ */
+function updateInspectTabUI(obj) {
+  const noSel = $('#inspect-no-selection');
+  const selContent = $('#inspect-selection-content');
+  const codeBlock = $('#inspect-code-block');
+  const layerType = $('#inspect-layer-type');
+  const layerName = $('#inspect-layer-name');
+
+  if (!obj) {
+    noSel?.classList.remove('hidden');
+    selContent?.classList.add('hidden');
+    if (codeBlock) codeBlock.textContent = '';
+    return;
+  }
+
+  noSel?.classList.add('hidden');
+  selContent?.classList.remove('hidden');
+
+  const label = obj.layerName || obj.type || 'Слой';
+  if (layerType) layerType.textContent = (obj.type || 'LAYER').toUpperCase();
+  if (layerName) layerName.textContent = '#' + label;
+
+  const cssCode = generateCSSForObject(obj);
+  if (codeBlock) codeBlock.textContent = cssCode;
+}
+
+window.updateInspectTabUI = updateInspectTabUI;
 
 /* ══════════════════════════════════════════════════════════════
    СЛОИ
@@ -5726,9 +5892,15 @@ function updateLayersList() {
   const list = $('#layers-list');
   if (!list || !canvas) return;
 
-  const objs = canvas.getObjects();
-  const countBadge = $('#layers-count-badge');
-  if (countBadge) countBadge.textContent = objs.length;
+  const allObjs = canvas.getObjects ? canvas.getObjects() : [];
+  // TASK 0.1: Исключаем служебные слои (артборд __isArtboardBg, хелперы, направляющие)
+  const objs = allObjs.filter(o => o && !o.__isArtboardBg && !o.__isHelper && !o.__isGuideLine && !o.excludeFromExport);
+  const count = objs.length;
+
+  // Обновляем счетчик слоев во всех селекторах (.layer-count, .layers-count, #layers-count-badge)
+  document.querySelectorAll('#layers-count-badge, .layer-count, .layers-count, .layers-count-badge').forEach(el => {
+    el.textContent = count;
+  });
 
   if (!objs.length) {
     list.innerHTML = '<div class="layers-empty">Холст пуст.<br>Добавьте текст или фигуру.</div>';
@@ -5743,15 +5915,15 @@ function updateLayersList() {
   );
 
   // Рисуем в порядке: верхний слой сверху (обратный от z-индекса в canvas)
-  list.innerHTML = [...objs].reverse().map((obj, revIdx) => {
-    const realIdx = objs.length - 1 - revIdx;
+  list.innerHTML = [...objs].reverse().map(obj => {
+    const realIdx = allObjs.indexOf(obj);
     const isActive  = activeSet.has(obj);
     const isHidden  = obj.visible === false;
     const isLocked  = !obj.selectable || !!obj.lockMovementX;
     const label = escapeHtml(getObjLabel(obj, realIdx));
     const metaSub = escapeHtml(getObjMetaSubtitle(obj));
-    const isTop = realIdx === objs.length - 1;
-    const isBottom = realIdx === 0;
+    const isTop = realIdx === allObjs.length - 1;
+    const isBottom = realIdx === (allObjs[0]?.__isArtboardBg ? 1 : 0);
 
     return `
     <div class="layer-row ${isActive?'is-active':''} ${isHidden?'is-hidden':''} ${isLocked?'is-locked':''}"
@@ -5846,7 +6018,7 @@ function updateLayersList() {
     });
   });
 
-  /* ── Drag and Drop перетаскивание слоёв ── */
+  /* ── Drag and Drop перетаскивание слоёв (TASK 2.2) ── */
   let draggedRowIdx = null;
 
   rows.forEach(row => {
@@ -5857,11 +6029,14 @@ function updateLayersList() {
       draggedRowIdx = +row.dataset.idx;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(draggedRowIdx));
-      row.classList.add('is-dragging');
+      // Асинхронное добавление классов, чтобы нативный ghost-элемент не терял непрозрачность
+      setTimeout(() => {
+        row.classList.add('is-dragging', 'dragging');
+      }, 0);
     });
 
     row.addEventListener('dragend', () => {
-      row.classList.remove('is-dragging');
+      row.classList.remove('is-dragging', 'dragging');
       list.classList.remove('is-sorting');
       rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
       draggedRowIdx = null;
@@ -5919,14 +6094,11 @@ function updateLayersList() {
       const newCanvasOrder = [...visualList].reverse();
       canvas._objects = newCanvasOrder;
 
-      // Восстанавливаем активный объект (гарантируем сохранение активности перетаскиваемого объекта)
-      if (activeObjBefore) {
-        try {
-          canvas.setActiveObject(activeObjBefore);
-        } catch (_) {
-          canvas.setActiveObject(draggedObj);
-        }
-      } else {
+      // Гарантируем корректное сохранение активности перетаскиваемого объекта
+      const objToSelect = (activeObjBefore && activeObjBefore !== draggedObj) ? activeObjBefore : draggedObj;
+      try {
+        canvas.setActiveObject(objToSelect);
+      } catch (_) {
         canvas.setActiveObject(draggedObj);
       }
 
@@ -5934,7 +6106,7 @@ function updateLayersList() {
       saveHistory();
       updateLayersList();
       onSelection();
-      toast('Слой перемещён');
+      toast('Слой перемещён ↕');
     });
   });
 
@@ -6192,6 +6364,31 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     buffer.width = targetW;
     buffer.height = targetH;
     const ctx = buffer.getContext('2d');
+
+    // TASK 3.2: True 4K / Super-sampling субпиксельная точность и качество интерполяции
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    if ('textRendering' in ctx) {
+      ctx.textRendering = 'optimizeLegibility';
+    }
+
+    // TASK 0.4: Переносим применённые к холсту CSS-фильтры на контекст экспорта (ctx.filter)
+    const canvasEl = fabricCanvas.lowerCanvasEl || (typeof fabricCanvas.getElement === 'function' ? fabricCanvas.getElement() : null);
+    let filterStr = '';
+    if (canvasEl) {
+      filterStr = canvasEl.style?.filter || (window.getComputedStyle ? window.getComputedStyle(canvasEl).filter : '');
+    }
+    if (!filterStr || filterStr === 'none') {
+      const wrapEl = fabricCanvas.wrapperEl || document.getElementById('canvas-area');
+      if (wrapEl && wrapEl.style?.filter) {
+        filterStr = wrapEl.style.filter;
+      }
+    }
+    if (filterStr && filterStr !== 'none' && 'filter' in ctx) {
+      ctx.filter = filterStr;
+    }
 
     const artboardBg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor || '#ffffff';
     if (artboardBg && artboardBg !== 'transparent' && artboardBg !== '') {
@@ -10513,6 +10710,7 @@ function bindEvents() {
       const targetEl = $('#' + targetId) || $('#tab-' + tab.dataset.tab);
       targetEl?.classList.remove('hidden');
       if (tab.dataset.tab === 'layers') updateLayersList();
+      if (tab.dataset.tab === 'inspect') updateInspectTabUI(canvas?.getActiveObject());
     });
   });
 
@@ -10792,7 +10990,18 @@ function bindEvents() {
     if (!blankKey) return;
     const targetId = blankKey.startsWith('blank_') ? blankKey : `blank_${blankKey}`;
     const t = TEMPLATES.find(x => x.id === targetId || x.id === blankKey) || TEMPLATES.find(x => x.id === 'blank_a4_v');
-    if (t) loadTemplate(t);
+    if (!t) return;
+
+    const targetSize = SIZES[t.size] || SIZES.a4_v;
+
+    // Если на холсте уже есть созданные пользователем объекты — переключаем формат через changeCanvasSize (Constraints)
+    const objects = canvas?.getObjects().filter(o => !o.__isArtboardBg && !o.__isGuideLine) || [];
+    if (objects.length > 0 && window.AuroraFigmaPro?.changeCanvasSize) {
+      window.AuroraFigmaPro.changeCanvasSize(targetSize.w, targetSize.h, targetSize.name);
+      return;
+    }
+
+    loadTemplate(t);
   }
 
   $$('.figma-settings-btn').forEach(btn => {
@@ -11680,6 +11889,89 @@ function bindEvents() {
     const obj = canvas?.getActiveObject();
     if (obj) layerSendToBack(obj);
   });
+
+  /* TASK 4.2 UI: Кнопка копирования CSS в панели свойств */
+  const btnCopyCss = $('#btn-copy-css');
+  if (btnCopyCss) {
+    btnCopyCss.addEventListener('click', async () => {
+      const obj = canvas?.getActiveObject();
+      if (!obj) {
+        toast('Выберите объект на холсте для копирования CSS');
+        return;
+      }
+
+      const cssCode = generateCSSForObject(obj);
+      if (!cssCode) return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(cssCode);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = cssCode;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+
+        // Анимация подтверждения скопированного состояния
+        btnCopyCss.classList.add('is-copied');
+        const iconEl = $('#inspect-btn-icon');
+        const textEl = $('#inspect-btn-text');
+        const badgeEl = $('#inspect-btn-badge');
+        if (iconEl) iconEl.textContent = 'check';
+        if (textEl) textEl.textContent = 'Скопировано!';
+        if (badgeEl) badgeEl.textContent = '✓ OK';
+
+        toast('CSS стили скопированы в буфер обмена 📋');
+
+        setTimeout(() => {
+          btnCopyCss.classList.remove('is-copied');
+          if (iconEl) iconEl.textContent = 'code';
+          if (textEl) textEl.textContent = 'Копировать CSS';
+          if (badgeEl) badgeEl.textContent = 'CSS3';
+        }, 2000);
+      } catch (err) {
+        console.error('Copy CSS failed:', err);
+        toast('Ошибка копирования CSS в буфер');
+      }
+    });
+  }
+
+  /* Вкладка Inspect: кнопки копирования CSS */
+  const handleInspectTabCopy = async () => {
+    const obj = canvas?.getActiveObject();
+    if (!obj) {
+      toast('Выберите объект на холсте для копирования CSS');
+      return;
+    }
+    const cssCode = generateCSSForObject(obj);
+    if (!cssCode) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(cssCode);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = cssCode;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      toast('CSS стили скопированы в буфер обмена 📋');
+    } catch (err) {
+      console.error('Copy CSS failed:', err);
+      toast('Ошибка копирования CSS');
+    }
+  };
+  $('#btn-inspect-copy-css')?.addEventListener('click', handleInspectTabCopy);
+  $('#btn-inspect-copy-css-bottom')?.addEventListener('click', handleInspectTabCopy);
+
   $('#btn-delete-obj')?.addEventListener('click', () => {
     const obj = canvas?.getActiveObject(); if (!obj) return;
     if (!confirm('Удалить этот объект?')) return;

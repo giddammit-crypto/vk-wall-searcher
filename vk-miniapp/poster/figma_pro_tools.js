@@ -332,7 +332,8 @@
       'isMasterComponent', 'isComponentInstance', 'componentId', 'masterComponentId',
       'componentName', 'componentOverrides', 'isAutoLayout', 'layoutDirection',
       'itemSpacing', 'paddingX', 'paddingY', 'alignContent', 'resizeW', 'resizeH',
-      'colorTokenId', 'fontTokenId', 'colorTokenTarget', 'layerName', 'isAutoLayoutBg'
+      'colorTokenId', 'fontTokenId', 'colorTokenTarget', 'layerName', 'isAutoLayoutBg',
+      'constraintH', 'constraintV'
     ];
     return Array.from(new Set([...base, ...extras]));
   }
@@ -1814,6 +1815,293 @@
   }
 
   /* ────────────────────────────────────────────────────────────
+     18b. LAYER CONSTRAINTS & INSPECT MODE (Figma Constraints & CSS Dev Mode)
+     ──────────────────────────────────────────────────────────── */
+  function applyLayerConstraints(obj, oldW, oldH, newW, newH) {
+    if (!obj || !oldW || !oldH || !newW || !newH) return;
+    if (obj.__isArtboardBg || obj.__isGuideLine || obj.__isHelper) return;
+
+    const dW = newW - oldW;
+    const dH = newH - oldH;
+    if (dW === 0 && dH === 0) return;
+
+    const cH = obj.constraintH || 'left';
+    const cV = obj.constraintV || 'top';
+
+    const objW = obj.getScaledWidth ? obj.getScaledWidth() : (obj.width || 0);
+    const objH = obj.getScaledHeight ? obj.getScaledHeight() : (obj.height || 0);
+
+    // Горизонтальные ограничения ('left' | 'right' | 'center' | 'scale' | 'stretch')
+    switch (cH) {
+      case 'left':
+        // x остаётся прежним
+        break;
+      case 'right':
+        obj.set('left', (obj.left || 0) + dW);
+        break;
+      case 'center':
+        obj.set('left', (obj.left || 0) + dW / 2);
+        break;
+      case 'scale': {
+        const relX = (obj.left || 0) / oldW;
+        obj.set('left', relX * newW);
+        const scaleFactorX = newW / oldW;
+        obj.set('scaleX', (obj.scaleX || 1) * scaleFactorX);
+        break;
+      }
+      case 'stretch': {
+        const nextW = Math.max(10, objW + dW);
+        const currentScaleX = obj.scaleX || 1;
+        const baseW = obj.width || 10;
+        obj.set('scaleX', (nextW / baseW));
+        break;
+      }
+    }
+
+    // Вертикальные ограничения ('top' | 'bottom' | 'center' | 'scale' | 'stretch')
+    switch (cV) {
+      case 'top':
+        // y остаётся прежним
+        break;
+      case 'bottom':
+        obj.set('top', (obj.top || 0) + dH);
+        break;
+      case 'center':
+        obj.set('top', (obj.top || 0) + dH / 2);
+        break;
+      case 'scale': {
+        const relY = (obj.top || 0) / oldH;
+        obj.set('top', relY * newH);
+        const scaleFactorY = newH / oldH;
+        obj.set('scaleY', (obj.scaleY || 1) * scaleFactorY);
+        break;
+      }
+      case 'stretch': {
+        const nextH = Math.max(10, objH + dH);
+        const currentScaleY = obj.scaleY || 1;
+        const baseH = obj.height || 10;
+        obj.set('scaleY', (nextH / baseH));
+        break;
+      }
+    }
+
+    obj.setCoords();
+  }
+
+  function changeCanvasSize(newW, newH, newName) {
+    const c = canvas();
+    if (!c) return false;
+    const oldSize = Pro.currentSize || Pro.hooks.getCurrentSize?.() || { w: 595, h: 842 };
+    const oldW = oldSize.w;
+    const oldH = oldSize.h;
+
+    if (oldW === newW && oldH === newH) return true;
+
+    // Применяем constraints ко всем слоям
+    const objs = c.getObjects().filter(o => !o.__isArtboardBg && !o.__isGuideLine && !o.__isHelper);
+    objs.forEach(o => applyLayerConstraints(o, oldW, oldH, newW, newH));
+
+    const updatedSize = {
+      w: newW,
+      h: newH,
+      name: newName || oldSize.name || 'Пользовательский'
+    };
+    Pro.currentSize = updatedSize;
+    if (typeof window !== 'undefined') window.currentSize = updatedSize;
+    c.__artboardWidth = newW;
+    c.__artboardHeight = newH;
+
+    const pad = (typeof Pro.hooks.CANVAS_PADDING === 'number') ? Pro.hooks.CANVAS_PADDING : 320;
+    const curZoom = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
+    c.setWidth((newW + pad * 2) * curZoom);
+    c.setHeight((newH + pad * 2) * curZoom);
+    c.setViewportTransform([curZoom, 0, 0, curZoom, pad * curZoom, pad * curZoom]);
+
+    c.requestRenderAll();
+    saveHistory();
+    updateLayersList();
+    if (typeof window.updateFormatBadge === 'function') window.updateFormatBadge();
+    toast(`Формат изменён: ${updatedSize.name} (${newW} × ${newH} пт) с учётом Constraints 📐`);
+    return true;
+  }
+
+  function syncConstraintsUI(target) {
+    const c = canvas();
+    const active = target || c?.getActiveObject();
+    const selectH = document.getElementById('layer-constraint-h');
+    const selectV = document.getElementById('layer-constraint-v');
+    if (!selectH || !selectV) return;
+
+    if (!active || active.__isArtboardBg) {
+      selectH.value = 'left';
+      selectV.value = 'top';
+      selectH.disabled = true;
+      selectV.disabled = true;
+      return;
+    }
+
+    selectH.disabled = false;
+    selectV.disabled = false;
+    selectH.value = active.constraintH || 'left';
+    selectV.value = active.constraintV || 'top';
+  }
+
+  function generateCSS(obj) {
+    if (!obj) return '/* Выберите элемент на холсте для инспекции */';
+
+    const x = Math.round(obj.left || 0);
+    const y = Math.round(obj.top || 0);
+    const w = Math.round(obj.getScaledWidth ? obj.getScaledWidth() : (obj.width || 0));
+    const h = Math.round(obj.getScaledHeight ? obj.getScaledHeight() : (obj.height || 0));
+    const rot = Math.round(obj.angle || 0);
+    const op = (obj.opacity !== undefined) ? Number(obj.opacity.toFixed(2)) : 1;
+
+    const lines = [
+      `/* Element: ${obj.layerName || obj.type || 'Object'} */`,
+      `position: absolute;`,
+      `left: ${x}px;`,
+      `top: ${y}px;`,
+      `width: ${w}px;`,
+      `height: ${h}px;`
+    ];
+
+    if (rot !== 0) {
+      lines.push(`transform: rotate(${rot}deg);`);
+      lines.push(`transform-origin: center center;`);
+    }
+
+    if (op < 1) {
+      lines.push(`opacity: ${op};`);
+    }
+
+    // Текстовые стили
+    if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+      if (obj.fontFamily) lines.push(`font-family: '${obj.fontFamily}', sans-serif;`);
+      const fs = Math.round((obj.fontSize || 16) * (obj.scaleY || 1));
+      lines.push(`font-size: ${fs}px;`);
+      if (obj.fontWeight) lines.push(`font-weight: ${obj.fontWeight};`);
+      if (obj.fontStyle && obj.fontStyle !== 'normal') lines.push(`font-style: ${obj.fontStyle};`);
+      if (obj.fill) lines.push(`color: ${obj.fill};`);
+      if (obj.lineHeight) lines.push(`line-height: ${Number(obj.lineHeight).toFixed(2)};`);
+      if (obj.textAlign) lines.push(`text-align: ${obj.textAlign};`);
+      if (obj.charSpacing) lines.push(`letter-spacing: ${(obj.charSpacing / 1000).toFixed(2)}em;`);
+    } else {
+      // Заливка для фигур
+      if (obj.fill && typeof obj.fill === 'string') {
+        lines.push(`background-color: ${obj.fill};`);
+      }
+    }
+
+    // Скругление углов
+    const rx = Math.round(obj.rx || obj.__cornerRadius || 0);
+    if (rx > 0) {
+      lines.push(`border-radius: ${rx}px;`);
+    }
+
+    // Границы / Обводка
+    if (obj.stroke && obj.strokeWidth > 0) {
+      const sw = Math.round(obj.strokeWidth * (obj.scaleX || 1));
+      const sStyle = (obj.strokeDashArray && obj.strokeDashArray.length) ? 'dashed' : 'solid';
+      lines.push(`border: ${sw}px ${sStyle} ${obj.stroke};`);
+    }
+
+    // Тень (Drop Shadow / Box Shadow)
+    if (obj.shadow) {
+      const sx = Math.round(obj.shadow.offsetX || 0);
+      const sy = Math.round(obj.shadow.offsetY || 0);
+      const blur = Math.round(obj.shadow.blur || 0);
+      const scolor = obj.shadow.color || 'rgba(0, 0, 0, 0.4)';
+      if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+        lines.push(`text-shadow: ${sx}px ${sy}px ${blur}px ${scolor};`);
+      } else {
+        lines.push(`box-shadow: ${sx}px ${sy}px ${blur}px ${scolor};`);
+      }
+    }
+
+    // Режим наложения
+    if (obj.globalCompositeOperation && obj.globalCompositeOperation !== 'source-over') {
+      lines.push(`mix-blend-mode: ${obj.globalCompositeOperation};`);
+    }
+
+    return lines.join('\n');
+  }
+
+  function syncInspectUI(target) {
+    const c = canvas();
+    const active = target || c?.getActiveObject();
+    const noSel = document.getElementById('inspect-no-selection');
+    const content = document.getElementById('inspect-selection-content');
+    const codeBlock = document.getElementById('inspect-code-block');
+    const typeLabel = document.getElementById('inspect-layer-type');
+    const nameLabel = document.getElementById('inspect-layer-name');
+
+    if (!codeBlock) return;
+
+    if (!active || active.__isArtboardBg) {
+      noSel?.classList.remove('hidden');
+      content?.classList.add('hidden');
+      codeBlock.textContent = '';
+      return;
+    }
+
+    noSel?.classList.add('hidden');
+    content?.classList.remove('hidden');
+    if (typeLabel) typeLabel.textContent = (active.type || 'LAYER').toUpperCase();
+    if (nameLabel) nameLabel.textContent = active.layerName || '#' + (active.type || 'element');
+    codeBlock.textContent = generateCSS(active);
+  }
+
+  async function copyInspectCSS(target) {
+    const c = canvas();
+    const active = target || c?.getActiveObject();
+    if (!active) {
+      toast('Сначала выделите объект для копирования CSS');
+      return;
+    }
+    const cssText = generateCSS(active);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(cssText);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = cssText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      toast('CSS код скопирован в буфер обмена 📋');
+    } catch (err) {
+      console.warn('Clipboard copy error:', err);
+      toast('Не удалось скопировать в буфер');
+    }
+  }
+
+  function installInspectAndConstraintsListeners() {
+    const selectH = document.getElementById('layer-constraint-h');
+    const selectV = document.getElementById('layer-constraint-v');
+
+    selectH?.addEventListener('change', e => {
+      const active = canvas()?.getActiveObject();
+      if (!active) return;
+      active.set('constraintH', e.target.value);
+      saveHistory();
+    });
+
+    selectV?.addEventListener('change', e => {
+      const active = canvas()?.getActiveObject();
+      if (!active) return;
+      active.set('constraintV', e.target.value);
+      saveHistory();
+    });
+
+    const copyBtn1 = document.getElementById('btn-inspect-copy-css');
+    const copyBtn2 = document.getElementById('btn-inspect-copy-css-bottom');
+    copyBtn1?.addEventListener('click', () => copyInspectCSS());
+    copyBtn2?.addEventListener('click', () => copyInspectCSS());
+  }
+
+  /* ────────────────────────────────────────────────────────────
      19. ДИЗАЙН-ТОКЕНЫ И ГЛОБАЛЬНЫЕ СТИЛИ (Figma Local Variables)
      ──────────────────────────────────────────────────────────── */
   const TOKENS_STORAGE_KEY = 'aurora_figma_design_tokens';
@@ -2500,19 +2788,28 @@
     }
   }
 
-  function onCanvasSelectionCreated() {
+  function onCanvasSelectionCreated(e) {
     syncAutoLayoutUI();
     syncComponentUI();
+    syncConstraintsUI();
+    syncInspectUI();
+    syncBooleanUI(e?.target);
   }
 
-  function onCanvasSelectionUpdated() {
+  function onCanvasSelectionUpdated(e) {
     syncAutoLayoutUI();
     syncComponentUI();
+    syncConstraintsUI();
+    syncInspectUI();
+    syncBooleanUI(e?.target);
   }
 
   function onCanvasSelectionCleared() {
     syncAutoLayoutUI();
     syncComponentUI();
+    syncConstraintsUI();
+    syncInspectUI();
+    syncBooleanUI(null);
     renderDesignTokensUI();
   }
 
@@ -2520,6 +2817,7 @@
     if (!_isPenActive) {
       peerSnap(e.target, e);
     }
+    syncInspectUI(e.target);
   }
 
   /* ────────────────────────────────────────────────────────────
@@ -2566,6 +2864,212 @@
     c.on('object:moving', onCanvasObjectMoving);
   }
 
+  /* ────────────────────────────────────────────────────────────
+     23. БУЛЕВЫ ОПЕРАЦИИ НАД ФИГУРАМИ (Figma Boolean Operations: Union, Subtract, Intersect, Exclude)
+     ──────────────────────────────────────────────────────────── */
+  async function ensurePaperJs() {
+    if (window.paper && window.paper.project) return window.paper;
+    if (!window._paperLoadingPromise) {
+      window._paperLoadingPromise = new Promise((resolve, reject) => {
+        if (window.paper && window.paper.project) return resolve(window.paper);
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-core.min.js';
+        script.onload = () => {
+          if (window.paper) {
+            const offC = document.createElement('canvas');
+            offC.width = 3000;
+            offC.height = 3000;
+            window.paper.setup(offC);
+            resolve(window.paper);
+          } else {
+            reject(new Error('Paper.js initialization failed'));
+          }
+        };
+        script.onerror = () => reject(new Error('Paper.js CDN load error'));
+        document.head.appendChild(script);
+      });
+    }
+    return window._paperLoadingPromise;
+  }
+
+  function syncBooleanUI(target) {
+    const c = canvas();
+    if (!c) return;
+    const active = target || c.getActiveObject();
+    const btn = document.getElementById('btn-header-boolean');
+    if (!btn) return;
+    const shapeTypes = ['rect', 'circle', 'ellipse', 'triangle', 'polygon', 'polyline', 'path'];
+    let count = 0;
+    if (active) {
+      if (active.type === 'activeSelection' || active.type === 'group') {
+        count = (active.getObjects?.() || []).filter(o => shapeTypes.includes(o.type) && !o.__isArtboardBg && !o.__isHelper).length;
+      }
+    }
+    btn.disabled = count < 2;
+    btn.title = count >= 2
+      ? `Булевы операции над фигурами (${count} выбр.)`
+      : 'Булевы операции (выберите 2 или более фигуры)';
+  }
+
+  async function applyBooleanOp(operation = 'union') {
+    const c = canvas();
+    if (!c) return;
+
+    const active = c.getActiveObject();
+    if (!active) {
+      toast('Выберите 2 или более фигуры для объединения или вычитания');
+      return;
+    }
+
+    let items = [];
+    if (active.type === 'activeSelection') {
+      items = active.getObjects();
+    } else if (active.type === 'group') {
+      items = active.getObjects();
+    }
+
+    const shapeTypes = ['rect', 'circle', 'ellipse', 'triangle', 'polygon', 'polyline', 'path'];
+    const validShapes = items.filter(o => shapeTypes.includes(o.type) && !o.__isArtboardBg && !o.__isHelper);
+
+    if (validShapes.length < 2) {
+      toast('Для булевых операций выберите как минимум 2 векторные фигуры или контура');
+      return;
+    }
+
+    try {
+      toast('⏳ Выполнение булевой операции...');
+      await ensurePaperJs();
+      if (!window.paper || !window.paper.project) {
+        toast('Ошибка: Векторное ядро Paper.js недоступно');
+        return;
+      }
+
+      function convertFabricToPaperItem(fabObj) {
+        const svgMarkup = fabObj.toSVG();
+        const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width || 3000}" height="${c.height || 3000}">${svgMarkup}</svg>`;
+        const imported = window.paper.project.importSVG(fullSvg);
+
+        function extractPath(it) {
+          if (!it) return null;
+          if (it instanceof window.paper.Path || it instanceof window.paper.CompoundPath) {
+            return it;
+          }
+          if (it.children && it.children.length) {
+            let combined = null;
+            for (const ch of it.children) {
+              const p = extractPath(ch);
+              if (p) {
+                combined = combined ? combined.unite(p) : p;
+              }
+            }
+            return combined;
+          }
+          return null;
+        }
+
+        return extractPath(imported);
+      }
+
+      let resultPaperItem = convertFabricToPaperItem(validShapes[0]);
+      if (!resultPaperItem) {
+        toast('Ошибка: Не удалось преобразовать первую фигуру');
+        return;
+      }
+
+      for (let i = 1; i < validShapes.length; i++) {
+        const nextItem = convertFabricToPaperItem(validShapes[i]);
+        if (!nextItem) continue;
+
+        let nextRes = null;
+        if (operation === 'union') {
+          nextRes = resultPaperItem.unite(nextItem);
+        } else if (operation === 'subtract') {
+          nextRes = resultPaperItem.subtract(nextItem);
+        } else if (operation === 'intersect') {
+          nextRes = resultPaperItem.intersect(nextItem);
+        } else if (operation === 'exclude') {
+          nextRes = resultPaperItem.exclude(nextItem);
+        } else {
+          nextRes = resultPaperItem.unite(nextItem);
+        }
+
+        if (nextRes) {
+          resultPaperItem = nextRes;
+        }
+      }
+
+      const pathData = resultPaperItem.pathData;
+      if (!pathData) {
+        toast('Результат булевой операции пуст');
+        return;
+      }
+
+      const opNames = {
+        union: 'Объединение (Union)',
+        subtract: 'Вычитание (Subtract)',
+        intersect: 'Пересечение (Intersect)',
+        exclude: 'Исключение (Exclude)'
+      };
+
+      const baseObj = validShapes[0];
+      const newPathObj = new fabric.Path(pathData, {
+        fill: baseObj.fill || 'rgba(13, 153, 255, 0.25)',
+        stroke: baseObj.stroke || '#0d99ff',
+        strokeWidth: typeof baseObj.strokeWidth === 'number' ? baseObj.strokeWidth : 2,
+        strokeLineCap: baseObj.strokeLineCap || 'round',
+        strokeLineJoin: baseObj.strokeLineJoin || 'round',
+        selectable: true,
+        evented: true,
+        layerName: `Булев ${opNames[operation] || 'контур'} (${validShapes.length} фиг.)`
+      });
+
+      const allObjs = c.getObjects();
+      const targetIdx = Math.min(...validShapes.map(o => allObjs.indexOf(o)).filter(i => i >= 0));
+
+      validShapes.forEach(o => c.remove(o));
+
+      c.add(newPathObj);
+      if (targetIdx >= 0) {
+        c.moveTo(newPathObj, targetIdx);
+      }
+      c.setActiveObject(newPathObj);
+      c.requestRenderAll();
+
+      saveHistory();
+      updateLayersList();
+      if (typeof onSelection === 'function') onSelection();
+      else if (typeof Pro.hooks.onSelection === 'function') Pro.hooks.onSelection();
+
+      toast(`✅ Фигуры объединены: ${opNames[operation] || 'Булева операция'}`);
+    } catch (err) {
+      console.error('[Aurora BooleanOp Error]:', err);
+      toast('Ошибка при выполнении булевой операции: ' + (err.message || err));
+    }
+  }
+
+  function installBooleanControls() {
+    const btnHeaderBool = document.getElementById('btn-header-boolean');
+    const menuHeaderBool = document.getElementById('menu-header-boolean');
+    if (btnHeaderBool && menuHeaderBool) {
+      btnHeaderBool.addEventListener('click', e => {
+        e.stopPropagation();
+        menuHeaderBool.classList.toggle('hidden');
+      });
+      document.addEventListener('click', e => {
+        if (!menuHeaderBool.contains(e.target) && e.target !== btnHeaderBool) {
+          menuHeaderBool.classList.add('hidden');
+        }
+      });
+      menuHeaderBool.querySelectorAll('[data-bool-op]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          menuHeaderBool.classList.add('hidden');
+          applyBooleanOp(btn.dataset.boolOp);
+        });
+      });
+    }
+  }
+
   function bindCanvas(newCanvas) {
     if (!newCanvas) return;
     if (Pro.canvas && Pro.canvas !== newCanvas) {
@@ -2606,6 +3110,8 @@
     installAutoLayoutControls();
     installTokensControls();
     installVectorToolButtons();
+    installInspectAndConstraintsListeners();
+    installBooleanControls();
 
     bindCanvas(ctx.canvas);
 
@@ -2628,6 +3134,11 @@
       initDesignTokens, getAllDesignTokens, getDesignToken, addDesignToken,
       updateDesignToken, applyDesignToken, renderDesignTokensUI,
       exportTokensToCSS, exportTokensToJSON,
+      // Constraints & Inspect
+      applyLayerConstraints, changeCanvasSize, syncConstraintsUI,
+      generateCSS, copyInspectCSS, syncInspectUI,
+      // Boolean Operations
+      applyBooleanOp, syncBooleanUI, ensurePaperJs,
       // Pen Tool
       activatePenTool, deactivatePenTool, finishPenPath,
       isPenActive: () => _isPenActive,
@@ -2640,6 +3151,7 @@
       install
     };
     window.AuroraFigmaPro = window.AuroraFigmaPro ? Object.assign(window.AuroraFigmaPro, proApi) : proApi;
+    window.applyBooleanOp = applyBooleanOp;
   }
 
   // Экспорт API сразу при подключении скрипта (до вызова install)
@@ -2661,6 +3173,11 @@
     initDesignTokens, getAllDesignTokens, getDesignToken, addDesignToken,
     updateDesignToken, applyDesignToken, renderDesignTokensUI,
     exportTokensToCSS, exportTokensToJSON,
+    // Constraints & Inspect
+    applyLayerConstraints, changeCanvasSize, syncConstraintsUI,
+    generateCSS, copyInspectCSS, syncInspectUI,
+    // Boolean Operations
+    applyBooleanOp, syncBooleanUI, ensurePaperJs,
     // Pen Tool
     activatePenTool, deactivatePenTool, finishPenPath,
     isPenActive: () => _isPenActive,
@@ -2674,6 +3191,7 @@
   };
   window.AuroraFigmaPro = window.AuroraFigmaPro ? Object.assign(window.AuroraFigmaPro, immediateProApi) : immediateProApi;
   window.AuroraFigmaProInstall = install;
+  window.applyBooleanOp = applyBooleanOp;
 
   // Автоматическая установка слушателей кнопок и горячих клавиш сразу при готовности DOM
   if (typeof document !== 'undefined') {
@@ -2681,10 +3199,14 @@
       document.addEventListener('DOMContentLoaded', () => {
         installHotkeys();
         installVectorToolButtons();
+        installInspectAndConstraintsListeners();
+        installBooleanControls();
       });
     } else {
       installHotkeys();
       installVectorToolButtons();
+      installInspectAndConstraintsListeners();
+      installBooleanControls();
     }
   }
 })();

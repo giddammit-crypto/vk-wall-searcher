@@ -595,6 +595,31 @@ function renderCleanArtboardCanvas(fabricCanvas, multiplier = 1.0) {
     buffer.height = targetH;
     const ctx = buffer.getContext('2d');
 
+    // TASK 3.2: True 4K / Super-sampling: максимальная субпиксельная четкость и бикубическая интерполяция
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    if ('textRendering' in ctx) {
+      ctx.textRendering = 'optimizeLegibility';
+    }
+
+    // TASK 0.4: Переносим применённые к холсту CSS-фильтры на контекст экспорта (ctx.filter)
+    const canvasEl = fabricCanvas.lowerCanvasEl || (typeof fabricCanvas.getElement === 'function' ? fabricCanvas.getElement() : null);
+    let filterStr = '';
+    if (canvasEl) {
+      filterStr = canvasEl.style?.filter || (window.getComputedStyle ? window.getComputedStyle(canvasEl).filter : '');
+    }
+    if (!filterStr || filterStr === 'none') {
+      const wrapEl = fabricCanvas.wrapperEl || document.getElementById('canvas-area');
+      if (wrapEl && wrapEl.style?.filter) {
+        filterStr = wrapEl.style.filter;
+      }
+    }
+    if (filterStr && filterStr !== 'none' && 'filter' in ctx) {
+      ctx.filter = filterStr;
+    }
+
     // 1. Отрисовка цвета фона листа (Paper Background)
     const artboardBg = fabricCanvas.__artboardBg || fabricCanvas.backgroundColor || '#ffffff';
     if (artboardBg && artboardBg !== 'transparent' && artboardBg !== '') {

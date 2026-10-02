@@ -101,6 +101,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
         exit;
     }
 
+    if (($_GET['action'] ?? '') === 'token_quota') {
+        $quotaFile = dirname(__DIR__, 2) . '/cache/ai_poster_quota.json';
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $ip = trim(explode(',', $ip)[0]);
+        $quotaData = ['used' => 0, 'limit' => 2000000, 'resetAt' => time() + 86400];
+        if (is_file($quotaFile)) {
+            $raw = @file_get_contents($quotaFile);
+            $parsed = json_decode($raw, true);
+            if (is_array($parsed) && isset($parsed[$ip])) {
+                $userQ = $parsed[$ip];
+                if (time() < ($userQ['resetAt'] ?? 0)) {
+                    $quotaData['used'] = (int)($userQ['used'] ?? 0);
+                    $quotaData['limit'] = (int)($userQ['limit'] ?? 2000000);
+                    $quotaData['resetAt'] = (int)($userQ['resetAt'] ?? (time() + 86400));
+                }
+            }
+        }
+        header('Content-Type: application/json');
+        echo json_encode($quotaData);
+        exit;
+    }
+
     echo json_encode([
         'status' => 'ok',
         'service' => 'Aurora AI Proxy (100% Free Tier)',
@@ -108,6 +130,67 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
         'free_models' => $defaultModels
     ]);
     exit;
+}
+
+// TASK 5.1: Серверный учет лимитов и защита от сброса через localStorage
+$clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$clientIp = trim(explode(',', $clientIp)[0]);
+$cacheDir = dirname(__DIR__, 2) . '/cache';
+if (!is_dir($cacheDir)) {
+    @mkdir($cacheDir, 0775, true);
+}
+$quotaFilePath = $cacheDir . '/ai_poster_quota.json';
+
+// Проверка и блокировка лимита
+$fp = @fopen($quotaFilePath, 'c+');
+$userUsedTokens = 0;
+$userLimit = 2000000;
+$userResetAt = time() + 86400;
+
+if ($fp && flock($fp, LOCK_EX)) {
+    $fSize = filesize($quotaFilePath);
+    $content = $fSize > 0 ? fread($fp, $fSize) : '';
+    $allQuotas = json_decode($content, true) ?: [];
+
+    if (isset($allQuotas[$clientIp])) {
+        $u = $allQuotas[$clientIp];
+        if (time() >= ($u['resetAt'] ?? 0)) {
+            // Новый 24-часовой цикл
+            $allQuotas[$clientIp] = [
+                'used' => 0,
+                'limit' => $userLimit,
+                'resetAt' => time() + 86400
+            ];
+        } else {
+            $userUsedTokens = (int)($u['used'] ?? 0);
+            $userLimit = (int)($u['limit'] ?? $userLimit);
+            $userResetAt = (int)($u['resetAt'] ?? $userResetAt);
+        }
+    } else {
+        $allQuotas[$clientIp] = [
+            'used' => 0,
+            'limit' => $userLimit,
+            'resetAt' => time() + 86400
+        ];
+    }
+
+    if ($userUsedTokens >= $userLimit) {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        http_response_code(429);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'error' => [
+                'message' => 'Превышен суточный лимит 2 000 000 токенов (Server Rate Limit). Сброс через ' . max(1, ceil(($userResetAt - time()) / 3600)) . ' ч.',
+                'code' => 429,
+                'resetAt' => $userResetAt * 1000
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    flock($fp, LOCK_UN);
+    fclose($fp);
 }
 
 $rawInput = file_get_contents('php://input');
@@ -189,6 +272,23 @@ foreach ($modelsToTry as $mIdx => $modelName) {
 }
 
 if ($successfulResponse !== null) {
+    // TASK 5.1: Обновляем использованные токены в серверном кэше
+    $tokensUsed = (int)($successfulResponse['usage']['total_tokens'] ?? 3000);
+    $fp = @fopen($quotaFilePath, 'c+');
+    if ($fp && flock($fp, LOCK_EX)) {
+        $fSize = filesize($quotaFilePath);
+        $content = $fSize > 0 ? fread($fp, $fSize) : '';
+        $allQuotas = json_decode($content, true) ?: [];
+        $cur = $allQuotas[$clientIp] ?? ['used' => 0, 'limit' => 2000000, 'resetAt' => time() + 86400];
+        $cur['used'] = (int)($cur['used'] ?? 0) + $tokensUsed;
+        $allQuotas[$clientIp] = $cur;
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($allQuotas, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+
     http_response_code(200);
     echo json_encode($successfulResponse, JSON_UNESCAPED_UNICODE);
 } else {

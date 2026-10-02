@@ -176,7 +176,26 @@
       this.timerId = null;
 
       this._load();
+      this._syncServerQuota();
       this._startTicker();
+    }
+
+    async _syncServerQuota() {
+      try {
+        const resp = await fetch(CONFIG.API_PROXY_URL + '?action=token_quota');
+        if (resp.ok) {
+          const q = await resp.json();
+          if (q && typeof q.used === 'number') {
+            this.used = Math.max(this.used, Number(q.used) || 0);
+            if (typeof q.limit === 'number' && q.limit > 0) this.limit = q.limit;
+            if (typeof q.resetAt === 'number' && q.resetAt > Date.now()) this.resetAt = q.resetAt;
+            this._save();
+            this._notify();
+          }
+        }
+      } catch (e) {
+        // Fallback to local storage
+      }
     }
 
     _load() {
