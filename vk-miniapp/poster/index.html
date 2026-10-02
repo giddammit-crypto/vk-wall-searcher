@@ -140,10 +140,10 @@
       <div class="figma-topbar-divider"></div>
 
       <!-- Undo / Redo -->
-      <button class="hbtn" id="btn-undo" title="Отменить (Ctrl+Z)" disabled>
+      <button class="hbtn" id="btn-undo" title="Отменить (Ctrl+Z)" aria-label="Отменить действие (Ctrl+Z)" disabled>
         <span class="material-symbols-rounded">undo</span>
       </button>
-      <button class="hbtn" id="btn-redo" title="Повторить (Ctrl+Y)" disabled>
+      <button class="hbtn" id="btn-redo" title="Повторить (Ctrl+Y)" aria-label="Повторить действие (Ctrl+Y)" disabled>
         <span class="material-symbols-rounded">redo</span>
       </button>
 
@@ -151,14 +151,14 @@
 
       <!-- Zoom picker («100%») -->
       <div class="figma-zoom-group">
-        <button class="hbtn hbtn-zoom" id="btn-zoom-out" title="Уменьшить масштаб (Ctrl -)">
+        <button class="hbtn hbtn-zoom" id="btn-zoom-out" title="Уменьшить масштаб (Ctrl -)" aria-label="Уменьшить масштаб (Ctrl -)">
           <span class="material-symbols-rounded">remove</span>
         </button>
-        <button class="hbtn figma-zoom-dropdown" id="btn-zoom-fit" title="Масштаб (вписать в экран)">
+        <button class="hbtn figma-zoom-dropdown" id="btn-zoom-fit" title="Масштаб (вписать в экран)" aria-label="Масштаб (вписать в экран)">
           <span id="zoom-label" class="figma-zoom-val">100%</span>
           <span class="material-symbols-rounded" style="font-size:14px; opacity:0.7">unfold_more</span>
         </button>
-        <button class="hbtn hbtn-zoom" id="btn-zoom-in" title="Увеличить масштаб (Ctrl +)">
+        <button class="hbtn hbtn-zoom" id="btn-zoom-in" title="Увеличить масштаб (Ctrl +)" aria-label="Увеличить масштаб (Ctrl +)">
           <span class="material-symbols-rounded">add</span>
         </button>
       </div>
@@ -166,11 +166,11 @@
       <div class="figma-topbar-divider"></div>
 
       <!-- Сетка и Магнит -->
-      <button class="hbtn" id="btn-toggle-grid" title="Сетка верстки: Без сетки (клик — крупная)">
+      <button class="hbtn" id="btn-toggle-grid" title="Сетка верстки: Без сетки (клик — крупная)" aria-label="Переключить сетку верстки">
         <span class="material-symbols-rounded">grid_on</span>
         <span class="hbtn-label" id="grid-btn-label">Сетка</span>
       </button>
-      <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка)">
+      <button class="hbtn is-active" id="btn-toggle-snap" title="Магнитные направляющие (привязка)" aria-label="Магнитные направляющие и привязка">
         <svg class="hbtn-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M4.5 4.5v6.5a7.5 7.5 0 0 0 15 0V4.5h-4v6.5a3.5 3.5 0 0 1-7 0V4.5H4.5z" fill="currentColor" fill-opacity="0.14"/>
           <line x1="4.5" y1="8" x2="8.5" y2="8"/>
@@ -180,17 +180,17 @@
       </button>
 
       <!-- Инструменты быстрого дублирования и группировки -->
-      <button class="hbtn" id="btn-header-duplicate" title="Дублировать объект (Ctrl+D)">
+      <button class="hbtn" id="btn-header-duplicate" title="Дублировать объект (Ctrl+D)" aria-label="Дублировать объект (Ctrl+D)">
         <span class="material-symbols-rounded">content_copy</span>
       </button>
-      <button class="hbtn" id="btn-header-group" title="Сгруппировать (Ctrl+G)" disabled>
+      <button class="hbtn" id="btn-header-group" title="Сгруппировать (Ctrl+G)" aria-label="Сгруппировать (Ctrl+G)" disabled>
         <span class="material-symbols-rounded">workspaces</span>
       </button>
-      <button class="hbtn" id="btn-header-ungroup" title="Разгруппировать (Ctrl+Shift+G)" disabled>
+      <button class="hbtn" id="btn-header-ungroup" title="Разгруппировать (Ctrl+Shift+G)" aria-label="Разгруппировать (Ctrl+Shift+G)" disabled>
         <span class="material-symbols-rounded">splitscreen</span>
       </button>
       <div class="hbtn-dropdown-wrap" id="wrap-header-boolean" style="position:relative;display:inline-block;">
-        <button class="hbtn" id="btn-header-boolean" title="Булевы операции над фигурами (Объединить / Вычесть / Пересечь / Исключить)" disabled>
+        <button class="hbtn" id="btn-header-boolean" title="Булевы операции над фигурами (Объединить / Вычесть / Пересечь / Исключить)" aria-label="Булевы операции над фигурами" disabled>
           <span class="material-symbols-rounded">shape_line</span>
           <span class="hbtn-label">Булевы</span>
         </button>
@@ -213,13 +213,13 @@
           </button>
         </div>
       </div>
-      <button class="hbtn" id="btn-header-autolayout" title="Auto-Layout (Shift+A) — автоматическая раскладка">
+      <button class="hbtn" id="btn-header-autolayout" title="Auto-Layout (Shift+A / Ctrl+Shift+L) — автоматическая раскладка" aria-label="Создать Auto-Layout фрейм">
         <span class="material-symbols-rounded">auto_awesome_motion</span>
       </button>
-      <button class="hbtn" id="btn-header-component" title="Создать компонент ❖ (Ctrl+Alt+K)">
+      <button class="hbtn" id="btn-header-component" title="Создать компонент ❖ (Ctrl+Alt+K)" aria-label="Создать мастер-компонент">
         <span class="material-symbols-rounded">diamond</span>
       </button>
-      <button class="hbtn" id="btn-header-pen" title="Векторное Перо ✒️ (Shift+P)">
+      <button class="hbtn" id="btn-header-pen" title="Векторное Перо ✒️ (Shift+P)" aria-label="Векторное перо с кривыми Безье">
         <span class="material-symbols-rounded">ink_pen</span>
       </button>
     </div>
@@ -518,7 +518,7 @@
     <!-- ── Холст ── -->
     <main class="ed-canvas-area" id="canvas-area">
       <div class="canvas-frame" id="canvas-frame">
-        <canvas id="poster-canvas"></canvas>
+        <canvas id="poster-canvas" role="img" aria-label="Редактор афиши — интерактивный холст"></canvas>
       </div>
       <div class="canvas-format-badge" id="canvas-format-badge">A4 Вертикаль · 595 × 842 пт</div>
       <!-- Overlay для drag-and-drop изображений -->
@@ -1400,11 +1400,11 @@
                 <span class="label">Браузер</span>
                 <span class="sublabel">Локально на ПК</span>
               </label>
-              <label class="quality-option" data-tier="server" title="Внешний сервер BiRefNet (требует локальный/внешний Python rembg)">
-                <input type="radio" name="bg-quality" value="server">
+              <label class="quality-option quality-option--disabled" data-tier="server" title="Серверное удаление недоступно на данном хостинге — используйте AI в браузере (WebGPU/WASM)">
+                <input type="radio" name="bg-quality" value="server" disabled>
                 <span class="icon">☁️</span>
                 <span class="label">Сервер</span>
-                <span class="sublabel">Python rembg</span>
+                <span class="sublabel">Недоступно</span>
               </label>
             </div>
 
@@ -3396,6 +3396,16 @@ if (typeof QRCode === 'undefined') {
 <script src="bg-removal-server.js?v=5.7.0"></script>
 <script src="bg-removal-controller.js?v=5.7.0"></script>
 <script src="editor.js?v=5.7.0"></script>
+<!-- Service Worker для быстрого офлайн-кэширования статики -->
+<script>
+if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js?v=5.7.0').catch(err => {
+      console.warn('[Aurora SW] Registration notice:', err);
+    });
+  });
+}
+</script>
 </body>
 </html>
 

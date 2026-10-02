@@ -171,6 +171,15 @@
   color: var(--accent-cyan);
 }
 
+.quality-option--disabled,
+.quality-option.is-disabled,
+.quality-option:has(input[type="radio"]:disabled) {
+  opacity: 0.42;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  filter: grayscale(0.5);
+}
+
 /* ── Переключатель альфа-маттинга (Волосы / Мех) ── */
 .toggle-row {
   display: flex;

@@ -8422,7 +8422,7 @@ async function initDraftsStorage() {
 
 /** Обновление бейджей количества черновиков */
 function updateDraftsBadgeCount() {
-  const drafts = getSavedDrafts();
+  const drafts = (_cachedDrafts && _cachedDrafts.length > 0) ? _cachedDrafts : getSavedDrafts();
   const count = drafts.length;
   $$('.draft-count-badge, #drafts-count-header, #drafts-count-tpl, #drafts-count-badge').forEach(el => {
     el.textContent = count > 0 ? count : '0';
@@ -8750,7 +8750,16 @@ function escapeHtml(str) {
 
 function getStoredFigmaToken() {
   try {
-    return localStorage.getItem(FIGMA_STORAGE_KEY) || FIGMA_DEFAULT_TOKEN;
+    const raw = localStorage.getItem(FIGMA_STORAGE_KEY);
+    if (!raw) return FIGMA_DEFAULT_TOKEN;
+    if (raw.startsWith('b64:')) {
+      try {
+        return atob(raw.slice(4));
+      } catch (_) {
+        return raw.slice(4);
+      }
+    }
+    return raw;
   } catch (e) {
     return FIGMA_DEFAULT_TOKEN;
   }
@@ -8759,7 +8768,11 @@ function getStoredFigmaToken() {
 function setStoredFigmaToken(token, remember) {
   try {
     if (remember && token) {
-      localStorage.setItem(FIGMA_STORAGE_KEY, token);
+      try {
+        localStorage.setItem(FIGMA_STORAGE_KEY, 'b64:' + btoa(token));
+      } catch (_) {
+        localStorage.setItem(FIGMA_STORAGE_KEY, token);
+      }
     } else {
       localStorage.removeItem(FIGMA_STORAGE_KEY);
     }

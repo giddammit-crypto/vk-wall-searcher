@@ -830,8 +830,10 @@
         return;
       }
 
-      // Shift+A — создание / переключение Auto-Layout фрейма (Figma)
-      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'a' || e.key === 'A' || e.key === 'ф' || e.key === 'Ф')) {
+      // Shift+A или Ctrl+Shift+L — создание / переключение Auto-Layout фрейма (Figma)
+      const isShiftA = e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'a' || e.key === 'A' || e.key === 'ф' || e.key === 'Ф');
+      const isCtrlShiftL = e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'l' || e.key === 'L' || e.key === 'д' || e.key === 'Д');
+      if (isShiftA || isCtrlShiftL) {
         if (inInput) return;
         e.preventDefault(); e.stopPropagation();
         toggleAutoLayout();
