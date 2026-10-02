@@ -132,15 +132,37 @@ export function exportToJson(posts, stats = []) {
     downloadBlob(blob, `vk_posts_data_${new Date().toISOString().slice(0, 10)}.json`);
 }
 
+let docxLibPromise = null;
+
 /**
- * Export report to formatted Microsoft Word document (.doc format)
+ * Dynamic loader for self-hosted docx library (UX-4, P-1, SEC-4)
  */
-export function exportToDocx(posts, stats = [], meta = {}) {
+export async function loadDocxLibrary() {
+    if (typeof window !== 'undefined' && window.docx) return window.docx;
+    if (!docxLibPromise) {
+        docxLibPromise = new Promise((resolve, reject) => {
+            if (typeof document === 'undefined') {
+                return reject(new Error('Document is not available'));
+            }
+            const s = document.createElement('script');
+            s.src = 'assets/vendor/docx.umd.min.js';
+            s.async = true;
+            s.onload = () => resolve(window.docx);
+            s.onerror = (e) => reject(e);
+            document.head.appendChild(s);
+        });
+    }
+    return docxLibPromise;
+}
+
+/**
+ * Fallback: Export report to Microsoft Word HTML document (.doc format)
+ */
+export function exportToLegacyDoc(posts, stats = [], meta = {}) {
     if (!posts || posts.length === 0) {
         throw new Error('Нет данных для экспорта в Word');
     }
 
-    // Итоговые показатели считаем из самих записей (надёжнее meta)
     let totViews = 0, totLikes = 0, totReposts = 0, totComments = 0;
     posts.forEach(p => {
         totViews += extractNum(p.views);
@@ -150,7 +172,6 @@ export function exportToDocx(posts, stats = [], meta = {}) {
     });
     const totInteractions = totLikes + totReposts + totComments;
 
-    // Сводная таблица по всем филиалам (включая нулевые)
     const summaryRows = (stats || []).map((s, i) => {
         const views = s.views || 0;
         const inter = s.totalInteractions || 0;
@@ -168,7 +189,6 @@ export function exportToDocx(posts, stats = [], meta = {}) {
         </tr>`;
     }).join('');
 
-    // Динамика подписчиков (если передана)
     const subs = meta.subscribers || [];
     const subsSection = subs.length ? `
     <h2 class="section-h">2. Динамика подписчиков сообществ</h2>
@@ -246,7 +266,7 @@ export function exportToDocx(posts, stats = [], meta = {}) {
 </style>
 </head>
 <body>
-    <div class="org-title">МУНИЦИПАЛЬНОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ КУЛЬТУРЫ «ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА»</div>
+    <div class="org-title">МУНИЦИПАЛЬНОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ КУЛЬТУРЫ «ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА» Г. ВЛАДИМИРА</div>
     <h1>Официальный отчёт об анализе публикаций VK</h1>
     <div style="text-align: center; font-size: 10pt; color: #6b7280; margin-bottom: 16px;">Сформировано: ${new Date().toLocaleString('ru-RU')}</div>
 
@@ -368,7 +388,7 @@ export function exportToDocx(posts, stats = [], meta = {}) {
     `).join('')}
 
     <div class="sign-block">
-        <p>Отчёт сформирован автоматически сервисом «Статистика групп ВК» (версия ${meta.appVersion || '3.4.2'}) на основе данных VK API.</p>
+        <p>Отчёт сформирован автоматически сервисом «AURORA STAT» (версия ${meta.appVersion || '5.5.0'}) на основе данных VK API.</p>
         <table>
             <tr>
                 <td style="width: 40%;">Отчёт составил: <span class="sign-line"></span></td>
@@ -386,6 +406,235 @@ export function exportToDocx(posts, stats = [], meta = {}) {
 
     const blob = new Blob(['\uFEFF' + docContent], { type: 'application/msword;charset=utf-8;' });
     downloadBlob(blob, `vk_report_official_${new Date().toISOString().slice(0, 10)}.doc`);
+}
+
+/**
+ * UX-4: Modern Export to Microsoft Word OpenXML (.docx) format using docx.js
+ */
+export async function exportToDocx(posts, stats = [], meta = {}) {
+    if (!posts || posts.length === 0) {
+        throw new Error('Нет данных для экспорта в Word');
+    }
+
+    try {
+        const docx = await loadDocxLibrary();
+        if (!docx || !docx.Document || !docx.Packer) {
+            throw new Error('Библиотека docx недоступна');
+        }
+
+        const {
+            Document, Paragraph, Table, TableRow, TableCell,
+            HeadingLevel, TextRun, Packer, WidthType, AlignmentType,
+            BorderStyle
+        } = docx;
+
+        let totViews = 0, totLikes = 0, totReposts = 0, totComments = 0;
+        posts.forEach(p => {
+            totViews += extractNum(p.views);
+            totLikes += extractNum(p.likes);
+            totReposts += extractNum(p.reposts);
+            totComments += extractNum(p.comments);
+        });
+        const totInteractions = totLikes + totReposts + totComments;
+
+        const cellBorderThin = {
+            top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+            left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+            right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' }
+        };
+
+        const children = [];
+
+        // Организация и Заголовок
+        children.push(new Paragraph({
+            children: [
+                new TextRun({
+                    text: 'МУНИЦИПАЛЬНОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ КУЛЬТУРЫ «ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА» Г. ВЛАДИМИРА',
+                    bold: true,
+                    size: 18,
+                    color: '4B5563'
+                })
+            ],
+            alignment: AlignmentType.CENTER
+        }));
+
+        children.push(new Paragraph({
+            text: 'Официальный отчёт об анализе публикаций VK',
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER
+        }));
+
+        children.push(new Paragraph({
+            children: [
+                new TextRun({
+                    text: `Сформировано: ${new Date().toLocaleString('ru-RU')}`,
+                    italics: true,
+                    size: 18,
+                    color: '6B7280'
+                })
+            ],
+            alignment: AlignmentType.CENTER
+        }));
+
+        children.push(new Paragraph({ text: '' }));
+
+        // Паспорт отчёта
+        const passportData = [
+            ['Период поиска:', meta.datesFilter || 'Все периоды'],
+            ['Поисковый запрос / Ключевые слова:', meta.searchQuery || 'Все темы (без фильтра по тексту)'],
+            ['Всего найдено записей:', posts.length.toLocaleString('ru-RU')],
+            ['Всего отметок «Нравится»:', totLikes.toLocaleString('ru-RU')],
+            ['Всего репостов:', totReposts.toLocaleString('ru-RU')],
+            ['Всего комментариев:', totComments.toLocaleString('ru-RU')],
+            ['Суммарный читательский охват (просмотры):', totViews.toLocaleString('ru-RU')],
+            ['Суммарно реакций аудитории:', totInteractions.toLocaleString('ru-RU')],
+            ['Филиалов в отчёте:', `${(stats || []).length}, из них с публикациями: ${(stats || []).filter(s => s.postsCount > 0).length}`]
+        ];
+
+        const passportRows = passportData.map(([lbl, val]) => new TableRow({
+            children: [
+                new TableCell({
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    borders: cellBorderThin,
+                    shading: { fill: 'F3F4F6' },
+                    children: [new Paragraph({ children: [new TextRun({ text: lbl, bold: true, size: 19 })] })]
+                }),
+                new TableCell({
+                    width: { size: 60, type: WidthType.PERCENTAGE },
+                    borders: cellBorderThin,
+                    children: [new Paragraph({ children: [new TextRun({ text: String(val), size: 19 })] })]
+                })
+            ]
+        }));
+
+        children.push(new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: passportRows
+        }));
+
+        children.push(new Paragraph({ text: '' }));
+
+        // Раздел 1: Сводные показатели по филиалам
+        children.push(new Paragraph({
+            text: '1. Сводные показатели по филиалам',
+            heading: HeadingLevel.HEADING_2
+        }));
+
+        const summaryHeader = new TableRow({
+            children: [
+                new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: '№', bold: true })], alignment: AlignmentType.CENTER })] }),
+                new TableCell({ width: { size: 39, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Филиал', bold: true })] })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Постов', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Лайки', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Репосты', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Комм.', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                new TableCell({ width: { size: 11, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Просм.', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: 'E5E7EB' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'ER %', bold: true })], alignment: AlignmentType.RIGHT })] })
+            ]
+        });
+
+        const summaryTableRows = [summaryHeader];
+        (stats || []).forEach((s, i) => {
+            const views = s.views || 0;
+            const inter = s.totalInteractions || 0;
+            const er = views > 0 ? (inter / views * 100).toFixed(2) + '%' : '0.00%';
+            summaryTableRows.push(new TableRow({
+                children: [
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: String(i + 1), alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph(s.info?.canonicalBranch || s.info?.canonicalName || s.info?.name || '')] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: String(s.postsCount || 0), alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: (s.likes || 0).toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: (s.reposts || 0).toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: (s.comments || 0).toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: views.toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: er, alignment: AlignmentType.RIGHT })] })
+                ]
+            }));
+        });
+
+        children.push(new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: summaryTableRows
+        }));
+
+        children.push(new Paragraph({ text: '' }));
+
+        // Раздел 2: Детальные записи по филиалам
+        children.push(new Paragraph({
+            text: '2. Детальные публикации по филиалам',
+            heading: HeadingLevel.HEADING_2
+        }));
+
+        const branchesWithPosts = (stats || []).filter(s => s.postsCount > 0);
+        branchesWithPosts.forEach((s, idx) => {
+            children.push(new Paragraph({
+                text: `${idx + 1}. ${s.info?.canonicalName || s.info?.name} — ${s.postsCount} ${declOfNum(s.postsCount, ['запись', 'записи', 'записей'])}`,
+                heading: HeadingLevel.HEADING_3
+            }));
+
+            const detailHeader = new TableRow({
+                children: [
+                    new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, shading: { fill: 'F3F4F6' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: '№', bold: true })], alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, shading: { fill: 'F3F4F6' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Дата', bold: true })] })] }),
+                    new TableCell({ width: { size: 56, type: WidthType.PERCENTAGE }, shading: { fill: 'F3F4F6' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Текст публикации', bold: true })] })] }),
+                    new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: 'F3F4F6' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Просм.', bold: true })], alignment: AlignmentType.RIGHT })] }),
+                    new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: 'F3F4F6' }, borders: cellBorderThin, children: [new Paragraph({ children: [new TextRun({ text: 'Реакции', bold: true })], alignment: AlignmentType.RIGHT })] })
+                ]
+            });
+
+            const detailRows = [detailHeader];
+            s.posts.slice(0, 100).forEach((p, pi) => {
+                let cleanText = (p.text || '').trim();
+                if (!cleanText && p.copy_history && p.copy_history[0]) {
+                    const rep = p.copy_history[0];
+                    const repAuthor = resolveRepostAuthor(rep);
+                    cleanText = `[Репост: ${repAuthor.name}] ${(rep.text || '').trim()}`;
+                }
+                if (!cleanText) cleanText = '(Без текста)';
+                if (cleanText.length > 250) cleanText = cleanText.slice(0, 250) + '...';
+
+                const reactions = extractNum(p.likes) + extractNum(p.reposts) + extractNum(p.comments);
+
+                detailRows.push(new TableRow({
+                    children: [
+                        new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: String(pi + 1), alignment: AlignmentType.CENTER })] }),
+                        new TableCell({ borders: cellBorderThin, children: [new Paragraph(p.humanDate || '')] }),
+                        new TableCell({ borders: cellBorderThin, children: [new Paragraph(cleanText)] }),
+                        new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: extractNum(p.views).toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] }),
+                        new TableCell({ borders: cellBorderThin, children: [new Paragraph({ text: reactions.toLocaleString('ru-RU'), alignment: AlignmentType.RIGHT })] })
+                    ]
+                }));
+            });
+
+            children.push(new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: detailRows
+            }));
+
+            children.push(new Paragraph({ text: '' }));
+        });
+
+        // Блок подписи
+        children.push(new Paragraph({
+            text: `Отчёт сформирован автоматически сервисом «AURORA STAT» (версия ${meta.appVersion || '5.5.0'}) на основе данных VK API.`,
+            alignment: AlignmentType.LEFT
+        }));
+        children.push(new Paragraph({ text: 'Отчёт составил: ____________________ / ____________________ /       Дата: ____________________' }));
+
+        const doc = new Document({
+            sections: [{
+                properties: {},
+                children
+            }]
+        });
+
+        const blob = await Packer.toBlob(doc);
+        downloadBlob(blob, `vk_report_official_${new Date().toISOString().slice(0, 10)}.docx`);
+    } catch (docxErr) {
+        console.warn('[exportToDocx] Native docx generation fallback to legacy doc:', docxErr);
+        exportToLegacyDoc(posts, stats, meta);
+    }
 }
 
 /**

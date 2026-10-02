@@ -14726,3 +14726,152 @@ textarea:focus {
         font-size: 0.8rem !important;
     }
 }
+
+/* ==========================================================================
+   UX-1: Хронологический график активности (Timeline Chart)
+   ========================================================================== */
+.timeline-analytics-card {
+    margin-bottom: 24px;
+}
+.analytics-timeline-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 0 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.timeline-summary-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+[data-theme="light"] .timeline-summary-bar {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+.timeline-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.timeline-stat-lbl {
+    color: var(--muted, #94a3b8);
+}
+.timeline-stat-val {
+    color: var(--text-primary, #ffffff);
+    font-weight: 700;
+}
+.timeline-stat-peak .timeline-stat-val {
+    color: #f59e0b;
+}
+.timeline-svg-scroll-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(140, 145, 160, 0.3) transparent;
+    padding-bottom: 8px;
+}
+.timeline-svg-scroll-wrap::-webkit-scrollbar {
+    height: 6px;
+}
+.timeline-svg-scroll-wrap::-webkit-scrollbar-thumb {
+    background: rgba(140, 145, 160, 0.35);
+    border-radius: 4px;
+}
+.timeline-svg-chart {
+    display: block;
+    width: 100%;
+    min-width: 540px;
+    height: 170px;
+    overflow: visible;
+}
+.timeline-bar-group {
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.2s ease;
+}
+.timeline-bar-group:hover,
+.timeline-bar-group:focus {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
+}
+.timeline-svg-bar {
+    transition: height 0.3s ease, y 0.3s ease, opacity 0.2s ease;
+}
+.timeline-svg-bar-peak {
+    filter: drop-shadow(0 0 4px rgba(251, 133, 0, 0.5));
+}
+.timeline-svg-val {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #00f0ff;
+    font-family: var(--font-mono, monospace);
+}
+[data-theme="light"] .timeline-svg-val {
+    fill: #0284c7;
+}
+.timeline-svg-val.val-peak {
+    fill: #fb8500;
+    font-size: 11px;
+}
+.timeline-svg-label {
+    font-size: 10px;
+    fill: var(--muted, #94a3b8);
+    font-family: var(--font-mono, monospace);
+}
+.timeline-grid-text {
+    font-size: 9px;
+    fill: var(--muted, #64748b);
+    font-family: var(--font-mono, monospace);
+}
+.timeline-empty-card {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--muted, #94a3b8);
+}
+.timeline-empty-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    opacity: 0.6;
+}
+.timeline-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--text-primary, #ffffff);
+}
+.timeline-empty-sub {
+    font-size: 0.825rem;
+    margin: 0;
+}
+
+/* ==========================================================================
+   AX-1: Accessibility (prefers-reduced-motion: reduce)
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    #aurora-splash,
+    .aurora-splash,
+    .splash-logo-wrap,
+    .shelf-splash-spinner,
+    .kosmo-avatar,
+    .chart-bar-fill {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+

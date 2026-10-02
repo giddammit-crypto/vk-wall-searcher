@@ -1181,3 +1181,175 @@ export function exportCosmoChat(messages, format = 'md', filename = null) {
     return text;
 }
 
+/**
+ * -----------------------------------------------------------------------------
+ * UX-1: Хронологический график активности по дням и неделям (SVG Timeline Chart)
+ * -----------------------------------------------------------------------------
+ */
+export function renderActivityTimeline(container, posts = [], options = {}) {
+    if (!container) return;
+
+    if (!Array.isArray(posts) || posts.length === 0) {
+        container.innerHTML = `
+            <div class="timeline-empty-card">
+                <span class="material-symbols-outlined timeline-empty-icon" aria-hidden="true">calendar_month</span>
+                <p class="timeline-empty-title">Нет данных о публикациях за выбранный период</p>
+                <p class="timeline-empty-sub">Выполните поиск постов в сообществах филиалов для отображения хронологического тренда активности.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const grouping = options.grouping || 'day'; // 'day' | 'week'
+    const grouped = new Map();
+
+    posts.forEach(p => {
+        const rawDate = p.date ? Number(p.date) : null;
+        if (!rawDate || isNaN(rawDate)) return;
+        const d = new Date(rawDate * 1000);
+        if (isNaN(d.getTime())) return;
+
+        let key = '';
+        let label = '';
+        let shortLabel = '';
+
+        if (grouping === 'week') {
+            const dayOfWeek = (d.getDay() + 6) % 7; // Понедельник = 0
+            const monday = new Date(d);
+            monday.setDate(d.getDate() - dayOfWeek);
+            key = monday.toISOString().slice(0, 10);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            label = `Неделя ${monday.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} — ${sunday.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`;
+            shortLabel = monday.toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
+        } else {
+            key = d.toISOString().slice(0, 10);
+            label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+            shortLabel = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' });
+        }
+
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                key,
+                label,
+                shortLabel,
+                count: 0,
+                views: 0,
+                likes: 0,
+                reposts: 0,
+                comments: 0
+            });
+        }
+
+        const slot = grouped.get(key);
+        slot.count++;
+        slot.views += extractNum(p.views);
+        slot.likes += extractNum(p.likes);
+        slot.reposts += extractNum(p.reposts);
+        slot.comments += extractNum(p.comments);
+    });
+
+    const items = Array.from(grouped.values()).sort((a, b) => a.key.localeCompare(b.key));
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="timeline-empty-card">
+                <span class="material-symbols-outlined timeline-empty-icon" aria-hidden="true">calendar_month</span>
+                <p class="timeline-empty-title">Не удалось извлечь даты публикаций</p>
+            </div>
+        `;
+        return;
+    }
+
+    const maxCount = Math.max(1, ...items.map(i => i.count));
+    const totalPosts = posts.length;
+    const avgPerSlot = (totalPosts / items.length).toFixed(1);
+    const peakItem = items.reduce((max, cur) => cur.count > max.count ? cur : max, items[0]);
+
+    // Параметры SVG верстки
+    const barWidth = items.length > 50 ? 10 : (items.length > 30 ? 14 : 20);
+    const barGap = items.length > 50 ? 4 : (items.length > 30 ? 6 : 8);
+    const step = barWidth + barGap;
+    const leftPadding = 30;
+    const rightPadding = 30;
+    const svgWidth = Math.max(540, leftPadding + rightPadding + items.length * step);
+    const svgHeight = 170;
+    const chartHeight = 100;
+    const baselineY = 130;
+
+    // Шаг вывода меток дат по оси X, чтобы не накладывались
+    const labelInterval = items.length > 40 ? Math.ceil(items.length / 20) : (items.length > 20 ? 2 : 1);
+
+    let barsSvg = '';
+    items.forEach((item, idx) => {
+        const x = leftPadding + idx * step;
+        const h = Math.max(4, Math.round((item.count / maxCount) * chartHeight));
+        const y = baselineY - h;
+        const isPeak = item.count === peakItem.count && item.count > 0;
+        const totalReactions = item.likes + item.reposts + item.comments;
+
+        const tooltip = `${item.label}\nПубликаций: ${item.count}\nПросмотров: ${item.views.toLocaleString('ru-RU')}\nРеакций (лайки+репосты+комм.): ${totalReactions.toLocaleString('ru-RU')}`;
+
+        const barClass = isPeak ? 'timeline-svg-bar timeline-svg-bar-peak' : 'timeline-svg-bar';
+        const fill = isPeak ? 'url(#timelinePeakGradient)' : 'url(#timelineBarGradient)';
+
+        barsSvg += `
+            <g class="timeline-bar-group" tabindex="0" role="img" aria-label="${escapeHtml(tooltip)}">
+                <title>${escapeHtml(tooltip)}</title>
+                <rect class="${barClass}" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="3" fill="${fill}" data-date="${item.key}" data-count="${item.count}"></rect>
+                ${(isPeak || items.length <= 25) ? `<text class="timeline-svg-val ${isPeak ? 'val-peak' : ''}" x="${x + barWidth / 2}" y="${y - 4}" text-anchor="middle">${item.count}</text>` : ''}
+                ${(idx % labelInterval === 0 || idx === items.length - 1) ? `<text class="timeline-svg-label" x="${x + barWidth / 2}" y="${baselineY + 18}" text-anchor="middle">${item.shortLabel}</text>` : ''}
+            </g>
+        `;
+    });
+
+    // Фоновая сетка 50% и 100%
+    const gridY50 = baselineY - Math.round(chartHeight * 0.5);
+    const gridY100 = baselineY - chartHeight;
+    const gridVal50 = Math.round(maxCount * 0.5);
+
+    container.innerHTML = `
+        <div class="timeline-summary-bar">
+            <div class="timeline-stat-item">
+                <span class="timeline-stat-lbl">Интервалов с активностью:</span>
+                <b class="timeline-stat-val">${items.length}</b>
+            </div>
+            <div class="timeline-stat-item">
+                <span class="timeline-stat-lbl">Средняя частота:</span>
+                <b class="timeline-stat-val">${avgPerSlot} ${declOfNum(Math.round(avgPerSlot), ['пост', 'поста', 'постов'])} / ${grouping === 'week' ? 'нед.' : 'день'}</b>
+            </div>
+            <div class="timeline-stat-item timeline-stat-peak">
+                <span class="timeline-stat-lbl">Пик активности:</span>
+                <b class="timeline-stat-val">${escapeHtml(peakItem.label)} (${peakItem.count} ${declOfNum(peakItem.count, ['пост', 'поста', 'постов'])})</b>
+            </div>
+        </div>
+
+        <div class="timeline-svg-scroll-wrap">
+            <svg class="timeline-svg-chart" viewBox="0 0 ${svgWidth} ${svgHeight}" preserveAspectRatio="xMinYMid meet" role="img" aria-label="Хронологический график активности публикаций">
+                <defs>
+                    <linearGradient id="timelineBarGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.95"></stop>
+                        <stop offset="100%" stop-color="#0072ff" stop-opacity="0.7"></stop>
+                    </linearGradient>
+                    <linearGradient id="timelinePeakGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#ffb703" stop-opacity="1"></stop>
+                        <stop offset="100%" stop-color="#fb8500" stop-opacity="0.85"></stop>
+                    </linearGradient>
+                </defs>
+
+                <!-- Горизонтальные направляющие сетки -->
+                <line x1="${leftPadding - 10}" y1="${gridY100}" x2="${svgWidth - rightPadding + 10}" y2="${gridY100}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3,3" />
+                <text x="${leftPadding - 14}" y="${gridY100 + 4}" class="timeline-grid-text" text-anchor="end">${maxCount}</text>
+
+                <line x1="${leftPadding - 10}" y1="${gridY50}" x2="${svgWidth - rightPadding + 10}" y2="${gridY50}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3,3" />
+                <text x="${leftPadding - 14}" y="${gridY50 + 4}" class="timeline-grid-text" text-anchor="end">${gridVal50}</text>
+
+                <line x1="${leftPadding - 10}" y1="${baselineY}" x2="${svgWidth - rightPadding + 10}" y2="${baselineY}" stroke="rgba(255,255,255,0.18)" />
+
+                <!-- Столбцы активности -->
+                ${barsSvg}
+            </svg>
+        </div>
+    `;
+}
+
+

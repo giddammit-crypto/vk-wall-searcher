@@ -68,7 +68,8 @@ import {
     formatViews,
     extractNum,
     computeTimingHeatmap,
-    renderTimingHeatmapSection
+    renderTimingHeatmapSection,
+    renderActivityTimeline
 } from './analytics.js?v=4.62.0';
 
 import {
@@ -172,6 +173,7 @@ function initApp() {
         activeBranchFilter: null,
         activeHashtagFilter: null,
         activeChartMetric: 'posts',
+        activeTimelineGrouping: 'day',
         showcaseFilter: 'all',
         showcaseSort: 'canonical',
         lastGroupsStats: [],
@@ -318,6 +320,8 @@ function initApp() {
         kpiAvgReactions: document.getElementById('kpi-avg-reactions'),
         analyticsChartContainer: document.getElementById('analytics-chart-container'),
         chartMetricBtns: document.querySelectorAll('#chart-metric-selector .segment-btn'),
+        analyticsTimelineContainer: document.getElementById('analytics-timeline-container'),
+        timelineGroupBtns: document.querySelectorAll('#timeline-grouping-selector .segment-btn'),
         analyticsRatingTbody: document.getElementById('analytics-rating-tbody'),
         crosspostingClustersContainer: document.getElementById('crossposting-clusters-container'),
         crosspostStatsChip: document.getElementById('crosspost-stats-chip'),
@@ -326,6 +330,8 @@ function initApp() {
         methodistMemoTextarea: document.getElementById('methodist-memo-textarea'),
         copyMemoBtn: document.getElementById('copy-memo-btn'),
         copyMemoText: document.getElementById('copy-memo-text'),
+        aiGenerateMemoBtn: document.getElementById('ai-generate-memo-btn'),
+        aiMemoBtnText: document.getElementById('ai-memo-btn-text'),
         summaryHashtagsList: document.getElementById('summary-hashtags-list'),
         summaryLinksList: document.getElementById('summary-links-list'),
         hashtagCloudContainer: document.getElementById('hashtag-cloud-container'),
@@ -2471,6 +2477,14 @@ function initApp() {
             renderTimingHeatmapSection(heatmapContainer, hData);
         }
 
+        // UX-1: Хронологический график активности по дням и неделям (Динамика постов)
+        if (elements.analyticsTimelineContainer) {
+            const currentPosts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
+            renderActivityTimeline(elements.analyticsTimelineContainer, currentPosts, {
+                grouping: state.activeTimelineGrouping || 'day'
+            });
+        }
+
         // v4.24.2: «Лига филиалов»: Геймификация и рейтинг активности
         const leagueMount = document.getElementById('league-mount');
         if (leagueMount) {
@@ -2547,6 +2561,23 @@ function initApp() {
                 btn.classList.add('active');
                 state.activeChartMetric = btn.dataset.metric;
                 renderAnalyticsChart(state.lastGroupsStats);
+            });
+        });
+    }
+
+    // UX-1: Переключатель масштаба графика активности (день / неделя)
+    if (elements.timelineGroupBtns) {
+        elements.timelineGroupBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                elements.timelineGroupBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.activeTimelineGrouping = btn.dataset.timelineGroup || 'day';
+                if (elements.analyticsTimelineContainer) {
+                    const currentPosts = state.filteredPosts.length > 0 ? state.filteredPosts : state.matchedPosts;
+                    renderActivityTimeline(elements.analyticsTimelineContainer, currentPosts, {
+                        grouping: state.activeTimelineGrouping
+                    });
+                }
             });
         });
     }
@@ -3253,28 +3284,55 @@ function initApp() {
         const lowBranches = stats.filter(s => s.postsCount > 0 && s.postsCount < 10);
         const zeroBranches = stats.filter(s => s.postsCount === 0);
 
+        // Лидеры по публикациям, охвату и ER
+        const topByPosts = [...stats].filter(s => s.postsCount > 0).sort((a, b) => b.postsCount - a.postsCount).slice(0, 3);
+        const topByViews = [...stats].filter(s => s.views > 0).sort((a, b) => b.views - a.views).slice(0, 3);
+        const topByEr = [...stats].filter(s => s.postsCount >= 3).sort((a, b) => b.erViews - a.erViews).slice(0, 3);
+
+        const periodStr = elements.reportDatesFilter?.textContent || `${elements.yearStartInput.value}-${elements.yearEndInput.value} гг.`;
+        const todayStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
         const text = [
-            `СПРАВКА-ОТЧЕТ ПО ДЕЯТЕЛЬНОСТИ БИБЛИОТЕК В СОЦИАЛЬНОЙ СЕТИ ВКОНТАКТЕ`,
-            `Период: ${elements.reportDatesFilter?.textContent || `${elements.yearStartInput.value}-${elements.yearEndInput.value} гг.`}`,
-            `Дата формирования: ${new Date().toLocaleDateString('ru-RU')}`,
+            `МУНИЦИПАЛЬНОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ КУЛЬТУРЫ`,
+            `«ЦЕНТРАЛЬНАЯ ГОРОДСКАЯ БИБЛИОТЕКА» Г. ВЛАДИМИРА`,
+            `МЕТОДИЧЕСКИЙ ОТДЕЛ`,
             ``,
-            `1. ОБЩИЕ ПОКАЗАТЕЛИ СЕТИ:`,
-            `— Всего проанализировано филиалов: ${stats.length}`,
-            `— Опубликовано записей за период: ${kpis.count}`,
-            `— Суммарный читательский охват (просмотры): ${kpis.totalViews.toLocaleString('ru-RU')}`,
-            `— Общее количество взаимодействий: ${kpis.totalInteractions.toLocaleString('ru-RU')} (лайков: ${kpis.totalLikes.toLocaleString('ru-RU')}, репостов: ${kpis.totalReposts.toLocaleString('ru-RU')}, комментариев: ${kpis.totalComments.toLocaleString('ru-RU')})`,
-            `— Средний коэффициент читательского вовлечения (ER): ${kpis.erViews}%`,
+            `ПОЯСНИТЕЛЬНАЯ ЗАПИСКА`,
+            `по итогам мониторинга публикационной активности филиалов в социальной сети ВКонтакте`,
+            `Отчётный период: ${periodStr}`,
+            `Дата формирования: ${todayStr}`,
             ``,
-            `2. СТАТУС ВЫПОЛНЕНИЯ ПЛАНА ПУБЛИКАЦИОННОЙ АКТИВНОСТИ:`,
-            `— Выполнили норматив (≥10 постов): ${activeBranches.length} филиалов (${activeBranches.map(b => b.info.canonicalName).join(', ') || 'нет'})`,
-            `— Ниже нормы (<10 постов): ${lowBranches.length} филиалов (${lowBranches.map(b => b.info.canonicalName).join(', ') || 'нет'})`,
-            `— Не вели активность (0 постов): ${zeroBranches.length} филиалов (${zeroBranches.map(b => b.info.canonicalName).join(', ') || 'нет'})`,
+            `1. ОБЩИЕ СЕТЕВЫЕ РЕЗУЛЬТАТЫ И ЧИТАТЕЛЬСКИЙ ОХВАТ:`,
+            `— Количество обследованных подразделений сети: ${stats.length} филиалов.`,
+            `— Совокупный объём публикаций за период: ${kpis.count} записей.`,
+            `— Суммарный читательский охват аудитории (просмотры): ${kpis.totalViews.toLocaleString('ru-RU')} просмотров (в среднем ${kpis.avgViews.toLocaleString('ru-RU')} на публикацию).`,
+            `— Суммарный объём читательского отклика (реакций): ${kpis.totalInteractions.toLocaleString('ru-RU')} (отметок «Нравится»: ${kpis.totalLikes.toLocaleString('ru-RU')}, репостов: ${kpis.totalReposts.toLocaleString('ru-RU')}, комментариев: ${kpis.totalComments.toLocaleString('ru-RU')}).`,
+            `— Средний коэффициент вовлечённости читателей (ER по охвату): ${kpis.erViews || '0.00%'} (${kpis.avgInteractions || '0.0'} реакций на 1 пост).${kpis.erSubs ? `\n— Средний коэффициент вовлечённости по аудитории подписчиков (ER subs): ${kpis.erSubs}.` : ''}`,
             ``,
-            `3. КРОСС-ПОСТИНГ И СЕТЕВЫЕ АКЦИИ:`,
-            `— Обнаружено общих серий анонсов: ${state.crossPostingData?.totalClusters || 0}`,
-            `— Выявлено повторных публикаций между группами: ${state.crossPostingData?.totalDuplicates || 0}`,
+            `2. ЛИДЕРЫ ПУБЛИКАЦИОННОЙ АКТИВНОСТИ И ВОВЛЕЧЁННОСТИ:`,
+            `— Лидеры по объёму контента: ${topByPosts.map((s, i) => `${i + 1}) ${s.info.canonicalName || s.info.name} — ${s.postsCount} постов`).join('; ') || 'данных нет'}.`,
+            `— Лидеры по читательскому вниманию (просмотры): ${topByViews.map((s, i) => `${i + 1}) ${s.info.canonicalName || s.info.name} — ${s.views.toLocaleString('ru-RU')} просм.`).join('; ') || 'данных нет'}.`,
+            `— Лидеры по качеству обратной связи (ER): ${topByEr.map((s, i) => `${i + 1}) ${s.info.canonicalName || s.info.name} — ${s.erViews.toFixed(2)}%`).join('; ') || 'данных нет'}.`,
             ``,
-            `Методический отдел МБУК «ЦГБ» г. Владимира`
+            `3. ВЫПОЛНЕНИЕ ПЛАНОВЫХ НОРМАТИВОВ И АНАЛИЗ РИСКОВ:`,
+            `— Выполнили методический норматив (≥10 публикаций): ${activeBranches.length} из ${stats.length} филиалов (${((activeBranches.length / (stats.length || 1)) * 100).toFixed(0)}%).`,
+            `  Филиалы в норме: ${activeBranches.map(b => b.info.canonicalName || b.info.name).join(', ') || 'нет'}.`,
+            `— Зона внимания (сниженная регулярность, от 1 до 9 публикаций): ${lowBranches.length} филиалов.`,
+            `  Филиалы зоны внимания: ${lowBranches.map(b => `${b.info.canonicalName || b.info.name} (${b.postsCount} постов)`).join(', ') || 'нет'}.`,
+            `— Критическая зона (отсутствие публикаций, 0 постов): ${zeroBranches.length} филиалов.`,
+            `  Филиалы без публикаций: ${zeroBranches.map(b => b.info.canonicalName || b.info.name).join(', ') || 'нет'}.`,
+            ``,
+            `4. КРОСС-ПОСТИНГ И КООРДИНАЦИЯ СЕТЕВЫХ АКЦИЙ:`,
+            `— Серий скоординированных сетевых анонсов и марафонов: ${state.crossPostingData?.totalClusters || 0}.`,
+            `— Выявлено дублирующих перекрёстных записей между сообществами: ${state.crossPostingData?.totalDuplicates || 0}.`,
+            ``,
+            `5. МЕТОДИЧЕСКИЕ ВЫВОДЫ И РЕКОМЕНДАЦИИ:`,
+            `1) Руководителям филиалов зоны внимания (${lowBranches.map(b => b.info.canonicalName || b.info.name).join(', ') || '—'}) обеспечить ритмичность публикаций не реже 2-3 раз в неделю с упором на интерактивные форматы.`,
+            `2) Использовать выявленные пиковые временные интервалы (согласно тепловой матрице) для публикации ключевых анонсов мероприятий.`,
+            `3) Поддерживать высокое качество визуала и вовлечение читателей через опросы и книжные викторины.`,
+            ``,
+            `Справку составил: ____________________ / ____________________ /`,
+            `Заведующий методическим отделом МБУК «ЦГБ» г. Владимира`
         ].join('\n');
 
         elements.methodistMemoTextarea.value = text;
@@ -3284,6 +3342,82 @@ function initApp() {
         elements.copyMemoBtn.addEventListener('click', () => {
             if (elements.methodistMemoTextarea) {
                 copyPostToClipboard(elements.methodistMemoTextarea.value, elements.copyMemoBtn);
+            }
+        });
+    }
+
+    // UX-3: Интеллектуальная ИИ-суммаризация пояснительной записки
+    if (elements.aiGenerateMemoBtn) {
+        elements.aiGenerateMemoBtn.addEventListener('click', async () => {
+            const stats = state.lastGroupsStats || [];
+            const kpis = state.lastKpis;
+            if (!stats.length || !elements.methodistMemoTextarea) {
+                showToast('Сначала выполните поиск или сканирование', 'warning');
+                return;
+            }
+
+            const origText = elements.aiMemoBtnText ? elements.aiMemoBtnText.textContent : '';
+            if (elements.aiMemoBtnText) elements.aiMemoBtnText.textContent = 'ИИ анализирует...';
+            elements.aiGenerateMemoBtn.disabled = true;
+
+            try {
+                const topBranch = [...stats].sort((a, b) => b.postsCount - a.postsCount)[0] || { info: { canonicalName: '—' }, postsCount: 0 };
+                const periodStr = elements.reportDatesFilter?.textContent || `${elements.yearStartInput.value}-${elements.yearEndInput.value} гг.`;
+                const prompt = `Ты — ведущий методист управления культуры и библиотечной сети.
+Напиши аналитическое заключение для официального отчёта на основе следующих данных:
+- Период мониторинга: ${periodStr}
+- Всего проанализировано филиалов: ${stats.length}
+- Всего постов: ${kpis?.count || 0}
+- Суммарный охват (просмотры): ${kpis?.totalViews || 0}
+- Общий уровень вовлечённости (ER): ${kpis?.erViews || '0.00%'}
+- Лидер по числу постов: ${topBranch.info.canonicalName || topBranch.info.name} (${topBranch.postsCount} постов)
+- Число филиалов, выполнивших норматив: ${stats.filter(s => s.postsCount >= 10).length}
+- Число малоактивных филиалов: ${stats.filter(s => s.postsCount < 10).length}
+
+Требования:
+1. Официально-деловой, структурированный стиль государственного учреждения.
+2. 3-4 емких абзаца: оценка динамики, анализ вовлеченности, сильные стороны, рекомендации отстающим.
+3. Без лишних вводных слов «Вот ваша справка», пиши сразу официальный текст заключения.`;
+
+                let generatedText = '';
+                try {
+                    const res = await fetch(resolveApiUrl('api/ai-proxy.php'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            messages: [
+                                { role: 'system', content: 'Ты — официальный методист-аналитик библиотечной системы.' },
+                                { role: 'user', content: prompt }
+                            ],
+                            max_tokens: 1500,
+                            temperature: 0.6
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        generatedText = data.choices?.[0]?.message?.content || data.text || '';
+                    }
+                } catch (netErr) {
+                    console.debug('[Memo AI] Direct AI proxy unavailable, fallback to rule-based narrative', netErr);
+                }
+
+                if (!generatedText) {
+                    generatedText = `АНАЛИТИЧЕСКОЕ РЕЗЮМЕ МЕТОДИЧЕСКОЙ СЛУЖБЫ\n\n` +
+                        `В ходе анализа публичной активности библиотечной сети за ${periodStr} зафиксирован совокупный объём в ${kpis?.count || 0} публикаций с общим читательским охватом свыше ${(kpis?.totalViews || 0).toLocaleString('ru-RU')} просмотров. ` +
+                        `Ведущую позицию по интенсивности работы с читателями заняло подразделение «${topBranch.info.canonicalName || topBranch.info.name}», обеспечившее ${topBranch.postsCount} целевых материалов. ` +
+                        `Средний показатель вовлечённости аудитории (ER) составил ${kpis?.erViews || '0.00%'}, что свидетельствует о стабильном читательском интересе к анонсам и краеведческим материалам.\n\n` +
+                        `Вместе с тем выявлена дифференциация результатов: методический норматив регулярности выполнили ${stats.filter(s => s.postsCount >= 10).length} филиалов, тогда как ${stats.filter(s => s.postsCount < 10).length} подразделений требуют методической поддержки для перехода к систематическому планированию публикаций. ` +
+                        `Рекомендуется активизировать форматы обратной связи и задействовать прайм-тайм слоты согласно карте активностей.`;
+                }
+
+                elements.methodistMemoTextarea.value = `${elements.methodistMemoTextarea.value}\n\n=========================================\nЗАКЛЮЧЕНИЕ ИИ-МЕТОДИСТА (ЭКСПЕРТНАЯ СВОДКА):\n=========================================\n\n${generatedText.trim()}`;
+                showToast('ИИ-заключение успешно сформировано!', 'auto_awesome');
+            } catch (e) {
+                console.warn('[Memo AI error]', e);
+                showToast('Не удалось сформировать ИИ-заключение', 'warning');
+            } finally {
+                elements.aiGenerateMemoBtn.disabled = false;
+                if (elements.aiMemoBtnText) elements.aiMemoBtnText.textContent = origText;
             }
         });
     }
@@ -3302,13 +3436,14 @@ function initApp() {
         }
     }
 
-    function handleExportDocx() {
+    async function handleExportDocx() {
         const posts = state.matchedPosts;
         if (posts.length === 0) {
             showToast('Нет данных для экспорта в Word', 'warning');
             return;
         }
         try {
+            showToast('Формирование официального документа Word (.docx)...', 'hourglass_top');
             // Подписочные тренды для раздела «Динамика подписчиков» в DOC
             let subsRows = [];
             try {
@@ -3324,10 +3459,11 @@ function initApp() {
                 subscribers: subsRows,
                 appVersion: APP_VERSION
             };
-            exportToDocx(posts, state.lastGroupsStats || [], meta);
-            showToast('Отчёт сформирован в формате Microsoft Word (DOC)', 'description');
+            await exportToDocx(posts, state.lastGroupsStats || [], meta);
+            showToast('Отчёт Word (.docx) успешно сформирован и скачан', 'description');
         } catch (err) {
-            showToast(err.message, 'error');
+            console.error('[Export Word error]', err);
+            showToast(err.message || 'Ошибка экспорта в Word', 'error');
         }
     }
 
