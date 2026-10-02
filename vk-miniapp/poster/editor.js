@@ -2111,8 +2111,9 @@ function initCanvas(w, h) {
   if (typeof window !== 'undefined') {
     window.currentSize = currentSize;
   }
-  // Figma Pro: синхронизируем размер холста
+  // Figma Pro: синхронизируем размер холста и привязываем слушатели к новому canvas
   window.AuroraFigmaPro?.setCurrentSize(currentSize);
+  window.AuroraFigmaPro?.bindCanvas(canvas);
 
   // Устанавливаем матрицу отображения: лист центрирован внутри padding
   canvas.setViewportTransform([zoom, 0, 0, zoom, CANVAS_PADDING * zoom, CANVAS_PADDING * zoom]);
@@ -2301,6 +2302,9 @@ function initCanvas(w, h) {
       canvas.setViewportTransform(canvas.viewportTransform);
       if (isSpacePressed || isPanningMode) {
         canvas.defaultCursor = 'grab';
+        canvas.selection = false;
+      } else if (window.AuroraFigmaPro?.isPenActive?.()) {
+        canvas.defaultCursor = 'crosshair';
         canvas.selection = false;
       } else {
         canvas.defaultCursor = 'default';
@@ -4335,8 +4339,21 @@ function fitActiveObjectToCanvas() {
 
 // 1. ПИПЕТКА (Eyedropper - Горячая клавиша I)
 async function activateEyedropper(targetProp = null) {
+  // Снимаем активность с карандаша и пера
+  if (canvas?.isDrawingMode) {
+    canvas.isDrawingMode = false;
+    $('#pencil-toolbar')?.classList.add('hidden');
+    $('#tool-pencil')?.classList.remove('is-active', 'active');
+  }
+  if (window.AuroraFigmaPro?.isPenActive?.()) {
+    window.AuroraFigmaPro.deactivatePenTool();
+  }
+  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pencil, #tool-pen, #btn-header-pen').forEach(el => {
+    el.classList.remove('is-active', 'active');
+  });
+
   const btn = $('#tool-eyedropper');
-  btn?.classList.add('is-active');
+  btn?.classList.add('is-active', 'active');
 
   if (window.EyeDropper) {
     try {
@@ -4348,7 +4365,8 @@ async function activateEyedropper(targetProp = null) {
     } catch (e) {
       console.log('[Eyedropper] Canceled or error:', e);
     } finally {
-      btn?.classList.remove('is-active');
+      btn?.classList.remove('is-active', 'active');
+      setActiveTool('select', false);
     }
   } else {
     startCanvasEyedropperFallback(targetProp);
@@ -4367,9 +4385,21 @@ function cancelCanvasEyedropper() {
 
 function startCanvasEyedropperFallback(targetProp = null) {
   if (!canvas) return;
+  cancelCanvasEyedropper();
+
+  // Отключаем другие режимы рисования
+  if (canvas.isDrawingMode) {
+    canvas.isDrawingMode = false;
+    $('#pencil-toolbar')?.classList.add('hidden');
+    $('#tool-pencil')?.classList.remove('is-active', 'active');
+  }
+  if (window.AuroraFigmaPro?.isPenActive?.()) {
+    window.AuroraFigmaPro.deactivatePenTool();
+  }
+
   const btn = $('#tool-eyedropper');
-  btn?.classList.add('is-active');
-  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+  btn?.classList.add('is-active', 'active');
+  document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pencil, #tool-pen, #btn-header-pen').forEach(el => {
     el.classList.remove('is-active', 'active');
   });
   toast('Кликните на холст, чтобы взять цвет (Esc — отмена)');
@@ -4540,18 +4570,27 @@ function setActiveTool(toolName = 'select', showToast = false) {
       window.toast('Курсор: Стрелка / Выбор (V)');
     }
   } else if (targetTool === 'pen') {
+    cancelCanvasEyedropper();
+    if (canvas.isDrawingMode) {
+      canvas.isDrawingMode = false;
+      $('#pencil-toolbar')?.classList.add('hidden');
+      $('#tool-pencil')?.classList.remove('is-active', 'active');
+    }
     canvas.selection = false;
     canvas.skipTargetFind = true;
     canvas.defaultCursor = 'crosshair';
     canvas.hoverCursor = 'crosshair';
     canvas.discardActiveObject();
     canvas._currentTransform = null;
-    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pencil, #tool-eyedropper').forEach(el => {
       el.classList.remove('is-active', 'active');
     });
     document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => {
       el.classList.add('is-active', 'active');
     });
+    if (!window.AuroraFigmaPro?.isPenActive?.()) {
+      window.AuroraFigmaPro?.activatePenTool();
+    }
   } else if (targetTool === 'pan') {
     canvas.selection = false;
     canvas.defaultCursor = 'grab';
@@ -4588,7 +4627,8 @@ function toggleDrawingMode(forcedState) {
   const toolbar = $('#pencil-toolbar');
 
   if (newState) {
-    // Если было активно векторное перо — деактивируем его
+    // Отменяем пипетку и перо
+    cancelCanvasEyedropper();
     if (window.AuroraFigmaPro?.isPenActive?.()) {
       window.AuroraFigmaPro.deactivatePenTool();
     }
@@ -4621,19 +4661,19 @@ function toggleDrawingMode(forcedState) {
       b.style.borderColor = active ? '#0d99ff55' : '#ffffff22';
     });
 
-    toolBtn?.classList.add('is-active');
+    toolBtn?.classList.add('is-active', 'active');
     toolbar?.classList.remove('hidden');
 
     window.currentTool = 'pencil';
 
-    // Деактивируем стрелку и перо
-    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pen, #btn-header-pen').forEach(el => {
+    // Деактивируем стрелку, пипетку и перо
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pen, #btn-header-pen, #tool-eyedropper').forEach(el => {
       el.classList.remove('is-active', 'active');
     });
 
     toast('Карандаш включен ✏️ (Рисуйте на холсте, Esc — выход)');
   } else {
-    toolBtn?.classList.remove('is-active');
+    toolBtn?.classList.remove('is-active', 'active');
     toolbar?.classList.add('hidden');
     activateSelectTool(false);
     toast('Режим рисования завершён');
@@ -10359,6 +10399,8 @@ function bindEvents() {
 
   /* Figma Pro: Векторное перо, Auto-Layout, Компоненты */
   $('#tool-pen')?.addEventListener('click', () => {
+    cancelCanvasEyedropper();
+    if (canvas?.isDrawingMode) toggleDrawingMode(false);
     if (window.AuroraFigmaPro?.isPenActive?.()) {
       window.AuroraFigmaPro.deactivatePenTool();
     } else {
@@ -10366,6 +10408,8 @@ function bindEvents() {
     }
   });
   $('#btn-header-pen')?.addEventListener('click', () => {
+    cancelCanvasEyedropper();
+    if (canvas?.isDrawingMode) toggleDrawingMode(false);
     if (window.AuroraFigmaPro?.isPenActive?.()) {
       window.AuroraFigmaPro.deactivatePenTool();
     } else {

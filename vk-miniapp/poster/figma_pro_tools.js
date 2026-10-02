@@ -36,7 +36,9 @@
   /* ────────────────────────────────────────────────────────────
      УТИЛИТЫ
      ──────────────────────────────────────────────────────────── */
-  function canvas() { return Pro.canvas; }
+  function canvas() {
+    return (typeof window !== 'undefined' && window.canvas) || Pro.canvas;
+  }
   function toast(text) { if (typeof Pro.hooks.toast === 'function') Pro.hooks.toast(text); }
   function saveHistory() { if (typeof Pro.hooks.saveHistory === 'function') Pro.hooks.saveHistory(); }
   function updateLayersList() { if (typeof Pro.hooks.updateLayersList === 'function') Pro.hooks.updateLayersList(); }
@@ -346,53 +348,59 @@
   /* ────────────────────────────────────────────────────────────
      8. ALT + ПЕРЕТАСКИВАНИЕ = ДУБЛИРОВАНИЕ (Figma/Photoshop)
      ──────────────────────────────────────────────────────────── */
+  let _altClone = null;
+  let _altSource = null;
+
+  function handleAltDragMouseDown(opt) {
+    const c = canvas();
+    if (!c) return;
+    if (!opt.e || !opt.e.altKey || c.isDrawingMode || _isPenActive) return;
+    const target = opt.target;
+    if (!target || !target.selectable || target.__isArtboardBg) return;
+    // Прерываем стандартный drag и начинаем перенос клона
+    _altSource = target;
+    const props = getComponentPropsToSave();
+    target.clone(cloned => {
+      cloned.set({ left: target.left, top: target.top, evented: true });
+      if (target.isMasterComponent || target.isComponentInstance) {
+        applyComponentInstanceProps(cloned, target);
+      }
+      if (cloned.type === 'activeSelection') {
+        cloned.canvas = c;
+        cloned.forEachObject(o => c.add(o));
+      } else {
+        c.add(cloned);
+      }
+      _altClone = cloned;
+      c.setActiveObject(cloned);
+      c.requestRenderAll();
+    }, props);
+  }
+
+  function handleAltDragMouseUp() {
+    if (_altClone) {
+      const moved = _altSource && (_altClone.left !== _altSource.left || _altClone.top !== _altSource.top);
+      const wasComponent = _altSource && (_altSource.isMasterComponent || _altSource.isComponentInstance);
+      _altClone = null;
+      _altSource = null;
+      // Небольшая задержка: fabric завершает transform после mouse:up
+      setTimeout(() => {
+        saveHistory();
+        updateLayersList();
+        if (moved !== false) {
+          toast(wasComponent ? 'Создан экземпляр компонента ◇ (Alt + перетаскивание)' : 'Объект продублирован (Alt + перетаскивание)');
+        }
+      }, 50);
+    }
+  }
+
   function installAltDragDuplicate() {
     const c = canvas();
     if (!c) return;
-    let _altClone = null;
-    let _altSource = null;
-
-    c.on('mouse:down', opt => {
-      if (!opt.e.altKey || c.isDrawingMode) return;
-      const target = opt.target;
-      if (!target || !target.selectable || target.__isArtboardBg) return;
-      // Прерываем стандартный drag и начинаем перенос клона
-      _altSource = target;
-      const props = getComponentPropsToSave();
-      target.clone(cloned => {
-        cloned.set({ left: target.left, top: target.top, evented: true });
-        if (target.isMasterComponent || target.isComponentInstance) {
-          applyComponentInstanceProps(cloned, target);
-        }
-        if (cloned.type === 'activeSelection') {
-          cloned.canvas = c;
-          cloned.forEachObject(o => c.add(o));
-        } else {
-          c.add(cloned);
-        }
-        _altClone = cloned;
-        c.setActiveObject(cloned);
-        c.requestRenderAll();
-      }, props);
-    });
-
-    // После mouse:up фиксируем историю, если клон создан и сдвинут
-    c.on('mouse:up', () => {
-      if (_altClone) {
-        const moved = _altSource && (_altClone.left !== _altSource.left || _altClone.top !== _altSource.top);
-        const wasComponent = _altSource && (_altSource.isMasterComponent || _altSource.isComponentInstance);
-        _altClone = null;
-        _altSource = null;
-        // Небольшая задержка: fabric завершает transform после mouse:up
-        setTimeout(() => {
-          saveHistory();
-          updateLayersList();
-          if (moved !== false) {
-            toast(wasComponent ? 'Создан экземпляр компонента ◇ (Alt + перетаскивание)' : 'Объект продублирован (Alt + перетаскивание)');
-          }
-        }, 50);
-      }
-    });
+    c.off('mouse:down', handleAltDragMouseDown);
+    c.off('mouse:up', handleAltDragMouseUp);
+    c.on('mouse:down', handleAltDragMouseDown);
+    c.on('mouse:up', handleAltDragMouseUp);
   }
 
   /* ────────────────────────────────────────────────────────────
@@ -1051,84 +1059,102 @@
      ──────────────────────────────────────────────────────────── */
   let _isAltDown = false;
   let _hoveredPeer = null;
+  let _altMeasurementKeysInstalled = false;
+
+  function onAltMeasureMouseMove(opt) {
+    const c = canvas();
+    if (!c || !_isAltDown || _isPenActive) return;
+    const active = c.getActiveObject();
+    if (!active) return;
+
+    const p = c.getPointer(opt.e);
+    const objs = c.getObjects();
+    let found = null;
+    for (let i = objs.length - 1; i >= 0; i--) {
+      const o = objs[i];
+      if (o === active || !o.visible || o.__isArtboardBg || o.__isGuideLine) continue;
+      if (active.type === 'activeSelection' && active.getObjects().includes(o)) continue;
+      if (o.containsPoint(p)) {
+        found = o;
+        break;
+      }
+    }
+    if (_hoveredPeer !== found) {
+      _hoveredPeer = found;
+      c.requestRenderAll();
+    }
+  }
+
+  function onAltMeasureMouseOut() {
+    if (_hoveredPeer) {
+      _hoveredPeer = null;
+      const c = canvas();
+      if (c) c.requestRenderAll();
+    }
+  }
+
+  function onAltMeasureSelectionCleared() {
+    _hoveredPeer = null;
+  }
+
+  function onAltMeasureAfterRender(opt) {
+    const c = canvas();
+    if (!c || !_isAltDown || _isPenActive) return;
+    const active = c.getActiveObject();
+    if (!active) return;
+    const ctx = opt.ctx;
+    if (!ctx) return;
+
+    const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const isExporting = c._isExporting || (vpt[4] === 0 && vpt[5] === 0 && vpt[0] === 1);
+    if (isExporting) return;
+
+    const pad = (typeof Pro.hooks.CANVAS_PADDING === 'number') ? Pro.hooks.CANVAS_PADDING : 40;
+    const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
+    const size = Pro.currentSize || Pro.hooks.getCurrentSize?.() || { w: 595, h: 842 };
+
+    drawFigmaMeasurement(ctx, active, _hoveredPeer, size, z, pad);
+  }
 
   function installAltMeasurement() {
+    if (!_altMeasurementKeysInstalled) {
+      _altMeasurementKeysInstalled = true;
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Alt') {
+          const ae = document.activeElement;
+          const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
+          if (inInput) return;
+          if (!_isAltDown) {
+            _isAltDown = true;
+            const c = canvas();
+            if (c && c.getActiveObject()) c.requestRenderAll();
+          }
+        }
+      });
+
+      window.addEventListener('keyup', e => {
+        if (e.key === 'Alt') {
+          if (_isAltDown) {
+            _isAltDown = false;
+            _hoveredPeer = null;
+            const c = canvas();
+            if (c) c.requestRenderAll();
+          }
+        }
+      });
+    }
+
     const c = canvas();
     if (!c) return;
+    c.off('mouse:move', onAltMeasureMouseMove);
+    c.off('mouse:out', onAltMeasureMouseOut);
+    c.off('selection:cleared', onAltMeasureSelectionCleared);
+    c.off('after:render', onAltMeasureAfterRender);
 
-    window.addEventListener('keydown', e => {
-      if (e.key === 'Alt') {
-        const ae = document.activeElement;
-        const inInput = ae && (['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) || ae.isContentEditable);
-        if (inInput) return;
-        if (!_isAltDown) {
-          _isAltDown = true;
-          if (c.getActiveObject()) c.requestRenderAll();
-        }
-      }
-    });
-
-    window.addEventListener('keyup', e => {
-      if (e.key === 'Alt') {
-        if (_isAltDown) {
-          _isAltDown = false;
-          _hoveredPeer = null;
-          c.requestRenderAll();
-        }
-      }
-    });
-
-    c.on('mouse:move', opt => {
-      if (!_isAltDown) return;
-      const active = c.getActiveObject();
-      if (!active) return;
-
-      const p = c.getPointer(opt.e);
-      const objs = c.getObjects();
-      let found = null;
-      for (let i = objs.length - 1; i >= 0; i--) {
-        const o = objs[i];
-        if (o === active || !o.visible || o.__isArtboardBg || o.__isGuideLine) continue;
-        if (active.type === 'activeSelection' && active.getObjects().includes(o)) continue;
-        if (o.containsPoint(p)) {
-          found = o;
-          break;
-        }
-      }
-      if (_hoveredPeer !== found) {
-        _hoveredPeer = found;
-        c.requestRenderAll();
-      }
-    });
-
-    c.on('mouse:out', () => {
-      if (_hoveredPeer) {
-        _hoveredPeer = null;
-        c.requestRenderAll();
-      }
-    });
-
-    c.on('selection:cleared', () => {
-      _hoveredPeer = null;
-    });
-
-    c.on('after:render', opt => {
-      if (!_isAltDown) return;
-      const active = c.getActiveObject();
-      if (!active) return;
-      const ctx = opt.ctx;
-      if (!ctx) return;
-
-      const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
-      const isExporting = c._isExporting || (vpt[4] === 0 && vpt[5] === 0 && vpt[0] === 1);
-      if (isExporting) return;
-
-      const pad = (typeof Pro.hooks.CANVAS_PADDING === 'number') ? Pro.hooks.CANVAS_PADDING : 40;
-      const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
-      const size = Pro.currentSize || Pro.hooks.getCurrentSize?.() || { w: 595, h: 842 };
-
-      drawFigmaMeasurement(ctx, active, _hoveredPeer, size, z, pad);
-    });
+    c.on('mouse:move', onAltMeasureMouseMove);
+    c.on('mouse:out', onAltMeasureMouseOut);
+    c.on('selection:cleared', onAltMeasureSelectionCleared);
+    c.on('after:render', onAltMeasureAfterRender);
   }
 
   function drawFigmaMeasurement(ctx, active, target, size, z, pad) {
@@ -2099,6 +2125,12 @@
       document.getElementById('pencil-toolbar')?.classList.add('hidden');
     }
 
+    // Деактивируем пипетку
+    if (typeof window !== 'undefined' && typeof window.cancelCanvasEyedropper === 'function') {
+      window.cancelCanvasEyedropper();
+    }
+    document.querySelectorAll('#tool-eyedropper').forEach(el => el.classList.remove('is-active', 'active'));
+
     // Полная блокировка трансформации и поиска объектов: клики по изображениям и слоям не сдвигают их!
     c.defaultCursor = 'crosshair';
     c.hoverCursor = 'crosshair';
@@ -2118,8 +2150,14 @@
     if (bar) bar.classList.remove('hidden');
 
     // Снимаем активность со ВСЕХ инструментов и ставим перо активным
-    document.querySelectorAll('.tool-btn, [id^="tool-"], [id^="mtool-"]').forEach(b => b.classList.remove('is-active', 'active'));
-    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => el.classList.remove('is-active', 'active'));
+    document.querySelectorAll('.tool-btn, [id^="tool-"], [id^="mtool-"]').forEach(b => {
+      if (b.id !== 'tool-pen' && b.id !== 'btn-header-pen') {
+        b.classList.remove('is-active', 'active');
+      }
+    });
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pencil, #tool-eyedropper').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
     document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => el?.classList.add('is-active', 'active'));
 
     if (typeof window !== 'undefined') {
@@ -2150,13 +2188,13 @@
         o.selectable = o.__selectableOrig;
         delete o.__selectableOrig;
       } else {
-        o.selectable = true;
+        o.selectable = !o.__locked && !o.isLocked && !o.__isArtboardBg;
       }
       if (o.__eventedOrig !== undefined) {
         o.evented = o.__eventedOrig;
         delete o.__eventedOrig;
       } else {
-        o.evented = true;
+        o.evented = !o.__locked && !o.isLocked && !o.__isArtboardBg;
       }
     });
 
@@ -2222,162 +2260,187 @@
     deactivatePenTool();
     c.add(pathObj);
     c.setActiveObject(pathObj);
+    pathObj.setCoords?.();
     c.requestRenderAll();
     saveHistory();
     updateLayersList();
     toast('Векторный контур успешно создан ✒️');
   }
 
-  function installPenToolListeners() {
+  function handlePenMouseDown(opt) {
+    if (!_isPenActive) return;
     const c = canvas();
     if (!c) return;
 
-    c.on('mouse:down', opt => {
-      if (!_isPenActive) return;
-      c._currentTransform = null; // Гарантированно пресекаем перетаскивание слоев/изображений
-      if (opt.e) {
-        opt.e.preventDefault?.();
-        opt.e.stopPropagation?.();
-      }
-      const p = c.getPointer(opt.e);
+    // Гарантированно пресекаем перемещение слоев/изображений
+    c._currentTransform = null;
+    c.skipTargetFind = true;
+    if (c.getActiveObject()) c.discardActiveObject();
+    if (opt.target) {
+      opt.target.selectable = false;
+      opt.target.evented = false;
+    }
+    if (opt.e) {
+      opt.e.preventDefault?.();
+      opt.e.stopPropagation?.();
+    }
+    const p = c.getPointer(opt.e);
 
-      if (_penPoints.length >= 2) {
-        const first = _penPoints[0];
-        const dist = Math.hypot(p.x - first.x, p.y - first.y);
-        if (dist < 14) {
-          finishPenPath(true);
-          return;
+    if (_penPoints.length >= 2) {
+      const first = _penPoints[0];
+      const dist = Math.hypot(p.x - first.x, p.y - first.y);
+      if (dist < 14) {
+        finishPenPath(true);
+        return;
+      }
+    }
+
+    const newPt = { x: p.x, y: p.y, cpIn: null, cpOut: null };
+    _penPoints.push(newPt);
+    _penDragIndex = _penPoints.length - 1;
+    _isDraggingPenHandle = true;
+    c.requestRenderAll();
+  }
+
+  function handlePenMouseMove(opt) {
+    if (!_isPenActive) return;
+    const c = canvas();
+    if (!c) return;
+    c._currentTransform = null;
+    const p = c.getPointer(opt.e);
+    // Всегда обновляем позицию курсора для ghost-линии предпросмотра
+    _penCursorPos = { x: p.x, y: p.y };
+    // Если тянем ручку безье — обновляем контрольные точки
+    if (_isDraggingPenHandle && _penDragIndex >= 0) {
+      const anchor = _penPoints[_penDragIndex];
+      if (anchor) {
+        anchor.cpOut = { x: p.x, y: p.y };
+        anchor.cpIn = {
+          x: anchor.x - (p.x - anchor.x),
+          y: anchor.y - (p.y - anchor.y)
+        };
+      }
+    }
+    c.requestRenderAll();
+  }
+
+  function handlePenMouseUp() {
+    if (!_isPenActive) return;
+    const c = canvas();
+    if (!c) return;
+    c._currentTransform = null;
+    if (_isDraggingPenHandle && _penDragIndex >= 0) {
+      const anchor = _penPoints[_penDragIndex];
+      if (anchor && anchor.cpOut) {
+        const dist = Math.hypot(anchor.cpOut.x - anchor.x, anchor.cpOut.y - anchor.y);
+        if (dist < 4) {
+          anchor.cpIn = null;
+          anchor.cpOut = null;
         }
       }
+    }
+    _isDraggingPenHandle = false;
+    c.requestRenderAll();
+  }
 
-      const newPt = { x: p.x, y: p.y, cpIn: null, cpOut: null };
-      _penPoints.push(newPt);
-      _penDragIndex = _penPoints.length - 1;
-      _isDraggingPenHandle = true;
-      c.requestRenderAll();
-    });
+  function handlePenAfterRender(opt) {
+    if (!_isPenActive || !_penPoints.length) return;
+    const c = canvas();
+    if (!c) return;
+    const ctx = opt.ctx;
+    if (!ctx) return;
 
-    c.on('mouse:move', opt => {
-      if (!_isPenActive) return;
-      c._currentTransform = null; // Не даем двигать объекты под курсором
-      const p = c.getPointer(opt.e);
-      // Всегда обновляем позицию курсора для ghost-линии предпросмотра
-      _penCursorPos = { x: p.x, y: p.y };
-      // Если тянем ручку безье — обновляем контрольные точки
-      if (_isDraggingPenHandle && _penDragIndex >= 0) {
-        const anchor = _penPoints[_penDragIndex];
-        if (anchor) {
-          anchor.cpOut = { x: p.x, y: p.y };
-          anchor.cpIn = {
-            x: anchor.x - (p.x - anchor.x),
-            y: anchor.y - (p.y - anchor.y)
-          };
-        }
+    const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
+    const toScreen = pt => fabric.util.transformPoint({ x: pt.x, y: pt.y }, vpt);
+
+    ctx.save();
+
+    ctx.strokeStyle = '#0d99ff';
+    ctx.lineWidth = 2 * z;
+    ctx.beginPath();
+    const p0 = toScreen(_penPoints[0]);
+    ctx.moveTo(p0.x, p0.y);
+    for (let i = 1; i < _penPoints.length; i++) {
+      const prev = _penPoints[i - 1];
+      const curr = _penPoints[i];
+      if (prev.cpOut || curr.cpIn) {
+        const cp1 = toScreen(prev.cpOut || { x: prev.x, y: prev.y });
+        const cp2 = toScreen(curr.cpIn || { x: curr.x, y: curr.y });
+        const cur = toScreen(curr);
+        ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, cur.x, cur.y);
+      } else {
+        const cur = toScreen(curr);
+        ctx.lineTo(cur.x, cur.y);
       }
-      c.requestRenderAll();
-    });
+    }
+    ctx.stroke();
 
-    c.on('mouse:up', () => {
-      if (!_isPenActive) return;
-      c._currentTransform = null;
-      _isDraggingPenHandle = false;
-      c.requestRenderAll();
-    });
-
-    c.on('after:render', opt => {
-      if (!_isPenActive || !_penPoints.length) return;
-      const ctx = opt.ctx;
-      if (!ctx) return;
-
-      const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
-      const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
-      const toScreen = pt => fabric.util.transformPoint({ x: pt.x, y: pt.y }, vpt);
-
-      ctx.save();
-
-      ctx.strokeStyle = '#0d99ff';
-      ctx.lineWidth = 2 * z;
+    // Ghost-линия от последней точки до курсора (как в Figma)
+    if (_penCursorPos && _penPoints.length > 0) {
+      const last = _penPoints[_penPoints.length - 1];
+      const pLast = toScreen(last);
+      const pCur = toScreen(_penCursorPos);
+      ctx.strokeStyle = 'rgba(13, 153, 255, 0.5)';
+      ctx.lineWidth = 1.5 * z;
+      ctx.setLineDash([4 * z, 4 * z]);
       ctx.beginPath();
-      const p0 = toScreen(_penPoints[0]);
-      ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < _penPoints.length; i++) {
-        const prev = _penPoints[i - 1];
-        const curr = _penPoints[i];
-        if (prev.cpOut || curr.cpIn) {
-          const cp1 = toScreen(prev.cpOut || { x: prev.x, y: prev.y });
-          const cp2 = toScreen(curr.cpIn || { x: curr.x, y: curr.y });
-          const cur = toScreen(curr);
-          ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, cur.x, cur.y);
-        } else {
-          const cur = toScreen(curr);
-          ctx.lineTo(cur.x, cur.y);
-        }
-      }
+      ctx.moveTo(pLast.x, pLast.y);
+      ctx.lineTo(pCur.x, pCur.y);
       ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
-      // Ghost-линия от последней точки до курсора (как в Figma)
-      if (_penCursorPos && _penPoints.length > 0) {
-        const last = _penPoints[_penPoints.length - 1];
-        const pLast = toScreen(last);
-        const pCur = toScreen(_penCursorPos);
-        ctx.strokeStyle = 'rgba(13, 153, 255, 0.5)';
-        ctx.lineWidth = 1.5 * z;
-        ctx.setLineDash([4 * z, 4 * z]);
+    _penPoints.forEach(pt => {
+      if (pt.cpOut) {
+        const pAnchor = toScreen(pt);
+        const pOut = toScreen(pt.cpOut);
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(pLast.x, pLast.y);
-        ctx.lineTo(pCur.x, pCur.y);
+        ctx.moveTo(pAnchor.x, pAnchor.y);
+        ctx.lineTo(pOut.x, pOut.y);
         ctx.stroke();
-        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#0d99ff';
+        ctx.beginPath();
+        ctx.arc(pOut.x, pOut.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (pt.cpIn) {
+        const pAnchor = toScreen(pt);
+        const pIn = toScreen(pt.cpIn);
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pAnchor.x, pAnchor.y);
+        ctx.lineTo(pIn.x, pIn.y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#0d99ff';
+        ctx.beginPath();
+        ctx.arc(pIn.x, pIn.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      _penPoints.forEach(pt => {
-        if (pt.cpOut) {
-          const pAnchor = toScreen(pt);
-          const pOut = toScreen(pt.cpOut);
-          ctx.strokeStyle = '#93c5fd';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(pAnchor.x, pAnchor.y);
-          ctx.lineTo(pOut.x, pOut.y);
-          ctx.stroke();
-
-          ctx.fillStyle = '#0d99ff';
-          ctx.beginPath();
-          ctx.arc(pOut.x, pOut.y, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        if (pt.cpIn) {
-          const pAnchor = toScreen(pt);
-          const pIn = toScreen(pt.cpIn);
-          ctx.strokeStyle = '#93c5fd';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(pAnchor.x, pAnchor.y);
-          ctx.lineTo(pIn.x, pIn.y);
-          ctx.stroke();
-
-          ctx.fillStyle = '#0d99ff';
-          ctx.beginPath();
-          ctx.arc(pIn.x, pIn.y, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#0d99ff';
-        ctx.lineWidth = 1.5;
-        const pAnchor = toScreen(pt);
-        ctx.fillRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
-        ctx.strokeRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
-      });
-
-      ctx.restore();
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#0d99ff';
+      ctx.lineWidth = 1.5;
+      const pAnchor = toScreen(pt);
+      ctx.fillRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
+      ctx.strokeRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
     });
 
+    ctx.restore();
+  }
+
+  let _vectorToolButtonsInstalled = false;
+  function installVectorToolButtons() {
+    if (_vectorToolButtonsInstalled) return;
+    _vectorToolButtonsInstalled = true;
     document.getElementById('btn-vector-done')?.addEventListener('click', () => finishPenPath(false));
     document.getElementById('btn-vector-close-path')?.addEventListener('click', () => finishPenPath(true));
-    // btn-vector-pen-mode — режим "Точка" (всегда активен пока перо включено, клик — подтверждение)
     document.getElementById('btn-vector-pen-mode')?.addEventListener('click', () => {
-      // Оставляем перо активным, просто подсвечиваем кнопку
       document.querySelectorAll('.figma-vector-subtool-btn').forEach(b => b.classList.remove('is-active'));
       document.getElementById('btn-vector-pen-mode')?.classList.add('is-active');
     });
@@ -2386,54 +2449,118 @@
   /* ────────────────────────────────────────────────────────────
      21. ХУКИ ИЗМЕНЕНИЯ ОБЪЕКТОВ И СИНХРОНИЗАЦИИ
      ──────────────────────────────────────────────────────────── */
-  function installCanvasChangeListeners() {
-    const c = canvas();
-    if (!c) return;
+  function onCanvasTextChanged(opt) {
+    const target = opt.target;
+    if (!target) return;
+    if (target.group && target.group.isAutoLayout) {
+      reflowAutoLayout(target.group);
+    }
+    if (target.isMasterComponent || (target.group && target.group.isMasterComponent)) {
+      syncComponentInstances(target.isMasterComponent ? target : target.group);
+    }
+  }
 
-    c.on('text:changed', opt => {
-      const target = opt.target;
-      if (!target) return;
-      if (target.group && target.group.isAutoLayout) {
-        reflowAutoLayout(target.group);
-      }
-      if (target.isMasterComponent || (target.group && target.group.isMasterComponent)) {
-        syncComponentInstances(target.isMasterComponent ? target : target.group);
-      }
-    });
+  function onCanvasObjectModified(opt) {
+    const target = opt.target;
+    if (!target) return;
+    if (target.isAutoLayout) {
+      reflowAutoLayout(target);
+    } else if (target.group && target.group.isAutoLayout) {
+      reflowAutoLayout(target.group);
+    }
+    if (target.isMasterComponent) {
+      syncComponentInstances(target);
+    }
+  }
 
-    c.on('object:modified', opt => {
-      const target = opt.target;
-      if (!target) return;
-      if (target.isAutoLayout) {
-        reflowAutoLayout(target);
-      } else if (target.group && target.group.isAutoLayout) {
-        reflowAutoLayout(target.group);
-      }
-      if (target.isMasterComponent) {
-        syncComponentInstances(target);
-      }
-    });
+  function onCanvasSelectionCreated() {
+    syncAutoLayoutUI();
+    syncComponentUI();
+  }
 
-    c.on('selection:created', () => {
-      syncAutoLayoutUI();
-      syncComponentUI();
-    });
-    c.on('selection:updated', () => {
-      syncAutoLayoutUI();
-      syncComponentUI();
-    });
-    c.on('selection:cleared', () => {
-      syncAutoLayoutUI();
-      syncComponentUI();
-      renderDesignTokensUI();
-    });
+  function onCanvasSelectionUpdated() {
+    syncAutoLayoutUI();
+    syncComponentUI();
+  }
+
+  function onCanvasSelectionCleared() {
+    syncAutoLayoutUI();
+    syncComponentUI();
+    renderDesignTokensUI();
+  }
+
+  function onCanvasObjectMoving(e) {
+    if (!_isPenActive) {
+      peerSnap(e.target, e);
+    }
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     22. ПРИВЯЗКА И ОТВЯЗКА СЛУШАТЕЛЕЙ ХОЛСТА (Canvas Lifecycle)
+     ──────────────────────────────────────────────────────────── */
+  function detachCanvasListeners(c) {
+    if (!c || typeof c.off !== 'function') return;
+    c.off('mouse:down', handleAltDragMouseDown);
+    c.off('mouse:up', handleAltDragMouseUp);
+    c.off('mouse:move', onAltMeasureMouseMove);
+    c.off('mouse:out', onAltMeasureMouseOut);
+    c.off('selection:cleared', onAltMeasureSelectionCleared);
+    c.off('after:render', onAltMeasureAfterRender);
+    c.off('mouse:down', handlePenMouseDown);
+    c.off('mouse:move', handlePenMouseMove);
+    c.off('mouse:up', handlePenMouseUp);
+    c.off('after:render', handlePenAfterRender);
+    c.off('text:changed', onCanvasTextChanged);
+    c.off('object:modified', onCanvasObjectModified);
+    c.off('selection:created', onCanvasSelectionCreated);
+    c.off('selection:updated', onCanvasSelectionUpdated);
+    c.off('selection:cleared', onCanvasSelectionCleared);
+    c.off('object:moving', onCanvasObjectMoving);
+  }
+
+  function attachCanvasListeners(c) {
+    if (!c || typeof c.on !== 'function') return;
+    detachCanvasListeners(c);
+    c.on('mouse:down', handleAltDragMouseDown);
+    c.on('mouse:up', handleAltDragMouseUp);
+    c.on('mouse:move', onAltMeasureMouseMove);
+    c.on('mouse:out', onAltMeasureMouseOut);
+    c.on('selection:cleared', onAltMeasureSelectionCleared);
+    c.on('after:render', onAltMeasureAfterRender);
+    c.on('mouse:down', handlePenMouseDown);
+    c.on('mouse:move', handlePenMouseMove);
+    c.on('mouse:up', handlePenMouseUp);
+    c.on('after:render', handlePenAfterRender);
+    c.on('text:changed', onCanvasTextChanged);
+    c.on('object:modified', onCanvasObjectModified);
+    c.on('selection:created', onCanvasSelectionCreated);
+    c.on('selection:updated', onCanvasSelectionUpdated);
+    c.on('selection:cleared', onCanvasSelectionCleared);
+    c.on('object:moving', onCanvasObjectMoving);
+  }
+
+  function bindCanvas(newCanvas) {
+    if (!newCanvas) return;
+    if (Pro.canvas && Pro.canvas !== newCanvas) {
+      detachCanvasListeners(Pro.canvas);
+    }
+    Pro.canvas = newCanvas;
+    attachCanvasListeners(newCanvas);
   }
 
   /* ────────────────────────────────────────────────────────────
      УСТАНОВКА
      ──────────────────────────────────────────────────────────── */
   function install(ctx) {
-    if (Pro._installed) return;
+    if (Pro._installed) {
+      if (ctx.canvas) bindCanvas(ctx.canvas);
+      if (ctx.currentSize) Pro.currentSize = ctx.currentSize;
+      if (ctx.hooks) Pro.hooks = Object.assign(Pro.hooks, ctx.hooks);
+      if (typeof ctx.CANVAS_PADDING === 'number') {
+        Pro.hooks.CANVAS_PADDING = ctx.CANVAS_PADDING;
+      }
+      return;
+    }
     Pro._installed = true;
     Pro.canvas = ctx.canvas;
     Pro.currentSize = ctx.currentSize || Pro.currentSize;
@@ -2443,7 +2570,6 @@
       Pro.hooks.CANVAS_PADDING = ctx.CANVAS_PADDING;
     }
 
-    installAltDragDuplicate();
     installLayerRename();
     installHotkeys();
     installAltMeasurement();
@@ -2452,12 +2578,9 @@
     initDesignTokens();
     installAutoLayoutControls();
     installTokensControls();
-    installPenToolListeners();
-    installCanvasChangeListeners();
+    installVectorToolButtons();
 
-    // Встраиваем peer-snap в object:moving (после родного хендлера editor.js)
-    const c = ctx.canvas;
-    c.on('object:moving', e => peerSnap(e.target, e));
+    bindCanvas(ctx.canvas);
 
     // Экспорт API
     window.AuroraFigmaPro = {
@@ -2481,11 +2604,12 @@
       // Pen Tool
       activatePenTool, deactivatePenTool, finishPenPath,
       isPenActive: () => _isPenActive,
+      bindCanvas,
+      setCanvas: bindCanvas,
       updateBrushParams: updateActiveBrushParams,
       getActiveBrushKind: () => _currentBrushKind,
       hexToRgba,
-      setCurrentSize(s) { Pro.currentSize = s; },
-      setCanvas(c2) { Pro.canvas = c2; }
+      setCurrentSize(s) { Pro.currentSize = s; }
     };
   }
 
