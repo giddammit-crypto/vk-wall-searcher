@@ -1,0 +1,249 @@
+/* THE LAST ARCHIVE — PoC. Палитра по §1.1 производственного плана. */
+:root {
+  --dark0: #0B0E13;
+  --dark1: #131A22;
+  --wood0: #4A3324;
+  --wood1: #6B4A2F;
+  --woodHi: #8F6A3E;
+  --paper0: #C9B48A;
+  --paper1: #A08A5F;
+  --spore: #8FA05A;
+  --sporeAcc: #C7D96B;
+  --moon: #9FB8D8;
+  --candle: #FFB25E;
+  --blood: #7E2A22;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--dark0);
+  color: var(--paper0);
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  overflow: hidden;
+}
+
+#app { position: relative; width: 100vw; height: 100vh; }
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--dark0);
+  cursor: crosshair;
+}
+
+/* ------------------------------------------------------------------ HUD */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  pointer-events: none;
+  z-index: 5;
+}
+.hud-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hud-right { pointer-events: auto; }
+
+.pill {
+  background: rgba(11, 14, 19, 0.72);
+  border: 1px solid rgba(201, 180, 138, 0.28);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  backdrop-filter: blur(3px);
+}
+.pill.fps { opacity: 0.7; font-variant-numeric: tabular-nums; }
+.pill.weather { color: var(--moon); }
+
+.noise-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(11, 14, 19, 0.78);
+  border: 1px solid rgba(199, 217, 107, 0.35);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.noise-lbl { letter-spacing: 0.16em; opacity: 0.75; }
+.noise-track {
+  width: 160px; height: 8px;
+  background: rgba(201, 180, 138, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+#hud-noise-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ivy, #5E7D4C), var(--sporeAcc), var(--blood));
+  transition: width 90ms linear;
+}
+#hud-noise-note { min-width: 118px; text-align: right; color: var(--sporeAcc); font-size: 11px; }
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--paper0);
+  background: rgba(74, 51, 36, 0.75);
+  border: 1px solid rgba(201, 180, 138, 0.35);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.btn:hover { background: rgba(107, 74, 47, 0.9); }
+.btn.danger { border-color: rgba(126, 42, 34, 0.8); color: #E7B9B2; }
+
+/* ------------------------------------------------------- подсказки */
+#prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  background: rgba(11, 14, 19, 0.85);
+  border: 1px solid rgba(201, 180, 138, 0.35);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  z-index: 6;
+}
+#hint {
+  position: absolute;
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+  max-width: min(720px, 82vw);
+  text-align: center;
+  background: rgba(19, 26, 34, 0.88);
+  border-left: 3px solid var(--sporeAcc);
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  z-index: 6;
+}
+#controls {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: rgba(201, 180, 138, 0.6);
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.hidden { display: none !important; }
+
+/* ------------------------------------------------------- оверлеи */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 9, 0.72);
+  z-index: 20;
+}
+.panel {
+  width: min(560px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: linear-gradient(180deg, #171E27, #0F141B);
+  border: 1px solid rgba(201, 180, 138, 0.3);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+.panel.wide { width: min(760px, 94vw); }
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--paper0);
+  letter-spacing: 0.03em;
+}
+.panel h3 { margin: 18px 0 6px; font-size: 15px; color: var(--woodHi); }
+.lore { color: rgba(201, 180, 138, 0.85); line-height: 1.55; font-size: 14px; }
+.moral {
+  border-left: 3px solid var(--candle);
+  padding-left: 10px;
+  font-size: 13px;
+  color: rgba(255, 217, 160, 0.85);
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions button { flex: 1 1 auto; }
+.stats { font-size: 13px; line-height: 1.7; color: rgba(201, 180, 138, 0.85); }
+.stats b { color: var(--sporeAcc); }
+
+/* дыхание */
+.breath-track, .craft-track {
+  position: relative;
+  height: 42px;
+  margin: 14px 0 8px;
+  background: rgba(11, 14, 19, 0.7);
+  border: 1px solid rgba(201, 180, 138, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.breath-zone, .craft-zone {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  transform: translateX(-50%);
+  background: rgba(94, 125, 76, 0.35);
+  border-left: 1px solid rgba(199, 217, 107, 0.6);
+  border-right: 1px solid rgba(199, 217, 107, 0.6);
+}
+.breath-bar, .craft-marker {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  width: 6px;
+  margin-left: -3px;
+  background: var(--paper0);
+  border-radius: 3px;
+}
+.calm-track {
+  height: 8px;
+  background: rgba(201, 180, 138, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.calm-fill { height: 100%; width: 0%; background: var(--sporeAcc); transition: width 120ms linear; }
+.hint-small { font-size: 12px; color: rgba(201, 180, 138, 0.6); }
+
+/* крафт */
+.craft-hits { font-size: 13px; color: var(--sporeAcc); margin-bottom: 10px; }
+.craft-list { display: flex; flex-direction: column; gap: 8px; }
+.craft-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(11, 14, 19, 0.6);
+  border: 1px solid rgba(201, 180, 138, 0.2);
+  border-radius: 10px;
+}
+.craft-row.disabled { opacity: 0.55; }
+.craft-desc { font-size: 12px; color: rgba(201, 180, 138, 0.7); }
+.craft-needs { font-size: 11px; color: var(--woodHi); margin-top: 3px; }
+.craft-inv { margin-top: 12px; font-size: 12px; color: rgba(201, 180, 138, 0.75); }
+
+#archive-body ul { padding-left: 18px; font-size: 12px; line-height: 1.6; color: rgba(201, 180, 138, 0.75); }
+
+@media (max-width: 720px) {
+  #controls { font-size: 10px; }
+  .noise-track { width: 90px; }
+  #hud-noise-note { display: none; }
+}

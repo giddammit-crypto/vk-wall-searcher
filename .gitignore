@@ -20,6 +20,14 @@ video_production/final_previews/
 video_production/promo_previews/
 video_production/trailer_aurora/
 
+# Node.js (ESLint/Playwright для vk-miniapp/poster — зависимости не трекаем)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.eslintcache
+playwright-report/
+test-results/
+
 # Python cache & temp
 __pycache__/
 *.py[cod]

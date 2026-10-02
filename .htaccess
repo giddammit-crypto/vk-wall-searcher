@@ -26,7 +26,8 @@ DirectoryIndex index.php index.html
 </IfModule>
 
 # SEC-1: Запрет прямого доступа из веба к конфигурационным файлам и секретам
-<FilesMatch "^(config.*\.php|\.version\.json|\.env)$">
+# SEC-1b: .ai_keys.php — локальный файл ключей ИИ (vk-miniapp/poster), вне Git
+<FilesMatch "^(config.*\.php|\.version\.json|\.env.*|\.ai_keys\.php)$">
     <IfModule !mod_authz_core.c>
         Order deny,allow
         Deny from all

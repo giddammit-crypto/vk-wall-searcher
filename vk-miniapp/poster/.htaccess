@@ -1,0 +1,60 @@
+# ==============================================================================
+# AURORA DESIGN — заголовки безопасности и кэширование (п. P2-5 плана аудита)
+#
+# Область действия намеренно ограничена каталогом редактора: сайт содержит и
+# другие приложения (article.php, cloud/, game/, chronograph), которым такая
+# CSP не подходит. Вложенный .htaccess перекрывает корневой.
+#
+# ВАЖНО при раскатке: CSP собрана по фактическому списку внешних источников
+# (vendor/ + CDN-фолбэки из index.html, Transformers.js в воркере, модели
+# HuggingFace, image.pollinations.ai). Она НЕ проверялась в реальном браузере.
+# Безопасный вариант раскатки — сначала включить блок Report-Only ниже,
+# посмотреть консоль, затем перейти на принудительный режим.
+# ==============================================================================
+
+<IfModule mod_headers.c>
+    # ── Принудительная CSP ────────────────────────────────────────────────
+    # script-src: 'unsafe-inline' нужен из-за 7 inline-скриптов в index.html
+    # (в т.ч. document.write-фолбэки CDN); 'wasm-unsafe-eval' — для WASM-вывода
+    # Transformers.js. Полноценный уход от 'unsafe-inline' требует nonce и
+    # выноса inline-скриптов во внешние файлы — отдельная задача.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://image.pollinations.ai https://huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.hf.co http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self' https://vk.com https://*.vk.com https://biblioteka33.ru"
+
+    # ── Альтернатива для обкатки (раскомментировать, закомментировав строку выше):
+    # Header set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://image.pollinations.ai https://huggingface.co https://cdn-lfs.huggingface.co http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https://vk.com https://*.vk.com"
+
+    # ── Не вызывает срабатываний, полезно всегда ──────────────────────────
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Камера/микрофон/геолокация/платежи в редакторе не используются
+    # (clipboard-write оставлен: editor.js копирует HEX и CSS через navigator.clipboard)
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Внутри клиента ВК приложение открывается во фрейме, поэтому X-Frame-Options
+    # здесь НЕ выставляется — его роль выполняет frame-ancestors в CSP.
+
+    # ── Кэширование вендора: имя файла меняется вместе с ?v=, но долгий срок
+    # заметно сокращает повторные загрузки 950 КБ библиотек
+    <FilesMatch "\.(min\.js|woff2?)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
+# ── SEC: ключи ИИ и локальные секреты не должны отдаваться по HTTP ───────────
+# ai_proxy.php читает ключи из XKIRO_KEYS (env) или из .ai_keys.php (chmod 600,
+# вне Git). Файл исполняется PHP, но прямой доступ всё равно закрываем.
+<FilesMatch "^(\.ai_keys\.php|\.env.*|config.*\.php)$">
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# ── WAF (BitNinja) режет запрос Service Worker с UA HeadlessChrome (п. P1-2) ──
+# Само правило WAF живёт в панели сервера; здесь — явная пометка для админа:
+#   добавить в whitelist пути /stat/vk-miniapp/poster/sw.js и /workers/*
+# и не блокировать UA, содержащий "HeadlessChrome", для этих путей,
+# иначе SW не регистрируется и офлайн-режим недоступен.

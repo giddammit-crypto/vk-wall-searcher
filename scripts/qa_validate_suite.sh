@@ -3,7 +3,8 @@
 # AURORA DESIGN & VK WALL SEARCHER — QA INTEGRITY VALIDATION SUITE
 # Checks:
 #   1. JavaScript syntax integrity via `node --check` on all project JS files
-#   2. Backend chat & search trigger tests via `php scripts/test_chat_triggers.php`
+#   2. THE LAST ARCHIVE PoC tests (game/tla) via `scripts/test_tla_prototype.sh`
+#   3. Backend chat & search trigger tests via `php scripts/test_chat_triggers.php`
 # ==============================================================================
 
 set -e
@@ -28,7 +29,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # STEP 1: JavaScript Syntax Validation (node --check)
 # ------------------------------------------------------------------------------
-echo -e "${COLOR_YELLOW}[1/2] Проверка синтаксиса JavaScript файлов (node --check)...${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}[1/4] Проверка синтаксиса JavaScript файлов (node --check)...${COLOR_RESET}"
 
 JS_TOTAL=0
 JS_PASSED=0
@@ -107,9 +108,48 @@ fi
 echo ""
 
 # ------------------------------------------------------------------------------
-# STEP 2: Backend Triggers Validation (php scripts/test_chat_triggers.php)
+# STEP 2: THE LAST ARCHIVE PoC (game/tla) — акустика, LOS/FSM, браузерный слой
 # ------------------------------------------------------------------------------
-echo -e "${COLOR_YELLOW}[2/2] Запуск тестов триггеров бэкенда (php scripts/test_chat_triggers.php)...${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}[2/4] Тесты прототипа THE LAST ARCHIVE (game/tla)...${COLOR_RESET}"
+bash "${PROJECT_ROOT}/scripts/test_tla_prototype.sh"
+TLA_EXIT_CODE=$?
+if [ ${TLA_EXIT_CODE} -ne 0 ]; then
+  echo -e "${COLOR_RED}[FAIL] Тесты прототипа THE LAST ARCHIVE завершились с кодом ${TLA_EXIT_CODE}${COLOR_RESET}"
+  exit ${TLA_EXIT_CODE}
+fi
+echo ""
+
+# ------------------------------------------------------------------------------
+# STEP 3: AURORA DESIGN — редактор афиш (vk-miniapp/poster)
+#   ESLint (no-undef / no-dupe-keys: класс дефектов P0-2 «пустой холст»)
+#   + node --test: регрессия по пунктам плана аудита и шаблонам Хронографа
+# ------------------------------------------------------------------------------
+echo -e "${COLOR_YELLOW}[3/4] Тесты редактора афиш AURORA DESIGN (vk-miniapp/poster)...${COLOR_RESET}"
+POSTER_DIR="${PROJECT_ROOT}/vk-miniapp/poster"
+
+if [ ! -d "${POSTER_DIR}/node_modules/eslint" ]; then
+  echo -e "  ${COLOR_YELLOW}[SKIP] ESLint не установлен (npm ci в ${POSTER_DIR}) — проверка линтером пропущена${COLOR_RESET}"
+else
+  (cd "${POSTER_DIR}" && npx --no-install eslint . --max-warnings 9999)
+  LINT_EXIT_CODE=$?
+  if [ ${LINT_EXIT_CODE} -ne 0 ]; then
+    echo -e "${COLOR_RED}[FAIL] ESLint нашёл ошибки в vk-miniapp/poster (код ${LINT_EXIT_CODE})${COLOR_RESET}"
+    exit ${LINT_EXIT_CODE}
+  fi
+fi
+
+(cd "${POSTER_DIR}" && node --test tests/*.test.mjs)
+POSTER_EXIT_CODE=$?
+if [ ${POSTER_EXIT_CODE} -ne 0 ]; then
+  echo -e "${COLOR_RED}[FAIL] Тесты редактора афиш завершились с кодом ${POSTER_EXIT_CODE}${COLOR_RESET}"
+  exit ${POSTER_EXIT_CODE}
+fi
+echo ""
+
+# ------------------------------------------------------------------------------
+# STEP 3: Backend Triggers Validation (php scripts/test_chat_triggers.php)
+# ------------------------------------------------------------------------------
+echo -e "${COLOR_YELLOW}[4/4] Запуск тестов триггеров бэкенда (php scripts/test_chat_triggers.php)...${COLOR_RESET}"
 PHP_TEST_FILE="${PROJECT_ROOT}/scripts/test_chat_triggers.php"
 
 if [ ! -f "${PHP_TEST_FILE}" ]; then
