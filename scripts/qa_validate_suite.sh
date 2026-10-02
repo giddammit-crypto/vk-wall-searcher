@@ -3,7 +3,8 @@
 # AURORA DESIGN & VK WALL SEARCHER — QA INTEGRITY VALIDATION SUITE
 # Checks:
 #   1. JavaScript syntax integrity via `node --check` on all project JS files
-#   2. Backend chat & search trigger tests via `php scripts/test_chat_triggers.php`
+#   2. THE LAST ARCHIVE PoC tests (game/tla) via `scripts/test_tla_prototype.sh`
+#   3. Backend chat & search trigger tests via `php scripts/test_chat_triggers.php`
 # ==============================================================================
 
 set -e
@@ -28,7 +29,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # STEP 1: JavaScript Syntax Validation (node --check)
 # ------------------------------------------------------------------------------
-echo -e "${COLOR_YELLOW}[1/2] Проверка синтаксиса JavaScript файлов (node --check)...${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}[1/3] Проверка синтаксиса JavaScript файлов (node --check)...${COLOR_RESET}"
 
 JS_TOTAL=0
 JS_PASSED=0
@@ -107,9 +108,21 @@ fi
 echo ""
 
 # ------------------------------------------------------------------------------
-# STEP 2: Backend Triggers Validation (php scripts/test_chat_triggers.php)
+# STEP 2: THE LAST ARCHIVE PoC (game/tla) — акустика, LOS/FSM, браузерный слой
 # ------------------------------------------------------------------------------
-echo -e "${COLOR_YELLOW}[2/2] Запуск тестов триггеров бэкенда (php scripts/test_chat_triggers.php)...${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}[2/3] Тесты прототипа THE LAST ARCHIVE (game/tla)...${COLOR_RESET}"
+bash "${PROJECT_ROOT}/scripts/test_tla_prototype.sh"
+TLA_EXIT_CODE=$?
+if [ ${TLA_EXIT_CODE} -ne 0 ]; then
+  echo -e "${COLOR_RED}[FAIL] Тесты прототипа THE LAST ARCHIVE завершились с кодом ${TLA_EXIT_CODE}${COLOR_RESET}"
+  exit ${TLA_EXIT_CODE}
+fi
+echo ""
+
+# ------------------------------------------------------------------------------
+# STEP 3: Backend Triggers Validation (php scripts/test_chat_triggers.php)
+# ------------------------------------------------------------------------------
+echo -e "${COLOR_YELLOW}[3/3] Запуск тестов триггеров бэкенда (php scripts/test_chat_triggers.php)...${COLOR_RESET}"
 PHP_TEST_FILE="${PROJECT_ROOT}/scripts/test_chat_triggers.php"
 
 if [ ! -f "${PHP_TEST_FILE}" ]; then

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE LAST ARCHIVE — PoC «Главный читальный зал»</title>
+<meta name="description" content="Прототип по docs/THE_LAST_ARCHIVE_PRODUCTION_PLAN.md: акустическая сетка, конус зрения, свет как валюта, книга = топливо или знание.">
+<meta name="theme-color" content="#0B0E13">
+<link rel="stylesheet" href="style.css?v=0.1.0">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <header id="hud">
+    <div class="hud-group">
+      <div class="pill" title="Профиль движения и шума"><span id="hud-stance">Шаг</span></div>
+      <div class="pill" title="Заряд фонаря">🔦 <span id="hud-battery">100%</span></div>
+      <div class="pill" title="Силы"><span id="hud-health">♥♥♥</span></div>
+      <div class="pill" title="Инвентарь «на коленке»"><span id="hud-inv"></span></div>
+    </div>
+
+    <div class="hud-group hud-center">
+      <div class="noise-meter" title="Насколько меня слышно (§3.2 п.2)">
+        <span class="noise-lbl">ШУМ</span>
+        <div class="noise-track"><div id="hud-noise-fill"></div></div>
+        <span id="hud-noise-val">0</span>
+        <span id="hud-noise-note">тихо</span>
+      </div>
+      <div class="pill weather" id="hud-weather">сухо</div>
+    </div>
+
+    <div class="hud-group hud-right">
+      <button class="btn" id="btn-archive" title="Tab">Архив</button>
+      <button class="btn" id="btn-save">Сохранить</button>
+      <button class="btn" id="btn-load">Загрузить</button>
+      <span class="pill fps" id="hud-fps">— fps</span>
+    </div>
+  </header>
+
+  <div id="prompt" class="hidden"></div>
+  <div id="hint" class="hidden"></div>
+
+  <footer id="controls">
+    WASD — движение · Ctrl — красться · Shift — бег · ЛКМ/E — взаимодействие · F — фонарь ·
+    G — бросить (обманка) · H — укрытие в шкафу · Tab — архив
+  </footer>
+
+  <!-- Оверлеи -->
+  <div id="overlay-read" class="overlay hidden">
+    <div class="panel">
+      <h2 id="read-title"></h2>
+      <p id="read-lore" class="lore"></p>
+      <p class="moral">Книга — одновременно топливо и память (§0.4A). Сожжённая страница греет, но стирает историю.</p>
+      <div id="read-actions" class="actions"></div>
+    </div>
+  </div>
+
+  <div id="overlay-breath" class="overlay hidden">
+    <div class="panel">
+      <h2>Дыхание в каталожном шкафу</h2>
+      <p class="lore">Держи курсор в зоне: кликай в ритме. Срыв — шум, и Читатель пойдёт на звук.</p>
+      <div class="breath-track"><div class="breath-zone"></div><div id="breath-bar" class="breath-bar"></div></div>
+      <div class="calm-track"><div id="breath-calm" class="calm-fill"></div></div>
+      <p class="hint-small">Любая клавиша движения — выйти из шкафа.</p>
+    </div>
+  </div>
+
+  <div id="overlay-craft" class="overlay hidden">
+    <div class="panel">
+      <h2>Верстак архивариуса</h2>
+      <p class="lore">Крафт требует тишины: лови маркер в зелёной зоне, иначе инструмент лязгнет на весь зал.</p>
+      <div class="craft-track"><div class="craft-zone"></div><div id="craft-marker" class="craft-marker"></div></div>
+      <div id="craft-hits" class="craft-hits">выбери рецепт</div>
+      <div id="craft-list" class="craft-list"></div>
+      <div id="craft-inv" class="craft-inv"></div>
+      <div class="actions"><button class="btn" onclick="window.TLA.closePanels()">Закрыть (Esc)</button></div>
+    </div>
+  </div>
+
+  <div id="overlay-archive" class="overlay hidden">
+    <div class="panel wide">
+      <h2>Личный архив</h2>
+      <div id="archive-body"></div>
+      <div class="actions"><button class="btn" id="btn-close-archive">Закрыть</button></div>
+    </div>
+  </div>
+
+  <div id="overlay-end" class="overlay hidden">
+    <div class="panel">
+      <h2 id="end-title"></h2>
+      <p id="end-text" class="lore"></p>
+      <div id="end-stats" class="stats"></div>
+      <div class="actions"><button class="btn" id="btn-restart">Заново</button></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
