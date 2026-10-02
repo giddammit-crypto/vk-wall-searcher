@@ -668,6 +668,10 @@
     return `rgba(13, 153, 255, ${alpha})`;
   }
 
+  function getActiveBrushKind() {
+    return _currentBrushKind || 'pencil';
+  }
+
   function applyBrushKind(kind) {
     const c = canvas();
     if (!c) return;
@@ -3103,17 +3107,18 @@
       Pro.hooks.CANVAS_PADDING = ctx.CANVAS_PADDING;
     }
 
-    installLayerRename();
-    installHotkeys();
-    installAltMeasurement();
-    installNumberOpacity();
-
-    initDesignTokens();
-    installAutoLayoutControls();
-    installTokensControls();
-    installVectorToolButtons();
-    installInspectAndConstraintsListeners();
-    installBooleanControls();
+    const safe = (fn) => {
+      try {
+        if (typeof fn === 'function') fn();
+      } catch (e) {
+        console.error('[Pro install]', fn?.name || fn, e);
+      }
+    };
+    [
+      installLayerRename, installHotkeys, installAltMeasurement, installNumberOpacity,
+      initDesignTokens, installAutoLayoutControls, installTokensControls,
+      installVectorToolButtons, installInspectAndConstraintsListeners, installBooleanControls
+    ].forEach(safe);
 
     bindCanvas(ctx.canvas);
 

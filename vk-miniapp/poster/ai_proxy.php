@@ -34,12 +34,98 @@ if (!function_exists('str_contains')) {
     }
 }
 
-// 3 API Keys provided by user
-$apiKeys = [
-    'sk-xt-17b6c5800266d39cf7a21e9371895f5dafd3dc75db4fa502', // Primary
-    'sk-xt-5ab3a53f5cc033e073a36cbcf5ecc5c43130ea1dfce7ddbf', // Fallback 1
-    'sk-xt-aac34b4f7773baf2d8fee9d07f8d6050a17c404cda157a89'  // Fallback 2
-];
+// Load API keys securely from environment or server config
+$apiKeys = [];
+$envKeys = getenv('XKIRO_KEYS');
+if (!empty($envKeys)) {
+    $apiKeys = array_values(array_filter(array_map('trim', explode(',', $envKeys))));
+}
+if (empty($apiKeys)) {
+    // 1. Try local private key file first (chmod 600, not committed)
+    $localKeyFile = __DIR__ . '/.ai_keys.php';
+    if (is_file($localKeyFile)) {
+        $keysFromLocal = include $localKeyFile;
+        if (is_array($keysFromLocal)) {
+            $apiKeys = array_merge($apiKeys, $keysFromLocal);
+        }
+    }
+    // 2. Try server config files
+    $candidateConfigs = [
+        dirname(__DIR__, 2) . '/api/config.local.php',
+        dirname(__DIR__, 2) . '/api/config.php',
+        dirname(__DIR__, 3) . '/api/config.local.php',
+        dirname(__DIR__, 3) . '/api/config.php'
+    ];
+    foreach ($candidateConfigs as $cfgFile) {
+        if (is_file($cfgFile)) {
+            $cfg = include $cfgFile;
+            if (is_array($cfg)) {
+                if (!empty($cfg['ai_api_keys']) && is_array($cfg['ai_api_keys'])) {
+                    $apiKeys = array_merge($apiKeys, $cfg['ai_api_keys']);
+                }
+                if (!empty($cfg['ai_api_key'])) {
+                    $apiKeys[] = $cfg['ai_api_key'];
+                }
+                if (!empty($cfg['ai_api_key_fallback'])) {
+                    $apiKeys[] = $cfg['ai_api_key_fallback'];
+                }
+                if (!empty($cfg['ai_api_key_fallback_2'])) {
+                    $apiKeys[] = $cfg['ai_api_key_fallback_2'];
+                }
+                if (!empty($cfg['ai_api_key_fallback_3'])) {
+                    $apiKeys[] = $cfg['ai_api_key_fallback_3'];
+                }
+            }
+        }
+    }
+}
+$apiKeys = array_values(array_unique(array_filter($apiKeys)));
+
+// SSRF target validation
+function is_safe_proxy_target($targetUrl) {
+    if (empty($targetUrl) || !is_string($targetUrl)) return false;
+    $parsed = parse_url($targetUrl);
+    if (!$parsed || empty($parsed['scheme']) || empty($parsed['host'])) return false;
+    
+    // Only HTTPS allowed
+    if (strtolower($parsed['scheme']) !== 'https') return false;
+    
+    $host = strtolower($parsed['host']);
+    if ($host === 'localhost' || str_ends_with($host, '.localhost') || str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
+        return false;
+    }
+    
+    // Resolve DNS to verify IP
+    $ips = @dns_get_record($host, DNS_A + DNS_AAAA);
+    $resolvedIps = [];
+    if (!empty($ips)) {
+        foreach ($ips as $rec) {
+            if (!empty($rec['ip'])) $resolvedIps[] = $rec['ip'];
+            if (!empty($rec['ipv6'])) $resolvedIps[] = $rec['ipv6'];
+        }
+    }
+    if (empty($resolvedIps)) {
+        $ip = @gethostbyname($host);
+        if ($ip && $ip !== $host) {
+            $resolvedIps[] = $ip;
+        }
+    }
+    
+    if (empty($resolvedIps)) {
+        return false;
+    }
+    
+    foreach ($resolvedIps as $ip) {
+        // Reject private, loopback, link-local, and reserved ranges
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false;
+        }
+        if ($ip === '127.0.0.1' || $ip === '::1' || str_starts_with($ip, '169.254.') || str_starts_with($ip, '10.') || str_starts_with($ip, '192.168.')) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // 100% FREE Tier models on xkiro (0$ / Free API tier - tested & verified)
 $defaultModels = [
@@ -54,7 +140,14 @@ $defaultModels = [
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
     if (($_GET['action'] ?? '') === 'image_proxy' && !empty($_GET['url'])) {
-        $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
+        $rawUrl = (string)$_GET['url'];
+        if (!is_safe_proxy_target($rawUrl)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'URL blocked by security / SSRF policy']);
+            exit;
+        }
+        $url = filter_var($rawUrl, FILTER_VALIDATE_URL);
         if ($url) {
             $maxRetries = 3;
             $currentUrl = $url;
@@ -62,24 +155,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
             $contentType = 'image/jpeg';
             
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                if (!is_safe_proxy_target($currentUrl)) break;
+                
                 $ch = curl_init($currentUrl);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_TIMEOUT => 40,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_SSL_VERIFYHOST => false,
-                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 AuroraDesign/5.2.4'
+                    CURLOPT_MAXREDIRS => 3,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_CONNECTTIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 AuroraDesign/5.7.1',
+                    CURLOPT_NOPROGRESS => false,
+                    CURLOPT_PROGRESSFUNCTION => function($downloadSize, $downloaded, $uploadSize, $uploaded) {
+                        if ($downloaded > 10485760) return 1; // max 10MB
+                        return 0;
+                    }
                 ]);
                 $data = curl_exec($ch);
                 $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: 'image/jpeg';
                 $httpCode = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
                 curl_close($ch);
                 
-                // If response is valid image (not JSON error like 429/500 and not HTML)
-                if ($data !== false && $httpCode >= 200 && $httpCode < 300 && !str_starts_with(trim($data), '{') && !str_starts_with(trim($data), '<!doctype') && !str_starts_with(trim($data), '<html')) {
+                // If response is valid image (must have image/* content type and not HTML or JSON)
+                if ($data !== false && $httpCode >= 200 && $httpCode < 300 && str_starts_with(strtolower($contentType), 'image/') && !str_starts_with(trim($data), '{') && !str_starts_with(trim($data), '<!doctype') && !str_starts_with(trim($data), '<html')) {
                     header('Content-Type: ' . $contentType);
                     header('Cache-Control: public, max-age=86400');
+                    header('X-Content-Type-Options: nosniff');
                     echo $data;
                     exit;
                 }
@@ -93,10 +196,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
                 if (!str_contains($currentUrl, 'seed=')) {
                     $currentUrl .= '&seed=' . $newSeed;
                 }
-                usleep(400000); // 400ms delay between retries
+                usleep(300000); // 300ms delay between retries
             }
         }
         http_response_code(502);
+        header('Content-Type: application/json');
         echo json_encode(['error' => 'Failed to proxy free image after retries']);
         exit;
     }
@@ -156,7 +260,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
     echo json_encode([
         'status' => 'ok',
         'service' => 'Aurora AI Proxy (100% Free Tier)',
-        'keys_count' => count($apiKeys),
         'free_models' => $defaultModels
     ]);
     exit;
@@ -246,6 +349,14 @@ if (($_GET['action'] ?? '') === 'remove_bg' || (isset($_POST['action']) && $_POS
             'detail' => 'Ensure rembg service is running on ' . $rembgHost . ' or set REMBG_API_URL'
         ]
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Only POST requests are allowed for AI chat completions
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => ['message' => 'Method Not Allowed']]);
     exit;
 }
 

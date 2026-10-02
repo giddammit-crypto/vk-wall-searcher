@@ -57,12 +57,6 @@
       } catch (e) {}
       return 'ai_proxy.php';
     })(),
-    API_DIRECT_URL: 'https://api.xkiro.com/v1/chat/completions',
-    API_KEYS: [
-      'sk-xt-17b6c5800266d39cf7a21e9371895f5dafd3dc75db4fa502', // Основной ключ
-      'sk-xt-5ab3a53f5cc033e073a36cbcf5ecc5c43130ea1dfce7ddbf', // Резервный ключ 1
-      'sk-xt-aac34b4f7773baf2d8fee9d07f8d6050a17c404cda157a89'  // Резервный ключ 2
-    ],
     MODELS: [
       { id: 'qwen/qwen3.8-max:free', name: 'Qwen 3.8 Max (100% Free)' },
       { id: 'qwen/qwen3.7-max:free', name: 'Qwen 3.7 Max (100% Free)' },
@@ -968,43 +962,6 @@
           lastErrText = proxyErr.message || String(proxyErr);
         }
 
-        // Попытка 2: прямой запрос с ротацией 3 ключей
-        if (!data) {
-          for (let k = 0; k < CONFIG.API_KEYS.length; k++) {
-            const currentKey = CONFIG.API_KEYS[k];
-            try {
-              const directResp = await fetch(CONFIG.API_DIRECT_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${currentKey}`
-                },
-                body: JSON.stringify({
-                  model: modelMeta.id,
-                  messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                  ],
-                  max_tokens: reqMaxTokens,
-                  temperature: 0.4
-                }),
-                signal: combinedSignal
-              });
-
-              if (directResp.ok) {
-                const dData = await directResp.json();
-                if (dData && !dData.error && dData.choices?.[0]?.message?.content) {
-                  data = dData;
-                  break;
-                }
-              }
-            } catch (dErr) {
-              if (!lastErrText) {
-                lastErrText = dErr.message || String(dErr);
-              }
-            }
-          }
-        }
 
         clearTimeout(timeoutId);
 

@@ -43,6 +43,10 @@ Thumbs.db
 # при необходимости ротировать ключи); локальные переопределения — в api/config.local.php
 api/config.php
 api/config.local.php
+.ai_keys.php
+vk-miniapp/poster/.ai_keys.php
+.env
+.env.*
 .vk_wall_searcher_rate.lock
 
 # Runtime data (subscriber history, updater state)

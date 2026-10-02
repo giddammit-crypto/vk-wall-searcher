@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.7.0",
+  "version": "5.7.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-10-02T17:05:00+03:00",
-  "release_name": "AURORA 5.7.0: Клиентское AI удаление фона (100% In-Browser RMBG-1.4 Web Worker, WebGPU/WASM, Mask Painter, Edge Refinement, Undo)"
+  "commit_date": "2026-10-02T20:30:00+03:00",
+  "release_name": "AURORA 5.7.1: Безопасность ключей, фикс первого открытия шаблонов (P0-2), экспорт 1:1 (P0-3), VK Bridge (P1-1), локальный вендор (P1-3), PWA & SW v5.7.1"
 }

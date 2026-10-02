@@ -5333,3 +5333,47 @@ input, select, textarea {
   outline: none;
 }
 
+/* ── Mobile Touch Accessibility & Tap Targets (P1-5) ── */
+@media (pointer: coarse), (max-width: 768px) {
+  .hbtn,
+  .hbtn-ghost,
+  .hbtn-subtle,
+  .pbtn,
+  .tool-btn,
+  .tpl-quick-btn,
+  .nav-btn,
+  .mobile-nav-btn,
+  .bottom-bar-btn,
+  .layer-item-action {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .hbtn-sm {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .screen-editor {
+    overflow-x: hidden;
+  }
+
+  /* Prevent text clipping and ensure touch comfort in toolbar */
+  .toolbar-top {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .toolbar-top::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+

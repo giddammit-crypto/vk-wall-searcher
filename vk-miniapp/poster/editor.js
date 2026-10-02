@@ -44,6 +44,33 @@ const FONTS = [
 
 const figmaLoadedFonts = new Set(FONTS.map(f => f.id));
 
+/* ── Текущий формат экспорта (P0-3) ─────────────────────────── */
+let currentExportFormat = 'png';
+if (typeof window !== 'undefined') {
+  window.__auroraExportFormat = currentExportFormat;
+
+  // P2-6: Глобальный перехват ошибок и отображение информативного тоста
+  window.addEventListener('error', (event) => {
+    console.error('[Aurora Global Error]', event.error || event.message);
+    if (typeof toast === 'function') {
+      const msg = event.message || (event.error && event.error.message) || 'Ошибка скрипта';
+      if (!msg.includes('ResizeObserver') && !msg.includes('Script error.')) {
+        toast(`⚠️ Ошибка: ${msg}`, 4000);
+      }
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('[Aurora Unhandled Rejection]', event.reason);
+    if (typeof toast === 'function') {
+      const msg = (event.reason && (event.reason.message || event.reason)) || 'Сетевой сбой';
+      if (typeof msg === 'string' && !msg.includes('AbortError')) {
+        toast(`⚠️ ${msg}`, 3500);
+      }
+    }
+  });
+}
+
 /* ── Единый список кастомных свойств Fabric для сериализации ── */
 const CANVAS_SERIALIZE_PROPS = [
   'selectable','hasControls','editable','visible','evented',
@@ -2017,6 +2044,24 @@ function loadTemplate(tpl) {
   updateLayersList();
   startAutosave();
 
+  // P1-6: Гарантируем пересчёт размеров текстовых блоков после загрузки шрифтов
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      if (!canvas) return;
+      let needRender = false;
+      canvas.getObjects().forEach(o => {
+        if (o && (o.type === 'textbox' || o.type === 'text' || o.type === 'i-text')) {
+          if (typeof o.initDimensions === 'function') {
+            o.initDimensions();
+            o.setCoords();
+            needRender = true;
+          }
+        }
+      });
+      if (needRender) canvas.requestRenderAll();
+    }).catch(() => {});
+  }
+
   // Сохраняем исходное состояние в локальные черновики
   setTimeout(() => {
     saveCurrentDraft(false);
@@ -2746,7 +2791,12 @@ function addTemplateObj(def) {
   let obj = null;
   switch(type) {
     case 'text': {
-      if (d.fontFamily) ensureFontAvailable(d.fontFamily);
+      if (d.fontFamily) {
+        ensureFontAvailable(d.fontFamily);
+        if (typeof document !== 'undefined' && document.fonts && typeof document.fonts.load === 'function') {
+          document.fonts.load(`${d.fontSize || 16}px "${d.fontFamily}"`).catch(() => {});
+        }
+      }
       obj = new fabric.Textbox(d.text || 'Текст', { ...d, editable: true });
       break;
     }
@@ -6660,6 +6710,22 @@ function hideExportLoader(successMsg) {
   }, 1200);
 }
 
+/**
+ * Универсальный запуск скачивания с авто-детектом VK WebView
+ */
+function downloadBlobOrDataUrl(url, filename) {
+  if (typeof window !== 'undefined' && window.AuroraVK && window.AuroraVK.isBridgeReady && window.AuroraVK.isBridgeReady()) {
+    window.AuroraVK.downloadFile(url, filename);
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 async function exportPng() {
   if (!canvas) { toast('Холст не готов'); return; }
   if (isExportRunning) {
@@ -6705,12 +6771,7 @@ async function exportPng() {
     buffer.width = 0;
     buffer.height = 0;
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename + '.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadBlobOrDataUrl(url, filename + '.png');
     hideExportLoader('PNG сохранён');
     toast('PNG сохранён в папку «Загрузки»');
   } catch (err) {
@@ -6761,12 +6822,7 @@ async function exportJpg() {
     buffer.width = 0;
     buffer.height = 0;
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename + '.jpg';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadBlobOrDataUrl(url, filename + '.jpg');
     hideExportLoader('JPG сохранён');
     toast('JPG (высокое качество) сохранён в «Загрузки»');
   } catch (err) {
@@ -6877,13 +6933,7 @@ async function exportWebp() {
     buffer.width = 0;
     buffer.height = 0;
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename + '.webp';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
+    downloadBlobOrDataUrl(url, filename + '.webp');
     hideExportLoader(`Ultra-WebP (${resName}) успешно сохранён`);
     toast(`✅ Ultra-WebP (${resName}) сохранён в «Загрузки»`);
   } catch (err) {
@@ -6904,7 +6954,7 @@ async function exportAsOnScreen(format = null) {
   const rawTitle = $('#poster-title')?.value?.trim() || 'Афиша';
   const filename = (rawTitle.replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Афиша') + '_screen';
   const dims = getArtboardDimensions(canvas);
-  const chosenFmt = (format || currentExportFormat || 'png').toLowerCase();
+  const chosenFmt = (format || window.__auroraExportFormat || (typeof currentExportFormat !== 'undefined' ? currentExportFormat : null) || 'png').toLowerCase();
 
   showExportLoader(`Экспорт как на экране (1:1)`, `Рендеринг ${dims.w} × ${dims.h} px (100% оригинал)...`, 20);
 
@@ -6945,12 +6995,7 @@ async function exportAsOnScreen(format = null) {
     buffer.width = 0;
     buffer.height = 0;
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadBlobOrDataUrl(url, `${filename}.${ext}`);
 
     hideExportLoader(`Сохранено как на экране (${dims.w} × ${dims.h} px)`);
     toast(`✅ Сохранено как на экране (${dims.w} × ${dims.h} px, 1:1)`);
@@ -10367,9 +10412,11 @@ function bindEvents() {
   $('#dim-stroke-w')?.addEventListener('change', () => saveHistory());
 
   /* Экспорт: выбор формата и скачивание по кнопке */
-  let currentExportFormat = 'png';
+  currentExportFormat = currentExportFormat || 'png';
+  if (typeof window !== 'undefined') window.__auroraExportFormat = currentExportFormat;
   const setExportFormat = (fmt, notify = false) => {
     currentExportFormat = (fmt || 'png').toLowerCase();
+    if (typeof window !== 'undefined') window.__auroraExportFormat = currentExportFormat;
     const formatButtons = {
       'png': '#btn-inspector-png',
       'jpg': '#btn-inspector-jpg',
@@ -11000,20 +11047,13 @@ function bindEvents() {
         if (img && img.width) {
           placeDroppedImage(img, dropEvent);
         } else {
-          // Primary fallback: ai_proxy.php, secondary: allorigins proxy
+          // Безопасный локальный прокси с защитой от SSRF
           const proxyUrl = 'ai_proxy.php?action=image_proxy&url=' + encodeURIComponent(url);
           fabric.Image.fromURL(proxyUrl, imgProxy => {
             if (imgProxy && imgProxy.width) {
               placeDroppedImage(imgProxy, dropEvent);
             } else {
-              const extProxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-              fabric.Image.fromURL(extProxy, imgExt => {
-                if (imgExt && imgExt.width) {
-                  placeDroppedImage(imgExt, dropEvent);
-                } else {
-                  toast('⚠️ Не удалось загрузить изображение по URL (CORS ограничение)');
-                }
-              }, { crossOrigin: 'anonymous' });
+              toast('⚠️ Не удалось загрузить изображение по URL (CORS ограничение)');
             }
           }, { crossOrigin: 'anonymous' });
         }
