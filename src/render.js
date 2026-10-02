@@ -7,12 +7,31 @@ import { enrichTargetWithCanonical, renderBranchAvatarHtml, escapeHtml, findCano
 import { extractNum, formatViews } from './analytics.js?v=4.62.0';
 import { authorCache, getAuthorFromCache } from './api.js?v=4.62.0';
 
+function safeHttpUrl(value) {
+    try {
+        const url = new URL(String(value || ''), window.location.href);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+    } catch (e) {
+        return '';
+    }
+}
+
 export function linkifyText(text) {
     if (!text) return '';
-    const urlRegex = /(https?:\/\/[^\s<]+)/g;
-    return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #ec4899 !important; text-decoration: underline !important; font-weight: 600;">${url}</a>`;
+    const source = String(text);
+    const urlRegex = /https?:\/\/[^\s<>"']+/gi;
+    let html = '';
+    let lastIndex = 0;
+    source.replace(urlRegex, (matchedUrl, offset) => {
+        const trailing = matchedUrl.match(/[.,;:!?)}\]]+$/)?.[0] || '';
+        const url = trailing ? matchedUrl.slice(0, -trailing.length) : matchedUrl;
+        html += escapeHtml(source.slice(lastIndex, offset));
+        html += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #ec4899 !important; text-decoration: underline !important; font-weight: 600;">${escapeHtml(url)}</a>`;
+        if (trailing) html += escapeHtml(trailing);
+        lastIndex = offset + matchedUrl.length;
+        return matchedUrl;
     });
+    return html + escapeHtml(source.slice(lastIndex));
 }
 
 /**
@@ -273,12 +292,16 @@ export function createSkeletonCard() {
 export function createPostCard(post) {
     const div = document.createElement('div');
     div.className = 'post-card';
+    div.tabIndex = 0;
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-haspopup', 'dialog');
     
     const target = post.targetInfo || post.canonicalBranch || { name: post.sourceName || 'Библиотека', id: Math.abs(post.owner_id || 0) };
     enrichTargetWithCanonical(target);
     post.targetInfo = target;
     const displayName = target.canonicalName || target.name || 'Библиотека';
     const postLink = `https://vk.com/wall${target.id || Math.abs(post.owner_id || 0)}_${post.id}`;
+    const postTextId = `post-text-${String(target.id || post.owner_id || 0).replace(/[^\w-]/g, '')}-${String(post.id || '').replace(/[^\w-]/g, '')}`;
     const dateStr = post.humanDate || (post.date ? formatHumanDate(post.date) : '');
     
     // Header
@@ -345,7 +368,7 @@ export function createPostCard(post) {
         else if (photoList.length > 4) gridClass = 'more';
         const poClass = isPhotoOnly ? ' photo-only' : '';
         return `<div class="post-attachments ${gridClass}${poClass}">` +
-            photoList.map(pUrl => `<img class="attachment-img" src="${pUrl}" alt="Фото" data-src="${pUrl}" loading="lazy">`).join('') +
+            photoList.map(pUrl => `<img class="attachment-img" src="${escapeHtml(pUrl)}" alt="Фото" data-src="${escapeHtml(pUrl)}" loading="lazy">`).join('') +
             `</div>`;
     }
 
@@ -354,11 +377,12 @@ export function createPostCard(post) {
         return videoList.map(v => {
             const { pageUrl, playerUrl } = extractVideoUrls(v);
             const thumbUrl = bestVideoThumb(v);
+            const safePlayerUrl = safeHttpUrl(playerUrl);
             const duration = formatVideoDuration(v.duration);
             return `
-            <div class="post-video-card" data-player-url="${playerUrl}" data-page-url="${pageUrl}">
+            <div class="post-video-card" data-player-url="${escapeHtml(safePlayerUrl)}" data-page-url="${escapeHtml(pageUrl)}">
                 <div class="video-preview-wrap">
-                    ${thumbUrl ? `<img class="video-thumb" src="${thumbUrl}" alt="${escapeHtml(v.title || 'Видео')}" loading="lazy">` : `<div class="video-thumb-placeholder"><span class="material-symbols-outlined">smart_display</span></div>`}
+                    ${thumbUrl ? `<img class="video-thumb" src="${escapeHtml(thumbUrl)}" alt="${escapeHtml(v.title || 'Видео')}" loading="lazy">` : `<div class="video-thumb-placeholder"><span class="material-symbols-outlined">smart_display</span></div>`}
                     <button class="video-play-btn" type="button" aria-label="Воспроизвести">
                         <span class="material-symbols-outlined">play_arrow</span>
                     </button>
@@ -367,7 +391,7 @@ export function createPostCard(post) {
                 <div class="video-card-meta">
                     <span class="material-symbols-outlined video-meta-icon">play_circle</span>
                     <span class="video-card-title">${escapeHtml(v.title || 'Видеозапись')}</span>
-                    <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="video-open-vk-link" title="Открыть в VK" onclick="event.stopPropagation();">
+                    <a href="${escapeHtml(pageUrl)}" target="_blank" rel="noopener noreferrer" class="video-open-vk-link" title="Открыть в VK" onclick="event.stopPropagation();">
                         <span class="material-symbols-outlined">open_in_new</span>
                     </a>
                 </div>
@@ -379,16 +403,18 @@ export function createPostCard(post) {
         if (!linkList || linkList.length === 0) return '';
         let html = '';
         linkList.forEach(link => {
+            const safeUrl = safeHttpUrl(link.url);
+            if (!safeUrl) return;
             let hostname = '';
-            try { hostname = new URL(link.url).hostname; } catch(e) { hostname = link.url; }
+            try { hostname = new URL(safeUrl).hostname; } catch(e) { hostname = safeUrl; }
             html += `
-                <div class="attachment-link-card" onclick="window.open('${escapeHtml(link.url)}', '_blank')" style="cursor:pointer;">
+                <a class="attachment-link-card" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">
                     <span class="material-symbols-outlined link-icon">link</span>
                     <div class="link-info">
                         <div class="link-title">${escapeHtml(link.title || 'Внешняя ссылка')}</div>
                         <div class="link-url">${escapeHtml(hostname)}</div>
                     </div>
-                </div>`;
+                </a>`;
         });
         return html;
     }
@@ -397,7 +423,7 @@ export function createPostCard(post) {
     if (hasRepost && repost) {
         const rAuthor = resolveRepostAuthor(repost);
         const rDate = repost.date ? formatHumanDate(new Date(repost.date * 1000)) : '';
-        const rText = repost.text ? linkifyText(escapeHtml(repost.text)) : '';
+        const rText = repost.text ? linkifyText(repost.text) : '';
         const rPhotos = renderCardPhotos(repostPhotos, !rText);
         const rVideos = renderCardVideos(repostVideos);
         const rLinks = renderCardLinks(repostLinks);
@@ -424,10 +450,10 @@ export function createPostCard(post) {
 
     let textHtml = '';
     if (hasText) {
-        const safeBodyText = linkifyText(escapeHtml(bodyText));
+        const safeBodyText = linkifyText(bodyText);
         textHtml = `
-            <div class="post-text" id="post-text-${post.id}">${safeBodyText}</div>
-            ${hasLongText ? `<button class="expand-text-btn" data-id="${post.id}">Читать полностью</button>` : ''}
+            <div class="post-text" id="${postTextId}">${safeBodyText}</div>
+            ${hasLongText ? `<button type="button" class="expand-text-btn" data-id="${post.id}" aria-controls="${postTextId}" aria-expanded="false">Читать полностью</button>` : ''}
         `;
     }
 
@@ -483,7 +509,7 @@ export function createPostCard(post) {
             const playerUrl = card.getAttribute('data-player-url');
             const wrap = card.querySelector('.video-preview-wrap');
             if (playerUrl && wrap) {
-                wrap.innerHTML = `<iframe class="video-card-iframe" src="${playerUrl}&autoplay=1" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
+                wrap.innerHTML = `<iframe class="video-card-iframe" src="${escapeHtml(playerUrl)}&amp;autoplay=1" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
             }
         });
     });
@@ -497,10 +523,29 @@ export function createPostCard(post) {
         });
     }
 
+    const expandBtn = div.querySelector('.expand-text-btn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const textEl = document.getElementById(expandBtn.getAttribute('aria-controls'));
+            if (!textEl) return;
+            const expanded = expandBtn.getAttribute('aria-expanded') === 'true';
+            textEl.classList.toggle('expanded', !expanded);
+            expandBtn.setAttribute('aria-expanded', String(!expanded));
+            expandBtn.textContent = expanded ? 'Читать полностью' : 'Свернуть';
+        });
+    }
+
     // Click card to open modal
     div.addEventListener('click', (e) => {
         if (e.target.closest('a, button, .attachment-img, .video-play-btn')) return;
         openPostModal(post);
+    });
+    div.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a, button, input, select, textarea')) {
+            e.preventDefault();
+            openPostModal(post);
+        }
     });
 
     return div;
@@ -538,7 +583,7 @@ export function openPostModal(post) {
 
     const rawText = (post.text || '').trim();
     const hasText = rawText.length > 0;
-    const safeText = hasText ? linkifyText(escapeHtml(post.text)) : '';
+    const safeText = hasText ? linkifyText(post.text) : '';
 
     const hasRepost = Array.isArray(post.copy_history) && post.copy_history.length > 0;
     const repost = hasRepost ? post.copy_history[0] : null;
@@ -586,7 +631,7 @@ export function openPostModal(post) {
         else if (photoList.length === 3) gc = 'count-3';
         else if (photoList.length >= 4) gc = 'count-4';
         return `<div class="pm-photos post-attachments ${gc}">` +
-            photoList.map(u => `<img class="attachment-img pm-photo" src="${u}" data-src="${u}" alt="Фото" loading="lazy">`).join('') +
+            photoList.map(u => `<img class="attachment-img pm-photo" src="${escapeHtml(u)}" data-src="${escapeHtml(u)}" alt="Фото" loading="lazy">`).join('') +
             `</div>`;
     }
 
@@ -601,11 +646,11 @@ export function openPostModal(post) {
                 <div class="pm-video-card" data-video-index="${idx}">
                     <div class="pm-video-player-wrap">
                         ${playerUrl ? `
-                            <iframe class="pm-video-iframe" src="${playerUrl}" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
+                            <iframe class="pm-video-iframe" src="${escapeHtml(playerUrl)}" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
                         ` : `
                             <div class="pm-video-fallback">
-                                ${thumbUrl ? `<img src="${thumbUrl}" class="pm-video-fallback-thumb" alt="${escapeHtml(v.title || '')}" loading="lazy">` : ''}
-                                <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary pm-video-open-btn">
+                                ${thumbUrl ? `<img src="${escapeHtml(thumbUrl)}" class="pm-video-fallback-thumb" alt="${escapeHtml(v.title || '')}" loading="lazy">` : ''}
+                                <a href="${escapeHtml(pageUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary pm-video-open-btn">
                                     <span class="material-symbols-outlined">play_arrow</span>
                                     <span>Смотреть во ВКонтакте</span>
                                 </a>
@@ -618,7 +663,7 @@ export function openPostModal(post) {
                             <span class="pm-video-title">${escapeHtml(v.title || 'Видеозапись')}</span>
                             ${durationStr ? `<span class="pm-video-duration">${durationStr}</span>` : ''}
                         </div>
-                        <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm pm-video-ext-btn">
+                        <a href="${escapeHtml(pageUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm pm-video-ext-btn">
                             <span class="material-symbols-outlined icon">open_in_new</span>
                             <span>VK</span>
                         </a>
@@ -631,9 +676,11 @@ export function openPostModal(post) {
     function renderModalLinks(linkList) {
         if (!linkList || linkList.length === 0) return '';
         return linkList.map(link => {
+            const safeUrl = safeHttpUrl(link.url);
+            if (!safeUrl) return '';
             let host = '';
-            try { host = new URL(link.url).hostname; } catch(e) { host = link.url; }
-            return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="pm-link-card">
+            try { host = new URL(safeUrl).hostname; } catch(e) { host = safeUrl; }
+            return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="pm-link-card">
                 <span class="material-symbols-outlined pm-link-icon">link</span>
                 <span class="pm-link-text">
                     <span class="pm-link-title">${escapeHtml(link.title || 'Внешняя ссылка')}</span>
@@ -652,7 +699,7 @@ export function openPostModal(post) {
     if (hasRepost && repost) {
         const rAuthor = resolveRepostAuthor(repost);
         const rDate = repost.date ? formatHumanDate(new Date(repost.date * 1000)) : '';
-        const rText = repost.text ? linkifyText(escapeHtml(repost.text)) : '';
+        const rText = repost.text ? linkifyText(repost.text) : '';
         const rPhotos = renderModalPhotos(repostPhotos);
         const rVideos = renderModalVideos(repostVideos);
         const rLinks = renderModalLinks(repostLinks);
@@ -702,7 +749,7 @@ export function openPostModal(post) {
                         <span class="material-symbols-outlined icon">open_in_new</span>
                         <span>VK</span>
                     </a>
-                    <button id="post-modal-close" class="pm-close-btn" aria-label="Закрыть (Esc)" title="Закрыть (Esc)">
+                    <button type="button" id="post-modal-close" class="pm-close-btn" aria-label="Закрыть (Esc)" title="Закрыть (Esc)">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -759,4 +806,3 @@ export function closePostModal() {
     modal.classList.remove('active', 'pm-open');
     document.body.style.overflow = '';
 }
-

@@ -389,6 +389,28 @@ function initApp() {
         shClearBtn: document.getElementById('sh-clear-btn')
     };
 
+    function updateFeedState(type, title, detail) {
+        if (!elements.postsGrid) return;
+        elements.postsGrid.dataset.state = type;
+        elements.postsGrid.setAttribute('aria-live', 'polite');
+        elements.postsGrid.setAttribute('aria-busy', type === 'loading' ? 'true' : 'false');
+        if (type === 'loading') return;
+        elements.postsGrid.replaceChildren();
+        const card = document.createElement('div');
+        card.className = `empty-state-card feed-state-${type}`;
+        card.style.cssText = 'grid-column:1 / -1;text-align:center;padding:3rem;color:var(--muted);';
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined';
+        icon.style.cssText = 'font-size:48px;color:var(--accent);margin-bottom:12px;';
+        icon.textContent = type === 'error' ? 'error_outline' : 'search_off';
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        const message = document.createElement('p');
+        message.textContent = detail;
+        card.append(icon, heading, message);
+        elements.postsGrid.appendChild(card);
+    }
+
     // =========================================================================
     // 3. Form & Inputs Initialization
     // =========================================================================
@@ -999,6 +1021,7 @@ function initApp() {
 
     async function handleSearchSubmit(e) {
         e.preventDefault();
+        if (state.isScanning) return;
         // Сервисный ключ подставляется сервером из api/config.php —
         // предварительная проверка токена пользователем больше не требуется.
 
@@ -1017,8 +1040,9 @@ function initApp() {
                 rawTargetInput = elements.branchSelect.value;
                 if (elements.targetInput) elements.targetInput.value = rawTargetInput;
             } else {
-                state.useBranches = true;
-                if (elements.branchesToggle) elements.branchesToggle.checked = true;
+                showToast('Укажите адрес сообщества или выберите филиал', 'error');
+                elements.targetInput?.focus();
+                return;
             }
         }
 
@@ -1151,6 +1175,8 @@ function initApp() {
         // Render skeleton cards immediately to give instant visual feedback
         if (elements.postsGrid) {
             elements.postsGrid.innerHTML = '';
+            elements.postsGrid.dataset.state = 'loading';
+            elements.postsGrid.setAttribute('aria-busy', 'true');
             for (let s = 0; s < 8; s++) {
                 elements.postsGrid.appendChild(createSkeletonCard());
             }
@@ -1715,7 +1741,13 @@ function initApp() {
                     console.warn('renderAllResults on partial error failed:', rErr);
                 }
             } else {
-                alert(`Ошибка при выполнении поиска: ${err.message}`);
+                const message = err.message || 'Сбой сети';
+                if (elements.resultsContainer) elements.resultsContainer.classList.remove('hidden');
+                state.filteredPosts = [];
+                updateFeedState('error', 'Не удалось выполнить поиск', `${message}. Проверьте соединение и параметры запроса, затем попробуйте снова.`);
+                if (elements.searchCompletedActions) elements.searchCompletedActions.classList.remove('hidden');
+                if (elements.modalMatchedBadge) elements.modalMatchedBadge.textContent = '0';
+                showToast(message, 'error');
             }
         } finally {
             CosmicUniverse.setWarp(false);
@@ -1769,7 +1801,7 @@ function initApp() {
         try { renderHashtagsAndLinks(state.matchedPosts); } catch (e) { console.error('[renderHashtagsAndLinks error]:', e); }
 
         // v3.4: вкладка «Советы филиалам» + авто-снимки подписчиков
-        try { updateAdviceAndSubscribers(stats); } catch (e) { console.error('[updateAdviceAndSubscribers error]:', e); }
+        void updateAdviceAndSubscribers(stats).catch(e => console.error('[updateAdviceAndSubscribers error]:', e));
 
         // Информирование робота-ассистента о результатах сканирования
         if (state.matchedPosts.length > 0) {
@@ -2119,16 +2151,13 @@ function initApp() {
         if (elements.kpiAvgViews) elements.kpiAvgViews.textContent = kpis.avgViews.toLocaleString('ru-RU');
 
         state.cardPage = 0;
+        if (!elements.postsGrid) return;
         elements.postsGrid.innerHTML = '';
+        elements.postsGrid.dataset.state = 'ready';
+        elements.postsGrid.setAttribute('aria-busy', 'false');
 
         if (posts.length === 0) {
-            elements.postsGrid.innerHTML = `
-                <div class="empty-state-card" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--muted);">
-                    <span class="material-symbols-outlined" style="font-size: 48px; color: var(--accent); margin-bottom: 12px;">search_off</span>
-                    <h3>Ничего не найдено</h3>
-                    <p>Попробуйте скорректировать фильтры или выбрать другой филиал / диапазон дат.</p>
-                </div>
-            `;
+            updateFeedState('empty', 'Ничего не найдено', 'Попробуйте скорректировать фильтры или выбрать другой филиал / диапазон дат.');
             return;
         }
 
@@ -2233,6 +2262,9 @@ function initApp() {
             const isSelected = state.activeBranchFilter && postMatchesBranch({ targetInfo: t, owner_id: t.id }, state.activeBranchFilter);
             const card = document.createElement('div');
             card.className = `source-showcase-card ${isSelected ? 'selected' : ''}`;
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Фильтровать записи: ${t.canonicalName || t.name || 'источник'}`);
             const likesCount = item.likes.toLocaleString('ru-RU');
             const repostsCount = item.reposts.toLocaleString('ru-RU');
             const commentsCount = (item.comments || 0).toLocaleString('ru-RU');
@@ -2245,11 +2277,11 @@ function initApp() {
                         <div class="source-card-name" title="${escapeHtml(t.canonicalName || t.name)}">${escapeHtml(t.canonicalName || t.name)}</div>
                         ${t.address ? `<div class="source-card-address"><span class="material-symbols-outlined addr-icon">location_on</span>${escapeHtml(t.address)}</div>` : ''}
                         <div class="source-card-links">
-                            <a href="${t.link}" target="_blank" class="source-vk-pill" onclick="event.stopPropagation();">
+                            <a href="${escapeHtml(t.link || '')}" target="_blank" rel="noopener noreferrer" class="source-vk-pill" onclick="event.stopPropagation();">
                                 <span class="material-symbols-outlined icon">open_in_new</span>
                                 <span>VK</span>
                             </a>
-                            ${t.branch_url ? `<a href="${t.branch_url}" target="_blank" class="source-web-pill" onclick="event.stopPropagation();" title="Сайт biblioteka33.ru"><span class="material-symbols-outlined icon">language</span></a>` : ''}
+                            ${t.branch_url ? `<a href="${escapeHtml(t.branch_url)}" target="_blank" rel="noopener noreferrer" class="source-web-pill" onclick="event.stopPropagation();" title="Сайт biblioteka33.ru"><span class="material-symbols-outlined icon">language</span></a>` : ''}
                         </div>
                     </div>
                     <div class="source-counter-col">
@@ -2296,6 +2328,12 @@ function initApp() {
                 }
                 applySortAndFilterFeed();
                 renderSourcesShowcase(state.lastGroupsStats);
+            });
+            card.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a, button')) {
+                    e.preventDefault();
+                    card.click();
+                }
             });
 
             elements.sourcesShowcaseGrid.appendChild(card);
@@ -2910,8 +2948,9 @@ function initApp() {
         // 1. Hashtag Analysis
         const hashtagMap = {};
         matchedPosts.forEach(p => {
-            if (!p.text) return;
-            const matches = p.text.match(/(?:^|\s)#([a-zA-Zа-яА-ЯёЁ0-9_]{2,})/g);
+            const searchableText = [p.text || '', ...(p.copy_history || []).map(cp => cp.text || '')].join(' ');
+            if (!searchableText) return;
+            const matches = searchableText.match(/(?:^|\s)#([a-zA-Zа-яА-ЯёЁ0-9_]{2,})/g);
             if (matches) {
                 const uniqueInPost = new Set();
                 matches.forEach(m => {
@@ -2949,15 +2988,7 @@ function initApp() {
                         state.activeBranchFilter = null;
                         state.activeHashtagFilter = item.tag;
                         try { Mascot.onHashtagFiltered(item.tag, item.count); } catch (e) {}
-                        if (elements.tabBtns) {
-                            elements.tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === 'visual-tab'));
-                        }
-                        if (elements.tabContents) {
-                            elements.tabContents.forEach(c => {
-                                c.classList.remove('active', 'active-content');
-                                if (c.id === 'visual-tab') { c.classList.add('active', 'active-content'); }
-                            });
-                        }
+                        document.querySelector('.tab-btn[data-tab="visual-tab"]')?.click();
                         applySortAndFilterFeed();
                     });
                     elements.hashtagCloudContainer.appendChild(pill);
@@ -2989,15 +3020,7 @@ function initApp() {
                         state.activeBranchFilter = null;
                         state.activeHashtagFilter = item.tag;
                         try { Mascot.onHashtagFiltered(item.tag, item.count); } catch (e) {}
-                        if (elements.tabBtns) {
-                            elements.tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === 'visual-tab'));
-                        }
-                        if (elements.tabContents) {
-                            elements.tabContents.forEach(c => {
-                                c.classList.remove('active', 'active-content');
-                                if (c.id === 'visual-tab') { c.classList.add('active', 'active-content'); }
-                            });
-                        }
+                        document.querySelector('.tab-btn[data-tab="visual-tab"]')?.click();
                         applySortAndFilterFeed();
                     });
                     elements.hashtagsTbody.appendChild(tr);
@@ -3179,19 +3202,55 @@ function initApp() {
     // 12. Tabs Navigation
     // =========================================================================
     if (elements.tabBtns) {
+        const tabList = elements.tabBtns[0]?.parentElement;
+        tabList?.setAttribute('role', 'tablist');
+        elements.tabBtns.forEach((btn, index) => {
+            const tabId = btn.dataset.tab;
+            btn.setAttribute('role', 'tab');
+            btn.setAttribute('id', btn.id || `tab-trigger-${tabId}`);
+            btn.setAttribute('aria-controls', tabId || '');
+            btn.setAttribute('aria-selected', String(btn.classList.contains('active')));
+            btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
+            const panel = tabId ? document.getElementById(tabId) : null;
+            if (panel) {
+                panel.setAttribute('role', 'tabpanel');
+                panel.setAttribute('aria-labelledby', btn.id);
+                panel.setAttribute('aria-hidden', String(!btn.classList.contains('active')));
+                panel.setAttribute('tabindex', '0');
+            }
+            btn.addEventListener('keydown', (e) => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+                e.preventDefault();
+                let nextIndex = index;
+                if (e.key === 'ArrowRight') nextIndex = (index + 1) % elements.tabBtns.length;
+                if (e.key === 'ArrowLeft') nextIndex = (index - 1 + elements.tabBtns.length) % elements.tabBtns.length;
+                if (e.key === 'Home') nextIndex = 0;
+                if (e.key === 'End') nextIndex = elements.tabBtns.length - 1;
+                elements.tabBtns[nextIndex]?.focus();
+                elements.tabBtns[nextIndex]?.click();
+            });
+        });
         elements.tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const targetTabId = btn.dataset.tab;
-                elements.tabBtns.forEach(b => b.classList.remove('active'));
+                elements.tabBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                    b.setAttribute('tabindex', '-1');
+                });
                 elements.tabContents.forEach(c => {
                     c.classList.remove('active');
                     c.classList.remove('active-content');
+                    c.setAttribute('aria-hidden', 'true');
                 });
                 btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                btn.setAttribute('tabindex', '0');
                 const targetContent = document.getElementById(targetTabId);
                 if (targetContent) {
                     targetContent.classList.add('active');
                     targetContent.classList.add('active-content');
+                    targetContent.setAttribute('aria-hidden', 'false');
                 }
 
                 // Уведомляем Космо о смене вкладки, чтобы он комментировал голосом и обновлял чипы ИИ
