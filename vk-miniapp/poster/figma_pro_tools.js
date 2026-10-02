@@ -637,44 +637,83 @@
   /* ────────────────────────────────────────────────────────────
      13. КИСТИ КАРАНДАША: карандаш / маркер / распылитель
      ──────────────────────────────────────────────────────────── */
+  let _currentBrushKind = 'pencil';
+
+  function hexToRgba(hex, alpha = 0.45) {
+    if (!hex || typeof hex !== 'string') return `rgba(13, 153, 255, ${alpha})`;
+    let c = hex.replace('#', '').trim();
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    if (c.length === 6) {
+      const num = parseInt(c, 16);
+      if (!isNaN(num)) {
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+    }
+    return `rgba(13, 153, 255, ${alpha})`;
+  }
+
   function applyBrushKind(kind) {
     const c = canvas();
     if (!c) return;
-    if (!c.freeDrawingBrush || c.freeDrawingBrush.__kind !== kind) {
-      const color = (Pro.hooks.getPencilColor && Pro.hooks.getPencilColor()) || '#0d99ff';
-      const width = (Pro.hooks.getPencilWidth && Pro.hooks.getPencilWidth()) || 4;
-      switch (kind) {
-        case 'marker':
-          c.freeDrawingBrush = new fabric.PencilBrush(c);
-          c.freeDrawingBrush.strokeLineCap = 'square';
-          c.freeDrawingBrush.strokeLineJoin = 'miter';
-          c.freeDrawingBrush.decimate = 1.5;
-          c.freeDrawingBrush.width = Math.max(width * 4, 18); // широкий полупрозрачный
-          if (c.freeDrawingBrush.setOpacity) {
-            // PencilBrush не имеет opacity: применяем через цвет rgba в path:created
-          }
-          break;
-        case 'spray':
-          c.freeDrawingBrush = new fabric.SprayBrush(c);
-          c.freeDrawingBrush.density = 12;
-          c.freeDrawingBrush.dotWidth = 2;
-          c.freeDrawingBrush.dotWidthVariance = 4;
-          c.freeDrawingBrush.randomOpacity = true;
-          break;
-        case 'pencil':
-        default:
-          c.freeDrawingBrush = new fabric.PencilBrush(c);
-          c.freeDrawingBrush.strokeLineCap = 'round';
-          c.freeDrawingBrush.strokeLineJoin = 'round';
-          break;
+    _currentBrushKind = kind || 'pencil';
+
+    const baseColor = (Pro.hooks.getPencilColor && Pro.hooks.getPencilColor()) || '#0d99ff';
+    const baseWidth = (Pro.hooks.getPencilWidth && Pro.hooks.getPencilWidth()) || 4;
+
+    switch (_currentBrushKind) {
+      case 'marker': {
+        c.freeDrawingBrush = new fabric.PencilBrush(c);
+        c.freeDrawingBrush.strokeLineCap = 'square';
+        c.freeDrawingBrush.strokeLineJoin = 'miter';
+        c.freeDrawingBrush.decimate = 1.5;
+        c.freeDrawingBrush.width = Math.max(baseWidth * 4, 18);
+        c.freeDrawingBrush.color = hexToRgba(baseColor, 0.45);
+        break;
       }
-      c.freeDrawingBrush.__kind = kind;
+      case 'spray': {
+        c.freeDrawingBrush = new fabric.SprayBrush(c);
+        c.freeDrawingBrush.density = 26;
+        c.freeDrawingBrush.dotWidth = 1.5;
+        c.freeDrawingBrush.dotWidthVariance = 2;
+        c.freeDrawingBrush.randomOpacity = true;
+        c.freeDrawingBrush.width = Math.max(baseWidth * 5.5, 22);
+        c.freeDrawingBrush.color = baseColor;
+        break;
+      }
+      case 'pencil':
+      default: {
+        c.freeDrawingBrush = new fabric.PencilBrush(c);
+        c.freeDrawingBrush.strokeLineCap = 'round';
+        c.freeDrawingBrush.strokeLineJoin = 'round';
+        c.freeDrawingBrush.width = baseWidth;
+        c.freeDrawingBrush.color = baseColor;
+        break;
+      }
     }
-    if (c.freeDrawingBrush.color !== undefined) {
-      c.freeDrawingBrush.color = (Pro.hooks.getPencilColor && Pro.hooks.getPencilColor()) || '#0d99ff';
-    }
-    if (kind === 'pencil') {
-      c.freeDrawingBrush.width = (Pro.hooks.getPencilWidth && Pro.hooks.getPencilWidth()) || 4;
+    c.freeDrawingBrush.__kind = _currentBrushKind;
+  }
+
+  function updateActiveBrushParams(color, width) {
+    const c = canvas();
+    if (!c || !c.freeDrawingBrush) return;
+    const kind = _currentBrushKind || c.freeDrawingBrush.__kind || 'pencil';
+    const baseColor = color || (Pro.hooks.getPencilColor && Pro.hooks.getPencilColor()) || '#0d99ff';
+    const baseWidth = typeof width === 'number' ? width : ((Pro.hooks.getPencilWidth && Pro.hooks.getPencilWidth()) || 4);
+
+    if (kind === 'marker') {
+      c.freeDrawingBrush.strokeLineCap = 'square';
+      c.freeDrawingBrush.strokeLineJoin = 'miter';
+      c.freeDrawingBrush.width = Math.max(baseWidth * 4, 18);
+      c.freeDrawingBrush.color = hexToRgba(baseColor, 0.45);
+    } else if (kind === 'spray') {
+      c.freeDrawingBrush.width = Math.max(baseWidth * 5.5, 22);
+      c.freeDrawingBrush.color = baseColor;
+    } else {
+      c.freeDrawingBrush.width = baseWidth;
+      c.freeDrawingBrush.color = baseColor;
     }
   }
 
@@ -2060,11 +2099,20 @@
       document.getElementById('pencil-toolbar')?.classList.add('hidden');
     }
 
+    // Полная блокировка трансформации и поиска объектов: клики по изображениям и слоям не сдвигают их!
     c.defaultCursor = 'crosshair';
     c.hoverCursor = 'crosshair';
     c.selection = false;
+    c.skipTargetFind = true;
+    c._currentTransform = null;
     c.discardActiveObject();
-    c.getObjects().forEach(o => { o.__selectableOrig = o.selectable; o.selectable = false; });
+
+    c.getObjects().forEach(o => {
+      if (o.__selectableOrig === undefined) o.__selectableOrig = o.selectable;
+      if (o.__eventedOrig === undefined) o.__eventedOrig = o.evented;
+      o.selectable = false;
+      o.evented = false;
+    });
 
     const bar = document.getElementById('figma-vector-bar');
     if (bar) bar.classList.remove('hidden');
@@ -2072,7 +2120,11 @@
     // Снимаем активность со ВСЕХ инструментов и ставим перо активным
     document.querySelectorAll('.tool-btn, [id^="tool-"], [id^="mtool-"]').forEach(b => b.classList.remove('is-active', 'active'));
     document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => el.classList.remove('is-active', 'active'));
-    document.getElementById('tool-pen')?.classList.add('is-active', 'active');
+    document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => el?.classList.add('is-active', 'active'));
+
+    if (typeof window !== 'undefined') {
+      window.currentTool = 'pen';
+    }
 
     c.requestRenderAll();
     toast('Векторное Перо активно ✒️ Клик — точка, драг — кривая Безье, Enter — завершить');
@@ -2090,6 +2142,9 @@
     c.defaultCursor = 'default';
     c.hoverCursor = 'move';
     c.selection = true;
+    c.skipTargetFind = false;
+    c._currentTransform = null;
+
     c.getObjects().forEach(o => {
       if (o.__selectableOrig !== undefined) {
         o.selectable = o.__selectableOrig;
@@ -2097,14 +2152,24 @@
       } else {
         o.selectable = true;
       }
+      if (o.__eventedOrig !== undefined) {
+        o.evented = o.__eventedOrig;
+        delete o.__eventedOrig;
+      } else {
+        o.evented = true;
+      }
     });
 
     const bar = document.getElementById('figma-vector-bar');
     if (bar) bar.classList.add('hidden');
-    document.getElementById('tool-pen')?.classList.remove('is-active', 'active');
+    document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => el?.classList.remove('is-active', 'active'));
 
     // Восстанавливаем инструмент «Выделение» через хук editor.js
-    activateSelectTool(false);
+    if (typeof activateSelectTool === 'function') {
+      activateSelectTool(false);
+    } else if (typeof Pro.hooks.activateSelectTool === 'function') {
+      Pro.hooks.activateSelectTool(false);
+    }
 
     c.requestRenderAll();
   }
@@ -2169,6 +2234,11 @@
 
     c.on('mouse:down', opt => {
       if (!_isPenActive) return;
+      c._currentTransform = null; // Гарантированно пресекаем перетаскивание слоев/изображений
+      if (opt.e) {
+        opt.e.preventDefault?.();
+        opt.e.stopPropagation?.();
+      }
       const p = c.getPointer(opt.e);
 
       if (_penPoints.length >= 2) {
@@ -2189,6 +2259,7 @@
 
     c.on('mouse:move', opt => {
       if (!_isPenActive) return;
+      c._currentTransform = null; // Не даем двигать объекты под курсором
       const p = c.getPointer(opt.e);
       // Всегда обновляем позицию курсора для ghost-линии предпросмотра
       _penCursorPos = { x: p.x, y: p.y };
@@ -2208,6 +2279,7 @@
 
     c.on('mouse:up', () => {
       if (!_isPenActive) return;
+      c._currentTransform = null;
       _isDraggingPenHandle = false;
       c.requestRenderAll();
     });
@@ -2217,30 +2289,28 @@
       const ctx = opt.ctx;
       if (!ctx) return;
 
-      const pad = (typeof Pro.hooks.CANVAS_PADDING === 'number') ? Pro.hooks.CANVAS_PADDING : 40;
+      const vpt = c.viewportTransform || [1, 0, 0, 1, 0, 0];
       const z = (typeof Pro.hooks.getZoom === 'function') ? Pro.hooks.getZoom() : (c.getZoom() || 1);
-      const toScreenX = x => (pad + x) * z;
-      const toScreenY = y => (pad + y) * z;
+      const toScreen = pt => fabric.util.transformPoint({ x: pt.x, y: pt.y }, vpt);
 
       ctx.save();
 
       ctx.strokeStyle = '#0d99ff';
       ctx.lineWidth = 2 * z;
       ctx.beginPath();
-      ctx.moveTo(toScreenX(_penPoints[0].x), toScreenY(_penPoints[0].y));
+      const p0 = toScreen(_penPoints[0]);
+      ctx.moveTo(p0.x, p0.y);
       for (let i = 1; i < _penPoints.length; i++) {
         const prev = _penPoints[i - 1];
         const curr = _penPoints[i];
         if (prev.cpOut || curr.cpIn) {
-          const cp1 = prev.cpOut || { x: prev.x, y: prev.y };
-          const cp2 = curr.cpIn || { x: curr.x, y: curr.y };
-          ctx.bezierCurveTo(
-            toScreenX(cp1.x), toScreenY(cp1.y),
-            toScreenX(cp2.x), toScreenY(cp2.y),
-            toScreenX(curr.x), toScreenY(curr.y)
-          );
+          const cp1 = toScreen(prev.cpOut || { x: prev.x, y: prev.y });
+          const cp2 = toScreen(curr.cpIn || { x: curr.x, y: curr.y });
+          const cur = toScreen(curr);
+          ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, cur.x, cur.y);
         } else {
-          ctx.lineTo(toScreenX(curr.x), toScreenY(curr.y));
+          const cur = toScreen(curr);
+          ctx.lineTo(cur.x, cur.y);
         }
       }
       ctx.stroke();
@@ -2248,50 +2318,56 @@
       // Ghost-линия от последней точки до курсора (как в Figma)
       if (_penCursorPos && _penPoints.length > 0) {
         const last = _penPoints[_penPoints.length - 1];
+        const pLast = toScreen(last);
+        const pCur = toScreen(_penCursorPos);
         ctx.strokeStyle = 'rgba(13, 153, 255, 0.5)';
         ctx.lineWidth = 1.5 * z;
         ctx.setLineDash([4 * z, 4 * z]);
         ctx.beginPath();
-        ctx.moveTo(toScreenX(last.x), toScreenY(last.y));
-        ctx.lineTo(toScreenX(_penCursorPos.x), toScreenY(_penCursorPos.y));
+        ctx.moveTo(pLast.x, pLast.y);
+        ctx.lineTo(pCur.x, pCur.y);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
       _penPoints.forEach(pt => {
         if (pt.cpOut) {
+          const pAnchor = toScreen(pt);
+          const pOut = toScreen(pt.cpOut);
           ctx.strokeStyle = '#93c5fd';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
-          ctx.lineTo(toScreenX(pt.cpOut.x), toScreenY(pt.cpOut.y));
+          ctx.moveTo(pAnchor.x, pAnchor.y);
+          ctx.lineTo(pOut.x, pOut.y);
           ctx.stroke();
 
           ctx.fillStyle = '#0d99ff';
           ctx.beginPath();
-          ctx.arc(toScreenX(pt.cpOut.x), toScreenY(pt.cpOut.y), 3.5, 0, Math.PI * 2);
+          ctx.arc(pOut.x, pOut.y, 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
         if (pt.cpIn) {
+          const pAnchor = toScreen(pt);
+          const pIn = toScreen(pt.cpIn);
           ctx.strokeStyle = '#93c5fd';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(toScreenX(pt.x), toScreenY(pt.y));
-          ctx.lineTo(toScreenX(pt.cpIn.x), toScreenY(pt.cpIn.y));
+          ctx.moveTo(pAnchor.x, pAnchor.y);
+          ctx.lineTo(pIn.x, pIn.y);
           ctx.stroke();
 
           ctx.fillStyle = '#0d99ff';
           ctx.beginPath();
-          ctx.arc(toScreenX(pt.cpIn.x), toScreenY(pt.cpIn.y), 3.5, 0, Math.PI * 2);
+          ctx.arc(pIn.x, pIn.y, 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
 
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#0d99ff';
         ctx.lineWidth = 1.5;
-        const sx = toScreenX(pt.x), sy = toScreenY(pt.y);
-        ctx.fillRect(sx - 3.5, sy - 3.5, 7, 7);
-        ctx.strokeRect(sx - 3.5, sy - 3.5, 7, 7);
+        const pAnchor = toScreen(pt);
+        ctx.fillRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
+        ctx.strokeRect(pAnchor.x - 3.5, pAnchor.y - 3.5, 7, 7);
       });
 
       ctx.restore();
@@ -2390,7 +2466,7 @@
       copyObjectStyle, applyObjectStyle, pasteInPlace,
       addTriangle, addEllipse, addSemiCircle, addPentagon, addDiamond,
       setStrokeStyle, getStrokeKind, syncStrokeStyleUI, DASH_PRESETS,
-      applyBrushKind, peerSnap,
+      applyBrushKind, updateActiveBrushParams, getActiveBrushKind, peerSnap,
       triggerLayerRename, toggleLockSelection, toggleHideSelection,
       exportSelectedObject, applyOpacityValue,
       // Auto-Layout
@@ -2404,6 +2480,10 @@
       exportTokensToCSS, exportTokensToJSON,
       // Pen Tool
       activatePenTool, deactivatePenTool, finishPenPath,
+      isPenActive: () => _isPenActive,
+      updateBrushParams: updateActiveBrushParams,
+      getActiveBrushKind: () => _currentBrushKind,
+      hexToRgba,
       setCurrentSize(s) { Pro.currentSize = s; },
       setCanvas(c2) { Pro.canvas = c2; }
     };

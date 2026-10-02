@@ -1,8 +1,8 @@
 {
   "app": "vk-wall-searcher",
-  "version": "5.5.0",
+  "version": "5.5.1",
   "channel": "main",
   "repo": "giddammit-crypto/vk-wall-searcher",
-  "commit_date": "2026-10-01T04:27:00+03:00",
-  "release_name": "AURORA 5.5.0 — Epic No Man's Sky 3D visual upgrade: янтарно-бирюзовая палитра, гексагональная сетка, HUD-маркеры и радар"
+  "commit_date": "2026-10-02T14:07:00+03:00",
+  "release_name": "AURORA 5.5.1: Векторное перо поверх слоев, маркер-хайлайтер и распылитель"
 }

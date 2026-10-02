@@ -2337,13 +2337,27 @@ function initCanvas(w, h) {
   canvas.on('object:removed',     () => { saveHistory(); updateLayersList(); });
   canvas.on('path:created', e => {
     if (!e.path) return;
-    e.path.set({
-      strokeLineCap: 'round',
-      strokeLineJoin: 'round'
-    });
-    // Присваиваем имя нарисованному пути для панели слоёв
+    const kind = canvas.freeDrawingBrush?.__kind || window._currentBrushKind || 'pencil';
+    if (kind === 'marker') {
+      e.path.set({
+        strokeLineCap: 'square',
+        strokeLineJoin: 'miter'
+      });
+      // Гарантируем полупрозрачность хайлайтера (текст и фото просвечивают)
+      const curStroke = e.path.stroke || _pencilColor;
+      if (typeof curStroke === 'string' && !curStroke.startsWith('rgba') && window.AuroraFigmaPro?.hexToRgba) {
+        e.path.set('stroke', window.AuroraFigmaPro.hexToRgba(curStroke, 0.45));
+      }
+    } else if (kind === 'pencil') {
+      e.path.set({
+        strokeLineCap: 'round',
+        strokeLineJoin: 'round'
+      });
+    }
+    // Присваиваем имя нарисованному пути/спрею для панели слоёв
     if (!e.path.layerName) {
-      e.path.layerName = 'Рисунок ' + canvas.getObjects().length;
+      const typeLabel = kind === 'marker' ? 'Маркер ' : (kind === 'spray' ? 'Аэрограф ' : 'Рисунок ');
+      e.path.layerName = typeLabel + canvas.getObjects().length;
     }
     saveHistory();
     updateLayersList();
@@ -4461,26 +4475,31 @@ function setActiveTool(toolName = 'select', showToast = false) {
   if (!canvas) return;
   const targetTool = toolName || 'select';
 
-  // 1. Сброс режима свободного рисования (карандаш)
+  // 1. Сброс режима векторного пера при переключении на другой инструмент
+  if (targetTool !== 'pen' && window.AuroraFigmaPro?.isPenActive?.()) {
+    window.AuroraFigmaPro.deactivatePenTool();
+  }
+
+  // 2. Сброс режима свободного рисования (карандаш)
   if (targetTool !== 'pencil' && canvas.isDrawingMode) {
     canvas.isDrawingMode = false;
     $('#tool-pencil')?.classList.remove('is-active', 'active');
     $('#pencil-toolbar')?.classList.add('hidden');
   }
 
-  // 2. Сброс режима пипетки (eyedropper)
+  // 3. Сброс режима пипетки (eyedropper)
   if (targetTool !== 'eyedropper') {
     cancelCanvasEyedropper();
   }
 
-  // 3. Сброс панорамирования (pan / hand)
+  // 4. Сброс панорамирования (pan / hand)
   isPanningMode = (targetTool === 'pan');
   isCanvasDragging = false;
   if (targetTool !== 'pan') {
     isSpacePressed = false;
   }
 
-  // 4. Сброс специальных режимов (волшебная палочка, ластик)
+  // 5. Сброс специальных режимов (волшебная палочка, ластик)
   if (targetTool === 'select') {
     if (typeof _magicWandMode !== 'undefined' && _magicWandMode) {
       _magicWandMode = false;
@@ -4493,7 +4512,7 @@ function setActiveTool(toolName = 'select', showToast = false) {
     }
   }
 
-  // 5. Конфигурация Fabric.js для выбранного инструмента
+  // 6. Конфигурация Fabric.js для выбранного инструмента
   if (targetTool === 'select') {
     canvas.selection = true; // Fabric.js рамка выделения (marquee / box select)
     canvas.skipTargetFind = false;
@@ -4513,13 +4532,26 @@ function setActiveTool(toolName = 'select', showToast = false) {
     document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
       el.classList.add('is-active', 'active');
     });
-    document.querySelectorAll('#tool-pencil, #tool-eyedropper, #btn-bg-eraser').forEach(el => {
+    document.querySelectorAll('#tool-pencil, #tool-eyedropper, #btn-bg-eraser, #tool-pen, #btn-header-pen').forEach(el => {
       el.classList.remove('is-active', 'active');
     });
 
     if (showToast && typeof window.toast === 'function') {
       window.toast('Курсор: Стрелка / Выбор (V)');
     }
+  } else if (targetTool === 'pen') {
+    canvas.selection = false;
+    canvas.skipTargetFind = true;
+    canvas.defaultCursor = 'crosshair';
+    canvas.hoverCursor = 'crosshair';
+    canvas.discardActiveObject();
+    canvas._currentTransform = null;
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+      el.classList.remove('is-active', 'active');
+    });
+    document.querySelectorAll('#tool-pen, #btn-header-pen').forEach(el => {
+      el.classList.add('is-active', 'active');
+    });
   } else if (targetTool === 'pan') {
     canvas.selection = false;
     canvas.defaultCursor = 'grab';
@@ -4556,25 +4588,50 @@ function toggleDrawingMode(forcedState) {
   const toolbar = $('#pencil-toolbar');
 
   if (newState) {
+    // Если было активно векторное перо — деактивируем его
+    if (window.AuroraFigmaPro?.isPenActive?.()) {
+      window.AuroraFigmaPro.deactivatePenTool();
+    }
+
     canvas.discardActiveObject();
+    canvas._currentTransform = null;
+    canvas.freeDrawingCursor = 'crosshair';
     canvas.requestRenderAll();
     clearProps();
 
-    if (!canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    const curKind = window._currentBrushKind || (window.AuroraFigmaPro?.getActiveBrushKind?.()) || 'pencil';
+    window._currentBrushKind = curKind;
+
+    if (window.AuroraFigmaPro?.applyBrushKind) {
+      window.AuroraFigmaPro.applyBrushKind(curKind);
+    } else {
+      if (!canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      }
+      canvas.freeDrawingBrush.color = _pencilColor;
+      canvas.freeDrawingBrush.width = _pencilWidth;
     }
-    canvas.freeDrawingBrush.color = _pencilColor;
-    canvas.freeDrawingBrush.width = _pencilWidth;
+
+    // Синхронизируем активную кнопку кисти в плавающей панели
+    $$('.brush-kind-btn').forEach(b => {
+      const active = b.dataset.brush === curKind;
+      b.classList.toggle('is-active', active);
+      b.style.background = active ? '#0d99ff22' : 'transparent';
+      b.style.color = active ? '#0d99ff' : '#9ca3af';
+      b.style.borderColor = active ? '#0d99ff55' : '#ffffff22';
+    });
 
     toolBtn?.classList.add('is-active');
     toolbar?.classList.remove('hidden');
 
-    // Деактивируем стрелку
-    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select').forEach(el => {
+    window.currentTool = 'pencil';
+
+    // Деактивируем стрелку и перо
+    document.querySelectorAll('#tool-select, #btn-header-select, #mtool-select, #dock-btn-select, #tool-pen, #btn-header-pen').forEach(el => {
       el.classList.remove('is-active', 'active');
     });
 
-    toast('Карандаш включен (Рисуйте на холсте, Esc — выход)');
+    toast('Карандаш включен ✏️ (Рисуйте на холсте, Esc — выход)');
   } else {
     toolBtn?.classList.remove('is-active');
     toolbar?.classList.add('hidden');
@@ -9947,14 +10004,33 @@ function bindEvents() {
         activateEyedropper();
         return;
       }
-      // P / з -> Карандаш
-      if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
+      // Цифровые клавиши 1, 2, 3 для быстрого выбора кисти в режиме карандаша
+      if (canvas?.isDrawingMode && !e.shiftKey) {
+        if (e.key === '1') {
+          e.preventDefault();
+          $('.brush-kind-btn[data-brush="pencil"]')?.click();
+          return;
+        }
+        if (e.key === '2') {
+          e.preventDefault();
+          $('.brush-kind-btn[data-brush="marker"]')?.click();
+          return;
+        }
+        if (e.key === '3') {
+          e.preventDefault();
+          $('.brush-kind-btn[data-brush="spray"]')?.click();
+          return;
+        }
+      }
+
+      // P / з -> Карандаш (только без Shift, Shift+P зарезервирован под Перо)
+      if (!e.shiftKey && (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З')) {
         e.preventDefault();
         toggleDrawingMode();
         return;
       }
       // V / м -> Выбор (стрелка выделения и перемещения объектов, как в Photoshop/Figma)
-      if (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М') {
+      if (!e.shiftKey && (e.key === 'v' || e.key === 'V' || e.key === 'м' || e.key === 'М')) {
         e.preventDefault();
         activateSelectTool(true);
         return;
@@ -10214,12 +10290,24 @@ function bindEvents() {
   /* Плавающая панель карандаша */
   $('#pencil-color-picker')?.addEventListener('input', e => {
     _pencilColor = e.target.value;
-    if (canvas?.freeDrawingBrush) canvas.freeDrawingBrush.color = _pencilColor;
+    if (window.AuroraFigmaPro?.updateBrushParams) {
+      window.AuroraFigmaPro.updateBrushParams(_pencilColor, _pencilWidth);
+    } else if (window.AuroraFigmaPro?.updateActiveBrushParams) {
+      window.AuroraFigmaPro.updateActiveBrushParams(_pencilColor, _pencilWidth);
+    } else if (canvas?.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = _pencilColor;
+    }
   });
   $('#pencil-width-slider')?.addEventListener('input', e => {
     _pencilWidth = parseInt(e.target.value, 10) || 4;
     if ($('#pencil-width-val')) $('#pencil-width-val').textContent = _pencilWidth + 'px';
-    if (canvas?.freeDrawingBrush) canvas.freeDrawingBrush.width = _pencilWidth;
+    if (window.AuroraFigmaPro?.updateBrushParams) {
+      window.AuroraFigmaPro.updateBrushParams(_pencilColor, _pencilWidth);
+    } else if (window.AuroraFigmaPro?.updateActiveBrushParams) {
+      window.AuroraFigmaPro.updateActiveBrushParams(_pencilColor, _pencilWidth);
+    } else if (canvas?.freeDrawingBrush) {
+      canvas.freeDrawingBrush.width = _pencilWidth;
+    }
   });
   $('#btn-pencil-done')?.addEventListener('click', () => toggleDrawingMode(false));
 
@@ -10270,8 +10358,20 @@ function bindEvents() {
   $('#tool-semicircle')?.addEventListener('click', () => window.AuroraFigmaPro?.addSemiCircle());
 
   /* Figma Pro: Векторное перо, Auto-Layout, Компоненты */
-  $('#tool-pen')?.addEventListener('click', () => window.AuroraFigmaPro?.activatePenTool());
-  $('#btn-header-pen')?.addEventListener('click', () => window.AuroraFigmaPro?.activatePenTool());
+  $('#tool-pen')?.addEventListener('click', () => {
+    if (window.AuroraFigmaPro?.isPenActive?.()) {
+      window.AuroraFigmaPro.deactivatePenTool();
+    } else {
+      window.AuroraFigmaPro?.activatePenTool();
+    }
+  });
+  $('#btn-header-pen')?.addEventListener('click', () => {
+    if (window.AuroraFigmaPro?.isPenActive?.()) {
+      window.AuroraFigmaPro.deactivatePenTool();
+    } else {
+      window.AuroraFigmaPro?.activatePenTool();
+    }
+  });
   $('#btn-header-autolayout')?.addEventListener('click', () => window.AuroraFigmaPro?.toggleAutoLayout());
   $('#btn-header-component')?.addEventListener('click', () => window.AuroraFigmaPro?.createMasterComponent());
 
@@ -10283,13 +10383,23 @@ function bindEvents() {
   /* Figma Pro: выбор кисти карандаша (карандаш / маркер / распылитель) */
   $$('.brush-kind-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const kind = btn.dataset.brush || 'pencil';
+      window._currentBrushKind = kind;
       $$('.brush-kind-btn').forEach(b => {
-        b.classList.toggle('is-active', b === btn);
-        b.style.background = b === btn ? '#0d99ff22' : 'transparent';
-        b.style.color = b === btn ? '#0d99ff' : '#9ca3af';
-        b.style.borderColor = b === btn ? '#0d99ff55' : '#ffffff22';
+        const active = b === btn;
+        b.classList.toggle('is-active', active);
+        b.style.background = active ? '#0d99ff22' : 'transparent';
+        b.style.color = active ? '#0d99ff' : '#9ca3af';
+        b.style.borderColor = active ? '#0d99ff55' : '#ffffff22';
       });
-      window.AuroraFigmaPro?.applyBrushKind(btn.dataset.brush);
+      window.AuroraFigmaPro?.applyBrushKind(kind);
+      if (kind === 'marker') {
+        toast('Маркер 🖍️: полупрозрачное выделение поверх текста и фото');
+      } else if (kind === 'spray') {
+        toast('Распылитель 💨: мягкий аэрограф');
+      } else {
+        toast('Карандаш ✏️: тонкая чёткая линия');
+      }
     });
   });
 
