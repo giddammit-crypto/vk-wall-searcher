@@ -1000,6 +1000,24 @@ function initApp() {
         }
     }
 
+    // D-1: Search Accordion toggle for mobile (< 768px)
+    document.querySelectorAll('.search-accordion-header').forEach(hdr => {
+        hdr.addEventListener('click', () => {
+            const sec = hdr.closest('.search-accordion-section');
+            if (sec) {
+                sec.classList.toggle('active');
+                const isOpen = sec.classList.contains('active');
+                hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        });
+        hdr.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                hdr.click();
+            }
+        });
+    });
+
     if (elements.searchForm) {
         elements.searchForm.addEventListener('submit', handleSearchSubmit);
     }
@@ -1427,7 +1445,14 @@ function initApp() {
                     elements.progressStatusMsg.textContent = `Опрос стен батчами (${Math.min(BATCH_SIZE, activeTargetNames.size || 1)} параллельно). Найдено совпадений: ${state.matchedCount}`;
                 }
 
-                if (elements.progressBar) elements.progressBar.style.width = `${percent}%`;
+                if (elements.progressBar) {
+                    elements.progressBar.style.width = `${percent}%`;
+                    const container = elements.progressBar.parentElement;
+                    if (container) {
+                        container.setAttribute('aria-valuenow', percent);
+                        container.setAttribute('aria-label', `Прогресс сканирования: ${percent}%, просканировано ${completedTargetsCount} из ${resolvedTargets.length} сообществ`);
+                    }
+                }
                 if (elements.progressPercent) elements.progressPercent.textContent = `${percent}%`;
                 if (elements.statScanned) elements.statScanned.textContent = state.scannedCount.toLocaleString('ru-RU');
                 if (elements.statMatched) elements.statMatched.textContent = state.matchedCount.toLocaleString('ru-RU');

@@ -398,7 +398,7 @@
             }
 
             window.__auroraSplash = new AuroraSplashLoader({
-                duration: 8.0,
+                duration: 2.0,
                 modelUrl: 'assets/models/cute_robot.glb'
             });
         } catch(e) {
@@ -412,7 +412,7 @@
     })();
     </script>
     <script>
-    /* Emergency safety watchdog timer: unconditionally dismiss splash after 9.5s */
+    /* Emergency safety watchdog timer: unconditionally dismiss splash after 2.5s */
     setTimeout(function() {
         var splash = document.getElementById('aurora-splash');
         if (splash && !splash.classList.contains('aurora-splash-hidden')) {
@@ -423,7 +423,7 @@
                 splash.style.display = 'none';
             }, 300);
         }
-    }, 9500);
+    }, 2500);
     </script>
 
     <!-- Aurora Volumetric Ambient Backdrop -->
@@ -832,8 +832,19 @@
                 </div>
 
                 <form id="search-form">
-                    <!-- Branch Libraries Selector -->
-                    <div class="form-row">
+                    <div class="search-accordion-group">
+                        <!-- Секция 1: Источник и выбор библиотеки -->
+                        <div class="search-accordion-section active" id="sec-search-source">
+                            <div class="search-accordion-header" role="button" tabindex="0" aria-expanded="true">
+                                <div class="sah-left">
+                                    <span class="material-symbols-outlined icon">local_library</span>
+                                    <span>1. Сообщества и источники (16 филиалов)</span>
+                                </div>
+                                <span class="material-symbols-outlined sah-arrow">expand_more</span>
+                            </div>
+                            <div class="search-accordion-body">
+                                <!-- Branch Libraries Selector -->
+                                <div class="form-row">
                         <div class="form-group col-12">
                             <label for="branch-select" class="section-sublabel">
                                 <span class="material-symbols-outlined sublabel-icon">local_library</span>
@@ -900,9 +911,20 @@
                             <span class="material-symbols-outlined icon">delete_sweep</span>Очистить
                         </button>
                     </div>
+                </div>
 
-                    <!-- Date Filters Grid -->
-                    <div class="form-row date-filters-row">
+                <!-- Секция 2: Период поиска -->
+                <div class="search-accordion-section active" id="sec-search-period">
+                    <div class="search-accordion-header" role="button" tabindex="0" aria-expanded="true">
+                        <div class="sah-left">
+                            <span class="material-symbols-outlined icon">date_range</span>
+                            <span>2. Период поиска (месяцы, годы, дни)</span>
+                        </div>
+                        <span class="material-symbols-outlined sah-arrow">expand_more</span>
+                    </div>
+                    <div class="search-accordion-body">
+                        <!-- Date Filters Grid -->
+                        <div class="form-row date-filters-row">
                         <!-- Months selector -->
                         <div class="form-group col-6">
                             <div class="months-header-group">
@@ -967,9 +989,20 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Advanced Search Filters -->
-                    <div class="form-row">
+                <!-- Секция 3: Расширенный поиск и типы вложений -->
+                <div class="search-accordion-section" id="sec-search-advanced">
+                    <div class="search-accordion-header" role="button" tabindex="0" aria-expanded="false">
+                        <div class="sah-left">
+                            <span class="material-symbols-outlined icon">tune</span>
+                            <span>3. Расширенный поиск (слова, фото, видео)</span>
+                        </div>
+                        <span class="material-symbols-outlined sah-arrow">expand_more</span>
+                    </div>
+                    <div class="search-accordion-body">
+                        <!-- Advanced Search Filters -->
+                        <div class="form-row">
                         <div class="form-group col-12">
                             <label class="section-sublabel">
                                 <span class="material-symbols-outlined sublabel-icon">manage_search</span>
@@ -1118,6 +1151,7 @@
                                         </span>
                                     </label>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -1834,7 +1868,7 @@
 
                 <!-- Progress Bar with Percentage -->
                 <div class="motion-progress-row">
-                    <div class="progress-bar-container">
+                    <div class="progress-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Прогресс сканирования">
                         <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
                     </div>
                     <span id="progress-percent" class="motion-progress-percent">0%</span>

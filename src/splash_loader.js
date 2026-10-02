@@ -168,7 +168,13 @@ export class AuroraSplashLoader {
 
     setupControls() {
         if (this.skipBtn) {
-            this.skipBtn.addEventListener('click', () => this.finish(true));
+            this.skipBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.finish(true);
+            });
+        }
+        if (this.container) {
+            this.container.addEventListener('click', () => this.finish(true));
         }
         this.keydownHandler = (e) => {
             if (e.key === 'Escape' || e.code === 'Space') {

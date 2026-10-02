@@ -14597,3 +14597,121 @@ textarea:focus {
     color: var(--accent) !important;
     box-shadow: var(--elevation-1) !important;
 }
+
+/* =========================================================================
+   D-1: Responsive Search Panel Accordion & Mobile Optimizations
+   ========================================================================= */
+.search-accordion-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.search-accordion-section {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 14px);
+    background: var(--surface-card, rgba(255, 255, 255, 0.02));
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: background 0.2s ease;
+}
+
+.search-accordion-header:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.search-accordion-header .sah-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-accordion-header .sah-left .icon {
+    font-size: 20px;
+    color: var(--accent);
+}
+
+.search-accordion-header .sah-arrow {
+    font-size: 22px;
+    color: var(--text-secondary);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-accordion-section.active .search-accordion-header .sah-arrow {
+    transform: rotate(180deg);
+}
+
+.search-accordion-body {
+    padding: 16px;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+/* On Desktop (>= 769px), all sections are open by default */
+@media (min-width: 769px) {
+    .search-accordion-section {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+    }
+    .search-accordion-header {
+        display: none; /* Hide header toggles on desktop for clean seamless layout */
+    }
+    .search-accordion-body {
+        padding: 0;
+        max-height: none !important;
+        opacity: 1 !important;
+        display: block !important;
+    }
+}
+
+/* On Mobile (< 768px), sections can be collapsed */
+@media (max-width: 768px) {
+    .search-accordion-section:not(.active) .search-accordion-body {
+        display: none;
+    }
+    .search-accordion-section.active .search-accordion-body {
+        display: block;
+    }
+}
+
+/* D-1 / D-4: Results Tabs Horizontal Scroll on Mobile (< 680px) */
+@media (max-width: 680px) {
+    .tabs-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex-wrap: nowrap !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(140, 145, 160, 0.3) transparent !important;
+        padding: 6px 8px !important;
+        gap: 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .tabs-container::-webkit-scrollbar {
+        height: 4px !important;
+    }
+    .tabs-container::-webkit-scrollbar-thumb {
+        background: rgba(140, 145, 160, 0.35) !important;
+        border-radius: 4px !important;
+    }
+    .tab-btn {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        min-width: max-content !important;
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+    }
+}
